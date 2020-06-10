@@ -1,0 +1,7 @@
+node('TEST-gb-mlb-dt-026')
+{
+    stage("Setup")
+    {
+        println "Intentionally left blank."
+    }
+}
