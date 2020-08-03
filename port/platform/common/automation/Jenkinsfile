@@ -1,7 +1,173 @@
-node('TEST-gb-mlb-dt-026')
+import groovy.json.JsonSlurper  // For parsing HTTP get responses
+
+node('TEST-gb-cmb-dt-022')
 {
-    stage("Setup")
-    {
-        println "Intentionally left blank."
+    def pr_text = ""
+    def pr_files
+    def subst_drive = "z:"
+    // If you change the following line you need to change EXCLUDE_PATTERNS in Doxyfile to match
+    def working_dir = "_jenkins_work"
+    def archive_dir = working_dir
+    def summary_file = "summary.log"
+    def test_report_file = "test_report.xml"
+    def debug_file = "debug.log"
+    def return_value = 1
+
+    // Using the try/catch pattern as recommended in this post:
+    // https://stackoverflow.com/questions/48989238/post-equivalent-in-scripted-pipeline
+    // ... in order to have an archive step that is always
+    // run while in the "scripted pipeline" world
+    try {
+        // All the stages go here
+        timeout(time: 60, unit: 'MINUTES') {
+            stage("Info") {
+                environment = bat(script: "@echo off & set", returnStdout: true).trim()
+                println "Environment variables are: \n" + environment
+
+                // For debug purposes, print out the entries in the scm
+                // map going into checkout
+                println "checkout() will be given: " + scm.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
+            }
+
+            stage("Fetch") {
+                // Get the merged pull request into a cleaned directory
+                scmMap = checkout scm
+
+                // For debug purposes, print out the entries in the scm
+                // map returned by checkout
+                println "checkout() returned: " + scmMap.each{entry -> "$entry.key = $entry.value"}
+
+                // Just for debug, use git to get the last commit
+                // message, @echo off to avoid capturing the command
+                // output as well as the returned text
+                def message = bat(script: "@echo off & git log --format=format:%%s -1", returnStdout: true).trim()
+
+                println "Last commit message was: \"" + message + "\""
+            }
+
+            if (env.CHANGE_TARGET && env.CHANGE_ID) {
+                stage("Check Pull Request") {
+                    // This is a pull request so use git to get the list
+                    // of file differences, @echo off to avoid capturing
+                    // the command output as well as the  returned text
+                    println "Checking for changed files between origin/" + env.CHANGE_TARGET + " and " + scmMap.GIT_COMMIT + "..."
+                    pr_files = bat(script: "@echo off & git diff --name-only origin/%CHANGE_TARGET%..${scmMap.GIT_COMMIT}", returnStdout: true).trim()
+
+                    pr_files = pr_files.replaceAll("\n", " ");
+                    println "Changed file(s) were: " + pr_files
+                    
+                    if (env.CHANGE_URL) {
+                        // Go get the pull request text if it's there
+                        println "Getting pull request text for pull request: " + env.CHANGE_URL + "..."
+                        withCredentials([usernamePassword(credentialsId: 'ubxlib', usernameVariable: 'user', passwordVariable: 'pass')]) {
+                            // Deal with authentication
+                            def authString = "$user:$pass".getBytes("ISO-8859-1").encodeBase64().toString()
+                            // The github API to get pull request comments is of the form:
+                            // https://api.github.com/repos/u-blox/xxx/issues/y
+                            // ...where xxx is the name of the repo and y is the CHANGE_ID
+                            // To get to this from our CHANGE_URL, which is of the form:
+                            // https://github.com/u-blox/ubxlib_test2/pull/2.
+                            //...we need to replace "github.com" with "api.github.com/repos"
+                            // and "pull" with "issues"
+                            def urlString = env.CHANGE_URL
+                            urlString = urlString.replaceAll("//github.com/", "//api.github.com/repos/")
+                            urlString = urlString.replaceAll("/pull/", "/issues/")
+                            println "Github API URL will be: " + urlString
+                            // Open the connection and do the get
+                            def prGet = new URL(urlString).openConnection()
+                            prGet.setRequestProperty("Authorization", "Basic $authString")
+                            def prResponseCode = prGet.getResponseCode()
+                            println "Server responded with " + prResponseCode
+                            if (prResponseCode.equals(200)) {
+                                def jsonSlurper = new JsonSlurper()
+                                def prResponseJson = jsonSlurper.parseText(prGet.getInputStream().getText())
+                                pr_text = prResponseJson["body"]
+                                if (pr_text) {
+                                    println "Pull request text: \"" + pr_text + "\"."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            stage("Environment Check") {
+                if (bat(script: "@echo off & python --version", returnStatus: true) != 0) {
+                    error("Python is not available on the build machine.")
+                }
+            }
+
+            code_dir = pwd()
+            // Delete any previously subst'ed drive, no check for errors 'cos there might not be one
+            script {
+                try {
+                    bat(script: "@echo off & subst ${subst_drive} /D")
+                } catch (err) {
+                    // Do nothing
+                }
+            }
+            // Now subst the drive
+            if (bat(script: "subst ${subst_drive} ${code_dir}", returnStatus: true) == 0) {
+                // Need to add the "\" to the drive name or if something CD's to it they may not end up in the root
+                code_dir = subst_drive + "\\"
+                working_dir = code_dir + working_dir
+            } else {
+                working_dir = code_dir + "\\" + working_dir
+                error("Unable to subst ${subst_drive} for \"${code_dir}\", builds with long path lengths may fail.")
+            }
+            stage ("Reset USB") {
+                // usbswitchcmd sets a return value of 1 if it was given the
+                // parameter 1 and a return value of 0 if it was given the
+                // parameter 0. However Groovy insists on treating a non-zero
+                // return value as an error, no matter what I do, so here
+                // each "1" step has to be wrapped in try/catch.
+                // Disconnect USBs
+                try {
+                    bat(script: "usbswitchcmd -s -n 1750664 1")
+                } catch (err) {
+                }
+                try {
+                    bat(script: "usbswitchcmd -s -n 1750665 1")
+                } catch (err) {
+                }
+                sleep(time: 5, unit: 'SECONDS')
+                // Reconnect USBs
+                bat(script: "usbswitchcmd -s -n 1750664 0")
+                bat(script: "usbswitchcmd -s -n 1750665 0")
+                sleep(time: 5, unit: 'SECONDS')
+            }
+            dir (working_dir) {
+                pr_text = pr_text.replaceAll("\\n", "\\\\n")
+                if (pr_files) {
+                    stage("Test Pull Request") {
+                        // Call python to run the necessary builds and tests
+                        return_value = bat(script: "@echo off & cd ${code_dir}\\port\\platform\\common\\automation & python u_pull_request.py -u ${code_dir} -w ${working_dir} -s ${summary_file} -t ${test_report_file} -d ${debug_file} \"${pr_text}\" ${pr_files}", returnStatus: true)
+                        if (return_value != 0) {
+                            error("ubxlib testing returned error " + return_value + ".")
+                        } else {
+                            println "The ubxlib tests all passed."
+                        }
+                    }
+                } else {
+                    stage("Test All") {
+                        // Call python to run all tests
+                        return_value = bat(script: "@echo off & cd ${code_dir}\\port\\platform\\common\\automation & python u_pull_request.py -u ${code_dir} -w ${working_dir} -s ${summary_file} -t ${test_report_file} -d ${debug_file} \"test: *\"", returnStatus: true)
+                        if (return_value != 0) {
+                            error("ubxlib testing returned " + return_value + " failed test(s).")
+                        } else {
+                            println "The ubxlib tests all passed."
+                        }
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        println "Failed."
+        // Since we're catching the exception in order to report on it,
+        // we need to re-throw it, to ensure that the build is marked as failed
+        throw e
+    } finally {
+        // Archive artifacts from working_dir and one level down ('cos there may be an instance directory below the working directory)
+        archiveArtifacts artifacts: "${archive_dir}\\${summary_file}, ${archive_dir}\\${test_report_file}, ${archive_dir}\\${debug_file}, ${archive_dir}\\**\\${summary_file}, ${archive_dir}\\**\\${test_report_file}, ${archive_dir}\\**\\${debug_file}", allowEmptyArchive: true
     }
 }

@@ -1,0 +1,45 @@
+/* Lint options specific to ubxlib */
+
+/* Suppress the "Header file not used" warning for
+ * this file as it may not be used on some platforms
+ */
+-efile(766, u_port_clib_platform_specific.h)
+
+/* Suppress the "Header file not used" warning for
+ * this file as it may not be used on some platforms
+ */
+-efile(766, stdbool.h)
+
+/* Suppress "ignoring return value of function"
+ */
+-e534
+
+/* Suppress "previously declared as "C"
+ */
+-e1784
+
+/* Suppress warning about use of "do {} while(0)"
+ */
+-e717
+
+/* Suppress "zero has been given as left hand operator
+ * to +" (can easily happen when using macros)
+ */
+-e835
+
+/* Suppress "significant prototype coercion": compilers
+ * will either deal with this or reject it these days.
+ */
+-e747 
+
+/* Suppress "loss of sign in type coercion" and "
+ * "loss of sign" simply results in too many casts
+ * to be good.
+ */
+-e732
+-e737
+
+/* Don't look for problems inside Unity
+ */
++libm(unity_internals.h)
++libm(unity_config.h)
