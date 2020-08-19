@@ -161,10 +161,14 @@ static const char gUartTestData[] =  "_____0000:01234567890123456789012345678901
                                      "_____0900:0123456789012345678901234567890123456789"
                                      "01234567890123456789012345678901234567890123456789";
 
-// A buffer to receive UART data into
-static char gUartBuffer[1024];
+// A buffer to receive UART data into:
+// deliberately a non-integer divisor of
+// U_PORT_UART_RX_BUFFER_SIZE
+// so that the buffers go "around the corner"
+static char gUartBuffer[(U_PORT_UART_RX_BUFFER_SIZE / 2) +
+                                                         (U_PORT_UART_RX_BUFFER_SIZE / 4)];
 
-#endif // (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0)
+#endif // (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) &&
 // (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
 
 /* ----------------------------------------------------------------

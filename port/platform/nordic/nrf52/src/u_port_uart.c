@@ -764,13 +764,14 @@ int32_t uPortUartRead(int32_t uart, char *pBuffer,
             // stopping at the end of the buffer or
             // totalRead, whichever comes first
             thisRead = gUartData[uart].pRxStart +
-                       U_PORT_UART_RX_BUFFER_SIZE
-                       - gUartData[uart].pRxRead;
+                       U_PORT_UART_RX_BUFFER_SIZE -
+                       gUartData[uart].pRxRead;
             if (thisRead > totalRead) {
                 thisRead = totalRead;
             }
             memcpy(pBuffer, gUartData[uart].pRxRead, thisRead);
             gUartData[uart].pRxRead += thisRead;
+            pBuffer += thisRead;
             if (gUartData[uart].pRxRead >= gUartData[uart].pRxStart +
                 U_PORT_UART_RX_BUFFER_SIZE) {
                 gUartData[uart].pRxRead = gUartData[uart].pRxStart;
