@@ -76,7 +76,9 @@ def install_build_download(esp_idf_dir, ubxlib_dir, build_dir,
     defines_text = ""
     success = False
     # Set up the environment variables IDF_TOOLS_PATH and
-    # U_FLAGS
+    # U_FLAGS: note that these must be deleted afterwards
+    # in case someone else is going to use the worker
+    # that this was run in
     for idx, define in enumerate(defines):
         if idx == 0:
             defines_text += "-D" + define
@@ -118,6 +120,10 @@ def install_build_download(esp_idf_dir, ubxlib_dir, build_dir,
         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                        u_report.EVENT_FAILED,
                        "could not acquire install lock")
+
+    # Delete the environment variables again
+    del my_env["IDF_TOOLS_PATH"]
+    del my_env["U_FLAGS"]
 
     return success
 

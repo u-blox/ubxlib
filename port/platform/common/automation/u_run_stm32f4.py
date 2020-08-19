@@ -290,6 +290,7 @@ def build_binary(sdk_dir, workspace_subdir, project_name, clean, defines,
     '''Build'''
     call_list = []
     build_dir = sdk_dir + os.sep + project_name + os.sep + PROJECT_CONFIGURATION
+    num_defines = 0
     too_many_defines = False
     elf_path = None
 
@@ -307,6 +308,9 @@ def build_binary(sdk_dir, workspace_subdir, project_name, clean, defines,
                                     printer, prompt):
         for idx, define in enumerate(defines):
             # Add the #defines as environment variables
+            # Note that these must be deleted afterwards
+            # in case someone else is going to use the
+            # worker that this was run in
             if idx >= MAX_NUM_DEFINES:
                 too_many_defines = True
                 printer.string("{}{} #defines"          \
@@ -318,6 +322,7 @@ def build_binary(sdk_dir, workspace_subdir, project_name, clean, defines,
                                                       MAX_NUM_DEFINES))
                 break
             os.environ["U_FLAG" + str(idx)] = "-D" + define
+            num_defines += 1
 
         # Print the environment variables for debug purposes
         printer.string("{}environment is:".format(prompt))
@@ -373,6 +378,11 @@ def build_binary(sdk_dir, workspace_subdir, project_name, clean, defines,
                                 printer, prompt)):
                 # The binary should be
                 elf_path = build_dir + os.sep + project_name + ".elf"
+
+        # Delete the environment variables again
+        while num_defines > 0:
+            num_defines -= 1
+            del os.environ["U_FLAG" + str(num_defines)]
 
     return elf_path
 
@@ -446,7 +456,7 @@ def swo_decoder_wrapper(swo_decoded_text_file,
 def run(instance, sdk, connection, connection_lock, platform_lock, clean, defines,
         ubxlib_dir, working_dir, printer, reporter, test_report_handle):
     '''Build/run on STM32F4'''
-    return_value = 1
+    return_value = -1
     sdk_dir = ubxlib_dir + os.sep + SDK_DIR
     instance_text = u_utils.get_instance_text(instance)
     # Create a unique project name prefix in case more than
@@ -607,7 +617,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                     # Tidy up process on SIGINT
                                     printer.string("{}caught CTRL-C, terminating...".format(prompt))
                                     process.terminate()
-                                    return_value = 1
+                                    return_value = -1
                                 if return_value == 0:
                                     reporter.event(u_report.EVENT_TYPE_TEST,
                                                    u_report.EVENT_COMPLETE)

@@ -81,10 +81,17 @@
 # define U_CFG_TEST_PIN_C         35
 #endif
 
-/** UART HW block for UART driver testing.
+/** UART HW block for UART driver loopback testing.
  */
-#ifndef U_CFG_TEST_UART
-# define U_CFG_TEST_UART          2
+#ifndef U_CFG_TEST_UART_0
+# define U_CFG_TEST_UART_0          2
+#endif
+
+/** UART HW block for UART driver loopback testing where
+ * two UARTs are employed.
+ */
+#ifndef U_CFG_TEST_UART_1
+# define U_CFG_TEST_UART_1          -1
 #endif
 
 /** The baud rate to test the UART at.
@@ -93,28 +100,64 @@
 # define U_CFG_TEST_BAUD_RATE 115200
 #endif
 
-/** Tx pin for UART testing: should be connected to the Rx UART pin.
+/** Tx pin for UART testing: should be connected either to the
+ * Rx UART pin or to U_CFG_TEST_PIN_UART_1_RXD if that is
+ * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_TXD
-# define U_CFG_TEST_PIN_UART_TXD   13
+#ifndef U_CFG_TEST_PIN_UART_0_TXD
+# define U_CFG_TEST_PIN_UART_0_TXD   13
 #endif
 
-/** Rx pin for UART testing: should be connected to the Tx UART pin.
+/** Rx pin for UART testing: should be connected either to the
+ * Tx UART pin or to U_CFG_TEST_PIN_UART_1_TXD if that is
+ * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_RXD
-# define U_CFG_TEST_PIN_UART_RXD   14
+#ifndef U_CFG_TEST_PIN_UART_0_RXD
+# define U_CFG_TEST_PIN_UART_0_RXD   14
 #endif
 
-/** CTS pin for UART testing: should be connected to the RTS UART pin.
+/** CTS pin for UART testing: should be connected either to the
+ * RTS UART pin or to U_CFG_TEST_PIN_UART_1_RTS if that is
+ * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_CTS
-# define U_CFG_TEST_PIN_UART_CTS   26
+#ifndef U_CFG_TEST_PIN_UART_0_CTS
+# define U_CFG_TEST_PIN_UART_0_CTS   26
 #endif
 
-/** RTS pin for UART testing: should be connected to the CTS UART pin.
+/** RTS pin for UART testing: should be connected connected either to the
+ * CTS UART pin or to U_CFG_TEST_PIN_UART_1_CTS if that is
+ * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_RTS
-# define U_CFG_TEST_PIN_UART_RTS   27
+#ifndef U_CFG_TEST_PIN_UART_0_RTS
+# define U_CFG_TEST_PIN_UART_0_RTS   27
+#endif
+
+/** Tx pin for dual-UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_0_RXD.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_TXD
+# define U_CFG_TEST_PIN_UART_1_TXD   -1
+#endif
+
+/** Rx pin for dual-UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_0_TXD.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_RXD
+# define U_CFG_TEST_PIN_UART_1_RXD   -1
+#endif
+
+/** CTS pin for dual-UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_0_RTS.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_CTS
+# define U_CFG_TEST_PIN_UART_1_CTS   -1
+#endif
+
+/** RTS pin for UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_0_CTS.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_RTS
+# define U_CFG_TEST_PIN_UART_1_RTS   -1
 #endif
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_

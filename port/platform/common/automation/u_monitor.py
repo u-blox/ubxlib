@@ -8,7 +8,7 @@ import re
 import codecs
 import queue
 import threading
-from time import time, ctime, clock
+from time import time, ctime, clock, sleep
 from math import ceil
 import socket
 from telnetlib import Telnet # For talking to JLink server when using NRF52
@@ -117,6 +117,8 @@ def finish_callback(match, results, printer, prompt, reporter):
 INTERESTING = [[r"abort()", reboot_callback],
                # This one for ESP32 aborts
                [r"Guru Meditation Error", reboot_callback],
+               # This one for NRF52 aborts
+               [r"<error> hardfault", reboot_callback],
                # Match, for example "BLAH: Running getSetMnoProfile..." capturing the "getSetMnoProfile" part
                [r"(?:^.*Running) +([^\.]+(?=\.))...$", run_callback],
                # Match, for example "C:/temp/file.c:890:connectedThings:PASS" capturing the "connectThings" part
@@ -264,6 +266,7 @@ def esp32_send_first(send_string, in_handle, connection_type, printer, prompt):
         # if there is any
         printer.string("{}reading initial text from input...".\
                        format(prompt))
+        sleep(1)
         # Wait for the test selection prompt
         while line is not None and \
               line.find("Press ENTER to see the list of tests.") < 0:
@@ -332,7 +335,7 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
         if guard_time_seconds and (clock() - start_time >= guard_time_seconds):
             printer.string("{}guard timer ({} second(s))"
                            "  expired.".format(prompt, guard_time_seconds))
-        elif inactivity_time_seconds and (clock() - last_activity_time >= last_activity_time):
+        elif inactivity_time_seconds and (clock() - last_activity_time >= inactivity_time_seconds):
             printer.string("{}inactivity timer ({} second(s))"
                            " expired.".format(prompt, inactivity_time_seconds))
         else:

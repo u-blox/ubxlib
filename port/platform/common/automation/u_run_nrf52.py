@@ -453,6 +453,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                            u_report.EVENT_FAILED,
                                            "unable to lock a connection")
                 else:
+                    return_value = 1
                     reporter.event(u_report.EVENT_TYPE_BUILD,
                                    u_report.EVENT_FAILED,
                                    "check debug log for details")

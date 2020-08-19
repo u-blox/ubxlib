@@ -341,7 +341,7 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
     pool.join()
     if reporter:
         reporter.event_extra_information("return value overall {} (0 = success, negative ="   \
-                                         " infrastructure failure, positive ="                \
+                                         " probable infrastructure failure, positive ="       \
                                          " failure(s) (may still be due to infrastructure))". \
                                          format(return_value))
         reporter.close()

@@ -54,7 +54,7 @@
  * is pretty much fixed, you can't just chose any UART and
  * expect it to connect to your chosen pins.  You have
  * to look in the STM32F4 data sheet for your particular
- * flavour of STM32F4 (e.g. table 12 in the STM32F4F437
+ * flavour of STM32F4 (e.g. table 12 in the STM32F437
  * datasheet) to determine what connects to what.
  * The values here are correct for any of the u-blox C030
  * boards.  If you are using another board you should
@@ -66,6 +66,9 @@
  * This USART should be made available when using a
  * C030-R412M board since the cellular module is connected
  * to the STM32F4 chip that way on that board.
+ * This can also be routed to PB6 (TXD) /PB7 (RXD) which
+ * come out on the SCL and SDA pins of the Arduino connector
+ * on the same board (both C030-R412M and C020-U201).
  */
 # define U_CFG_HW_UART1_AVAILABLE  1
 #endif

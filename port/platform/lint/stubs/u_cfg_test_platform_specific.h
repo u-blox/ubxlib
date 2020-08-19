@@ -34,17 +34,22 @@
 #define U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES 1024
 #define U_CFG_TEST_OS_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 5)
 
-// Note: pins set to 0 rather than -1 in order to not accidentally
+// Note: pins set to 0 rather than -1 in order to not
 // disable any code that is conditional on them existing
-#define U_CFG_TEST_PIN_A          0
-#define U_CFG_TEST_PIN_B          0
-#define U_CFG_TEST_PIN_C          0
-#define U_CFG_TEST_UART           0
+#define U_CFG_TEST_PIN_A            0
+#define U_CFG_TEST_PIN_B            0
+#define U_CFG_TEST_PIN_C            0
+#define U_CFG_TEST_UART_0           0
+#define U_CFG_TEST_UART_1           0
 #define U_CFG_TEST_BAUD_RATE      115200
-#define U_CFG_TEST_PIN_UART_TXD   0
-#define U_CFG_TEST_PIN_UART_RXD   0
-#define U_CFG_TEST_PIN_UART_CTS   0
-#define U_CFG_TEST_PIN_UART_RTS   0
+#define U_CFG_TEST_PIN_UART_0_TXD   0
+#define U_CFG_TEST_PIN_UART_0_RXD   0
+#define U_CFG_TEST_PIN_UART_0_CTS   0
+#define U_CFG_TEST_PIN_UART_0_RTS   0
+#define U_CFG_TEST_PIN_UART_1_TXD   0
+#define U_CFG_TEST_PIN_UART_1_RXD   0
+#define U_CFG_TEST_PIN_UART_1_CTS   0
+#define U_CFG_TEST_PIN_UART_1_RTS   0
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 

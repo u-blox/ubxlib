@@ -20,7 +20,7 @@
 /* Only bring in #includes specifically related to the test framework. */
 
 /** @file
- * @brief Porting layer and configuration items passed in at applicationfor
+ * @brief Porting layer and configuration items passed in at application
  * level when executing tests on the STM32F4 platform.
  */
 
@@ -81,8 +81,15 @@
  * Note: make sure that the corresponding U_CFG_UARTx_AVAILABLE
  * for this UART is set to 1 in u_cfg_hw_platform_specific.h
  */
-#ifndef U_CFG_TEST_UART
-# define U_CFG_TEST_UART          3 // UART3
+#ifndef U_CFG_TEST_UART_0
+# define U_CFG_TEST_UART_0          3 // UART3
+#endif
+
+/** UART HW block for UART driver loopback testing where
+ * two UARTs are employed.
+ */
+#ifndef U_CFG_TEST_UART_1
+# define U_CFG_TEST_UART_1          -1
 #endif
 
 /** The baud rate to test the UART at.
@@ -91,28 +98,66 @@
 # define U_CFG_TEST_BAUD_RATE 115200
 #endif
 
-/** Tx pin for UART testing: should be connected to the Rx UART pin.
+/** Tx pin for UART testing: should be connected either to the
+ * Rx UART pin or to U_CFG_TEST_PIN_UART_1_RXD if that is
+ * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_TXD
-# define U_CFG_TEST_PIN_UART_TXD   0x38 // UART3 TX, PD_8 or D1 on a C030 board
+#ifndef U_CFG_TEST_PIN_UART_0_TXD
+# define U_CFG_TEST_PIN_UART_0_TXD   0x38 // UART3 TX, PD_8 or D1 on a C030 board
 #endif
 
-/** Rx pin for UART testing: should be connected to the Tx UART pin.
+/** Rx pin for UART testing: should be connected either to the
+ * Tx UART pin or to U_CFG_TEST_PIN_UART_1_TXD if that is
+ * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_RXD
-# define U_CFG_TEST_PIN_UART_RXD   0x39 // UART3 RX, PD_9 or D0 on a C030 board
+#ifndef U_CFG_TEST_PIN_UART_0_RXD
+# define U_CFG_TEST_PIN_UART_0_RXD   0x39 // UART3 RX, PD_9 or D0 on a C030 board
 #endif
 
-/** CTS pin for UART testing: should be connected to the RTS UART pin.
+/** CTS pin for UART testing: should be connected either to the
+ * RTS UART pin or to U_CFG_TEST_PIN_UART_1_RTS if that is
+ * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_CTS
-# define U_CFG_TEST_PIN_UART_CTS  0x3b // UART3 CTS, PD_11 or D2 on a C030 board
+#ifndef U_CFG_TEST_PIN_UART_0_CTS
+# define U_CFG_TEST_PIN_UART_0_CTS   0x3b // UART3 CTS, PD_11 or D2 on a C030 board
 #endif
 
-/** RTS pin for UART testing: should be connected to the CTS UART pin.
+/** RTS pin for UART testing: should be connected connected either to the
+ * CTS UART pin or to U_CFG_TEST_PIN_UART_1_CTS if that is
+ * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_RTS
-# define U_CFG_TEST_PIN_UART_RTS  0x1e // UART3 RTS, PB_14 or D3 on a C030 board
+#ifndef U_CFG_TEST_PIN_UART_0_RTS
+# define U_CFG_TEST_PIN_UART_0_RTS   0x1e // UART3 RTS, PB_14 or D3 on a C030 board
+#endif
+
+/** Tx pin for dual-UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_0_RXD.  For instance, set this to 0x16 to bring USART1
+ * of the STM32F437 out on pin PB_6, which is the SCL pin on a u-blox C030 board.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_TXD
+# define U_CFG_TEST_PIN_UART_1_TXD   -1
+#endif
+
+/** Rx pin for dual-UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_0_TXD. For instance, set this to 0x17 to bring USART1
+ * the STM32F437 out on pin PB_7, which is the SDA pin on a u-blox C030 board.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_RXD
+# define U_CFG_TEST_PIN_UART_1_RXD   -1
+#endif
+
+/** CTS pin for dual-UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_0_RTS.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_CTS
+# define U_CFG_TEST_PIN_UART_1_CTS   -1
+#endif
+
+/** RTS pin for UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_0_CTS.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_RTS
+# define U_CFG_TEST_PIN_UART_1_RTS   -1
 #endif
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_

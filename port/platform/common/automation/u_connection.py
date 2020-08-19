@@ -22,7 +22,7 @@ CONNECTION_LIST = [None,      # Instance 0, Lint, no connection, no need for a l
                    # Instance 8, NRF52, SARA-R5
                    {"lock": None, "serial_port": "COM6", "debugger": "683253856", "telnet_port": u_utils.JLINK_TELNET_TRACE_PORT},
                    # Instance 9, C030-R412M (STM32F4), live network GPRS
-                   {"lock": None, "serial_port": "COM13", "debugger": "0670FF574953867567141141"},
+                   {"lock": None, "serial_port": "COM14", "debugger": "066EFF535154887767012236"},
                    # Instance 10, C030-R412M (STM32F4), cat-M1
                    {"lock": None, "serial_port": "COM3", "debugger": "066DFF535154887767012834"},
                    # Instance 11, STM32F4 Discovery, SARA-R5
