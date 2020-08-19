@@ -92,14 +92,15 @@ extern uint32_t SystemCoreClock;
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
-#define INCLUDE_vTaskPrioritySet       1
-#define INCLUDE_uxTaskPriorityGet      1
-#define INCLUDE_vTaskDelete            1
-#define INCLUDE_vTaskCleanUpResources  1
-#define INCLUDE_vTaskSuspend           1
-#define INCLUDE_vTaskDelayUntil        0
-#define INCLUDE_vTaskDelay             1
-#define INCLUDE_xTaskGetSchedulerState 1
+#define INCLUDE_vTaskPrioritySet            1
+#define INCLUDE_uxTaskPriorityGet           1
+#define INCLUDE_vTaskDelete                 1
+#define INCLUDE_vTaskCleanUpResources       1
+#define INCLUDE_vTaskSuspend                1
+#define INCLUDE_vTaskDelayUntil             0
+#define INCLUDE_vTaskDelay                  1
+#define INCLUDE_xTaskGetSchedulerState      1
+#define INCLUDE_uxTaskGetStackHighWaterMark 1
 
 /*------------- CMSIS-RTOS V2 specific defines -----------*/
 /* When using CMSIS-RTOSv2 set configSUPPORT_STATIC_ALLOCATION to 1

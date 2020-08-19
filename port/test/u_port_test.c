@@ -130,8 +130,11 @@ static char gTaskParameter[6];
 // Stuff to send to the OS test task, must all be positive numbers.
 static const int32_t gStuffToSend[] = {0, 100, 25, 3};
 
-// Flag for re-entrancy testing.
-static bool gWaitForIt;
+// Flag for re-entrancy testing, wait for start.
+static bool gWaitForGo;
+
+// Flag for re-entrancy testing, wait for delete.
+static bool gWaitForStop;
 
 #if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
     (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
@@ -196,7 +199,7 @@ static void osReentTask(void *pParameter)
     int32_t mallocSizeInts = 1 + (rand() % (U_PORT_TEST_OS_MALLOC_SIZE_INTS - 1));
 
     // Wait for it...
-    while (gWaitForIt) {
+    while (gWaitForGo) {
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
     }
 
@@ -305,6 +308,11 @@ static void osReentTask(void *pParameter)
     // Finally, set the parameter to the return code  to indicate done
     *((int32_t *) pParameter) = returnCode;
 
+    // Wait for it...
+    while (gWaitForStop) {
+        uPortTaskBlock(U_CFG_OS_YIELD_MS);
+    }
+
     // And delete ourselves
     uPortTaskDelete(NULL);
 }
@@ -372,6 +380,13 @@ static int32_t sendToQueue(uPortQueueHandle_t queueHandle,
                            int32_t thing)
 {
     return uPortQueueSend(queueHandle, &thing);
+}
+
+// Function to send stuff to a queue using the IRQ version.
+static int32_t sendToQueueIrq(uPortQueueHandle_t queueHandle,
+                              int32_t thing)
+{
+    return uPortQueueSendIrq(queueHandle, &thing);
 }
 
 #if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
@@ -610,13 +625,19 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     int32_t returnCode = 0;
     int32_t taskParameter[U_PORT_TEST_OS_NUM_REENT_TASKS];
     uPortTaskHandle_t taskHandle[U_PORT_TEST_OS_NUM_REENT_TASKS];
+    int32_t stackMinFreeBytes;
 
     // Note: deliberately do NO printf()s until we have
     // set up the test scenario
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     // Set a flag which the tasks can wait on
-    gWaitForIt = true;
+    // before starting
+    gWaitForGo = true;
+
+    // Set a flag which the tasks can wait on
+    // before stopping
+    gWaitForStop = true;
 
     // Create a few tasks that wait on the flag
     // and then all try to call stdlib functions
@@ -636,7 +657,7 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     }
 
     // Let them run
-    gWaitForIt = false;
+    gWaitForGo = false;
 
     // Wait for everyone to finish, which is when
     // all parameters are zero or less
@@ -656,8 +677,20 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
         uPortTaskBlock(100);
     }
 
+    // Before stopping them, check their stack extents
+    for (size_t x = 0; (x < sizeof(taskHandle) /
+                        sizeof(taskHandle[0])); x++) {
+        stackMinFreeBytes = uPortTaskStackMinFree(taskHandle[x]);
+        uPortLog("U_PORT_TEST: test task %d had %d byte(s) free out of %d.\n",
+                 x + 1, stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
+        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    }
+
+    // Let them stop
+    gWaitForStop = false;
+
     // Let the idle task tidy-away the tasks
-    uPortTaskBlock(100);
+    uPortTaskBlock(U_CFG_OS_YIELD_MS);
 
     // If the returnCode is 0 then that
     // is success.  If it is negative
@@ -675,6 +708,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     int32_t errorCode;
     int64_t startTimeMs;
     int64_t timeNowMs;
+    int32_t stackMinFreeBytes;
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
@@ -737,6 +771,11 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
         // queue so that the test task exits after receiving the
         // last item on the data queue
         if (x == sizeof(gStuffToSend) / sizeof(gStuffToSend[0]) - 1) {
+            stackMinFreeBytes = uPortTaskStackMinFree(gTaskHandle);
+            uPortLog("U_PORT_TEST: test task had %d byte(s) free out of %d.\n",
+                     stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
+            U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+
             uPortLog("U_PORT_TEST: sending -1 to terminate test task"
                      " control queue and waiting for it to stop...\n");
             sendToQueue(gQueueHandleControl, -1);
@@ -744,7 +783,12 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
         // Actually send the stuff by passing it to a function
         // where it will be placed on the stack so as to check
         // that the stuff is copied rather than referenced.
-        sendToQueue(gQueueHandleData, gStuffToSend[x]);
+        // Use the IRQ version as well as the normal one.
+        if (x & 1) {
+            sendToQueue(gQueueHandleData, gStuffToSend[x]);
+        } else {
+            sendToQueueIrq(gQueueHandleData, gStuffToSend[x]);
+        }
     }
 
     U_PORT_MUTEX_LOCK(gMutexHandle);

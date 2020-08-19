@@ -106,6 +106,14 @@ void uPortTaskBlock(int32_t delayMs)
     vTaskDelay(delayMs / portTICK_PERIOD_MS);
 }
 
+// Get the minimum free stack for a given task.
+int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle)
+{
+    // On ESP32 the water mark is returned in bytes rather
+    // than words
+    return uxTaskGetStackHighWaterMark((TaskHandle_t) taskHandle);
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: QUEUES
  * -------------------------------------------------------------- */
@@ -156,6 +164,30 @@ int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
                        (portTickType) portMAX_DELAY) == pdTRUE) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Send to the given queue from an interrupt.
+int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
+                          const void *pEventData)
+{
+    BaseType_t yield = false;
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((queueHandle != NULL) && (pEventData != NULL)) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        if (xQueueSendFromISR((QueueHandle_t) queueHandle,
+                              pEventData,
+                              &yield) == pdTRUE) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    // Required for correct FreeRTOS operation
+    if (yield) {
+        taskYIELD();
     }
 
     return (int32_t) errorCode;

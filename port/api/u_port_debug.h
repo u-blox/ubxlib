@@ -36,7 +36,7 @@ extern "C" {
  */
 #if U_CFG_ENABLE_LOGGING
 # define uPortLog(format, ...) \
-             /*lint -e{507} suppress size incompatiblity warnings in printf() */ \
+             /*lint -e{507} suppress size incompatibility warnings in printf() */ \
              uPortLogF(format, ##__VA_ARGS__)
 #else
 # define uPortLog(...)

@@ -63,7 +63,7 @@ typedef void *uPortTaskHandle_t;
 /** Create task, and start, a task.
  *
  * @param pFunction      the function that forms the task.
- * @param pName          a NULL-terminated string naming the task,
+ * @param pName          a null-terminated string naming the task,
  *                       may be NULL.
  * @param stackSizeBytes the number of bytes of memory to dynamically
  *                       allocate for stack.
@@ -94,7 +94,10 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
  *                    delete itself, hence use of anything
  *                    other than NULL for taskHandle may not
  *                    be permitted, depending on the underlying
- *                    RTOS.
+ *                    RTOS. Note also that the task may not
+ *                    actually be deleted until the idle task
+ *                    runs; this can be effected by calling
+ *                    uPortTaskBlock(U_CFG_OS_YIELD_MS).
  * @return            zero on success else negative error code.
  */
 int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle);
@@ -105,7 +108,7 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle);
  * @param taskHandle  the task handle to check against.
  * @return            true if the task handle pointed to by
  *                    pTaskHandle is the current task handle,
- *                    otherwise false
+ *                    otherwise false.
  */
 bool uPortTaskIsThis(const uPortTaskHandle_t taskHandle);
 
@@ -116,6 +119,16 @@ bool uPortTaskIsThis(const uPortTaskHandle_t taskHandle);
  * @param delayMs the amount of time to block for in milliseconds.
  */
 void uPortTaskBlock(int32_t delayMs);
+
+/** Get the stack high watermark, i.e. the minimum amount
+ * of stack free, in bytes, for a given task.
+ *
+ * @param taskHandle  the task handle to check.
+ * @return            the minimum amount of stack free for
+ *                    the lifetime of the task in bytes,
+ *                    else negative error code.
+ */
+int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: QUEUES
@@ -140,7 +153,8 @@ int32_t uPortQueueCreate(size_t queueLength,
  */
 int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle);
 
-/** Send to the given queue.
+/** Send to the given queue.  If the queue is full this function
+ * will block until room is available.
  *
  * @param queueHandle  the handle of the queue.
  * @param pEventData   pointer to the data to send.  The data will
@@ -151,6 +165,19 @@ int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle);
  */
 int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
                        const void *pEventData);
+
+/** Send to the given queue from an interrupt.  If the queue is
+ * full this function will return an error.
+ *
+ * @param queueHandle  the handle of the queue.
+ * @param pEventData   pointer to the data to send.  The data will
+ *                     be copied into the queue and hence can be
+ *                     destroyed by the caller once this functions
+ *                     returns.
+ * @return             zero on success else negative error code.
+ */
+int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
+                          const void *pEventData);
 
 /** Receive from the given queue, blocking until something is
  * received.
