@@ -27,6 +27,7 @@
 
 #include "u_error_common.h"
 #include "u_port.h"
+#include "u_port_event_queue_private.h"
 
 #include "esp_timer.h" // For esp_timer_get_time()
 
@@ -73,14 +74,13 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 // Initialise the porting layer.
 int32_t uPortInit()
 {
-    // Nothing to do
-    return U_ERROR_COMMON_SUCCESS;
+    return uPortEventQueuePrivateInit();
 }
 
 // Deinitialise the porting layer.
 void uPortDeinit()
 {
-    // Nothing to do
+    uPortEventQueuePrivateDeinit();
 }
 
 // Get the current tick converted to a time in milliseconds.

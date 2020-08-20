@@ -110,7 +110,7 @@ void uPortTaskBlock(int32_t delayMs)
 int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle)
 {
     // On ESP32 the water mark is returned in bytes rather
-    // than words
+    // than words so this can just be returned directly
     return uxTaskGetStackHighWaterMark((TaskHandle_t) taskHandle);
 }
 

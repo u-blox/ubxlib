@@ -6159,7 +6159,7 @@
 #define APP_USBD_CONFIG_SOF_TIMESTAMP_PROVIDE 0
 #endif
 
-// <o> APP_USBD_CONFIG_DESC_STRING_SIZE - Maximum size of the NULL-terminated string of the string descriptor.  <31-254>
+// <o> APP_USBD_CONFIG_DESC_STRING_SIZE - Maximum size of the null-terminated string of the string descriptor.  <31-254>
 
 
 // <i> 31 characters can be stored in the internal USB buffer used for transfers.
@@ -6204,7 +6204,7 @@
 
 // <i> Note: This value is not editable in Configuration Wizard.
 // <i> Comma-separated list of manufacturer names for each defined language.
-// <i> Use @ref APP_USBD_STRING_DESC macro to create string descriptor from a NULL-terminated string.
+// <i> Use @ref APP_USBD_STRING_DESC macro to create string descriptor from a null-terminated string.
 // <i> Use @ref APP_USBD_STRING_RAW8_DESC macro to create string descriptor from comma-separated uint8_t values.
 // <i> Use @ref APP_USBD_STRING_RAW16_DESC macro to create string descriptor from comma-separated uint16_t values.
 // <i> Alternatively, configure the macro to point to any internal variable pointer that already contains the descriptor.

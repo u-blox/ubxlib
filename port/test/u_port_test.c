@@ -45,6 +45,7 @@
 #include "u_port_os.h"
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
+#include "u_port_event_queue.h"
 #include "u_port_clib_platform_specific.h"
 
 /* ----------------------------------------------------------------
@@ -91,12 +92,18 @@
   */
 #define U_PORT_TEST_OS_MALLOC_SIZE_INTS ((int32_t) (1024 / sizeof(int32_t)))
 
+/** Number of interations for the event queue test.
+ * Must be less than 256.
+ */
+#define U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS 100
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
 #if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
     (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
+
 /** Type to hold the stuff that the UART test task needs to know
  * about.
  */
@@ -136,11 +143,32 @@ static bool gWaitForGo;
 // Flag for re-entrancy testing, wait for delete.
 static bool gWaitForStop;
 
+// Handle for event queue callback max length
+static int32_t gEventQueueMaxHandle;
+
+// Error flag for event queue callback max length
+static int32_t gEventQueueMaxErrorFlag;
+
+// Counter for event queue callback max length
+static int32_t gEventQueueMaxCounter;
+
+// Handle for event queue callback min length
+static int32_t gEventQueueMinHandle;
+
+// Error flag for event queue callback min length
+static int32_t gEventQueueMinErrorFlag;
+
+// Counter for event queue callback min length
+static int32_t gEventQueueMinCounter;
+
 #if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
     (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
 
 // The number of bytes correctly received during UART testing.
 static int32_t gUartBytesReceived = 0;
+
+// The error status during UART testing.
+static int32_t gUartError = 0;
 
 // The data to send during UART testing.
 static const char gUartTestData[] =  "_____0000:0123456789012345678901234567890123456789"
@@ -389,6 +417,127 @@ static int32_t sendToQueueIrq(uPortQueueHandle_t queueHandle,
     return uPortQueueSendIrq(queueHandle, &thing);
 }
 
+// An event queue function for max length parameter.
+//lint -esym(818, pParam) Suppress "could be const"
+// since this has to match the function signature
+// exactly to avoid a compiler warning
+static void eventQueueMaxFunction(void *pParam,
+                                  size_t paramLength)
+{
+    uint8_t fill = 0xFF;
+
+    if (gEventQueueMaxCounter <
+        U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS) {
+        // For U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS
+        // we expect to receive paramLength of
+        // U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES
+        // containing the pattern 0xFF to 0 repeated
+        // but with the last byte containing a counter
+        // which increments from zero.
+        if (paramLength != U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES) {
+            gEventQueueMaxErrorFlag = 1;
+        }
+
+        for (size_t x = 0; (gEventQueueMaxErrorFlag == 0) &&
+             (x < paramLength - 1); x++) {
+            if (*((uint8_t *) pParam + x) != fill) {
+                gEventQueueMaxErrorFlag = 2;
+            }
+            fill--;
+        }
+
+        if (gEventQueueMaxErrorFlag == 0) {
+            if (*((uint8_t *) pParam + paramLength - 1) !=
+                (uint8_t) gEventQueueMaxCounter) {
+                gEventQueueMaxErrorFlag = 3;
+            }
+        }
+    } else {
+        if (gEventQueueMaxCounter ==
+            U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS) {
+            // For one final bonus iteration we expect
+            // pParam to be NULL and paramLength 0
+            if (pParam != NULL) {
+                gEventQueueMaxErrorFlag = 4;
+            }
+            if (paramLength != 0) {
+                gEventQueueMaxErrorFlag = 5;
+            }
+        } else {
+            // Anything else shouldn't happen
+            gEventQueueMaxErrorFlag = 6;
+        }
+    }
+
+    if (gEventQueueMaxErrorFlag == 0) {
+        if (!uPortEventQueueIsTask(gEventQueueMaxHandle)) {
+            // Not detecting that this is an event task
+            gEventQueueMaxErrorFlag = 7;
+        } else {
+            if (uPortEventQueueIsTask(gEventQueueMinHandle)) {
+                // Detecting that this is the wrong event task
+                gEventQueueMaxErrorFlag = 8;
+            }
+        }
+    }
+
+    gEventQueueMaxCounter++;
+}
+
+// Event queue function for minimum length parameter.
+//lint -esym(818, pParam) Suppress "could be const"
+// since this has to match the function signature
+// exactly to avoid a compiler warning
+static void eventQueueMinFunction(void *pParam,
+                                  size_t paramLength)
+{
+    if (gEventQueueMinCounter <
+        U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS) {
+        // For U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS
+        // we expect to receive paramLength of 1 where
+        // *pParam is a count of the number of times we've
+        // been called.
+        if (paramLength != 1) {
+            gEventQueueMinErrorFlag = 1;
+        }
+
+        if (gEventQueueMinErrorFlag == 0) {
+            if (*((uint8_t *) pParam) != (uint8_t) gEventQueueMinCounter) {
+                gEventQueueMinErrorFlag = 2;
+            }
+        }
+    } else {
+        if (gEventQueueMinCounter ==
+            U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS) {
+            // For one final bonus iteration we expect
+            // pParam to be NULL and paramLength 0
+            if (pParam != NULL) {
+                gEventQueueMinErrorFlag = 4;
+            }
+            if (paramLength != 0) {
+                gEventQueueMinErrorFlag = 5;
+            }
+        } else {
+            // Anything else shouldn't happen
+            gEventQueueMinErrorFlag = 6;
+        }
+    }
+
+    if (gEventQueueMinErrorFlag == 0) {
+        if (!uPortEventQueueIsTask(gEventQueueMinHandle)) {
+            // Not detecting that this is an event task
+            gEventQueueMinErrorFlag = 7;
+        } else {
+            if (uPortEventQueueIsTask(gEventQueueMaxHandle)) {
+                // Detecting that this is the wrong event task
+                gEventQueueMinErrorFlag = 8;
+            }
+        }
+    }
+
+    gEventQueueMinCounter++;
+}
+
 #if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
     (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
 
@@ -427,8 +576,11 @@ static void uartTestTask(void *pParameters)
             // between the two calls, making it larger.  Just
             // can't easily check uPortUartGetReceiveSize()
             // for accuracy, so instead do a range check here
-            U_PORT_TEST_ASSERT(receiveSize >= 0);
-            U_PORT_TEST_ASSERT(receiveSize <= U_PORT_UART_RX_BUFFER_SIZE);
+            if (receiveSize < 0) {
+                gUartError = -1;
+            } else if (receiveSize > U_PORT_UART_RX_BUFFER_SIZE) {
+                gUartError = -2;
+            }
             // Compare the data with the expected data
             for (int32_t x = 0; x < dataSize; x++) {
                 if (gUartTestData[indexInBlock] == *pReceive) {
@@ -469,7 +621,9 @@ static void uartTestTask(void *pParameters)
 
     uPortLog("U_PORT_TEST_UART_TASK: task ended.\n");
 
-    U_PORT_TEST_ASSERT(uPortTaskDelete(NULL) == 0);
+    if (uPortTaskDelete(NULL) != 0) {
+        gUartError = -3;
+    }
 }
 
 // Run a UART test at the given baud rate and with/without flow control.
@@ -485,6 +639,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
 
     gUartBytesReceived = 0;
+    gUartError = 0;
 
     if (flowControlOn) {
         pinCts = U_CFG_TEST_PIN_UART_0_CTS;
@@ -558,8 +713,10 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     // Wait long enough for everything to have been received
     uPortTaskBlock(1000);
     uPortLog("U_PORT_TEST: at end of test %d byte(s) sent, %d byte(s)"
-             " received.\n", bytesSent, gUartBytesReceived);
+             " received, error status %d.\n", bytesSent,
+             gUartBytesReceived, gUartError);
     U_PORT_TEST_ASSERT(gUartBytesReceived == bytesSent);
+    U_PORT_TEST_ASSERT(gUartError == 0);
 
     uPortLog("U_PORT_TEST: tidying up after UART test...\n");
 
@@ -906,6 +1063,139 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     uPortDeinit();
 }
 #endif
+
+/** Test event queues.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
+{
+    uint8_t *pParam;
+    uint8_t fill;
+    size_t x;
+    int32_t stackMinFreeBytes;
+
+    // Reset error flags and counters
+    gEventQueueMaxErrorFlag = 0;
+    gEventQueueMaxCounter = 0;
+    gEventQueueMinErrorFlag = 0;
+    gEventQueueMinCounter = 0;
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    uPortLog("U_PORT_TEST: opening two event queues...\n");
+    // Open two event queues, one with the
+    // maximum parameter length and one with just
+    // a single byte, one with a name and one without
+    gEventQueueMaxHandle = uPortEventQueueOpen(eventQueueMaxFunction, NULL,
+                                               U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES,
+                                               U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES,
+                                               U_CFG_TEST_OS_TASK_PRIORITY,
+                                               U_PORT_TEST_QUEUE_LENGTH);
+    U_PORT_TEST_ASSERT(gEventQueueMaxHandle >= 0);
+    gEventQueueMinHandle = uPortEventQueueOpen(eventQueueMinFunction, "blah", 1,
+                                               U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES,
+                                               U_CFG_TEST_OS_TASK_PRIORITY,
+                                               U_PORT_TEST_QUEUE_LENGTH);
+    U_PORT_TEST_ASSERT(gEventQueueMinHandle >= 0);
+
+    // Generate a block with a known test pattern, 0xFF to 0 repeated.
+    //lint -esym(613, pParam) Suppress possible use of NULL pointer: it is checked
+    pParam = (uint8_t *) malloc(U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES);
+    U_PORT_TEST_ASSERT(pParam != NULL);
+    fill = 0xFF;
+    for (x = 0; x < U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES; x++) {
+        *(pParam + x) = fill;
+        fill--;
+    }
+
+    uPortLog("U_PORT_TEST: sending to the two event queues %d"
+             " time(s)...\n", U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS + 1);
+
+    // Try to send too much to each queue, should fail
+    U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMaxHandle,
+                                           pParam,
+                                           U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES + 1) < 0);
+    U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
+                                           pParam, 2) < 0);
+
+    // Send the known test pattern N times to eventQueueMaxFunction
+    // with the last byte overwritten with a counter, and just send
+    // the counter to eventQueueMinFunction as its single byte
+    // The receiving functions will set a flag if they find a
+    // problem.
+    // Use both the IRQ and non-IRQ versions of the call
+    for (x = 0; (x < U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS) &&
+         (gEventQueueMaxErrorFlag == 0) &&
+         (gEventQueueMinErrorFlag == 0); x++) {
+        *(pParam + U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES - 1) = (uint8_t) x;
+        if (x & 1) {
+            U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMaxHandle,
+                                                   (void *) pParam,
+                                                   U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES) == 0);
+            U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
+                                                   (void *) &x, 1) == 0);
+        } else {
+            U_PORT_TEST_ASSERT(uPortEventQueueSendIrq(gEventQueueMaxHandle,
+                                                      (void *) pParam,
+                                                      U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES) == 0);
+            U_PORT_TEST_ASSERT(uPortEventQueueSendIrq(gEventQueueMinHandle,
+                                                      (void *) &x, 1) == 0);
+        }
+    }
+
+    // Bonus iteration with NULL parameter
+    x++;
+    U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMaxHandle,
+                                           NULL, 0) == 0);
+    U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
+                                           NULL, 0) == 0);
+
+    if (gEventQueueMaxErrorFlag != 0) {
+        uPortLog("U_PORT_TEST: event queue max length"
+                 " failed on iteration %d with error %d.\n",
+                 x, gEventQueueMaxErrorFlag);
+    }
+    if (gEventQueueMinErrorFlag != 0) {
+        uPortLog("U_PORT_TEST: event queue min length"
+                 " failed on iteration %d with error %d.\n",
+                 x, gEventQueueMinErrorFlag);
+    }
+
+    U_PORT_TEST_ASSERT(gEventQueueMaxErrorFlag == 0);
+    U_PORT_TEST_ASSERT(gEventQueueMaxCounter == U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS + 1);
+    U_PORT_TEST_ASSERT(gEventQueueMaxErrorFlag == 0);
+    U_PORT_TEST_ASSERT(gEventQueueMinCounter == U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS + 1);
+
+    // Check that the uPortEventQueueIsTask() gives a negative
+    // answer correctly
+    U_PORT_TEST_ASSERT(!uPortEventQueueIsTask(gEventQueueMaxHandle));
+    U_PORT_TEST_ASSERT(!uPortEventQueueIsTask(gEventQueueMinHandle));
+
+    // Check stack usage of the tasks at the end of the event queues
+    stackMinFreeBytes = uPortEventQueueStackMinFree(gEventQueueMinHandle);
+    uPortLog("U_PORT_TEST: event queue min task had %d byte(s) free out of %d.\n",
+             stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
+    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    stackMinFreeBytes = uPortEventQueueStackMinFree(gEventQueueMaxHandle);
+    uPortLog("U_PORT_TEST: event queue max task had %d byte(s) free out of %d.\n",
+             stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
+    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+
+    uPortLog("U_PORT_TEST: closing the event queues...\n");
+    U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueMaxHandle) == 0);
+    U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueMinHandle) == 0);
+
+    // Check that they are no longer available
+    U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMaxHandle,
+                                           pParam,
+                                           U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES) < 0);
+    U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
+                                           pParam, 1) < 0);
+
+    // Free memory
+    free(pParam);
+
+    uPortDeinit();
+}
 
 /** Test: strtok_r since we have our own implementation on
  * some platforms.

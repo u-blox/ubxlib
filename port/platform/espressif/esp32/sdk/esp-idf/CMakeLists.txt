@@ -6,12 +6,15 @@ set(COMPONENT_ADD_INCLUDEDIRS
                    "../../../../../../common/error/api"
 # The API for the porting layer
                    "../../../../../api"
+# The private API for the event queue
+                   "../../../../common/event_queue"
 # The platform specific configuration files
                    "../../cfg")
 
 # The implementations of the APIs
 set(COMPONENT_SRCS 
 # The porting layer
+                   "../../../../common/event_queue/u_port_event_queue.c"
                    "../../src/u_port.c"
                    "../../src/u_port_debug.c"
                    "../../src/u_port_gpio.c"

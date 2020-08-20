@@ -32,6 +32,7 @@
 #include "u_port.h"
 #include "u_port_gpio.h"
 #include "u_port_private.h"
+#include "u_port_event_queue_private.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -116,10 +117,13 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 // Initialise the porting layer.
 int32_t uPortInit()
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_SUCCESS;
+    int32_t errorCode = 0;
 
     if (!gInitialised) {
         errorCode = uPortPrivateInit();
+        if (errorCode == 0) {
+            errorCode = uPortEventQueuePrivateInit();
+        }
         gInitialised = (errorCode == 0);
     }
 
@@ -131,6 +135,7 @@ void uPortDeinit()
 {
     if (gInitialised) {
         uPortPrivateDeinit();
+        uPortEventQueuePrivateDeinit();
         gInitialised = false;
     }
 }

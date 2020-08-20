@@ -62,6 +62,11 @@
 			<locationURI>$%7BPLATFORM_PATH%7D/src/u_port_uart.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/u_port_event_queue.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/event_queue/u_port_event_queue.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/u_port_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BPLATFORM_PATH%7D/src/u_port_private.c</locationURI>
@@ -250,6 +255,11 @@
 			<name>Ubxlib/Inc/U-Blox/port/api</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/port/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/platform/common/event_queue</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/event_queue</locationURI>
 		</link>
 		<link>
 			<name>Drivers/Inc/STM32F4xx_HAL_Driver/Inc/Legacy</name>

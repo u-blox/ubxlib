@@ -23,13 +23,15 @@ LINT_PLATFORM_CONFIG_FILES = ["co-gcc.lnt", "ubxlib.lnt"]
 # Lint does not recurse and, in fact, we don't want it
 # to as it cannot handle the platform-based code under
 # \port\platform.
-LINT_DIRS = ["port\\test", "port\\platform\\common\\runner", "port\\clib"]
+LINT_DIRS = ["port\\clib", "port\\platform\\common\\event_queue",
+             "port\\test", "port\\platform\\common\\runner"]
 
 # Include directories for ubxlib, off the ubxlib root.
 UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
                        "cfg",
                        "common\\error\\api",
                        "port\\api",
+                       "port\\platform\\common\\event_queue",
                        "port\\platform\\common\\runner",
                        "port\\platform\\lint\\stubs"]
 

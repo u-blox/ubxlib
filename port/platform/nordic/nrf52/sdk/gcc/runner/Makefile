@@ -82,6 +82,7 @@ SRC_FILES += \
   ../../../src/u_port_os.c \
   ../../../src/u_port_uart.c \
   ../../../src/u_port_private.c \
+  ../../../../../common/event_queue/u_port_event_queue.c \
   ../../../src/heap_useNewlib.c \
   ../../../../../../test/u_port_test.c \
   ../../../app/u_main.c \
@@ -127,6 +128,7 @@ INC_FOLDERS += \
   ../../../../../../../common/error/api \
   ../../../../../../clib \
   ../../../src \
+  ../../../../../common/event_queue \
   ../../../../../../test \
   ../../../../../common/runner \
   ../../../app \

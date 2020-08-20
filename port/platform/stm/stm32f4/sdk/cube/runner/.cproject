@@ -45,6 +45,7 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/error/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Core}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/port/api}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/common/event_queue}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/cfg}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/src}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/app}"/>
@@ -164,6 +165,7 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/error/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Core}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/port/api}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/common/event_queue}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/cfg}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/src}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/app}"/>
