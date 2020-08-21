@@ -12,13 +12,16 @@ import u_utils
 # Prefix to put at the start of all prints
 PROMPT = "u_run_esp32_"
 
-# The esp-idf URL and sub-directory for latest
+# The root directory for esp-idf
+ESP_IDF_ROOT = "c:\\esp32"
+
+# The esp-idf URL and directory for latest
 # Espressif code
 ESP_IDF_LOCATION_LATEST = {"url": "https://github.com/espressif/esp-idf",
                            "subdir": "esp-idf-latest",
                            "branch": "release/v4.1"}
 
-# The esp-idf URL and sub-directory for NINA-W.
+# The esp-idf URL and directory for NINA-W.
 # NINA-W1 must use u-blox fork as the flash
 # device is not supported by latest esp-idf
 ESP_IDF_LOCATION_NINA_W1 = {"url": "https://github.com/u-blox/esp-idf",
@@ -39,15 +42,27 @@ ESP_IDF_LOCATION = [None,                     # 0 (not esp-idf)
 # The place where the IDF tools should be found/installed
 IDF_TOOLS_PATH = "C:\\Program Files\\Espressif\\ESP-IDF Tools latest"
 
+# The sub-directory name of the project to build
+PROJECT_SUBDIR = "runner"
+
+# The name of the test component to build
+TEST_COMPONENT = "ubxlib_runner"
+
 # Build sub-directory
 BUILD_SUBDIR = "build"
 
 # Batch that installs tools, builds and runs the build
 MAIN_BATCH_FILE = "u_run_esp32.bat"
 
-# The guard time for this build in seconds:
+# The guard time for the install in seconds:
 # this can take ages when tools first have to be installed
+INSTALL_GUARD_TIME_SECONDS = 60 * 60
+
+# The guard time for this build in seconds
 BUILD_GUARD_TIME_SECONDS = 60 * 30
+
+# The download guard time for this build in seconds
+DOWNLOAD_GUARD_TIME_SECONDS = u_utils.DOWNLOAD_GUARD_TIME_SECONDS
 
 # The guard time waiting for a lock on the HW connection seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = u_connection.CONNECTION_LOCK_GUARD_TIME_SECONDS
@@ -67,43 +82,109 @@ def get_esp_idf_location(instance):
 
     return esp_idf_location
 
-def install_build_download(esp_idf_dir, ubxlib_dir, build_dir,
-                           defines, serial_port, script_dir,
-                           install_lock, clean,
-                           printer, prompt, reporter):
-    '''Install the esp-idf tools, build and download'''
+def print_env(returned_env, printer, prompt):
+    '''Print a dictionary that contains the new environment'''
+    printer.string("{}environment will be:".format(prompt))
+    if returned_env:
+        for key, value in returned_env.iteritems():
+            printer.string("{}{}={}".format(prompt, key, value))
+    else:
+        printer.string("{}EMPTY".format(prompt))
+
+def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
+            install_lock, returned_env, printer, prompt, reporter):
+    '''Install the Espressif tools and esp-idf'''
+    success = False
+
+    # Acquire the install lock as this is a global operation
+    if u_utils.install_lock_acquire(install_lock, printer, prompt):
+        # Fetch the repo
+        if u_utils.fetch_repo(esp_idf_url, esp_idf_dir,
+                              esp_idf_branch, printer, prompt):
+
+            # Set up the environment variable IDF_TOOLS_PATH
+            my_env = os.environ
+            my_env["IDF_TOOLS_PATH"] = IDF_TOOLS_PATH
+
+            printer.string("{}installing the Espressif tools to \"{}\" and"  \
+                           " esp-idf to \"{}\".".                            \
+                           format(prompt, IDF_TOOLS_PATH, esp_idf_dir))
+            # Switch to where the stuff should have already
+            # been fetched to
+            with u_utils.ChangeDir(esp_idf_dir):
+                # First call install.bat
+                # set shell to True to keep Jenkins happy
+                success = u_utils.exe_run(["install.bat"], INSTALL_GUARD_TIME_SECONDS,
+                                          printer, prompt, shell_cmd=True)
+                if success:
+                    # ...then export.bat to set up paths etc.
+                    # which we return attached to returned_env
+                    # set shell to True to keep Jenkins happy
+                    success = u_utils.exe_run(["export.bat"], INSTALL_GUARD_TIME_SECONDS,
+                                              printer, prompt, shell_cmd=True,
+                                              returned_env=returned_env)
+                    if not success:
+                        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                       u_report.EVENT_FAILED,
+                                       "export.bat failed")
+                else:
+                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                   u_report.EVENT_FAILED,
+                                   "install.bat failed")
+        else:
+            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                           u_report.EVENT_FAILED,
+                           "unable to fetch " + esp_idf_url)
+        u_utils.install_lock_release(install_lock, printer, prompt)
+    else:
+        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                       u_report.EVENT_FAILED,
+                       "could not acquire install lock")
+
+    return success
+
+def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
+          printer, prompt, reporter):
+    '''Build the code'''
     call_list = []
     defines_text = ""
     success = False
-    # Set up the environment variables IDF_TOOLS_PATH and
-    # U_FLAGS: note that these must be deleted afterwards
-    # in case someone else is going to use the worker
-    # that this was run in
-    for idx, define in enumerate(defines):
-        if idx == 0:
-            defines_text += "-D" + define
-        else:
-            defines_text += " -D" + define
-    printer.string("{}setting environment variables"
-                   " IDF_TOOLS_PATH={}, U_FLAGS={}".
-                   format(prompt, IDF_TOOLS_PATH, defines_text))
-    my_env = os.environ
-    my_env["IDF_TOOLS_PATH"] = IDF_TOOLS_PATH
-    my_env["U_FLAGS"] = defines_text
 
-    # Assemble the call list for the batch file
-    call_list.append(script_dir + os.sep + MAIN_BATCH_FILE)
-    if clean:
-        call_list.append("/c")
-    call_list.append(esp_idf_dir)
-    call_list.append(ubxlib_dir)
-    call_list.append(build_dir)
-    call_list.append(serial_port)
+    # Make sure that the build directory exists and is
+    # cleaned if required
+    if os.path.exists(build_dir):
+        if clean:
+            u_utils.deltree(build_dir, printer, prompt)
+            os.makedirs(build_dir)
+    else:
+        os.makedirs(build_dir)
 
-    printer.string("{}installing the esp-idf tools to \"{}\" and"  \
-                   " then building/running code".                  \
-                   format(prompt, IDF_TOOLS_PATH))
-    if u_utils.install_lock_acquire(install_lock, printer, prompt):
+    if os.path.exists(build_dir):
+        printer.string("{}building code...".format(prompt))
+        # Set up the U_FLAGS environment variables
+        for idx, define in enumerate(defines):
+            if idx == 0:
+                defines_text += "-D" + define
+            else:
+                defines_text += " -D" + define
+        printer.string("{}setting environment variables U_FLAGS={}".
+                       format(prompt, defines_text))
+        env["U_FLAGS"] = defines_text
+
+        # Assemble the call list for the build process
+        call_list.append("python")
+        call_list.append(esp_idf_dir + os.sep + "tools\\idf.py")
+        call_list.append("-C")
+        call_list.append(ubxlib_dir + os.sep + \
+                         "port\\platform\\espressif\\esp32\\sdk\\esp-idf"
+                         + os.sep + PROJECT_SUBDIR)
+        call_list.append("-B")
+        call_list.append(build_dir)
+        call_list.append("-D")
+        call_list.append("TEST_COMPONENTS=" + TEST_COMPONENT)
+        call_list.append("size")
+        call_list.append("build")
+
         # Print what we're gonna do
         tmp = ""
         for item in call_list:
@@ -111,27 +192,54 @@ def install_build_download(esp_idf_dir, ubxlib_dir, build_dir,
         printer.string("{}in directory {} calling{}".            \
                        format(prompt, os.getcwd(), tmp))
 
-        # Call the batch file to do the build,
+        # Do the build,
         # set shell to True to keep Jenkins happy
         success = u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
-                                  printer, prompt, shell_cmd=True)
-        u_utils.install_lock_release(install_lock, printer, prompt)
+                                  printer, prompt, shell_cmd=True,
+                                  set_env=env)
     else:
         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                        u_report.EVENT_FAILED,
-                       "could not acquire install lock")
-
-    # Delete the environment variables again
-    del my_env["IDF_TOOLS_PATH"]
-    del my_env["U_FLAGS"]
+                       "could not create directory \"" + build_dir + "\"")
 
     return success
+
+def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
+             printer, prompt):
+    '''Download a build to the target'''
+    call_list = []
+
+    # Assemble the call list for the download process
+    call_list.append("python")
+    call_list.append(esp_idf_dir + os.sep + "tools\\idf.py")
+    call_list.append("-p")
+    call_list.append(serial_port)
+    call_list.append("-C")
+    call_list.append(ubxlib_dir + os.sep + \
+                     "port\\platform\\espressif\\esp32\\sdk\\esp-idf"
+                     + os.sep + PROJECT_SUBDIR)
+    call_list.append("-B")
+    call_list.append(build_dir)
+    call_list.append("flash")
+
+    # Print what we're gonna do
+    tmp = ""
+    for item in call_list:
+        tmp += " " + item
+    printer.string("{}in directory {} calling{}".            \
+                   format(prompt, os.getcwd(), tmp))
+
+    # Do the download,
+    # set shell to True to keep Jenkins happy
+    return u_utils.exe_run(call_list, DOWNLOAD_GUARD_TIME_SECONDS,
+                           printer, prompt, shell_cmd=True, set_env=env)
 
 def run(instance, sdk, connection, connection_lock, platform_lock,
         clean, defines, ubxlib_dir, working_dir, install_lock,
         printer, reporter, test_report_handle):
     '''Build/run on ESP32'''
     return_value = -1
+    returned_env = {}
     instance_text = u_utils.get_instance_text(instance)
     filter_string = "*\r\n"
 
@@ -163,91 +271,99 @@ def run(instance, sdk, connection, connection_lock, platform_lock,
     reporter.event(u_report.EVENT_TYPE_BUILD_DOWNLOAD,
                    u_report.EVENT_START,
                    "ESP32")
-    script_dir = os.getcwd()
     printer.string("{}CD to {}...".format(prompt, working_dir))
     with u_utils.ChangeDir(working_dir):
         # Fetch esp-idf into the right sub directory
+        # and install the tools
         esp_idf_location = get_esp_idf_location(instance)
+        esp_idf_dir = ESP_IDF_ROOT + os.sep + esp_idf_location["subdir"]
         if esp_idf_location:
-            if u_utils.fetch_repo(esp_idf_location["url"],
-                                  esp_idf_location["subdir"],
-                                  esp_idf_location["branch"],
-                                  printer, prompt):
+            if install(esp_idf_location["url"], esp_idf_dir,
+                       esp_idf_location["branch"], install_lock,
+                       returned_env, printer, prompt, reporter):
+                # From here on the ESP32 tools need to set up
+                # and use the set of environment variables
+                # returned above.
+                print_env(returned_env, printer, prompt)
+                # Now do the build
                 build_dir = working_dir + os.sep + BUILD_SUBDIR
-                # Install the esp-idf tools, build and run
-                install_build_download_start_time = clock()
-                if install_build_download(esp_idf_location["subdir"],
-                                          ubxlib_dir, build_dir,
-                                          defines, connection["serial_port"],
-                                          script_dir, install_lock, clean,
-                                          printer, prompt, reporter):
-                    reporter.event(u_report.EVENT_TYPE_BUILD_DOWNLOAD,
+                build_start_time = clock()
+                if build(esp_idf_dir, ubxlib_dir, build_dir,
+                         defines, returned_env, clean,
+                         printer, prompt, reporter):
+                    reporter.event(u_report.EVENT_TYPE_BUILD,
                                    u_report.EVENT_PASSED,
-                                   "install/build/download took {:.0f} second(s)". \
-                                   format(clock() - install_build_download_start_time))
+                                   "build took {:.0f} second(s)". \
+                                   format(clock() - build_start_time))
                     with u_connection.Lock(connection, connection_lock,
                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,
                                            printer, prompt) as locked:
                         if locked:
-                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                           u_report.EVENT_START)
-                            # Search the defines list to see if it includes a
-                            # "U_CFG_APP_FILTER=blah" item.  On ESP32 the tests
-                            # that are run are not selected at compile time,
-                            # they are selected by sending the "blah" string
-                            # over the COM port where it must match a "module name",
-                            # a thing in [square brackets] which our naming convention
-                            # dictates will be an API name (e.g. "port") or "example".
-                            for define in defines:
-                                tmp = u_utils.FILTER_MACRO_NAME + "="
-                                if define.startswith(tmp):
-                                    filter_string = define[len(tmp):]
+                            if download(esp_idf_dir, ubxlib_dir, build_dir,
+                                        connection["serial_port"], returned_env,
+                                        printer, prompt):
+                                reporter.event(u_report.EVENT_TYPE_TEST,
+                                               u_report.EVENT_START)
+                                # Search the defines list to see if it includes a
+                                # "U_CFG_APP_FILTER=blah" item.  On ESP32 the tests
+                                # that are run are not selected at compile time,
+                                # they are selected by sending the "blah" string
+                                # over the COM port where it must match a "module name",
+                                # a thing in [square brackets] which our naming convention
+                                # dictates will be an API name (e.g. "port") or "example".
+                                for define in defines:
+                                    tmp = u_utils.FILTER_MACRO_NAME + "="
+                                    if define.startswith(tmp):
+                                        filter_string = define[len(tmp):]
+                                        reporter.event(u_report.EVENT_TYPE_TEST,
+                                                       u_report.EVENT_INFORMATION,
+                                                       "only running module \"" +
+                                                       filter_string + "\"")
+                                        printer.string("{} will use filter [{}].".   \
+                                                       format(prompt, filter_string))
+                                        # Add the top and tail it needs for sending
+                                        filter_string = "[" + filter_string + "]\r\n"
+                                        break
+                                # Open the COM port to get debug output
+                                serial_handle = u_utils.open_serial(connection["serial_port"],
+                                                                    115200, printer, prompt)
+                                if serial_handle is not None:
+                                    # Monitor progress
+                                    return_value = u_monitor.main(serial_handle,
+                                                                  u_monitor.CONNECTION_SERIAL,
+                                                                  RUN_GUARD_TIME_SECONDS,
+                                                                  RUN_INACTIVITY_TIME_SECONDS,
+                                                                  instance, printer, reporter,
+                                                                  test_report_handle,
+                                                                  send_string=filter_string)
+                                    serial_handle.close()
+                                else:
+                                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                                   u_report.EVENT_FAILED,
+                                                   "unable to open serial port " +      \
+                                                   connection["serial_port"])
+                                if return_value == 0:
                                     reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_INFORMATION,
-                                                   "only running module \"" +
-                                                   filter_string + "\"")
-                                    printer.string("{} will use filter [{}].".   \
-                                                   format(prompt, filter_string))
-                                    # Add the top and tail it needs for sending
-                                    filter_string = "[" + filter_string + "]\r\n"
-                                    break
-                            # Open the COM port to get debug output
-                            serial_handle = u_utils.open_serial(connection["serial_port"],
-                                                                115200, printer, prompt)
-                            if serial_handle is not None:
-                                # Monitor progress
-                                return_value = u_monitor.main(serial_handle,
-                                                              u_monitor.CONNECTION_SERIAL,
-                                                              RUN_GUARD_TIME_SECONDS,
-                                                              RUN_INACTIVITY_TIME_SECONDS,
-                                                              instance, printer, reporter,
-                                                              test_report_handle,
-                                                              send_string=filter_string)
-                                serial_handle.close()
+                                                   u_report.EVENT_COMPLETE)
+                                else:
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                   u_report.EVENT_FAILED)
                             else:
-                                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                u_report.EVENT_FAILED,
-                                               "unable to open serial port " +      \
-                                               connection["serial_port"])
-                            if return_value == 0:
-                                reporter.event(u_report.EVENT_TYPE_TEST,
-                                               u_report.EVENT_COMPLETE)
-                            else:
-                                reporter.event(u_report.EVENT_TYPE_TEST,
-                                               u_report.EVENT_FAILED)
+                                               "unable to download to the target")
                         else:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                            u_report.EVENT_FAILED,
                                            "unable to lock a connection")
                 else:
-                    reporter.event(u_report.EVENT_TYPE_BUILD_DOWNLOAD,
+                    reporter.event(u_report.EVENT_TYPE_BUILD,
                                    u_report.EVENT_FAILED,
-                                   "unable to build/download/run, check" +      \
-                                   " debug log for details")
+                                   "unable to build, check debug log for details")
             else:
                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                u_report.EVENT_FAILED,
-                               "unable to fetch " + esp_idf_location["url"])
+                               "tools installation failed")
         else:
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                            u_report.EVENT_FAILED,

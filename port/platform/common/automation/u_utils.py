@@ -158,21 +158,22 @@ def install_lock_release(install_lock, printer, prompt):
         install_lock.release()
     printer.string("{}install lock released.".format(prompt))
 
-def fetch_repo(url, subdir, branch, printer, prompt):
-    '''Fetch a repo'''
+def fetch_repo(url, directory, branch, printer, prompt):
+    '''Fetch a repo: directory can be relative or absolute'''
     got_code = False
+    checked_out = False
     success = False
 
     printer.string("{}in directory {}, fetching"
-                   " {} to subdirectory {}".format(prompt, os.getcwd(),
-                                                   url, subdir))
+                   " {} to directory {}".format(prompt, os.getcwd(),
+                                                url, directory))
     if not branch:
         branch = "master"
-    if os.path.isdir(subdir):
+    if os.path.isdir(directory):
         # Update existing code
-        with (ChangeDir(subdir)):
+        with (ChangeDir(directory)):
             printer.string("{}updating code in {}...".
-                           format(prompt, subdir))
+                           format(prompt, directory))
             try:
                 text = subprocess.check_output(["git", "pull",
                                                 "origin", branch],
@@ -188,9 +189,9 @@ def fetch_repo(url, subdir, branch, printer, prompt):
     else:
         # Clone the repo
         printer.string("{}cloning from {} into {}...".
-                       format(prompt, url, subdir))
+                       format(prompt, url, directory))
         try:
-            text = subprocess.check_output(["git", "clone", url, subdir],
+            text = subprocess.check_output(["git", "clone", url, directory],
                                            stderr=subprocess.STDOUT,
                                            shell=True) # Jenkins hangs without this
             for line in text.splitlines():
@@ -201,26 +202,42 @@ def fetch_repo(url, subdir, branch, printer, prompt):
                            format(prompt, error.returncode,
                                   error.output))
 
-    if got_code and os.path.isdir(subdir):
+    if got_code and os.path.isdir(directory):
         # Check out the correct branch and recurse submodules
-        with (ChangeDir(subdir)):
+        with (ChangeDir(directory)):
             printer.string("{}checking out branch {}...".
                            format(prompt, branch))
             try:
                 text = subprocess.check_output(["git", "-c",
                                                 "advice.detachedHead=false",
                                                 "checkout",
-                                                "origin/" + branch,
-                                                "--recurse-submodules"],
+                                                "origin/" + branch],
                                                stderr=subprocess.STDOUT,
                                                shell=True) # Jenkins hangs without this
                 for line in text.splitlines():
                     printer.string("{}{}".format(prompt, line))
-                success = True
+                checked_out = True
             except subprocess.CalledProcessError as error:
                 printer.string("{}git returned error {}: \"{}\"".
                                format(prompt, error.returncode,
                                       error.output))
+
+            if checked_out:
+                printer.string("{}recursing sub-modules (can take some time" \
+                               " and gives no feedback).".format(prompt))
+                try:
+                    text = subprocess.check_output(["git", "submodule",
+                                                    "update", "--init",
+                                                    "--recursive"],
+                                                   stderr=subprocess.STDOUT,
+                                                   shell=True) # Jenkins hangs without this
+                    for line in text.splitlines():
+                        printer.string("{}{}".format(prompt, line))
+                    success = True
+                except subprocess.CalledProcessError as error:
+                    printer.string("{}git returned error {}: \"{}\"".
+                                   format(prompt, error.returncode,
+                                          error.output))
 
     return success
 
@@ -286,13 +303,48 @@ def read_from_process_and_queue(process, read_queue):
         if string:
             read_queue.put(string)
 
+def capture_env_var(line, env, flag, tag, printer, prompt):
+    '''A bit of exe_run that needs to be called from two places'''
+    captured = False
+
+    if not flag:
+        printer.string("{}reading environment variables.".
+                       format(prompt))
+    # Find a KEY=VALUE bit in the line,
+    # parse it out and put it in the dictionary
+    # we were given
+    pair = line.split('=', 1)
+    if len(pair) == 2:
+        env[pair[0]] = pair[1]
+        captured = True
+    else:
+        if not tag in line:
+            printer.string("{}WARNING: not an environment variable: \"{}\"".
+                           format(prompt, line))
+
+    return captured
+
 def exe_run(call_list, guard_time_seconds, printer, prompt,
-            shell_cmd=False):
+            shell_cmd=False, set_env=None, returned_env=None):
     '''Call an executable, printing out what it does'''
     success = False
     start_time = clock()
+    flibbling = False
     kill_time = None
     read_time = start_time
+
+    if returned_env is not None:
+        # The caller wants the environment after the
+        # command has run, so, from this post:
+        # https://stackoverflow.com/questions/1214496/how-to-get-environment-from-a-subprocess
+        # append a tag that we can detect
+        # to the command and then call set,
+        # from which we can parse the environment
+        call_list.append("&&")
+        call_list.append("echo")
+        call_list.append("flibble")
+        call_list.append("&&")
+        call_list.append("set")
 
     try:
         # Call the thang
@@ -300,7 +352,8 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    shell=shell_cmd,
-                                   bufsize=1)
+                                   bufsize=1,
+                                   env=set_env)
         printer.string("{}{}, pid {} started with guard time {} second(s)". \
                        format(prompt, call_list[0], process.pid,
                               guard_time_seconds))
@@ -333,21 +386,52 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
             try:
                 line = read_queue.get(block=False, timeout=0.5).rstrip()
                 read_time = clock()
-                if line:
-                    printer.string("{}{}".format(prompt, line))
+                while line:
+                    if returned_env is not None:
+                        if "flibble" in line or flibbling:
+                            capture_env_var(line, returned_env,
+                                            flibbling, "flibble",
+                                            printer, prompt)
+                            flibbling = True
+                        else:
+                            printer.string("{}{}".format(prompt, line))
+                    else:
+                        printer.string("{}{}".format(prompt, line))
+                    line = read_queue.get(block=False, timeout=0.5).rstrip()
+                    read_time = clock()
             except queue.Empty:
                 pass
+
         # Can't join() read_thread here as it might have
         # blocked on a read() (if nrfjprog has anything to
         # do with it).  It will be tidied up when this process
         # exits.
+
+        # There may still be stuff on the queue, read it out here
+        try:
+            line = read_queue.get(block=False, timeout=0.5).rstrip()
+            while line:
+                if returned_env and flibbling:
+                    capture_env_var(line, returned_env, flibbling, "flibble",
+                                    printer, prompt)
+                else:
+                    printer.string("{}{}".format(prompt, line))
+                line = read_queue.get(block=False, timeout=0.5).rstrip()
+        except queue.Empty:
+            pass
+
         # There may still be stuff in the buffer after
-        # the application has finished running so flush it
+        # the application has finished running so flush that
         # out here
         line = process.stdout.readline().rstrip()
         while line:
-            printer.string("{}{}".format(prompt, line))
+            if returned_env and flibbling:
+                capture_env_var(line, returned_env, flibbling, "flibble",
+                                printer, prompt)
+            else:
+                printer.string("{}{}".format(prompt, line))
             line = process.stdout.readline().rstrip()
+
         if (process.poll() == 0) and kill_time is None:
             success = True
         printer.string("{}{}, pid {} ended with return value {}.".    \
