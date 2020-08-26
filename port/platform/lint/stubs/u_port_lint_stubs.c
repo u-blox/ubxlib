@@ -105,6 +105,11 @@ void uPortTaskBlock(int32_t delayMs)
 {
 }
 
+int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle)
+{
+    return U_ERROR_COMMON_NOT_IMPLEMENTED;
+}
+
 int32_t uPortQueueCreate(size_t queueLength,
                          size_t itemSizeBytes,
                          uPortQueueHandle_t *pQueueHandle)
@@ -119,6 +124,12 @@ int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle)
 
 int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
                        const void *pEventData)
+{
+    return U_ERROR_COMMON_NOT_IMPLEMENTED;
+}
+
+int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
+                          const void *pEventData)
 {
     return U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
@@ -197,13 +208,13 @@ int32_t uPortUartGetReceiveSize(int32_t uart)
     return U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uPortUartRead(int32_t uart, char *pBuffer,
+int32_t uPortUartRead(int32_t uart, void *pBuffer,
                       size_t sizeBytes)
 {
     return U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uPortUartWrite(int32_t uart, const char *pBuffer,
+int32_t uPortUartWrite(int32_t uart, const void *pBuffer,
                        size_t sizeBytes)
 {
     return U_ERROR_COMMON_NOT_IMPLEMENTED;

@@ -42,6 +42,7 @@
 #define U_CFG_TEST_UART_0           0
 #define U_CFG_TEST_UART_1           0
 #define U_CFG_TEST_BAUD_RATE      115200
+#define U_CFG_TEST_UART_BUFFER_LENGTH_BYTES 0
 #define U_CFG_TEST_PIN_UART_0_TXD   0
 #define U_CFG_TEST_PIN_UART_0_RXD   0
 #define U_CFG_TEST_PIN_UART_0_CTS   0

@@ -62,7 +62,7 @@ INSTALL_GUARD_TIME_SECONDS = 60 * 60
 BUILD_GUARD_TIME_SECONDS = 60 * 30
 
 # The download guard time for this build in seconds
-DOWNLOAD_GUARD_TIME_SECONDS = u_utils.DOWNLOAD_GUARD_TIME_SECONDS
+DOWNLOAD_GUARD_TIME_SECONDS = 60 * 5
 
 # The guard time waiting for a lock on the HW connection seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = u_connection.CONNECTION_LOCK_GUARD_TIME_SECONDS

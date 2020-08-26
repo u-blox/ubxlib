@@ -108,10 +108,13 @@
  * about.
  */
 typedef struct {
-    uPortMutexHandle_t runningMutexHandle;
-    uPortQueueHandle_t uartQueueHandle;
-    uPortQueueHandle_t controlQueueHandle;
-} uartTestTaskData_t;
+    size_t callCount;
+    int32_t blockNumber;
+    size_t indexInBlock;
+    char *pReceive;
+    size_t bytesReceived;
+    int32_t errorCode;
+} uartEventCallbackData_t;
 
 #endif
 
@@ -164,12 +167,6 @@ static int32_t gEventQueueMinCounter;
 #if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
     (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
 
-// The number of bytes correctly received during UART testing.
-static int32_t gUartBytesReceived = 0;
-
-// The error status during UART testing.
-static int32_t gUartError = 0;
-
 // The data to send during UART testing.
 static const char gUartTestData[] =  "_____0000:0123456789012345678901234567890123456789"
                                      "01234567890123456789012345678901234567890123456789"
@@ -194,10 +191,10 @@ static const char gUartTestData[] =  "_____0000:01234567890123456789012345678901
 
 // A buffer to receive UART data into:
 // deliberately a non-integer divisor of
-// U_PORT_UART_RX_BUFFER_SIZE
+// U_CFG_TEST_UART_BUFFER_LENGTH_BYTES
 // so that the buffers go "around the corner"
-static char gUartBuffer[(U_PORT_UART_RX_BUFFER_SIZE / 2) +
-                                                         (U_PORT_UART_RX_BUFFER_SIZE / 4)];
+static char gUartBuffer[(U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 2) +
+                                                                  (U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 4)];
 
 #endif // (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) &&
 // (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
@@ -383,7 +380,7 @@ static void osTestTask(void *pParameters)
                                              &queueItem) == 0);
         uPortLog("U_PORT_TEST_OS_TASK: task received %d.\n", queueItem);
         if (queueItem >= 0) {
-            uPortLog("                         item %d, expecting %d.\n",
+            uPortLog("                     item %d, expecting %d.\n",
                      index + 1, gStuffToSend[index]);
             U_PORT_TEST_ASSERT(gStuffToSend[index] == queueItem);
             index++;
@@ -541,105 +538,79 @@ static void eventQueueMinFunction(void *pParam,
 #if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
     (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
 
-// The test task for UART stuff.
-static void uartTestTask(void *pParameters)
+// Callback that is called when data arrives at the UART
+static void uartReceivedDataCallback(int32_t uartHandle,
+                                     uint32_t filter,
+                                     void *pParameters)
 {
-    uartTestTaskData_t *pUartTaskData = (uartTestTaskData_t *) pParameters;
-    int32_t control = 0;
-    int32_t receiveSize;
-    int32_t dataSize;
-    int32_t blockNumber = 0;
-    size_t indexInBlock = 0;
-    char *pReceive = gUartBuffer;
+    int32_t dataSizeOrError;
+    int32_t receiveSizeOrError;
+    uartEventCallbackData_t *pEventCallbackData = (uartEventCallbackData_t *) pParameters;
 
-    U_PORT_MUTEX_LOCK(pUartTaskData->runningMutexHandle);
-
-    uPortLog("U_PORT_TEST_UART_TASK: task started.\n");
-
-    // Run until the control queue sends us a non-zero thing
-    // or we spot an error
-    while (control == 0) {
-        // Wait for notification of UART data
-        dataSize = uPortUartEventTryReceive(pUartTaskData->uartQueueHandle,
-                                            1000);
-        // Note: can't assert on uPortUartGetReceiveSize()
-        // being larger than or equal to dataSize since dataSize
-        // might be an old queued value.
-        while (dataSize > 0) {
-            receiveSize = uPortUartGetReceiveSize(U_CFG_TEST_UART_0);
-            dataSize = uPortUartRead(U_CFG_TEST_UART_0,
-                                     pReceive,
-                                     gUartBuffer + sizeof(gUartBuffer) - pReceive);
-            // dataSize will be smaller than receiveSize
+    pEventCallbackData->callCount++;
+    if (filter != U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) {
+        pEventCallbackData->errorCode = -1;
+    } else {
+        // Run until we spot an error or run out of data
+        do {
+            receiveSizeOrError = uPortUartGetReceiveSize(uartHandle);
+            dataSizeOrError = uPortUartRead(uartHandle,
+                                            pEventCallbackData->pReceive,
+                                            gUartBuffer + sizeof(gUartBuffer) -
+                                            pEventCallbackData->pReceive);
+            if (dataSizeOrError < 0) {
+                pEventCallbackData->errorCode = -2;
+            }
+            // dataSizeOrError will be smaller than receiveSizeOrError
             // if our data buffer is smaller than the UART receive
             // buffer but something might also have been received
             // between the two calls, making it larger.  Just
             // can't easily check uPortUartGetReceiveSize()
             // for accuracy, so instead do a range check here
-            if (receiveSize < 0) {
-                gUartError = -1;
-            } else if (receiveSize > U_PORT_UART_RX_BUFFER_SIZE) {
-                gUartError = -2;
+            if (receiveSizeOrError < 0) {
+                pEventCallbackData->errorCode = -3;
+            }
+            if (receiveSizeOrError > U_CFG_TEST_UART_BUFFER_LENGTH_BYTES) {
+                pEventCallbackData->errorCode = -4;
             }
             // Compare the data with the expected data
-            for (int32_t x = 0; x < dataSize; x++) {
-                if (gUartTestData[indexInBlock] == *pReceive) {
-                    gUartBytesReceived++;
-                    indexInBlock++;
+            for (int32_t x = 0; (pEventCallbackData->errorCode == 0) &&
+                 (x < dataSizeOrError); x++) {
+                if (gUartTestData[pEventCallbackData->indexInBlock] ==
+                    *(pEventCallbackData->pReceive)) {
+                    pEventCallbackData->bytesReceived++;
+                    pEventCallbackData->indexInBlock++;
                     // -1 below to omit gUartTestData string terminator
-                    if (indexInBlock >= sizeof(gUartTestData) - 1) {
-                        indexInBlock = 0;
-                        blockNumber++;
+                    if (pEventCallbackData->indexInBlock >= sizeof(gUartTestData) - 1) {
+                        pEventCallbackData->indexInBlock = 0;
+                        pEventCallbackData->blockNumber++;
                     }
-                    pReceive++;
-                    if (pReceive >= gUartBuffer + sizeof(gUartBuffer)) {
-                        pReceive = gUartBuffer;
+                    pEventCallbackData->pReceive++;
+                    if (pEventCallbackData->pReceive >= gUartBuffer + sizeof(gUartBuffer)) {
+                        pEventCallbackData->pReceive = gUartBuffer;
                     }
                 } else {
-                    control = -2;
+                    pEventCallbackData->errorCode = -5;
                 }
             }
-        }
-
-        // Check if there's anything for us on the control queue
-        uPortQueueTryReceive(pUartTaskData->controlQueueHandle,
-                             10, (void *) &control);
-    }
-
-    if (control == -2) {
-        uPortLog("U_PORT_TEST_UART_TASK: error after %d character(s),"
-                 " %d block(s).\n", gUartBytesReceived, blockNumber);
-        uPortLog("U_PORT_TEST_UART_TASK: expected %c (0x%02x),"
-                 " received %c (0x%02x).\n", gUartTestData[indexInBlock],
-                 gUartTestData[indexInBlock], *pReceive, *pReceive);
-    } else {
-        uPortLog("U_PORT_TEST_UART_TASK: %d character(s), %d block(s)"
-                 " received.\n", gUartBytesReceived, blockNumber);
-    }
-
-    U_PORT_MUTEX_UNLOCK(pUartTaskData->runningMutexHandle);
-
-    uPortLog("U_PORT_TEST_UART_TASK: task ended.\n");
-
-    if (uPortTaskDelete(NULL) != 0) {
-        gUartError = -3;
+        } while ((dataSizeOrError > 0) && (pEventCallbackData->errorCode == 0));
     }
 }
 
 // Run a UART test at the given baud rate and with/without flow control.
 static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
 {
-    uartTestTaskData_t uartTestTaskData;
-    uPortTaskHandle_t uartTaskHandle;
-    int32_t control;
+    int32_t uartHandle;
+    uartEventCallbackData_t eventCallbackData = {0};
     int32_t bytesToSend;
     int32_t bytesSent = 0;
     int32_t pinCts = -1;
     int32_t pinRts = -1;
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+    int32_t stackMinFreeBytes;
 
-    gUartBytesReceived = 0;
-    gUartError = 0;
+    eventCallbackData.callCount = 0;
+    eventCallbackData.pReceive = gUartBuffer;
 
     if (flowControlOn) {
         pinCts = U_CFG_TEST_PIN_UART_0_CTS;
@@ -671,70 +642,94 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
              " bits/s with flow control %s.\n", size, speed,
              ((pinCts >= 0) && (pinRts >= 0)) ? "on" : "off");
 
-    U_PORT_TEST_ASSERT(uPortUartInit(U_CFG_TEST_PIN_UART_0_TXD,
-                                     U_CFG_TEST_PIN_UART_0_RXD,
-                                     pinCts, pinRts, speed,
-                                     U_CFG_TEST_UART_0,
-                                     &(uartTestTaskData.uartQueueHandle)) == 0);
+    uPortLog("U_PORT_TEST: add a UART instance...\n");
+    uartHandle = uPortUartOpen(U_CFG_TEST_UART_0,
+                               speed, NULL,
+                               U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
+                               U_CFG_TEST_PIN_UART_0_TXD,
+                               U_CFG_TEST_PIN_UART_0_RXD,
+                               pinCts, pinRts);
+    U_PORT_TEST_ASSERT(uartHandle >= 0);
 
-    uPortLog("U_PORT_TEST: creating OS items to test UART...\n");
+    uPortLog("U_PORT_TEST: add a UART event callback which"
+             " will receive the data...\n");
+    U_PORT_TEST_ASSERT(uPortUartEventCallbackSet(uartHandle,
+                                                 (uint32_t) U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
+                                                 uartReceivedDataCallback,
+                                                 (void *) &eventCallbackData,
+                                                 U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES,
+                                                 U_CFG_OS_APP_TASK_PRIORITY + 1) == 0);
 
-    // Create a mutex so that we can tell if the UART receive task is running
-    U_PORT_TEST_ASSERT(uPortMutexCreate(&(uartTestTaskData.runningMutexHandle)) == 0);
+    // Check that the callback is there
+    U_PORT_TEST_ASSERT(uPortUartEventCallbackFilterGet(uartHandle) ==
+                       U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
 
-    // Start a queue to control the UART receive task;
-    // will send it -1 to exit
-    U_PORT_TEST_ASSERT(uPortQueueCreate(5, sizeof(int32_t),
-                                        &(uartTestTaskData.controlQueueHandle)) == 0);
+    // Set the filter (there's only one so this isn't doing much,
+    // but what can you do)
+    U_PORT_TEST_ASSERT(uPortUartEventCallbackFilterSet(uartHandle,
+                                                       (uint32_t) U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) ==
+                       0);
 
-    // Start the UART receive task
-    U_PORT_TEST_ASSERT(uPortTaskCreate(uartTestTask, "uartTestTask",
-                                       U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES,
-                                       (void *) &uartTestTaskData,
-                                       U_CFG_TEST_OS_TASK_PRIORITY,
-                                       &uartTaskHandle) == 0);
-    // Pause here to allow the task to start.
-    uPortTaskBlock(100);
+    // Manually send an Rx event and check that it caused
+    // the callback to be called
+    U_PORT_TEST_ASSERT(eventCallbackData.callCount == 0);
+    U_PORT_TEST_ASSERT(uPortUartEventSend(uartHandle,
+                                          (uint32_t) U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) ==
+                       0);
+    U_PORT_TEST_ASSERT(eventCallbackData.callCount == 1);
 
-    // Send data over the UART N times, the UART receive task will check it
+    // Send data over the UART N times, the callback will check it
     while (bytesSent < size) {
         // -1 to omit gUartTestData string terminator
         bytesToSend = sizeof(gUartTestData) - 1;
         if (bytesToSend > size - bytesSent) {
             bytesToSend = size - bytesSent;
         }
-        U_PORT_TEST_ASSERT(uPortUartWrite(U_CFG_TEST_UART_0,
+        U_PORT_TEST_ASSERT(uPortUartWrite(uartHandle,
                                           gUartTestData,
                                           bytesToSend) == bytesToSend);
         bytesSent += bytesToSend;
         uPortLog("U_PORT_TEST: %d byte(s) sent.\n", bytesSent);
+        if (!flowControlOn) {
+            // If running without flow control, give the
+            // receive task time to do its stuff
+            uPortTaskBlock(10);
+        }
     }
 
     // Wait long enough for everything to have been received
     uPortTaskBlock(1000);
+
+    // Print out some useful stuff
+    if (eventCallbackData.errorCode == -5) {
+        uPortLog("U_PORT_TEST: error after %d character(s),"
+                 " %d block(s).\n", eventCallbackData.bytesReceived,
+                 eventCallbackData.blockNumber);
+        uPortLog("U_PORT_TEST: expected %c (0x%02x), received"
+                 " %c (0x%02x).\n",
+                 gUartTestData[eventCallbackData.indexInBlock],
+                 gUartTestData[eventCallbackData.indexInBlock],
+                 eventCallbackData.pReceive, eventCallbackData.pReceive);
+    } else if (eventCallbackData.errorCode < 0) {
+        uPortLog("U_PORT_TEST: finished with error code %d"
+                 " after correctly receiving %d byte(s).\n",
+                 eventCallbackData.errorCode,
+                 eventCallbackData.bytesReceived);
+    }
+
     uPortLog("U_PORT_TEST: at end of test %d byte(s) sent, %d byte(s)"
-             " received, error status %d.\n", bytesSent,
-             gUartBytesReceived, gUartError);
-    U_PORT_TEST_ASSERT(gUartBytesReceived == bytesSent);
-    U_PORT_TEST_ASSERT(gUartError == 0);
+             " received.\n", bytesSent, eventCallbackData.bytesReceived);
+    U_PORT_TEST_ASSERT(eventCallbackData.bytesReceived == bytesSent);
+
+    // Check the stack extent for the task on the end of the
+    // event queue
+    stackMinFreeBytes = uPortUartEventStackMinFree(uartHandle);
+    uPortLog("U_PORT_TEST: UART event queue task had %d byte(s) free out of %d.\n",
+             stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
+    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
 
     uPortLog("U_PORT_TEST: tidying up after UART test...\n");
-
-    // Tell the UART Rx task to exit
-    control = -1;
-    U_PORT_TEST_ASSERT(uPortQueueSend(uartTestTaskData.controlQueueHandle,
-                                      (void *) &control) == 0);
-    // Wait for it to exit
-    U_PORT_MUTEX_LOCK(uartTestTaskData.runningMutexHandle);
-    U_PORT_MUTEX_UNLOCK(uartTestTaskData.runningMutexHandle);
-    // Pause to allow it to be destroyed in the idle task
-    uPortTaskBlock(100);
-
-    // Tidy up the rest
-    uPortQueueDelete(uartTestTaskData.controlQueueHandle);
-    uPortMutexDelete(uartTestTaskData.runningMutexHandle);
-
-    U_PORT_TEST_ASSERT(uPortUartDeinit(U_CFG_TEST_UART_0) == 0);
+    uPortUartClose(uartHandle);
 }
 
 #endif // (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) &&
@@ -987,6 +982,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     int64_t startTimeMs;
     int64_t timeNowMs;
     int64_t timeDelta;
+    int32_t uartHandle;
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
@@ -1015,14 +1011,16 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     timeNowMs = uPortGetTickTimeMs();
     uPortLog("U_PORT_TEST: tick time now is %d.\n",
              (int32_t) timeNowMs);
-    uPortLog("U_PORT_TEST: initialising UART...\n");
-    U_PORT_TEST_ASSERT(uPortUartInit(U_CFG_TEST_PIN_UART_0_TXD,
-                                     U_CFG_TEST_PIN_UART_0_RXD,
-                                     U_CFG_TEST_PIN_UART_0_CTS,
-                                     U_CFG_TEST_PIN_UART_0_RTS,
-                                     U_CFG_TEST_BAUD_RATE,
-                                     U_CFG_TEST_UART_0,
-                                     &gQueueHandleData) == 0);
+    uPortLog("U_PORT_TEST: add a UART instance...\n");
+    uartHandle = uPortUartOpen(U_CFG_TEST_UART_0,
+                               U_CFG_TEST_BAUD_RATE,
+                               NULL,
+                               U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
+                               U_CFG_TEST_PIN_UART_0_TXD,
+                               U_CFG_TEST_PIN_UART_0_RXD,
+                               U_CFG_TEST_PIN_UART_0_CTS,
+                               U_CFG_TEST_PIN_UART_0_RTS);
+    U_PORT_TEST_ASSERT(uartHandle >= 0);
     uPortLog("U_PORT_TEST: waiting %d ms...\n",
              U_PORT_TEST_OS_BLOCK_TIME_MS);
     timeNowMs = uPortGetTickTimeMs();
@@ -1038,7 +1036,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
 
     uPortLog("U_PORT_TEST: deinitialising UART...\n");
     timeNowMs = uPortGetTickTimeMs();
-    U_PORT_TEST_ASSERT(uPortUartDeinit(U_CFG_TEST_UART_0) == 0);
+    uPortUartClose(uartHandle);
 
     uPortLog("U_PORT_TEST: waiting %d ms...\n",
              U_PORT_TEST_OS_BLOCK_TIME_MS);
@@ -1373,12 +1371,12 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     // Run a UART test at 115,200
+    // without flow control
+    runUartTest(50000, 115200, false);
 #if (U_CFG_TEST_PIN_UART_0_CTS >= 0) && (U_CFG_TEST_PIN_UART_0_RTS >= 0)
     // ...with flow control
     runUartTest(50000, 115200, true);
 #endif
-    // ...without flow control
-    runUartTest(50000, 115200, false);
 
     uPortDeinit();
 }
@@ -1390,7 +1388,6 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
  */
 U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 {
-    U_PORT_TEST_ASSERT(uPortUartDeinit(U_CFG_TEST_UART_0) == 0);
     uPortDeinit();
 }
 

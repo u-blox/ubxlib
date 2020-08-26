@@ -32,6 +32,7 @@
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_event_queue.h"
 #include "u_port_uart.h"
 #include "u_port_private.h"
 
@@ -66,7 +67,7 @@
  * is with handling continuous reception that has gaps, i.e. running
  * DMA and also having a timer of some sort to push up to the
  * application any data left in a buffer when the incoming data
- * stream happens to pauuse. The key is NEVER to stop the UARTE HW,
+ * stream happens to pause. The key is NEVER to stop the UARTE HW,
  * to always have the ENDRX event shorted to a STARTRX task with at
  * least two buffers.  Any attempt to stop and restart
  * the UARTE ends up with character loss; believe me I've tried them
@@ -96,54 +97,36 @@
 # endif
 #endif
 
+// The maximum length of DMA for a UARTE
+#define U_PORT_UART_MAX_DMA_LENGTH_BYTES 256
 
-// Length of DMA on NRF52840 HW.
-// Note that the maximum length is 256 however
-// the cost of starting a new DMA buffer is
-// zero (since the pointer is double-buffered
-// buffered in HW) so setting this to a smaller
-// value so that the user can set
-// U_PORT_UART_RX_BUFFER_SIZE to a smaller
-// value and still have at least two buffers.
-#ifndef U_PORT_UART_SUB_BUFFER_SIZE
-# define U_PORT_UART_SUB_BUFFER_SIZE 128
-#endif
-
-// The number of sub-buffers.
-#define U_PORT_UART_NUM_SUB_BUFFERS (U_PORT_UART_RX_BUFFER_SIZE / \
-                                     U_PORT_UART_SUB_BUFFER_SIZE)
-
-#if U_PORT_UART_NUM_SUB_BUFFERS < 2
-# error Cannot accommodate two sub-buffers, either increase U_PORT_UART_RX_BUFFER_SIZE to a larger multiple of U_PORT_UART_SUB_BUFFER_SIZE or reduce U_PORT_UART_SUB_BUFFER_SIZE.
-#endif
+// The minimum viable sub-buffer length,
+// should be greater than 4 'cos the UART has
+// a buffer about that big.
+#define U_PORT_UART_MIN_DMA_LENGTH_BYTES 10
 
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
-/** A UART event.  Since we only ever need to signal
- * size or error then on this platform the
- * uPortUartEventData_t can simply be an int32_t.
- */
-typedef int32_t uPortUartEventData_t;
-
-/** UART receive buffer structure, which can be used as a list.
- */
-typedef struct uPortUartBuffer_t {
-    char *pStart;
-    struct uPortUartBuffer_t *pNext;
-} uPortUartBuffer_t;
-
 /** Structure of the things we need to keep track of per UART.
+ * ORDER IS IMPORTANT: a portion of this structure is
+ * statically initialised.
  */
 typedef struct {
     NRF_UARTE_Type *pReg;
     nrfx_timer_t timer;
     nrf_ppi_channel_t ppiChannel;
-    uPortMutexHandle_t mutex;
-    uPortQueueHandle_t queue;
-    char *pRxStart;
-    uPortUartBuffer_t *pRxBufferWriteNext;
+    int32_t uartHandle;
+    int32_t eventQueueHandle;
+    uint32_t eventFilter;
+    void (*pEventCallback)(int32_t, uint32_t, void *);
+    void *pEventCallbackParam;
+    bool rxBufferIsMalloced;
+    size_t rxBufferSizeBytes;
+    size_t rxSubBufferSizeBytes;
+    char *pRxStart; /**< Also used as a marker that this UART is in use. */
+    char *pRxBufferWriteNext;
     char *pRxRead;
     size_t startRxByteCount;
     volatile size_t endRxByteCount;
@@ -151,16 +134,27 @@ typedef struct {
                            * been read and hence the user
                            * would like a notification
                            * when new data arrives. */
-    uPortUartBuffer_t rxBufferList[U_PORT_UART_NUM_SUB_BUFFERS];
 } uPortUartData_t;
+
+/** Structure describing an event.
+ */
+typedef struct {
+    int32_t uartHandle;
+    uint32_t eventBitMap;
+} uPortUartEvent_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
 
+// Mutex to protect UART data.
+static uPortMutexHandle_t gMutex = NULL;
+
 // UART data, where the UARTE register and the
 // associated counter and PPI channel are the only
 // ones initialised here.
+// In this implementation uart and handle are synonymous,
+// both are indexes into the gUartData array.
 #if !NRFX_UARTE0_ENABLED && !NRFX_UARTE1_ENABLED
 static uPortUartData_t gUartData[] = {
     {
@@ -192,6 +186,17 @@ static uPortUartData_t gUartData[] = {NRF_UARTE1,
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Set up the next receive sub-buffer
+static inline void setNextSubBuffer(uPortUartData_t *pUartData)
+{
+    char **ppNext = &(pUartData->pRxBufferWriteNext);
+
+    *ppNext = *ppNext + pUartData->rxSubBufferSizeBytes;
+    if (*ppNext >= pUartData->pRxStart + pUartData->rxBufferSizeBytes) {
+        *ppNext = pUartData->pRxStart;
+    }
+}
+
 // Get the number of received bytes waiting in the buffer.
 // Note: this may be called from interrupt context.
 static size_t uartGetRxBytes(uPortUartData_t *pUartData)
@@ -208,35 +213,129 @@ static size_t uartGetRxBytes(uPortUartData_t *pUartData)
         x = INT_MAX - pUartData->startRxByteCount +
             pUartData->endRxByteCount;
     }
-    if (x > U_PORT_UART_RX_BUFFER_SIZE) {
-        x = U_PORT_UART_RX_BUFFER_SIZE;
+    if (x > pUartData->rxBufferSizeBytes) {
+        x = pUartData->rxBufferSizeBytes;
     }
 
     return x;
 }
 
+// Event handler, calls the user's event callback.
+static void eventHandler(void *pParam, size_t paramLength)
+{
+    uPortUartEvent_t *pEvent = (uPortUartEvent_t *) pParam;
+
+    (void) paramLength;
+
+    // Don't need to worry about locking the mutex,
+    // the close() function makes sure this event handler
+    // exits cleanly and, in any case, the user callback
+    // will want to be able to access functions in this
+    // API which will need to lock the mutex.
+
+    if ((pEvent->uartHandle >= 0) &&
+        (pEvent->uartHandle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+        if (gUartData[pEvent->uartHandle].pEventCallback != NULL) {
+            gUartData[pEvent->uartHandle].pEventCallback(pEvent->uartHandle,
+                                                         pEvent->eventBitMap,
+                                                         gUartData[pEvent->uartHandle].pEventCallbackParam);
+        }
+    }
+}
+
+// Close a UART instance
+// Note: gMutex should be locked before this is called.
+static void uartClose(int32_t handle)
+{
+    uint32_t pinRtsNrf;
+    uint32_t pinCtsNrf;
+    NRF_UARTE_Type *pReg;
+
+    if ((handle >= 0) &&
+        (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+        if (gUartData[handle].pRxStart != NULL) {
+            pReg = gUartData[handle].pReg;
+
+            // Disable the counter/timer and associated PPI
+            // channel.
+            nrfx_timer_disable(&(gUartData[handle].timer));
+            nrfx_timer_uninit(&(gUartData[handle].timer));
+            nrfx_ppi_channel_disable(gUartData[handle].ppiChannel);
+            nrfx_ppi_channel_free(gUartData[handle].ppiChannel);
+            gUartData[handle].ppiChannel = -1;
+
+            // Disable Rx interrupts
+            nrf_uarte_int_disable(pReg, NRF_UARTE_INT_ERROR_MASK     |
+                                  NRF_UARTE_INT_RXSTARTED_MASK);
+            NRFX_IRQ_DISABLE(nrfx_get_irq_number((void *) (pReg)));
+
+            // Deregister the timer callback and
+            // return the tick timer to normal mode
+            uPortPrivateTickTimeSetInterruptCb(NULL, NULL);
+            uPortPrivateTickTimeNormalMode();
+
+            // Make sure all transfers are finished before UARTE is
+            // disabled to achieve the lowest power consumption
+            nrf_uarte_shorts_disable(pReg, NRF_UARTE_SHORT_ENDRX_STARTRX);
+            nrf_uarte_event_clear(pReg, NRF_UARTE_EVENT_RXTO);
+            nrf_uarte_task_trigger(pReg, NRF_UARTE_TASK_STOPRX);
+            nrf_uarte_event_clear(pReg, NRF_UARTE_EVENT_TXSTOPPED);
+            nrf_uarte_task_trigger(pReg, NRF_UARTE_TASK_STOPTX);
+            while (!nrf_uarte_event_check(pReg, NRF_UARTE_EVENT_TXSTOPPED) ||
+                   !nrf_uarte_event_check(pReg, NRF_UARTE_EVENT_RXTO)) {}
+
+            // Disable the UARTE
+            nrf_uarte_disable(pReg);
+
+            // Put the pins back
+            nrf_gpio_cfg_default(nrf_uarte_tx_pin_get(pReg));
+            nrf_gpio_cfg_default(nrf_uarte_rx_pin_get(pReg));
+            nrf_uarte_txrx_pins_disconnect(pReg);
+            pinRtsNrf = nrf_uarte_rts_pin_get(pReg);
+            pinCtsNrf = nrf_uarte_cts_pin_get(pReg);
+            nrf_uarte_hwfc_pins_disconnect(pReg);
+            if (pinCtsNrf != NRF_UARTE_PSEL_DISCONNECTED) {
+                nrf_gpio_cfg_default(pinCtsNrf);
+            }
+            if (pinRtsNrf != NRF_UARTE_PSEL_DISCONNECTED) {
+                nrf_gpio_cfg_default(pinRtsNrf);
+            }
+
+            // Remove the callback if there is one
+            if (gUartData[handle].eventQueueHandle >= 0) {
+                uPortEventQueueClose(gUartData[handle].eventQueueHandle);
+            }
+            gUartData[handle].eventQueueHandle = -1;
+
+            // And finally free and mark as NULL the buffer
+            if (gUartData[handle].rxBufferIsMalloced) {
+                free(gUartData[handle].pRxStart);
+            }
+            gUartData[handle].pRxStart = NULL;
+        }
+    }
+}
+
 // Callback to be called when the receive check timer has expired.
-// pParameter must be a pointer to CellularPortUartData_t.
+// pParameter must be a pointer to uPortUartData_t.
 static void rxCb(void *pParameter)
 {
     uPortUartData_t *pUartData = (uPortUartData_t *) pParameter;
     size_t x;
-    BaseType_t yield = false;
 
     x = uartGetRxBytes(pUartData);
     // If there is at least some data and the user needs to
     // be notified, let them know
     if ((x > 0) && pUartData->userNeedsNotify) {
-        uPortUartEventData_t uartSizeOrError;
-        uartSizeOrError = x;
-        xQueueSendFromISR((QueueHandle_t) (pUartData->queue),
-                          &uartSizeOrError, &yield);
+        if ((pUartData->eventQueueHandle >= 0) &&
+            (pUartData->eventFilter & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+            uPortUartEvent_t event;
+            event.uartHandle = pUartData->uartHandle;
+            event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
+            uPortEventQueueSendIrq(pUartData->eventQueueHandle,
+                                   &event, sizeof(event));
+        }
         pUartData->userNeedsNotify = false;
-    }
-
-    // Required for FreeRTOS task scheduling to work
-    if (yield) {
-        taskYIELD();
     }
 }
 
@@ -253,10 +352,10 @@ static void rxIrqHandler(uPortUartData_t *pUartData)
         // Rx buffer register is double-buffered in HW.
         nrf_uarte_event_clear(pReg, NRF_UARTE_EVENT_RXSTARTED);
         nrf_uarte_rx_buffer_set(pReg,
-                                (uint8_t *) (pUartData->pRxBufferWriteNext->pStart),
-                                U_PORT_UART_SUB_BUFFER_SIZE);
+                                (uint8_t *) (pUartData->pRxBufferWriteNext),
+                                pUartData->rxSubBufferSizeBytes);
         // Move the write next buffer pointer on
-        pUartData->pRxBufferWriteNext = pUartData->pRxBufferWriteNext->pNext;
+        setNextSubBuffer(pUartData);
     } else if (nrf_uarte_event_check(pReg, NRF_UARTE_EVENT_ERROR)) {
         // Clear any errors: no need to do anything, they
         // have no effect upon reception
@@ -341,7 +440,7 @@ static int32_t baudRateToNrfBaudRate(int32_t baudRate)
 // Derived from the NRFX functions nrfx_is_in_ram() and
 // nrfx_is_word_aligned(), check if a buffer pointer is good
 // for DMA
-__STATIC_INLINE bool isGoodForDma(void const *pBuffer)
+__STATIC_INLINE bool isGoodForDma(const void *pBuffer)
 {
     return (((((uint32_t) pBuffer) & 0x3u) == 0u) &&
             ((((uint32_t) pBuffer) & 0xE0000000u) == 0x20000000u));
@@ -375,115 +474,150 @@ void nrfx_uarte_1_irq_handler(void)
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Initialise a UARTE.
-int32_t uPortUartInit(int32_t pinTx, int32_t pinRx,
-                      int32_t pinCts, int32_t pinRts,
-                      int32_t baudRate,
-                      int32_t uart,
-                      uPortQueueHandle_t *pUartQueue)
+// Initialise the UART driver.
+int32_t uPortUartInit()
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    uErrorCode_t errorCode = U_ERROR_COMMON_SUCCESS;
+
+    if (gMutex == NULL) {
+        errorCode = uPortMutexCreate(&gMutex);
+        for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
+            gUartData[x].pRxStart = NULL;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Deinitialise the UART driver.
+void uPortUartDeinit()
+{
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        // Close all the UART instances
+        for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
+            if (gUartData[x].pRxStart != NULL) {
+                uartClose(x);
+            }
+        }
+
+        // Delete the mutex
+        U_PORT_MUTEX_UNLOCK(gMutex);
+        uPortMutexDelete(gMutex);
+        gMutex = NULL;
+    }
+}
+
+// Open a UART instance.
+int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
+                      void *pReceiveBuffer,
+                      size_t receiveBufferSizeBytes,
+                      int32_t pinTx, int32_t pinRx,
+                      int32_t pinCts, int32_t pinRts)
+{
+    uErrorCode_t handleOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     int32_t baudRateNrf = baudRateToNrfBaudRate(baudRate);
     uint32_t pinCtsNrf = NRF_UARTE_PSEL_DISCONNECTED;
     uint32_t pinRtsNrf = NRF_UARTE_PSEL_DISCONNECTED;
     nrf_uarte_hwfc_t hwfc = NRF_UARTE_HWFC_DISABLED;
     NRF_UARTE_Type *pReg;
-    char *pRxBuffer = NULL;
+    size_t subBufferSize = U_PORT_UART_MAX_DMA_LENGTH_BYTES;
+    size_t numSubBuffers;
     nrfx_timer_config_t timerConfig = NRFX_TIMER_DEFAULT_CONFIG;
 
-    if ((pUartQueue != NULL) && (pinRx >= 0) && (pinTx >= 0) &&
-        (uart < sizeof(gUartData) / sizeof(gUartData[0])) &&
-        (baudRateNrf >= 0)) {
-        errorCode = U_ERROR_COMMON_SUCCESS;
-        if (gUartData[uart].mutex == NULL) {
-            pReg = gUartData[uart].pReg;
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((uart >= 0) &&
+            (uart < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            (baudRateNrf > 0) && (pinRx >= 0) && (pinTx >= 0) &&
+            ((pReceiveBuffer == NULL) || isGoodForDma(pReceiveBuffer)) &&
+            (gUartData[uart].pRxStart == NULL)) {
+
+            // There must be at least two sub-buffers and each buffer
+            // cannot be larger than U_PORT_UART_MAX_DMA_LENGTH_BYTES
+            numSubBuffers = receiveBufferSizeBytes / subBufferSize;
+            if (numSubBuffers < 2) {
+                numSubBuffers = 2;
+                subBufferSize = receiveBufferSizeBytes / numSubBuffers;
+            }
+            if (subBufferSize >= U_PORT_UART_MIN_DMA_LENGTH_BYTES) {
+                handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
+                gUartData[uart].rxSubBufferSizeBytes = subBufferSize;
+                gUartData[uart].rxBufferSizeBytes = subBufferSize * numSubBuffers;
+                pReg = gUartData[uart].pReg;
 
 #if NRFX_PRS_ENABLED
-            static nrfx_irq_handler_t const irq_handlers[NRFX_UARTE_ENABLED_COUNT] = {
+                static nrfx_irq_handler_t const irq_handlers[NRFX_UARTE_ENABLED_COUNT] = {
 # if !NRFX_UARTE0_ENABLED
-                nrfx_uarte_0_irq_handler,
+                    nrfx_uarte_0_irq_handler,
 # endif
 # if !NRFX_UARTE1_ENABLED
-                nrfx_uarte_1_irq_handler,
+                    nrfx_uarte_1_irq_handler,
 # endif
-            };
-            if (nrfx_prs_acquire(pReg, irq_handlers[pReg) != NRFX_SUCCESS) {
-                  errorCode = U_ERROR_COMMON_PLATFORM;
-              }
+                };
+
+                if (nrfx_prs_acquire(pReg, irq_handlers[pReg]) != NRFX_SUCCESS) {
+                    handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
+                }
 #endif
 
-              // Set up a counter/timer as a counter to count
-              // received characters.  This is required because
-              // the DMA doesn't let you know until it's done.
-              // This is done first because it can return error
-              // codes and there's no point in continuing without
-              // it.
-              timerConfig.mode = NRF_TIMER_MODE_COUNTER;
-                                 // Has to be 32 bit for overflow to work correctly
-                                 timerConfig.bit_width = NRF_TIMER_BIT_WIDTH_32;
-                           if (nrfx_timer_init(&(gUartData[uart].timer),
-                                                   &timerConfig,
-            counterEventHandler) == NRFX_SUCCESS) {
-            // Attach the timer/counter to the RXDRDY event
-            // of the UARTE using PPI
-            if (nrfx_ppi_channel_alloc(&(gUartData[uart].ppiChannel)) == NRFX_SUCCESS) {
-                    if ((nrfx_ppi_channel_assign(gUartData[uart].ppiChannel,
-                                                 nrf_uarte_event_address_get(pReg,
-                                                                             NRF_UARTE_EVENT_RXDRDY),
-                                                 nrfx_timer_task_address_get(&(gUartData[uart].timer),
-                                                                             NRF_TIMER_TASK_COUNT)) != NRFX_SUCCESS) ||
-                        (nrfx_ppi_channel_enable(gUartData[uart].ppiChannel) != NRFX_SUCCESS)) {
-                        nrfx_ppi_channel_free(gUartData[uart].ppiChannel);
-                        gUartData[uart].ppiChannel = -1;
-                        errorCode = U_ERROR_COMMON_PLATFORM;
-                    }
-                } else {
-                    errorCode = U_ERROR_COMMON_PLATFORM;
-                }
-            } else {
-                errorCode = U_ERROR_COMMON_PLATFORM;
-            }
-
-            if (errorCode == 0) {
-            // Create the mutex
-            errorCode = uPortMutexCreate(&(gUartData[uart].mutex));
-                if (errorCode == 0) {
-
-                    U_PORT_MUTEX_LOCK(gUartData[uart].mutex);
-
-                    errorCode = U_ERROR_COMMON_NO_MEMORY;
-
-                    // Malloc memory for the read buffer
-                    pRxBuffer = malloc(U_PORT_UART_RX_BUFFER_SIZE);
-                    if (pRxBuffer != NULL) {
-                        gUartData[uart].pRxStart = pRxBuffer;
-                        // Set up the read pointer
-                        gUartData[uart].pRxRead = pRxBuffer;
-                        // Set up the buffer list for the DMA write process
-                        for (size_t x = 0; x < sizeof(gUartData[uart].rxBufferList) /
-                             sizeof(gUartData[uart].rxBufferList[0]); x++) {
-                            gUartData[uart].rxBufferList[x].pStart = pRxBuffer;
-                            // Set up the next pointers in a ring
-                            if (x < (sizeof(gUartData[uart].rxBufferList) /
-                                     sizeof(gUartData[uart].rxBufferList[0])) - 1) {
-                                gUartData[uart].rxBufferList[x].pNext =  &(gUartData[uart].rxBufferList[x + 1]);
-                            } else {
-                                gUartData[uart].rxBufferList[x].pNext = &(gUartData[uart].rxBufferList[0]);
-                            }
-                            pRxBuffer += U_PORT_UART_SUB_BUFFER_SIZE;
+                // Set up a counter/timer as a counter to count
+                // received characters.  This is required because
+                // the DMA doesn't let you know until it's done.
+                // This is done first because it can return error
+                // codes and there's no point in continuing without
+                // it.
+                timerConfig.mode = NRF_TIMER_MODE_COUNTER;
+                // Has to be 32 bit for overflow to work correctly
+                timerConfig.bit_width = NRF_TIMER_BIT_WIDTH_32;
+                if (nrfx_timer_init(&(gUartData[uart].timer),
+                                    &timerConfig,
+                                    counterEventHandler) == NRFX_SUCCESS) {
+                    handleOrErrorCode = U_ERROR_COMMON_SUCCESS;
+                    // Attach the timer/counter to the RXDRDY event
+                    // of the UARTE using PPI
+                    if (nrfx_ppi_channel_alloc(&(gUartData[uart].ppiChannel)) == NRFX_SUCCESS) {
+                        if ((nrfx_ppi_channel_assign(gUartData[uart].ppiChannel,
+                                                     nrf_uarte_event_address_get(pReg,
+                                                                                 NRF_UARTE_EVENT_RXDRDY),
+                                                     nrfx_timer_task_address_get(&(gUartData[uart].timer),
+                                                                                 NRF_TIMER_TASK_COUNT)) != NRFX_SUCCESS) ||
+                            (nrfx_ppi_channel_enable(gUartData[uart].ppiChannel) != NRFX_SUCCESS)) {
+                            nrfx_ppi_channel_free(gUartData[uart].ppiChannel);
+                            gUartData[uart].ppiChannel = -1;
+                            handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
                         }
-                        // Set up the write buffer pointer etc.
-                        gUartData[uart].pRxBufferWriteNext = &(gUartData[uart].rxBufferList[0]);
-                        gUartData[uart].startRxByteCount = 0;
-                        gUartData[uart].endRxByteCount = 0;
-                        gUartData[uart].userNeedsNotify = true;
+                    } else {
+                        handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
+                    }
 
-                        // Create the queue
-                        errorCode = uPortQueueCreate(U_PORT_UART_EVENT_QUEUE_SIZE,
-                                                     sizeof(uPortUartEventData_t),
-                                                     pUartQueue);
-                        if (errorCode == 0) {
-                            gUartData[uart].queue = *pUartQueue;
+                    if (handleOrErrorCode == U_ERROR_COMMON_SUCCESS) {
+                        handleOrErrorCode = U_ERROR_COMMON_NO_MEMORY;
+                        gUartData[uart].rxBufferIsMalloced = false;
+                        gUartData[uart].pRxStart = pReceiveBuffer;
+                        if (gUartData[uart].pRxStart == NULL) {
+                            // Malloc memory for the read buffer
+                            gUartData[uart].pRxStart = malloc(gUartData[uart].rxBufferSizeBytes);
+                            gUartData[uart].rxBufferIsMalloced = true;
+                        }
+                        if (gUartData[uart].pRxStart != NULL) {
+                            // Set up the read pointer
+                            gUartData[uart].pRxRead = gUartData[uart].pRxStart;
+                            // Set up the rest of the UART data structure
+                            gUartData[uart].uartHandle = uart;
+                            gUartData[uart].pRxBufferWriteNext = gUartData[uart].pRxStart;
+                            gUartData[uart].startRxByteCount = 0;
+                            gUartData[uart].endRxByteCount = 0;
+                            gUartData[uart].eventQueueHandle = -1;
+                            gUartData[uart].eventFilter = 0;
+                            gUartData[uart].pEventCallback = NULL;
+                            gUartData[uart].pEventCallbackParam = NULL;
+                            gUartData[uart].userNeedsNotify = true;
 
                             // Set baud rate
                             nrf_uarte_baudrate_set(pReg, baudRateNrf);
@@ -534,11 +668,11 @@ int32_t uPortUartInit(int32_t pinTx, int32_t pinRx,
 
                             // Off we go
                             nrf_uarte_rx_buffer_set(pReg,
-                                                    (uint8_t *) (gUartData[uart].pRxBufferWriteNext->pStart),
-                                                    U_PORT_UART_SUB_BUFFER_SIZE);
-                            gUartData[uart].pRxBufferWriteNext = gUartData[uart].pRxBufferWriteNext->pNext;
+                                                    (uint8_t *) (gUartData[uart].pRxBufferWriteNext),
+                                                    gUartData[uart].rxSubBufferSizeBytes);
+                            setNextSubBuffer(&(gUartData[uart]));
                             nrf_uarte_task_trigger(pReg, NRF_UARTE_TASK_STARTRX);
-                            nrf_uarte_int_enable(pReg, NRF_UARTE_INT_ERROR_MASK     |
+                            nrf_uarte_int_enable(pReg, NRF_UARTE_INT_ERROR_MASK  |
                                                  NRF_UARTE_INT_RXSTARTED_MASK);
                             NRFX_IRQ_PRIORITY_SET(getIrqNumber((void *) pReg),
                                                   NRFX_UARTE_DEFAULT_CONFIG_IRQ_PRIORITY);
@@ -549,23 +683,12 @@ int32_t uPortUartInit(int32_t pinTx, int32_t pinRx,
                             uPortPrivateTickTimeUartMode();
                             uPortPrivateTickTimeSetInterruptCb(rxCb,
                                                                &(gUartData[uart]));
-                        }
-                    }
-
-                    U_PORT_MUTEX_UNLOCK(gUartData[uart].mutex);
-
-                    // If we failed to create the queue or get memory for the buffer,
-                    // delete the mutex, free memory, put the uart's
-                    // mutex back to NULL and disable the counter/timer, freeing
-                    // the PPI channel if it was allocated.
-                    if ((errorCode != 0) ||
-                        (pRxBuffer == NULL)) {
-                        uPortMutexDelete(gUartData[uart].mutex);
-                        gUartData[uart].mutex = NULL;
-                        free(pRxBuffer);
-                        nrfx_timer_disable(&(gUartData[uart].timer));
-                        nrfx_timer_uninit(&(gUartData[uart].timer));
-                        if (gUartData[uart].ppiChannel != -1) {
+                            // Return the handle
+                            handleOrErrorCode = gUartData[uart].uartHandle;
+                        } else {
+                            // Tidy up if we failed to allocate memory
+                            nrfx_timer_disable(&(gUartData[uart].timer));
+                            nrfx_timer_uninit(&(gUartData[uart].timer));
                             nrfx_ppi_channel_disable(gUartData[uart].ppiChannel);
                             nrfx_ppi_channel_free(gUartData[uart].ppiChannel);
                             gUartData[uart].ppiChannel = -1;
@@ -574,188 +697,76 @@ int32_t uPortUartInit(int32_t pinTx, int32_t pinRx,
                 }
             }
         }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
-    return (int32_t) errorCode;
+    return (int32_t) handleOrErrorCode;
 }
 
-// Shutdown a UART.
-int32_t uPortUartDeinit(int32_t uart)
+// Close a UART instance.
+void uPortUartClose(int32_t handle)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uint32_t pinRtsNrf;
-    uint32_t pinCtsNrf;
-    NRF_UARTE_Type *pReg;
+    if (gMutex != NULL) {
 
-    if (uart < sizeof(gUartData) / sizeof(gUartData[0])) {
-        errorCode = U_ERROR_COMMON_SUCCESS;
-        if (gUartData[uart].mutex != NULL) {
-            errorCode = U_ERROR_COMMON_PLATFORM;
-            pReg = gUartData[uart].pReg;
+        U_PORT_MUTEX_LOCK(gMutex);
 
-            // No need to lock the mutex, we need to delete it
-            // and we're not allowed to delete a locked mutex.
-            // The caller needs to make sure that no read/write
-            // is in progress when this function is called.
+        uartClose(handle);
 
-            // Disable the counter/timer and associated PPI
-            // channel.
-            nrfx_timer_disable(&(gUartData[uart].timer));
-            nrfx_timer_uninit(&(gUartData[uart].timer));
-            nrfx_ppi_channel_disable(gUartData[uart].ppiChannel);
-            nrfx_ppi_channel_free(gUartData[uart].ppiChannel);
-            gUartData[uart].ppiChannel = -1;
-
-            // Disable Rx interrupts
-            nrf_uarte_int_disable(pReg, NRF_UARTE_INT_ERROR_MASK     |
-                                  NRF_UARTE_INT_RXSTARTED_MASK);
-            NRFX_IRQ_DISABLE(nrfx_get_irq_number((void *) (pReg)));
-
-            // Deregister the timer callback and
-            // return the tick timer to normal mode
-            uPortPrivateTickTimeSetInterruptCb(NULL, NULL);
-            uPortPrivateTickTimeNormalMode();
-
-            // Make sure all transfers are finished before UARTE is
-            // disabled to achieve the lowest power consumption
-            nrf_uarte_shorts_disable(pReg, NRF_UARTE_SHORT_ENDRX_STARTRX);
-            nrf_uarte_event_clear(pReg, NRF_UARTE_EVENT_RXTO);
-            nrf_uarte_task_trigger(pReg, NRF_UARTE_TASK_STOPRX);
-            nrf_uarte_event_clear(pReg, NRF_UARTE_EVENT_TXSTOPPED);
-            nrf_uarte_task_trigger(pReg, NRF_UARTE_TASK_STOPTX);
-            while (!nrf_uarte_event_check(pReg, NRF_UARTE_EVENT_TXSTOPPED) ||
-                   !nrf_uarte_event_check(pReg, NRF_UARTE_EVENT_RXTO)) {}
-
-            // Disable the UARTE
-            nrf_uarte_disable(pReg);
-
-            // Put the pins back
-            nrf_gpio_cfg_default(nrf_uarte_tx_pin_get(pReg));
-            nrf_gpio_cfg_default(nrf_uarte_rx_pin_get(pReg));
-            nrf_uarte_txrx_pins_disconnect(pReg);
-            pinRtsNrf = nrf_uarte_rts_pin_get(pReg);
-            pinCtsNrf = nrf_uarte_cts_pin_get(pReg);
-            nrf_uarte_hwfc_pins_disconnect(pReg);
-            if (pinCtsNrf != NRF_UARTE_PSEL_DISCONNECTED) {
-                nrf_gpio_cfg_default(pinCtsNrf);
-            }
-            if (pinRtsNrf != NRF_UARTE_PSEL_DISCONNECTED) {
-                nrf_gpio_cfg_default(pinRtsNrf);
-            }
-
-            // Delete the queue
-            uPortQueueDelete(gUartData[uart].queue);
-            gUartData[uart].queue = NULL;
-            // Free the buffer
-            free(gUartData[uart].pRxStart);
-            // Delete the mutex
-            uPortMutexDelete(gUartData[uart].mutex);
-            gUartData[uart].mutex = NULL;
-            errorCode = U_ERROR_COMMON_SUCCESS;
-        }
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
-
-    return (int32_t) errorCode;
-}
-
-// Push a UART event onto the UART event queue.
-int32_t uPortUartEventSend(const uPortQueueHandle_t queueHandle,
-                           int32_t sizeBytesOrError)
-{
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortUartEventData_t uartSizeOrError;
-
-    if (queueHandle != NULL) {
-        uartSizeOrError = sizeBytesOrError;
-        errorCode = uPortQueueSend(queueHandle,
-                                   (void *) &uartSizeOrError);
-    }
-
-    return errorCode;
-}
-
-// Receive a UART event, blocking until one turns up.
-int32_t uPortUartEventReceive(const uPortQueueHandle_t queueHandle)
-{
-    int32_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortUartEventData_t uartSizeOrError;
-
-    if (queueHandle != NULL) {
-        sizeOrErrorCode = U_ERROR_COMMON_PLATFORM;
-        if (uPortQueueReceive(queueHandle,
-                              &uartSizeOrError) == 0) {
-            sizeOrErrorCode = uartSizeOrError;
-        }
-    }
-
-    return sizeOrErrorCode;
-}
-
-// Receive a UART event with a timeout.
-int32_t uPortUartEventTryReceive(const uPortQueueHandle_t queueHandle,
-                                 int32_t waitMs)
-{
-    int32_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortUartEventData_t uartSizeOrError;
-
-    if (queueHandle != NULL) {
-        sizeOrErrorCode = U_ERROR_COMMON_TIMEOUT;
-        if (uPortQueueTryReceive(queueHandle, waitMs,
-                                 &uartSizeOrError) == 0) {
-            sizeOrErrorCode = uartSizeOrError;
-        }
-    }
-
-    return sizeOrErrorCode;
 }
 
 // Get the number of bytes waiting in the receive buffer.
-int32_t uPortUartGetReceiveSize(int32_t uart)
+int32_t uPortUartGetReceiveSize(int32_t handle)
 {
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
 
-    if (uart < sizeof(gUartData) / sizeof(gUartData[0])) {
-        sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
-        if (gUartData[uart].mutex != NULL) {
+    if (gMutex != NULL) {
 
-            U_PORT_MUTEX_LOCK(gUartData[uart].mutex);
+        U_PORT_MUTEX_LOCK(gMutex);
 
-            sizeOrErrorCode = uartGetRxBytes(&(gUartData[uart]));
+        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+
+            sizeOrErrorCode = uartGetRxBytes(&(gUartData[handle]));
             if (sizeOrErrorCode == 0) {
-                gUartData[uart].userNeedsNotify = true;
+                gUartData[handle].userNeedsNotify = true;
             }
-
-            U_PORT_MUTEX_UNLOCK(gUartData[uart].mutex);
-
         }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return (int32_t) sizeOrErrorCode;
 }
 
 // Read from the given UART interface.
-int32_t uPortUartRead(int32_t uart, char *pBuffer,
+int32_t uPortUartRead(int32_t handle, void *pBuffer,
                       size_t sizeBytes)
 {
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     size_t totalRead;
     size_t thisRead;
 
-    if ((pBuffer != NULL) && (sizeBytes > 0) &&
-        (uart < sizeof(gUartData) / sizeof(gUartData[0]))) {
-        sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
-        if (gUartData[uart].mutex != NULL) {
+    if (gMutex != NULL) {
 
-            U_PORT_MUTEX_LOCK(gUartData[uart].mutex);
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pBuffer != NULL) && (sizeBytes > 0) && (handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+            sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
 
             // The user can't read more than
-            // U_PORT_UART_RX_BUFFER_SIZE
-            if (sizeBytes > U_PORT_UART_RX_BUFFER_SIZE) {
-                sizeBytes = U_PORT_UART_RX_BUFFER_SIZE;
+            // rxBufferSizeBytes
+            if (sizeBytes > gUartData[handle].rxBufferSizeBytes) {
+                sizeBytes = gUartData[handle].rxBufferSizeBytes;
             }
 
             // Get the number of bytes available to read
-            totalRead = uartGetRxBytes(&(gUartData[uart]));
+            totalRead = uartGetRxBytes(&(gUartData[handle]));
             if (totalRead > sizeBytes) {
                 totalRead = sizeBytes;
             }
@@ -763,65 +774,66 @@ int32_t uPortUartRead(int32_t uart, char *pBuffer,
             // Copy out from the read pointer onwards,
             // stopping at the end of the buffer or
             // totalRead, whichever comes first
-            thisRead = gUartData[uart].pRxStart +
-                       U_PORT_UART_RX_BUFFER_SIZE -
-                       gUartData[uart].pRxRead;
+            thisRead = gUartData[handle].pRxStart +
+                       gUartData[handle].rxBufferSizeBytes -
+                       gUartData[handle].pRxRead;
             if (thisRead > totalRead) {
                 thisRead = totalRead;
             }
-            memcpy(pBuffer, gUartData[uart].pRxRead, thisRead);
-            gUartData[uart].pRxRead += thisRead;
-            pBuffer += thisRead;
-            if (gUartData[uart].pRxRead >= gUartData[uart].pRxStart +
-                U_PORT_UART_RX_BUFFER_SIZE) {
-                gUartData[uart].pRxRead = gUartData[uart].pRxStart;
+            memcpy(pBuffer, gUartData[handle].pRxRead, thisRead);
+            pBuffer = (char *) pBuffer + thisRead;
+            gUartData[handle].pRxRead += thisRead;
+            if (gUartData[handle].pRxRead >= gUartData[handle].pRxStart +
+                gUartData[handle].rxBufferSizeBytes) {
+                gUartData[handle].pRxRead = gUartData[handle].pRxStart;
             }
 
             // Copy out any remainder
             if (thisRead < totalRead) {
                 thisRead = totalRead - thisRead;
-                memcpy(pBuffer, gUartData[uart].pRxRead, thisRead);
-                gUartData[uart].pRxRead += thisRead;
+                memcpy(pBuffer, gUartData[handle].pRxRead, thisRead);
+                gUartData[handle].pRxRead += thisRead;
             }
 
             // Update the starting number for the byte count
-            gUartData[uart].startRxByteCount += totalRead;
+            gUartData[handle].startRxByteCount += totalRead;
 
             // Set the return value
             sizeOrErrorCode = totalRead;
 
             // Set the notify flag if we were unable
             // to read anything
-            gUartData[uart].userNeedsNotify = false;
+            gUartData[handle].userNeedsNotify = false;
             if (sizeOrErrorCode == 0) {
-                gUartData[uart].userNeedsNotify = true;
+                gUartData[handle].userNeedsNotify = true;
             }
-
-            U_PORT_MUTEX_UNLOCK(gUartData[uart].mutex);
         }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return (int32_t) sizeOrErrorCode;
 }
 
 // Write to the given UART interface.
-int32_t uPortUartWrite(int32_t uart, const char *pBuffer,
+int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
                        size_t sizeBytes)
 {
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     const char *pTxBuffer = NULL;
     char *pTmpBuffer = NULL;
     NRF_UARTE_Type *pReg;
 
-    if ((pBuffer != NULL) &&
-        (uart < sizeof(gUartData) / sizeof(gUartData[0]))) {
-        sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
-        if (gUartData[uart].mutex != NULL) {
+    if (gMutex != NULL) {
 
-            U_PORT_MUTEX_LOCK(gUartData[uart].mutex);
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pBuffer != NULL) && (handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
 
             sizeOrErrorCode = U_ERROR_COMMON_NO_MEMORY;
-            pReg = gUartData[uart].pReg;
+            pReg = gUartData[handle].pReg;
 
             // If the provided buffer is not good for
             // DMA (e.g. if it's in flash) then copy
@@ -833,7 +845,7 @@ int32_t uPortUartWrite(int32_t uart, const char *pBuffer,
                     pTxBuffer = pTmpBuffer;
                 }
             } else {
-                pTxBuffer = pBuffer;
+                pTxBuffer = (const char *) pBuffer;
             }
 
             if (pTxBuffer != NULL) {
@@ -856,55 +868,239 @@ int32_t uPortUartWrite(int32_t uart, const char *pBuffer,
 
             // Free memory (it is valid C to free a NULL buffer)
             free(pTmpBuffer);
-
-            U_PORT_MUTEX_UNLOCK(gUartData[uart].mutex);
         }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return (int32_t) sizeOrErrorCode;
 }
 
+// Set an event callback.
+int32_t uPortUartEventCallbackSet(int32_t handle,
+                                  uint32_t filter,
+                                  void (*pFunction)(int32_t,
+                                                    uint32_t,
+                                                    void *),
+                                  void *pParam,
+                                  size_t stackSizeBytes,
+                                  int32_t priority)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    char name[16];
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            (gUartData[handle].eventQueueHandle < 0) &&
+            (filter != 0) && (pFunction != NULL)) {
+            // Open an event queue to eventHandler()
+            // which will receive uPortUartEvent_t
+            // and give it a useful name for debug purposes
+            snprintf(name, sizeof(name), "eventUart_%d", (int) handle);
+            errorCode = uPortEventQueueOpen(eventHandler, name,
+                                            sizeof(uPortUartEvent_t),
+                                            stackSizeBytes,
+                                            priority,
+                                            U_PORT_UART_EVENT_QUEUE_SIZE);
+            if (errorCode >= 0) {
+                gUartData[handle].eventQueueHandle = (int32_t) errorCode;
+                gUartData[handle].pEventCallback = pFunction;
+                gUartData[handle].pEventCallbackParam = pParam;
+                gUartData[handle].eventFilter = filter;
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Remove an event callback.
+void uPortUartEventCallbackRemove(int32_t handle)
+{
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            (gUartData[handle].eventQueueHandle >= 0)) {
+            // Close the event queue
+            uPortEventQueueClose(gUartData[handle].eventQueueHandle);
+            gUartData[handle].eventQueueHandle = -1;
+            gUartData[handle].pEventCallback = NULL;
+            gUartData[handle].eventFilter = 0;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+}
+
+// Get the callback filter bit-mask.
+uint32_t uPortUartEventCallbackFilterGet(int32_t handle)
+{
+    uint32_t filter = 0;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            (gUartData[handle].eventQueueHandle >= 0)) {
+            filter = gUartData[handle].eventFilter;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return filter;
+}
+
+// Change the callback filter bit-mask.
+int32_t uPortUartEventCallbackFilterSet(int32_t handle,
+                                        uint32_t filter)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            (gUartData[handle].eventQueueHandle >= 0) &&
+            (filter != 0)) {
+            gUartData[handle].eventFilter = filter;
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Send an event to the callback.
+int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    uPortUartEvent_t event;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            (gUartData[handle].eventQueueHandle >= 0) &&
+            // The only event we support right now
+            (eventBitMap == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+            event.uartHandle = handle;
+            event.eventBitMap = eventBitMap;
+            errorCode = uPortEventQueueSend(gUartData[handle].eventQueueHandle,
+                                            &event, sizeof(event));
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Return true if we're in an event callback.
+bool uPortUartEventIsCallback(int32_t handle)
+{
+    bool isEventCallback = false;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            (gUartData[handle].eventQueueHandle >= 0)) {
+            isEventCallback = uPortEventQueueIsTask(gUartData[handle].eventQueueHandle);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return isEventCallback;
+}
+
+// Get the stack high watermark for the task on the event queue.
+int32_t uPortUartEventStackMinFree(int32_t handle)
+{
+    int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            (gUartData[handle].eventQueueHandle >= 0)) {
+            sizeOrErrorCode = uPortEventQueueStackMinFree(gUartData[handle].eventQueueHandle);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return sizeOrErrorCode;
+}
+
 // Determine if RTS flow control is enabled.
-bool uPortIsRtsFlowControlEnabled(int32_t uart)
+bool uPortUartIsRtsFlowControlEnabled(int32_t handle)
 {
     bool rtsFlowControlIsEnabled = false;
     NRF_UARTE_Type *pReg;
 
-    if ((uart < sizeof(gUartData) / sizeof(gUartData[0])) &&
-        (gUartData[uart].mutex != NULL)) {
+    if ((gMutex != NULL) && (handle >= 0) &&
+        (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
 
-        U_PORT_MUTEX_LOCK(gUartData[uart].mutex);
+        U_PORT_MUTEX_LOCK(gMutex);
 
-        pReg = gUartData[uart].pReg;
+        pReg = gUartData[handle].pReg;
 
         if (nrf_uarte_rts_pin_get(pReg) != NRF_UARTE_PSEL_DISCONNECTED) {
             rtsFlowControlIsEnabled = true;
         }
 
-        U_PORT_MUTEX_UNLOCK(gUartData[uart].mutex);
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return rtsFlowControlIsEnabled;
 }
 
 // Determine if CTS flow control is enabled.
-bool uPortIsCtsFlowControlEnabled(int32_t uart)
+bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
 {
     bool ctsFlowControlIsEnabled = false;
     NRF_UARTE_Type *pReg;
 
-    if ((uart < sizeof(gUartData) / sizeof(gUartData[0])) &&
-        (gUartData[uart].mutex != NULL)) {
+    if ((gMutex != NULL) && (handle >= 0) &&
+        (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
 
-        U_PORT_MUTEX_LOCK(gUartData[uart].mutex);
+        U_PORT_MUTEX_LOCK(gMutex);
 
-        pReg = gUartData[uart].pReg;
+        pReg = gUartData[handle].pReg;
 
         if (nrf_uarte_cts_pin_get(pReg) != NRF_UARTE_PSEL_DISCONNECTED) {
             ctsFlowControlIsEnabled = true;
         }
 
-        U_PORT_MUTEX_UNLOCK(gUartData[uart].mutex);
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return ctsFlowControlIsEnabled;

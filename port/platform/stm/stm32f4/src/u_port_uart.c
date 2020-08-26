@@ -32,6 +32,7 @@
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_event_queue.h"
 #include "u_port_uart.h"
 
 #include "stm32f4xx_ll_bus.h"
@@ -44,7 +45,8 @@
 #include "u_port_private.h"  // Down here 'cos it needs GPIO_TypeDef
 
 #include "string.h" // for memcpy()
-#include "stdlib.h" // For malloc()/free()
+#include "stdlib.h" // for malloc()/free()
+#include "stdio.h" // for snprintf()
 
 /* The code here was written using the really useful information
  * here:
@@ -106,18 +108,30 @@ typedef struct {
 /** Structure of the data per UART.
  */
 typedef struct uPortUartData_t {
-    int32_t number;
+    int32_t uart;
+    int32_t uartHandle;
+    int32_t eventQueueHandle;
+    uint32_t eventFilter;
+    void (*pEventCallback)(int32_t, uint32_t, void *);
+    void *pEventCallbackParam;
     const uPortUartConstData_t *pConstData;
-    uPortMutexHandle_t mutex;
-    uPortQueueHandle_t queue;
+    bool rxBufferIsMalloced;
+    size_t rxBufferSizeBytes;
     char *pRxBufferStart;
     char *pRxBufferRead;
     volatile char *pRxBufferWrite;
-    bool userNeedsNotify; /**!< set this if there is no data to read
-                           * so that the user is notified when new
-                           * data arrives. */
+    volatile bool userNeedsNotify; /**!< set this if there is no data to read
+                                    * so that the user is notified when new
+                                    * data arrives. */
     struct uPortUartData_t *pNext;
 } uPortUartData_t;
+
+/** Structure describing an event.
+ */
+typedef struct {
+    int32_t uartHandle;
+    uint32_t eventBitMap;
+} uPortUartEvent_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
@@ -125,6 +139,12 @@ typedef struct uPortUartData_t {
 
 // Root of the UART linked list.
 static uPortUartData_t *gpUartDataHead = NULL;
+
+// Mutex to protect the linked list.
+static uPortMutexHandle_t gMutex = NULL;
+
+// The next UART handle to use
+static int32_t gNextHandle = 0;
 
 // Get the bus enable function for the given UART/USART.
 static const void (*gLlApbClkEnable[])(uint32_t) = {0, // This to avoid having to -1 all the time
@@ -358,17 +378,30 @@ static uPortUartData_t *gpUart[U_PORT_MAX_NUM_UARTS + 1] = {NULL};
 
 // Table to make it possible for a DMA interrupt to
 // get to the UART data.  +1 is for the usual reason.
-static uPortUartData_t *gpDmaUart[(U_PORT_MAX_NUM_DMA_ENGINES + 1) *
-                                                                   U_PORT_MAX_NUM_DMA_STREAMS] = {NULL};
+static uPortUartData_t *gpDmaUart[U_PORT_MAX_NUM_DMA_ENGINES + 1][U_PORT_MAX_NUM_DMA_STREAMS] = {NULL};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Get the next free handle.
+static int32_t nextHandleGet()
+{
+    int32_t handle = gNextHandle;
+
+    gNextHandle++;
+    // Can't have a negative handle, that means fail
+    if (gNextHandle < 0) {
+        gNextHandle = 0;
+    }
+
+    return handle;
+}
+
 // Add a UART data structure to the list.
 // The required memory is malloc()ed.
-static uPortUartData_t *pAddUart(int32_t uart,
-                                 uPortUartData_t *pUartData)
+// Note: gMutex should be locked before this is called.
+static uPortUartData_t *pAddUart(uPortUartData_t *pUartData)
 {
     uPortUartData_t **ppUartData = &gpUartDataHead;
 
@@ -385,24 +418,42 @@ static uPortUartData_t *pAddUart(int32_t uart,
         (*ppUartData)->pNext = NULL;
         // Set the UART table up to point to it
         // so that the UART interrupt can find it
-        gpUart[uart] = *ppUartData;
+        gpUart[pUartData->uart] = *ppUartData;
         // And set the other table up so that the
         // DMA interrupt can find the UART data as well
-        gpDmaUart[pUartData->pConstData->dmaEngine +
-                                                   pUartData->pConstData->dmaStream] = *ppUartData;
+        gpDmaUart[pUartData->pConstData->dmaEngine][pUartData->pConstData->dmaStream] = *ppUartData;
     }
 
     return *ppUartData;
 }
 
-// Find the UART data structure for a given UART.
-static uPortUartData_t *pGetUart(int32_t uart)
+// Find the UART data structure for a given handle.
+// Note: gMutex should be locked before this is called.
+static uPortUartData_t *pGetUartDataByHandle(int32_t handle)
 {
     uPortUartData_t *pUartData = gpUartDataHead;
     bool found = false;
 
     while (!found && (pUartData != NULL)) {
-        if (pUartData->number == uart) {
+        if (pUartData->uartHandle == handle) {
+            found = true;
+        } else {
+            pUartData = pUartData->pNext;
+        }
+    }
+
+    return pUartData;
+}
+
+// Find the UART data structure for a given UART.
+// Note: gMutex should be locked before this is called.
+static uPortUartData_t *pGetUartDataByUart(int32_t uart)
+{
+    uPortUartData_t *pUartData = gpUartDataHead;
+    bool found = false;
+
+    while (!found && (pUartData != NULL)) {
+        if (pUartData->uart == uart) {
             found = true;
         } else {
             pUartData = pUartData->pNext;
@@ -414,39 +465,104 @@ static uPortUartData_t *pGetUart(int32_t uart)
 
 // Remove a UART from the list.
 // The memory occupied is free()ed.
-static bool removeUart(int32_t uart)
+// Note: gMutex should be locked before this is called.
+static bool removeUart(uPortUartData_t *pUartData)
 {
-    uPortUartData_t **ppUartData = &gpUartDataHead;
+    uPortUartData_t *pList = gpUartDataHead;
     uPortUartData_t *pTmp = NULL;
     bool found = false;
 
     // Find it in the list
-    while (!found && (*ppUartData != NULL)) {
-        if ((*ppUartData)->number == uart) {
+    while (!found && (pList != NULL)) {
+        if (pList == pUartData) {
             found = true;
         } else {
-            pTmp = *ppUartData;
-            ppUartData = &((*ppUartData)->pNext);
+            pTmp = pList;
+            pList = pList->pNext;
         }
     }
 
     // Remove the item
-    if (*ppUartData != NULL) {
+    if (pList != NULL) {
         // Move the next pointer of the previous
         // entry on
         if (pTmp != NULL) {
-            pTmp->pNext = (*ppUartData)->pNext;
+            pTmp->pNext = pList->pNext;
         }
         // NULL the entries in the two tables
-        gpUart[uart] = NULL;
-        gpDmaUart[(*ppUartData)->pConstData->dmaEngine +
-                                                       (*ppUartData)->pConstData->dmaStream] = NULL;
-        // Free memory and NULL the pointer
-        free(*ppUartData);
-        *ppUartData = NULL;
+        gpUart[pList->uart] = NULL;
+        gpDmaUart[pList->pConstData->dmaEngine][pList->pConstData->dmaStream] = NULL;
+        // Free memory and NULL the pointer if it's the head
+        free(pList);
+        if (pList == gpUartDataHead) {
+            gpUartDataHead = NULL;
+        }
     }
 
     return found;
+}
+
+// Event handler, calls the user's event callback.
+static void eventHandler(void *pParam, size_t paramLength)
+{
+    uPortUartEvent_t *pEvent = (uPortUartEvent_t *) pParam;
+    uPortUartData_t *pUartData;
+
+    (void) paramLength;
+
+    // Don't need to worry about locking the mutex,
+    // the close() function makes sure this event handler
+    // exits cleanly and, in any case, the user callback
+    // will want to be able to access functions in this
+    // API which will need to lock the mutex.
+
+    pUartData = pGetUartDataByHandle(pEvent->uartHandle);
+    if ((pUartData != NULL) && (pUartData->pEventCallback != NULL)) {
+        pUartData->pEventCallback(pEvent->uartHandle,
+                                  pEvent->eventBitMap,
+                                  pUartData->pEventCallbackParam);
+    }
+}
+
+// Close a UART instance
+// Note: gMutex should be locked before this is called.
+static void uartClose(int32_t handle)
+{
+    uPortUartData_t *pUartData;
+    USART_TypeDef *pUartReg;
+    uint32_t dmaEngine;
+    uint32_t dmaStream;
+
+    pUartData = pGetUartDataByHandle(handle);
+    if (pUartData != NULL) {
+
+        pUartReg = gUartCfg[pUartData->uart].pReg;
+        dmaEngine = gUartCfg[pUartData->uart].dmaEngine;
+        dmaStream = gUartCfg[pUartData->uart].dmaStream;
+
+        // Disable DMA and UART/USART interrupts
+        NVIC_DisableIRQ(gpDmaStreamIrq[dmaEngine][dmaStream]);
+        NVIC_DisableIRQ(gUartCfg[pUartData->uart].irq);
+
+        // Disable DMA and USART, waiting for DMA to be
+        // disabled first according to the note in
+        // section 10.3.17 of ST's RM0090.
+        LL_DMA_DisableStream(gpDmaReg[dmaEngine], dmaStream);
+        while (LL_DMA_IsEnabledStream(gpDmaReg[dmaEngine], dmaStream)) {}
+        LL_USART_Disable(pUartReg);
+        LL_USART_DeInit(pUartReg);
+
+        // Remove the callback if there is one
+        if (pUartData->eventQueueHandle >= 0) {
+            uPortEventQueueClose(pUartData->eventQueueHandle);
+        }
+        if (pUartData->rxBufferIsMalloced) {
+            // Free the buffer
+            free(pUartData->pRxBufferStart);
+        }
+        // And finally remove the UART from the list
+        removeUart(pUartData);
+    }
 }
 
 // Deal with data already received by the DMA; this
@@ -467,7 +583,7 @@ static inline void dataIrqHandler(uPortUartData_t *pUartData,
         // is up to the end of the buffer then wrap
         // around to the DMA write pointer pointer
         uartSizeOrError = (pUartData->pRxBufferStart +
-                           U_PORT_UART_RX_BUFFER_SIZE -
+                           pUartData->rxBufferSizeBytes -
                            pUartData->pRxBufferWrite) +
                           (pRxBufferWriteDma - pUartData->pRxBufferStart);
     }
@@ -475,22 +591,23 @@ static inline void dataIrqHandler(uPortUartData_t *pUartData,
     // Move the write pointer on
     pUartData->pRxBufferWrite += uartSizeOrError;
     if (pUartData->pRxBufferWrite >= pUartData->pRxBufferStart +
-        U_PORT_UART_RX_BUFFER_SIZE) {
+        pUartData->rxBufferSizeBytes) {
         pUartData->pRxBufferWrite = pUartData->pRxBufferWrite -
-                                    U_PORT_UART_RX_BUFFER_SIZE;
+                                    pUartData->rxBufferSizeBytes;
     }
 
     // If there is new data and the user wanted to know
     // then send a message to let them know.
     if ((uartSizeOrError > 0) && pUartData->userNeedsNotify) {
-        BaseType_t yield = false;
-
-        xQueueSendFromISR((QueueHandle_t) (pUartData->queue),
-                          &uartSizeOrError, &yield);
+        if ((pUartData->eventQueueHandle >= 0) &&
+            (pUartData->eventFilter & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+            uPortUartEvent_t event;
+            event.uartHandle = pUartData->uartHandle;
+            event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
+            uPortEventQueueSendIrq(pUartData->eventQueueHandle,
+                                   &event, sizeof(event));
+        }
         pUartData->userNeedsNotify = false;
-
-        // Required for correct FreeRTOS operation
-        portEND_SWITCHING_ISR(yield);
     }
 }
 
@@ -509,7 +626,7 @@ void dmaIrqHandler(uint32_t dmaEngine, uint32_t dmaStream)
         gpLlDmaIsActiveFlagHt[dmaStream](pDmaReg)) {
         // Clear the flag
         gpLlDmaClearFlagHt[dmaStream](pDmaReg);
-        pUartData = gpDmaUart[dmaEngine + dmaStream];
+        pUartData = gpDmaUart[dmaEngine][dmaStream];
     }
 
     // Check transfer complete interrupt
@@ -517,7 +634,7 @@ void dmaIrqHandler(uint32_t dmaEngine, uint32_t dmaStream)
         gpLlDmaIsActiveFlagTc[dmaStream](pDmaReg)) {
         // Clear the flag
         gpLlDmaClearFlagTc[dmaStream](pDmaReg);
-        pUartData = gpDmaUart[dmaEngine + dmaStream];
+        pUartData = gpDmaUart[dmaEngine][dmaStream];
     }
 
     if (pUartData != NULL) {
@@ -530,7 +647,7 @@ void dmaIrqHandler(uint32_t dmaEngine, uint32_t dmaStream)
         // an Rx DMA we have to subtract the number from
         // the Rx buffer size
         pRxBufferWriteDma = pUartData->pRxBufferStart +
-                            U_PORT_UART_RX_BUFFER_SIZE -
+                            pUartData->rxBufferSizeBytes -
                             LL_DMA_GetDataLength(pDmaReg, dmaStream);
         // Deal with the data
         dataIrqHandler(pUartData, pRxBufferWriteDma);
@@ -557,7 +674,7 @@ void uartIrqHandler(uPortUartData_t *pUartData)
         // an Rx DMA we have to subtract the number from
         // the Rx buffer size
         pRxBufferWriteDma = pUartData->pRxBufferStart +
-                            U_PORT_UART_RX_BUFFER_SIZE -
+                            pUartData->rxBufferSizeBytes -
                             LL_DMA_GetDataLength(gpDmaReg[pUartCfg->dmaEngine],
                                                  pUartCfg->dmaStream);
         // Deal with the data
@@ -761,14 +878,45 @@ void DMA2_Stream7_IRQHandler()
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Initialise a UART.
-int32_t uPortUartInit(int32_t pinTx, int32_t pinRx,
-                      int32_t pinCts, int32_t pinRts,
-                      int32_t baudRate,
-                      int32_t uart,
-                      uPortQueueHandle_t *pUartQueue)
+// Initialise the UART driver.
+int32_t uPortUartInit()
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    uErrorCode_t errorCode = U_ERROR_COMMON_SUCCESS;
+
+    if (gMutex == NULL) {
+        errorCode = uPortMutexCreate(&gMutex);
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Deinitialise the UART driver.
+void uPortUartDeinit()
+{
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        // Close all the UART instances
+        while (gpUartDataHead != NULL) {
+            uartClose(gpUartDataHead->uartHandle);
+        }
+
+        // Finally delete the mutex
+        U_PORT_MUTEX_UNLOCK(gMutex);
+        uPortMutexDelete(gMutex);
+        gMutex = NULL;
+    }
+}
+
+// Open a UART instance.
+int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
+                      void *pReceiveBuffer,
+                      size_t rxBufferSizeBytes,
+                      int32_t pinTx, int32_t pinRx,
+                      int32_t pinCts, int32_t pinRts)
+{
+    uErrorCode_t handleOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     ErrorStatus platformError;
     uPortUartData_t uartData = {0};
     LL_USART_InitTypeDef usartInitStruct = {0};
@@ -781,498 +929,625 @@ int32_t uPortUartInit(int32_t pinTx, int32_t pinRx,
     IRQn_Type uartIrq;
     IRQn_Type dmaIrq;
 
-    if ((pUartQueue != NULL) && (pinRx >= 0) && (pinTx >= 0) &&
-        (uart > 0) && (uart <= U_PORT_MAX_NUM_UARTS) &&
-        (baudRate >= 0)) {
-        errorCode = U_ERROR_COMMON_SUCCESS;
-        if (pGetUart(uart) == NULL) {
-            // Create the mutex
-            errorCode = uPortMutexCreate(&(uartData.mutex));
-            if (errorCode == 0) {
+    if (gMutex != NULL) {
 
-                U_PORT_MUTEX_LOCK(uartData.mutex);
+        U_PORT_MUTEX_LOCK(gMutex);
 
-                errorCode = U_ERROR_COMMON_NO_MEMORY;
-                uartData.number = uart;
-                // Malloc memory for the read buffer
-                uartData.pRxBufferStart = (char *) malloc(U_PORT_UART_RX_BUFFER_SIZE);
+        handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((uart > 0) && (uart <= U_PORT_MAX_NUM_UARTS) &&
+            (baudRate >= 0) && (rxBufferSizeBytes > 0) &&
+            (pinRx >= 0) && (pinTx >= 0)) {
+            if (pGetUartDataByUart(uart) == NULL) {
+                handleOrErrorCode = U_ERROR_COMMON_NO_MEMORY;
+                uartData.uart = uart;
+                uartData.rxBufferIsMalloced = false;
+                uartData.pRxBufferStart = (char *) pReceiveBuffer;
+                if (uartData.pRxBufferStart == NULL) {
+                    // Malloc memory for the read buffer
+                    uartData.pRxBufferStart = (char *) malloc(rxBufferSizeBytes);
+                    uartData.rxBufferIsMalloced = true;
+                }
                 if (uartData.pRxBufferStart != NULL) {
+                    uartData.rxBufferSizeBytes = rxBufferSizeBytes;
                     uartData.pConstData = &(gUartCfg[uart]);
                     uartData.pRxBufferRead = uartData.pRxBufferStart;
                     uartData.pRxBufferWrite = uartData.pRxBufferStart;
+                    uartData.eventQueueHandle = -1;
                     uartData.userNeedsNotify = true;
 
-                    // Create the queue
-                    errorCode = uPortQueueCreate(U_PORT_UART_EVENT_QUEUE_SIZE,
-                                                 sizeof(uPortUartEventData_t),
-                                                 pUartQueue);
-                    if (errorCode == 0) {
-                        uartData.queue = *pUartQueue;
+                    pUartReg = gUartCfg[uart].pReg;
+                    dmaEngine = gUartCfg[uart].dmaEngine;
+                    pDmaReg = gpDmaReg[dmaEngine];
+                    dmaStream = gUartCfg[uart].dmaStream;
+                    dmaChannel = gUartCfg[uart].dmaChannel;
+                    uartIrq = gUartCfg[uart].irq;
+                    dmaIrq = gpDmaStreamIrq[dmaEngine][dmaStream];
 
-                        pUartReg = gUartCfg[uart].pReg;
-                        dmaEngine = gUartCfg[uart].dmaEngine;
-                        pDmaReg = gpDmaReg[dmaEngine];
-                        dmaStream = gUartCfg[uart].dmaStream;
-                        dmaChannel = gUartCfg[uart].dmaChannel;
-                        uartIrq = gUartCfg[uart].irq;
-                        dmaIrq = gpDmaStreamIrq[dmaEngine][dmaStream];
+                    // Now do the platform stuff
+                    handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
 
-                        // Now do the platform stuff
-                        errorCode = U_ERROR_COMMON_PLATFORM;
+                    // Enable clock to the UART/USART HW block
+                    gLlApbClkEnable[uart](gLlApbGrpPeriphUart[uart]);
 
-                        // Enable clock to the UART/USART HW block
-                        gLlApbClkEnable[uart](gLlApbGrpPeriphUart[uart]);
+                    // Enable clock to the DMA HW block (all DMAs
+                    // are on bus 1)
+                    LL_AHB1_GRP1_EnableClock(gLlApbGrpPeriphDma[dmaEngine]);
 
-                        // Enable clock to the DMA HW block (all DMAs
-                        // are on bus 1)
-                        LL_AHB1_GRP1_EnableClock(gLlApbGrpPeriphDma[dmaEngine]);
+                    // Configure the GPIOs
+                    // Note, using the LL driver rather than our
+                    // driver or the HAL driver here partly because
+                    // the example code does that and also
+                    // because we need to enable the alternate
+                    // function for these pins.
 
-                        // Configure the GPIOs
-                        // Note, using the LL driver rather than our
-                        // driver or the HAL driver here partly because
-                        // the example code does that and also
-                        // because we need to enable the alternate
-                        // function for these pins.
+                    // Enable clock to the registers for the Tx/Rx pins
+                    uPortPrivateGpioEnableClock(pinTx);
+                    uPortPrivateGpioEnableClock(pinRx);
+                    // The Pin field is a bitmap so we can do Tx and Rx
+                    // at the same time as they are always on the same port
+                    gpioInitStruct.Pin = (1U << U_PORT_STM32F4_GPIO_PIN(pinTx)) |
+                                         (1U << U_PORT_STM32F4_GPIO_PIN(pinRx));
+                    gpioInitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+                    gpioInitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+                    // Output type doesn't matter, it is overridden by
+                    // the alternate function
+                    gpioInitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+                    gpioInitStruct.Pull = LL_GPIO_PULL_UP;
+                    gpioInitStruct.Alternate = gGpioAf[uart];
+                    platformError = LL_GPIO_Init(pUPortPrivateGpioGetReg(pinTx),
+                                                 &gpioInitStruct);
 
-                        // Enable clock to the registers for the Tx/Rx pins
-                        uPortPrivateGpioEnableClock(pinTx);
-                        uPortPrivateGpioEnableClock(pinRx);
-                        // The Pin field is a bitmap so we can do Tx and Rx
-                        // at the same time as they are always on the same port
-                        gpioInitStruct.Pin = (1U << U_PORT_STM32F4_GPIO_PIN(pinTx)) |
-                                             (1U << U_PORT_STM32F4_GPIO_PIN(pinRx));
-                        gpioInitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-                        gpioInitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
-                        // Output type doesn't matter, it is overridden by
-                        // the alternate function
-                        gpioInitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-                        gpioInitStruct.Pull = LL_GPIO_PULL_UP;
-                        gpioInitStruct.Alternate = gGpioAf[uart];
-                        platformError = LL_GPIO_Init(pUPortPrivateGpioGetReg(pinTx),
+                    //  Configure RTS if present
+                    if ((pinRts >= 0) && (platformError == SUCCESS)) {
+                        uPortPrivateGpioEnableClock(pinRts);
+                        gpioInitStruct.Pin = 1U << U_PORT_STM32F4_GPIO_PIN(pinRts);
+                        platformError = LL_GPIO_Init(pUPortPrivateGpioGetReg(pinRts),
                                                      &gpioInitStruct);
+                    }
 
-                        //  Configure RTS if present
-                        if ((pinRts >= 0) && (platformError == SUCCESS)) {
-                            uPortPrivateGpioEnableClock(pinRts);
-                            gpioInitStruct.Pin = 1U << U_PORT_STM32F4_GPIO_PIN(pinRts);
-                            platformError = LL_GPIO_Init(pUPortPrivateGpioGetReg(pinRts),
-                                                         &gpioInitStruct);
-                        }
+                    //  Configure CTS if present
+                    if ((pinCts >= 0) && (platformError == SUCCESS)) {
+                        uPortPrivateGpioEnableClock(pinCts);
+                        gpioInitStruct.Pin = 1U << U_PORT_STM32F4_GPIO_PIN(pinCts);
+                        // TODO: the u-blox C030-R412M board requires a pull-down here
+                        gpioInitStruct.Pull = LL_GPIO_PULL_DOWN;
+                        platformError = LL_GPIO_Init(pUPortPrivateGpioGetReg(pinCts),
+                                                     &gpioInitStruct);
+                    }
 
-                        //  Configure CTS if present
-                        if ((pinCts >= 0) && (platformError == SUCCESS)) {
-                            uPortPrivateGpioEnableClock(pinCts);
-                            gpioInitStruct.Pin = 1U << U_PORT_STM32F4_GPIO_PIN(pinCts);
-                            // TODO: the u-blox C030-R412M board requires a pull-down here
-                            gpioInitStruct.Pull = LL_GPIO_PULL_DOWN;
-                            platformError = LL_GPIO_Init(pUPortPrivateGpioGetReg(pinCts),
-                                                         &gpioInitStruct);
-                        }
+                    // Configure DMA
+                    if (platformError == SUCCESS) {
+                        // Set the channel on our DMA/Stream
+                        LL_DMA_SetChannelSelection(pDmaReg, dmaStream,
+                                                   gLlDmaChannel[dmaChannel]);
+                        // Towards RAM
+                        LL_DMA_SetDataTransferDirection(pDmaReg, dmaStream,
+                                                        LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+                        // Low priority
+                        LL_DMA_SetStreamPriorityLevel(pDmaReg, dmaStream,
+                                                      LL_DMA_PRIORITY_LOW);
+                        // Circular
+                        LL_DMA_SetMode(pDmaReg, dmaStream, LL_DMA_MODE_CIRCULAR);
+                        // Byte-wise transfers from a fixed
+                        // register in a peripheral to an
+                        // incrementing location in memory
+                        LL_DMA_SetPeriphIncMode(pDmaReg, dmaStream,
+                                                LL_DMA_PERIPH_NOINCREMENT);
+                        LL_DMA_SetMemoryIncMode(pDmaReg, dmaStream,
+                                                LL_DMA_MEMORY_INCREMENT);
+                        LL_DMA_SetPeriphSize(pDmaReg, dmaStream,
+                                             LL_DMA_PDATAALIGN_BYTE);
+                        LL_DMA_SetMemorySize(pDmaReg, dmaStream,
+                                             LL_DMA_MDATAALIGN_BYTE);
+                        // Not FIFO mode, whatever that is
+                        LL_DMA_DisableFifoMode(pDmaReg, dmaStream);
 
-                        // Configure DMA
-                        if (platformError == SUCCESS) {
-                            // Set the channel on our DMA/Stream
-                            LL_DMA_SetChannelSelection(pDmaReg, dmaStream,
-                                                       gLlDmaChannel[dmaChannel]);
-                            // Towards RAM
-                            LL_DMA_SetDataTransferDirection(pDmaReg, dmaStream,
-                                                            LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-                            // Low priority
-                            LL_DMA_SetStreamPriorityLevel(pDmaReg, dmaStream,
-                                                          LL_DMA_PRIORITY_LOW);
-                            // Circular
-                            LL_DMA_SetMode(pDmaReg, dmaStream, LL_DMA_MODE_CIRCULAR);
-                            // Byte-wise transfers from a fixed
-                            // register in a peripheral to an
-                            // incrementing location in memory
-                            LL_DMA_SetPeriphIncMode(pDmaReg, dmaStream,
-                                                    LL_DMA_PERIPH_NOINCREMENT);
-                            LL_DMA_SetMemoryIncMode(pDmaReg, dmaStream,
-                                                    LL_DMA_MEMORY_INCREMENT);
-                            LL_DMA_SetPeriphSize(pDmaReg, dmaStream,
-                                                 LL_DMA_PDATAALIGN_BYTE);
-                            LL_DMA_SetMemorySize(pDmaReg, dmaStream,
-                                                 LL_DMA_MDATAALIGN_BYTE);
-                            // Not FIFO mode, whatever that is
-                            LL_DMA_DisableFifoMode(pDmaReg, dmaStream);
+                        // Attach the DMA to the UART at one end
+                        LL_DMA_SetPeriphAddress(pDmaReg, dmaStream,
+                                                (uint32_t) & (pUartReg->DR));
 
-                            // Attach the DMA to the UART at one end
-                            LL_DMA_SetPeriphAddress(pDmaReg, dmaStream,
-                                                    (uint32_t) & (pUartReg->DR));
+                        // ...and to the RAM buffer at the other end
+                        LL_DMA_SetMemoryAddress(pDmaReg, dmaStream,
+                                                (uint32_t) (uartData.pRxBufferStart));
+                        LL_DMA_SetDataLength(pDmaReg, dmaStream,
+                                             uartData.rxBufferSizeBytes);
 
-                            // ...and to the RAM buffer at the other end
-                            LL_DMA_SetMemoryAddress(pDmaReg, dmaStream,
-                                                    (uint32_t) (uartData.pRxBufferStart));
-                            LL_DMA_SetDataLength(pDmaReg, dmaStream,
-                                                 U_PORT_UART_RX_BUFFER_SIZE);
+                        // Clear all the DMA flags and the DMA pending IRQ from any previous
+                        // session first, or an unexpected interrupt may result
+                        gpLlDmaClearFlagHt[dmaStream](pDmaReg);
+                        gpLlDmaClearFlagTc[dmaStream](pDmaReg);
+                        gpLlDmaClearFlagTe[dmaStream](pDmaReg);
+                        gpLlDmaClearFlagDme[dmaStream](pDmaReg);
+                        gpLlDmaClearFlagFe[dmaStream](pDmaReg);
+                        NVIC_ClearPendingIRQ(dmaIrq);
 
-                            // Clear all the DMA flags and the DMA pending IRQ from any previous
-                            // session first, or an unexpected interrupt may result
-                            gpLlDmaClearFlagHt[dmaStream](pDmaReg);
-                            gpLlDmaClearFlagTc[dmaStream](pDmaReg);
-                            gpLlDmaClearFlagTe[dmaStream](pDmaReg);
-                            gpLlDmaClearFlagDme[dmaStream](pDmaReg);
-                            gpLlDmaClearFlagFe[dmaStream](pDmaReg);
-                            NVIC_ClearPendingIRQ(dmaIrq);
+                        // Enable half full and transmit complete DMA interrupts
+                        LL_DMA_EnableIT_HT(pDmaReg, dmaStream);
+                        LL_DMA_EnableIT_TC(pDmaReg, dmaStream);
 
-                            // Enable half full and transmit complete DMA interrupts
-                            LL_DMA_EnableIT_HT(pDmaReg, dmaStream);
-                            LL_DMA_EnableIT_TC(pDmaReg, dmaStream);
+                        // Set DMA priority
+                        NVIC_SetPriority(dmaIrq,
+                                         NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
 
-                            // Set DMA priority
-                            NVIC_SetPriority(dmaIrq,
-                                             NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
+                        // Go!
+                        NVIC_EnableIRQ(dmaIrq);
 
-                            // Go!
-                            NVIC_EnableIRQ(dmaIrq);
-
-                            // Initialise the UART/USART
-                            usartInitStruct.BaudRate = baudRate;
-                            usartInitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
-                            usartInitStruct.StopBits = LL_USART_STOPBITS_1;
-                            usartInitStruct.Parity = LL_USART_PARITY_NONE;
-                            // Both transmit and received enabled
-                            usartInitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
-                            // TODO: need to connect flow control to DMA?
-                            usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
-                            if ((pinRts >= 0) && (pinCts >= 0)) {
-                                usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_RTS_CTS;
+                        // Initialise the UART/USART
+                        usartInitStruct.BaudRate = baudRate;
+                        usartInitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
+                        usartInitStruct.StopBits = LL_USART_STOPBITS_1;
+                        usartInitStruct.Parity = LL_USART_PARITY_NONE;
+                        // Both transmit and received enabled
+                        usartInitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
+                        usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+                        if ((pinRts >= 0) && (pinCts >= 0)) {
+                            usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_RTS_CTS;
+                        } else {
+                            if (pinRts >= 0) {
+                                usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_RTS;
                             } else {
-                                if (pinRts >= 0) {
-                                    usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_RTS;
-                                } else {
-                                    usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_CTS;
-                                }
+                                usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_CTS;
                             }
-                            usartInitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
-                            platformError = LL_USART_Init(pUartReg, &usartInitStruct);
                         }
+                        usartInitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+                        platformError = LL_USART_Init(pUartReg, &usartInitStruct);
+                    }
 
-                        // Connect it all together
-                        if (platformError == SUCCESS) {
-                            // Asynchronous UART/USART with DMA on the receive
-                            // and include only the idle line interrupt,
-                            // DMA does the rest
-                            LL_USART_ConfigAsyncMode(pUartReg);
-                            LL_USART_EnableDMAReq_RX(pUartReg);
-                            LL_USART_EnableIT_IDLE(pUartReg);
+                    // Connect it all together
+                    if (platformError == SUCCESS) {
+                        // Asynchronous UART/USART with DMA on the receive
+                        // and include only the idle line interrupt,
+                        // DMA does the rest
+                        LL_USART_ConfigAsyncMode(pUartReg);
+                        LL_USART_EnableDMAReq_RX(pUartReg);
+                        LL_USART_EnableIT_IDLE(pUartReg);
 
-                            // Enable the UART/USART interrupt
-                            NVIC_SetPriority(uartIrq,
-                                             NVIC_EncodePriority(NVIC_GetPriorityGrouping(),
-                                                                 5, 1));
-                            LL_USART_ClearFlag_IDLE(pUartReg);
-                            NVIC_ClearPendingIRQ(uartIrq);
-                            NVIC_EnableIRQ(uartIrq);
+                        // Enable the UART/USART interrupt
+                        NVIC_SetPriority(uartIrq,
+                                         NVIC_EncodePriority(NVIC_GetPriorityGrouping(),
+                                                             5, 1));
+                        LL_USART_ClearFlag_IDLE(pUartReg);
+                        NVIC_ClearPendingIRQ(uartIrq);
+                        NVIC_EnableIRQ(uartIrq);
 
-                            // Enable DMA and UART/USART
-                            LL_DMA_EnableStream(pDmaReg, dmaStream);
-                            LL_USART_Enable(pUartReg);
-                        }
+                        // Enable DMA and UART/USART
+                        LL_DMA_EnableStream(pDmaReg, dmaStream);
+                        LL_USART_Enable(pUartReg);
+                    }
 
-                        // Finally, add the UART to the list
-                        if (platformError == SUCCESS) {
-                            errorCode = U_ERROR_COMMON_NO_MEMORY;
-                            if (pAddUart(uart, &uartData) != NULL) {
-                                errorCode = U_ERROR_COMMON_SUCCESS;
-                            }
+                    // Finally, add the UART to the list
+                    if (platformError == SUCCESS) {
+                        handleOrErrorCode = U_ERROR_COMMON_NO_MEMORY;
+                        uartData.uartHandle = nextHandleGet();
+                        if (pAddUart(&uartData) != NULL) {
+                            handleOrErrorCode = uartData.uartHandle;
                         }
                     }
                 }
 
-                U_PORT_MUTEX_UNLOCK(uartData.mutex);
-
                 // If we failed, clean up
-                if (errorCode != 0) {
-                    uPortMutexDelete(uartData.mutex);
-                    free(uartData.pRxBufferStart);
+                if (handleOrErrorCode < 0) {
+                    if (uartData.rxBufferIsMalloced) {
+                        free(uartData.pRxBufferStart);
+                    }
                 }
             }
         }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
-    return (int32_t) errorCode;
+    return (int32_t) handleOrErrorCode;
 }
 
-// Shutdown a UART.
-int32_t uPortUartDeinit(int32_t uart)
+// Close a UART instance.
+void uPortUartClose(int32_t handle)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortUartData_t *pUartData;
-    USART_TypeDef *pUartReg;
-    uint32_t dmaEngine;
-    uint32_t dmaStream;
+    if (gMutex != NULL) {
 
-    if ((uart > 0) && (uart <= U_PORT_MAX_NUM_UARTS)) {
-        pUartData = pGetUart(uart);
-        errorCode = U_ERROR_COMMON_SUCCESS;
-        if (pUartData != NULL) {
+        U_PORT_MUTEX_LOCK(gMutex);
 
-            pUartReg = gUartCfg[uart].pReg;
-            dmaEngine = gUartCfg[uart].dmaEngine;
-            dmaStream = gUartCfg[uart].dmaStream;
-            // No need to lock the mutex, we need to delete it
-            // and we're not allowed to delete a locked mutex.
-            // The caller needs to make sure that no read/write
-            // is in progress when this function is called.
+        uartClose(handle);
 
-            // Disable DMA and UART/USART interrupts
-            NVIC_DisableIRQ(gpDmaStreamIrq[dmaEngine][dmaStream]);
-            NVIC_DisableIRQ(gUartCfg[uart].irq);
-
-            // Disable DMA and USART, waiting for DMA to be
-            // disabled first according to the note in
-            // section 10.3.17 of ST's RM0090.
-            LL_DMA_DisableStream(gpDmaReg[dmaEngine], dmaStream);
-            while (LL_DMA_IsEnabledStream(gpDmaReg[dmaEngine], dmaStream)) {}
-            LL_USART_Disable(pUartReg);
-            LL_USART_DeInit(pUartReg);
-
-            // Delete the queue
-            uPortQueueDelete(pUartData->queue);
-            // Free the buffer
-            free(pUartData->pRxBufferStart);
-            // Delete the mutex
-            uPortMutexDelete(pUartData->mutex);
-            // And finally remove the UART from the list
-            removeUart(uart);
-            errorCode = U_ERROR_COMMON_SUCCESS;
-        }
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
-
-    return (int32_t) errorCode;
-}
-
-// Push a UART event onto the UART event queue.
-int32_t uPortUartEventSend(const uPortQueueHandle_t queueHandle,
-                           int32_t sizeBytesOrError)
-{
-    int32_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortUartEventData_t uartSizeOrError;
-
-    if (queueHandle != NULL) {
-        uartSizeOrError = sizeBytesOrError;
-        errorCode = uPortQueueSend(queueHandle,
-                                   (void *) &uartSizeOrError);
-    }
-
-    return errorCode;
-}
-
-// Receive a UART event, blocking until one turns up.
-int32_t uPortUartEventReceive(const uPortQueueHandle_t queueHandle)
-{
-    int32_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortUartEventData_t uartSizeOrError;
-
-    if (queueHandle != NULL) {
-        sizeOrErrorCode = U_ERROR_COMMON_PLATFORM;
-        if (uPortQueueReceive(queueHandle,
-                              &uartSizeOrError) == 0) {
-            sizeOrErrorCode = uartSizeOrError;
-        }
-    }
-
-    return sizeOrErrorCode;
-}
-
-// Receive a UART event with a timeout.
-int32_t uPortUartEventTryReceive(const uPortQueueHandle_t queueHandle,
-                                 int32_t waitMs)
-{
-    int32_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortUartEventData_t uartSizeOrError;
-
-    if (queueHandle != NULL) {
-        sizeOrErrorCode = U_ERROR_COMMON_TIMEOUT;
-        if (uPortQueueTryReceive(queueHandle, waitMs,
-                                 &uartSizeOrError) == 0) {
-            sizeOrErrorCode = uartSizeOrError;
-        }
-    }
-
-    return sizeOrErrorCode;
 }
 
 // Get the number of bytes waiting in the receive buffer.
-int32_t uPortUartGetReceiveSize(int32_t uart)
+int32_t uPortUartGetReceiveSize(int32_t handle)
 {
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortUartData_t *pUartData = pGetUart(uart);
+    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    uPortUartData_t *pUartData;
     const volatile char *pRxBufferWrite;
 
-    if (pUartData != NULL) {
+    if (gMutex != NULL) {
 
-        U_PORT_MUTEX_LOCK(pUartData->mutex);
+        U_PORT_MUTEX_LOCK(gMutex);
 
-        pRxBufferWrite = pUartData->pRxBufferWrite;
-        sizeOrErrorCode = 0;
-        if (pUartData->pRxBufferRead < pRxBufferWrite) {
-            // Read pointer is behind write, bytes
-            // received is simply the difference
-            sizeOrErrorCode = pRxBufferWrite - pUartData->pRxBufferRead;
-        } else if (pUartData->pRxBufferRead > pRxBufferWrite) {
-            // Read pointer is ahead of write, bytes received
-            // is from the read pointer up to the end of the buffer
-            // then wrap around to the write pointer
-            sizeOrErrorCode = (pUartData->pRxBufferStart +
-                               U_PORT_UART_RX_BUFFER_SIZE -
-                               pUartData->pRxBufferRead) +
-                              (pRxBufferWrite - pUartData->pRxBufferStart);
+        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pGetUartDataByHandle(handle);
+        if (pUartData != NULL) {
+            pRxBufferWrite = pUartData->pRxBufferWrite;
+            sizeOrErrorCode = 0;
+            if (pUartData->pRxBufferRead < pRxBufferWrite) {
+                // Read pointer is behind write, bytes
+                // received is simply the difference
+                sizeOrErrorCode = pRxBufferWrite - pUartData->pRxBufferRead;
+            } else if (pUartData->pRxBufferRead > pRxBufferWrite) {
+                // Read pointer is ahead of write, bytes received
+                // is from the read pointer up to the end of the buffer
+                // then wrap around to the write pointer
+                sizeOrErrorCode = (pUartData->pRxBufferStart +
+                                   pUartData->rxBufferSizeBytes -
+                                   pUartData->pRxBufferRead) +
+                                  (pRxBufferWrite - pUartData->pRxBufferStart);
+            }
+
+            // If there's nothing left waiting, need to inform
+            // the user when something arrives
+            if (sizeOrErrorCode == 0) {
+                pUartData->userNeedsNotify = true;
+            }
         }
 
-        // If there's nothing waiting, need to information
-        // the user when something arrives
-        if (sizeOrErrorCode) {
-            pUartData->userNeedsNotify = true;
-        }
-
-        U_PORT_MUTEX_UNLOCK(pUartData->mutex);
-
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return (int32_t) sizeOrErrorCode;
 }
 
 // Read from the given UART interface.
-int32_t uPortUartRead(int32_t uart, char *pBuffer,
+int32_t uPortUartRead(int32_t handle, void *pBuffer,
                       size_t sizeBytes)
 {
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     size_t thisSize;
-    uPortUartData_t *pUartData = pGetUart(uart);
+    uPortUartData_t *pUartData;
     const volatile char *pRxBufferWrite;
 
-    if (pUartData != NULL) {
+    if (gMutex != NULL) {
 
-        U_PORT_MUTEX_LOCK(pUartData->mutex);
+        U_PORT_MUTEX_LOCK(gMutex);
 
-        sizeOrErrorCode = 0;
-        pRxBufferWrite = pUartData->pRxBufferWrite;
-        if (pUartData->pRxBufferRead < pRxBufferWrite) {
-            // Read pointer is behind write, just take as much
-            // of the difference as the user allows
-            sizeOrErrorCode = pRxBufferWrite - pUartData->pRxBufferRead;
-            if (sizeOrErrorCode > sizeBytes) {
-                sizeOrErrorCode = sizeBytes;
-            }
-            memcpy(pBuffer, pUartData->pRxBufferRead,
-                   sizeOrErrorCode);
-            // Move the pointer on
-            pUartData->pRxBufferRead += sizeOrErrorCode;
-        } else if (pUartData->pRxBufferRead > pRxBufferWrite) {
-            // Read pointer is ahead of write, first take up to the
-            // end of the buffer as far as the user allows
-            thisSize = pUartData->pRxBufferStart +
-                       U_PORT_UART_RX_BUFFER_SIZE -
-                       pUartData->pRxBufferRead;
-            if (thisSize > sizeBytes) {
-                thisSize = sizeBytes;
-            }
-            memcpy(pBuffer, pUartData->pRxBufferRead, thisSize);
-            pBuffer += thisSize;
-            sizeBytes -= thisSize;
-            sizeOrErrorCode = thisSize;
-            // Move the read pointer on, wrapping as necessary
-            pUartData->pRxBufferRead += thisSize;
-            if (pUartData->pRxBufferRead >= pUartData->pRxBufferStart +
-                U_PORT_UART_RX_BUFFER_SIZE) {
-                pUartData->pRxBufferRead = pUartData->pRxBufferStart;
-            }
-            // If there is still room in the user buffer then
-            // carry on taking up to the write pointer
-            if (sizeBytes > 0) {
-                thisSize = pRxBufferWrite - pUartData->pRxBufferRead;
+        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pGetUartDataByHandle(handle);
+        if (pUartData != NULL) {
+            pRxBufferWrite = pUartData->pRxBufferWrite;
+            if (pUartData->pRxBufferRead < pRxBufferWrite) {
+                // Read pointer is behind write, just take as much
+                // of the difference as the user allows
+                sizeOrErrorCode = pRxBufferWrite - pUartData->pRxBufferRead;
+                if (sizeOrErrorCode > sizeBytes) {
+                    sizeOrErrorCode = sizeBytes;
+                }
+                memcpy(pBuffer, pUartData->pRxBufferRead,
+                       sizeOrErrorCode);
+                // Move the pointer on
+                pUartData->pRxBufferRead += sizeOrErrorCode;
+            } else if (pUartData->pRxBufferRead > pRxBufferWrite) {
+                // Read pointer is ahead of write, first take up to the
+                // end of the buffer as far as the user allows
+                thisSize = pUartData->pRxBufferStart +
+                           pUartData->rxBufferSizeBytes -
+                           pUartData->pRxBufferRead;
                 if (thisSize > sizeBytes) {
                     thisSize = sizeBytes;
                 }
                 memcpy(pBuffer, pUartData->pRxBufferRead, thisSize);
-                pBuffer += thisSize;
+                pBuffer = (char *) pBuffer + thisSize;
                 sizeBytes -= thisSize;
-                sizeOrErrorCode += thisSize;
-                // Move the read pointer on
+                sizeOrErrorCode = thisSize;
+                // Move the read pointer on, wrapping as necessary
                 pUartData->pRxBufferRead += thisSize;
+                if (pUartData->pRxBufferRead >= pUartData->pRxBufferStart +
+                    pUartData->rxBufferSizeBytes) {
+                    pUartData->pRxBufferRead = pUartData->pRxBufferStart;
+                }
+                // If there is still room in the user buffer then
+                // carry on taking up to the write pointer
+                if (sizeBytes > 0) {
+                    thisSize = pRxBufferWrite - pUartData->pRxBufferRead;
+                    if (thisSize > sizeBytes) {
+                        thisSize = sizeBytes;
+                    }
+                    memcpy(pBuffer, pUartData->pRxBufferRead, thisSize);
+                    pBuffer = (char *) pBuffer + thisSize;
+                    sizeBytes -= thisSize;
+                    sizeOrErrorCode += thisSize;
+                    // Move the read pointer on
+                    pUartData->pRxBufferRead += thisSize;
+                }
+            } else {
+                sizeOrErrorCode = 0;
+            }
+
+            // If everything has been read, a notification
+            // is needed for the next one
+            if (pUartData->pRxBufferRead == pRxBufferWrite) {
+                pUartData->userNeedsNotify = true;
             }
         }
 
-        // If everything has been read, a notification
-        // is needed for the next one
-        if (pUartData->pRxBufferRead == pRxBufferWrite) {
-            pUartData->userNeedsNotify = true;
-        }
-
-        U_PORT_MUTEX_UNLOCK(pUartData->mutex);
-
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return (int32_t) sizeOrErrorCode;
 }
 
 // Write to the given UART interface.
-int32_t uPortUartWrite(int32_t uart,
-                       const char *pBuffer,
+int32_t uPortUartWrite(int32_t handle,
+                       const void *pBuffer,
                        size_t sizeBytes)
 {
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortUartData_t *pUartData = pGetUart(uart);
+    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    uPortUartData_t *pUartData;
     USART_TypeDef *pReg;
 
-    if (pUartData != NULL) {
+    if (gMutex != NULL) {
 
-        U_PORT_MUTEX_LOCK(pUartData->mutex);
+        U_PORT_MUTEX_LOCK(gMutex);
 
-        pReg = gUartCfg[uart].pReg;
-        sizeOrErrorCode = sizeBytes;
+        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pGetUartDataByHandle(handle);
+        if (pUartData != NULL) {
+            pReg = gUartCfg[pUartData->uart].pReg;
+            sizeOrErrorCode = sizeBytes;
 
-        // Do the blocking send
-        while (sizeBytes > 0) {
-            LL_USART_TransmitData8(pReg, (uint8_t) *pBuffer);
-            while (!LL_USART_IsActiveFlag_TXE(pReg)) {}
-            pBuffer++;
-            sizeBytes--;
+            // Do the blocking send
+            while (sizeBytes > 0) {
+                LL_USART_TransmitData8(pReg, (uint8_t) * ((const char *) pBuffer));
+                while (!LL_USART_IsActiveFlag_TXE(pReg)) {}
+                (const char *) pBuffer++;
+                sizeBytes--;
+            }
+            while (!LL_USART_IsActiveFlag_TC(pReg)) {}
         }
-        while (!LL_USART_IsActiveFlag_TC(pReg)) {}
 
-        U_PORT_MUTEX_UNLOCK(pUartData->mutex);
-
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return (int32_t) sizeOrErrorCode;
 }
 
-// Determine if RTS flow control is enabled.
-bool uPortIsRtsFlowControlEnabled(int32_t uart)
+// Set an event callback.
+int32_t uPortUartEventCallbackSet(int32_t handle,
+                                  uint32_t filter,
+                                  void (*pFunction)(int32_t,
+                                                    uint32_t,
+                                                    void *),
+                                  void *pParam,
+                                  size_t stackSizeBytes,
+                                  int32_t priority)
 {
-    uPortUartData_t *pUartData = pGetUart(uart);
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    uPortUartData_t *pUartData;
+    char name[16];
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pGetUartDataByHandle(handle);
+        if ((pUartData != NULL) && (pUartData->eventQueueHandle < 0) &&
+            (filter != 0) && (pFunction != NULL)) {
+            // Open an event queue to eventHandler()
+            // which will receive uPortUartEvent_t
+            // and give it a useful name for debug purposes
+            snprintf(name, sizeof(name), "eventUart_%d", (int) pUartData->uart);
+            errorCode = uPortEventQueueOpen(eventHandler, name,
+                                            sizeof(uPortUartEvent_t),
+                                            stackSizeBytes,
+                                            priority,
+                                            U_PORT_UART_EVENT_QUEUE_SIZE);
+            if (errorCode >= 0) {
+                pUartData->eventQueueHandle = errorCode;
+                pUartData->pEventCallback = pFunction;
+                pUartData->pEventCallbackParam = pParam;
+                pUartData->eventFilter = filter;
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Remove an event callback.
+void uPortUartEventCallbackRemove(int32_t handle)
+{
+    uPortUartData_t *pUartData;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        pUartData = pGetUartDataByHandle(handle);
+        if ((pUartData != NULL) &&
+            (pUartData->eventQueueHandle >= 0)) {
+            // Close the event queue
+            uPortEventQueueClose(pUartData->eventQueueHandle);
+            pUartData->eventQueueHandle = -1;
+            pUartData->pEventCallback = NULL;
+            pUartData->eventFilter = 0;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+}
+
+// Get the callback filter bit-mask.
+uint32_t uPortUartEventCallbackFilterGet(int32_t handle)
+{
+    uint32_t filter = 0;
+    uPortUartData_t *pUartData;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        pUartData = pGetUartDataByHandle(handle);
+        if (pUartData != NULL) {
+            if (pUartData->eventQueueHandle >= 0) {
+                filter = pUartData->eventFilter;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return filter;
+}
+
+// Change the callback filter bit-mask.
+int32_t uPortUartEventCallbackFilterSet(int32_t handle,
+                                        uint32_t filter)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    uPortUartData_t *pUartData;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pGetUartDataByHandle(handle);
+        if ((pUartData != NULL) && (filter != 0) &&
+            (pUartData->eventQueueHandle >= 0)) {
+            pUartData->eventFilter = filter;
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Send an event to the callback.
+int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    uPortUartData_t *pUartData;
+    uPortUartEvent_t event;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pGetUartDataByHandle(handle);
+        if ((pUartData != NULL) &&
+            (pUartData->eventQueueHandle >= 0) &&
+            // The only event we support right now
+            (eventBitMap == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+            event.uartHandle = handle;
+            event.eventBitMap = eventBitMap;
+            errorCode = uPortEventQueueSend(pUartData->eventQueueHandle,
+                                            &event, sizeof(event));
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Return true if we're in an event callback.
+bool uPortUartEventIsCallback(int32_t handle)
+{
+    uPortUartData_t *pUartData;
+    bool isEventCallback = false;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        pUartData = pGetUartDataByHandle(handle);
+        if ((pUartData != NULL) &&
+            (pUartData->eventQueueHandle >= 0)) {
+            isEventCallback = uPortEventQueueIsTask(pUartData->eventQueueHandle);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return isEventCallback;
+}
+
+// Get the stack high watermark for the task on the event queue.
+int32_t uPortUartEventStackMinFree(int32_t handle)
+{
+    int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uPortUartData_t *pUartData;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pGetUartDataByHandle(handle);
+        if ((pUartData != NULL) &&
+            (pUartData->eventQueueHandle >= 0)) {
+            sizeOrErrorCode = uPortEventQueueStackMinFree(pUartData->eventQueueHandle);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return sizeOrErrorCode;
+}
+
+// Determine if RTS flow control is enabled.
+bool uPortUartIsRtsFlowControlEnabled(int32_t handle)
+{
+    uPortUartData_t *pUartData;
     bool rtsFlowControlIsEnabled = false;
     uint32_t flowControlStatus;
 
-    if (pUartData != NULL) {
-        // No need to lock the mutex, this is atomic
-        flowControlStatus = LL_USART_GetHWFlowCtrl(gUartCfg[uart].pReg);
-        if ((flowControlStatus == LL_USART_HWCONTROL_RTS) ||
-            (flowControlStatus == LL_USART_HWCONTROL_RTS_CTS)) {
-            rtsFlowControlIsEnabled = true;
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        pUartData = pGetUartDataByHandle(handle);
+        if (pUartData != NULL) {
+            flowControlStatus = LL_USART_GetHWFlowCtrl(gUartCfg[pUartData->uart].pReg);
+            if ((flowControlStatus == LL_USART_HWCONTROL_RTS) ||
+                (flowControlStatus == LL_USART_HWCONTROL_RTS_CTS)) {
+                rtsFlowControlIsEnabled = true;
+            }
         }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return rtsFlowControlIsEnabled;
 }
 
 // Determine if CTS flow control is enabled.
-bool uPortIsCtsFlowControlEnabled(int32_t uart)
+bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
 {
-    uPortUartData_t *pUartData = pGetUart(uart);
+    uPortUartData_t *pUartData;
     bool ctsFlowControlIsEnabled = false;
     uint32_t flowControlStatus;
 
-    if (pUartData != NULL) {
-        // No need to lock the mutex, this is atomic
-        flowControlStatus = LL_USART_GetHWFlowCtrl(gUartCfg[uart].pReg);
-        if ((flowControlStatus == LL_USART_HWCONTROL_CTS) ||
-            (flowControlStatus == LL_USART_HWCONTROL_RTS_CTS)) {
-            ctsFlowControlIsEnabled = true;
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        pUartData = pGetUartDataByHandle(handle);
+        if (pUartData != NULL) {
+            // No need to lock the mutex, this is atomic
+            flowControlStatus = LL_USART_GetHWFlowCtrl(gUartCfg[pUartData->uart].pReg);
+            if ((flowControlStatus == LL_USART_HWCONTROL_CTS) ||
+                (flowControlStatus == LL_USART_HWCONTROL_RTS_CTS)) {
+                ctsFlowControlIsEnabled = true;
+            }
         }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
     return ctsFlowControlIsEnabled;

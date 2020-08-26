@@ -97,6 +97,12 @@
 # define U_CFG_TEST_BAUD_RATE 115200
 #endif
 
+/** The length of UART buffer to use during testing.
+ */
+#ifndef U_CFG_TEST_UART_BUFFER_LENGTH_BYTES
+# define U_CFG_TEST_UART_BUFFER_LENGTH_BYTES 1024
+#endif
+
 /** Tx pin for UART testing: should be connected either to the
  * Rx UART pin or to U_CFG_TEST_PIN_UART_1_RXD if that is
  * not -1.

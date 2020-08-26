@@ -32,20 +32,18 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_PORT_UART_RX_BUFFER_SIZE
-/** The size of ring buffer to use for receive. For instance,
- * 1024 bytes would be sufficient to accommodate the maximum length
- * of a single AT response from a cellular module.
- */
-# define U_PORT_UART_RX_BUFFER_SIZE 1024
-#endif
-
 #ifndef U_PORT_UART_EVENT_QUEUE_SIZE
-/** The UART event queue size, in units of
- * sizeof(uPortUartEventData_t).
+/** The UART event queue size.
  */
 # define U_PORT_UART_EVENT_QUEUE_SIZE 20
 #endif
+
+/** The event which means that received data is available; this
+ * will be sent if the receive buffer goes from empty to containing
+ * one or more bytes of received data. It is used as a bit-mask.
+ * It is the only U_PORT_UART_EVENT_BITMASK_xxx currently supported.
+ */
+#define U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED 0x01
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -55,129 +53,235 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Initialise a UART.  If the UART has already been initialised
- * this function returns success without doing anything.
+/** Initialise UART handling.  THERE IS NO NEED FOR THE USER
+ * TO CALL THIS: it is called by uPortInit().
  *
- * @param pinTx           the transmit (output) pin, a positive
- *                        integer.
- * @param pinRx           the receive (input) pin, a positive
- *                        integer.
- * @param pinCts          the CTS (input) flow control pin, asserted
- *                        by the modem when it is ready to receive
- *                        data; use -1 for none.
- * @param pinRts          the RTS (output) flow control pin, asserted
- *                        when we are ready to receive data from the
- *                        modem; use -1 for none.
- * @param baudRate        the baud rate to use.
- * @param uart            the UART number to use.
- * @param pUartQueue      a place to put the UART event queue.
- * @return                zero on success else negative error code.
+ * @return  zero on success else negative error code.
  */
-int32_t uPortUartInit(int32_t pinTx, int32_t pinRx,
-                      int32_t pinCts, int32_t pinRts,
-                      int32_t baudRate,
-                      int32_t uart,
-                      uPortQueueHandle_t *pUartQueue);
+int32_t uPortUartInit();
 
-/** Shutdown a UART.  Note that this should NOT be called if
+/** Shutdown UART handling.  THERE IS NO NEED FOR THE USER
+ * TO CALL THIS: it is called by uPortDeinit().
+ */
+void uPortUartDeinit();
+
+/** Open a UART instance.  If a UART instance has already
+ * been opened on the given UART HW block this function returns
+ * an error.
+ *
+ * @param uart                   the UART HW block to use.
+ * @param baudRate               the baud rate to use.
+ * @param pReceiveBuffer         a receive buffer to use,
+ *                               should be NULL and a buffer
+ *                               will be allocated by the driver.
+ *                               If non-NULL then the given buffer
+ *                               will be used, however some
+ *                               platforms (e.g. ESP32) currently
+ *                               do not support passing in a buffer
+ *                               (an error will be returned) so to be
+ *                               platform independent NULL must
+ *                               be used.
+ * @param receiveBufferSizeBytes the amount of memory to allocate
+ *                               for the receive buffer.  If
+ *                               pReceiveBuffer is not NULL
+ *                               then this is the amount of
+ *                               memory at pReceiveBuffer.
+ * @param pinTx                  the transmit (output) pin,
+ *                               a positive integer.
+ * @param pinRx                  the receive (input) pin,
+ *                               a positive integer.
+ * @param pinCts                 the CTS (input) flow
+ *                               control pin, asserted
+ *                               by the modem when it is
+ *                               ready to receive
+ *                               data; use -1 for none.
+ * @param pinRts                 the RTS (output) flow
+ *                               control pin, asserted
+ *                               when we are ready to
+ *                               receive data from the
+ *                               modem; use -1 for none.
+ * @return                       a UART handle else negative
+ *                               error code.
+ */
+int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
+                      void *pReceiveBuffer,
+                      size_t receiveBufferSizeBytes,
+                      int32_t pinTx, int32_t pinRx,
+                      int32_t pinCts, int32_t pinRts);
+
+/** Close a UART.  Note that this should NOT be called if
  * a UART read or write could be in progress.
  *
- * @param uart the UART number to shut down.
- * @return     zero on success else negative error code.
+ * @param handle the handle of the UART instance to close.
  */
-int32_t uPortUartDeinit(int32_t uart);
+void uPortUartClose(int32_t handle);
 
-/** Send a data event to the UART event queue.  This is not
- * normally required, it is all done within this UART driver,
- * however there are occasions when a receive event is handled
- * but the data is then only partially read.  This function
- * can be used to generate a new event so that the remaining
- * data can be processed naturally by the receive thread.
+/** Get the number of bytes waiting in the receive buffer
+ * of a UART instance.
  *
- * @param queueHandle      the handle for the UART event queue.
- * @param sizeBytesOrError the number of bytes of received data
- *                         to be signalled or negative to signal
- *                         an error.
- * @return                 zero on success else negative error
- *                         code.
+ * @param handle the handle of the UART instance.
+ * @return       the number of bytes in the receive buffer
+ *               or negative error code.
  */
-int32_t uPortUartEventSend(const uPortQueueHandle_t queueHandle,
-                           int32_t sizeBytesOrError);
+int32_t uPortUartGetReceiveSize(int32_t handle);
 
-/** Receive a UART event, blocking until one turns up.
- *
- * @param queueHandle the handle for the UART event queue.
- * @return            if the event was a receive event then
- *                    the length of the data received by the`
- *                    UART, else a negative number.
- */
-int32_t uPortUartEventReceive(const uPortQueueHandle_t queueHandle);
-
-/** Receive a UART event with a timeout.
- *
- * @param queueHandle the handle for the UART event queue.
- * @param waitMs      the time to wait in milliseconds.
- * @return            if the event was a receive event then
- *                    the length of the data received by the`
- *                    UART, else a negative number.
- */
-int32_t uPortUartEventTryReceive(const uPortQueueHandle_t queueHandle,
-                                 int32_t waitMs);
-
-/** Get the number of bytes waiting in the receive buffer.
- *
- * @param uart the UART number to use.
- * @return     the number of bytes in the receive buffer
- *             or negative error code.
- */
-int32_t uPortUartGetReceiveSize(int32_t uart);
-
-/** Read from the given UART interface, non-blocking:
+/** Read from the given UART instance, non-blocking:
  * up to sizeBytes of data already in the UART buffer will
  * be returned.
  *
- * @param uart      the UART number to use.
+ * @param handle    the handle of the UART instance.
  * @param pBuffer   a pointer to a buffer in which to store
  *                  received bytes.
  * @param sizeBytes the size of buffer pointed to by pBuffer.
  * @return          the number of bytes received else negative
  *                  error code.
  */
-int32_t uPortUartRead(int32_t uart, char *pBuffer,
+int32_t uPortUartRead(int32_t handle, void *pBuffer,
                       size_t sizeBytes);
 
 /** Write to the given UART interface.  Will block until
  * all of the data has been written or an error has occurred.
  *
- * @param uart      the UART number to use.
+ * @param handle    the handle of the UART instance.
  * @param pBuffer   a pointer to a buffer of data to send.
  * @param sizeBytes the number of bytes in pBuffer.
  * @return          the number of bytes sent or negative
  *                  error code.
  */
-int32_t uPortUartWrite(int32_t uart,
-                       const char *pBuffer,
+int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
                        size_t sizeBytes);
+
+/** Set a callback to be called when a UART event occurs.
+ * pFunction will be called asynchronously in its own task,
+ * for which the stack size and priority can be specified.
+ * Only one callback may be set per UART instance; the
+ * callback receives the UART handle as its first parameter
+ * and the event bit-map as its second parameter. If a
+ * callback has already been set for a UART instance this
+ * function will return an error.
+ *
+ * @param handle           the handle of the UART instance.
+ * @param filter           a bit-mask to filter the events
+ *                         on which pFunction will be called.
+ *                         1 in a bit position means include
+ *                         that event, 0 means don't; at least
+ *                         one bit must be set.  Select bits
+ *                         from one or more of
+ *                         U_PORT_UART_EVENT_BITMASK_xxx or
+ *                         set all bits to enable everything.
+ * @param pFunction        the function to call, cannot be
+ *                         NULL.
+ * @param pParam           a parameter which will be passed
+ *                         to pFunction as its last parameter
+ *                         when it is called.
+ * @param stackSizeBytes   the number of bytes of stack for
+ *                         the task in which pFunction is
+ *                         called, must be at least
+ *                         U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES.
+ * @param priority         the priority of the task in which
+ *                         pFunction is called; see
+ *                         u_cfg_os_platform_specific.h for
+ *                         your platform for more information.
+ *                         The default application, for instance,
+ *                         runs at U_CFG_OS_APP_TASK_PRIORITY,
+ *                         so if you want pFunction to be
+ *                         scheduled before it you might set a
+ *                         priority of
+ *                         U_CFG_OS_APP_TASK_PRIORITY + 1.
+ * @return                 zero on success else negative error
+ *                         code.
+ */
+int32_t uPortUartEventCallbackSet(int32_t handle,
+                                  uint32_t filter,
+                                  void (*pFunction)(int32_t, uint32_t,
+                                                    void *),
+                                  void *pParam,
+                                  size_t stackSizeBytes,
+                                  int32_t priority);
+
+/** Remove a UART event callback.
+ *
+ * @param handle  the handle of the UART instance for
+ *                which the callback is to be removed.
+ */
+void uPortUartEventCallbackRemove(int32_t handle);
+
+/** Get the filter for which a callback is currently set.
+ * This can be used to determine whether a callback is
+ * set: if a callback is not set the return value will be
+ * zero.
+ *
+ * @param handle  the handle of the UART instance.
+ * @return        the filter bit-mask for the currently set
+ *                callback.
+ */
+uint32_t uPortUartEventCallbackFilterGet(int32_t handle);
+
+/** Change the callback filter bit-mask.  If no event
+ * callback is set an error will be returned.
+ *
+ * @param handle  the handle of the UART instance.
+ * @param filter  the new filter bit-mask, must be non-zero.
+ * @return        zero on success else negative error code.
+ */
+int32_t uPortUartEventCallbackFilterSet(int32_t handle,
+                                        uint32_t filter);
+
+/** Send an event to the callback.  This allows the user to
+ * re-trigger events: for instance, if a data event has only
+ * been partially handled it can be re-triggered by calling
+ * this function with U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED
+ * set.
+ *
+ * @param handle      the handle of the UART instance.
+ * @param eventBitMap the events bit-map with at least one of
+ *                    U_PORT_UART_EVENT_BITMASK_xxx set.
+ * @return            zero on success else negative error code.
+ */
+int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap);
+
+/** Detect whether the task currently executing is the
+ * event callback for this UART.  Useful if you have code which
+ * is called a few levels down from the callback both by
+ * event code and other code and needs to know which context it
+ * is in.
+ *
+ * @param handle  the handle of the UART instance.
+ * @return        true if the current task is the event
+ *                callback for this UART, else false.
+ */
+bool uPortUartEventIsCallback(int32_t handle);
+
+/** Get the stack high watermark, i.e. the minimum amount of
+ * free stack, in bytes, for the task at the end of the event
+ * queue.
+ *
+ * @param handle  the handle of the UART instance.
+ * @return        the minimum amount of free stack for the
+ *                lifetime of the task at the end of the event
+ *                queue in bytes, else negative error code.
+ */
+int32_t uPortUartEventStackMinFree(int32_t handle);
 
 /** Determine if RTS flow control, i.e. a signal from
  * the module to this software that the module is ready to
  * receive data, is enabled.
  *
- * @param uart  the UART number.
- * @return      true if RTS flow control is enabled
- *              on this UART, else false.
+ * @param handle the handle of the UART instance.
+ * @return       true if RTS flow control is enabled
+ *               on this UART, else false.
  */
-bool uPortIsRtsFlowControlEnabled(int32_t uart);
+bool uPortUartIsRtsFlowControlEnabled(int32_t handle);
 
 /** Determine if CTS flow control, i.e. a signal from
  * this software to the module that this sofware is ready
  * to accept data, is enabled.
  *
- * @param uart  the UART number.
- * @return      true if CTS flow control is enabled
- *              on this UART, else false.
+ * @param handle the handle of the UART instance.
+ * @return       true if CTS flow control is enabled
+ *               on this UART, else false.
  */
-bool uPortIsCtsFlowControlEnabled(int32_t uart);
+bool uPortUartIsCtsFlowControlEnabled(int32_t handle);
 
 #ifdef __cplusplus
 }

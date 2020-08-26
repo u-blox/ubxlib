@@ -29,6 +29,7 @@
 #include "u_error_common.h"
 #include "u_port.h"
 #include "u_port_gpio.h"
+#include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
 
 #include "stm32f437xx.h"
@@ -155,6 +156,9 @@ int32_t uPortInit()
         errorCode = uPortPrivateInit();
         if (errorCode == 0) {
             errorCode = uPortEventQueuePrivateInit();
+            if (errorCode == 0) {
+                errorCode = uPortUartInit();
+            }
         }
         gInitialised = (errorCode == 0);
     }
@@ -166,8 +170,9 @@ int32_t uPortInit()
 void uPortDeinit()
 {
     if (gInitialised) {
-        uPortPrivateDeinit();
+        uPortUartDeinit();
         uPortEventQueuePrivateDeinit();
+        uPortPrivateDeinit();
         gInitialised = false;
     }
 }
