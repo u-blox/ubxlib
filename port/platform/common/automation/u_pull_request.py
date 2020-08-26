@@ -22,16 +22,21 @@ import u_utils  # utils
 #
 # Looks for a single line anywhere in the pull request
 # text beginning with "test: ".  This must be followed
-# either by "x.y.x" and then "blah", or just "x.y.z"
-# or "*".  Valid examples are:
+# by "x.y.z a.b.c m.n.o" (i.e. instance IDs space separated)
+# and then an optional "blah" filter string, or just "*"
+# and an optional "blah" filter string.  Valid examples are:
 #
 # test: 1
-# test: 1.0.3
-# test: 1 example
-# test: 1.0 portInit
+# test: 1 3 7
+# test: 1.0.3 3 7.0
+# test: 1 2 example
+# test: 1.1 8 portInit
 # test: *
 # test: * port
 #
+# Filter strings must NOT begin with a digit.
+# There cannot be more than one * or a * with any other instance.
+# There can only be one filter string.
 # Only whitespace is expected after this on the line.
 # Anything else is ignored.
 
@@ -70,7 +75,8 @@ class NoDaemonPool(multiprocessing.pool.Pool):
 
 def parse_message(message, instances):
     '''Find stuff in a pull request message'''
-    instance_local = []
+    instances_all = False
+    instances_local = []
     filter_string_local = None
 
     if message:
@@ -80,64 +86,96 @@ def parse_message(message, instances):
               " a test directive...".format(PROMPT)
         lines = message.split("\\n")
         for idx1, line in enumerate(lines):
-            print "{}text line {}: \"{}\"".              \
-                  format(PROMPT, idx1 + 1, line)
+            print "{}text line {}: \"{}\"".format(PROMPT, idx1 + 1, line)
             if line.lower().startswith("test:"):
+                instances_all = False
                 # Pick through what follows
                 parts = line[5:].split()
                 for part in parts:
-                    if instance_local and filter_string_local:
-                        # If we have found an instance
-                        # and a filter and there's still
-                        # something else then this wasn't
-                        # a "test:" line at all, carry
-                        # on trying
-                        del instance_local[:]
+                    if instances_all and (part[0].isdigit() or part == "*"):
+                        # If we've had a "*" and this is another one
+                        # or it begins with a digit then this is
+                        # obviously not a "test:" line,
+                        # leave the loop and try again.
+                        instances_local = []
                         filter_string_local = None
+                        print "{}...badly formed test directive, ignoring.".format(PROMPT)
                         break
-                    elif instance_local:
-                        # If we have an instance, and we
-                        # haven't got a filter it
-                        # must be a filter
-                        filter_string_local = part
-                    elif part[0].isdigit():
-                        # If we haven't had an instance
-                        # and this is part begins with
-                        # a digit it could be an instance
-                        # containing numbers
+                    if filter_string_local:
+                        # If we've had a filter string then nothing
+                        # must follow so this is not a "test:" line,
+                        # leave the loop and try again.
+                        instances_local = []
+                        filter_string_local = None
+                        print "{}...badly formed test directive, ignoring.".format(PROMPT)
+                        break
+                    if part[0].isdigit():
+                        # If this part begins with a digit it could
+                        # be an instance containing numbers
+                        instance = []
+                        bad = False
                         for item in part.split("."):
                             try:
-                                instance_local.append(int(item))
+                                instance.append(int(item))
                             except ValueError:
-                                del instance_local[:]
+                                # Some rubbish, not a test line so
+                                # leave the loop and try the next
+                                # line
+                                bad = True
                                 break
+                        if bad:
+                            instances_local = []
+                            filter_string_local = None
+                            print "{}...badly formed test directive, ignoring.".format(PROMPT)
+                            break
+                        if instance:
+                            instances_local.append(instance[:])
                     elif part == "*":
-                        # If we haven't had an instance
-                        # and this is a * then it means
-                        # "all"
-                        instance_local.append(part)
+                        if instances_local:
+                            # If we've already had any instances
+                            # this is obviously not a test line,
+                            # leave the loop and try again
+                            instances_local = []
+                            filter_string_local = None
+                            print "{}...badly formed test directive, ignoring.".format(PROMPT)
+                            break;
+                        else:
+                            # If we haven't had any instances and
+                            # this is a * then it means "all"
+                            instances_local.append(part)
+                            instances_all = True
+                    elif instances_local and not part == "*":
+                        # If we've had an instance and this
+                        # is not a "*" then this must be a
+                        # filter string
+                        filter_string_local = part
                     else:
                         # Found some rubbish, not a "test:"
-                        # line after all
-                        del instance_local[:]
+                        # line after all, leave the loop
+                        # and try the next line
+                        instances_local = []
                         filter_string_local = None
+                        print "{}...badly formed test directive, ignoring.".format(PROMPT)
                         break
-                if instance_local:
-                    # Stop once we've seen a valid instance
-                    found = "found instance "
-                    for idx2, item in enumerate(instance_local):
-                        if idx2 == 0:
-                            found += str(item)
-                        else:
-                            found += "." + str(item)
+                if instances_local:
+                    found = "found test directive with instance(s) "
+                    for idx2, entry in enumerate(instances_local):
+                        if idx2 > 0:
+                            found += ", "
+                        for idx3, item in enumerate(entry):
+                            if idx3 == 0:
+                                found += str(item)
+                            else:
+                                found += "." + str(item)
                     if filter_string_local:
-                        found += " and filter \"" +          \
-                                 filter_string_local + "\"."
-                    print "{}{}".format(PROMPT, found)
+                        found += " and filter \"" + filter_string_local
+                    print "{}{}.".format(PROMPT, found)
                     break
+                else:
+                    print "{}no test directive found".format(PROMPT)
 
-    if instance_local:
-        instances.append(instance_local[:])
+    if instances_local:
+        instances.extend(instances_local[:])
 
     return filter_string_local
 
