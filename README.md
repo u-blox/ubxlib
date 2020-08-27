@@ -24,7 +24,8 @@ Configuration information for the examples and the tests can be found in the `cf
 # License
 The software in this repository is Apache 2.0 licensed and copyright u-blox with the following exceptions:
 
-- the heap management code (`heap_useNewlib.c`), required because some of the platforms that use newlib and FreeRTOS don't provide the necessary memory management for them to play together, is copyright Dave Nadler.
-- the `stm32f4` platform directory necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
+- The heap management code (`heap_useNewlib.c`), required because some of the platforms that use newlib and FreeRTOS don't provide the necessary memory management for them to play together, is copyright Dave Nadler.
+- The AT client code in `common/at_client` is derived from the Apache 2.0 licensed AT parser of mbed-os.
+- The `stm32f4` platform directory necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
 
 In all cases copyright, and our thanks, remain with the original authors.

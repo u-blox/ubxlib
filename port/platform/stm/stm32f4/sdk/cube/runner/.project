@@ -37,6 +37,21 @@
 			<locationURI>$%7BPLATFORM_PATH%7D/app</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/at_client.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/at_client/src/u_at_client.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/at_client_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/at_client/test/u_at_client_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/at_client_test_data.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/at_client/test/u_at_client_test_data.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/u_port.c</name>
 			<type>1</type>
 			<locationURI>$%7BPLATFORM_PATH%7D/src/u_port.c</locationURI>
@@ -225,6 +240,21 @@
 			<name>Ubxlib/Inc/U-Blox/common/error/api</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/error/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/at_client/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/at_client/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/at_client/src</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/at_client/src</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/at_client/test</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/at_client/test</locationURI>
 		</link>
 		<link>
 			<name>Drivers/Inc/CMSIS/Include</name>

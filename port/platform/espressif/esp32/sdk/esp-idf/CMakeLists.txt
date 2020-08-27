@@ -2,7 +2,8 @@
 set(COMPONENT_ADD_INCLUDEDIRS 
 # The generic configuration files
                    "../../../../../../cfg"
-# Common component files
+# Common component APIs
+                   "../../../../../../common/at_client/api"
                    "../../../../../../common/error/api"
 # The API for the porting layer
                    "../../../../../api"
@@ -13,6 +14,8 @@ set(COMPONENT_ADD_INCLUDEDIRS
 
 # The implementations of the APIs
 set(COMPONENT_SRCS 
+# The common AT client
+                   "../../../../../../common/at_client/src/u_at_client.c"
 # The porting layer
                    "../../../../common/event_queue/u_port_event_queue.c"
                    "../../src/u_port.c"
@@ -22,7 +25,11 @@ set(COMPONENT_SRCS
                    "../../src/u_port_uart.c")
 
 # The private include directories for the above
-set(COMPONENT_PRIV_INCLUDEDIRS "../../src")
+set(COMPONENT_PRIV_INCLUDEDIRS
+# The common AT client
+                   "../../../../../../common/at_client/src"
+# The porting layer
+                   "../../src")
 register_component()
 
 if (DEFINED ENV{U_FLAGS})

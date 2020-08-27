@@ -76,6 +76,9 @@ SRC_FILES += \
   $(NRF5_PATH)/external/freertos/source/stream_buffer.c \
   $(NRF5_PATH)/external/freertos/source/tasks.c \
   $(NRF5_PATH)/external/freertos/source/timers.c \
+  ../../../../../../../common/at_client/src/u_at_client.c \
+  ../../../../../../../common/at_client/test/u_at_client_test.c \
+  ../../../../../../../common/at_client/test/u_at_client_test_data.c \
   ../../../src/u_port.c \
   ../../../src/u_port_debug.c \
   ../../../src/u_port_gpio.c \
@@ -123,9 +126,12 @@ INC_FOLDERS += \
   $(NRF5_PATH)/components/libraries/log/src \
   $(NRF5_PATH)/external/segger_rtt \
   $(NRF5_PATH)/components/libraries/hardfault \
+  ../../../../../../../common/at_client/api \
+  ../../../../../../../common/at_client/src \
+  ../../../../../../../common/at_client/test \
+  ../../../../../../../common/error/api \
   ../../../../../../api \
   ../../../../../../../cfg \
-  ../../../../../../../common/error/api \
   ../../../../../../clib \
   ../../../src \
   ../../../../../common/event_queue \
