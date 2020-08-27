@@ -490,9 +490,9 @@ static bool bufferFill(const uAtClientInstance_t *pClient,
         switch (pClient->streamType) {
             case U_AT_CLIENT_STREAM_TYPE_UART:
                 eventIsCallback = uPortUartEventIsCallback(pClient->streamHandle);
-            break;
+                break;
             default:
-            break;
+                break;
         }
         if (eventIsCallback) {
             // Short timeout if we're in a URC callback
@@ -520,9 +520,9 @@ static bool bufferFill(const uAtClientInstance_t *pClient,
                                            pReceiveBuffer->length,
                                            pReceiveBuffer->dataBufferSize -
                                            pReceiveBuffer->length);
-            break;
+                break;
             default:
-            break;
+                break;
         }
         // Block for a little while in case the data coming
         // in is stuttering; we want a good load or we'll just
@@ -1023,9 +1023,9 @@ static size_t write(uAtClientInstance_t *pClient,
             case U_AT_CLIENT_STREAM_TYPE_UART:
                 thisLengthWritten = uPortUartWrite(pClient->streamHandle,
                                                    pData, length);
-            break;
+                break;
             default:
-            break;
+                break;
         }
         if (thisLengthWritten > 0) {
             printAt(pClient, pData, thisLengthWritten);
@@ -1200,9 +1200,9 @@ static int32_t getReceiveSize(const uAtClientInstance_t *pClient)
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             receiveSize = uPortUartGetReceiveSize(pClient->streamHandle);
-        break;
+            break;
         default:
-        break;
+            break;
     }
 
     return receiveSize;
@@ -1395,10 +1395,10 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                                                           urcCallback, pClient,
                                                                           U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
                                                                           U_AT_CLIENT_URC_TASK_PRIORITY);
-                                break;
+                                    break;
                                 default:
                                     // streamType is checked on entry
-                                break;
+                                    break;
                             }
                             if (errorCode == 0) {
                                 // Got all "failable" things, now
@@ -1504,9 +1504,9 @@ void uAtClientRemove(uAtClientHandle_t atHandle)
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             uPortUartEventCallbackRemove(pClient->streamHandle);
-        break;
+            break;
         default:
-        break;
+            break;
     }
 
     // Delete the stream mutex
@@ -1661,9 +1661,9 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
                 uPortUartEventSend(pClient->streamHandle,
                                    U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
             }
-        break;
+            break;
         default:
-        break;
+            break;
     }
 
     error = pClient->error;
@@ -2179,7 +2179,7 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
             errorCode = U_ERROR_COMMON_SUCCESS;
             if (pClient->debugOn) {
                 uPortLog("U_AT_CLIENT_%d-%d: URC already added with prefix"
-                         " \"%s\".\n", pClient->streamType, 
+                         " \"%s\".\n", pClient->streamType,
                          pClient->streamHandle, pPrefix);
             }
         }
@@ -2227,9 +2227,9 @@ int32_t uAtClientUrcHandlerStackMinFree(uAtClientHandle_t atHandle)
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             stackMinFree = uPortUartEventStackMinFree(pClient->streamHandle);
-        break;
+            break;
         default:
-        break;
+            break;
     }
 
     return stackMinFree;

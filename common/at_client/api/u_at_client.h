@@ -407,7 +407,7 @@ void uAtClientDeinit();
  * @param streamHandle      the stream handle to use; the stream must
  *                          have already been opened by the caller.
  *                          If the stream is a UART the AT client will call
- *                          uPortUartEventCallbackSet() on it and 
+ *                          uPortUartEventCallbackSet() on it and
  *                          hence the caller must not do so (since
  *                          there can only be one).
  * @param streamType        the type of stream that streamHandle
