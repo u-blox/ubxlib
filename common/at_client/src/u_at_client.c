@@ -432,7 +432,7 @@ static int32_t pollTimeRemaining(int32_t atTimeoutMs,
     int64_t now = uPortGetTickTimeMs();
 
     if (atTimeoutMs >= 0) {
-        if (now >= lockTimeMs + atTimeoutMs) {
+        if (now > lockTimeMs + atTimeoutMs) {
             timeRemainingMs = 0;
         } else if (lockTimeMs + atTimeoutMs - now > INT_MAX) {
             timeRemainingMs = INT_MAX;
