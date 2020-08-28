@@ -152,7 +152,7 @@ def instance_api(database, paths, extensions, instances):
             del instances_local[:]
             parts = path.split("/")
             for idx, part in enumerate(parts):
-                if (part == "api") and (idx > 0):
+                if (part in ("api", "src", "test")) and (idx > 0):
                     api = parts[idx - 1]
                     instances_local.extend(u_data.get_instances_for_api(database, api)[:])
                     if instances_local:
