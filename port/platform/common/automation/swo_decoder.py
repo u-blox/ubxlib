@@ -58,7 +58,7 @@ class SourcePacket(ITMDWTPacket):
 def coroutine(func):
     def start(*args, **kwargs):
         corout = func(*args, **kwargs)
-        corout.next()
+        next(corout)
         return corout
     return start
 
@@ -113,15 +113,14 @@ def packet_parser(target, assume_sync=False):
                 target.send(OverflowPacket())
             else:
                 print("Protocol packet decoding not handled, breaking"         \
-                      " stream to next sync :( byte was: {} {:x}".format(data_byte,
-                                                                         data_byte))
+                      " stream to next sync :( byte was: {data} {data:x}".format(data=data_byte))
                 in_sync = False
         else:
             # Trace packet type is SWIT, i.e. from the application
             address = (data_byte & 0xf8) >> 3
             source = (data_byte & 0x4) >> 2
             plen = data_byte & 0x3
-            rlen = zip([0, 1, 2, 3], [0, 1, 2, 4])[plen][1] # 1,2,4 byte mappings
+            rlen = list(zip([0, 1, 2, 3], [0, 1, 2, 4]))[plen][1] # 1,2,4 byte mappings
             data = []
             for thing in range(rlen):
                 del thing
@@ -183,7 +182,7 @@ def packet_receiver_console_printer(valid_address=-1):
         if not hasattr(thing, "address"):
             # Skip things like synchro packets
             continue
-        if (thing.address == valid_address) or valid_address == -1:
+        if valid_address in (thing.address, -1):
             if thing.size == 1:
                 print(chr(thing.data), end='')
             else:
@@ -206,10 +205,11 @@ def main(file_name, address, sync, timeout):
 
     with file_handle:
         while True:
-            buf = file_handle.read(CHUNK_SIZE)
+            buf = bytearray(file_handle.read(CHUNK_SIZE))
             if buf:
                 inactivity_time_seconds = 0
-                [parser.send(ord(item)) for item in buf]
+                for item in buf:
+                    parser.send(item)
             else:
                 if timeout != 0:
                     time.sleep(0.1)

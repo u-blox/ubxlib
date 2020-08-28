@@ -58,20 +58,24 @@ STILL_RUNNING_REPORT_SECONDS = 30
 # to be able to create processes themselves (e.g. for STM32F4)
 # and processes that are marked as daemons, as they are
 # by default, are not permitted to do that.
-class NoDaemonProcess(multiprocessing.Process):
-    '''Version of Process that avoids it being a Deamon'''
-    # make 'daemon' attribute always return False
-    def _get_daemon(self):
-        return False
-    def _set_daemon(self, value):
-        pass
-    daemon = property(_get_daemon, _set_daemon)
-
 # Sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
 # because the latter is only a wrapper function, not a proper class.
+class NoDaemonProcess(multiprocessing.Process):
+    '''make 'daemon' attribute always return False'''
+    @property
+    def daemon(self):
+        return False
+
+    @daemon.setter
+    def daemon(self, val):
+        pass
+
 class NoDaemonPool(multiprocessing.pool.Pool):
-    '''Sub-class Pool'''
-    Process = NoDaemonProcess
+    '''make 'daemon' attribute always return False'''
+    def Process(self, *args, **kwds):
+        proc = super().Process(*args, **kwds)
+        proc.__class__ = NoDaemonProcess
+        return proc
 
 def parse_message(message, instances):
     '''Find stuff in a pull request message'''
@@ -82,11 +86,11 @@ def parse_message(message, instances):
     if message:
         # Search through message for a line beginning
         # with "test:"
-        print "{}parsing message to see if it contains"  \
-              " a test directive...".format(PROMPT)
+        print("{}parsing message to see if it contains"  \
+              " a test directive...".format(PROMPT))
         lines = message.split("\\n")
         for idx1, line in enumerate(lines):
-            print "{}text line {}: \"{}\"".format(PROMPT, idx1 + 1, line)
+            print("{}text line {}: \"{}\"".format(PROMPT, idx1 + 1, line))
             if line.lower().startswith("test:"):
                 instances_all = False
                 # Pick through what follows
@@ -99,7 +103,7 @@ def parse_message(message, instances):
                         # leave the loop and try again.
                         instances_local = []
                         filter_string_local = None
-                        print "{}...badly formed test directive, ignoring.".format(PROMPT)
+                        print("{}...badly formed test directive, ignoring.".format(PROMPT))
                         break
                     if filter_string_local:
                         # If we've had a filter string then nothing
@@ -107,7 +111,7 @@ def parse_message(message, instances):
                         # leave the loop and try again.
                         instances_local = []
                         filter_string_local = None
-                        print "{}...badly formed test directive, ignoring.".format(PROMPT)
+                        print("{}...badly formed test directive, ignoring.".format(PROMPT))
                         break
                     if part[0].isdigit():
                         # If this part begins with a digit it could
@@ -126,7 +130,7 @@ def parse_message(message, instances):
                         if bad:
                             instances_local = []
                             filter_string_local = None
-                            print "{}...badly formed test directive, ignoring.".format(PROMPT)
+                            print("{}...badly formed test directive, ignoring.".format(PROMPT))
                             break
                         if instance:
                             instances_local.append(instance[:])
@@ -137,13 +141,12 @@ def parse_message(message, instances):
                             # leave the loop and try again
                             instances_local = []
                             filter_string_local = None
-                            print "{}...badly formed test directive, ignoring.".format(PROMPT)
-                            break;
-                        else:
-                            # If we haven't had any instances and
-                            # this is a * then it means "all"
-                            instances_local.append(part)
-                            instances_all = True
+                            print("{}...badly formed test directive, ignoring.".format(PROMPT))
+                            break
+                        # If we haven't had any instances and
+                        # this is a * then it means "all"
+                        instances_local.append(part)
+                        instances_all = True
                     elif instances_local and not part == "*":
                         # If we've had an instance and this
                         # is not a "*" then this must be a
@@ -155,7 +158,7 @@ def parse_message(message, instances):
                         # and try the next line
                         instances_local = []
                         filter_string_local = None
-                        print "{}...badly formed test directive, ignoring.".format(PROMPT)
+                        print("{}...badly formed test directive, ignoring.".format(PROMPT))
                         break
                 if instances_local:
                     found = "found test directive with instance(s) "
@@ -169,10 +172,9 @@ def parse_message(message, instances):
                                 found += "." + str(item)
                     if filter_string_local:
                         found += " and filter \"" + filter_string_local
-                    print "{}{}.".format(PROMPT, found)
+                    print("{}{}.".format(PROMPT, found))
                     break
-                else:
-                    print "{}no test directive found".format(PROMPT)
+                print("{}no test directive found".format(PROMPT))
 
     if instances_local:
         instances.extend(instances_local[:])
@@ -303,6 +305,7 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
             process["platform"] = u_data.get_platform_for_instance(database, instance)
             process["instance"] = instance
             process["platform_lock"] = None
+            process["connection_lock"] = u_connection.get_lock(instance)
             for platform_lock in platform_locks:
                 if process["platform"] == platform_lock["platform"]:
                     process["platform_lock"] = platform_lock["lock"]
@@ -311,7 +314,7 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
                                                  (database, instance,
                                                   filter_string, True,
                                                   ubxlib_dir, this_working_dir,
-                                                  u_connection.get_lock(instance),
+                                                  process["connection_lock"],
                                                   install_lock,
                                                   process["platform_lock"],
                                                   print_queue, report_queue,
@@ -335,8 +338,8 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
                         if (return_value >= 0 and process["handle"].get() > 0) or \
                             (return_value <= 0 and process["handle"].get() < 0):
                             return_value += process["handle"].get()
-                    except KeyboardInterrupt:
-                        raise KeyboardInterrupt
+                    except KeyboardInterrupt as ex:
+                        raise KeyboardInterrupt from ex
                     except Exception as ex:
                         # If an instance threw an exception then flag an
                         # infrastructure error
@@ -345,14 +348,13 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
                                        " {}\" but I can't tell you where"       \
                                        " I'm afraid.".                          \
                                        format(PROMPT, instance_text,
-                                              type(ex).__name__,
-                                              ex.message))
+                                              type(ex).__name__, str(ex)))
                         if reporter:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                            u_report.EVENT_FAILED,
                                            "instance {} threw exception \"{}: {}\"". \
                                            format(instance_text, type(ex).__name__,
-                                                  ex.message))
+                                                  str(ex)))
                     alive_count -= 1
                     process["dealt_with"] = True
                 if not process["handle"].ready() and                         \
@@ -386,8 +388,8 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
 
     # Wait for the print and report queues to empty
     # and stop the print process
-    printer.string("{}all runs complete, return value {}.". \
-                        format(PROMPT, return_value))
+    printer.string("{}all runs complete, return value {}.".
+                   format(PROMPT, return_value))
     sleep(1)
     print_thread.stop_thread()
     print_thread.join()
@@ -453,8 +455,7 @@ if __name__ == "__main__":
     if INSTANCES:
         # If there is a user instance, do what we're told
         if INSTANCES[0][0] == "*":
-            print "{}running everything at user request.". \
-                  format(PROMPT)
+            print("{}running everything at user request.".format(PROMPT))
             del INSTANCES[:]
             INSTANCES = u_data.get_instances_all(DATABASE)
     else:

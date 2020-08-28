@@ -3,9 +3,9 @@
 '''Generally useful bits and bobs.'''
 
 import queue                    # For PrintThread and exe_run
-from time import sleep, clock, gmtime, strftime   # For lock timeout, exe_run timeout and logging
+from time import sleep, time, gmtime, strftime   # For lock timeout, exe_run timeout and logging
 import threading                # For PrintThread
-import os                       # For ChangeDir
+import os                       # For ChangeDir, has_admin
 import stat                     # To help deltree out
 from telnetlib import Telnet # For talking to JLink server
 import socket
@@ -49,6 +49,15 @@ RUN_INACTIVITY_TIME_SECONDS = 60 * 5
 # The name of the #define that forms the filter string
 # for which tests to run
 FILTER_MACRO_NAME = "U_CFG_APP_FILTER"
+
+# The time for which to wait for something from the
+# queue in exe_run().  If this is too short, in a
+# multiprocessing world or on a slow machine, it is
+# possible to miss things as the task putting things
+# on the queue may be blocked from doing so until
+# we've decided the queue has been completely emptied
+# and moved on
+EXE_RUN_QUEUE_WAIT_SECONDS = 1
 
 def get_instance_text(instance):
     '''Return the instance as a text string'''
@@ -95,6 +104,28 @@ def deltree(directory, printer, prompt):
 
     return success
 
+# Check if admin privileges are available, from:
+# https://stackoverflow.com/questions/2946746/python-checking-if-a-user-has-administrator-privileges
+def has_admin():
+    '''Check for administrator privileges'''
+    admin = False
+
+    if os.name == 'nt':
+        try:
+            # only Windows users with admin privileges can read the C:\windows\temp
+            if os.listdir(os.sep.join([os.environ.get("SystemRoot", "C:\\windows"), "temp"])):
+                admin = True
+        except PermissionError:
+            pass
+    else:
+        # Pylint will complain about the following line but
+        # that's OK, it is only executed if we're NOT on Windows
+        # and there the geteuid() method will exist
+        if "SUDO_USER" in os.environ and os.geteuid() == 0:
+            admin = True
+
+    return admin
+
 # Open the required serial port.
 def open_serial(serial_name, speed, printer, prompt):
     '''Open serial port'''
@@ -102,14 +133,13 @@ def open_serial(serial_name, speed, printer, prompt):
     text = "{}: trying to open \"{}\" as a serial port...".    \
            format(prompt, serial_name)
     try:
-        return_value = serial.Serial(serial_name, speed,
-                                     timeout=0.05)
+        return_value = serial.Serial(serial_name, speed, timeout=0.05)
         serial_handle = return_value
         printer.string("{} opened.".format(text))
     except (ValueError, serial.SerialException) as ex:
         printer.string("{}{} while accessing port {}: {}.".
                        format(prompt, type(ex).__name__,
-                              serial_handle.name, ex.message))
+                              serial_handle.name, str(ex)))
     return serial_handle
 
 def open_telnet(port_number, printer, prompt):
@@ -118,8 +148,7 @@ def open_telnet(port_number, printer, prompt):
     text = "{}trying to open \"{}\" as a telnet port on localhost...".  \
            format(prompt, port_number)
     try:
-        telnet_handle = Telnet("localhost", int(port_number),
-                               timeout=5)
+        telnet_handle = Telnet("localhost", int(port_number), timeout=5)
         if telnet_handle is not None:
             printer.string("{} opened.".format(text))
         else:
@@ -127,7 +156,7 @@ def open_telnet(port_number, printer, prompt):
     except (socket.error, socket.timeout, ValueError) as ex:
         printer.string("{}{} failed to open telnet {}: {}.".
                        format(prompt, type(ex).__name__,
-                              port_number, ex.message))
+                              port_number, str(ex)))
     return telnet_handle
 
 def install_lock_acquire(install_lock, printer, prompt):
@@ -171,7 +200,7 @@ def fetch_repo(url, directory, branch, printer, prompt):
         branch = "master"
     if os.path.isdir(directory):
         # Update existing code
-        with (ChangeDir(directory)):
+        with ChangeDir(directory):
             printer.string("{}updating code in {}...".
                            format(prompt, directory))
             try:
@@ -180,7 +209,7 @@ def fetch_repo(url, directory, branch, printer, prompt):
                                                stderr=subprocess.STDOUT,
                                                shell=True) # Jenkins hangs without this
                 for line in text.splitlines():
-                    printer.string("{}{}".format(prompt, line))
+                    printer.string("{}{}".format(prompt, line.decode()))
                 got_code = True
             except subprocess.CalledProcessError as error:
                 printer.string("{}git returned error {}: \"{}\"".
@@ -195,7 +224,7 @@ def fetch_repo(url, directory, branch, printer, prompt):
                                            stderr=subprocess.STDOUT,
                                            shell=True) # Jenkins hangs without this
             for line in text.splitlines():
-                printer.string("{}{}".format(prompt, line))
+                printer.string("{}{}".format(prompt, line.decode()))
             got_code = True
         except subprocess.CalledProcessError as error:
             printer.string("{}git returned error {}: \"{}\"".
@@ -204,7 +233,7 @@ def fetch_repo(url, directory, branch, printer, prompt):
 
     if got_code and os.path.isdir(directory):
         # Check out the correct branch and recurse submodules
-        with (ChangeDir(directory)):
+        with ChangeDir(directory):
             printer.string("{}checking out branch {}...".
                            format(prompt, branch))
             try:
@@ -215,7 +244,7 @@ def fetch_repo(url, directory, branch, printer, prompt):
                                                stderr=subprocess.STDOUT,
                                                shell=True) # Jenkins hangs without this
                 for line in text.splitlines():
-                    printer.string("{}{}".format(prompt, line))
+                    printer.string("{}{}".format(prompt, line.decode()))
                 checked_out = True
             except subprocess.CalledProcessError as error:
                 printer.string("{}git returned error {}: \"{}\"".
@@ -232,7 +261,7 @@ def fetch_repo(url, directory, branch, printer, prompt):
                                                    stderr=subprocess.STDOUT,
                                                    shell=True) # Jenkins hangs without this
                     for line in text.splitlines():
-                        printer.string("{}{}".format(prompt, line))
+                        printer.string("{}{}".format(prompt, line.decode()))
                     success = True
                 except subprocess.CalledProcessError as error:
                     printer.string("{}git returned error {}: \"{}\"".
@@ -258,7 +287,7 @@ def exe_where(exe_name, help_text, printer, prompt):
                                        shell=True) # Jenkins hangs without this
         for line in text.splitlines():
             printer.string("{}{} found in {}".format(prompt, exe_name,
-                                                     line))
+                                                     line.decode()))
         success = True
     except subprocess.CalledProcessError:
         if help_text:
@@ -281,7 +310,7 @@ def exe_version(exe_name, version_switch, printer, prompt):
                                        stderr=subprocess.STDOUT,
                                        shell=True)  # Jenkins hangs without this
         for line in text.splitlines():
-            printer.string("{}{}".format(prompt, line))
+            printer.string("{}{}".format(prompt, line.decode()))
         success = True
     except subprocess.CalledProcessError:
         printer.string("{}ERROR {} either not found or didn't like {}". \
@@ -299,36 +328,43 @@ def exe_terminate(process_pid):
 def read_from_process_and_queue(process, read_queue):
     '''Read from a process, non-blocking'''
     while process.poll() is None:
-        string = process.stdout.readline()
+        string = process.stdout.readline().decode()
         if string:
             read_queue.put(string)
 
-def capture_env_var(line, env, flag, tag, printer, prompt):
-    '''A bit of exe_run that needs to be called from two places'''
-    captured = False
+def queue_get_no_exception(the_queue, block=True, timeout=None):
+    '''A version of queue.get() that doesn't throw an Empty exception'''
+    thing = None
 
-    if not flag:
-        printer.string("{}reading environment variables.".
-                       format(prompt))
+    try:
+        thing = the_queue.get(block=block, timeout=timeout)
+    except queue.Empty:
+        pass
+
+    return thing
+
+def capture_env_var(line, env, printer, prompt):
+    '''A bit of exe_run that needs to be called from two places'''
     # Find a KEY=VALUE bit in the line,
     # parse it out and put it in the dictionary
     # we were given
     pair = line.split('=', 1)
     if len(pair) == 2:
-        env[pair[0]] = pair[1]
-        captured = True
+        env[pair[0]] = pair[1].rstrip()
     else:
-        if not tag in line:
-            printer.string("{}WARNING: not an environment variable: \"{}\"".
-                           format(prompt, line))
+        printer.string("{}WARNING: not an environment variable: \"{}\"".
+                       format(prompt, line))
 
-    return captured
-
+# Note: if returned_env is given then "set"
+# will be executed after the exe and the environment
+# variables will be returned in it.  The down-side
+# of this is that the return value of the exe is,
+# of course, lost.
 def exe_run(call_list, guard_time_seconds, printer, prompt,
             shell_cmd=False, set_env=None, returned_env=None):
     '''Call an executable, printing out what it does'''
     success = False
-    start_time = clock()
+    start_time = time()
     flibbling = False
     kill_time = None
     read_time = start_time
@@ -345,14 +381,24 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
         call_list.append("flibble")
         call_list.append("&&")
         call_list.append("set")
+        # I've seen output from set get lost,
+        # possibly because the process ending
+        # is asynchronous with stdout,
+        # so add a delay here as well
+        call_list.append("&&")
+        call_list.append("sleep")
+        call_list.append("2")
 
     try:
         # Call the thang
+        # Note: used to have bufsize=1 here but it turns out
+        # that is ignored 'cos the output is considered
+        # binary.  Seems to work in any case, I guess
+        # Winders, at least, is in any case line-buffered.
         process = subprocess.Popen(call_list,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    shell=shell_cmd,
-                                   bufsize=1,
                                    env=set_env)
         printer.string("{}{}, pid {} started with guard time {} second(s)". \
                        format(prompt, call_list[0], process.pid,
@@ -370,37 +416,31 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
         # process.
         read_queue = queue.Queue()
         read_thread = threading.Thread(target=read_from_process_and_queue,
-                                       args=(process,
-                                             read_queue))
+                                       args=(process, read_queue))
         read_thread.start()
         while process.poll() is None:
             if guard_time_seconds and (kill_time is None) and   \
-               ((clock() - start_time > guard_time_seconds) or
-                (clock() - read_time > guard_time_seconds)):
-                kill_time = clock()
+               ((time() - start_time > guard_time_seconds) or
+                (time() - read_time > guard_time_seconds)):
+                kill_time = time()
                 printer.string("{}guard time of {} second(s)." \
                                " expired, stopping {}...".
                                format(prompt, guard_time_seconds,
                                       call_list[0]))
                 exe_terminate(process.pid)
-            try:
-                line = read_queue.get(block=False, timeout=0.5).rstrip()
-                read_time = clock()
-                while line:
-                    if returned_env is not None:
-                        if "flibble" in line or flibbling:
-                            capture_env_var(line, returned_env,
-                                            flibbling, "flibble",
-                                            printer, prompt)
-                            flibbling = True
-                        else:
-                            printer.string("{}{}".format(prompt, line))
+            line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
+            read_time = time()
+            while line is not None:
+                line = line.rstrip()
+                if flibbling:
+                    capture_env_var(line, returned_env, printer, prompt)
+                else:
+                    if returned_env is not None and "flibble" in line:
+                        flibbling = True
                     else:
                         printer.string("{}{}".format(prompt, line))
-                    line = read_queue.get(block=False, timeout=0.5).rstrip()
-                    read_time = clock()
-            except queue.Empty:
-                pass
+                line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
+                read_time = time()
 
         # Can't join() read_thread here as it might have
         # blocked on a read() (if nrfjprog has anything to
@@ -408,29 +448,32 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
         # exits.
 
         # There may still be stuff on the queue, read it out here
-        try:
-            line = read_queue.get(block=False, timeout=0.5).rstrip()
-            while line:
-                if returned_env and flibbling:
-                    capture_env_var(line, returned_env, flibbling, "flibble",
-                                    printer, prompt)
+        line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
+        while line is not None:
+            line = line.rstrip()
+            if flibbling:
+                capture_env_var(line, returned_env, printer, prompt)
+            else:
+                if returned_env is not None and "flibble" in line:
+                    flibbling = True
                 else:
                     printer.string("{}{}".format(prompt, line))
-                line = read_queue.get(block=False, timeout=0.5).rstrip()
-        except queue.Empty:
-            pass
+            line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
 
         # There may still be stuff in the buffer after
         # the application has finished running so flush that
         # out here
-        line = process.stdout.readline().rstrip()
+        line = process.stdout.readline().decode()
         while line:
-            if returned_env and flibbling:
-                capture_env_var(line, returned_env, flibbling, "flibble",
-                                printer, prompt)
+            line = line.rstrip()
+            if flibbling:
+                capture_env_var(line, returned_env, printer, prompt)
             else:
-                printer.string("{}{}".format(prompt, line))
-            line = process.stdout.readline().rstrip()
+                if returned_env is not None and "flibble" in line:
+                    flibbling = True
+                else:
+                    printer.string("{}{}".format(prompt, line))
+            line = process.stdout.readline().decode()
 
         if (process.poll() == 0) and kill_time is None:
             success = True
@@ -439,11 +482,11 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
                               process.pid, process.poll()))
     except ValueError as ex:
         printer.string("{}failed: {} while trying to execute {}.". \
-                       format(prompt, type(ex).__name__, ex.message))
+                       format(prompt, type(ex).__name__, str(ex)))
 
     return success
 
-class ExeRun(object):
+class ExeRun():
     '''Run an executable as a "with:"'''
     def __init__(self, call_list, printer, prompt, shell_cmd=False):
         self._call_list = call_list
@@ -463,11 +506,14 @@ class ExeRun(object):
                                                            text))
         try:
             # Start exe
+            # Note: used to have bufsize=1 here but it turns out
+            # that is ignored 'cos the output is considered
+            # binary.  Seems to work in any case, I guess
+            # Winders, at least, is in any case line-buffered.
             self._process = subprocess.Popen(self._call_list,
                                              stdout=subprocess.PIPE,
                                              stderr=subprocess.STDOUT,
-                                             shell=self._shell_cmd,
-                                             bufsize=1)
+                                             shell=self._shell_cmd)
             self._printer.string("{}{} pid {} started".format(self._prompt,
                                                               self._call_list[0],
                                                               self._process.pid))
@@ -475,7 +521,7 @@ class ExeRun(object):
             if self._printer:
                 self._printer.string("{}failed: {} to start {}.". \
                                      format(self._prompt,
-                                            type(ex).__name__, ex.message))
+                                            type(ex).__name__, str(ex)))
         return self._process
     def __exit__(self, _type, value, traceback):
         del _type
@@ -511,11 +557,11 @@ class PrintThread(threading.Thread):
         while self._running:
             try:
                 my_string = self._queue.get(block=False, timeout=0.5)
-                print my_string
+                print(my_string)
             except queue.Empty:
                 pass
 
-class PrintToQueue(object):
+class PrintToQueue():
     '''Print to a queue, if there is one'''
     def __init__(self, print_queue, file_handle, include_timestamp=False):
         self._queue = print_queue
@@ -529,14 +575,14 @@ class PrintToQueue(object):
             if self._queue:
                 self._queue.put(string)
             else:
-                print string
+                print(string)
         if self._file_handle:
             self._file_handle.write(string + "\n")
             self._file_handle.flush()
 
 # This stolen from here:
 # https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python
-class ChangeDir(object):
+class ChangeDir():
     '''Context manager for changing the current working directory'''
     def __init__(self, new_path):
         self._new_path = os.path.expanduser(new_path)
@@ -549,7 +595,7 @@ class ChangeDir(object):
         '''CD back to saved_path'''
         os.chdir(self._saved_path)
 
-class Lock(object):
+class Lock():
     '''Hold a lock as a "with:"'''
     def __init__(self, lock, guard_time_seconds,
                  lock_type, printer, prompt):

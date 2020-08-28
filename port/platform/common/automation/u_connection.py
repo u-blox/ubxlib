@@ -128,7 +128,7 @@ def unlock(connection, connection_lock, printer, prompt):
             printer.string("{}instance {} has unlocked a connection.".   \
                            format(prompt, instance_text))
 
-class Lock(object):
+class Lock():
     '''Hold a lock as a "with:"'''
     def __init__(self, connection, connection_lock, guard_time_seconds,
                  printer, prompt):

@@ -4,7 +4,7 @@
 
 import sys # For stdout redirection when wrapping swo_decoder.py
 import os
-from time import sleep, clock
+from time import sleep, time
 from multiprocessing import Process  # To launch swo_decoder.py
 import subprocess
 import psutil
@@ -328,7 +328,7 @@ def build_binary(sdk_dir, workspace_subdir, project_name, clean, defines,
         printer.string("{}environment is:".format(prompt))
         text = subprocess.check_output(["set",], shell=True)
         for line in text.splitlines():
-            printer.string("{}{}".format(prompt, line))
+            printer.string("{}{}".format(prompt, line.decode()))
 
         if not too_many_defines:
             # Delete the workspace sub-directory first if it is there
@@ -439,7 +439,7 @@ def swo_decoder_wrapper(swo_decoded_text_file,
     '''Wrapper for swo_decoder that redirects stdout, to be called in a Process'''
     # Redirect output to the SWO decoded output text file
     stdout_saved = sys.stdout
-    sys.stdout = open(swo_decoded_text_file, "w", buffering=0)
+    sys.stdout = open(swo_decoded_text_file, "w", buffering=1)
     # Call the SWO decoder script with the remaining arguments
     try:
         swo_decoder.main(swo_data_file, address, sync, timeout)
@@ -447,7 +447,7 @@ def swo_decoder_wrapper(swo_decoded_text_file,
         sys.stdout = stdout_saved
 
 # IMPORTANT: Eclipse, on which the STM32Cube is based
-# has very peculiar and immutable way of dealing with paths.
+# has a very peculiar and immutable way of dealing with paths.
 # To work around this while preventing Git from thinking we've
 # made changes to code, we make a copy of the project
 # from "blah" to "test_only_blah", which is in the
@@ -524,7 +524,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                       working_dir + os.sep + u_utils.UNITY_SUBDIR,
                                       printer, prompt):
                         # Do the build
-                        build_start_time = clock()
+                        build_start_time = time()
                         elf_path = build_binary(sdk_dir, workspace_subdir,
                                                 updated_project_name_prefix + PROJECT_NAME,
                                                 clean, defines, printer, prompt)
@@ -548,7 +548,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                 if elf_path:
                     reporter.event(u_report.EVENT_TYPE_BUILD,
                                    u_report.EVENT_PASSED,
-                                   "build took {:.0f} second(s)".format(clock() -
+                                   "build took {:.0f} second(s)".format(time() -
                                                                         build_start_time))
                     # Lock the connection.
                     with u_connection.Lock(connection, connection_lock,
@@ -613,6 +613,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                         if not running:
                                             sleep(5)
                                     process.terminate()
+                                    psutil.Process().nice(psutil.NORMAL_PRIORITY_CLASS)
                                 except KeyboardInterrupt:
                                     # Tidy up process on SIGINT
                                     printer.string("{}caught CTRL-C, terminating...".format(prompt))

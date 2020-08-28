@@ -9,13 +9,13 @@ The main intended entry point into automation is the `u_pull_request.py` Python 
 
 `u_pull_request.py "some text" <a list of file paths, unquoted, separated with spaces>`
 
-The text is intended to be that submitted with the pull request.  When `u_pull_request.py` is called from Jenkins, using `Jenkinsfile`, the pull request text is grabbed from Github by the `Jenkinsfile` script.  This text is parsed for a line that starts with `test: foo bar`, where `foo` is either `*` or a series of digits separated by spaces or full stops, e.g. `0` `0 1` or `1.1` or `4.0.2 6.1.3` and `bar` is some more optional text, e.g. `test: 1 example`.  `foo` indicates the instance IDs to run from `DATABASE.md`, separate by spaces, and `bar` is a filter string, indicating that only examples/tests that begin with that string should be run.  For instance `test: 1 2 3 example` would run all things that begin with `example` on instance IDs `1`, `2` and `3`, or `test: * port` would run *all* things that begin with `port` (i.e. the porting tests) on *all* instances, or `test: *` would run everything on all instance IDs, etc.
+The text is intended to be that submitted with the pull request.  When `u_pull_request.py` is called from Jenkins, using `Jenkinsfile`, the pull request text is grabbed from Github by the `Jenkinsfile` script.  This text is parsed for a line that starts with `test: foo bar`, where `foo` is either `*` or a series of digits separated by spaces or full stops, e.g. `0` `0 1` or `1.1` or `4.0.2 6.1.3` and `bar` is some more optional text, e.g. `test: 1 example`.  `foo` indicates the instance IDs to run from `DATABASE.md`, separated by spaces, and `bar` is a filter string, indicating that only examples/tests that begin with that string should be run.  For instance `test: 1 2 3 example` would run all things that begin with `example` on instance IDs `1`, `2` and `3`, or `test: * port` would run *all* things that begin with `port` (i.e. the porting tests) on *all* instances, or `test: *` would run everything on all instance IDs, etc.
 
 So, when submitting a pull request if a such a line of text is included with it then the u-blox Jenkins configuration will parse the text, find the `test:` line and conduct those tests on the pull request, returning the results to Github.
 
 Note: on the ESP32 platform, which comes with its own unit test implementation, the filter string must be the full name of a category, e.g. `port` or `example`, partial matches are not supported.
 
-If a line starting with `test:` is *not* included then the file list must be provided.  Again, when `u_pull_request.py` is called from Jenkins, `Jenkinsfile`, will grab the list of changed files from Github.  `u_pull_request.py` then calls the `u_select.py` script to determine what tests should be run on which instance IDs to verify that the pull request is good.  See the comments in `u_select.py` to determine how it does this.  It is worth noting that the list of tests/instances selected by `u_select.py` will always be the largest one: e.g. if a `.h` file in the `port` API of `ubxlib` has been changed then all the `port` tests on all instance IDs will be selected.  To narrow the tests/instanaces that are run, use the `test:` line to specify it yourself.  Note that though you can edit the pull request submission text unfortunately this does not retrigger testing, only pushing another submit to the pull request will do that.
+If a line starting with `test:` is *not* included (the usual case) then the file list must be provided.  Again, when `u_pull_request.py` is called from Jenkins, `Jenkinsfile`, will grab the list of changed files from Github.  `u_pull_request.py` then calls the `u_select.py` script to determine what tests should be run on which instance IDs to verify that the pull request is good.  See the comments in `u_select.py` to determine how it does this.  It is worth noting that the list of tests/instances selected by `u_select.py` will always be the largest one: e.g. if a `.h` file in the `port` API of `ubxlib` has been changed then all the `port` tests on all instance IDs will be selected.  To narrow the tests/instances that are run, use the `test:` line to specify it yourself.  Note that though you can edit the pull request submission text unfortunately this does not retrigger testing, only pushing another commit to the pull request will do that.
 
 For each instance ID the `u_run.py` script, the thing that ultimately does the work, will return a value which is zero for success or otherwise the number of failures that occurred during the run.  Search the output from the script for the word `EXITING` to find its return value.
 
@@ -30,11 +30,23 @@ For each instance ID the `u_run.py` script, the thing that ultimately does the w
 
 `u_monitor.py`: monitors the output from an instance that is executing tests, checking the output for passes/failures and optionally writing debug logs and an XML report to file.
 
-`u_pull_request.py`: see above.
+`u_pull_request.py`: see above.  `Jenkinsfile`, for instance, would run the following on a commit to a branch of `ubxlib`:
+
+```
+python u_pull_request.py "test: *" -w z:\_jenkins_work -u z:\ -s summary.log -d debug.log -t report.xml
+```
+
+...where `z:` has been `subst`ed to the root of the `ubxlib` directory (and the directory `_jenkins_work` created beforehand).
 
 `u_report.py`: write reports on progress.
 
-`u_run.py`: handles the build/download/run of tests on a given instance by calling one of the `u_run_xxx.p` scripts below; this script is called multiple times in parallel by `u_pull_request.py`, each running in a Python process of its own.
+`u_run.py`: handles the build/download/run of tests on a given instance by calling one of the `u_run_xxx.py` scripts below; this script is called multiple times in parallel by `u_pull_request.py`, each running in a Python process of its own.  If, for instance, you wanted to run all the tests on instance 0 as `Jenkinsfile` would, you might run:
+
+```
+python u_run.py 0 -w z:\_jenkins_work -u z:\ -s summary.log -d debug.log -t report.xml
+```
+
+...with `z:` `subst`ed to the root of the `ubxlib` directory (and the directory `_jenkins_work` created beforehand).  This is sometimes useful if `u_pull_request.py` reports an exception but can't tell you where it is because it has no way of tracing back into the multiple `u_run.py` processes it would have launched.
 
 `u_run_astyle.py`: run an advisory-only (i.e. no error will be thrown ever) AStyle check; called by `u_run.py`.  NOTE: because of the way AStyle directory selection works, if you add a new directory off the `ubxlib` root directory (i.e. you add something like `ubxlib\blah`) YOU MUST ALSO ADD it to the `ASTYLE_DIRS` variable of this script.  To AStyle your files before submission, install `AStyle` version 3.1 and, from the `ubxlib` root directory, run:
 

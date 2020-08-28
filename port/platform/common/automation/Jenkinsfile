@@ -46,48 +46,52 @@ node('TEST-gb-cmb-dt-022')
             }
 
             if (env.CHANGE_TARGET && env.CHANGE_ID) {
-                stage("Check Pull Request") {
-                    // This is a pull request so use git to get the list
-                    // of file differences, @echo off to avoid capturing
-                    // the command output as well as the  returned text
-                    println "Checking for changed files between origin/" + env.CHANGE_TARGET + " and " + scmMap.GIT_COMMIT + "..."
-                    pr_files = bat(script: "@echo off & git diff --name-only origin/%CHANGE_TARGET%..${scmMap.GIT_COMMIT}", returnStdout: true).trim()
-
-                    pr_files = pr_files.replaceAll("\n", " ");
-                    println "Changed file(s) were: " + pr_files
-                    
-                    if (env.CHANGE_URL) {
-                        // Go get the pull request text if it's there
-                        println "Getting pull request text for pull request: " + env.CHANGE_URL + "..."
-                        withCredentials([usernamePassword(credentialsId: 'ubxlib', usernameVariable: 'user', passwordVariable: 'pass')]) {
-                            // Deal with authentication
-                            def authString = "$user:$pass".getBytes("ISO-8859-1").encodeBase64().toString()
-                            // The github API to get pull request comments is of the form:
-                            // https://api.github.com/repos/u-blox/xxx/issues/y
-                            // ...where xxx is the name of the repo and y is the CHANGE_ID
-                            // To get to this from our CHANGE_URL, which is of the form:
-                            // https://github.com/u-blox/ubxlib_test2/pull/2.
-                            //...we need to replace "github.com" with "api.github.com/repos"
-                            // and "pull" with "issues"
-                            def urlString = env.CHANGE_URL
-                            urlString = urlString.replaceAll("//github.com/", "//api.github.com/repos/")
-                            urlString = urlString.replaceAll("/pull/", "/issues/")
-                            println "Github API URL will be: " + urlString
-                            // Open the connection and do the get
-                            def prGet = new URL(urlString).openConnection()
-                            prGet.setRequestProperty("Authorization", "Basic $authString")
-                            def prResponseCode = prGet.getResponseCode()
-                            println "Server responded with " + prResponseCode
-                            if (prResponseCode.equals(200)) {
-                                def jsonSlurper = new JsonSlurper()
-                                def prResponseJson = jsonSlurper.parseText(prGet.getInputStream().getText())
-                                pr_text = prResponseJson["body"]
-                                if (pr_text) {
-                                    println "Pull request text: \"" + pr_text + "\"."
+                try {
+                    stage("Check Pull Request") {
+                        // This is a pull request so use git to get the list
+                        // of file differences, @echo off to avoid capturing
+                        // the command output as well as the  returned text
+                        println "Checking for changed files between origin/" + env.CHANGE_TARGET + " and " + scmMap.GIT_COMMIT + "..."
+                        pr_files = bat(script: "@echo off & git diff --name-only origin/%CHANGE_TARGET%..${scmMap.GIT_COMMIT}", returnStdout: true).trim()
+    
+                        pr_files = pr_files.replaceAll("\n", " ");
+                        println "Changed file(s) were: " + pr_files
+                        
+                        if (env.CHANGE_URL) {
+                            // Go get the pull request text if it's there
+                            println "Getting pull request text for pull request: " + env.CHANGE_URL + "..."
+                            withCredentials([usernamePassword(credentialsId: 'ubxlib', usernameVariable: 'user', passwordVariable: 'pass')]) {
+                                // Deal with authentication
+                                def authString = "$user:$pass".getBytes("ISO-8859-1").encodeBase64().toString()
+                                // The github API to get pull request comments is of the form:
+                                // https://api.github.com/repos/u-blox/xxx/issues/y
+                                // ...where xxx is the name of the repo and y is the CHANGE_ID
+                                // To get to this from our CHANGE_URL, which is of the form:
+                                // https://github.com/u-blox/ubxlib_test2/pull/2.
+                                //...we need to replace "github.com" with "api.github.com/repos"
+                                // and "pull" with "issues"
+                                def urlString = env.CHANGE_URL
+                                urlString = urlString.replaceAll("//github.com/", "//api.github.com/repos/")
+                                urlString = urlString.replaceAll("/pull/", "/issues/")
+                                println "Github API URL will be: " + urlString
+                                // Open the connection and do the get
+                                def prGet = new URL(urlString).openConnection()
+                                prGet.setRequestProperty("Authorization", "Basic $authString")
+                                def prResponseCode = prGet.getResponseCode()
+                                println "Server responded with " + prResponseCode
+                                if (prResponseCode.equals(200)) {
+                                    def jsonSlurper = new JsonSlurper()
+                                    def prResponseJson = jsonSlurper.parseText(prGet.getInputStream().getText())
+                                    pr_text = prResponseJson["body"]
+                                    if (pr_text) {
+                                        println "Pull request text: \"" + pr_text + "\"."
+                                    }
                                 }
                             }
                         }
                     }
+                } catch (e) {
+                    println "Git was unable to determine the file list."
                 }
             }
 

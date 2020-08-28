@@ -61,7 +61,7 @@ def discard(paths, extensions):
         stripped = path.strip()
         for string in extensions:
             if stripped.endswith(string):
-                print "{}ignoring file {}".format(PROMPT, path)
+                print("{}ignoring file {}".format(PROMPT, path))
                 include = False
         if include:
             wanted.append(stripped)
@@ -83,9 +83,9 @@ def instance_sdk(database, paths, instances):
                 instances_local.extend(u_data.                            \
                    get_instances_for_platform_sdk(database, platform, sdk)[:])
                 if instances_local:
-                    print "{}file {} is in SDK {} ({}) implying"           \
-                          " instance(s) {}.".format(PROMPT, path, sdk,     \
-                          platform, instances_string(instances_local))
+                    print("{}file {} is in SDK {} ({}) implying"           \
+                          " instance(s) {}.".format(PROMPT, path, sdk,
+                          platform, instances_string(instances_local)))
                     instances.extend(instances_local[:])
                 break
 
@@ -126,14 +126,14 @@ def instance_platform(database, paths, extensions, instances):
                         # If it is not already included, include
                         # the SDK 0 instances for this platform
                         if instances_local:
-                            print "{}file {} is in platform {} implying"   \
-                                  " instance(s) {}.".format(PROMPT, path,  \
-                                  platform, instances_string(instances_local))
+                            print("{}file {} is in platform {} implying"   \
+                                  " instance(s) {}.".format(PROMPT, path,
+                                  platform, instances_string(instances_local)))
                             instances.extend(instances_local[:])
                     else:
-                        print "{}file {} is in platform {}, an instance"    \
-                              " of which is already included.".            \
-                              format(PROMPT, path, platform)
+                        print("{}file {} is in platform {}, an instance"    \
+                              " of which is already included.".
+                              format(PROMPT, path, platform))
                     break
 
 # Perform check (d)
@@ -154,12 +154,11 @@ def instance_api(database, paths, extensions, instances):
             for idx, part in enumerate(parts):
                 if (part == "api") and (idx > 0):
                     api = parts[idx - 1]
-                    instances_local.extend(u_data.                     \
-                       get_instances_for_api(database, api)[:])
+                    instances_local.extend(u_data.get_instances_for_api(database, api)[:])
                     if instances_local:
-                        print "{}file {} is in API \"{}\" implying"    \
-                              " instance(s) {}.".format(PROMPT, path,  \
-                              api, instances_string(instances_local))
+                        print("{}file {} is in API \"{}\" implying"    \
+                              " instance(s) {}.".format(PROMPT, path,
+                              api, instances_string(instances_local)))
                         instances.extend(instances_local[:])
                     if api_saved and (api != api_saved):
                         more_than_one = True
@@ -181,10 +180,10 @@ def select(database, instances, paths):
     dedup = []
     filter_string = None
 
-    print "{}selecting what instances to run based on {} file(s)...". \
-          format(PROMPT, len(paths))
+    print("{}selecting what instances to run based on {} file(s)...".
+          format(PROMPT, len(paths)))
     for idx, path in enumerate(paths):
-        print "{}file {}: {}".format(PROMPT, idx + 1, path)
+        print("{}file {}: {}".format(PROMPT, idx + 1, path))
 
     # First throw away any file paths known to be uninteresting
     interesting = discard(paths, EXT_DISCARD)
@@ -206,14 +205,14 @@ def select(database, instances, paths):
                                  EXT_CODE, instances_local)
 
     # Check if PyLint needs to be run
-    print "{}checking if pylint needs to be run...".format(PROMPT)
+    print("{}checking if pylint needs to be run...".format(PROMPT))
     for py_file in interesting:
         if py_file.endswith(".py"):
             instances_local.append([3])
             break
 
     # Add any instances that must always be run
-    print "{}adding instances that are always run...".format(PROMPT)
+    print("{}adding instances that are always run...".format(PROMPT))
     instances_local.extend(INSTANCES_ALWAYS[:])
 
     # Create a de-duplicated list
@@ -225,10 +224,9 @@ def select(database, instances, paths):
     dedup.sort()
     instances.extend(dedup[:])
 
-    print "{}final instance list: {}".format(PROMPT,                 \
-          instances_string(dedup)),
+    print("{}final instance list: {}".format(PROMPT, instances_string(dedup), end=""))
     if filter_string:
-        print "with filter \"{}\".".format(filter_string),
-    print
+        print("with filter \"{}\".".format(filter_string, end=""))
+    print()
 
     return filter_string

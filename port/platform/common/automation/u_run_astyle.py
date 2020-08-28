@@ -85,6 +85,7 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                                                shell=True) # Jenkins hangs without this
                 formatted = []
                 for line in text.splitlines():
+                    line = line.decode()
                     printer.string("{}{}".format(prompt, line))
                     # AStyle doesn't return anything other than 0,
                     # need to look for the word "Formatted" to find

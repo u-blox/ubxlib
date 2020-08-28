@@ -187,7 +187,7 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                         reporter.event(u_report.EVENT_TYPE_CHECK,
                                        u_report.EVENT_PASSED)
                         for line in text.splitlines():
-                            printer.string("{}{}".format(prompt, line))
+                            printer.string("{}{}".format(prompt, line.decode()))
                         return_value = 0
                     except subprocess.CalledProcessError as error:
                         reporter.event(u_report.EVENT_TYPE_CHECK,
@@ -195,7 +195,7 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                         printer.string("{}Lint returned error {}:".
                                        format(prompt, error.returncode))
                         for line in error.output.splitlines():
-                            line = line.strip()
+                            line = line.strip().decode()
                             if line:
                                 reporter.event_extra_information(line)
                                 printer.string("{}{}".format(prompt, line))

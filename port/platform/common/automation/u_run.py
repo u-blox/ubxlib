@@ -31,7 +31,7 @@ def signal_handler(sig, frame):
     del sig
     del frame
     sys.stdout.write('\n')
-    print PROMPT + "CTRL-C received, EXITING."
+    print("{}CTRL-C received, EXITING.".format(PROMPT))
     sys.exit(-1)
 
 def main(database, instance, filter_string, clean,
@@ -252,8 +252,8 @@ if __name__ == "__main__":
                 try:
                     INSTANCE.append(int(string))
                 except ValueError:
-                    print "{}instance \"{}\" is not of the form 1.2.3" \
-                          " as expected.".format(PROMPT, ARGS.instance)
+                    print("{}instance \"{}\" is not of the form 1.2.3" \
+                          " as expected.".format(PROMPT, ARGS.instance))
                     del INSTANCE[:]
                     break
             if INSTANCE:
@@ -270,7 +270,7 @@ if __name__ == "__main__":
                                     ARGS.u, ARGS.w, None, INSTALL_LOCK,
                                     None, None, None, ARGS.s, ARGS.t, ARGS.d)
         else:
-            print "{}must supply an instance.".format(PROMPT)
+            print("{}must supply an instance.".format(PROMPT))
             PARSER.print_help()
 
     sys.exit(RETURN_VALUE)

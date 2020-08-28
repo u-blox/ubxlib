@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 '''Write a report on the outcome of testing.'''
-from Queue import Empty           # For ReportThread
 from time import gmtime, strftime
 import threading                  # For ReportThread
+from queue import Empty           # For ReportThread
 import u_utils
 
 # Prefix to put at the start of all prints
@@ -129,7 +129,7 @@ class ReportThread(threading.Thread):
             except Empty:
                 pass
 
-class ReportToQueue(object):
+class ReportToQueue():
     '''Write a report to a queue, if there is one'''
     def __init__(self, queue, instance, file_handle, printer):
         self._queue = queue

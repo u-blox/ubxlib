@@ -38,8 +38,7 @@ def get(filename):
     row = {}
     instance = []
 
-    print "{}getting instance data from file \"{}\"...".      \
-          format(PROMPT, filename)
+    print("{}getting instance data from file \"{}\"...".format(PROMPT, filename))
     file_handle = open(filename, "r")
     # Read lines from the file until we hit a row of our table,
     # which is defined as a line with at least six '|'
@@ -48,7 +47,7 @@ def get(filename):
     lines = contents.splitlines()
     for line in lines:
         items = line.split("|")
-        if items >= 6:
+        if len(items) >= 6:
             index = 0
             row.clear()
             for item in items:
@@ -99,7 +98,7 @@ def get(filename):
 def display(database):
     '''Print out the instances from database'''
 
-    print "{} {} instance(s) found:".format(PROMPT, len(database))
+    print("{} {} instance(s) found:".format(PROMPT, len(database)))
     for row in database:
         # Instance first
         item = ""
@@ -152,7 +151,7 @@ def display(database):
                     item += ", " + define
         else:
             item += " with no required #defines"
-        print "{}.".format(item)
+        print("{}.".format(item))
 
 def get_instances_for_platform(database, platform):
     '''Return a list of instances that support the given platform'''

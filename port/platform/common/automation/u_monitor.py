@@ -8,10 +8,8 @@ import re
 import codecs
 import queue
 import threading
-from time import time, ctime, clock, sleep
+from time import time, ctime, sleep
 from math import ceil
-import socket
-from telnetlib import Telnet # For talking to JLink server when using NRF52
 import subprocess
 import serial                # Pyserial (make sure to do pip install pyserial)
 import u_report
@@ -146,6 +144,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
     if terminator is None:
         terminator = "\n"
     if connection_type == CONNECTION_TELNET:
+        terminator_bytes = bytes(terminator, 'ascii')
         # I was hoping that all sources of data
         # would have a read() function but it turns
         # out that Telnet does not, it has read_until()
@@ -154,7 +153,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
         # the Telnet port has been closed here, allow it
         # to stop us entirely
         # Long time-out as we don't want partial lines
-        line = in_handle.read_until(terminator, 1)
+        line = in_handle.read_until(terminator_bytes, 1).decode('ascii')
         if line != "":
             # To make this work the same was as the
             # serial and exe cases, need to remove the terminator
@@ -168,7 +167,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
     elif connection_type == CONNECTION_SERIAL:
         eol = False
         try:
-            while not eol and line != None:
+            while not eol and line is not None:
                 buf = in_handle.read(1)
                 if buf:
                     character = buf.decode('ascii')
@@ -187,10 +186,10 @@ def pwar_readline(in_handle, connection_type, terminator=None):
         # when nothing is there to avoid reading partial
         # lines as the pipe is being filled
     elif connection_type == CONNECTION_PIPE:
-        start_time = clock()
+        start_time = time()
         eol = False
         try:
-            while not eol and (clock() - start_time < 5):
+            while not eol and (time() - start_time < 5):
                 buf = in_handle.read(1)
                 if buf:
                     character = buf.decode('ascii')
@@ -204,39 +203,6 @@ def pwar_readline(in_handle, connection_type, terminator=None):
             pass
         return_value = line
     return return_value
-
-# Open the required serial port.
-def open_serial(serial_name, printer, prompt):
-    '''Open serial port'''
-    serial_handle = None
-    text = "{}trying to open \"{}\" as a serial port...".    \
-           format(prompt, serial_name)
-    try:
-        return_value = serial.Serial(serial_name,
-                                     115200,
-                                     timeout=0.05)
-        serial_handle = return_value
-        printer.string("{} opened.".format(text))
-    except (ValueError, serial.SerialException):
-        printer.string("{} failed.".format(text))
-    return serial_handle
-
-# Open the required telnet port.
-def open_telnet(port_number, printer, prompt):
-    '''Open telnet port on localhost'''
-    telnet_handle = None
-    text = "{}trying to open \"{}\" as a telnet port on localhost...".  \
-           format(prompt, port_number)
-    try:
-        telnet_handle = Telnet.open("localhost", int(port_number),
-                                    timeout=1)
-        if telnet_handle is not None:
-            printer.string("{} opened.".format(text))
-        else:
-            printer.string("{} failed.".format(text))
-    except (socket.timeout, ValueError):
-        printer.string("{} failed.".format(text))
-    return telnet_handle
 
 # Start the required executable.
 def start_exe(exe_name, printer, prompt):
@@ -285,12 +251,13 @@ def esp32_send_first(send_string, in_handle, connection_type, printer, prompt):
         # Now send the string
         printer.string("{}sending {}".format(prompt, send_string))
         in_handle.write(send_string.encode("ascii"))
+        in_handle.write("\r\n".encode("ascii"))
         printer.string("{}run started on {}.".format(prompt, ctime(time())))
         success = True
     except serial.SerialException as ex:
         printer.string("{}{} while accessing port {}: {}.".
                        format(prompt, type(ex).__name__,
-                              in_handle.name, ex.message))
+                              in_handle.name, str(ex)))
     return success
 
 # Watch the output from the items being run
@@ -299,8 +266,8 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
                 inactivity_time_seconds, printer, reporter, prompt):
     '''Watch output'''
     return_value = -1
-    start_time = clock()
-    last_activity_time = clock()
+    start_time = time()
+    last_activity_time = time()
 
     printer.string("{}watching output until run completes...".format(prompt))
 
@@ -314,14 +281,14 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
     readline_thread.start()
 
     try:
-        while not results["finished"] and                       \
-              (not guard_time_seconds or                        \
-               (clock() - start_time < guard_time_seconds)) and \
+        while not results["finished"] and                           \
+              (not guard_time_seconds or                            \
+               (time() - start_time < guard_time_seconds)) and      \
               (not inactivity_time_seconds or                   \
-               (clock() - last_activity_time < inactivity_time_seconds)):
+               (time() - last_activity_time < inactivity_time_seconds)):
             try:
-                line = read_queue.get(block=False, timeout=0.5)
-                last_activity_time = clock()
+                line = read_queue.get(timeout=0.5)
+                last_activity_time = time()
                 printer.string("{}{}".format(prompt, line), file_only=True)
                 for entry in INTERESTING:
                     match = re.match(entry[0], line)
@@ -332,18 +299,18 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
         # Set this to stop the read thread
         results["finished"] = True
         readline_thread.join()
-        if guard_time_seconds and (clock() - start_time >= guard_time_seconds):
-            printer.string("{}guard timer ({} second(s))"
+        if guard_time_seconds and (time() - start_time >= guard_time_seconds):
+            printer.string("{}guard timer ({} second(s))"        \
                            "  expired.".format(prompt, guard_time_seconds))
-        elif inactivity_time_seconds and (clock() - last_activity_time >= inactivity_time_seconds):
-            printer.string("{}inactivity timer ({} second(s))"
+        elif inactivity_time_seconds and (time() - last_activity_time >= inactivity_time_seconds):
+            printer.string("{}inactivity timer ({} second(s))"   \
                            " expired.".format(prompt, inactivity_time_seconds))
         else:
             return_value = results["items_failed"]
     except (serial.SerialException, EOFError) as ex:
         printer.string("{}{} while accessing port {}: {}.".
                        format(prompt, type(ex).__name__,
-                              in_handle.name, ex.message))
+                              in_handle.name, str(ex)))
 
     return return_value
 
@@ -367,16 +334,15 @@ def main(connection_handle, connection_type, guard_time_seconds,
 
     # If we have a serial interface we have can chose which tests to run
     # (at least, on the ESP32 platform) else the lot will just run
-    if (connection_type != CONNECTION_SERIAL) or    \
-       (send_string is not None and esp32_send_first(send_string, connection_handle,
-                                                     connection_type, printer, prompt)):
+    if (send_string is None or esp32_send_first(send_string, connection_handle,
+                                                connection_type, printer, prompt)):
         results["overall_start_time"] = time()
         return_value = watch_items(connection_handle, connection_type, results,
                                    guard_time_seconds, inactivity_time_seconds,
                                    printer, reporter, prompt)
 
     # Write the report
-    if test_report_handle:
+    if test_report_handle and instance:
         printer.string("{}writing report file...".format(prompt))
         test_report_handle.write("<testsuite name=\"{}\" tests=\"{}\" failures=\"{}\">\n". \
                                  format("instance " + u_utils.get_instance_text(instance),
@@ -423,10 +389,10 @@ if __name__ == "__main__":
                         " where the interface is a serial port; it"
                         " can be used to filter which items are"
                         " to be run.")
-    PARSER.add_argument("-t", help="set a guard timer in seconds; if"
+    PARSER.add_argument("-t", type=int, help="set a guard timer in seconds; if"
                         " the guard time expires this script will"
                         " stop and return a negative value.")
-    PARSER.add_argument("-i", help="set an inactivity timer in seconds;"
+    PARSER.add_argument("-i", type=int, help="set an inactivity timer in seconds;"
                         " if the target emits nothing for this many"
                         " seconds this script will stop and return"
                         " a negative value.")
@@ -445,11 +411,11 @@ if __name__ == "__main__":
     if ARGS.l:
         LOG_HANDLE = open(ARGS.l, "w")
         if LOG_HANDLE:
-            print "{}: writing log output to \"{}\".".format(PROMPT, ARGS.l)
+            print("{}: writing log output to \"{}\".".format(PROMPT, ARGS.l))
         else:
             SUCCESS = False
-            print "{}: unable to open test report file \"{}\" for writing.".  \
-                  format(PROMPT, ARGS.l)
+            print("{}: unable to open log file \"{}\" for writing.".
+                  format(PROMPT, ARGS.l))
     if SUCCESS:
         # Set up a printer, with a None queue
         # since we're only running one instance
@@ -458,10 +424,10 @@ if __name__ == "__main__":
 
         # Make the connection
         CONNECTION_TYPE = CONNECTION_SERIAL
-        CONNECTION_HANDLE = open_serial(ARGS.port, PRINTER, PROMPT)
+        CONNECTION_HANDLE = u_utils.open_serial(ARGS.port, 115200, PRINTER, PROMPT)
         if CONNECTION_HANDLE is None:
             CONNECTION_TYPE = CONNECTION_TELNET
-            CONNECTION_HANDLE = open_telnet(ARGS.port, PRINTER, PROMPT)
+            CONNECTION_HANDLE = u_utils.open_telnet(ARGS.port, PRINTER, PROMPT)
         if CONNECTION_HANDLE is None:
             CONNECTION_TYPE = CONNECTION_PIPE
             PROCESS_HANDLE, CONNECTION_HANDLE = start_exe(ARGS.port, PRINTER, PROMPT)
@@ -470,11 +436,11 @@ if __name__ == "__main__":
             if ARGS.x:
                 TEST_REPORT_HANDLE = open(ARGS.x, "w")
                 if TEST_REPORT_HANDLE:
-                    print "{}: writing test report to \"{}\".".format(PROMPT, ARGS.x)
+                    print("{}: writing test report to \"{}\".".format(PROMPT, ARGS.x))
                 else:
                     SUCCESS = False
-                    print "{}: unable to open test report file \"{}\" for writing.".  \
-                          format(PROMPT, ARGS.x)
+                    print("{}: unable to open test report file \"{}\" for writing.".
+                          format(PROMPT, ARGS.x))
             if SUCCESS:
                 # Run things
                 RETURN_VALUE = main(CONNECTION_HANDLE, CONNECTION_TYPE, ARGS.t,
@@ -486,7 +452,7 @@ if __name__ == "__main__":
                 TEST_REPORT_HANDLE.close()
             if LOG_HANDLE:
                 LOG_HANDLE.close()
-            if CONNECTION_PIPE:
+            if CONNECTION_TYPE == CONNECTION_PIPE:
                 PROCESS_HANDLE.terminate()
             else:
                 CONNECTION_HANDLE.close()

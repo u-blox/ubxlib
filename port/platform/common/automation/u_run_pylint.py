@@ -64,6 +64,7 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                                                                shell=True) # Stop Jenkins hanging
                                 rating = 0
                                 for line in text.splitlines():
+                                    line = line.decode()
                                     printer.string("{}{}".format(prompt, line))
                                     # See if there is a rating in this line
                                     outcome = line.rpartition("Your code has been rated at ")
@@ -87,7 +88,7 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                                                        "rating {} < minimum ({})".  \
                                                        format(rating, MIN_RATING))
                                         for line in text.splitlines():
-                                            line = line.strip()
+                                            line = line.strip().decode()
                                             if line:
                                                 reporter.event_extra_information(line)
                                 else:
@@ -105,7 +106,7 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                                 printer.string("{}Pylint returned error {}:".
                                                format(prompt, error.returncode))
                                 for line in error.output.splitlines():
-                                    line = line.strip()
+                                    line = line.strip().decode()
                                     if line:
                                         reporter.event_extra_information(line)
                                         printer.string("{}{}".format(prompt, line))

@@ -3,7 +3,7 @@
 '''Build/run ubxlib for NRF52 and report results.'''
 
 import os                    # For sep(), getcwd()
-from time import clock
+from time import time
 import subprocess
 import u_connection
 import u_monitor
@@ -129,7 +129,7 @@ def check_installation(sdk, tools_list, printer, prompt):
     printer.string("{}environment is:".format(prompt))
     text = subprocess.check_output(["set",], shell=True)
     for line in text.splitlines():
-        printer.string("{}{}".format(prompt, line))
+        printer.string("{}{}".format(prompt, line.decode()))
 
     # Check for the tools on the path
     printer.string("{}checking tools...".format(prompt))
@@ -364,7 +364,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                   u_utils.UNITY_SUBDIR,
                                   None, printer, prompt):
                 # Do the build
-                build_start_time = clock()
+                build_start_time = time()
                 if sdk.lower() == "gcc":
                     build_subdir_gcc = BUILD_SUBDIR_PREFIX_GCC + instance_text.replace(".", "_")
                     hex_file_path = build_gcc(clean, build_subdir_gcc, ubxlib_dir,
@@ -376,7 +376,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                     # Build succeeded, need to lock a connection to do the download
                     reporter.event(u_report.EVENT_TYPE_BUILD,
                                    u_report.EVENT_PASSED,
-                                   "build took {:.0f} second(s)".format(clock() -
+                                   "build took {:.0f} second(s)".format(time() -
                                                                         build_start_time))
                     with u_connection.Lock(connection, connection_lock,
                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,

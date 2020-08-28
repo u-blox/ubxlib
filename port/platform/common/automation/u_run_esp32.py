@@ -3,7 +3,8 @@
 '''Build/run ubxlib for ESP32 and report results.'''
 
 import os            # For sep, getcwd(), isdir() and environ()
-from time import clock
+from time import time, sleep
+import psutil
 import u_connection
 import u_monitor
 import u_report
@@ -40,7 +41,7 @@ ESP_IDF_LOCATION = [None,                     # 0 (not esp-idf)
                     ESP_IDF_LOCATION_LATEST]  # 7
 
 # The place where the IDF tools should be found/installed
-IDF_TOOLS_PATH = "C:\\Program Files\\Espressif\\ESP-IDF Tools latest"
+IDF_TOOLS_PATH = ESP_IDF_ROOT + os.sep + "esp-idf-tools-latest"
 
 # The sub-directory name of the project to build
 PROJECT_SUBDIR = "runner"
@@ -50,9 +51,6 @@ TEST_COMPONENT = "ubxlib_runner"
 
 # Build sub-directory
 BUILD_SUBDIR = "build"
-
-# Batch that installs tools, builds and runs the build
-MAIN_BATCH_FILE = "u_run_esp32.bat"
 
 # The guard time for the install in seconds:
 # this can take ages when tools first have to be installed
@@ -86,15 +84,16 @@ def print_env(returned_env, printer, prompt):
     '''Print a dictionary that contains the new environment'''
     printer.string("{}environment will be:".format(prompt))
     if returned_env:
-        for key, value in returned_env.iteritems():
+        for key, value in returned_env.items():
             printer.string("{}{}={}".format(prompt, key, value))
     else:
         printer.string("{}EMPTY".format(prompt))
 
 def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
-            install_lock, returned_env, printer, prompt, reporter):
+            install_lock, printer, prompt, reporter):
     '''Install the Espressif tools and esp-idf'''
-    success = False
+    returned_env = {}
+    count = 0
 
     # Acquire the install lock as this is a global operation
     if u_utils.install_lock_acquire(install_lock, printer, prompt):
@@ -112,18 +111,31 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
             # Switch to where the stuff should have already
             # been fetched to
             with u_utils.ChangeDir(esp_idf_dir):
+                if not u_utils.has_admin():
+                    printer.string("{}NOTE: if install.bat fails (the return"   \
+                                   " code may still be 0), then try re-running" \
+                                   " as administrator.".format(prompt))
                 # First call install.bat
                 # set shell to True to keep Jenkins happy
-                success = u_utils.exe_run(["install.bat"], INSTALL_GUARD_TIME_SECONDS,
-                                          printer, prompt, shell_cmd=True)
-                if success:
+                if u_utils.exe_run(["install.bat"], INSTALL_GUARD_TIME_SECONDS,
+                                    printer, prompt, shell_cmd=True):
                     # ...then export.bat to set up paths etc.
-                    # which we return attached to returned_env
-                    # set shell to True to keep Jenkins happy
-                    success = u_utils.exe_run(["export.bat"], INSTALL_GUARD_TIME_SECONDS,
-                                              printer, prompt, shell_cmd=True,
-                                              returned_env=returned_env)
-                    if not success:
+                    # which we return attached to returned_env.
+                    # It is possible for the process of extracting
+                    # the environment variables to fail due to machine
+                    # loading (see comments against EXE_RUN_QUEUE_WAIT_SECONDS
+                    # in exe_run) so give this up to three chances to succeed
+                    while not returned_env and (count < 3):
+                        # set shell to True to keep Jenkins happy
+                        u_utils.exe_run(["export.bat"], INSTALL_GUARD_TIME_SECONDS,
+                                        printer, prompt, shell_cmd=True,
+                                        returned_env=returned_env)
+                        if not returned_env:
+                            printer.string("{}warning: retrying export.bat to"     \
+                                           " capture the environment variables...".
+                                           format(prompt))
+                        count += 1
+                    if not returned_env:
                         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                        u_report.EVENT_FAILED,
                                        "export.bat failed")
@@ -141,7 +153,7 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
                        u_report.EVENT_FAILED,
                        "could not acquire install lock")
 
-    return success
+    return returned_env
 
 def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
           printer, prompt, reporter):
@@ -158,6 +170,11 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
             os.makedirs(build_dir)
     else:
         os.makedirs(build_dir)
+
+    # CCACHE is a pain in the bum: falls over on Windows
+    # path length issues randomly and doesn't say where.
+    # Since we're generally doing clean builds, disable it
+    env["CCACHE_DISABLE"] = "1"
 
     if os.path.exists(build_dir):
         printer.string("{}building code...".format(prompt))
@@ -229,17 +246,24 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
     printer.string("{}in directory {} calling{}".            \
                    format(prompt, os.getcwd(), tmp))
 
+    # Give ourselves priority here or the download can fail
+    psutil.Process().nice(psutil.HIGH_PRIORITY_CLASS)
+
     # Do the download,
     # set shell to True to keep Jenkins happy
-    return u_utils.exe_run(call_list, DOWNLOAD_GUARD_TIME_SECONDS,
-                           printer, prompt, shell_cmd=True, set_env=env)
+    return_code = u_utils.exe_run(call_list, DOWNLOAD_GUARD_TIME_SECONDS,
+                                  printer, prompt, shell_cmd=True, set_env=env)
+
+    # Return priority to normal
+    psutil.Process().nice(psutil.NORMAL_PRIORITY_CLASS)
+
+    return return_code
 
 def run(instance, sdk, connection, connection_lock, platform_lock,
         clean, defines, ubxlib_dir, working_dir, install_lock,
         printer, reporter, test_report_handle):
     '''Build/run on ESP32'''
     return_value = -1
-    returned_env = {}
     instance_text = u_utils.get_instance_text(instance)
     filter_string = "*\r\n"
 
@@ -268,7 +292,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock,
         text += ", working directory \"" + working_dir + "\""
     printer.string("{}{}.".format(prompt, text))
 
-    reporter.event(u_report.EVENT_TYPE_BUILD_DOWNLOAD,
+    reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "ESP32")
     printer.string("{}CD to {}...".format(prompt, working_dir))
@@ -278,30 +302,44 @@ def run(instance, sdk, connection, connection_lock, platform_lock,
         esp_idf_location = get_esp_idf_location(instance)
         esp_idf_dir = ESP_IDF_ROOT + os.sep + esp_idf_location["subdir"]
         if esp_idf_location:
-            if install(esp_idf_location["url"], esp_idf_dir,
-                       esp_idf_location["branch"], install_lock,
-                       returned_env, printer, prompt, reporter):
+            returned_env = install(esp_idf_location["url"], esp_idf_dir,
+                                   esp_idf_location["branch"], install_lock,
+                                   printer, prompt, reporter)
+            if returned_env:
                 # From here on the ESP32 tools need to set up
                 # and use the set of environment variables
                 # returned above.
                 print_env(returned_env, printer, prompt)
                 # Now do the build
                 build_dir = working_dir + os.sep + BUILD_SUBDIR
-                build_start_time = clock()
+                build_start_time = time()
                 if build(esp_idf_dir, ubxlib_dir, build_dir,
                          defines, returned_env, clean,
                          printer, prompt, reporter):
                     reporter.event(u_report.EVENT_TYPE_BUILD,
                                    u_report.EVENT_PASSED,
                                    "build took {:.0f} second(s)". \
-                                   format(clock() - build_start_time))
+                                   format(time() - build_start_time))
                     with u_connection.Lock(connection, connection_lock,
                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,
                                            printer, prompt) as locked:
                         if locked:
-                            if download(esp_idf_dir, ubxlib_dir, build_dir,
-                                        connection["serial_port"], returned_env,
-                                        printer, prompt):
+                            # Have seen this fail, only with Python 3 for
+                            # some reason, so give it a few goes
+                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                           u_report.EVENT_START)
+                            retries = 0
+                            while not download(esp_idf_dir, ubxlib_dir, build_dir,
+                                               connection["serial_port"], returned_env,
+                                               printer, prompt) and (retries < 3):
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                               u_report.EVENT_WARNING,
+                                               "unable to download, will retry...")
+                                retries += 1
+                                sleep(5)
+                            if retries < 3:
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                               u_report.EVENT_COMPLETE)
                                 reporter.event(u_report.EVENT_TYPE_TEST,
                                                u_report.EVENT_START)
                                 # Search the defines list to see if it includes a
