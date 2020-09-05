@@ -39,7 +39,7 @@
  * debugger configure it rather than it being configured
  * automagically during startup; the drawback of that approach
  * is that if the target resets while the debugger is running
- * all further output will be lost.  2000000 is a good value.
+ * all further output will be lost. 2 MHz is a good value.
  */
 # define U_CFG_HW_SWO_CLOCK_HZ 2000000
 #endif

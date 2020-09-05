@@ -32,7 +32,7 @@ set U_FLAG2=-DHSE_VALUE=((uint32_t)8000000U)
 With that done, follow the instructions in the relevant sub-directory (e.g. `runner`) to build/download/run the project.
 
 # Viewing Trace Output
-To view the SWO trace output in the STM32Cube IDE, setup up the debugger as normal by pulling down the arrow beside the little button on the toolbar with the "bug" image on it, selecting "STM-Cortex-M C/C++ Application", create a new configuration and then, on the "Debugger" tab, tick the box that enables SWD, set the core clock to 168 MHz and click "Apply".
+To view the SWO trace output in the STM32Cube IDE, setup up the debugger as normal by pulling down the arrow beside the little button on the toolbar with the "bug" image on it, selecting "STM-Cortex-M C/C++ Application", create a new configuration and then, on the "Debugger" tab, tick the box that enables SWD, set the core clock to 168 MHz, the SWO Clock to 250 kHz (to match `U_CFG_HW_SWO_CLOCK_HZ` defined in `u_cfg_hw_platform_specific.h`) and click "Apply".
 
 You should then be able to download the Debug build from the IDE and the IDE should launch you into the debugger.  To see the SWD trace output, click on "Window" -> "Show View" -> "SWV" -> "SWV ITM Data Console".  The docked window that appears should have a little "spanner" icon on the far right: click on that icon and, on the set of "ITM Stimulus Ports", tick channel 0 and then press "OK".  Beside the "spanner" icon is a small red button: press that to allow trace output to appear; unfortunately it seems that this latter step has to be performed every debug session, it is not possible to automate it.
 

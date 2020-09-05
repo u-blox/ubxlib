@@ -329,7 +329,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
     return_value = -1
     hex_file_path = None
     instance_text = u_utils.get_instance_text(instance)
-    telnet_port = u_utils.JLINK_TELNET_TRACE_PORT
+    swo_port = u_utils.JLINK_SWO_PORT
 
     prompt = PROMPT + instance_text + ": "
 
@@ -389,7 +389,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                             # serial number of the given debugger on that board,
                             # so lock the platform for this.  Once we've got the
                             # Telnet session opened with the platform it seems
-                            # fine to let other downloads/logging starts happen.
+                            # fine to let other downloads/logging-starts happen.
                             with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
                                               "platform", printer, prompt) as locked_platform:
                                 if locked_platform:
@@ -401,12 +401,12 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                        u_report.EVENT_COMPLETE)
                                         reporter.event(u_report.EVENT_TYPE_TEST,
                                                        u_report.EVENT_START)
-                                        if connection and "telnet_port" in connection:
-                                            telnet_port = connection["telnet_port"]
+                                        if connection and "swo_port" in connection:
+                                            swo_port = connection["swo_port"]
 
                                         # With JLink started
                                         RUN_JLINK.append("-RTTTelnetPort")
-                                        RUN_JLINK.append(str(telnet_port))
+                                        RUN_JLINK.append(str(swo_port))
                                         if connection and "debugger" in connection and \
                                            connection["debugger"]:
                                             RUN_JLINK.append("-USB")
@@ -414,7 +414,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                         with u_utils.ExeRun(RUN_JLINK, printer, prompt):
                                             # Open the Telnet port to JLink
                                             # to get the debug output
-                                            telnet_handle = u_utils.open_telnet(telnet_port,
+                                            telnet_handle = u_utils.open_telnet(swo_port,
                                                                                 printer, prompt)
                                             if telnet_handle is not None:
                                                 # Once we've got a Telnet session running
@@ -432,8 +432,8 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                             else:
                                                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                                u_report.EVENT_FAILED,
-                                                               "unable to open telnet port " +  \
-                                                               str(telnet_port))
+                                                               "unable to open SWO port " +  \
+                                                               str(swo_port))
                                         if return_value == 0:
                                             reporter.event(u_report.EVENT_TYPE_TEST,
                                                            u_report.EVENT_COMPLETE)

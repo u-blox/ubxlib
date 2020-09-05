@@ -27,8 +27,14 @@ UNITY_SUBDIR = "Unity"
 # The path to jlink.exe (or just the name 'cos it's on the path)
 JLINK_PATH = "jlink.exe"
 
-# The telnet port number for trace capture out of JLink
-JLINK_TELNET_TRACE_PORT = 19021
+# The port number for SWO trace capture out of JLink
+JLINK_SWO_PORT = 19021
+
+# The port number for GDB control of ST-LINK GDB server
+STLINK_GDB_PORT = 61200
+
+# The port number for SWO trace capture out of ST-LINK GDB server
+STLINK_SWO_PORT = 61300
 
 # The format string passed to strftime()
 # for logging prints
@@ -506,10 +512,6 @@ class ExeRun():
                                                            text))
         try:
             # Start exe
-            # Note: used to have bufsize=1 here but it turns out
-            # that is ignored 'cos the output is considered
-            # binary.  Seems to work in any case, I guess
-            # Winders, at least, is in any case line-buffered.
             self._process = subprocess.Popen(self._call_list,
                                              stdout=subprocess.PIPE,
                                              stderr=subprocess.STDOUT,
@@ -541,6 +543,56 @@ class ExeRun():
                                                             self._call_list[0],
                                                             self._process.pid))
         return return_value
+
+# Simple SWO decoder: only handles single bytes of application
+# data at a time, i.e. what ITM_SendChar() sends.
+class SwoDecoder():
+    '''Take the contents of a byte_array and decode it as SWO'''
+    def __init__(self, address, replaceLfWithCrLf=False):
+        self._address = address
+        self._replace_lf_with_crlf = replaceLfWithCrLf
+        self._expecting_swit = True
+
+    def decode(self, swo_byte_array):
+        '''Do the decode'''
+        decoded_byte_array = bytearray()
+        if swo_byte_array:
+            for data_byte in swo_byte_array:
+                # We're looking only for "address" and we also know
+                # that CMSIS only offers ITM_SendChar(), so packet length
+                # is always 1, and we only send ASCII characters,
+                # so the top bit of the data byte must be 0.
+                #
+                # For the SWO protocol, see:
+                #
+                # https://developer.arm.com/documentation/ddi0314/h/
+                # instrumentation-trace-macrocell/
+                # about-the-instrumentation-trace-macrocell/trace-packet-format
+                #
+                # When we see SWIT (SoftWare Instrumentation Trace
+                # I think, anyway, the bit that carries our prints
+                # off the target) which is 0bBBBBB0SS, where BBBBB is
+                # address and SS is the size of payload to follow,
+                # in our case 0x01, we know that the next
+                # byte is probably data and if it is ASCII then
+                # it is data.  Anything else is ignored.
+                # The reason for doing it this way is that the
+                # ARM ITM only sends out sync packets under
+                # special circumstances so it is not a recovery
+                # mechanism for simply losing a byte in the
+                # transfer, which does happen occasionally.
+                if self._expecting_swit:
+                    if ((data_byte & 0x03) == 0x01) and ((data_byte & 0xf8) >> 3 == self._address):
+                        # Trace packet type is SWIT, i.e. our
+                        # application logging
+                        self._expecting_swit = False
+                else:
+                    if data_byte & 0x80 == 0:
+                        if (data_byte == 10) and self._replace_lf_with_crlf:
+                            decoded_byte_array.append(13)
+                        decoded_byte_array.append(data_byte)
+                    self._expecting_swit = True
+        return decoded_byte_array
 
 class PrintThread(threading.Thread):
     '''Print thread to organise prints nicely'''

@@ -40,10 +40,6 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** The SWO clock in Hz.
- */
-#define U_PORT_SWO_CLOCK_HZ 2000000
-
 /** Address of The ITM Enable register.
  */
 #define ITM_ENA   (*(volatile uint32_t *) 0xE0000E00)
