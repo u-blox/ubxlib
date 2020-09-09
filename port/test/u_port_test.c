@@ -366,6 +366,8 @@ static void osTestTask(void *pParameters)
     uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex.\n");
     U_PORT_TEST_ASSERT(gMutexHandle != NULL);
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) == 0);
+    uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex again, should fail!.\n");
+    U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);
     uPortLog("U_PORT_TEST_OS_TASK: unlocking it again.\n");
     U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);
 
