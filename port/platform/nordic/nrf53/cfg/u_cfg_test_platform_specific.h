@@ -60,7 +60,7 @@
  * must be connected to pin B via a 1k resistor.
  */
 #ifndef U_CFG_TEST_PIN_A
-# define U_CFG_TEST_PIN_A         -1 // AKA 1.06
+# define U_CFG_TEST_PIN_A         38 // AKA 1.06
 #endif
 
 /** Pin B for GPIO testing: will be used as both an input and
@@ -68,14 +68,13 @@
  * a 1k resistor and directly to pin C.
  */
 #ifndef U_CFG_TEST_PIN_B
-# define U_CFG_TEST_PIN_B         -1 // AKA 1.07
+# define U_CFG_TEST_PIN_B         39 // AKA 1.07
 #endif
-
 /** Pin C for GPIO testing: must be connected to pin B,
  * will be used as an input only.
  */
 #ifndef U_CFG_TEST_PIN_C
-# define U_CFG_TEST_PIN_C         -1 // AKA 1.08
+# define U_CFG_TEST_PIN_C         40 // AKA 1.08
 #endif
 
 /** UART HW block for UART driver testing.

@@ -15,6 +15,7 @@ target_sources(app PRIVATE ${NRF5340_BASE}/app/u_main.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_debug.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_os.c)
+target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_gpio.c)
 
 #ubxlib common
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/error/api ${UBXLIB_BASE}/port/api ${UBXLIB_PF_COMMON}/runner ${UBXLIB_PF_COMMON}/event_queue)
