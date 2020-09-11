@@ -19,6 +19,17 @@ From tool chain manager start Segger embedded studio (SES) using Open IDE button
 - Board file should be "{your_sdk_path}/zephyr/boards/arm/nrf5340pdk_nrf5340"
 - Board name should be "nrf5340pdk_nrf5340_cpuapp"
 - Always use the clean build directory option when upgrading to new ubxlib version!
+- You may override or provide conditional compilation flags to CMake without modifying `CMakeLists.txt`.  Do this by setting an environment variable `U_FLAGS`, e.g.:
+  
+  ```
+  set U_FLAGS=-DMY_FLAG
+  ```
+  
+  ...or:
+  
+  ```
+  set U_FLAGS=-DMY_FLAG -DU_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1
+  ```
 
 # Maintenance
 - When updating this build to a new version of the NRFConnect SDK change the release version stated in the introduction above.

@@ -12,6 +12,7 @@ import u_data # Gets and displays the instance database
 import u_connection # The connection to use for a given instance
 import u_run_esp32 # Build/run stuff on ESP32
 import u_run_nrf52 # Build/run stuff on NRF52
+import u_run_nrf53 # Build/run stuff on NRF53
 import u_run_stm32f4 # Build/run stuff on STM32F4
 import u_run_lint # Run Lint check
 import u_run_doxygen # Run a Doxygen check
@@ -142,6 +143,12 @@ def main(database, instance, filter_string, clean,
                                                    clean, defines, ubxlib_dir,
                                                    working_dir, printer,
                                                    reporter, test_report_handle)
+                elif platform.lower() == "nrf53":
+                    return_value = u_run_nrf53.run(instance, sdk, connection,
+                                                   connection_lock, platform_lock,
+                                                   clean, defines, ubxlib_dir,
+                                                   working_dir, printer,
+                                                   reporter, test_report_handle)
                 elif platform.lower() == "stm32f4":
                     return_value = u_run_stm32f4.run(instance, sdk, connection,
                                                      connection_lock, platform_lock,
@@ -265,10 +272,17 @@ if __name__ == "__main__":
                 # to perform
                 INSTALL_LOCK = threading.Lock()
 
+                # The platform lock is meaningless if
+                # called from here (since this will only
+                # be a single instance) but, just so that
+                # the code that is called doesn't complain
+                # about a None value, give it one
+                PLATFORM_LOCK = threading.Lock()
+
                 # Call main()
                 RETURN_VALUE = main(DATABASE, INSTANCE, ARGS.f, ARGS.c,
                                     ARGS.u, ARGS.w, None, INSTALL_LOCK,
-                                    None, None, None, ARGS.s, ARGS.t, ARGS.d)
+                                    PLATFORM_LOCK, None, None, ARGS.s, ARGS.t, ARGS.d)
         else:
             print("{}must supply an instance.".format(PROMPT))
             PARSER.print_help()

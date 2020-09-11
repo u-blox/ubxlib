@@ -62,6 +62,8 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 
 `u_run_nrf52.py`: build/download/run tests on the NRF52 platform; called by `u_run.py`.
 
+`u_run_nrf53.py`: build/download/run tests on the NRF53 platform; called by `u_run.py`.
+
 `u_run_pylint.py`: run Pylint on all of these Python automation scripts; called by `u_run.py`.
 
 `u_run_stm32f4.py`: build/download/run tests on the STM2F4 platform; called by `u_run.py`.
