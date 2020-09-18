@@ -235,3 +235,14 @@ def get_description_for_instance(database, instance):
             description = row["description"]
 
     return description
+
+def api_in_database(database, api):
+    '''Return true if the given api is in the database'''
+    is_in_database = False
+
+    for row in database:
+        if api == row["apis"]:
+            is_in_database = True
+            break
+
+    return is_in_database

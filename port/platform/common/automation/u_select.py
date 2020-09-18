@@ -152,7 +152,11 @@ def instance_api(database, paths, extensions, instances):
             del instances_local[:]
             parts = path.split("/")
             for idx, part in enumerate(parts):
-                if (part in ("api", "src", "test")) and (idx > 0):
+                # Check for an api, src or test directory
+                # but not one hanging off a platform
+                # directory
+                if (part in ("api", "src", "test")) and (idx > 0)       \
+                    and u_data.api_in_database(database, parts[idx - 1]):
                     api = parts[idx - 1]
                     instances_local.extend(u_data.get_instances_for_api(database, api)[:])
                     if instances_local:
