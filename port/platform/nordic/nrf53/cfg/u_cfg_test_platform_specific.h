@@ -77,10 +77,11 @@
 # define U_CFG_TEST_PIN_C         40 // AKA 1.08
 #endif
 
-/** UART HW block for UART driver testing.
+/** UART HW block for UART driver loopback testing where
+ * two UARTs are employed.
  */
-#ifndef U_CFG_TEST_UART
-# define U_CFG_TEST_UART          1
+#ifndef U_CFG_TEST_UART_1
+# define U_CFG_TEST_UART_1          -1
 #endif
 
 /** The baud rate to test the UART at.
@@ -89,29 +90,54 @@
 # define U_CFG_TEST_BAUD_RATE 115200
 #endif
 
+#ifndef U_CFG_TEST_UART_BUFFER_LENGTH_BYTES
+# define U_CFG_TEST_UART_BUFFER_LENGTH_BYTES 1024
+#endif
+
+/* Note!
+   Actual UART pin values are defined in nrf5340pdk_nrf5340_cpuapp_cummon.dts
+   but they are needed so the test runs with correct configuration (although
+   any value >= 0 would do).
+ */
+
 /** Tx pin for UART testing: should be connected to the Rx UART pin.
  */
 #ifndef U_CFG_TEST_PIN_UART_0_TXD
-# define U_CFG_TEST_PIN_UART_0_TXD   -1 // AKA 1.10
+# define U_CFG_TEST_PIN_UART_0_TXD   42 // AKA 1.10
 #endif
 
 /** Rx pin for UART testing: should be connected to the Tx UART pin.
  */
 #ifndef U_CFG_TEST_PIN_UART_0_RXD
-# define U_CFG_TEST_PIN_UART_0_RXD   -1// AKA 1.11
+# define U_CFG_TEST_PIN_UART_0_RXD   43 // AKA 1.11
 #endif
 
 /** CTS pin for UART testing: should be connected to the RTS UART pin.
  */
-#ifndef U_CFG_TEST_PIN_UART_CTS
-# define U_CFG_TEST_PIN_UART_CTS   44 // AKA 1.12
+#ifndef U_CFG_TEST_PIN_UART_0_CTS
+# define U_CFG_TEST_PIN_UART_0_CTS   44 // AKA 1.12
 #endif
 
 /** RTS pin for UART testing: should be connected to the CTS UART pin.
  */
-#ifndef U_CFG_TEST_PIN_UART_RTS
-# define U_CFG_TEST_PIN_UART_RTS   45 // AKA 1.13
+#ifndef U_CFG_TEST_PIN_UART_0_RTS
+# define U_CFG_TEST_PIN_UART_0_RTS   45 // AKA 1.13
 #endif
+
+/** Tx pin for UART testing: should be connected to the Rx UART pin.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_TXD
+# define U_CFG_TEST_PIN_UART_1_TXD   -1
+#endif
+
+/** Rx pin for UART testing: should be connected to the Tx UART pin.
+ */
+#ifndef U_CFG_TEST_PIN_UART_1_RXD
+# define U_CFG_TEST_PIN_UART_1_RXD   -1
+#endif
+
+
+#define U_CFG_TEST_UART_0 1
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 

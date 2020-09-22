@@ -31,6 +31,7 @@
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_gpio.h"
+#include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
 
 #include "zephyr.h"
@@ -75,12 +76,18 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 // Initialise the porting layer.
 int32_t uPortInit()
 {
-    return uPortEventQueuePrivateInit();
+    uErrorCode_t errorCode = U_ERROR_COMMON_SUCCESS;
+    errorCode = uPortUartInit();
+    if (errorCode == U_ERROR_COMMON_SUCCESS) {
+        errorCode = uPortEventQueuePrivateInit();
+    }
+    return errorCode;
 }
 
 // Deinitialise the porting layer.
 void uPortDeinit()
 {
+    uPortUartDeinit();
     uPortEventQueuePrivateDeinit();
 }
 

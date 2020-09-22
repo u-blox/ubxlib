@@ -51,6 +51,12 @@
 # define U_CFG_OS_YIELD_MS 1
 #endif
 
+#ifndef U_CFG_OS_APP_TASK_PRIORITY
+/** The priority of the task running the examples and tests: should
+ * be low.
+ */
+# define U_CFG_OS_APP_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 1)
+#endif
 #endif // _U_CFG_OS_PLATFORM_SPECIFIC_H_
 
 // End of file
