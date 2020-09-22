@@ -19,6 +19,11 @@
 
 /* Only bring in #includes specifically related to the test framework. */
 
+/* These inclusions required to get the UART CTS/RTS pin
+ * assignments from the Zephyr device tree.
+ */
+#include "devicetree.h"
+
 /** @file
  * @brief Porting layer and configuration items passed in at application
  * level when executing tests on the NRF5340 platform.
@@ -52,6 +57,14 @@
  */
 #define U_CFG_TEST_OS_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 5)
 
+/** Required for Zephyr device tree query:
+ * Since U_CFG_TEST_UART_A is a macro, DT_CAT() won't work on it
+ * directly, it needs this intermediate to cause U_CFG_TEST_UART_A
+ * to be expand first, e.g. if U_CFG_TEST_UART_A is defined as 1
+ * then U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A) spits out uart1.
+ */
+#define U_CFG_TEST_CAT(a, b) DT_CAT(a, b)
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: HW RELATED
  * -------------------------------------------------------------- */
@@ -77,11 +90,17 @@
 # define U_CFG_TEST_PIN_C         40 // AKA 1.08
 #endif
 
+/** UART HW block for UART driver loopback testing.
+ */
+#ifndef U_CFG_TEST_UART_A
+# define U_CFG_TEST_UART_A          1
+#endif
+
 /** UART HW block for UART driver loopback testing where
  * two UARTs are employed.
  */
-#ifndef U_CFG_TEST_UART_1
-# define U_CFG_TEST_UART_1          -1
+#ifndef U_CFG_TEST_UART_B
+# define U_CFG_TEST_UART_B          -1
 #endif
 
 /** The baud rate to test the UART at.
@@ -90,54 +109,95 @@
 # define U_CFG_TEST_BAUD_RATE 115200
 #endif
 
+/** The length of UART buffer to use during testing.
+ */
 #ifndef U_CFG_TEST_UART_BUFFER_LENGTH_BYTES
 # define U_CFG_TEST_UART_BUFFER_LENGTH_BYTES 1024
 #endif
 
-/* Note!
-   Actual UART pin values are defined in nrf5340pdk_nrf5340_cpuapp_cummon.dts
-   but they are needed so the test runs with correct configuration (although
-   any value >= 0 would do).
+/* IMPORTANT:
+ * The pins used by the UART are NOT defined here,
+ * they are defined at compile-time by the Zephyr
+ * device tree defined in
+ * nrf5340pdk_nrf5340_cpuapp_common.dts.  A .overlay file
+ * will be found in the project directory which sets
+ * the pins used during UART port testing for this
+ * project.  The values defined here are simply to
+ * satisfy the UART port API and are otherwise ignored.
  */
 
-/** Tx pin for UART testing: should be connected to the Rx UART pin.
+/** Tx pin for UART testing: should be connected either to the
+ * Rx UART pin or to U_CFG_TEST_PIN_UART_B_RXD if that is
+ * connected.
  */
-#ifndef U_CFG_TEST_PIN_UART_0_TXD
-# define U_CFG_TEST_PIN_UART_0_TXD   42 // AKA 1.10
+#ifndef U_CFG_TEST_PIN_UART_A_TXD
+# define U_CFG_TEST_PIN_UART_A_TXD   -1
 #endif
 
-/** Rx pin for UART testing: should be connected to the Tx UART pin.
+/** Rx pin for UART testing: should be connected either to the
+ * Tx UART pin or to U_CFG_TEST_PIN_UART_B_TXD if that is
+ * connected.
  */
-#ifndef U_CFG_TEST_PIN_UART_0_RXD
-# define U_CFG_TEST_PIN_UART_0_RXD   43 // AKA 1.11
+#ifndef U_CFG_TEST_PIN_UART_A_RXD
+# define U_CFG_TEST_PIN_UART_A_RXD   -1
 #endif
 
-/** CTS pin for UART testing: should be connected to the RTS UART pin.
+/** CTS pin for UART testing: should be connected either to the
+ * RTS UART pin or to U_CFG_TEST_PIN_UART_B_RTS if that is
+ * connected.
  */
-#ifndef U_CFG_TEST_PIN_UART_0_CTS
-# define U_CFG_TEST_PIN_UART_0_CTS   44 // AKA 1.12
+#ifndef U_CFG_TEST_PIN_UART_A_CTS
+# define U_CFG_TEST_PIN_UART_A_CTS   -1
 #endif
 
-/** RTS pin for UART testing: should be connected to the CTS UART pin.
+/** Macro to return the CTS pin for UART A: note that dashes
+ * in the DTS node name must be converted to underscores.
  */
-#ifndef U_CFG_TEST_PIN_UART_0_RTS
-# define U_CFG_TEST_PIN_UART_0_RTS   45 // AKA 1.13
+#define U_CFG_TEST_PIN_UART_A_CTS_GET (DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) ? \
+                                       DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) : -1)
+
+/** RTS pin for UART testing: should be connected connected either to the
+ * CTS UART pin or to U_CFG_TEST_PIN_UART_B_CTS if that is
+ * connected.
+ */
+#ifndef U_CFG_TEST_PIN_UART_A_RTS
+# define U_CFG_TEST_PIN_UART_A_RTS   -1
 #endif
 
-/** Tx pin for UART testing: should be connected to the Rx UART pin.
+/** Macro to return the RTS pin for UART A: note that dashes
+ * in the DTS node name must be converted to underscores.
  */
-#ifndef U_CFG_TEST_PIN_UART_1_TXD
-# define U_CFG_TEST_PIN_UART_1_TXD   -1
+#define U_CFG_TEST_PIN_UART_A_RTS_GET (DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) ? \
+                                       DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) : -1)
+
+
+/** Tx pin for dual-UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_A_RXD.
+ */
+#ifndef U_CFG_TEST_PIN_UART_B_TXD
+# define U_CFG_TEST_PIN_UART_B_TXD   -1
 #endif
 
-/** Rx pin for UART testing: should be connected to the Tx UART pin.
+/** Rx pin for dual-UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_A_TXD.
  */
-#ifndef U_CFG_TEST_PIN_UART_1_RXD
-# define U_CFG_TEST_PIN_UART_1_RXD   -1
+#ifndef U_CFG_TEST_PIN_UART_B_RXD
+# define U_CFG_TEST_PIN_UART_B_RXD   -1
 #endif
 
+/** CTS pin for dual-UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_A_RTS.
+ */
+#ifndef U_CFG_TEST_PIN_UART_B_CTS
+# define U_CFG_TEST_PIN_UART_B_CTS   -1
+#endif
 
-#define U_CFG_TEST_UART_0 1
+/** RTS pin for UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_A_CTS.
+ */
+#ifndef U_CFG_TEST_PIN_UART_B_RTS
+# define U_CFG_TEST_PIN_UART_B_RTS   -1
+#endif
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 

@@ -111,13 +111,13 @@ static int32_t gUart0Handle;
  */
 static int32_t gUart1Handle;
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0)
+#if (U_CFG_TEST_UART_A >= 0)
 
 /** Store the last consecutive AT time-out call-back here.
  */
 static int32_t gConsecutiveTimeout;
 
-# if (U_CFG_TEST_PIN_UART_1_TXD >= 0) && (U_CFG_TEST_PIN_UART_1_RXD >= 0)
+# if (U_CFG_TEST_UART_B >= 0)
 
 /** AT server buffer used by atServerCallback() and atEchoServerCallback().
  */
@@ -130,7 +130,7 @@ static char gAtServerBuffer[1024];
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0)
+#if (U_CFG_TEST_UART_A >= 0)
 
 // AT consecutive timeout callback, used by some of the tests below
 //lint -e{818} suppress "could be declared as pointing to const", callback
@@ -162,42 +162,42 @@ static void checkStackExtents(uAtClientHandle_t atHandle)
     U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
 }
 
-# if (U_CFG_TEST_PIN_UART_1_TXD >= 0) && (U_CFG_TEST_PIN_UART_1_RXD >= 0)
+# if (U_CFG_TEST_UART_B >= 0)
 
 // The preamble for tests involving two UARTs.
 static void twoUartsPreamble()
 {
-    gUart0Handle = uPortUartOpen(U_CFG_TEST_UART_0,
+    gUart0Handle = uPortUartOpen(U_CFG_TEST_UART_A,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,
                                  U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                 U_CFG_TEST_PIN_UART_0_TXD,
-                                 U_CFG_TEST_PIN_UART_0_RXD,
-                                 U_CFG_TEST_PIN_UART_0_CTS,
-                                 U_CFG_TEST_PIN_UART_0_RTS);
+                                 U_CFG_TEST_PIN_UART_A_TXD,
+                                 U_CFG_TEST_PIN_UART_A_RXD,
+                                 U_CFG_TEST_PIN_UART_A_CTS,
+                                 U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(gUart0Handle >= 0);
 
     uPortLog("U_AT_CLIENT_TEST: AT client will be on UART %d,"
              " TXD pin %d (0x%02x) and RXD pin %d (0x%02x).\n",
-             U_CFG_TEST_UART_0, U_CFG_TEST_PIN_UART_0_TXD,
-             U_CFG_TEST_PIN_UART_0_TXD, U_CFG_TEST_PIN_UART_0_RXD,
-             U_CFG_TEST_PIN_UART_0_RXD);
+             U_CFG_TEST_UART_A, U_CFG_TEST_PIN_UART_A_TXD,
+             U_CFG_TEST_PIN_UART_A_TXD, U_CFG_TEST_PIN_UART_A_RXD,
+             U_CFG_TEST_PIN_UART_A_RXD);
 
-    gUart1Handle = uPortUartOpen(U_CFG_TEST_UART_1,
+    gUart1Handle = uPortUartOpen(U_CFG_TEST_UART_B,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,
                                  U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                 U_CFG_TEST_PIN_UART_1_TXD,
-                                 U_CFG_TEST_PIN_UART_1_RXD,
-                                 U_CFG_TEST_PIN_UART_1_CTS,
-                                 U_CFG_TEST_PIN_UART_1_RTS);
+                                 U_CFG_TEST_PIN_UART_B_TXD,
+                                 U_CFG_TEST_PIN_UART_B_RXD,
+                                 U_CFG_TEST_PIN_UART_B_CTS,
+                                 U_CFG_TEST_PIN_UART_B_RTS);
     U_PORT_TEST_ASSERT(gUart1Handle >= 0);
 
     uPortLog("U_AT_CLIENT_TEST: AT server will be on UART %d,"
              " TXD pin %d (0x%02x) and RXD pin %d (0x%02x).\n",
-             U_CFG_TEST_UART_1, U_CFG_TEST_PIN_UART_1_TXD,
-             U_CFG_TEST_PIN_UART_1_TXD, U_CFG_TEST_PIN_UART_1_RXD,
-             U_CFG_TEST_PIN_UART_1_RXD);
+             U_CFG_TEST_UART_B, U_CFG_TEST_PIN_UART_B_TXD,
+             U_CFG_TEST_PIN_UART_B_TXD, U_CFG_TEST_PIN_UART_B_RXD,
+             U_CFG_TEST_PIN_UART_B_RXD);
 
     uPortLog("U_AT_CLIENT_TEST: make sure these pins are cross-connected.\n");
 }
@@ -894,7 +894,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientInitialisation")
     uPortDeinit();
 }
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0)
+#if (U_CFG_TEST_UART_A >= 0)
 /** Add an AT client then try getting and setting all of the
  * configuration items.  Requires one UART with no
  * particular wiring.
@@ -907,20 +907,20 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
     char c;
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    gUart0Handle = uPortUartOpen(U_CFG_TEST_UART_0,
+    gUart0Handle = uPortUartOpen(U_CFG_TEST_UART_A,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,
                                  U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                 U_CFG_TEST_PIN_UART_0_TXD,
-                                 U_CFG_TEST_PIN_UART_0_RXD,
-                                 U_CFG_TEST_PIN_UART_0_CTS,
-                                 U_CFG_TEST_PIN_UART_0_RTS);
+                                 U_CFG_TEST_PIN_UART_A_TXD,
+                                 U_CFG_TEST_PIN_UART_A_RXD,
+                                 U_CFG_TEST_PIN_UART_A_CTS,
+                                 U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(gUart0Handle >= 0);
 
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
     uPortLog("U_AT_CLIENT_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_0);
+             U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gUart0Handle, U_AT_CLIENT_STREAM_TYPE_UART,
                                   NULL, U_AT_CLIENT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
@@ -996,7 +996,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
     uPortDeinit();
 }
 
-# if (U_CFG_TEST_PIN_UART_1_TXD >= 0) && (U_CFG_TEST_PIN_UART_1_RXD >= 0)
+# if (U_CFG_TEST_PIN_UART_B_TXD >= 0) && (U_CFG_TEST_PIN_UART_B_RXD >= 0)
 /** Add an AT client, send the test commands of gAtClientTestSet1[],
  * to atServerCallback() over a UART where they are checked and then,
  * the test responses/URCs of gAtClientTestSet1[] are sent back by
@@ -1045,7 +1045,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
     uPortLog("U_AT_CLIENT_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_0);
+             U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gUart0Handle, U_AT_CLIENT_STREAM_TYPE_UART,
                                   NULL, U_AT_CLIENT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
@@ -1366,7 +1366,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
     uPortLog("U_AT_CLIENT_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_0);
+             U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gUart0Handle, U_AT_CLIENT_STREAM_TYPE_UART,
                                   NULL, U_AT_CLIENT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);

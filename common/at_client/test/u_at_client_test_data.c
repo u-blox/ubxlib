@@ -97,8 +97,7 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
-    (U_CFG_TEST_PIN_UART_1_TXD >= 0) && (U_CFG_TEST_PIN_UART_1_RXD >= 0)
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B >= 0)
 
 /** A URC consisting of a single int32_t, to be referenced in
  * gAtClientTestSet1 or gAtClientTestSet2.
@@ -599,8 +598,7 @@ static const uAtClientTestEchoMisc_t gAtClientTestEchoMisc = { U_AT_CLIENT_TEST_
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
-    (U_CFG_TEST_PIN_UART_1_TXD >= 0) && (U_CFG_TEST_PIN_UART_1_RXD >= 0)
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B >= 0)
 
 // Function to check that whole parameters can be skipped, referenced
 // by gAtClientTestSet2.
@@ -1115,8 +1113,7 @@ static int32_t handleMiscUseLast(uAtClientHandle_t atClientHandle,
  * EXTERNED VARIABLES: gAtClientTestSet1 AND gAtClientTestSet2
  * -------------------------------------------------------------- */
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
-    (U_CFG_TEST_PIN_UART_1_TXD >= 0) && (U_CFG_TEST_PIN_UART_1_RXD >= 0)
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B >= 0)
 
 /** Loopback test data for the AT client, requires two UARTs.
  * NOTE: if you change the number of references to URCs here then

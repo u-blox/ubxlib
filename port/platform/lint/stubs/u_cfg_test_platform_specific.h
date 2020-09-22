@@ -39,18 +39,18 @@
 #define U_CFG_TEST_PIN_A            0
 #define U_CFG_TEST_PIN_B            0
 #define U_CFG_TEST_PIN_C            0
-#define U_CFG_TEST_UART_0           0
-#define U_CFG_TEST_UART_1           0
+#define U_CFG_TEST_UART_A           0
+#define U_CFG_TEST_UART_B           0
 #define U_CFG_TEST_BAUD_RATE      115200
 #define U_CFG_TEST_UART_BUFFER_LENGTH_BYTES 0
-#define U_CFG_TEST_PIN_UART_0_TXD   0
-#define U_CFG_TEST_PIN_UART_0_RXD   0
-#define U_CFG_TEST_PIN_UART_0_CTS   0
-#define U_CFG_TEST_PIN_UART_0_RTS   0
-#define U_CFG_TEST_PIN_UART_1_TXD   0
-#define U_CFG_TEST_PIN_UART_1_RXD   0
-#define U_CFG_TEST_PIN_UART_1_CTS   0
-#define U_CFG_TEST_PIN_UART_1_RTS   0
+#define U_CFG_TEST_PIN_UART_A_TXD   0
+#define U_CFG_TEST_PIN_UART_A_RXD   0
+#define U_CFG_TEST_PIN_UART_A_CTS   0
+#define U_CFG_TEST_PIN_UART_A_RTS   0
+#define U_CFG_TEST_PIN_UART_B_TXD   0
+#define U_CFG_TEST_PIN_UART_B_RXD   0
+#define U_CFG_TEST_PIN_UART_B_CTS   0
+#define U_CFG_TEST_PIN_UART_B_RTS   0
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 

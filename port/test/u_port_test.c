@@ -101,8 +101,7 @@
  * TYPES
  * -------------------------------------------------------------- */
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
-    (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 
 /** Type to hold the stuff that the UART test task needs to know
  * about.
@@ -164,8 +163,7 @@ static int32_t gEventQueueMinErrorFlag;
 // Counter for event queue callback min length
 static int32_t gEventQueueMinCounter;
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
-    (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 
 // The data to send during UART testing.
 static const char gUartTestData[] =  "_____0000:0123456789012345678901234567890123456789"
@@ -196,8 +194,7 @@ static const char gUartTestData[] =  "_____0000:01234567890123456789012345678901
 static char gUartBuffer[(U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 2) +
                                                                   (U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 4)];
 
-#endif // (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) &&
-// (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
+#endif // (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -537,8 +534,7 @@ static void eventQueueMinFunction(void *pParam,
     gEventQueueMinCounter++;
 }
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
-    (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 
 // Callback that is called when data arrives at the UART
 static void uartReceivedDataCallback(int32_t uartHandle,
@@ -606,38 +602,46 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     uartEventCallbackData_t eventCallbackData = {0};
     int32_t bytesToSend;
     int32_t bytesSent = 0;
-    int32_t pinCts = -1;
-    int32_t pinRts = -1;
+    int32_t pinCts;
+    int32_t pinRts;
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
     int32_t stackMinFreeBytes;
 
     eventCallbackData.callCount = 0;
     eventCallbackData.pReceive = gUartBuffer;
 
-    if (flowControlOn) {
-        pinCts = U_CFG_TEST_PIN_UART_0_CTS;
-        pinRts = U_CFG_TEST_PIN_UART_0_RTS;
-    } else {
+    pinCts = U_CFG_TEST_PIN_UART_A_CTS_GET;
+    pinRts = U_CFG_TEST_PIN_UART_A_RTS_GET;
+
+    uPortLog("U_PORT_TEST: UART CTS is on pin %d and RTS on"
+             " pin %d", pinCts, pinRts);
+    if (!flowControlOn) {
+        uPortLog(" but we're going to ignore them for this"
+                 " test.\n");
         // If we want to test with flow control off
         // but the flow control pins are actually
         // connected then they need to be set
         // to "get on with it"
-#if (U_CFG_TEST_PIN_UART_0_CTS >= 0)
-        // Make CTS an output pin and low
-        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_UART_0_CTS, 0) == 0);
-        gpioConfig.pin = U_CFG_TEST_PIN_UART_0_CTS;
-        gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
-        U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
-        uPortTaskBlock(U_CFG_OS_YIELD_MS);
-#endif
-#if (U_CFG_TEST_PIN_UART_0_RTS >= 0)
-        // Make RTS an output pin and low
-        U_PORT_TEST_ASSERT(uPortGpioSet(U_CFG_TEST_PIN_UART_0_RTS, 0) == 0);
-        gpioConfig.pin = U_CFG_TEST_PIN_UART_0_RTS;
-        gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
-        U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
-        uPortTaskBlock(U_CFG_OS_YIELD_MS);
-#endif
+        if (pinCts >= 0) {
+            // Make CTS an output pin and low
+            U_PORT_TEST_ASSERT(uPortGpioSet(pinCts, 0) == 0);
+            gpioConfig.pin = pinCts;
+            gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+            U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
+            uPortTaskBlock(U_CFG_OS_YIELD_MS);
+        }
+        if (pinRts >= 0) {
+            // Make RTS an output pin and low
+            U_PORT_TEST_ASSERT(uPortGpioSet(pinRts, 0) == 0);
+            gpioConfig.pin = pinRts;
+            gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+            U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
+            uPortTaskBlock(U_CFG_OS_YIELD_MS);
+        }
+        pinCts = -1;
+        pinRts = -1;
+    } else {
+        uPortLog(".\n");
     }
 
     uPortLog("U_PORT_TEST: testing UART loop-back, %d byte(s) at %d"
@@ -645,11 +649,11 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
              ((pinCts >= 0) && (pinRts >= 0)) ? "on" : "off");
 
     uPortLog("U_PORT_TEST: add a UART instance...\n");
-    uartHandle = uPortUartOpen(U_CFG_TEST_UART_0,
+    uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                speed, NULL,
                                U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                               U_CFG_TEST_PIN_UART_0_TXD,
-                               U_CFG_TEST_PIN_UART_0_RXD,
+                               U_CFG_TEST_PIN_UART_A_TXD,
+                               U_CFG_TEST_PIN_UART_A_RXD,
                                pinCts, pinRts);
     U_PORT_TEST_ASSERT(uartHandle >= 0);
 
@@ -734,8 +738,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     uPortUartClose(uartHandle);
 }
 
-#endif // (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) &&
-// (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
+#endif // (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -970,7 +973,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     uPortDeinit();
 }
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0)
+#if (U_CFG_TEST_UART_A >= 0)
 /** Some ports, e.g. the Nordic one, use the tick time somewhat
  * differently when the UART is running so initialise that
  * here and re-measure time.  Of course, this is only testing
@@ -1014,14 +1017,14 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     uPortLog("U_PORT_TEST: tick time now is %d.\n",
              (int32_t) timeNowMs);
     uPortLog("U_PORT_TEST: add a UART instance...\n");
-    uartHandle = uPortUartOpen(U_CFG_TEST_UART_0,
+    uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                U_CFG_TEST_BAUD_RATE,
                                NULL,
                                U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                               U_CFG_TEST_PIN_UART_0_TXD,
-                               U_CFG_TEST_PIN_UART_0_RXD,
-                               U_CFG_TEST_PIN_UART_0_CTS,
-                               U_CFG_TEST_PIN_UART_0_RTS);
+                               U_CFG_TEST_PIN_UART_A_TXD,
+                               U_CFG_TEST_PIN_UART_A_RXD,
+                               U_CFG_TEST_PIN_UART_A_CTS,
+                               U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(uartHandle >= 0);
     uPortLog("U_PORT_TEST: waiting %d ms...\n",
              U_PORT_TEST_OS_BLOCK_TIME_MS);
@@ -1364,8 +1367,7 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
 }
 #endif
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
-    (U_CFG_TEST_PIN_UART_1_TXD < 0) && (U_CFG_TEST_PIN_UART_1_RXD < 0)
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 /** Test UART.
  */
 U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
@@ -1375,10 +1377,11 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
     // Run a UART test at 115,200
     // without flow control
     runUartTest(50000, 115200, false);
-#if (U_CFG_TEST_PIN_UART_0_CTS >= 0) && (U_CFG_TEST_PIN_UART_0_RTS >= 0)
-    // ...with flow control
-    runUartTest(50000, 115200, true);
-#endif
+    if ((U_CFG_TEST_PIN_UART_A_CTS_GET >= 0) &&
+        (U_CFG_TEST_PIN_UART_A_RTS_GET >= 0)) {
+        // ...and with flow control
+        runUartTest(50000, 115200, true);
+    }
 
     uPortDeinit();
 }

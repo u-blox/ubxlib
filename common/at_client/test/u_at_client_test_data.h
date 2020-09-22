@@ -176,8 +176,7 @@ typedef struct {
  * VARIABLES
  * -------------------------------------------------------------- */
 
-#if (U_CFG_TEST_PIN_UART_0_TXD >= 0) && (U_CFG_TEST_PIN_UART_0_RXD >= 0) && \
-    (U_CFG_TEST_PIN_UART_1_TXD >= 0) && (U_CFG_TEST_PIN_UART_1_RXD >= 0)
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B >= 0)
 
 /** Loopback test data for the AT client, requires two UARTs.
  */

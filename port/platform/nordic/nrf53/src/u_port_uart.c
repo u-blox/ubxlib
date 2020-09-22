@@ -283,6 +283,15 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 {
     uErrorCode_t handleOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
 
+    // Not used: on this platform the pins used by a given
+    // UART are defined at compile-time in the Zephyr
+    // Device Tree, for which there is likely an overlay
+    // file in the project directory defining the pins.
+    (void) pinTx;
+    (void) pinRx;
+    (void) pinCts;
+    (void) pinRts;
+
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
@@ -290,8 +299,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
         handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((uart >= 0) &&
             (uart < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            (baudRate > 0) && (pinRx >= 0) && (pinTx >= 0) &&
-            (pReceiveBuffer == NULL)) {
+            (baudRate > 0) && (pReceiveBuffer == NULL)) {
 
             gUartData[uart].pBuffer = k_malloc(U_PORT_UART_BUFFER_SIZE);
 

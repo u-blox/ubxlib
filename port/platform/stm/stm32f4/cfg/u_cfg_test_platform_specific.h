@@ -81,15 +81,15 @@
  * Note: make sure that the corresponding U_CFG_UARTx_AVAILABLE
  * for this UART is set to 1 in u_cfg_hw_platform_specific.h
  */
-#ifndef U_CFG_TEST_UART_0
-# define U_CFG_TEST_UART_0          3 // UART3
+#ifndef U_CFG_TEST_UART_A
+# define U_CFG_TEST_UART_A          3 // UART3
 #endif
 
 /** UART HW block for UART driver loopback testing where
  * two UARTs are employed.
  */
-#ifndef U_CFG_TEST_UART_1
-# define U_CFG_TEST_UART_1          -1
+#ifndef U_CFG_TEST_UART_B
+# define U_CFG_TEST_UART_B          -1
 #endif
 
 /** The baud rate to test the UART at.
@@ -105,66 +105,86 @@
 #endif
 
 /** Tx pin for UART testing: should be connected either to the
- * Rx UART pin or to U_CFG_TEST_PIN_UART_1_RXD if that is
+ * Rx UART pin or to U_CFG_TEST_PIN_UART_B_RXD if that is
  * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_0_TXD
-# define U_CFG_TEST_PIN_UART_0_TXD   0x38 // UART3 TX, PD_8 or D1 on a C030 board
+#ifndef U_CFG_TEST_PIN_UART_A_TXD
+# define U_CFG_TEST_PIN_UART_A_TXD   0x38 // UART3 TX, PD_8 or D1 on a C030 board
 #endif
 
 /** Rx pin for UART testing: should be connected either to the
- * Tx UART pin or to U_CFG_TEST_PIN_UART_1_TXD if that is
+ * Tx UART pin or to U_CFG_TEST_PIN_UART_B_TXD if that is
  * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_0_RXD
-# define U_CFG_TEST_PIN_UART_0_RXD   0x39 // UART3 RX, PD_9 or D0 on a C030 board
+#ifndef U_CFG_TEST_PIN_UART_A_RXD
+# define U_CFG_TEST_PIN_UART_A_RXD   0x39 // UART3 RX, PD_9 or D0 on a C030 board
 #endif
 
 /** CTS pin for UART testing: should be connected either to the
- * RTS UART pin or to U_CFG_TEST_PIN_UART_1_RTS if that is
+ * RTS UART pin or to U_CFG_TEST_PIN_UART_B_RTS if that is
  * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_0_CTS
-# define U_CFG_TEST_PIN_UART_0_CTS   0x3b // UART3 CTS, PD_11 or D2 on a C030 board
+#ifndef U_CFG_TEST_PIN_UART_A_CTS
+# define U_CFG_TEST_PIN_UART_A_CTS   0x3b // UART3 CTS, PD_11 or D2 on a C030 board
 #endif
+
+/** Macro to return the CTS pin for UART A: on some
+ * platforms this is not a simple #define.
+ */
+#define U_CFG_TEST_PIN_UART_A_CTS_GET U_CFG_TEST_PIN_UART_A_CTS
 
 /** RTS pin for UART testing: should be connected connected either to the
- * CTS UART pin or to U_CFG_TEST_PIN_UART_1_CTS if that is
+ * CTS UART pin or to U_CFG_TEST_PIN_UART_B_CTS if that is
  * not -1.
  */
-#ifndef U_CFG_TEST_PIN_UART_0_RTS
-# define U_CFG_TEST_PIN_UART_0_RTS   0x1e // UART3 RTS, PB_14 or D3 on a C030 board
+#ifndef U_CFG_TEST_PIN_UART_A_RTS
+# define U_CFG_TEST_PIN_UART_A_RTS   0x1e // UART3 RTS, PB_14 or D3 on a C030 board
 #endif
 
+/** Macro to return the RTS pin for UART A: on some
+ * platforms this is not a simple #define.
+ */
+#define U_CFG_TEST_PIN_UART_A_RTS_GET U_CFG_TEST_PIN_UART_A_RTS
+
 /** Tx pin for dual-UART testing: if present should be connected to
- * U_CFG_TEST_PIN_UART_0_RXD.  For instance, set this to 0x16 to bring USART1
+ * U_CFG_TEST_PIN_UART_A_RXD.  For instance, set this to 0x16 to bring USART1
  * of the STM32F437 out on pin PB_6, which is the SCL pin on a u-blox C030 board.
  */
-#ifndef U_CFG_TEST_PIN_UART_1_TXD
-# define U_CFG_TEST_PIN_UART_1_TXD   -1
+#ifndef U_CFG_TEST_PIN_UART_B_TXD
+# define U_CFG_TEST_PIN_UART_B_TXD   -1
 #endif
 
 /** Rx pin for dual-UART testing: if present should be connected to
- * U_CFG_TEST_PIN_UART_0_TXD. For instance, set this to 0x17 to bring USART1
+ * U_CFG_TEST_PIN_UART_A_TXD. For instance, set this to 0x17 to bring USART1
  * the STM32F437 out on pin PB_7, which is the SDA pin on a u-blox C030 board.
  */
-#ifndef U_CFG_TEST_PIN_UART_1_RXD
-# define U_CFG_TEST_PIN_UART_1_RXD   -1
+#ifndef U_CFG_TEST_PIN_UART_B_RXD
+# define U_CFG_TEST_PIN_UART_B_RXD   -1
 #endif
 
 /** CTS pin for dual-UART testing: if present should be connected to
- * U_CFG_TEST_PIN_UART_0_RTS.
+ * U_CFG_TEST_PIN_UART_A_RTS.
  */
-#ifndef U_CFG_TEST_PIN_UART_1_CTS
-# define U_CFG_TEST_PIN_UART_1_CTS   -1
+#ifndef U_CFG_TEST_PIN_UART_B_CTS
+# define U_CFG_TEST_PIN_UART_B_CTS   -1
 #endif
 
-/** RTS pin for UART testing: if present should be connected to
- * U_CFG_TEST_PIN_UART_0_CTS.
+/** Macro to return the CTS pin for UART B: on some
+ * platforms this is not a simple #define.
  */
-#ifndef U_CFG_TEST_PIN_UART_1_RTS
-# define U_CFG_TEST_PIN_UART_1_RTS   -1
+#define U_CFG_TEST_PIN_UART_B_CTS_GET U_CFG_TEST_PIN_UART_B_CTS
+
+/** RTS pin for UART testing: if present should be connected to
+ * U_CFG_TEST_PIN_UART_A_CTS.
+ */
+#ifndef U_CFG_TEST_PIN_UART_B_RTS
+# define U_CFG_TEST_PIN_UART_B_RTS   -1
 #endif
+
+/** Macro to return the RTS pin for UART B: on some
+ * platforms this is not a simple #define.
+ */
+#define U_CFG_TEST_PIN_UART_B_RTS_GET U_CFG_TEST_PIN_UART_B_RTS
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 
