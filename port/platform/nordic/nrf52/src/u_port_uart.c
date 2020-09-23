@@ -925,6 +925,8 @@ int32_t uPortUartEventCallbackSet(int32_t handle,
 // Remove an event callback.
 void uPortUartEventCallbackRemove(int32_t handle)
 {
+    int32_t eventQueueHandle = -1;
+
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
@@ -932,14 +934,25 @@ void uPortUartEventCallbackRemove(int32_t handle)
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
             (gUartData[handle].eventQueueHandle >= 0)) {
-            // Close the event queue
-            uPortEventQueueClose(gUartData[handle].eventQueueHandle);
+            // Save the eventQueueHandle and set all
+            // the parameters to indicate that the
+            // queue is closed
+            eventQueueHandle = gUartData[handle].eventQueueHandle;
             gUartData[handle].eventQueueHandle = -1;
             gUartData[handle].pEventCallback = NULL;
             gUartData[handle].eventFilter = 0;
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
+
+        // Now close the event queue
+        // outside the gMutex lock.  Reason for this
+        // is that the event task could be calling
+        // back into here and we don't want it
+        // blocked by us or we'll get stuck.
+        if (eventQueueHandle >= 0) {
+            uPortEventQueueClose(eventQueueHandle);
+        }
     }
 }
 
