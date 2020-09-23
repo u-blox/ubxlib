@@ -1217,8 +1217,12 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
     strcpy(buffer, "abcabc");
     U_PORT_TEST_ASSERT(strcmp(strtok_r(buffer, "b", &pSave), "a") == 0);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
+    //lint -e(668) Suppress possible passing of NULL pointer to strcmp,
+    // it's a test, if it goes bang we've failed
     U_PORT_TEST_ASSERT(strcmp(strtok_r(NULL, "b", &pSave), "ca") == 0);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
+    //lint -e(668) Suppress possible passing of NULL pointer to strcmp,
+    // it's a test, if it goes bang we've failed
     U_PORT_TEST_ASSERT(strcmp(strtok_r(NULL, "b", &pSave), "c") == 0);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
     U_PORT_TEST_ASSERT(strtok_r(NULL, "b", &pSave) == NULL);
@@ -1230,6 +1234,8 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
     strcpy(buffer, "abcade");
     U_PORT_TEST_ASSERT(strcmp(strtok_r(buffer, "a", &pSave), "bc") == 0);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
+    //lint -e(668) Suppress possible passing of NULL pointer to strcmp,
+    // it's a test, if it goes bang we've failed
     U_PORT_TEST_ASSERT(strcmp(strtok_r(NULL, "a", &pSave), "de") == 0);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
     U_PORT_TEST_ASSERT(strtok_r(NULL, "a", &pSave) == NULL);
@@ -1284,7 +1290,7 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
     gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
     U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
     // Let it settle
-    uPortTaskBlock(U_CFG_OS_YIELD_MS);
+    uPortTaskBlock(1);
 
     // Pins B and C should read 1
     U_PORT_TEST_ASSERT(uPortGpioGet(U_CFG_TEST_PIN_B) == 1);

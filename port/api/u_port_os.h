@@ -220,7 +220,10 @@ int32_t uPortMutexCreate(uPortMutexHandle_t *pMutexHandle);
 int32_t uPortMutexDelete(const uPortMutexHandle_t mutexHandle);
 
 /** Lock the given mutex, waiting until it is available if
- * it is already locked.
+ * it is already locked  Note that a lock can only be taken
+ * once, EVEN IF the lock attempt is from within the same task.
+ * In other words this is NOT a counting mutex, it is a simple
+ * binary mutex.
  *
  * @param mutexHandle  the handle of the mutex.
  * @return             zero on success else negative error code.
