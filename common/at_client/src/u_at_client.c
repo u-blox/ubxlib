@@ -95,6 +95,15 @@
  */
 #define U_AT_CLIENT_ERROR_LENGTH_BYTES      7
 
+/** The error string which can mark the end of
+ * an AT command sequence if the use aborts it.
+ */
+#define U_AT_CLIENT_ABORTED                 "ABORTED\r\n"
+
+/** The length of U_AT_CLIENT_ABORTED in bytes.
+ */
+#define U_AT_CLIENT_ABORTED_LENGTH_BYTES    9
+
 /** The CME ERROR string which can mark the end of
  * an AT command sequence.
  */
@@ -292,8 +301,8 @@ static uAtClientInstance_t *pGetAtClientInstance(int32_t streamHandle,
 {
     uAtClientInstance_t *pClient = gpAtClientList;
 
-    while ((pClient != NULL) && (pClient->streamType != streamType) &&
-           (pClient->streamHandle != streamHandle)) {
+    while ((pClient != NULL) &&
+           !((pClient->streamType == streamType) && (pClient->streamHandle == streamHandle))) {
         pClient = pClient->pNext;
     }
 
@@ -331,6 +340,49 @@ static void removeAtClientInstance(const uAtClientInstance_t *pClient)
             pCurrent = pPrev->pNext;
         }
     }
+}
+
+// Remove an AT client.
+// gMutex should be locked before this is called.
+static void removeClient(uAtClientInstance_t *pClient)
+{
+    uAtClientUrc_t *pUrc;
+
+    U_PORT_MUTEX_LOCK(pClient->mutex);
+
+    // Remove it from the list
+    removeAtClientInstance(pClient);
+
+    // Free any URC handlers it had.
+    while (pClient->pUrcList != NULL) {
+        pUrc = pClient->pUrcList;
+        pClient->pUrcList = pUrc->pNext;
+        free(pUrc);
+    }
+
+    // Remove the URC event handler
+    switch (pClient->streamType) {
+        case U_AT_CLIENT_STREAM_TYPE_UART:
+            uPortUartEventCallbackRemove(pClient->streamHandle);
+            break;
+        default:
+            break;
+    }
+
+    // Delete the stream mutex
+    uPortMutexDelete(pClient->streamMutex);
+
+    // Free the receive buffer if it was malloc()ed.
+    if (pClient->pReceiveBuffer->isMalloced) {
+        free(pClient->pReceiveBuffer);
+    }
+
+    // Unlock its main mutex so that we can delete it
+    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    uPortMutexDelete(pClient->mutex);
+
+    // And finally free the client context.
+    free(pClient);
 }
 
 // Find one character buffer inside another.
@@ -871,6 +923,9 @@ static void setDeviceError(uAtClientInstance_t *pClient,
 {
     int32_t errorCode;
 
+    pClient->deviceError.type = errorType;
+    pClient->deviceError.code = 0;
+
     if ((errorType == U_AT_CLIENT_DEVICE_ERROR_TYPE_CMS) ||
         (errorType == U_AT_CLIENT_DEVICE_ERROR_TYPE_CME)) {
 
@@ -879,16 +934,12 @@ static void setDeviceError(uAtClientInstance_t *pClient,
 
         if (errorCode >= 0) {
             pClient->deviceError.code = errorCode;
-            pClient->deviceError.type = errorType;
             if (pClient->debugOn) {
-                uPortLog("U_AT_CLIENT_%d-%d: AT error code %d.\n",
+                uPortLog("U_AT_CLIENT_%d-%d: CME/CMS error code %d.\n",
                          pClient->streamType, pClient->streamHandle,
                          errorCode);
             }
         }
-    } else {
-        pClient->deviceError.code = 0;
-        pClient->deviceError.type = errorType;
     }
 
     setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
@@ -915,6 +966,13 @@ static bool deviceErrorInBuffer(uAtClientInstance_t *pClient)
             if (found) {
                 setDeviceError(pClient,
                                U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR);
+            } else {
+                found = bufferMatch(pClient, U_AT_CLIENT_ABORTED,
+                                    U_AT_CLIENT_ABORTED_LENGTH_BYTES);
+                if (found) {
+                    setDeviceError(pClient,
+                                   U_AT_CLIENT_DEVICE_ERROR_TYPE_ABORTED);
+                }
             }
         }
     }
@@ -1082,15 +1140,7 @@ static bool findUrcHandler(const uAtClientInstance_t *pClient,
     return found;
 }
 
-// Perform the actions associated with locking the
-// stream mutex aside from the actual lock itself.
-static void lockActions(uAtClientInstance_t *pClient)
-{
-    clearError(pClient);
-    pClient->lockTimeMs = uPortGetTickTimeMs();
-}
-
-// Try to lock the stream.
+// Try to lock the stream: this does NOT clear errors.
 // Returns zero on success.
 static int32_t tryLock(uAtClientInstance_t *pClient)
 {
@@ -1098,7 +1148,7 @@ static int32_t tryLock(uAtClientInstance_t *pClient)
 
     outcome = uPortMutexTryLock(pClient->streamMutex, 0);
     if (outcome == 0) {
-        lockActions(pClient);
+        pClient->lockTimeMs = uPortGetTickTimeMs();
     }
 
     return outcome;
@@ -1227,54 +1277,53 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
         // and be processing it, in which case just return.
         if (tryLock(pClient) == 0) {
             // Loop until no received characters left to process
-            while ((sizeOrError = getReceiveSize(pClient)) > 0) {
-                pReceiveBuffer = pClient->pReceiveBuffer;
-                if (pReceiveBuffer->readIndex < pReceiveBuffer->length) {
-                    if (pClient->debugOn) {
-                        uPortLog("U_AT_CLIENT_%d-%d: possible URC data readable %d,"
-                                 " already buffered %u.\n", pClient->streamType,
-                                 pClient->streamHandle, sizeOrError,
-                                 pReceiveBuffer->length - pReceiveBuffer->readIndex);
-                    }
-                    pClient->scope = U_AT_CLIENT_SCOPE_NONE;
-                    for (size_t x = 0; x < U_AT_CLIENT_URC_DATA_LOOP_GUARD; x++) {
-                        // Search through the URCs
-                        if (bufferMatchOneUrc(pClient)) {
-                            // If there's a bufferMatch, see if more data is available
-                            sizeOrError = getReceiveSize(pClient);
-                            if ((sizeOrError <= 0) &&
-                                (pReceiveBuffer->readIndex >=
-                                 pReceiveBuffer->dataBufferSize)) {
-                                // We have no more data to process, leave this loop
-                                break;
-                            }
-                            // If no bufferMatch was found, look for CR/LF
-                        } else if (pMemStr(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                                           pReceiveBuffer->readIndex,
-                                           pReceiveBuffer->length,
-                                           U_AT_CLIENT_CRLF, U_AT_CLIENT_CRLF_LENGTH_BYTES) != NULL) {
-                            // Consume everything up to the CR/LF
-                            consumeToString(pClient, U_AT_CLIENT_CRLF);
+            pReceiveBuffer = pClient->pReceiveBuffer;
+            while (((sizeOrError = getReceiveSize(pClient)) > 0) ||
+                   (pReceiveBuffer->readIndex < pReceiveBuffer->length)) {
+                if (pClient->debugOn) {
+                    uPortLog("U_AT_CLIENT_%d-%d: possible URC data readable %d,"
+                             " already buffered %u.\n", pClient->streamType,
+                             pClient->streamHandle, sizeOrError,
+                             pReceiveBuffer->length - pReceiveBuffer->readIndex);
+                }
+                pClient->scope = U_AT_CLIENT_SCOPE_NONE;
+                for (size_t x = 0; x < U_AT_CLIENT_URC_DATA_LOOP_GUARD; x++) {
+                    // Search through the URCs
+                    if (bufferMatchOneUrc(pClient)) {
+                        // If there's a bufferMatch, see if more data is available
+                        sizeOrError = getReceiveSize(pClient);
+                        if ((sizeOrError <= 0) &&
+                            (pReceiveBuffer->readIndex >=
+                             pReceiveBuffer->dataBufferSize)) {
+                            // We have no more data to process, leave this loop
+                            break;
+                        }
+                        // If no bufferMatch was found, look for CR/LF
+                    } else if (pMemStr(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                       pReceiveBuffer->readIndex,
+                                       pReceiveBuffer->length,
+                                       U_AT_CLIENT_CRLF, U_AT_CLIENT_CRLF_LENGTH_BYTES) != NULL) {
+                        // Consume everything up to the CR/LF
+                        consumeToString(pClient, U_AT_CLIENT_CRLF);
+                    } else {
+                        // If no bufferMatch was found and there's no CR/LF to
+                        // consume up to, bring in more data and we'll check
+                        // it again
+                        if (bufferFill(pClient, true)) {
+                            // Start the cycle again as if we'd just done
+                            // uAtClientLock()
+                            pClient->lockTimeMs = uPortGetTickTimeMs();
                         } else {
-                            // If no bufferMatch was found and there's no CR/LF to
-                            // consume up to, bring in more data and we'll check
-                            // it again
-                            if (bufferFill(pClient, true)) {
-                                // Start the cycle again as if we'd just done
-                                // uAtClientLock()
-                                pClient->lockTimeMs = uPortGetTickTimeMs();
-                            } else {
-                                // There is no more data: clear anything that
-                                // could not be handled and leave this loop
-                                bufferReset(pClient);
-                                break;
-                            }
+                            // There is no more data: clear anything that
+                            // could not be handled and leave this loop
+                            bufferReset(pClient);
+                            break;
                         }
                     }
-                    if (pClient->debugOn) {
-                        uPortLog("U_AT_CLIENT_%d-%d: URC checking done.\n",
-                                 pClient->streamType, pClient->streamHandle);
-                    }
+                }
+                if (pClient->debugOn) {
+                    uPortLog("U_AT_CLIENT_%d-%d: URC checking done.\n",
+                             pClient->streamType, pClient->streamHandle);
                 }
             }
 
@@ -1339,14 +1388,13 @@ void uAtClientDeinit()
 
         // Remove all the AT handlers
         while (gpAtClientList != NULL) {
-            uAtClientRemove((uAtClientHandle_t) gpAtClientList);
+            removeClient(gpAtClientList);
         }
 
         // Release the callbacks event queue
         uPortEventQueueClose(gEventQueueHandle);
 
-        // Unlock the global mutex so that we can
-        // delete it
+        // Delete the mutex
         U_PORT_MUTEX_UNLOCK(gMutex);
         uPortQueueDelete(gMutex);
         gMutex = NULL;
@@ -1484,45 +1532,15 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
 void uAtClientRemove(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
-    uAtClientUrc_t *pUrc;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    if (pClient != NULL) {
 
-    // Remove it from the list
-    U_PORT_MUTEX_LOCK(gMutex);
-    removeAtClientInstance(pClient);
-    U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_LOCK(gMutex);
 
-    // Free any URC handlers it had.
-    while (pClient->pUrcList != NULL) {
-        pUrc = pClient->pUrcList;
-        pClient->pUrcList = pUrc->pNext;
-        free(pUrc);
+        removeClient(pClient);
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
     }
-
-    // Remove the URC event handler
-    switch (pClient->streamType) {
-        case U_AT_CLIENT_STREAM_TYPE_UART:
-            uPortUartEventCallbackRemove(pClient->streamHandle);
-            break;
-        default:
-            break;
-    }
-
-    // Delete the stream mutex
-    uPortMutexDelete(pClient->streamMutex);
-
-    // Free the receive buffer if it was malloc()ed.
-    if (pClient->pReceiveBuffer->isMalloced) {
-        free(pClient->pReceiveBuffer);
-    }
-
-    // Unlock its main mutex so that we can delete it
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
-    uPortMutexDelete(pClient->mutex);
-
-    // And finally free the client context.
-    free(pClient);
 }
 
 // Return whether general debug is on or not.
@@ -1535,7 +1553,10 @@ bool uAtClientDebugGet(const uAtClientHandle_t atHandle)
 // Set general debug on or off.
 void uAtClientDebugSet(uAtClientHandle_t atHandle, bool onNotOff)
 {
-    ((uAtClientInstance_t *) atHandle)->debugOn = onNotOff;
+    // Keep Lint happy
+    if (atHandle != NULL) {
+        ((uAtClientInstance_t *) atHandle)->debugOn = onNotOff;
+    }
 }
 
 // Return whether printing of AT commands is on or not.
@@ -1548,7 +1569,10 @@ bool uAtClientPrintAtGet(const uAtClientHandle_t atHandle)
 // Set whether printing of AT commands is on or off.
 void uAtClientPrintAtSet(uAtClientHandle_t atHandle, bool onNotOff)
 {
-    ((uAtClientInstance_t *) atHandle)->printAtOn = onNotOff;
+    // Keep Lint happy
+    if (atHandle != NULL) {
+        ((uAtClientInstance_t *) atHandle)->printAtOn = onNotOff;
+    }
 }
 
 // Return the current AT timeout.
@@ -1591,7 +1615,10 @@ void uAtClientTimeoutCallbackSet(uAtClientHandle_t atHandle,
                                  void (*pCallback) (uAtClientHandle_t,
                                                     int32_t *))
 {
-    ((uAtClientInstance_t *) atHandle)->pConsecutiveTimeoutsCallback = pCallback;
+    // Keep Lint happy
+    if (atHandle != NULL) {
+        ((uAtClientInstance_t *) atHandle)->pConsecutiveTimeoutsCallback = pCallback;
+    }
 }
 
 // Get the delimiter.
@@ -1605,7 +1632,10 @@ char uAtClientDelimiterGet(const uAtClientHandle_t atHandle)
 void uAtClientDelimiterSet(uAtClientHandle_t atHandle,
                            char delimiter)
 {
-    ((uAtClientInstance_t *) atHandle)->delimiter = delimiter;
+    // Keep Lint happy
+    if (atHandle != NULL) {
+        ((uAtClientInstance_t *) atHandle)->delimiter = delimiter;
+    }
 }
 
 // Get the delay between AT commands.
@@ -1619,7 +1649,10 @@ int32_t uAtClientDelayGet(const uAtClientHandle_t atHandle)
 void uAtClientDelaySet(uAtClientHandle_t atHandle,
                        int32_t delayMs)
 {
-    ((uAtClientInstance_t *) atHandle)->delayMs = delayMs;
+    // Keep Lint happy
+    if (atHandle != NULL) {
+        ((uAtClientInstance_t *) atHandle)->delayMs = delayMs;
+    }
 }
 
 /* ----------------------------------------------------------------
@@ -1637,7 +1670,8 @@ void uAtClientLock(uAtClientHandle_t atHandle)
     // from working.
     if ((pClient != NULL) && pClient->streamMutex != NULL) {
         uPortMutexLock(pClient->streamMutex);
-        lockActions(pClient);
+        clearError(pClient);
+        pClient->lockTimeMs = uPortGetTickTimeMs();
     }
 }
 
@@ -1975,8 +2009,7 @@ int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
                !pStopTag->found) {
             c = bufferReadChar(pClient);
             if (c == -1) {
-                setError(pClient,
-                         U_ERROR_COMMON_DEVICE_ERROR);
+                setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
             } else if ((pStopTag->pTagDef->length > 0) &&
                        (c == *(pStopTag->pTagDef->pString + matchPos))) {
                 matchPos++;
@@ -2236,6 +2269,9 @@ int32_t uAtClientUrcHandlerStackMinFree(uAtClientHandle_t atHandle)
 }
 
 // Make a callback resulting from a URC.
+//lint -esym(593, pCallbackParam) Suppress pCallbackParam not being
+// free()ed here: if Lint spots that pCallbackParam was malloc()ed
+// by the caller it can complain that it was not free()ed here.
 int32_t uAtClientCallback(uAtClientHandle_t atHandle,
                           void (*pCallback) (uAtClientHandle_t, void *),
                           void *pCallbackParam)
@@ -2337,6 +2373,17 @@ void uAtClientDeviceErrorGet(uAtClientHandle_t atHandle,
     }
 
     U_PORT_MUTEX_UNLOCK(pClient->mutex);
+}
+
+// Get the handle and type of the underlying stream
+int32_t uAtClientStreamGet(uAtClientHandle_t atHandle,
+                           uAtClientStream_t *pStreamType)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    *pStreamType = pClient->streamType;
+
+    return pClient->streamHandle;
 }
 
 // End of file

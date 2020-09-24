@@ -89,6 +89,12 @@
  */
 #define U_AT_CLIENT_TEST_BYTES_TWO_LENGTH 3
 
+/** When testing timeouts we start a timer when waiting for the
+ * response whereas the timer actually starts when the AT client
+ * is locked so allow a tolerance because of that.
+ */
+#define U_AT_CLIENT_TEST_TIMEOUT_TOLERANCE_MS 5
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -559,7 +565,10 @@ static const uAtClientTestEchoError_t gAtClientTestEchoNoTimeout = {1000, 0, 150
  * to be referenced in gAtClientTestSet2.  Make sure that the timeout
  * number here is different to (smaller than) U_AT_CLIENT_TEST_TIMEOUT_MS.
  */
-static const uAtClientTestEchoError_t gAtClientTestEchoTimeout = {1000, 1000, 1500};
+static const uAtClientTestEchoError_t gAtClientTestEchoTimeout = {1000,
+                                                                  1000 - U_AT_CLIENT_TEST_TIMEOUT_TOLERANCE_MS,
+                                                                  1500
+                                                                 };
 
 /** Parameters for misc test, matches U_AT_CLIENT_TEST_ECHO_SKIP
  * and gAtClientUrc5, to be referenced in gAtClientTestSet2.
@@ -1131,14 +1140,18 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
     // 004: simple outgoing command with error response
     {{"AT+BLAH2", 0}, {U_AT_CLIENT_TEST_RESPONSE_ERROR, 0}, NULL},
     // 005: as above but with a URC interleaved
-    {{"AT+BLAH2", 0}, {U_AT_CLIENT_TEST_RESPONSE_ERROR, 0}, &gAtClientUrc1},
+    {{"AT+BLAH3", 0}, {U_AT_CLIENT_TEST_RESPONSE_ERROR, 0}, &gAtClientUrc1},
     // 006: simple outgoing command with CME error response
-    {{"AT+BLAH3", 0}, {U_AT_CLIENT_TEST_RESPONSE_CME_ERROR, 0}, NULL},
+    {{"AT+BLAH4", 0}, {U_AT_CLIENT_TEST_RESPONSE_CME_ERROR, 0}, NULL},
     // 007: simple outgoing command with CMS error response
-    {{"AT+BLAH4", 0}, {U_AT_CLIENT_TEST_RESPONSE_CMS_ERROR, 0}, NULL},
+    {{"AT+BLAH5", 0}, {U_AT_CLIENT_TEST_RESPONSE_CMS_ERROR, 0}, NULL},
     // 008: as above but with a URC interleaved
-    {{"AT+BLAH4", 0}, {U_AT_CLIENT_TEST_RESPONSE_CMS_ERROR, 0}, &gAtClientUrc2},
-    // 009: simple outgoing command, response is a single line with no prefix and a
+    {{"AT+BLAH6", 0}, {U_AT_CLIENT_TEST_RESPONSE_CMS_ERROR, 0}, &gAtClientUrc2},
+    // 009: simple outgoing command with aborted response
+    {{"AT+BLAH7", 0}, {U_AT_CLIENT_TEST_RESPONSE_ABORTED, 0}, NULL},
+    // 010: as above but with a URC interleaved
+    {{"AT+BLAH8", 0}, {U_AT_CLIENT_TEST_RESPONSE_ABORTED, 0}, &gAtClientUrc3},
+    // 011: simple outgoing command, response is a single line with no prefix and a
     // single int32_t parameter with value 0
     {   {"AT+INT1", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
@@ -1149,7 +1162,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 010: as above but with value 0x7FFFFFFF and this time with a prefix
+    // 012: as above but with value 0x7FFFFFFF and this time with a prefix
     {   {"AT+INT2", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
                 {
@@ -1159,7 +1172,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 011: as two lines above but parameter is now uint64_t with value 0
+    // 013: as two lines above but parameter is now uint64_t with value 0
     {   {"AT+UINT641", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
                 {
@@ -1169,7 +1182,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 012: as two lines above but parameter is now uint64_t with
+    // 014: as two lines above but parameter is now uint64_t with
     // value 0xFFFFFFFFFFFFFFFF and there's a prefix
     {   {"AT+UINT642", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
@@ -1180,7 +1193,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 013: simple outgoing command, response is a single line with no prefix
+    // 015: simple outgoing command, response is a single line with no prefix
     // and the parameters are a single unquoted string.
     {   {"AT+STRING1", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
@@ -1196,7 +1209,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 014: as above but with the stop-tag "\r\n" inserted in the string,
+    // 016: as above but with the stop-tag "\r\n" inserted in the string,
     // which should stop things right there, also add a prefix.
     {   {"AT+STRING2", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
@@ -1212,7 +1225,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 015: as above but with a URC interleaved
+    // 017: as above but with a URC interleaved
     {   {"AT+STRING2", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
                 {
@@ -1227,7 +1240,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, &gAtClientUrc3
     },
-    // 016: as 014 but with "ignore stop-tag" (and a buffer length)
+    // 018: as 014 but with "ignore stop-tag" (and a buffer length)
     // set so the "\r\n" should have no effect and remove the prefix again.
     {   {"AT+STRING3", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
@@ -1243,7 +1256,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 017: as 014 but with the string in quotes, which should mean
+    // 019: as 016 but with the string in quotes, which should mean
     // that the stop tag and the delimiters inserted are ignored.
     // Also put the prefix back.
     {   {"AT+STRING4", 0}, {
@@ -1260,7 +1273,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 018: simple outgoing command, response is a single line with no prefix
+    // 020: simple outgoing command, response is a single line with no prefix
     // and the parameters are a stream of all bytes.
     //lint -e{786} Suppress string concatenation within initializer
     {   {"AT+BYTES1", 0}, {
@@ -1309,7 +1322,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 019: as above but with a URC interleaved and a prefix added (otherwise there
+    // 021: as above but with a URC interleaved and a prefix added (otherwise there
     // is no way to tell the URC from the expected response)
     {   {"AT+BYTES1", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
@@ -1357,7 +1370,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, &gAtClientUrc4
     },
-    // 020: as 018 but with the stop-tag "\r\n" inserted in the string,
+    // 022: as 020 but with the stop-tag "\r\n" inserted in the string,
     // which should stop things right there, and add a prefix.
     //lint -e{786} Suppress string concatenation within initializer
     {   {"AT+BYTES2", 0}, {
@@ -1397,7 +1410,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 021: as above but with "ignore stop-tag" set so the "\r\n" should have no effect
+    // 023: as above but with "ignore stop-tag" set so the "\r\n" should have no effect
     // and remove the prefix again.
     //lint -e{786} Suppress string concatenation within initializer
     {   {"AT+BYTES3", 0}, {
@@ -1448,7 +1461,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 022: simple outgoing command, response is a single line with a prefix and
+    // 024: simple outgoing command, response is a single line with a prefix and
     // multiple int32_t/uint64_ parameters
     {   {"AT+MULTIPARAMRESP1", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
@@ -1462,7 +1475,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 023: as above but with a URC interleaved
+    // 025: as above but with a URC interleaved
     {   {"AT+MULTIPARAMRESP1", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
                 {
@@ -1475,7 +1488,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, &gAtClientUrc5
     },
-    // 024: simple outgoing command, response is a single line with a prefix and
+    // 026: simple outgoing command, response is a single line with a prefix and
     // mixed integer/string/byte parameters
     {   {"AT+MULTIPARAMRESP2", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 1, {
@@ -1515,7 +1528,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 025: simple outgoing command, response is two lines with a prefix on
+    // 027: simple outgoing command, response is two lines with a prefix on
     // each and integer parameters
     {   {"AT+MULTILINE1", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 2, {
@@ -1537,7 +1550,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 026: simple outgoing command, response is three lines with a prefix on
+    // 028: simple outgoing command, response is three lines with a prefix on
     // the first line only and mixed integer/string/byte parameters
     {   {"AT+MULTILINE2", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 3, {
@@ -1587,7 +1600,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 027: as 025 but with spaces added around integers and before terminators
+    // 029: as 027 but with spaces added around integers and before terminators
     {   {"AT+MULTILINESPACES", 0}, {
             U_AT_CLIENT_TEST_RESPONSE_OK, 2, {
                 {
@@ -1612,21 +1625,21 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 028: outgoing command with a single integer parameter and simple "OK" response
+    // 030: outgoing command with a single integer parameter and simple "OK" response
     {   {
             "AT+CMD1=", 1, {{U_AT_CLIENT_TEST_PARAMETER_INT32, {.int32 = INT32_MAX}, 0}},
             {{10, "2147483647"}}
         },
         {U_AT_CLIENT_TEST_RESPONSE_OK, 0}, NULL
     },
-    // 029: outgoing command with a single uint64_t parameter and simple "OK" response
+    // 031: outgoing command with a single uint64_t parameter and simple "OK" response
     {   {
             "AT+CMD2=", 1, {{U_AT_CLIENT_TEST_PARAMETER_UINT64, {.uint64 = UINT64_MAX}, 0}},
             {{20, "18446744073709551615"}}
         },
         {U_AT_CLIENT_TEST_RESPONSE_OK, 0}, NULL
     },
-    // 030: outgoing command with a single unquoted string parameter and simple "OK" response
+    // 032: outgoing command with a single unquoted string parameter and simple "OK" response
     {   {
             "AT+CMD3=", 1, {{
                     U_AT_CLIENT_TEST_PARAMETER_STRING,
@@ -1637,7 +1650,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
         },
         {U_AT_CLIENT_TEST_RESPONSE_OK, 0}, NULL
     },
-    // 031: outgoing command with a single quoted string parameter and simple "OK" response
+    // 033: outgoing command with a single quoted string parameter and simple "OK" response
     {   {
             "AT+CMD4=", 1, {{
                     U_AT_CLIENT_TEST_PARAMETER_COMMAND_QUOTED_STRING,
@@ -1648,7 +1661,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
         },
         {U_AT_CLIENT_TEST_RESPONSE_OK, 0}, NULL
     },
-    // 032: outgoing command with a parameter of all possible bytes and simple "OK" response
+    // 034: outgoing command with a parameter of all possible bytes and simple "OK" response
     {   {
             "AT+CMD5=", 1, {{
                     U_AT_CLIENT_TEST_PARAMETER_COMMAND_BYTES_STANDALONE, {
@@ -1690,7 +1703,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
         },
         {U_AT_CLIENT_TEST_RESPONSE_OK, 0}, NULL
     },
-    // 033: outgoing command with a mixture of integer parameters and simple "OK" response
+    // 035: outgoing command with a mixture of integer parameters and simple "OK" response
     {   {
             "AT+MULTIPARAMCMD1=", 5, {{U_AT_CLIENT_TEST_PARAMETER_INT32, {.int32 = 0}, 0},
                 {U_AT_CLIENT_TEST_PARAMETER_UINT64, {.uint64 = UINT64_MAX}, 0},
@@ -1702,7 +1715,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
         },
         {U_AT_CLIENT_TEST_RESPONSE_OK, 0}, NULL
     },
-    // 034: outgoing command with a mixture of integer/string/byte parameters
+    // 036: outgoing command with a mixture of integer/string/byte parameters
     // and simple "OK" response
     {   {
             "AT+MULTIPARAMCMD2=", 4, {{U_AT_CLIENT_TEST_PARAMETER_INT32, {.int32 = INT32_MAX}, 0},
@@ -1719,7 +1732,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
         },
         {U_AT_CLIENT_TEST_RESPONSE_OK, 0}, NULL
     },
-    // 035: big complicated thing in both directions
+    // 037: big complicated thing in both directions
     {   {
             "AT+COMPLEX1=", 6, {
                 {U_AT_CLIENT_TEST_PARAMETER_BYTES, {.pBytes = "\x00"}, 1},
@@ -1787,7 +1800,7 @@ const uAtClientTestCommandResponse_t gAtClientTestSet1[] = {
             }
         }, NULL
     },
-    // 036: as above but with a URC interleaved
+    // 038: as above but with a URC interleaved
     {   {
             "AT+COMPLEX1=", 6, {
                 {U_AT_CLIENT_TEST_PARAMETER_BYTES, {.pBytes = "\x00"}, 1},
@@ -2085,6 +2098,11 @@ const uAtClientTestEcho_t gAtClientTestSet2[] = {
     },
     {
         "\r\n" U_AT_CLIENT_TEST_CMS_ERROR "0\r\n", U_AT_CLIENT_TEST_CMX_ERROR_LENGTH + 5, NULL,
+        handleReadOnError, (const void *) &gAtClientTestEchoNoTimeout,
+        (int32_t) U_ERROR_COMMON_DEVICE_ERROR
+    },
+    {
+        "\r\n" U_AT_CLIENT_TEST_ABORTED "\r\n", U_AT_CLIENT_TEST_ABORTED_LENGTH + 4, NULL,
         handleReadOnError, (const void *) &gAtClientTestEchoNoTimeout,
         (int32_t) U_ERROR_COMMON_DEVICE_ERROR
     },

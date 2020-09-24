@@ -371,9 +371,10 @@ typedef enum {
  */
 typedef enum {
     U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR = 0,
-    U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR, /**< Just ERROR */
-    U_AT_CLIENT_DEVICE_ERROR_TYPE_CMS,   /**< +CMS ERROR */
-    U_AT_CLIENT_DEVICE_ERROR_TYPE_CME    /**< +CME ERROR */
+    U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR,   /**< Just ERROR */
+    U_AT_CLIENT_DEVICE_ERROR_TYPE_CMS,     /**< +CMS ERROR */
+    U_AT_CLIENT_DEVICE_ERROR_TYPE_CME,     /**< +CME ERROR */
+    U_AT_CLIENT_DEVICE_ERROR_TYPE_ABORTED  /**< ABORTED by the user */
 } uAtClientDeviceErrorType_t;
 
 /** An AT error response structure with error code and type.
@@ -740,7 +741,10 @@ int32_t uAtClientReadUint64(uAtClientHandle_t atHandle,
  * The received string will be null-terminated. Any quotation
  * marks found are skipped.  The delimiter (e.g. ',') is obeyed,
  * as is the stop tag (e.g. `\r\n` or `OK` or `ERROR` depending
- * on the context) unless ignoreStopTag is true.
+ * on the context) unless ignoreStopTag is true.  If you don't
+ * want the delimiter to be obeyed then read its current value
+ * with uAtClientDelimiterGet(), change it to '\x00' and then
+ * restore it afterwards.
  *
  * @param atHandle        the handle of the AT client.
  * @param pString         a buffer in which to place the
@@ -1009,6 +1013,16 @@ int32_t uAtClientErrorGet(uAtClientHandle_t atHandle);
  */
 void uAtClientDeviceErrorGet(uAtClientHandle_t atHandle,
                              uAtClientDeviceError_t *pDeviceError);
+
+/** Get the handle and type of the underlying stream.
+ *
+ * @param atHandle     the handle of the AT client.
+ * @param pStreamType  a pointer to a place to put the
+ *                     stream type; cannot be NULL.
+ * @return             the stream handle.
+ */
+int32_t uAtClientStreamGet(uAtClientHandle_t atHandle,
+                           uAtClientStream_t *pStreamType);
 
 #ifdef __cplusplus
 }

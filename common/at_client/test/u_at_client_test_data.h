@@ -56,9 +56,17 @@ extern "C" {
  */
 #define U_AT_CLIENT_TEST_CMX_ERROR_LENGTH 12
 
+/** The "ABORTED" response.
+ */
+#define U_AT_CLIENT_TEST_ABORTED "ABORTED"
+
+/** The length of U_AT_CLIENT_TEST_ABORTED.
+ */
+#define U_AT_CLIENT_TEST_ABORTED_LENGTH 7
+
 /** The number of URCs that should be found in test set 1
  */
-#define U_AT_CLIENT_TEST_NUM_URCS_SET_1 16
+#define U_AT_CLIENT_TEST_NUM_URCS_SET_1 18
 
 /** The number of URCs that should be found in test set 2
  */
@@ -85,7 +93,8 @@ typedef enum {
     U_AT_CLIENT_TEST_RESPONSE_OK,
     U_AT_CLIENT_TEST_RESPONSE_ERROR,
     U_AT_CLIENT_TEST_RESPONSE_CME_ERROR,
-    U_AT_CLIENT_TEST_RESPONSE_CMS_ERROR
+    U_AT_CLIENT_TEST_RESPONSE_CMS_ERROR,
+    U_AT_CLIENT_TEST_RESPONSE_ABORTED
 } uAtClientTestResponseType_t;
 
 /** Definition of an incoming AT response.
