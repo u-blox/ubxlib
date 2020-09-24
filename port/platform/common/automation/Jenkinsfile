@@ -1,4 +1,5 @@
 import groovy.json.JsonSlurper  // For parsing HTTP get responses
+import java.net.URLConnection   // For control of the KMTronic power switch
 
 node('TEST-gb-cmb-dt-022')
 {
@@ -11,6 +12,11 @@ node('TEST-gb-cmb-dt-022')
     def summary_file = "summary.log"
     def test_report_file = "test_report.xml"
     def debug_file = "debug.log"
+    // The KMTronic web relay on 10.20.4.157 controls power to the
+    // 12 V supply of each of the EVKs  The last byte of the URL
+    // is a bit-map of the outputs where 0 sets off and 1 sets on
+    def power_switch_off = new URL("http://10.20.4.157/FFE000")
+    def power_switch_on = new URL("http://10.20.4.157/FFE0FF")
     def return_value = 1
 
     // Using the try/catch pattern as recommended in this post:
@@ -119,13 +125,14 @@ node('TEST-gb-cmb-dt-022')
                 working_dir = code_dir + "\\" + working_dir
                 error("Unable to subst ${subst_drive} for \"${code_dir}\", builds with long path lengths may fail.")
             }
-            stage ("Reset USB") {
+            stage ("Reset USB/Power") {
                 // usbswitchcmd sets a return value of 1 if it was given the
                 // parameter 1 and a return value of 0 if it was given the
                 // parameter 0. However Groovy insists on treating a non-zero
                 // return value as an error, no matter what I do, so here
                 // each "1" step has to be wrapped in try/catch.
-                // Disconnect USBs
+
+                // Disconnect USBs and switch off power
                 try {
                     bat(script: "usbswitchcmd -s -n 1750664 1")
                 } catch (err) {
@@ -134,10 +141,13 @@ node('TEST-gb-cmb-dt-022')
                     bat(script: "usbswitchcmd -s -n 1750665 1")
                 } catch (err) {
                 }
+                println "Switching off power to EVKs returned HTTP response " + power_switch_off.openConnection().getResponseCode() + "."
                 sleep(time: 5, unit: 'SECONDS')
-                // Reconnect USBs
+                // Switch on power and reconnect USBs
+                power_switch_on.openConnection()
                 bat(script: "usbswitchcmd -s -n 1750664 0")
                 bat(script: "usbswitchcmd -s -n 1750665 0")
+                println "Switching on power to EVKs again returned HTTP response " + power_switch_on.openConnection().getResponseCode() + "."
                 sleep(time: 5, unit: 'SECONDS')
             }
             dir (working_dir) {
