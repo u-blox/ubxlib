@@ -374,7 +374,7 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
                            u_report.EVENT_FAILED,
                            "CTRL-C received, terminating")
         pool.terminate()
-        return_value = 0
+        return_value = -1
 
     # Tidy up
     pool.close()
