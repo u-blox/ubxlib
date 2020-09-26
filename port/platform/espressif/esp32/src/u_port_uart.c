@@ -59,6 +59,7 @@
  */
 typedef struct {
     QueueHandle_t queue; /**< Also used as a marker that this UART is in use. */
+    bool markedForDeletion; /**< If true this UART should NOT be used. */
     uPortTaskHandle_t eventTaskHandle;
     uPortMutexHandle_t eventTaskRunningMutex;
     uint32_t eventFilter;
@@ -104,14 +105,19 @@ static uint32_t getEventFromEsp32Event(uart_event_type_t esp32Event)
 
 // Get the event task and its associated OS thingies
 // to exit
-// Note: gMutex should be locked before this is called.
-static void deleteEventTask(int32_t handle)
+// Note: gMutex should !!!NOT!!! be locked before this is called.
+static void deleteEventTaskRequiresMutex(int32_t handle)
 {
     uart_event_t uartEvent;
 
     if (gUartData[handle].eventTaskRunningMutex != NULL) {
         // If there is an event task running, get it to
-        // exit by sending it an illegal event type
+        // exit by sending it an illegal event type.
+        // Note that the task may have called back into
+        // this driver and be about to wait on gMutex,
+        // which we already have, leading to it getting
+        // stuck.  Hence the requirement NOT to have a lock
+        // on gMutex in this task by the time it gets to here.
         uartEvent.type = UART_EVENT_MAX;
         uartEvent.size = 0;
         uPortQueueSend((const uPortQueueHandle_t) gUartData[handle].queue,
@@ -128,15 +134,15 @@ static void deleteEventTask(int32_t handle)
 }
 
 // Close a UART instance
-// Note: gMutex should be locked before this is called.
-static void uartClose(int32_t handle)
+// Note: gMutex should !!!NOT!!! be locked before this is called.
+static void uartCloseRequiresMutex(int32_t handle)
 {
     if ((handle >= 0) &&
         (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
         (gUartData[handle].queue != NULL)) {
 
         // Delete the event task, if there is one
-        deleteEventTask(handle);
+        deleteEventTaskRequiresMutex(handle);
 
         // Shut down the driver, which will delete the queue
         uart_driver_delete(handle);
@@ -190,6 +196,7 @@ int32_t uPortUartInit()
         errorCode = uPortMutexCreate(&gMutex);
         for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
             gUartData[x].queue = NULL;
+            gUartData[x].markedForDeletion = false;
         }
     }
 
@@ -203,14 +210,25 @@ void uPortUartDeinit()
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        // Close all the UART instances
+        // First, mark all instances for deletion
         for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
             if (gUartData[x].queue != NULL) {
-                uartClose(x);
+                gUartData[x].markedForDeletion = true;
+            }
+        }
+
+        // Release the mutex so that deletion can occur
+        U_PORT_MUTEX_UNLOCK(gMutex);
+
+        for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
+            if (gUartData[x].markedForDeletion) {
+                uartCloseRequiresMutex(x);
+                gUartData[x].markedForDeletion = false;
             }
         }
 
         // Delete the mutex
+        U_PORT_MUTEX_LOCK(gMutex);
         U_PORT_MUTEX_UNLOCK(gMutex);
         uPortMutexDelete(gMutex);
         gMutex = NULL;
@@ -243,6 +261,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 
             handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
 
+            gUartData[uart].markedForDeletion = false;
             gUartData[uart].eventTaskHandle = NULL;
             gUartData[uart].eventTaskRunningMutex = NULL;
             gUartData[uart].pEventCallback = NULL;
@@ -309,13 +328,29 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 // Close a UART instance.
 void uPortUartClose(int32_t handle)
 {
+    bool closeIt = false;
+
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        uartClose(handle);
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            (gUartData[handle].queue != NULL) &&
+            !gUartData[handle].markedForDeletion) {
+            // Mark the UART for deletion within the
+            // mutex
+            gUartData[handle].markedForDeletion = true;
+            closeIt = true;
+        }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
+
+        if (closeIt) {
+            // Actually delete the UART outside the mutex
+            uartCloseRequiresMutex(handle);
+            gUartData[handle].markedForDeletion = false;
+        }
     }
 }
 
@@ -331,7 +366,8 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
 
         sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            !gUartData[handle].markedForDeletion) {
             sizeOrErrorCode = U_ERROR_COMMON_PLATFORM;
 
             // Will get back either size or -1
@@ -358,7 +394,8 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
 
         sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pBuffer != NULL) && (sizeBytes > 0) && (handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            !gUartData[handle].markedForDeletion) {
 
             // Will get back either size or -1
             sizeOrErrorCode = uart_read_bytes(handle,
@@ -388,7 +425,8 @@ int32_t uPortUartWrite(int32_t handle,
 
         sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pBuffer != NULL) && (handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            !gUartData[handle].markedForDeletion) {
 
             // Will get back either size or -1
             sizeOrErrorCode = uart_write_bytes(handle,
@@ -424,6 +462,7 @@ int32_t uPortUartEventCallbackSet(int32_t handle,
         errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            !gUartData[handle].markedForDeletion &&
             (gUartData[handle].eventTaskRunningMutex == NULL) &&
             (filter != 0) && (pFunction != NULL) &&
             (stackSizeBytes >= U_PORT_UART_EVENT_MIN_TASK_STACK_SIZE_BYTES) &&
@@ -466,18 +505,25 @@ int32_t uPortUartEventCallbackSet(int32_t handle,
 // Remove an event callback.
 void uPortUartEventCallbackRemove(int32_t handle)
 {
+    bool removeIt = false;
+
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            !gUartData[handle].markedForDeletion &&
             (gUartData[handle].eventTaskRunningMutex != NULL)) {
-            // delete the event task and it's associated gubbins
-            deleteEventTask(handle);
+            removeIt = true;
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
+
+        if (removeIt) {
+            // Delete the event task and it's associated gubbins
+            deleteEventTaskRequiresMutex(handle);
+        }
     }
 }
 
@@ -492,6 +538,7 @@ uint32_t uPortUartEventCallbackFilterGet(int32_t handle)
 
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            !gUartData[handle].markedForDeletion &&
             (gUartData[handle].eventTaskRunningMutex != NULL)) {
             filter = gUartData[handle].eventFilter;
         }
@@ -515,7 +562,8 @@ int32_t uPortUartEventCallbackFilterSet(int32_t handle,
         errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            (gUartData[handle].eventTaskRunningMutex != NULL) &&
+            !gUartData[handle].markedForDeletion &&
+            (gUartData[handle].eventTaskRunningMutex != NULL)  &&
             (filter != 0)) {
             gUartData[handle].eventFilter = filter;
             errorCode = U_ERROR_COMMON_SUCCESS;
@@ -545,7 +593,8 @@ int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
         // which translates to UART_DATA.
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            (gUartData[handle].eventTaskRunningMutex != NULL) &&
+            !gUartData[handle].markedForDeletion &&
+            (gUartData[handle].eventTaskRunningMutex != NULL)  &&
             (eventBitMap == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
             event.type = UART_DATA;
             event.size = 0;
@@ -570,7 +619,8 @@ bool uPortUartEventIsCallback(int32_t handle)
 
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            (gUartData[handle].eventTaskRunningMutex != NULL)) {
+            (gUartData[handle].eventTaskRunningMutex != NULL) &&
+            !gUartData[handle].markedForDeletion) {
             isEventCallback = uPortTaskIsThis(gUartData[handle].eventTaskHandle);
         }
 
@@ -592,6 +642,7 @@ int32_t uPortUartEventStackMinFree(int32_t handle)
         sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            !gUartData[handle].markedForDeletion &&
             (gUartData[handle].eventTaskRunningMutex != NULL)) {
             sizeOrErrorCode = uPortTaskStackMinFree(gUartData[handle].eventTaskHandle);
         }
