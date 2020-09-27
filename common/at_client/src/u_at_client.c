@@ -790,9 +790,10 @@ static bool bufferMatchOneUrc(uAtClientInstance_t *pClient)
                 setScope(pClient, U_AT_CLIENT_SCOPE_INFORMATION);
                 now = uPortGetTickTimeMs();
                 // Before heading off into URCness, save
-                // the current error state in case the URC
-                // tries anything wacky
+                // the current error state and reset
+                // it so that the URC doesn't suffer the error
                 savedError = pClient->error;
+                pClient->error = U_ERROR_COMMON_SUCCESS;
                 if (pUrc->pHandler) {
                     pUrc->pHandler(pClient, pUrc->pHandlerParam);
                 }
