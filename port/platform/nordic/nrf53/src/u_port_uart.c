@@ -132,8 +132,23 @@ static void eventHandler(void *pParam, size_t paramLength)
 static void uartClose(int32_t handle)
 {
     if ((handle >= 0) &&
-        (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+        (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+        (gUartData[handle].pBuffer != NULL)) {
 
+        k_free(gUartData[handle].pBuffer);
+        gUartData[handle].pBuffer = NULL;
+        uart_irq_rx_disable(gUartData[handle].pDevice);
+        uart_irq_tx_disable(gUartData[handle].pDevice);
+
+        gUartData[handle].bufferRead = 0;
+        gUartData[handle].bufferWrite = 0;
+        gUartData[handle].bufferFull = false;
+        gUartData[handle].eventQueueHandle = -1;
+        gUartData[handle].eventFilter = 0;
+        gUartData[handle].pEventCallback = NULL;
+        gUartData[handle].pEventCallbackParam = NULL;
+        gUartData[handle].pTxData = NULL;
+        gUartData[handle].txWritten = 0;
     }
 }
 
@@ -254,6 +269,7 @@ int32_t uPortUartInit()
 
             if (dev != NULL) {
                 gUartData[x].pDevice = dev;
+                gUartData[x].pBuffer = NULL;
             } else {
                 errorCode = U_ERROR_COMMON_NOT_SUPPORTED;
             }
@@ -268,6 +284,10 @@ void uPortUartDeinit()
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
+        for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
+            uartClose(x);
+            gUartData[x].pDevice = NULL;
+        }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
         uPortMutexDelete(gMutex);
@@ -299,7 +319,8 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
         handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((uart >= 0) &&
             (uart < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            (baudRate > 0) && (pReceiveBuffer == NULL)) {
+            (baudRate > 0) && (pReceiveBuffer == NULL) &&
+            (gUartData[uart].pBuffer == NULL)) {
 
             gUartData[uart].pBuffer = k_malloc(U_PORT_UART_BUFFER_SIZE);
 
@@ -353,21 +374,6 @@ void uPortUartClose(int32_t handle)
 
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
-
-            k_free(gUartData[handle].pBuffer);
-            uart_irq_rx_disable(gUartData[handle].pDevice);
-            uart_irq_tx_disable(gUartData[handle].pDevice);
-
-            gUartData[handle].bufferRead = 0;
-            gUartData[handle].bufferWrite = 0;
-            gUartData[handle].bufferFull = false;
-            gUartData[handle].eventQueueHandle = -1;
-            gUartData[handle].eventFilter = 0;
-            gUartData[handle].pEventCallback = NULL;
-            gUartData[handle].pEventCallbackParam = NULL;
-            gUartData[handle].pTxData = NULL;
-            gUartData[handle].txWritten = 0;
-
             uartClose(handle);
         }
 
