@@ -455,13 +455,12 @@ static void clearError(uAtClientInstance_t *pClient)
     setError(pClient, U_ERROR_COMMON_SUCCESS);
 }
 
-// Increment the number of consecutive timeouts
+// Report the number of consecutive timeouts
 // and call the callback if there is one
-static void consecutiveTimeout(uAtClientInstance_t *pClient)
+static void reportConsecutiveTimeout(uAtClientInstance_t *pClient)
 {
     uAtClientCallback_t cb;
 
-    pClient->numConsecutiveAtTimeouts++;
     if (pClient->pConsecutiveTimeoutsCallback != NULL) {
         // pConsecutiveTimeoutsCallback second parameter
         // is an int32_t pointer but of course the generic
@@ -618,7 +617,10 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
             character = *(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                           pReceiveBuffer->readIndex);
             pReceiveBuffer->readIndex++;
-            pClient->numConsecutiveAtTimeouts = 0;
+            if (pClient->numConsecutiveAtTimeouts > 0) {
+                pClient->numConsecutiveAtTimeouts = 0;
+                reportConsecutiveTimeout(pClient);
+            }
         } else {
             // Timeout
             if (pClient->debugOn) {
@@ -626,7 +628,8 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
                          pClient->streamType, pClient->streamHandle);
             }
             setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
-            consecutiveTimeout(pClient);
+            pClient->numConsecutiveAtTimeouts++;
+            reportConsecutiveTimeout(pClient);
         }
     }
 
@@ -1054,9 +1057,13 @@ static bool processResponse(uAtClientInstance_t *pClient,
                                     // the timeout, set an error to
                                     // indicate the need for recovery
                                     setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
-                                    consecutiveTimeout(pClient);
+                                    pClient->numConsecutiveAtTimeouts++;
+                                    reportConsecutiveTimeout(pClient);
                                 } else {
-                                    pClient->numConsecutiveAtTimeouts = 0;
+                                    if (pClient->numConsecutiveAtTimeouts > 0) {
+                                        pClient->numConsecutiveAtTimeouts = 0;
+                                        reportConsecutiveTimeout(pClient);
+                                    }
                                 }
                             }
                         }

@@ -506,8 +506,12 @@ void uAtClientTimeoutSet(uAtClientHandle_t atHandle,
  * is called internally by the AT client using
  * uAtClientCallback().  The count is reset to zero when
  * an AT command completes without a timeout (either through
- * `OK` or `ERROR`).  This can be used to detect that the
- * AT server has become unresponsive.
+ * `OK` or `ERROR`), at which point the callback is also
+ * called.  This can be used to detect that the AT server
+ * has become unresponsive but note that AT timeouts can be
+ * used within a driver (e.g. when polling for receipt
+ * of an `OK` to an AT command which takes a long time to
+ * return, e.g. AT+COPS=?).
  *
  * @param atHandle   the handle of the AT client.
  * @param pCallback  the callback, which must take as
