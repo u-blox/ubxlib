@@ -61,6 +61,8 @@ extern "C" {
  * 
  * If more function pointers are needed for a specific library,
  * following construction can be used:
+ *
+ * @code
  * <code>
  * // file lib_foo.h
  * #include "u_lib_internal.h"
@@ -73,9 +75,11 @@ extern "C" {
  * } uLibLibcExpanded_t;
  * ...
  * </code>
- * 
+ * @endcode
+ *
  * This must be handled in the library's open function, like so:
- * 
+ *
+ * @code
  * <code>
  * // file lib_foo.c
  * #include "lib_foo.h"
@@ -87,6 +91,7 @@ extern "C" {
  * }
  * ...
  * </code>
+ * @endcode
  * 
  * This way, the expanded struct can also be used by libraries using
  * the classic uLibLibc_t struct.

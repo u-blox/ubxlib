@@ -65,6 +65,28 @@ FILTER_MACRO_NAME = "U_CFG_APP_FILTER"
 # and moved on
 EXE_RUN_QUEUE_WAIT_SECONDS = 1
 
+def get_actual_path(path):
+    '''Given a drive number return real path if it is a subst'''
+    actual_path = path
+
+    # Get a list of substs
+    text = subprocess.check_output("subst",
+                                   stderr=subprocess.STDOUT,
+                                   shell=True)  # Jenkins hangs without this
+    for line in text.splitlines():
+        # Lines should look like this:
+        # Z:\: => C:\projects\ubxlib_priv
+        # So, in this example, if we were given z:\blah
+        # then the actual path should be C:\projects\ubxlib_priv\blah
+        text = line.decode()
+        bits =  text.rsplit(": => ")
+        if (len(bits) > 1) and (len(path) > 1) and \
+          (bits[0].lower()[0:2] == path[0:2].lower()):
+            actual_path = bits[1] + path[2:]
+            break
+
+    return actual_path
+
 def get_instance_text(instance):
     '''Return the instance as a text string'''
     instance_text = ""

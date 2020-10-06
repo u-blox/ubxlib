@@ -747,7 +747,7 @@ int32_t uAtClientReadUint64(uAtClientHandle_t atHandle,
  * as is the stop tag (e.g. `\r\n` or `OK` or `ERROR` depending
  * on the context) unless ignoreStopTag is true.  If you don't
  * want the delimiter to be obeyed then read its current value
- * with uAtClientDelimiterGet(), change it to '\x00' and then
+ * with uAtClientDelimiterGet(), change it to 0 and then
  * restore it afterwards.
  *
  * @param atHandle        the handle of the AT client.

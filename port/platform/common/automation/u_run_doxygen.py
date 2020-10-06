@@ -40,10 +40,17 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                        format(prompt))
 
     if got_doxygen:
+        # Sort out any subst
+        printer.string("{}Doxygen finds no files if run from a" \
+                       " subst drive so convert {} to a real"      \
+                       " path".format(prompt, ubxlib_dir))
+        actual_ubxlib_dir = u_utils.get_actual_path(ubxlib_dir)
+        printer.string("{}Actual ubxlib directory is {}".      \
+                       format(prompt, actual_ubxlib_dir))
         # Run Doxygen
-        config_path = ubxlib_dir + os.sep + DOXYFILE
-        printer.string("{}CD to {}...".format(prompt, ubxlib_dir))
-        with u_utils.ChangeDir(ubxlib_dir):
+        config_path = actual_ubxlib_dir + os.sep + DOXYFILE
+        printer.string("{}CD to {}...".format(prompt, actual_ubxlib_dir))
+        with u_utils.ChangeDir(actual_ubxlib_dir):
             printer.string("{}in directory {} calling doxygen {}.".    \
                            format(prompt, os.getcwd(), config_path))
             try:

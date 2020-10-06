@@ -128,7 +128,7 @@
 #endif
 
 /** Macro to return the CTS pin for UART A: on some
- * platforms this is not a simple #define.
+ * platforms this is not a simple define.
  */
 #define U_CFG_TEST_PIN_UART_A_CTS_GET U_CFG_TEST_PIN_UART_A_CTS
 
@@ -141,7 +141,7 @@
 #endif
 
 /** Macro to return the RTS pin for UART A: on some
- * platforms this is not a simple #define.
+ * platforms this is not a simple define.
  */
 #define U_CFG_TEST_PIN_UART_A_RTS_GET U_CFG_TEST_PIN_UART_A_RTS
 
