@@ -12,14 +12,20 @@ int libFibCalc(void *ctx, int series)
     int f0 = 1;
     int f1 = 1;
     int res = 1;
-    if (series < 0) return U_ERROR_COMMON_INVALID_PARAMETER;
-    if (series < 1) return res;
+    if (series < 0) {
+        return U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+    if (series < 1) {
+        return res;
+    }
     while (series--) {
         res = f0 + f1;
         f0 = f1;
         f1 = res;
     }
-    if (ctx) ((state_t *)ctx)->lastRes = res;
+    if (ctx) {
+        ((state_t *)ctx)->lastRes = res;
+    }
     return res;
 }
 
@@ -31,7 +37,9 @@ const char *libFibHelloWorld(void *ctx)
 
 int libFibLastRes(void *ctx)
 {
-    if (ctx == 0) return U_ERROR_COMMON_INVALID_PARAMETER;
+    if (ctx == 0) {
+        return U_ERROR_COMMON_INVALID_PARAMETER;
+    }
     return ((state_t *)ctx)->lastRes;
 }
 

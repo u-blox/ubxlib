@@ -59,7 +59,7 @@ int uLibProbe(uLibHdr_t *pHdr, const void *puLib)
 }
 
 int uLibOpen(uLibHdl_t *pHdl, const void *puLib,
-                uLibLibc_t *pLibc, uint32_t flags)
+             uLibLibc_t *pLibc, uint32_t flags)
 {
     int res = U_ERROR_COMMON_SUCCESS;
     uLibDescriptor_t *pDescr = (uLibDescriptor_t *) puLib;
@@ -74,9 +74,11 @@ int uLibOpen(uLibHdl_t *pHdl, const void *puLib,
     pHdl->puLibCode = (void *)(&pDescr->funcs[pDescr->hdr.count]);
     for (uint32_t i = 0; i < pDescr->hdr.count; i++) {
         if ((pDescr->funcs[i].flags & (U_LIB_I_FDESC_FLAG_INIT | U_LIB_I_FDESC_FLAG_FUNCTION))
-                                    == (U_LIB_I_FDESC_FLAG_INIT | U_LIB_I_FDESC_FLAG_FUNCTION)) {
+            == (U_LIB_I_FDESC_FLAG_INIT | U_LIB_I_FDESC_FLAG_FUNCTION)) {
             res = ((ulibOpenFn_t)getCallAddress(pHdl, i))(pLibc, flags, &pHdl->ictx);
-            if (res != U_ERROR_COMMON_SUCCESS) break;
+            if (res != U_ERROR_COMMON_SUCCESS) {
+                break;
+            }
         }
     }
     pHdl->error = res;
@@ -93,8 +95,12 @@ int uLibGetCode(uLibHdl_t *pHdl, const void **pPtr, uint32_t *pLen)
     }
     uLibDescriptor_t *pDescr = (uLibDescriptor_t *)pHdl->puLibDescr;
 
-    if (pPtr) *pPtr = pHdl->puLibCode;
-    if (pLen) *pLen = pDescr->hdr.length;
+    if (pPtr) {
+        *pPtr = pHdl->puLibCode;
+    }
+    if (pLen) {
+        *pLen = pDescr->hdr.length;
+    }
     return U_ERROR_COMMON_SUCCESS;
 }
 
@@ -122,7 +128,7 @@ int uLibClose(uLibHdl_t *pHdl)
     uLibDescriptor_t *pDescr = (uLibDescriptor_t *)pHdl->puLibDescr;
     for (uint32_t i = 0; i < pDescr->hdr.count; i++) {
         if ((pDescr->funcs[i].flags & (U_LIB_I_FDESC_FLAG_FINI | U_LIB_I_FDESC_FLAG_FUNCTION))
-                                    == (U_LIB_I_FDESC_FLAG_FINI | U_LIB_I_FDESC_FLAG_FUNCTION)) {
+            == (U_LIB_I_FDESC_FLAG_FINI | U_LIB_I_FDESC_FLAG_FUNCTION)) {
             ((ulibCloseFn_t)getCallAddress(pHdl, i))(pHdl->ictx);
         }
     }
@@ -148,8 +154,9 @@ void *uLibSym(uLibHdl_t *pHdl, const char *sym)
 
     uLibDescriptor_t *pDescr = (uLibDescriptor_t *)pHdl->puLibDescr;
     for (uint32_t i = 0; i < pDescr->hdr.count; i++) {
-        if (((pDescr->funcs[i].flags & (U_LIB_I_FDESC_FLAG_INIT | U_LIB_I_FDESC_FLAG_FINI | U_LIB_I_FDESC_FLAG_FUNCTION))
-                                    == U_LIB_I_FDESC_FLAG_FUNCTION) &&
+        if (((pDescr->funcs[i].flags & (U_LIB_I_FDESC_FLAG_INIT | U_LIB_I_FDESC_FLAG_FINI |
+                                        U_LIB_I_FDESC_FLAG_FUNCTION))
+             == U_LIB_I_FDESC_FLAG_FUNCTION) &&
             strcmp(sym, pDescr->funcs[i].name) == 0) {
             return (void *)getCallAddress(pHdl, i);
         }

@@ -291,7 +291,7 @@ int32_t uPortMutexLock(const uPortMutexHandle_t mutexHandle)
 
     if (mutexHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
-        if ((kmutex->lock_count == 0) &&
+        if (( k_current_get() != (k_tid_t) kmutex->owner) &&
             (k_mutex_lock((struct k_mutex *) mutexHandle,
                           (k_timeout_t ) portMAX_DELAY) == 0)) {
             errorCode = U_ERROR_COMMON_SUCCESS;
@@ -310,7 +310,7 @@ int32_t uPortMutexTryLock(const uPortMutexHandle_t mutexHandle,
 
     if (kmutex != NULL) {
         errorCode = U_ERROR_COMMON_TIMEOUT;
-        if ((kmutex->lock_count == 0) &&
+        if (( k_current_get() != (k_tid_t) kmutex->owner) &&
             (k_mutex_lock(kmutex,
                           K_MSEC(delayMs)) == 0)) {
             errorCode = U_ERROR_COMMON_SUCCESS;

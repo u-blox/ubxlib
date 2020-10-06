@@ -65,15 +65,19 @@ K_MEM_PARTITION_DEFINE(lib_reloc, reloc_buf, sizeof(reloc_buf),
  * -------------------------------------------------------------- */
 
 // super simple malloc, but enough as libfib only allocates on open
-static void *simpleMalloc(uint32_t len) {
+static void *simpleMalloc(uint32_t len)
+{
     static uint32_t someRam[8];
-    if (len > sizeof(someRam)) return 0;
+    if (len > sizeof(someRam)) {
+        return 0;
+    }
     uPortLogF("mallocing %d bytes @ %p\n", len, &someRam[0]);
     return &someRam[0];
 }
 
 // super simple free, but enough as libfib only frees on close
-static void simpleFree(void *p) {
+static void simpleFree(void *p)
+{
     (void)p;
     uPortLogF("freeing %p\n", p);
 }
@@ -101,7 +105,10 @@ static void appTask(void *pParam)
     uLibHdr_t libHdr; // if the probe succeeds, we will get library information in here
     uPortLogF("\nProbing lib\n");
     res = uLibProbe(&libHdr, &__libfibonacci_blob[0]);
-    if (res) { uPortLogF("error %d\nhalt\n", res); while(1); }
+    if (res) {
+        uPortLogF("error %d\nhalt\n", res);
+        while (1);
+    }
 
     uPortLogF("name:    %s\n", libHdr.name);
     uPortLogF("version: %08x\n", libHdr.version);
@@ -112,7 +119,10 @@ static void appTask(void *pParam)
     // try opening the library
     uPortLogF("Opening lib\n");
     res = uLibOpen(&libHdl, &__libfibonacci_blob[0], &libc, 0);
-    if (res) { uPortLogF("error %d\nhalt\n", res); while(1); }
+    if (res) {
+        uPortLogF("error %d\nhalt\n", res);
+        while (1);
+    }
 
     // declare the library api functions, see lib_fibonacci.h
     int (*libFibCalc)(void *ctx, int series);
@@ -131,7 +141,8 @@ static void appTask(void *pParam)
     // start calling the library
     uPortLogF("libFibCalc(102):  %d\n", libFibCalc(libHdl.ictx, 102));
     uPortLogF("libFibLastRes:    %d\n", libFibLastRes(libHdl.ictx));
-    uPortLogF("libFibHelloWorld: %s (%p)\n", libFibHelloWorld(libHdl.ictx), libFibHelloWorld(libHdl.ictx));
+    uPortLogF("libFibHelloWorld: %s (%p)\n", libFibHelloWorld(libHdl.ictx),
+              libFibHelloWorld(libHdl.ictx));
 
     for (int i = 10; i < 20; i++) {
         uPortLogF("libFibCalc(%d):   %d\n", i, libFibCalc(libHdl.ictx, i));
@@ -147,8 +158,11 @@ static void appTask(void *pParam)
     const void *pCode;
     uint32_t codeLen;
     res = uLibGetCode(&libHdl, &pCode, &codeLen);
-    if (res) { uPortLogF("error %d\nhalt\n", res); while(1); }
-    
+    if (res) {
+        uPortLogF("error %d\nhalt\n", res);
+        while (1);
+    }
+
     uPortLog("Code currently resides @ %p, %d bytes\n", pCode, codeLen);
     uPortLog("Moving code to %p\n", reloc_buf);
     if (codeLen >= sizeof(reloc_buf)) {
@@ -158,9 +172,12 @@ static void appTask(void *pParam)
     // instead of memcpy here, one could for instance decrypt the code
     memcpy(reloc_buf, pCode, codeLen);
     res = uLibRelocate(&libHdl, reloc_buf);
-    if (res) { uPortLogF("error %d\nhalt\n", res); while(1); }
+    if (res) {
+        uPortLogF("error %d\nhalt\n", res);
+        while (1);
+    }
 
-    // after relocating, we need to update symbols    
+    // after relocating, we need to update symbols
     libFibCalc = uLibSym(&libHdl, "libFibCalc");
     libFibLastRes = uLibSym(&libHdl, "libFibLastRes");
     libFibHelloWorld = uLibSym(&libHdl, "libFibHelloWorld");
@@ -176,12 +193,16 @@ static void appTask(void *pParam)
         uPortLogF("libFibCalc(%d):   %d\n", i, libFibCalc(libHdl.ictx, i));
     }
     uPortLogF("libFibLastRes:    %d\n", libFibLastRes(libHdl.ictx));
-    uPortLogF("libFibHelloWorld: %s (%p)\n", libFibHelloWorld(libHdl.ictx), libFibHelloWorld(libHdl.ictx));
+    uPortLogF("libFibHelloWorld: %s (%p)\n", libFibHelloWorld(libHdl.ictx),
+              libFibHelloWorld(libHdl.ictx));
 
     // close library
     uPortLogF("\nClosing lib\n");
     res = uLibClose(&libHdl);
-    if (res) { uPortLogF("error %d\nhalt\n", res); while(1); }
+    if (res) {
+        uPortLogF("error %d\nhalt\n", res);
+        while (1);
+    }
 
     uPortLog("\n\nU_APP: application task ended.\n");
     uPortDeinit();

@@ -58,7 +58,7 @@ extern "C" {
 /**
  * Utility function pointers for the library. May be
  * NULL if the library does not need to access them.
- * 
+ *
  * If more function pointers are needed for a specific library,
  * following construction can be used:
  *
@@ -67,7 +67,7 @@ extern "C" {
  * // file lib_foo.h
  * #include "u_lib_internal.h"
  * ...
- * typedef struct 
+ * typedef struct
  * {
  *   uLibLibc_t uliblibc;
  *   int (*fnstrcmp)(const char *s1, const char *s2);
@@ -92,12 +92,11 @@ extern "C" {
  * ...
  * </code>
  * @endcode
- * 
+ *
  * This way, the expanded struct can also be used by libraries using
  * the classic uLibLibc_t struct.
  */
-typedef struct
-{
+typedef struct {
     /** malloc prototype, if the library needs to allocate memory */
     void *(*fnmalloc)(uint32_t size);
     /** free prototype, if the library needs to free allocated memory */
@@ -109,8 +108,7 @@ typedef struct
 /**
  * Library instance handle.
  */
-typedef struct
-{
+typedef struct {
     /** Pointer to library descriptor */
     const void *puLibDescr;
     /** Pointer to library code */
@@ -124,8 +122,7 @@ typedef struct
 /**
  * Generic library header information
  */
-typedef struct
-{
+typedef struct {
     /** Library name */
     const char *name;
     /** Library version */
@@ -151,7 +148,7 @@ int uLibProbe(uLibHdr_t *pHdr, const void *puLib);
  * @return U_ERROR_COMMON_SUCCESS if OK, else error code
  */
 int uLibOpen(uLibHdl_t *pHdl, const void *puLib,
-                uLibLibc_t *pLibc, uint32_t flags);
+             uLibLibc_t *pLibc, uint32_t flags);
 
 /**
  * Returns current location and size of the library executable code.
@@ -168,7 +165,7 @@ int uLibGetCode(uLibHdl_t *pHdl, const void **pPtr, uint32_t *pLen);
  * @param pHdl Pointer to library handle struct
  * @param dst Where the code resides.
  * @return U_ERROR_COMMON_SUCCESS if OK, else error code
- */ 
+ */
 int uLibRelocate(uLibHdl_t *pHdl, void *dst);
 
 /**

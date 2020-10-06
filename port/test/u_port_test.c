@@ -62,7 +62,7 @@
 
 /** The guard time for the OS test.
  */
-#define U_PORT_TEST_OS_GUARD_DURATION_MS 2200
+#define U_PORT_TEST_OS_GUARD_DURATION_MS 2400
 
 /** The task block duration to use in testing the
  * time for which a block lasts.  This needs to
@@ -362,7 +362,7 @@ static void osTestTask(void *pParameters)
 
     uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex.\n");
     U_PORT_TEST_ASSERT(gMutexHandle != NULL);
-    U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) == 0);
+    U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 500) == 0);
     uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex again, should fail!.\n");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);
     uPortLog("U_PORT_TEST_OS_TASK: unlocking it again.\n");
@@ -897,6 +897,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
              " 0x%08x.\n", errorCode, gQueueHandleControl);
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gQueueHandleControl != NULL);
+    uPortLog("U_PORT_TEST: locking mutex, preventing task from executing\n");
+    U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) == 0);
 
     uPortLog("U_PORT_TEST: creating a test task with stack %d"
              " byte(s) and priority %d, passing it the pointer"
@@ -915,6 +917,9 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT(gTaskHandle != NULL);
 
     uPortLog("U_PORT_TEST: time now %d ms.\n", (int32_t) uPortGetTickTimeMs());
+    uPortTaskBlock(200);
+    uPortLog("U_PORT_TEST: unlocking mutex, allowing task to execute\n");
+    U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);;
     // Pause to let the task print its opening messages
     uPortTaskBlock(1000);
 

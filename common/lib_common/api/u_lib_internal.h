@@ -49,15 +49,14 @@ typedef int (*ulibOpenFn_t)(uLibLibc_t *pLibc, uint32_t flags, void **pCtx);
 typedef void (*ulibCloseFn_t)(void *ctx);
 
 /**
- * Function descriptor, indicating symbol name and whereabouts 
+ * Function descriptor, indicating symbol name and whereabouts
  * for function code. Can also be used as key/value pairs to
  * describe future (unforeseen) properties of the library.
  */
-typedef struct
-{
+typedef struct {
     union {
         /* in case of function, this denotes the functions offset counted from end of library header */
-        uint32_t offset; 
+        uint32_t offset;
         /* in case of not function, this is a generic value */
         uint32_t value;
     };
@@ -70,8 +69,7 @@ typedef struct
 /**
  * Library header
  */
-typedef struct
-{
+typedef struct {
     /* magic number, must be U_LIB_I_RARY_MAGIC to be a valid header */
     uint32_t magic;
     /* version number of library */
@@ -90,8 +88,7 @@ typedef struct
  * Library descriptor, comprised of a header followed
  * by an array of function descriptors.
  */
-typedef struct
-{
+typedef struct {
     _uLibHeader_t hdr;
     _uLibFunctionDescriptor_t funcs[];
 } uLibDescriptor_t;
