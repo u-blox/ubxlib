@@ -150,6 +150,11 @@
 #define U_AT_CLIENT_DATA_BUFFER_PTR(pBufStruct) (((char *) (pBufStruct)) +          \
                                                  sizeof(uAtClientReceiveBuffer_t))
 
+// Do some cross-checking
+#if (U_AT_CLIENT_CALLBACK_TASK_PRIORITY >= U_AT_CLIENT_URC_TASK_PRIORITY)
+# error U_AT_CLIENT_CALLBACK_TASK_PRIORITY must be less than U_AT_CLIENT_URC_TASK_PRIORITY
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -455,12 +460,13 @@ static void clearError(uAtClientInstance_t *pClient)
     setError(pClient, U_ERROR_COMMON_SUCCESS);
 }
 
-// Report the number of consecutive timeouts
+// Increment the number of consecutive timeouts
 // and call the callback if there is one
-static void reportConsecutiveTimeout(uAtClientInstance_t *pClient)
+static void consecutiveTimeout(uAtClientInstance_t *pClient)
 {
     uAtClientCallback_t cb;
 
+    pClient->numConsecutiveAtTimeouts++;
     if (pClient->pConsecutiveTimeoutsCallback != NULL) {
         // pConsecutiveTimeoutsCallback second parameter
         // is an int32_t pointer but of course the generic
@@ -617,10 +623,7 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
             character = *(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                           pReceiveBuffer->readIndex);
             pReceiveBuffer->readIndex++;
-            if (pClient->numConsecutiveAtTimeouts > 0) {
-                pClient->numConsecutiveAtTimeouts = 0;
-                reportConsecutiveTimeout(pClient);
-            }
+            pClient->numConsecutiveAtTimeouts = 0;
         } else {
             // Timeout
             if (pClient->debugOn) {
@@ -628,8 +631,7 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
                          pClient->streamType, pClient->streamHandle);
             }
             setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
-            pClient->numConsecutiveAtTimeouts++;
-            reportConsecutiveTimeout(pClient);
+            consecutiveTimeout(pClient);
         }
     }
 
@@ -766,7 +768,11 @@ static bool consumeToStopTag(uAtClientInstance_t *pClient)
 static void informationResponseStop(uAtClientInstance_t *pClient)
 {
     if (consumeToStopTag(pClient)) {
-        setScope(pClient, U_AT_CLIENT_SCOPE_RESPONSE);
+        if (pClient->stopTag.pTagDef != &gNoStopTag) {
+            // If we're not ignoring stop tags, set the
+            // scope to response
+            setScope(pClient, U_AT_CLIENT_SCOPE_RESPONSE);
+        }
     }
 }
 
@@ -1057,13 +1063,9 @@ static bool processResponse(uAtClientInstance_t *pClient,
                                     // the timeout, set an error to
                                     // indicate the need for recovery
                                     setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
-                                    pClient->numConsecutiveAtTimeouts++;
-                                    reportConsecutiveTimeout(pClient);
+                                    consecutiveTimeout(pClient);
                                 } else {
-                                    if (pClient->numConsecutiveAtTimeouts > 0) {
-                                        pClient->numConsecutiveAtTimeouts = 0;
-                                        reportConsecutiveTimeout(pClient);
-                                    }
+                                    pClient->numConsecutiveAtTimeouts = 0;
                                 }
                             }
                         }
@@ -2066,8 +2068,7 @@ void uAtClientIgnoreStopTag(uAtClientHandle_t atHandle)
     U_PORT_MUTEX_LOCK(pClient->mutex);
 
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
-        pClient->stopTag.found = false;
-        pClient->stopTag.pTagDef = &gNoStopTag;
+        setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
     }
 
     U_PORT_MUTEX_UNLOCK(pClient->mutex);

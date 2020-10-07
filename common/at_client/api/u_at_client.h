@@ -346,10 +346,6 @@ extern "C" {
 # define U_AT_CLIENT_CALLBACK_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 2)
 #endif
 
-#if (U_AT_CLIENT_CALLBACK_TASK_PRIORITY >= U_AT_CLIENT_URC_TASK_PRIORITY)
-# error U_AT_CLIENT_CALLBACK_TASK_PRIORITY must be less than U_AT_CLIENT_URC_TASK_PRIORITY
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
