@@ -75,6 +75,6 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 # Maintenance
 - If you add a new board to the test machine or change the COM port or debugger serial number that an existing board uses on the test machine, update `u_connection.py` to match.
 - If you add a new platform or test suite, add it to `DATABASE.md` and make sure that the result is parsed correctly by `u_data.py` (e.g. by running `u_pull_request.py` from the command-line and checking that everything is correct).
-- If you add a new item in the range 0 to 4 (i.e. a checker with no platform), update `u_pull_request.py` to include it.
+- If you add a new item in the range 0 to 9 (i.e. a checker with no platform), update `u_run.py` to include it.
 - If you add a new directory OFF THE ROOT of `ubxlib`, i.e. something like `ubxlib\blah`, add it to the `ASTYLE_DIRS` variable of the `u_run_astyle.py` script.
 - If you add a new directory that contains PLATFORM INDEPENDENT `.c` or `.cpp` files anywhere in the `ubxlib` tree, add it to the `LINT_DIRS` variable of the `u_run_lint.py` script.

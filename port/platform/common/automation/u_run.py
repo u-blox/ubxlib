@@ -177,6 +177,21 @@ def main(database, instance, filter_string, clean,
             elif instance[0] == 4:
                 printer.string("{}reserved, nothing to do.".format(PROMPT))
                 return_value = 0
+            elif instance[0] == 5:
+                printer.string("{}reserved, nothing to do.".format(PROMPT))
+                return_value = 0
+            elif instance[0] == 6:
+                printer.string("{}reserved, nothing to do.".format(PROMPT))
+                return_value = 0
+            elif instance[0] == 7:
+                printer.string("{}reserved, nothing to do.".format(PROMPT))
+                return_value = 0
+            elif instance[0] == 8:
+                printer.string("{}reserved, nothing to do.".format(PROMPT))
+                return_value = 0
+            elif instance[0] == 9:
+                printer.string("{}reserved, nothing to do.".format(PROMPT))
+                return_value = 0
             else:
                 printer.string("{}instance {} has no connection and isn't a"     \
                                " local thing.".format(PROMPT, instance_text))

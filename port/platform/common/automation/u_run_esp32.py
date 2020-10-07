@@ -36,9 +36,14 @@ ESP_IDF_LOCATION = [None,                     # 0 (not esp-idf)
                     None,                     # 2 (not esp-idf)
                     None,                     # 3 (not esp-idf)
                     None,                     # 4 (not esp-idf)
-                    ESP_IDF_LOCATION_NINA_W1, # 5
-                    ESP_IDF_LOCATION_LATEST,  # 6
-                    ESP_IDF_LOCATION_LATEST]  # 7
+                    None,                     # 5 (not esp-idf)
+                    None,                     # 6 (not esp-idf)
+                    None,                     # 7 (not esp-idf)
+                    None,                     # 8 (not esp-idf)
+                    None,                     # 9 (not esp-idf)
+                    ESP_IDF_LOCATION_NINA_W1, # 10
+                    ESP_IDF_LOCATION_LATEST,  # 11
+                    ESP_IDF_LOCATION_LATEST]  # 12
 
 # The place where the IDF tools should be found/installed
 IDF_TOOLS_PATH = ESP_IDF_ROOT + os.sep + "esp-idf-tools-latest"

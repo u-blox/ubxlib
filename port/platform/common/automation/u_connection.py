@@ -13,38 +13,43 @@ CONNECTION_LIST = [None,      # Instance 0, Lint, no connection, no need for a l
                    None,      # Instance 2, AStyle checker, no connection, no need for a lock
                    None,      # Instance 3, Pylint, no connection, no need for a lock
                    None,      # Instance 4, reserved
-                   # Instance 5, WHRE board
+                   None,      # Instance 5, reserved
+                   None,      # Instance 6, reserved
+                   None,      # Instance 7, reserved
+                   None,      # Instance 8, reserved
+                   None,      # Instance 9, reserved
+                   # Instance 10, WHRE board
                    {"lock": None, "serial_port": "COM10", "debugger": None},
-                   # Instance 6, ESP32, SARA-R412M-02B
+                   # Instance 11, ESP32, SARA-R412M-02B
                    {"lock": None, "serial_port": "COM8", "debugger": None},
-                   # Instance 7, ESP32, SARA-R5
+                   # Instance 12, ESP32, SARA-R5
                    {"lock": None, "serial_port": "COM9", "debugger": None},
-                   # Instance 8, NRF52, SARA-R5
+                   # Instance 13, NRF52, SARA-R5
                    {"lock": None, "serial_port": "COM6", "debugger": "683253856",
                     "swo_port": u_utils.JLINK_SWO_PORT},
-                   # Instance 9, C030-R412M (STM32F4), live network GPRS
+                   # Instance 14, C030-R412M (STM32F4), live network GPRS
                    {"lock": None, "serial_port": "COM14", "debugger": "066EFF535154887767012236",
                     "swo_port": u_utils.STLINK_SWO_PORT,
                     "gdb_port": u_utils.STLINK_GDB_PORT},
-                   # Instance 10, C030-R412M (STM32F4), cat-M1
+                   # Instance 15, C030-R412M (STM32F4), cat-M1
                    {"lock": None, "serial_port": "COM3", "debugger": "066DFF535154887767012834",
                     "swo_port": u_utils.STLINK_SWO_PORT + 1,
                     "gdb_port": u_utils.STLINK_GDB_PORT + 1},
-                   # Instance 11, STM32F4 Discovery, SARA-R5
+                   # Instance 16, STM32F4 Discovery, SARA-R5
                    {"lock": None, "serial_port": "COM5", "debugger": "0668FF383032534E43184418",
                     "swo_port": u_utils.STLINK_SWO_PORT + 2,
                     "gdb_port": u_utils.STLINK_GDB_PORT + 2},
-                   # Instance 12, NRF52, SARA-R412M-02B
+                   # Instance 17, NRF52, SARA-R412M-02B
                    {"lock": None, "serial_port": "COM7", "debugger": "683920969",
                     "swo_port": u_utils.JLINK_SWO_PORT + 3},
-                   # Instance 13, C208 with SARA-R412M-02B connected via Segger J-Link box
+                   # Instance 18, C208 with SARA-R412M-02B connected via Segger J-Link box
                    {"lock": None, "serial_port": "COM12", "debugger": "50102100",
                     "swo_port": u_utils.JLINK_SWO_PORT + 4},
-                   # Instance 14, C030-U201 board (STM32F4), live network 3G
+                   # Instance 19, C030-U201 board (STM32F4), live network 3G
                    {"lock": None, "serial_port": "COM4", "debugger": "066FFF565053787567193329",
                     "swo_port": u_utils.STLINK_SWO_PORT + 5,
                     "gdb_port": u_utils.STLINK_GDB_PORT + 3},
-                   # Instance 15, NRF53: the COM port is the lowest numbered of the three
+                   # Instance 20, NRF53: the COM port is the lowest numbered of the three
                    {"lock": None, "serial_port": "COM15", "debugger": "960115898",
                     "swo_port": u_utils.JLINK_SWO_PORT + 6}]
 
