@@ -28,7 +28,7 @@ From tool chain manager start Segger embedded studio (SES) using Open IDE button
   ...or:
   
   ```
-  set U_FLAGS=-DMY_FLAG -DU_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1
+  set U_FLAGS=-DMY_FLAG -DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1
   ```
 
 # Maintenance

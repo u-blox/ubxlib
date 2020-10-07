@@ -62,7 +62,7 @@
 static void appTask(void *pParam)
 {
     (void) pParam;
-#if (U_CFG_APP_PIN_C030_ENABLE_3V3 >= 0) || (U_CFG_APP_PIN_CELLULAR_RESET >= 0)
+#if (U_CFG_APP_PIN_C030_ENABLE_3V3 >= 0) || (U_CFG_APP_PIN_CELL_RESET >= 0)
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
 #endif
 
@@ -76,13 +76,13 @@ static void appTask(void *pParam)
     uPortGpioConfig(&gpioConfig);
     uPortGpioSet(U_CFG_APP_PIN_C030_ENABLE_3V3, 1);
 #endif
-#if U_CFG_APP_PIN_CELLULAR_RESET >= 0
+#if U_CFG_APP_PIN_CELL_RESET >= 0
     // Set reset high (i.e. not reset) if it is connected
-    gpioConfig.pin = U_CFG_APP_PIN_CELLULAR_RESET;
+    gpioConfig.pin = U_CFG_APP_PIN_CELL_RESET;
     gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_NORMAL;
     gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
     uPortGpioConfig(&gpioConfig);
-    uPortGpioSet(U_CFG_APP_PIN_CELLULAR_RESET, 1);
+    uPortGpioSet(U_CFG_APP_PIN_CELL_RESET, 1);
 #endif
 
     uPortLog("\n\nU_APP: application task started.\n");

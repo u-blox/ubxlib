@@ -52,11 +52,11 @@ With this done, go to the relevant sub-directory of this directory to actually b
 # SDK Usage
 You may override or provide conditional compilation flags to this build without modifying the build file.  Do this by adding them to a `CFLAGS` variable passed in via the `make` command-line, e.g.:
 
-`make flash CFLAGS=-DU_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1`
+`make flash CFLAGS=-DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1`
 
 ...or:
 
-`make flash CFLAGS="-DU_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1 -DMY_FLAG"`
+`make flash CFLAGS="-DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1 -DMY_FLAG"`
 
 Note the use of quotation marks when sending more than one conditional compilation flag, otherwise the second `-D` will appear as another parameter to `make` which will just cause it to pause for 30 seconds.
 

@@ -257,16 +257,7 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
 
     # SIGINT is ignored while the pool is created
     original_sigint_handler = signal(SIGINT, SIG_IGN)
-    # On the face of it the number of worker processes should be
-    # equal to the number of instances.  However, running more
-    # worker processes than there are logical processors reduces
-    # the overall speed due to the churn in sharing them out and
-    # running 10 or more on an 8 logical CPU machine causes
-    # unexplained slow-downs.  Hence, for the moment, while
-    # compilation load is predominant as the test runs take no
-    # more than 30 seconds, we set the number of workers
-    # to 4 as that is (by experiment) the optimal number.
-    pool = NoDaemonPool(4)
+    pool = NoDaemonPool(len(instances))
     signal(SIGINT, original_sigint_handler)
 
     # Create locks for connections

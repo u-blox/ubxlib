@@ -76,6 +76,17 @@ SRC_FILES += \
   $(NRF5_PATH)/external/freertos/source/stream_buffer.c \
   $(NRF5_PATH)/external/freertos/source/tasks.c \
   $(NRF5_PATH)/external/freertos/source/timers.c \
+  ../../../../../../../cell/src/u_cell.c \
+  ../../../../../../../cell/src/u_cell_pwr.c \
+  ../../../../../../../cell/src/u_cell_cfg.c \
+  ../../../../../../../cell/src/u_cell_info.c \
+  ../../../../../../../cell/src/u_cell_net.c \
+  ../../../../../../../cell/src/u_cell_private.c \
+  ../../../../../../../cell/test/u_cell_pwr_test.c \
+  ../../../../../../../cell/test/u_cell_cfg_test.c \
+  ../../../../../../../cell/test/u_cell_info_test.c\
+  ../../../../../../../cell/test/u_cell_net_test.c \
+  ../../../../../../../cell/test/u_cell_test_private.c\
   ../../../../../../../common/at_client/src/u_at_client.c \
   ../../../../../../../common/at_client/test/u_at_client_test.c \
   ../../../../../../../common/at_client/test/u_at_client_test_data.c \
@@ -126,6 +137,9 @@ INC_FOLDERS += \
   $(NRF5_PATH)/components/libraries/log/src \
   $(NRF5_PATH)/external/segger_rtt \
   $(NRF5_PATH)/components/libraries/hardfault \
+  ../../../../../../../cell/api \
+  ../../../../../../../cell/src \
+  ../../../../../../../cell/test \
   ../../../../../../../common/at_client/api \
   ../../../../../../../common/at_client/src \
   ../../../../../../../common/at_client/test \

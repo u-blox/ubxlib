@@ -18,7 +18,7 @@ set U_FLAGS=-DMY_FLAG
 ...or:
 
 ```
-set U_FLAGS=-DMY_FLAG -DU_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1
+set U_FLAGS=-DMY_FLAG -DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1
 ```
 
 With this done, `cd` to your chosen build directory beneath this one to build and download your code.

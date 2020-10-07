@@ -1006,7 +1006,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
     uPortDeinit();
 }
 
-# if (U_CFG_TEST_PIN_UART_B_TXD >= 0) && (U_CFG_TEST_PIN_UART_B_RXD >= 0)
+# if (U_CFG_TEST_UART_B >= 0)
 /** Add an AT client, send the test commands of gAtClientTestSet1[],
  * to atServerCallback() over a UART where they are checked and then,
  * the test responses/URCs of gAtClientTestSet1[] are sent back by

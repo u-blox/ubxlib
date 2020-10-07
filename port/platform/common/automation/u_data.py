@@ -32,6 +32,9 @@ PROMPT = "u_data: "
 # in Markdown format
 DATA_FILE = "DATABASE.md"
 
+# The prefix to add to a cellular module to
+CELLULAR_MODULE_TYPE_PREFIX = "U_CELL_MODULE_TYPE_"
+
 def get(filename):
     '''Read the instance database from a table in a .md file'''
     database = []
@@ -205,6 +208,21 @@ def get_platform_for_instance(database, instance):
             platform = row["platform"]
 
     return platform
+
+def get_cellular_module_for_instance(database, instance):
+    '''Return the cellular module that is used in the given instance'''
+    module_name = None
+
+    for row in database:
+        if instance == row["instance"]:
+            if row["modules"]:
+                for module in row["modules"]:
+                    # SARA is assumed to be a cellular module
+                    if module.startswith("SARA"):
+                        module_name = CELLULAR_MODULE_TYPE_PREFIX + module
+                        break;
+
+    return module_name
 
 def get_defines_for_instance(database, instance):
     '''Return the defines that are required by the given instance'''

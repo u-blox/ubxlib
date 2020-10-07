@@ -27,8 +27,8 @@ e.g.:
 -- Adding linker script C:/projects/esp32/esp-idf/components/esp32/ld/esp32.peripherals.ld
 -- Adding linker script C:/projects/esp32/esp-idf/components/esp32/ld/esp32.rom.libgcc.ld
 -- Adding linker script C:/projects/esp32/esp-idf/components/esp32/ld/esp32.rom.spiram_incompatible_fns.ld
-runner: added -DMY_FLAG;-DU_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1; due to environment variable U_FLAGS.
-ubxlib: added -DMY_FLAG;-DU_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1; due to environment variable U_FLAGS.
+runner: added -DMY_FLAG;-DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1; due to environment variable U_FLAGS.
+ubxlib: added -DMY_FLAG;-DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1; due to environment variable U_FLAGS.
 ```
 
 If you do not then the build has not picked up the `U_FLAGS` environment variable for some reason.  This can happen if you are somehow not running the Python version that comes with `esp-idf`, in which case you might try running:

@@ -3,7 +3,7 @@
 '''Build/run ubxlib for NRF52 and report results.'''
 
 import os                    # For sep(), getcwd()
-from time import time
+from time import time, sleep
 import subprocess
 import u_connection
 import u_monitor
@@ -401,6 +401,11 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                        u_report.EVENT_COMPLETE)
                                         reporter.event(u_report.EVENT_TYPE_TEST,
                                                        u_report.EVENT_START)
+                                        # I have seen downloads succeeds and then
+                                        # the Telnet connection fail, so add a
+                                        # little sleep here to make sure one
+                                        # has really finished before the other starts
+                                        sleep(1)
                                         if connection and "swo_port" in connection:
                                             swo_port = connection["swo_port"]
 

@@ -107,6 +107,12 @@ def main(database, instance, filter_string, clean,
         # add it to the list
         defines.append(u_utils.FILTER_MACRO_NAME + "=" + \
                        filter_string)
+    # If there is a cellular module on this instance, add its
+    # name to the defines list
+    cellular_module_name = u_data.get_cellular_module_for_instance(database, instance)
+    if cellular_module_name:
+        defines.append("U_CFG_TEST_CELL_MODULE_TYPE=" + cellular_module_name)
+
     # Also, when running testing it is best to run the
     # the "port" tests first as, if there's a problem with the
     # port, you want to notice it first.

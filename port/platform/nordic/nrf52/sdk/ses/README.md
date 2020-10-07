@@ -27,7 +27,7 @@ You may override or provide conditional compilation flags to Segger Embedded Stu
 ```
 
 ```
-"C:\Program Files\Segger\SEGGER Embedded Studio for ARM 4.50\bin\emstudio" -D U_FLAG0=MY_FLAG -D U_FLAG1="U_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1"
+"C:\Program Files\Segger\SEGGER Embedded Studio for ARM 4.50\bin\emstudio" -D U_FLAG0=MY_FLAG -D U_FLAG1="U_CFG_APP_PIN_CELL_ENABLE_POWER=-1"
 ```
 
 ...noting the way quotation marks are used.

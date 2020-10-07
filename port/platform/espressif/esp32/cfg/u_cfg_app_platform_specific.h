@@ -29,68 +29,68 @@
  * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON ESP32: MISC
  * -------------------------------------------------------------- */
 
-#ifndef U_CFG_APP_CELLULAR_UART
+#ifndef U_CFG_APP_CELL_UART
 /** The UART HW block to use inside the ESP32 chip to talk to a
  * cellular module.
  */
-# define U_CFG_APP_CELLULAR_UART                  1
+# define U_CFG_APP_CELL_UART                  1
 #endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON ESP32: PINS
  * -------------------------------------------------------------- */
 
-#ifndef U_CFG_APP_PIN_CELLULAR_ENABLE_POWER
+#ifndef U_CFG_APP_PIN_CELL_ENABLE_POWER
 /** The ESP32 GPIO output that enables power to the cellular
  * module. -1 should be used where there is no such connection.
  */
-# define U_CFG_APP_PIN_CELLULAR_ENABLE_POWER      2
+# define U_CFG_APP_PIN_CELL_ENABLE_POWER      2
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_PWR_ON
+#ifndef U_CFG_APP_PIN_CELL_PWR_ON
 /** The ESP32 GPIO output that that is connected to the PWR_ON
  * pin of the cellular module.
  */
-# define U_CFG_APP_PIN_CELLULAR_PWR_ON            25
+# define U_CFG_APP_PIN_CELL_PWR_ON            25
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_VINT
+#ifndef U_CFG_APP_PIN_CELL_VINT
 /** The ESP32 GPIO input that is connected to the VInt pin of the
  * cellular module. -1 should be used where there is no such
  * connection.
  */
-# define U_CFG_APP_PIN_CELLULAR_VINT              36
+# define U_CFG_APP_PIN_CELL_VINT              36
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_TXD
+#ifndef U_CFG_APP_PIN_CELL_TXD
 /** The ESP32 GPIO output pin that sends UART data to the
  * cellular module.
  */
-# define U_CFG_APP_PIN_CELLULAR_TXD              4
+# define U_CFG_APP_PIN_CELL_TXD              4
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_RXD
+#ifndef U_CFG_APP_PIN_CELL_RXD
 /** The ESP32 GPIO input pin that receives UART data from the
  * cellular module.
  */
-# define U_CFG_APP_PIN_CELLULAR_RXD              15
+# define U_CFG_APP_PIN_CELL_RXD              15
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_CTS
+#ifndef U_CFG_APP_PIN_CELL_CTS
 /** The ESP32 GPIO input pin that the cellular modem will use to
  * indicate that data can be sent to it.  -1 should be used where
  * there is no such connection.
  */
-# define U_CFG_APP_PIN_CELLULAR_CTS              -1
+# define U_CFG_APP_PIN_CELL_CTS              -1
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_RTS
+#ifndef U_CFG_APP_PIN_CELL_RTS
 /** The ESP32 GPIO output pin that tells the cellular modem
  * that it can send more data to the host processor.  -1 should
  * be used where there is no such connection. If this is *not* -1
  * then be sure to set up U_CFG_HW_CELLULAR_RTS_THRESHOLD also.
  */
-# define U_CFG_APP_PIN_CELLULAR_RTS              -1
+# define U_CFG_APP_PIN_CELL_RTS              -1
 #endif
 
 #endif // _U_PORT_APP_PLATFORM_SPECIFIC_H_

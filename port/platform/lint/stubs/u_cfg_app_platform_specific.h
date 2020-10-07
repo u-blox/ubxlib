@@ -30,16 +30,16 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#define U_CFG_APP_CELLULAR_UART                 0
+#define U_CFG_APP_CELL_UART                 0
 // Note: pins set to 0 rather than -1 in order to not accidentally
 // disable any code that is conditional on them existing
-#define U_CFG_APP_PIN_CELLULAR_ENABLE_POWER     0
-#define U_CFG_APP_PIN_CELLULAR_PWR_ON           0
-#define U_CFG_APP_PIN_CELLULAR_VINT             0
-#define U_CFG_APP_PIN_CELLULAR_TXD              0
-#define U_CFG_APP_PIN_CELLULAR_RXD              0
-#define U_CFG_APP_PIN_CELLULAR_CTS              0
-#define U_CFG_APP_PIN_CELLULAR_RTS              0
+#define U_CFG_APP_PIN_CELL_ENABLE_POWER     0
+#define U_CFG_APP_PIN_CELL_PWR_ON           0
+#define U_CFG_APP_PIN_CELL_VINT             0
+#define U_CFG_APP_PIN_CELL_TXD              0
+#define U_CFG_APP_PIN_CELL_RXD              0
+#define U_CFG_APP_PIN_CELL_CTS              0
+#define U_CFG_APP_PIN_CELL_RTS              0
 
 #endif // _U_CFG_APP_APP_PLATFORM_SPECIFIC_H_
 

@@ -9,7 +9,6 @@ set(UBXLIB_BASE ../../../../../../..)
 set(UBXLIB_PF_COMMON ${UBXLIB_BASE}/port/platform/common)
 set(NRF5340_BASE ../../..)
 
-
 #nrf5340 test runner application
 target_include_directories(app PRIVATE ${NRF5340_BASE}/src/ ${NRF5340_BASE}/cfg )
 target_sources(app PRIVATE ${NRF5340_BASE}/app/u_main.c)
@@ -24,6 +23,27 @@ target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/runner/u_runner.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/port/test/u_port_test.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/event_queue/u_port_event_queue.c)
+
+#at-client
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/at_client/api ${UBXLIB_BASE}/common/at_client/src ${UBXLIB_BASE}/common/at_client/test)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/src/u_at_client.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test_data.c)
+
+#cell API
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/cell/api ${UBXLIB_BASE}/cell/src ${UBXLIB_BASE}/cell/test)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_pwr.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_cfg.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_info.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_net.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_private.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_pwr_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_cfg_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_info_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_net_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_private.c)
 
 # unity
 target_compile_definitions(app PRIVATE UNITY_INCLUDE_CONFIG_H)

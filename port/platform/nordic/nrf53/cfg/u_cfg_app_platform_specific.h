@@ -18,6 +18,7 @@
 #define _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 /* Only bring in #includes specifically related to running applications. */
+
 #include "u_runner.h"
 
 /** @file
@@ -26,7 +27,64 @@
  * override these values as necessary for your particular platform.
  */
 
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON NRF53: MISC
+ * -------------------------------------------------------------- */
 
+#ifndef U_CFG_APP_CELL_UART
+/** The UARTE HW block to use inside the NRF53 chip when
+ * to communicate with a cellular module.
+ */
+# define U_CFG_APP_CELL_UART                 1
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR NRF53: PINS FOR CELLULAR
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_APP_PIN_CELL_ENABLE_POWER
+/** The NRF53 GPIO output that enables power to the cellular
+ * module. -1 is used where there is no such connection.
+ */
+# define U_CFG_APP_PIN_CELL_ENABLE_POWER     -1
+#endif
+
+#ifndef U_CFG_APP_PIN_CELL_PWR_ON
+/** The NRF53 GPIO output that that is connected to the PWR_ON
+ * pin of the cellular module.
+ */
+# define U_CFG_APP_PIN_CELL_PWR_ON            33 // AKA 1.01
+#endif
+
+#ifndef U_CFG_APP_PIN_CELL_VINT
+/** The NRF53 GPIO input that is connected to the VInt pin of
+ * the cellular module.
+ * -1 is used where there is no such connection.
+ */
+# define U_CFG_APP_PIN_CELL_VINT              -1
+#endif
+
+/* IMPORTANT: the UART pins given here are required for compilation
+ * but make NO DIFFERENCE WHATSOEVER to how the world works.  On this
+ * platform the Zephyr device tree dictates what pins are used
+ * by the UART.
+ */
+
+#ifndef U_CFG_APP_PIN_CELL_TXD
+# define U_CFG_APP_PIN_CELL_TXD               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_CELL_RXD
+# define U_CFG_APP_PIN_CELL_RXD               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_CELL_CTS
+# define U_CFG_APP_PIN_CELL_CTS               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_CELL_RTS
+# define U_CFG_APP_PIN_CELL_RTS               -1
+#endif
 
 #endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_
 

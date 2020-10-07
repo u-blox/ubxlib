@@ -1,11 +1,20 @@
 # For this platform we can simply bring in the generic test
 # source code and map it to the unity framework used by
 # Espressif through the macros in u_port_test.h
-set(COMPONENT_SRCS            "../../../../../../../../../common/at_client/test/u_at_client_test.c"
+set(COMPONENT_SRCS            "../../../../../../../../../cell/test/u_cell_test.c"
+                              "../../../../../../../../../cell/test/u_cell_pwr_test.c"
+                              "../../../../../../../../../cell/test/u_cell_cfg_test.c"
+                              "../../../../../../../../../cell/test/u_cell_info_test.c"
+                              "../../../../../../../../../cell/test/u_cell_net_test.c"
+                              "../../../../../../../../../cell/test/u_cell_test_private.c"
+                              "../../../../../../../../../common/at_client/test/u_at_client_test.c"
                               "../../../../../../../../../common/at_client/test/u_at_client_test_data.c"
                               "../../../../../../../../test/u_port_test.c")
 set(COMPONENT_ADD_INCLUDEDIRS "../../../../../app"
                               "../../../../../../../../../cfg"
+                              "../../../../../../../../../cell/api"
+                              "../../../../../../../../../cell/src"
+                              "../../../../../../../../../cell/test"
                               "../../../../../../../../../common/at_client/api"
                               "../../../../../../../../../common/at_client/src"
                               "../../../../../../../../../common/at_client/test"

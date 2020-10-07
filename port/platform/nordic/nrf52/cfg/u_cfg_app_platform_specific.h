@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _U_CFG_APP_APP_PLATFORM_SPECIFIC_H_
-#define _U_CFG_APP_APP_PLATFORM_SPECIFIC_H_
+#ifndef _U_CFG_APP_PLATFORM_SPECIFIC_H_
+#define _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 /* Only bring in #includes specifically related to running applications. */
 
@@ -31,16 +31,16 @@
  * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON NRF52: MISC
  * -------------------------------------------------------------- */
 
-#ifndef U_CFG_APP_CELLULAR_UART
+#ifndef U_CFG_APP_CELL_UART
 /** The UARTE HW block to use inside the NRF52 chip when
  * to communicate with a cellular module.
  * IMPORTANT: this code provides its own UARTE driver and hence
  * the UARTE chosen here must be set to 0 in sdk_config.h so that
  * the Nordic NRF5 driver does not use it, e.g. if the
- * value of U_CFG_APP_CELLULAR_UART is set to 0 then
+ * value of U_CFG_APP_CELL_UART is set to 0 then
  * NRFX_UARTE0_ENABLED must be set to 0 in sdk_config.h.
  */
-# define U_CFG_APP_CELLULAR_UART                 0
+# define U_CFG_APP_CELL_UART                 0
 #endif
 
 /* ----------------------------------------------------------------
@@ -56,58 +56,58 @@
  * general, port 1 is freer than port 0, hence the choices below.
  */
 
-#ifndef U_CFG_APP_PIN_CELLULAR_ENABLE_POWER
+#ifndef U_CFG_APP_PIN_CELL_ENABLE_POWER
 /** The NRF52 GPIO output that enables power to the cellular
  * module. -1 is used where there is no such connection.
  */
-# define U_CFG_APP_PIN_CELLULAR_ENABLE_POWER     -1
+# define U_CFG_APP_PIN_CELL_ENABLE_POWER     -1
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_PWR_ON
+#ifndef U_CFG_APP_PIN_CELL_PWR_ON
 /** The NRF52 GPIO output that that is connected to the PWR_ON
  * pin of the cellular module.
  */
-# define U_CFG_APP_PIN_CELLULAR_PWR_ON            33 // AKA 1.01
+# define U_CFG_APP_PIN_CELL_PWR_ON            33 // AKA 1.01
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_VINT
+#ifndef U_CFG_APP_PIN_CELL_VINT
 /** The NRF52 GPIO input that is connected to the VInt pin of
  * the cellular module.
  * -1 is used where there is no such connection.
  */
-# define U_CFG_APP_PIN_CELLULAR_VINT              -1
+# define U_CFG_APP_PIN_CELL_VINT              -1
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_TXD
+#ifndef U_CFG_APP_PIN_CELL_TXD
 /** The NRF52 GPIO output pin that sends UART data to the
  * cellular module.
  */
-# define U_CFG_APP_PIN_CELLULAR_TXD               34 // AKA 1.02
+# define U_CFG_APP_PIN_CELL_TXD               34 // AKA 1.02
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_RXD
+#ifndef U_CFG_APP_PIN_CELL_RXD
 /** The NRF52 GPIO input pin that receives UART data from
  * the cellular module.
  */
-# define U_CFG_APP_PIN_CELLULAR_RXD               35 // AKA 1.03
+# define U_CFG_APP_PIN_CELL_RXD               35 // AKA 1.03
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_CTS
+#ifndef U_CFG_APP_PIN_CELL_CTS
 /** The NRF52 GPIO input pin that the cellular modem will
  * use to indicate that data can be sent to it. -1 should
  * be used where there is no such connection.
  */
-# define U_CFG_APP_PIN_CELLULAR_CTS               -1
+# define U_CFG_APP_PIN_CELL_CTS               -1
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_RTS
+#ifndef U_CFG_APP_PIN_CELL_RTS
 /** The NRF5 GPIO output pin that tells the cellular modem
  * that it can send more data to the NRF52 UART. -1 should
  * be used where there is no such connection.
  */
-# define U_CFG_APP_PIN_CELLULAR_RTS               -1
+# define U_CFG_APP_PIN_CELL_RTS               -1
 #endif
 
-#endif // _U_CFG_APP_APP_PLATFORM_SPECIFIC_H_
+#endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 // End of file

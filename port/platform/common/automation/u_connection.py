@@ -41,17 +41,17 @@ CONNECTION_LIST = [None,      # Instance 0, Lint, no connection, no need for a l
                     "gdb_port": u_utils.STLINK_GDB_PORT + 2},
                    # Instance 17, NRF52, SARA-R412M-02B
                    {"lock": None, "serial_port": "COM7", "debugger": "683920969",
-                    "swo_port": u_utils.JLINK_SWO_PORT + 3},
+                    "swo_port": u_utils.JLINK_SWO_PORT + 1},
                    # Instance 18, C208 with SARA-R412M-02B connected via Segger J-Link box
                    {"lock": None, "serial_port": "COM12", "debugger": "50102100",
-                    "swo_port": u_utils.JLINK_SWO_PORT + 4},
+                    "swo_port": u_utils.JLINK_SWO_PORT + 2},
                    # Instance 19, C030-U201 board (STM32F4), live network 3G
                    {"lock": None, "serial_port": "COM4", "debugger": "066FFF565053787567193329",
-                    "swo_port": u_utils.STLINK_SWO_PORT + 5,
+                    "swo_port": u_utils.STLINK_SWO_PORT + 3,
                     "gdb_port": u_utils.STLINK_GDB_PORT + 3},
                    # Instance 20, NRF53: the COM port is the lowest numbered of the three
                    {"lock": None, "serial_port": "COM15", "debugger": "960115898",
-                    "swo_port": u_utils.JLINK_SWO_PORT + 6}]
+                    "swo_port": u_utils.JLINK_SWO_PORT + 3}]
 
 def init_locks(manager):
     '''Create locks'''

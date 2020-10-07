@@ -31,7 +31,7 @@
  * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON STM32F4: UART/USART
  * -------------------------------------------------------------- */
 
-#ifndef U_CFG_APP_CELLULAR_UART
+#ifndef U_CFG_APP_CELL_UART
 /** The UART/USART to use when talking to the cellular module,
  * a number between 1 and 8, though note that only USARTs 1, 2, 3
  * and 6 are capable of HW flow control.  If you change this
@@ -44,7 +44,7 @@
  * below (see table 12 of the STM32F437VG data sheet).
  * For a C030-U201 board this HAS to be 2 for the same reasons.
  */
-# define U_CFG_APP_CELLULAR_UART                           1
+# define U_CFG_APP_CELL_UART                           1
 #endif
 
 /* ----------------------------------------------------------------
@@ -70,64 +70,64 @@
 # define U_CFG_APP_PIN_C030_ENABLE_3V3   0x40 // AKA PE_0
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_RESET
+#ifndef U_CFG_APP_PIN_CELL_RESET
 /** The pin that is connect to the cellular module's
  * reset pin.  Pin 0x15, AKA PB_5, is used on the
  * u-blox C030 boards.
  * If you are not running on a u-blox C030 board then
  * you may override this pin as required.
  */
-# define U_CFG_APP_PIN_CELLULAR_RESET    0x15 // AKA PB_5
+# define U_CFG_APP_PIN_CELL_RESET    0x15 // AKA PB_5
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_ENABLE_POWER
+#ifndef U_CFG_APP_PIN_CELL_ENABLE_POWER
 /** The STM32F4 GPIO output that enables power to the
  * cellular module. -1 because there is no such
  * facility on a C030 board.
  */
-# define U_CFG_APP_PIN_CELLULAR_ENABLE_POWER      -1
+# define U_CFG_APP_PIN_CELL_ENABLE_POWER      -1
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_PWR_ON
+#ifndef U_CFG_APP_PIN_CELL_PWR_ON
 /** The STM32F4 GPIO output that that is connected to the
  * PWR_ON pin of the cellular module.  For the u-blox
  * C030 boards this is 0x4e, AKA PE_14.
  */
-# define U_CFG_APP_PIN_CELLULAR_PWR_ON     0x4e // AKA PE_14
+# define U_CFG_APP_PIN_CELL_PWR_ON     0x4e // AKA PE_14
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_VINT
+#ifndef U_CFG_APP_PIN_CELL_VINT
 /** The STM32F4 GPIO input that is connected to the VInt
  * pin of the cellular module. -1 is used where there
  * is no such connection. For the u-blox C030 boards
  * this is not connected.
  */
-# define U_CFG_APP_PIN_CELLULAR_VINT      -1
+# define U_CFG_APP_PIN_CELL_VINT      -1
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_TXD
+#ifndef U_CFG_APP_PIN_CELL_TXD
 /** The STM32F4 GPIO output pin that sends UART data to
  * the cellular module.
  * For the u-blox C030-R412M board this must
  * be 0x09, AKA PA_9.
  * For the u-blox C030-U201 board this must be
- * 0x39, AKA PD_5.
+ * 0x35, AKA PD_5.
  */
-# define U_CFG_APP_PIN_CELLULAR_TXD       0x09 // AKA PA_9
+# define U_CFG_APP_PIN_CELL_TXD       0x09 // AKA PA_9
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_RXD
+#ifndef U_CFG_APP_PIN_CELL_RXD
 /** The STM32F4 GPIO input pin that receives UART data
  * from the cellular module.
  * For the u-blox C030-R412M board this must be
  * 0x0a, AKA PA_10.
  * For the u-blox C030-U201 board this must be
- * 0x3a, AKA PD_6.
+ * 0x36, AKA PD_6.
  */
-# define U_CFG_APP_PIN_CELLULAR_RXD       0x0a // AKA PA_10
+# define U_CFG_APP_PIN_CELL_RXD       0x0a // AKA PA_10
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_CTS
+#ifndef U_CFG_APP_PIN_CELL_CTS
 /** The STM32F4 GPIO input pin that the cellular modem
  * will use to indicate that data can be sent to it.
  * -1 is used where there is no such connection.
@@ -136,10 +136,10 @@
  * For the u-blox C030-U201 board this must be
  * 0x33, AKA PD_3.
  */
-# define U_CFG_APP_PIN_CELLULAR_CTS       0x0b // AKA PA_11
+# define U_CFG_APP_PIN_CELL_CTS       0x0b // AKA PA_11
 #endif
 
-#ifndef U_CFG_APP_PIN_CELLULAR_RTS
+#ifndef U_CFG_APP_PIN_CELL_RTS
 /** The STM32F4 GPIO output pin that tells the cellular
  * modem that it can send more data to the STM32F4 UART.
  * -1 is used where there is no such connection.
@@ -148,7 +148,7 @@
  * For the u-blox C030-U201 board this must be
  * 0x34, AKA PD_4.
  */
-# define U_CFG_APP_PIN_CELLULAR_RTS       0x0c // AKA PA_12
+# define U_CFG_APP_PIN_CELL_RTS       0x0c // AKA PA_12
 #endif
 
 #endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_

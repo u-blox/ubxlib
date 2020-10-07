@@ -2,6 +2,9 @@
 set(COMPONENT_ADD_INCLUDEDIRS 
 # The generic configuration files
                    "../../../../../../cfg"
+# The cell API
+                   "../../../../../../cell/api"
+                   "../../../../../../cell/src"
 # Common component APIs
                    "../../../../../../common/at_client/api"
                    "../../../../../../common/error/api"
@@ -14,6 +17,13 @@ set(COMPONENT_ADD_INCLUDEDIRS
 
 # The implementations of the APIs
 set(COMPONENT_SRCS 
+# The cell API
+                   "../../../../../../cell/src/u_cell.c"
+                   "../../../../../../cell/src/u_cell_pwr.c"
+                   "../../../../../../cell/src/u_cell_cfg.c"
+                   "../../../../../../cell/src/u_cell_info.c"
+                   "../../../../../../cell/src/u_cell_net.c"
+                   "../../../../../../cell/src/u_cell_private.c"
 # The common AT client
                    "../../../../../../common/at_client/src/u_at_client.c"
 # The porting layer

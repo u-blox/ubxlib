@@ -24,7 +24,7 @@ You may unzip it to a different location but, if you do so, when you open your c
 You may override or provide conditional compilation flags to this build without modifying the build file.  To do this, create an environment variable called `U_FLAGx`, where `x` is a number from 0 to 19, e.g. `U_FLAG0`, and set it to your conditional compilation flag with a `-D` prefix, e.g.:
 
 ```
-set U_FLAG0=-DU_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1
+set U_FLAG0=-DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1
 set U_FLAG1=-DMY_FLAG
 set U_FLAG2=-DHSE_VALUE=((uint32_t)8000000U)
 ```
