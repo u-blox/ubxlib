@@ -241,8 +241,10 @@ def api_in_database(database, api):
     is_in_database = False
 
     for row in database:
-        if api == row["apis"]:
-            is_in_database = True
-            break
+        if not is_in_database:
+            for _api in row["apis"]:
+                if _api == api:
+                    is_in_database = True
+                    break
 
     return is_in_database
