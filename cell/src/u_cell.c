@@ -153,7 +153,7 @@ void uCellDeinit()
 
         // Unlock the mutex so that we can delete it
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
-        uPortQueueDelete(gUCellPrivateMutex);
+        uPortMutexDelete(gUCellPrivateMutex);
         gUCellPrivateMutex = NULL;
     }
 }

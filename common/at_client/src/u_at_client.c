@@ -1406,7 +1406,7 @@ void uAtClientDeinit()
 
         // Delete the mutex
         U_PORT_MUTEX_UNLOCK(gMutex);
-        uPortQueueDelete(gMutex);
+        uPortMutexDelete(gMutex);
         gMutex = NULL;
     }
 }
