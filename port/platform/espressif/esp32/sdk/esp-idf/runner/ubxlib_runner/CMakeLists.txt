@@ -1,4 +1,4 @@
-# I know this looks a bit mad but to persaude the ESP-IDF
+# I know this looks a bit mad but to persuade the ESP-IDF
 # tools to pick this up as a test component it needs
 # this directory level as the main component with the
 # stuff in the test sub-directory as the tests.

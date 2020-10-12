@@ -2,13 +2,13 @@
 cmake_minimum_required(VERSION 3.5)
 
 # Include the body of stuff in the directory
-# above and the tests component from below;
-# main gets in automagically
-set(EXTRA_COMPONENT_DIRS ".."
+# above, main and the tests component from below
+set(EXTRA_COMPONENT_DIRS "../components"
+                         "main"
                          "ubxlib_runner")
 
-# Empty the component list, main will add just what it needs
-set(COMPONENTS "")
+# Reduce the component list to a minimum
+set(COMPONENTS "esp32" "esptool_py" "unity" "ubxlib" "main" "ubxlib_runner")
 
 # Set the components to include the "tests" for.
 # This is intended to be overriden in the CMake cache
