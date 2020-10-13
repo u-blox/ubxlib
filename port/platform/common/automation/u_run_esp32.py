@@ -173,6 +173,17 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
         if clean:
             u_utils.deltree(build_dir, printer, prompt)
             os.makedirs(build_dir)
+            # Unfortunately there doesn't seem to be
+            # a way to force ESP-IDF to regenerate
+            # the sdkconfig file from the sdkconfig.defaults
+            # file so we have to delete it explicitly
+            # as it is stored over in the project
+            # directory
+            sdkconfig_path = ubxlib_dir + os.sep +                             \
+                             "port\\platform\\espressif\\esp32\\sdk\\esp-idf" \
+                             + os.sep + PROJECT_SUBDIR + os.sep + "sdkconfig"
+            if os.path.exists(sdkconfig_path):
+                os.remove(sdkconfig_path)
     else:
         os.makedirs(build_dir)
 
@@ -204,6 +215,7 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
         call_list.append(build_dir)
         call_list.append("-D")
         call_list.append("TEST_COMPONENTS=" + TEST_COMPONENT)
+        call_list.append("fullclean")
         call_list.append("size")
         call_list.append("build")
 

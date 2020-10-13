@@ -58,9 +58,9 @@
  * -------------------------------------------------------------- */
 
 /** How much stack the task running all the examples/tests needs in
- * bytes.
+ * bytes, plus space for the user to add code.
  */
-#define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES (1024 * 4)
+#define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES (1024 * 7)
 
 /** The priority of the task running the examples/tests: should be
  * low.

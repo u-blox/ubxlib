@@ -109,9 +109,15 @@ void uPortTaskBlock(int32_t delayMs)
 // Get the minimum free stack for a given task.
 int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle)
 {
+    TaskHandle_t handle = (TaskHandle_t) taskHandle;
+
+    if (handle == NULL) {
+        handle = xTaskGetCurrentTaskHandle();
+    }
+
     // On ESP32 the water mark is returned in bytes rather
     // than words so this can just be returned directly
-    return uxTaskGetStackHighWaterMark((TaskHandle_t) taskHandle);
+    return uxTaskGetStackHighWaterMark(handle);
 }
 
 /* ----------------------------------------------------------------

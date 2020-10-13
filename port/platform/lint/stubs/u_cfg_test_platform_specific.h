@@ -33,6 +33,7 @@
                                                                      group)
 #define U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES 1024
 #define U_CFG_TEST_OS_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 5)
+#define U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES (1024 * 5)
 
 // Note: pins set to 0 rather than -1 in order to not
 // disable any code that is conditional on them existing

@@ -413,7 +413,6 @@ void uCellTestPrivateCleanup(uCellTestPrivate_t *pParameters)
         uPortUartClose(pParameters->uartHandle);
     }
     pParameters->uartHandle = -1;
-    uPortDeinit();
 }
 
 // Return a string describing a RAT.

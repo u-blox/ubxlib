@@ -556,7 +556,18 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgCleanUp")
 {
+    int32_t minFreeStackBytes;
+
     uCellTestPrivateCleanup(&gHandles);
+
+    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    uPortLog("U_CELL_CFG_TEST: main task stack had a minimum of %d"
+             " byte(s) free at the end of these tests.\n",
+             minFreeStackBytes);
+    U_PORT_TEST_ASSERT(minFreeStackBytes >=
+                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+
+    uPortDeinit();
 }
 
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE

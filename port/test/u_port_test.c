@@ -1404,6 +1404,15 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
  */
 U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 {
+    int32_t minFreeStackBytes;
+
+    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    uPortLog("U_PORT_TEST: main task stack had a minimum of %d byte(s)"
+             " free at the end of these tests.\n",
+             minFreeStackBytes);
+    U_PORT_TEST_ASSERT(minFreeStackBytes >=
+                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+
     uPortDeinit();
 }
 

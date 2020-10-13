@@ -123,10 +123,11 @@ void uPortTaskBlock(int32_t delayMs);
 /** Get the stack high watermark, i.e. the minimum amount
  * of stack free, in bytes, for a given task.
  *
- * @param taskHandle  the task handle to check.
- * @return            the minimum amount of stack free for
- *                    the lifetime of the task in bytes,
- *                    else negative error code.
+ * @param taskHandle  the task handle to check.  If NULL is given
+ *                    the handle of the current task is used.
+ * @return            the minimum amount of stack free for the
+ *                    lifetime of the task in bytes, else
+ *                    negative error code.
  */
 int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle);
 

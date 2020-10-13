@@ -115,9 +115,15 @@ void uPortTaskBlock(int32_t delayMs)
 // Get the minimum free stack for a given task.
 int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle)
 {
+    TaskHandle_t handle = (TaskHandle_t) taskHandle;
+
+    if (handle == NULL) {
+        handle = xTaskGetCurrentTaskHandle();
+    }
+
     // FreeRTOS returns stack size in words on NRF52, so
     // multiply by four here to get bytes
-    return uxTaskGetStackHighWaterMark((TaskHandle_t) taskHandle) * 4;
+    return uxTaskGetStackHighWaterMark(handle) * 4;
 }
 
 /* ----------------------------------------------------------------

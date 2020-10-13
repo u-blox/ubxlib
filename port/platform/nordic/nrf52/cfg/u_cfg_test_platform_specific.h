@@ -52,6 +52,11 @@
  */
 #define U_CFG_TEST_OS_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 5)
 
+/** The minimum free stack space permitted for the main task,
+ * basically what's left as a margin for user code.
+ */
+#define U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES (1024 * 5)
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: HW RELATED
  * -------------------------------------------------------------- */

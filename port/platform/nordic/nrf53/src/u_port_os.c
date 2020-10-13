@@ -127,16 +127,19 @@ void uPortTaskBlock(int32_t delayMs)
 int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle)
 {
     int32_t result = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-    if (taskHandle != NULL) {
-        struct k_thread *thread = (struct k_thread *) taskHandle;
-        size_t unused = 0;
-        int status = k_thread_stack_space_get(thread, &unused);
-        if (status != 0) {
-            result = U_ERROR_COMMON_UNKNOWN;
-        } else {
-            result = (int32_t)unused;
-        }
+    struct k_thread *thread = (struct k_thread *) taskHandle;
+
+    if (thread == NULL) {
+        thread = (struct k_thread *) k_current_get();
     }
+    size_t unused = 0;
+    int status = k_thread_stack_space_get(thread, &unused);
+    if (status != 0) {
+        result = U_ERROR_COMMON_UNKNOWN;
+    } else {
+        result = (int32_t)unused;
+    }
+
     return result;
 }
 /* ----------------------------------------------------------------

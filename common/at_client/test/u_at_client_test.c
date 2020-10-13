@@ -1529,6 +1529,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
  */
 U_PORT_TEST_FUNCTION("[atClient]", "atClientCleanUp")
 {
+    int32_t minFreeStackBytes;
+
     uAtClientDeinit();
     if (gUartAHandle >= 0) {
         uPortUartClose(gUartAHandle);
@@ -1536,6 +1538,14 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCleanUp")
     if (gUartBHandle >= 0) {
         uPortUartClose(gUartBHandle);
     }
+
+    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    uPortLog("U_AT_CLIENT_TEST: main task stack had a minimum of"
+             " %d byte(s) free at the end of these tests.\n",
+             minFreeStackBytes);
+    U_PORT_TEST_ASSERT(minFreeStackBytes >=
+                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+
     uPortDeinit();
 }
 

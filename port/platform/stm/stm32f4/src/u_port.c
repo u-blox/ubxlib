@@ -132,9 +132,10 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
         // results in a hard fault.  Need to find out why.
         printf("\n\nU_APP: starting RTOS...\n");
 
-        // Create the task
+        // Create the task, noting that the stack
+        // size is in words not bytes
         osThreadDef(EntryPoint, (os_pthread) pEntryPoint,
-                    priority, 0, stackSizeBytes);
+                    priority, 0, stackSizeBytes >> 2);
         threadId = osThreadCreate(osThread(EntryPoint), pParameter);
 
         if (threadId != NULL) {
