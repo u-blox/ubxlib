@@ -15,6 +15,7 @@ import u_connection # To initialise locks
 import u_run    # Actually run stuff
 import u_report # reporting
 import u_utils  # utils
+import u_settings
 
 # Decide what to do with a pull request based on the
 # message that came with the pull request and the
@@ -47,10 +48,10 @@ PROMPT = "u_pull_request: "
 # Starts with a "u" in order that it gets sorted after
 # the name we usually use for the summary log
 # (summary.log)
-INSTANCE_DIR_PREFIX = "u_instance_"
+INSTANCE_DIR_PREFIX = u_settings.INSTANCE_DIR_PREFIX #"u_instance_"
 
 # The number of seconds at which to report what's still running
-STILL_RUNNING_REPORT_SECONDS = 30
+STILL_RUNNING_REPORT_SECONDS = u_settings.STILL_RUNNING_REPORT_SECONDS #30
 
 # These two wrapper classes stolen from:
 # https://stackoverflow.com/questions/6974695/python-process-pool-non-daemonic

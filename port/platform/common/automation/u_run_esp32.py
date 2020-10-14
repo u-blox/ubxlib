@@ -9,26 +9,22 @@ import u_connection
 import u_monitor
 import u_report
 import u_utils
+import u_settings
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run_esp32_"
 
 # The root directory for esp-idf
-ESP_IDF_ROOT = "c:\\esp32"
+ESP_IDF_ROOT = u_settings.ESP_IDF_ROOT #"c:\\esp32"
 
 # The esp-idf URL and directory for latest
 # Espressif code
-ESP_IDF_LOCATION_LATEST = {"url": "https://github.com/espressif/esp-idf",
-                           "subdir": "esp-idf-latest",
-                           "branch": "release/v4.1"}
+ESP_IDF_LOCATION_LATEST = u_settings.ESP_IDF_LOCATION_LATEST
 
 # The esp-idf URL and directory for NINA-W.
 # NINA-W1 must use u-blox fork as the flash
 # device is not supported by latest esp-idf
-ESP_IDF_LOCATION_NINA_W1 = {"url": "https://github.com/u-blox/esp-idf",
-                            "subdir": "esp-idf-u-blox",
-                            "branch": "master"}
-
+ESP_IDF_LOCATION_NINA_W1 = u_settings.ESP_IDF_LOCATION_NINA_W1
 # A table of esp-idf URL/sub-directory to use
 # for each ESP32 HW instance.
 ESP_IDF_LOCATION = [None,                     # 0 (not esp-idf)
@@ -46,26 +42,26 @@ ESP_IDF_LOCATION = [None,                     # 0 (not esp-idf)
                     ESP_IDF_LOCATION_LATEST]  # 12
 
 # The place where the IDF tools should be found/installed
-IDF_TOOLS_PATH = ESP_IDF_ROOT + os.sep + "esp-idf-tools-latest"
+IDF_TOOLS_PATH = u_settings.ESP_IDF_TOOLS_PATH #ESP_IDF_ROOT + os.sep + "esp-idf-tools-latest"
 
 # The sub-directory name of the project to build
-PROJECT_SUBDIR = "runner"
+PROJECT_SUBDIR = u_settings.ESP_PROJECT_SUBDIR #"runner"
 
 # The name of the test component to build
-TEST_COMPONENT = "ubxlib_runner"
+TEST_COMPONENT = u_settings.ESP_TEST_COMPONENT #"ubxlib_runner"
 
 # Build sub-directory
-BUILD_SUBDIR = "build"
+BUILD_SUBDIR = u_settings.ESP_BUILD_SUBDIR #"build"
 
 # The guard time for the install in seconds:
 # this can take ages when tools first have to be installed
-INSTALL_GUARD_TIME_SECONDS = 60 * 60
+INSTALL_GUARD_TIME_SECONDS = u_settings.ESP_INSTALL_GUARD_TIME_SECONDS #60 * 60
 
 # The guard time for this build in seconds
-BUILD_GUARD_TIME_SECONDS = 60 * 30
+BUILD_GUARD_TIME_SECONDS = u_settings.ESP_BUILD_GUARD_TIME_SECONDS #60 * 30
 
 # The download guard time for this build in seconds
-DOWNLOAD_GUARD_TIME_SECONDS = 60 * 5
+DOWNLOAD_GUARD_TIME_SECONDS = u_settings.ESP_DOWNLOAD_GUARD_TIME_SECONDS #60 * 5
 
 # The guard time waiting for a lock on the HW connection seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = u_connection.CONNECTION_LOCK_GUARD_TIME_SECONDS

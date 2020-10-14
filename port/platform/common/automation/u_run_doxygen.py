@@ -6,12 +6,13 @@ import os          # For sep
 import subprocess
 import u_report
 import u_utils
+import u_settings
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run_doxygen_"
 
 # The name of the Doxygen configuration file to use
-DOXYFILE = "Doxyfile"
+DOXYFILE = u_settings.DOXYGEN_DOXYFILE #"Doxyfile"
 
 def run(instance, ubxlib_dir, working_dir, printer, reporter):
     '''Run Doxygen'''
@@ -30,14 +31,11 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
     reporter.event(u_report.EVENT_TYPE_CHECK,
                    u_report.EVENT_START,
                    "Doxygen")
-    try:
-        # Check that Doxygen is on the path
-        text = subprocess.check_output(["where", "/q", "doxygen"])
-        got_doxygen = True
-    except subprocess.CalledProcessError:
-        printer.string("{}ERROR: can't find Doxygen, please make"     \
-                       " sure that it is installed and on the path.". \
-                       format(prompt))
+
+    got_doxygen = u_utils.exe_where("doxygen", \
+                                    "ERROR: can't find Doxygen, please make"     \
+                                    " sure that it is installed and on the path.", \
+                                    printer, prompt)
 
     if got_doxygen:
         # Sort out any subst

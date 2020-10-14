@@ -13,48 +13,50 @@ import shutil                   # To delete a directory tree
 import subprocess
 import serial                   # Pyserial (make sure to do pip install pyserial)
 import psutil                   # For killing things (make sure to do pip install psutil)
+import platform                 # Figure out current OS
+import u_settings
 
 # How long to wait for an install lock in seconds
-INSTALL_LOCK_WAIT_SECONDS = (60 * 60)
+INSTALL_LOCK_WAIT_SECONDS = u_settings.INSTALL_LOCK_WAIT_SECONDS #(60 * 60)
 
 # The URL for Unity, the unit test framework
-UNITY_URL = "https://github.com/ThrowTheSwitch/Unity"
+UNITY_URL = u_settings.UNITY_URL #"https://github.com/ThrowTheSwitch/Unity"
 
 # The sub-directory that Unity is usually put in
 # (off the working directory)
-UNITY_SUBDIR = "Unity"
+UNITY_SUBDIR = u_settings.UNITY_SUBDIR #"Unity"
 
 # The path to jlink.exe (or just the name 'cos it's on the path)
-JLINK_PATH = "jlink.exe"
+JLINK_PATH = u_settings.JLINK_PATH #"jlink.exe"
 
 # The port number for SWO trace capture out of JLink
-JLINK_SWO_PORT = 19021
+JLINK_SWO_PORT = u_settings.JLINK_SWO_PORT #19021
 
 # The port number for GDB control of ST-LINK GDB server
-STLINK_GDB_PORT = 61200
+STLINK_GDB_PORT = u_settings.STLINK_GDB_PORT #61200
 
 # The port number for SWO trace capture out of ST-LINK GDB server
-STLINK_SWO_PORT = 61300
+STLINK_SWO_PORT = u_settings.STLINK_SWO_PORT #61300
 
 # The format string passed to strftime()
 # for logging prints
-TIME_FORMAT = "%Y-%m-%d_%H:%M:%S"
+TIME_FORMAT = u_settings.TIME_FORMAT #"%Y-%m-%d_%H:%M:%S"
 
 # The default guard time waiting for a platform lock in seconds
-PLATFORM_LOCK_GUARD_TIME_SECONDS = 60 * 60
+PLATFORM_LOCK_GUARD_TIME_SECONDS = u_settings.PLATFORM_LOCK_GUARD_TIME_SECONDS #60 * 60
 
 # The default guard time for downloading to a target in seconds
-DOWNLOAD_GUARD_TIME_SECONDS = 60
+DOWNLOAD_GUARD_TIME_SECONDS = u_settings.DOWNLOAD_GUARD_TIME_SECONDS #60
 
 # The default guard time for running tests in seconds
-RUN_GUARD_TIME_SECONDS = 60 * 60
+RUN_GUARD_TIME_SECONDS = u_settings.RUN_GUARD_TIME_SECONDS #60 * 60
 
 # The default inactivity timer for running tests in seconds
-RUN_INACTIVITY_TIME_SECONDS = 60 * 5
+RUN_INACTIVITY_TIME_SECONDS = u_settings.RUN_INACTIVITY_TIME_SECONDS #60 * 5
 
 # The name of the #define that forms the filter string
 # for which tests to run
-FILTER_MACRO_NAME = "U_CFG_APP_FILTER"
+FILTER_MACRO_NAME = u_settings.FILTER_MACRO_NAME #"U_CFG_APP_FILTER"
 
 # The time for which to wait for something from the
 # queue in exe_run().  If this is too short, in a
@@ -63,7 +65,7 @@ FILTER_MACRO_NAME = "U_CFG_APP_FILTER"
 # on the queue may be blocked from doing so until
 # we've decided the queue has been completely emptied
 # and moved on
-EXE_RUN_QUEUE_WAIT_SECONDS = 1
+EXE_RUN_QUEUE_WAIT_SECONDS = u_settings.EXE_RUN_QUEUE_WAIT_SECONDS #1
 
 def get_actual_path(path):
     '''Given a drive number return real path if it is a subst'''
@@ -299,7 +301,7 @@ def fetch_repo(url, directory, branch, printer, prompt):
     return success
 
 def exe_where(exe_name, help_text, printer, prompt):
-    '''Find an executable using where.exe'''
+    '''Find an executable using where.exe or which on linux'''
     success = False
 
     try:
@@ -310,7 +312,13 @@ def exe_where(exe_name, help_text, printer, prompt):
         # ...for why the construction "".join() is necessary when
         # passing things which might have spaces in them.
         # It is the only thing that works.
-        text = subprocess.check_output(["where", "".join(exe_name)],
+        if platform.system() == "Linux":
+            cmd = ["which {}".format(exe_name)]
+            printer.string("{}detected linux, calling \"{}\"...".format(prompt, cmd))
+        else:
+            cmd = ["where", "".join(exe_name)]
+            printer.string("{}detected nonlinux, calling \"{}\"...".format(prompt, cmd))
+        text = subprocess.check_output(cmd,
                                        stderr=subprocess.STDOUT,
                                        shell=True) # Jenkins hangs without this
         for line in text.splitlines():

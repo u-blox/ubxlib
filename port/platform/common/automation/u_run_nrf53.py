@@ -8,38 +8,38 @@ import u_connection
 import u_monitor
 import u_report
 import u_utils
+import u_settings
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run_nrf53_"
 
 # Expected location of nRFConnect installation
-NRFCONNECT_PATH = "C:\\nrfconnect\\v1.3.0"
+NRFCONNECT_PATH = u_settings.NRF53_NRFCONNECT_PATH #"C:\\nrfconnect\\v1.3.0"
 
 # The path to the Zephyr batch file that sets up its
 # environment variables
-ZEPHYR_ENV_CMD = NRFCONNECT_PATH + os.sep + "zephyr\\zephyr-env.cmd"
+ZEPHYR_ENV_CMD = u_settings.NRF53_ZEPHYR_ENV_CMD #NRFCONNECT_PATH + os.sep + "zephyr\\zephyr-env.cmd"
 
 # The path to the git-cmd batch file that sets up the
 # git-bash environment variables
-GIT_BASH_ENV_CMD = NRFCONNECT_PATH + os.sep + "toolchain\\cmd\\env.cmd"
+GIT_BASH_ENV_CMD = u_settings.NRF53_GIT_BASH_ENV_CMD #NRFCONNECT_PATH + os.sep + "toolchain\\cmd\\env.cmd"
 
 # The list of things to execute jlink.exe
-RUN_JLINK = [u_utils.JLINK_PATH, "-Device", "nRF5340_xxAA_APP", "-If", "SWD",
-             "-Speed", "4000", "-Autoconnect", "1", "-ExitOnError", "1"]
+RUN_JLINK = [u_utils.JLINK_PATH] + u_settings.NRF53_RUN_JLINK #
 
 # The directory where the runner build can be found
-RUNNER_DIR = "port\\platform\\nordic\\nrf53\\sdk\\nrfconnect\\runner"
+RUNNER_DIR = u_settings.NRF53_RUNNER_DIR #"port\\platform\\nordic\\nrf53\\sdk\\nrfconnect\\runner"
 
 # The board name to build for
-BOARD_NAME = "nrf5340pdk_nrf5340_cpuapp"
+BOARD_NAME = u_settings.NRF53_BOARD_NAME #"nrf5340pdk_nrf5340_cpuapp"
 
 # The name of the output sub-directory
-BUILD_SUBDIR = "build"
+BUILD_SUBDIR = u_settings.NRF53_BUILD_SUBDIR #"build"
 
 # The guard time for this build in seconds,
 # noting that it can be quite long when
 # many builds are running in parallel.
-BUILD_GUARD_TIME_SECONDS = 60 * 30
+BUILD_GUARD_TIME_SECONDS = u_settings.NRF53_BUILD_GUARD_TIME_SECONDS #60 * 30
 
 # The guard time waiting for a lock on the HW connection seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = u_connection.CONNECTION_LOCK_GUARD_TIME_SECONDS

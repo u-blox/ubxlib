@@ -36,14 +36,11 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
     reporter.event(u_report.EVENT_TYPE_CHECK,
                    u_report.EVENT_START,
                    "Pylint")
-    try:
-        # Check that Pylint is on the path
-        text = subprocess.check_output(["where", "/q", "pylint"])
-        got_pylint = True
-    except subprocess.CalledProcessError:
-        printer.string("{}ERROR: can't find Pylint, please make"     \
-                       " sure that it is installed and on the path.". \
-                       format(prompt))
+    got_pylint = u_utils.exe_where("pylint", \
+                        "ERROR: can't find pylint, please make"     \
+                        " sure that it is installed and on the path.", \
+                        printer, prompt)
+
 
     if got_pylint:
         # Run Pylint on all the .py files in PYTHON_PATHS
@@ -58,7 +55,10 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                             printer.string("{}running Pylint on {}...".format(prompt, py_file))
                             got_rating = False
                             try:
+                                # ignore u_settings module as it sets members programatically and
+                                # will thus generate a bunch of lint warnings
                                 text = subprocess.check_output(["pylint", "--exit-zero",
+                                                                "--ignored-modules=u_settings",
                                                                 py_file],
                                                                stderr=subprocess.STDOUT,
                                                                shell=True) # Stop Jenkins hanging

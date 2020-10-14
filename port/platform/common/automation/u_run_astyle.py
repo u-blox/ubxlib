@@ -6,25 +6,26 @@ import os          # For sep
 import subprocess
 import u_report
 import u_utils
+import u_settings
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run_astyle_"
 
 # The name of the AStyle configuration file to look for
 # in the root of the ubxlib directory
-CONFIG_FILE = "astyle.cfg"
+CONFIG_FILE = u_settings.ASTYLE_CONFIG_FILE
 
 # File extensions to include
-ASTYLE_FILE_EXTENSIONS = "*.c,*.cpp,*.h,*.hpp"
+ASTYLE_FILE_EXTENSIONS = u_settings.ASTYLE_FILE_EXTENSIONS
 
 # Directory names to include; only the directories off the ubxlib
 # root need be included, AStyle will recurse below each of these
-ASTYLE_DIRS = ["cfg", "port", "common"]
+ASTYLE_DIRS = u_settings.ASTYLE_DIRS
 
 # Directory names to exclude (exclusion is done from
 # the end of the file path backwards, so "build" excludes
 # "blah\build" as well as "build" but not "build\blah")
-EXCLUDE_DIRS = ["build", "_build", "Output", "Debug", "Release"]
+EXCLUDE_DIRS = u_settings.ASTYLE_EXCLUDE_DIRS
 
 def run(instance, ubxlib_dir, working_dir, printer, reporter):
     '''Run AStyle'''
@@ -46,15 +47,10 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
     reporter.event(u_report.EVENT_TYPE_CHECK,
                    u_report.EVENT_START,
                    "AStyle")
-    try:
-        # Check that AStyle is on the path
-        text = subprocess.check_output(["where", "/q", "astyle"])
-        got_astyle = True
-    except subprocess.CalledProcessError:
-        printer.string("{}ERROR: can't find AStyle, please make"     \
-                       " sure that it is installed and on the path.". \
-                       format(prompt))
-
+    got_astyle = u_utils.exe_where("astyle", \
+                        "ERROR: can't find AStyle, please make"      \
+                        " sure that it is installed and on the path.", \
+                        printer, prompt)
     if got_astyle:
         # Run AStyle
         printer.string("{}CD to {}...".format(prompt, ubxlib_dir))

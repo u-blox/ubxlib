@@ -2,6 +2,8 @@
 
 '''Get the ubxlib instance data from a table in a .md file.'''
 
+import u_settings
+
 # The file that contains the instance data must be
 # a .md file with a table in it containing the data.
 # The instance data must be the only table in the file
@@ -30,10 +32,10 @@ PROMPT = "u_data: "
 
 # The file that contains the instance data as a table
 # in Markdown format
-DATA_FILE = "DATABASE.md"
+DATA_FILE = u_settings.DATA_FILE #DATABASE.md
 
 # The prefix to add to a cellular module to
-CELLULAR_MODULE_TYPE_PREFIX = "U_CELL_MODULE_TYPE_"
+CELLULAR_MODULE_TYPE_PREFIX = u_settings.CELLULAR_MODULE_TYPE_PREFIX
 
 def get(filename):
     '''Read the instance database from a table in a .md file'''

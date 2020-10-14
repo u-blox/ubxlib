@@ -20,12 +20,13 @@ import u_run_astyle # Run AStyle check
 import u_run_pylint # Run a Pylint check
 import u_report # reporting
 import u_utils
+import u_settings
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run: "
 
 # Default BRANCH to use
-BRANCH_DEFAULT = "origin/master"
+BRANCH_DEFAULT = u_settings.BRANCH_DEFAULT #"origin/master"
 
 def signal_handler(sig, frame):
     '''CTRL-C Handler'''

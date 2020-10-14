@@ -11,6 +11,7 @@ import u_monitor
 import u_connection
 import u_report
 import u_utils
+import u_settings
 
 # Note: the tools provided with the STM32Cube IDE
 # are entirely GUI based.  However, under the hood,
@@ -29,68 +30,60 @@ PROMPT = "u_run_stm32f4_"
 
 # Location of the STM32F4 Cube FW (i.e. their C drivers)
 # directory
-STM32CUBE_FW_PATH = "C:\\STM32Cube_FW_F4"
+STM32CUBE_FW_PATH = u_settings.STM32_STM32CUBE_FW_PATH #"C:\\STM32Cube_FW_F4"
 
 # Location of the STM32Cube IDE directory
-STM32CUBE_IDE_PATH = "C:\\ST\\STM32CubeIDE_1.3.0\\STM32CubeIDE"
+STM32CUBE_IDE_PATH = u_settings.STM32_STM32CUBE_IDE_PATH #"C:\\ST\\STM32CubeIDE_1.3.0\\STM32CubeIDE"
 
 # Location of the STM32 Cube Progammer bin directory in the
 # STM32Cube IDE directory
-STM32_PROGRAMMER_BIN_PATH = STM32CUBE_IDE_PATH + "\\plugins\\"       \
-                            "com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer."  \
-                            "win32_1.3.0.202002181050\\tools\\bin"
-
+STM32_PROGRAMMER_BIN_PATH = u_settings.STM32_STM32_PROGRAMMER_BIN_PATH #
 # Location of STM32_Programmer_CLI.exe in
 # the STM32Cube IDE directory
-STM32_PROGRAMMER_CLI_PATH = STM32_PROGRAMMER_BIN_PATH + "\\STM32_Programmer_CLI.exe"
+STM32_PROGRAMMER_CLI_PATH = u_settings.STM32_STM32_PROGRAMMER_CLI_PATH #STM32_PROGRAMMER_BIN_PATH + "\\STM32_Programmer_CLI.exe"
 
 # Location of the ST-LINK_gdbserver executable, which can
 # be found deep in the STM32Cube IDE directories
-STLINK_GDB_SERVER_PATH = STM32CUBE_IDE_PATH + "\\plugins\\"                  \
-                         "com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server."  \
-                         "win32_1.3.0.202002181050\\tools\\bin\\ST-LINK_gdbserver.exe"
+STLINK_GDB_SERVER_PATH = u_settings.STM32_STLINK_GDB_SERVER_PATH #
 
 # Location of the ST-flavour GNU ARM GDB executable, which can
 # be found deep in the STM32Cube IDE directories
-STM32_GNU_ARM_GDB_SERVER_PATH = STM32CUBE_IDE_PATH + "\\plugins\\"            \
-                                "com.st.stm32cube.ide.mcu.externaltools."     \
-                                "gnu-tools-for-stm32.7-2018-q2-update.win32_1.0.0.201904181610\\" \
-                                "tools\\bin\\arm-none-eabi-gdb.exe"
+STM32_GNU_ARM_GDB_SERVER_PATH = u_settings.STM32_STM32_GNU_ARM_GDB_SERVER_PATH #
 
 # The subdirectory of the working directory in which the
 # STM32F4 Cube IDE should create the workspace
-STM32CUBE_IDE_WORKSPACE_SUBDIR = "workspace_1.3.0"
+STM32CUBE_IDE_WORKSPACE_SUBDIR = u_settings.STM32_STM32CUBE_IDE_WORKSPACE_SUBDIR #
 
 # The STM32F4 cube SDK directory in ubxlib
-SDK_DIR = "port\\platform\\stm\\stm32f4\\sdk\\cube"
+SDK_DIR = u_settings.STM32_SDK_DIR #
 
 # The project name to build
-PROJECT_NAME = "runner"
+PROJECT_NAME = u_settings.STM32_PROJECT_NAME #
 
 # The prefix that forms the modified project name that
 # is created with updated paths
-UPDATED_PROJECT_NAME_PREFIX = "test_only_"
+UPDATED_PROJECT_NAME_PREFIX = u_settings.STM32_UPDATED_PROJECT_NAME_PREFIX #
 
 # The name of the configuration to build
-PROJECT_CONFIGURATION = "Debug"
+PROJECT_CONFIGURATION = u_settings.STM32_PROJECT_CONFIGURATION #
 
 # The maximum number of U_FLAGx defines that the STM32F4Cube
 # project file can take
-MAX_NUM_DEFINES = 20
+MAX_NUM_DEFINES = u_settings.STM32_MAX_NUM_DEFINES #
 
 # The core clock rate of the STM32F4 processor, i.e. SystemCoreClock
-SYSTEM_CORE_CLOCK_HZ = 168000000
+SYSTEM_CORE_CLOCK_HZ = u_settings.STM32_SYSTEM_CORE_CLOCK_HZ #
 
 # The SWO data rate: should be the same as U_CFG_HW_SWO_CLOCK_HZ
 # from u_cfg_hw_platform_specific.h for the STM32F4 platform,
 # if that is provided.
-SWO_CLOCK_HZ = 2000000
+SWO_CLOCK_HZ = u_settings.STM32_SWO_CLOCK_HZ #
 
 # The port number to use for GDB comms with ST-LINK GDB server
-STLINK_GDB_PORT = 61234
+STLINK_GDB_PORT = u_settings.STM32_STLINK_GDB_PORT #
 
 # The port number to use for SWO output from the ST-LINK GDB server
-STLINK_SWO_PORT = 61235
+STLINK_SWO_PORT = u_settings.STM32_STLINK_SWO_PORT #
 
 # The list of commands to be sent to ST-LINK_gdbserver
 # when it is opened
@@ -102,12 +95,12 @@ GDB_SERVER_COMMANDS = ["-cp " + STM32_PROGRAMMER_BIN_PATH,
 
 # The name of the temporary file in which decoded SWO text
 # is stored by swo_decode_process
-SWO_DECODED_TEXT_FILE = "swo.txt"
+SWO_DECODED_TEXT_FILE = u_settings.STM32_SWO_DECODED_TEXT_FILE #
 
 # The guard time for this build in seconds,
 # noting that it can be quite long when
 # many builds are running in parallel.
-BUILD_GUARD_TIME_SECONDS = 60 * 30
+BUILD_GUARD_TIME_SECONDS = u_settings.STM32_BUILD_GUARD_TIME_SECONDS #60 * 30
 
 # The guard time waiting for a lock on the HW connection seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = u_connection.CONNECTION_LOCK_GUARD_TIME_SECONDS

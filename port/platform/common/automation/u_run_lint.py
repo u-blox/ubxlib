@@ -6,6 +6,7 @@ import os          # For sep
 import subprocess
 import u_report
 import u_utils
+import u_settings
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run_lint_"
@@ -15,7 +16,7 @@ LINT_PLATFORM_PATH = "port\\platform\\lint"
 
 # The .lnt files to be included from the Lint platform
 # directory
-LINT_PLATFORM_CONFIG_FILES = ["co-gcc.lnt", "ubxlib.lnt"]
+LINT_PLATFORM_CONFIG_FILES = u_settings.LINT_PLATFORM_CONFIG_FILES #["co-gcc.lnt", "ubxlib.lnt"]
 
 # Directory names to include.  The COMPLETE PATHs of ALL
 # sub-directories from ubxlib downwards containing
@@ -30,8 +31,11 @@ LINT_DIRS = ["cell\\src", "cell\\test",
 
 # Include directories for ubxlib, off the ubxlib root.
 UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
-                       "cfg", "common\\error\\api",
-                       "cell\\api", "cell\\src", "cell\\test",
+                       "cfg",
+                       "common\\error\\api",
+                       "cell\\api",
+                       "cell\\src",
+                       "cell\\test",
                        "common\\at_client\\api",
                        "port\\api",
                        "port\\platform\\common\\event_queue",
@@ -39,8 +43,7 @@ UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
                        "port\\platform\\lint\\stubs"]
 
 # Include directories for the C compiler and its C library.
-COMPILER_INCLUDE_DIRS = ["C:\\TDM-GCC-64\\x86_64-w64-mingw32\\include",
-                         "C:\\TDM-GCC-64\\lib\\gcc\\x86_64-w64-mingw32\\9.2.0\\include"]
+COMPILER_INCLUDE_DIRS = u_settings.LINT_COMPILER_INCLUDE_DIRS 
 
 # Table of "where.exe" search paths for tools required
 # plus hints as to how to install the tools

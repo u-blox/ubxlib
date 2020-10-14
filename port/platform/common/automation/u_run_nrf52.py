@@ -9,58 +9,58 @@ import u_connection
 import u_monitor
 import u_report
 import u_utils
+import u_settings
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run_nrf52_"
 
 # Expected bin directory of GCC ARM compiler
-GNU_INSTALL_ROOT = "C:/Program Files (x86)/GNU Tools ARM Embedded/9 2019-q4-major/bin/"
+GNU_INSTALL_ROOT = u_settings.NRF52_GNU_INSTALL_ROOT #"C:/Program Files (x86)/GNU Tools ARM Embedded/9 2019-q4-major/bin/"
 
 # Expected prefix for GCC ARM tools
-GNU_PREFIX = "arm-none-eabi"
+GNU_PREFIX = u_settings.NRF52_GNU_PREFIX #"arm-none-eabi"
 
 # Expected version of GCC ARM compiler
-GNU_VERSION = "9.2.1"
+GNU_VERSION = u_settings.NRF52_GNU_VERSION #"9.2.1"
 
 # Expected path to Segger Embedded Studio command-line builder directory
-SES_PATH = "C:\\Program Files\\Segger\\SEGGER Embedded Studio for ARM 4.52c\\bin"
+SES_PATH = u_settings.NRF52_SES_PATH #"C:\\Program Files\\Segger\\SEGGER Embedded Studio for ARM 4.52c\\bin"
 
 # Expected name of Segger Embedded Studio command-line builder executable
-SES_NAME = "embuild.exe"
+SES_NAME = u_settings.NRF52_SES_NAME #"embuild.exe"
 
 # The build configuration to use from the Segger Embedded Studio project file
-SES_BUILD_CONFIGURATION = "Debug"
+SES_BUILD_CONFIGURATION = u_settings.NRF52_SES_BUILD_CONFIGURATION #"Debug"
 
 # Expected location of NRF5 installation
-NRF5_PATH = "C:/nrf5"
+NRF5_PATH = u_settings.NRF52_NRF5_PATH #"C:/nrf5"
 
 # The list of things to execute jlink.exe
-RUN_JLINK = [u_utils.JLINK_PATH, "-Device", "NRF52840_XXAA", "-If", "SWD",
-             "-Speed", "4000", "-Autoconnect", "1", "-ExitOnError", "1"]
+RUN_JLINK = [u_utils.JLINK_PATH] + u_settings.NRF52_RUN_JLINK #
 
 # The directory where the runner build for GCC can be found
-RUNNER_DIR_GCC = "port/platform/nordic/nrf52/sdk/gcc/runner"
+RUNNER_DIR_GCC = u_settings.NRF52_RUNNER_DIR_GCC #"port/platform/nordic/nrf52/sdk/gcc/runner"
 
 # The directory where the runner build for SES can be found
-RUNNER_DIR_SES = "port/platform/nordic/nrf52/sdk/ses/runner"
+RUNNER_DIR_SES = u_settings.NRF52_RUNNER_DIR_SES #"port/platform/nordic/nrf52/sdk/ses/runner"
 
 # The name of the SES project, without the .emProject extension
 # so that it can also be used as the name of the binary
-PROJECT_NAME_SES = "u_pca10056"
+PROJECT_NAME_SES = u_settings.NRF52_PROJECT_NAME_SES #"u_pca10056"
 
 # Prefix of the build sub-directory name for GCC
-BUILD_SUBDIR_PREFIX_GCC = "build_"
+BUILD_SUBDIR_PREFIX_GCC = u_settings.NRF52_BUILD_SUBDIR_PREFIX_GCC #"build_"
 
 # The name of the output folder that the Segger Embedded Studio project uses
-BUILD_SUBDIR_SES = "Output"
+BUILD_SUBDIR_SES = u_settings.NRF52_BUILD_SUBDIR_SES #"Output"
 
 # The maximum number of U_FLAGx defines that the SES project file can take
-SES_MAX_NUM_DEFINES = 20
+SES_MAX_NUM_DEFINES = u_settings.NRF52_SES_MAX_NUM_DEFINES #20
 
 # The guard time for this build in seconds,
 # noting that it can be quite long when
 # many builds are running in parallel.
-BUILD_GUARD_TIME_SECONDS = 60 * 30
+BUILD_GUARD_TIME_SECONDS = u_settings.NRF52_BUILD_GUARD_TIME_SECONDS #60 * 30
 
 # The guard time waiting for a lock on the HW connection seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = u_connection.CONNECTION_LOCK_GUARD_TIME_SECONDS
