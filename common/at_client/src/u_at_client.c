@@ -259,6 +259,19 @@ typedef struct uAtClientInstance_t {
     size_t urcMaxStringLength; /** The longest URC string to monitor for. */
     size_t maxRespLength; /** The max length of OK, (CME) (CMS) ERROR and URCs. */
     bool delimiterRequired; /** Is a delimiter to be inserted before the next parameter or not. */
+    const char *(*pInterceptTx) (uAtClientHandle_t,
+                                 const char *,
+                                 size_t *,
+                                 void *); /** Function that intercepts Tx data before it
+                                              is given to the stream. */
+    void *pInterceptTxContext; /** Context pointer that will be passed to pInterceptTx
+                                   as its fourth parameter. */
+    char *(*pInterceptRx) (uAtClientHandle_t,
+                           char *, size_t *,
+                           void *); /** Function that intercepts received data before it is
+                                        processed by the AT client. */
+    void *pInterceptRxContext; /** Context pointer that will be passed to pInterceptRx
+                                   as its fourth parameter. */
     struct uAtClientInstance_t *pNext;
 } uAtClientInstance_t;
 
@@ -533,13 +546,15 @@ static void bufferRewind(const uAtClientInstance_t *pClient)
 // This is where data comes into the AT client.
 // Read from the stream into the receive buffer.
 // Returns true on a successful read or false on timeout.
-static bool bufferFill(const uAtClientInstance_t *pClient,
+static bool bufferFill(uAtClientInstance_t *pClient,
                        bool blocking)
 {
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
     int32_t atTimeoutMs = -1;
     int32_t readLength = -1;
+    size_t actualLength = 0;
     bool eventIsCallback = false;
+    char *pDataRead;
 
     // If we're blocking, set the timeout value.
     if (blocking) {
@@ -590,9 +605,35 @@ static bool bufferFill(const uAtClientInstance_t *pClient,
              (pollTimeRemaining(atTimeoutMs, pClient->lockTimeMs) > 0));
 
     if (readLength > 0) {
+        // Call the intercept function if there is one
+        if (pClient->pInterceptRx != NULL) {
+            // Cast in two stages to keep Lint happy
+            actualLength = (size_t) (unsigned) readLength;
+            pDataRead = pClient->pInterceptRx((uAtClientHandle_t) pClient,
+                                              U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                              pReceiveBuffer->length, &actualLength,
+                                              pClient->pInterceptRxContext);
+            readLength = (int32_t) actualLength;
+            // pDataRead may be further forward in the buffer
+            // so add the difference to the read index so that we
+            // effectively drop it
+            pReceiveBuffer->readIndex += pDataRead - (U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                                      pReceiveBuffer->length);
+        }
+
         printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                pReceiveBuffer->length, readLength);
+                pReceiveBuffer->length + pReceiveBuffer->readIndex,
+                readLength);
         pReceiveBuffer->length += readLength;
+    } else {
+        // If there was no data and there is an intercept function,
+        // call it with a NULL data pointer so that it can reset
+        // itself
+        if (pClient->pInterceptRx != NULL) {
+            pClient->pInterceptRx((uAtClientHandle_t) pClient,
+                                  NULL, &actualLength,
+                                  pClient->pInterceptRxContext);
+        }
     }
 
     assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
@@ -1080,32 +1121,56 @@ static bool processResponse(uAtClientInstance_t *pClient,
 
 // Write data to the stream.
 static size_t write(uAtClientInstance_t *pClient,
-                    const char *pData, size_t length)
+                    const char *pData, size_t length,
+                    bool andFlush)
 {
-    size_t lengthWritten = 0;
     int32_t thisLengthWritten = 0;
+    size_t lengthToWrite = length;
+    const char *pDataToWrite = pData;
 
-    while ((length > 0) &&
+    // Call the intercept function if there is one
+    if (pClient->pInterceptTx != NULL) {
+        pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
+                                             pData, &lengthToWrite,
+                                             pClient->pInterceptTxContext);
+        // If we are to flush, call the intercept function
+        // again with NULL
+        if (andFlush) {
+            pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
+                                                 NULL, &lengthToWrite,
+                                                 pClient->pInterceptTxContext);
+        }
+    }
+    while ((lengthToWrite > 0) &&
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
         switch (pClient->streamType) {
             case U_AT_CLIENT_STREAM_TYPE_UART:
                 thisLengthWritten = uPortUartWrite(pClient->streamHandle,
-                                                   pData, length);
+                                                   pDataToWrite, lengthToWrite);
                 break;
             default:
                 break;
         }
         if (thisLengthWritten > 0) {
-            printAt(pClient, pData, thisLengthWritten);
-            pData += thisLengthWritten;
-            length -= thisLengthWritten;
-            lengthWritten += thisLengthWritten;
+            pDataToWrite += thisLengthWritten;
+            lengthToWrite -= thisLengthWritten;
         } else {
             setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
         }
     }
 
-    return lengthWritten;
+    // If there is an intercept function it may be that
+    // the length written is longer or shorter than
+    // passed in so it's not easily possible to printAt()
+    // exactly what was written, we can only check
+    // if *everything* was written
+    if (lengthToWrite == 0) {
+        printAt(pClient, pData, length);
+    } else {
+        length = 0;
+    }
+
+    return length;
 }
 
 // Do common checks before sending parameters
@@ -1118,7 +1183,7 @@ static bool writeCheckAndDelimit(uAtClientInstance_t *pClient)
         // No errors, that's good
         if (pClient->delimiterRequired) {
             // Write a delimiter
-            if (write(pClient, &(pClient->delimiter), 1) == 1) {
+            if (write(pClient, &(pClient->delimiter), 1, false) == 1) {
                 isOk = true;
             }
         } else {
@@ -1480,6 +1545,8 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                 pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
                                 pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
                                 pClient->delimiterRequired = false;
+                                pClient->pInterceptTx = NULL;
+                                pClient->pInterceptRx = NULL;
                                 pClient->pNext = NULL;
                                 // Finally set up the buffer and its protection markers
                                 pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
@@ -1742,7 +1809,7 @@ void uAtClientCommandStart(uAtClientHandle_t atHandle,
         // Note: allow pCommand to be NULL here only
         // because that is useful during testing
         if (pCommand != NULL) {
-            write(pClient, pCommand, strlen(pCommand));
+            write(pClient, pCommand, strlen(pCommand), false);
         }
     }
 
@@ -1765,7 +1832,7 @@ void uAtClientWriteInt(uAtClientHandle_t atHandle,
                           "%d", (int) param);
         if ((length > 0) && (length < (int32_t) sizeof(numberString))) {
             // write() will set device error if there's a problem
-            write(pClient, numberString, length);
+            write(pClient, numberString, length, false);
         }
     }
 
@@ -1788,7 +1855,7 @@ void uAtClientWriteUint64(uAtClientHandle_t atHandle,
                                 param);
         if ((length > 0) && (length < (int32_t) sizeof(numberString))) {
             // write() will set device error if there's a problem
-            write(pClient, numberString, length);
+            write(pClient, numberString, length, false);
         }
     }
 
@@ -1807,12 +1874,12 @@ void uAtClientWriteString(uAtClientHandle_t atHandle,
     if (writeCheckAndDelimit(pClient)) {
         // Write opening quotes if required
         if (useQuotations) {
-            write(pClient, "\"", 1);
+            write(pClient, "\"", 1, false);
         }
-        write(pClient, pParam, strlen(pParam));
+        write(pClient, pParam, strlen(pParam), false);
         // Write closing quotes if required
         if (useQuotations) {
-            write(pClient, "\"", 1);
+            write(pClient, "\"", 1, false);
         }
     }
 
@@ -1835,7 +1902,8 @@ size_t uAtClientWriteBytes(uAtClientHandle_t atHandle,
     if ((standalone || writeCheckAndDelimit(pClient)) &&
         (pClient->error == U_ERROR_COMMON_SUCCESS)) {
         // write() will set device error if there's a problem
-        writeLength = write(pClient, pData, lengthBytes);
+        // If this is a standalone write, do a flush also
+        writeLength = write(pClient, pData, lengthBytes, standalone);
     }
 
     U_PORT_MUTEX_UNLOCK(pClient->mutex);
@@ -1854,7 +1922,8 @@ void uAtClientCommandStop(uAtClientHandle_t atHandle)
         // Finish by writing the AT command delimiter
         // write() will set device error if there's a problem
         write(pClient, U_AT_CLIENT_COMMAND_DELIMITER,
-              U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES);
+              U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES,
+              true);
     }
 
     U_PORT_MUTEX_UNLOCK(pClient->mutex);
@@ -2393,6 +2462,42 @@ int32_t uAtClientStreamGet(uAtClientHandle_t atHandle,
     *pStreamType = pClient->streamType;
 
     return pClient->streamHandle;
+}
+
+// Add a transmit intercept function.
+void uAtClientStreamInterceptTx(uAtClientHandle_t atHandle,
+                                const char *(*pCallback) (uAtClientHandle_t,
+                                                          const char *,
+                                                          size_t *,
+                                                          void *),
+                                void *pContext)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_PORT_MUTEX_LOCK(pClient->mutex);
+
+    pClient->pInterceptTx = pCallback;
+    pClient->pInterceptTxContext = pContext;
+
+    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+}
+
+// Add a receive intercept function.
+void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
+                                char *(*pCallback) (uAtClientHandle_t,
+                                                    char *,
+                                                    size_t *,
+                                                    void *),
+                                void *pContext)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_PORT_MUTEX_LOCK(pClient->mutex);
+
+    pClient->pInterceptRx = pCallback;
+    pClient->pInterceptRxContext = pContext;
+
+    U_PORT_MUTEX_UNLOCK(pClient->mutex);
 }
 
 // End of file

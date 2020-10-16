@@ -123,6 +123,10 @@ static int32_t gConsecutiveTimeout;
  */
 static char gAtServerBuffer[1024];
 
+/** Used by pInterceptTx.
+ */
+static const char *gpInterceptTxDataLast = NULL;
+
 # endif
 #endif
 
@@ -715,6 +719,44 @@ static void atEchoServerCallback(int32_t uartHandle, uint32_t eventBitmask,
     }
 }
 
+// A transmit intercept function.
+//lint -e{818} Suppress 'pContext' could be declared as const:
+// need to follow function signature
+static const char *pInterceptTx(uAtClientHandle_t atHandle,
+                                const char *pData,
+                                size_t *pLength,
+                                void *pContext)
+{
+    U_PORT_TEST_ASSERT(atHandle != 0);
+    U_PORT_TEST_ASSERT(pLength != NULL);
+    U_PORT_TEST_ASSERT(*((char *) pContext) == 'T');
+
+    // Remember the last pData we had so that we
+    // don't return NULL when the flush call
+    // (with a NULL pData) comes
+    if (pData != NULL) {
+        gpInterceptTxDataLast = pData;
+    } else {
+        pData = gpInterceptTxDataLast;
+    }
+
+    return pData;
+}
+
+// A receive intercept function.
+//lint -e{818} Suppress 'pContext' could be declared as const:
+// need to follow function signature
+static char *pInterceptRx(uAtClientHandle_t atHandle,
+                          char *pData, size_t *pLength,
+                          void *pContext)
+{
+    U_PORT_TEST_ASSERT(atHandle != 0);
+    U_PORT_TEST_ASSERT(pLength != NULL);
+    U_PORT_TEST_ASSERT(*((char *) pContext) == 'R');
+
+    return pData;
+}
+
 # endif
 #endif
 
@@ -1030,6 +1072,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     bool isQuoted;
     bool standalone;
     char buffer[5]; // Enough characters for a 3 digit index as a string
+    char t = 'T';
+    char r = 'R';
 
     memset(&checkCommandResponse, 0, sizeof(checkCommandResponse));
     checkCommandResponse.pTestSet = gAtClientTestSet1;
@@ -1064,6 +1108,10 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     gConsecutiveTimeout = 0;
     uAtClientTimeoutCallbackSet(atClientHandle,
                                 consecutiveTimeoutCallback);
+
+    // Add transmit and receive intercepts, though they don't do much
+    uAtClientStreamInterceptTx(atClientHandle, pInterceptTx, (void *) &t);
+    uAtClientStreamInterceptRx(atClientHandle, pInterceptRx, (void *) &r);
 
     uPortLog("U_AT_CLIENT_TEST: %d command(s)/response(s) to execute.\n",
              gAtClientTestSetSize1);

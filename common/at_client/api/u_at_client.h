@@ -1024,6 +1024,80 @@ void uAtClientDeviceErrorGet(uAtClientHandle_t atHandle,
 int32_t uAtClientStreamGet(uAtClientHandle_t atHandle,
                            uAtClientStream_t *pStreamType);
 
+/** Add a function that will intercept the transmitted
+ * data before it is presented to the stream.  The intercept
+ * function is given the data buffer plus a pointer to
+ * the length; it returns a new pointer, which may point
+ * to entirely new data, and it may modify the length value.
+ * This may be used, for instance, to add framing, encryption,
+ * whatever to the data that ends up in the stream.  To indicate
+ * that the transmitted data is at an end (e.g. an AT command
+ * has been completely written) pCallback will be called
+ * again with a NULL data pointer so that it can flush any
+ * buffer it may be holding into the output.
+ * This function should only be called when the AT client has
+ * been locked (with  uAtClientLock()) to ensure thread safety.
+ *
+ * @param atHandle     the handle of the AT client.
+ * @param pCallback    the callback function that forms
+ *                     the intercept where the first
+ *                     parameter is the AT client handle,
+ *                     the second parameter a pointer to
+ *                     the data to be written, the second
+ *                     parameter a pointer to the length
+ *                     to be written and the fourth parameter
+ *                     the pContext pointer that was passed
+ *                     to this function.  Use NULL to
+ *                     cancel a previous intercept.
+ * @param pContext     a context pointer which will be passed
+ *                     to pCallback as its fourth parameter.
+ *                     May be NULL.
+ */
+void uAtClientStreamInterceptTx(uAtClientHandle_t atHandle,
+                                const char *(*pCallback) (uAtClientHandle_t,
+                                                          const char *,
+                                                          size_t *,
+                                                          void *),
+                                void *pContext);
+
+/** Add a function that will intercept the received
+ * data from the stream before it is processed by the AT
+ * client.  The intercept function is given a pointer to
+ * the received data and a pointer to its length; it
+ * returns a new pointer, which may be further forward
+ * in the buffer than the pointer it received (though not
+ * beyond the length it has been given), and it may reduce
+ * the length value.  This may be used, for instance, to remove
+ * framing or decrypt, whatever, the data that has come from
+ * the stream.  If there is a receive timeout the intercept
+ * function will be called with a NULL data pointer so
+ * that it can reset itself in readiness for starting again.
+ * This function should only be called when the AT client
+ * has been locked (with  uAtClientLock()) to ensure thread
+ * safety.
+ *
+ * @param atHandle     the handle of the AT client.
+ * @param pCallback    the callback function that forms
+ *                     the intercept where the first
+ *                     parameter is the AT client handle,
+ *                     the second parameter a pointer to
+ *                     the received data, the second
+ *                     parameter a pointer to the length
+ *                     of the received data and the fourth
+ *                     parameter the pContext pointer that
+ *                     was passed to this function.  Use
+ *                     NULL to cancel a previous intercept.
+ * @param pContext     a context pointer which will be passed
+ *                     to pCallback as its fourth parameter.
+ *                     May be NULL.
+ */
+void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
+                                char *(*pCallback) (uAtClientHandle_t,
+                                                    char *,
+                                                    size_t *,
+                                                    void *),
+                                void *pContext);
+
 #ifdef __cplusplus
 }
 #endif
