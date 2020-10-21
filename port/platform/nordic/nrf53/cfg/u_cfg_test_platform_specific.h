@@ -157,9 +157,19 @@
 
 /** Macro to return the CTS pin for UART A: note that dashes
  * in the DTS node name must be converted to underscores.
+ * 0xffffffff is a magic value in nRF speak, mapping to
+ * NRF_UARTE_PSEL_DISCONNECTED.
  */
-#define U_CFG_TEST_PIN_UART_A_CTS_GET (DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) ? \
-                                       DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) : -1)
+#if (U_CFG_TEST_UART_A < 0)
+# define U_CFG_TEST_PIN_UART_A_CTS_GET -1
+#else
+# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) &&    \
+     (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) < 0xffffffff)
+#  define U_CFG_TEST_PIN_UART_A_CTS_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin)
+# else
+#  define U_CFG_TEST_PIN_UART_A_CTS_GET -1
+# endif
+#endif
 
 /** RTS pin for UART testing: should be connected connected either to the
  * CTS UART pin or to U_CFG_TEST_PIN_UART_B_CTS if that is
@@ -171,10 +181,19 @@
 
 /** Macro to return the RTS pin for UART A: note that dashes
  * in the DTS node name must be converted to underscores.
+ * 0xffffffff is a magic value in nRF speak, mapping to
+ * NRF_UARTE_PSEL_DISCONNECTED.
  */
-#define U_CFG_TEST_PIN_UART_A_RTS_GET (DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) ? \
-                                       DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), cts_pin) : -1)
-
+#if (U_CFG_TEST_UART_A < 0)
+# define U_CFG_TEST_PIN_UART_A_RTS_GET -1
+#else
+# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) &&    \
+     (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin) < 0xffffffff)
+#  define U_CFG_TEST_PIN_UART_A_RTS_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rts_pin)
+# else
+#  define U_CFG_TEST_PIN_UART_A_RTS_GET -1
+# endif
+#endif
 
 /** Tx pin for dual-UART testing: if present should be connected to
  * U_CFG_TEST_PIN_UART_A_RXD.
