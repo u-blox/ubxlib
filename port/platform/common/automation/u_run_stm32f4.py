@@ -579,7 +579,8 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                                        connection),
                                                             printer, prompt):
                                             # Open a socket to the SWO port
-                                            # of the ST-LINK GDB server
+                                            # of the ST-LINK GDB server after a little sleep
+                                            sleep(1)
                                             with socket.socket(socket.AF_INET,
                                                                socket.SOCK_STREAM) as swo_socket:
                                                 try:
@@ -592,6 +593,8 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                     read_thread.start()
                                                     # Now start the GNU ARM GDB client
                                                     # that will start the target running
+                                                    # after a little sleep
+                                                    sleep(1)
                                                     with u_utils.ExeRun(gdb_client(gdb_port),
                                                                         printer, prompt):
                                                         running = True

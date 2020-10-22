@@ -35,7 +35,7 @@
 /** The UARTE HW block to use inside the NRF53 chip when
  * to communicate with a cellular module.
  */
-# define U_CFG_APP_CELL_UART                 1
+# define U_CFG_APP_CELL_UART                 -1
 #endif
 
 /* ----------------------------------------------------------------

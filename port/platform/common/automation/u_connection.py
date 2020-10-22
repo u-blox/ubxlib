@@ -35,11 +35,11 @@ CONNECTION_LIST = [None,      # Instance 0, Lint, no connection, no need for a l
                    {"lock": None, "serial_port": "COM3", "debugger": "066DFF535154887767012834",
                     "swo_port": u_utils.STLINK_SWO_PORT + 1,
                     "gdb_port": u_utils.STLINK_GDB_PORT + 1},
-                   # Instance 16, STM32F4 Discovery, SARA-R5
-                   {"lock": None, "serial_port": "COM5", "debugger": "0668FF383032534E43184418",
+                   # Instance 16, STM32F4 Discovery, SARA-R412M-02B
+                   {"lock": None, "serial_port": "COM5", "debugger": "066EFF515551678367072825",
                     "swo_port": u_utils.STLINK_SWO_PORT + 2,
                     "gdb_port": u_utils.STLINK_GDB_PORT + 2},
-                   # Instance 17, NRF52, SARA-R412M-02B
+                   # Instance 17, NRF52, SARA-R410M-02B
                    {"lock": None, "serial_port": "COM7", "debugger": "683920969",
                     "swo_port": u_utils.JLINK_SWO_PORT + 1},
                    # Instance 18, C208 with SARA-R412M-02B connected via Segger J-Link box
@@ -51,7 +51,14 @@ CONNECTION_LIST = [None,      # Instance 0, Lint, no connection, no need for a l
                     "gdb_port": u_utils.STLINK_GDB_PORT + 3},
                    # Instance 20, NRF53: the COM port is the lowest numbered of the three
                    {"lock": None, "serial_port": "COM15", "debugger": "960115898",
-                    "swo_port": u_utils.JLINK_SWO_PORT + 3}]
+                    "swo_port": u_utils.JLINK_SWO_PORT + 3},
+                   # Instance 21, NRF53 with R5 EVK: the COM port is the middle of the three
+                   {"lock": None, "serial_port": "COM22", "debugger": "960107696",
+                    "swo_port": u_utils.JLINK_SWO_PORT + 4},
+                   # Instance 22, C030-R5 board (STM32F4), cat-M1
+                   {"lock": None, "serial_port": "COM20", "debugger": "0674FF565053787567161024",
+                    "swo_port": u_utils.STLINK_SWO_PORT + 4,
+                    "gdb_port": u_utils.STLINK_GDB_PORT + 4}]
 
 def init_locks(manager):
     '''Create locks'''
