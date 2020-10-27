@@ -47,6 +47,7 @@
 
 #include "u_at_client.h"
 
+#include "u_cell_module_type.h"
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
@@ -346,6 +347,23 @@ static void CEREG_urc(uAtClientHandle_t atHandle,
               U_CELL_NET_REG_DOMAIN_PS);
 }
 
+// Context activation result, UPSDA style.
+static void UUPSDA_urc(uAtClientHandle_t atHandle,
+                       void *pParameter)
+{
+    int32_t result;
+
+    result = uAtClientReadInt(atHandle);
+
+    if (result == 0) {
+        // Tidy up by reading and throw away the IP address
+        uAtClientReadString(atHandle, NULL,
+                            U_CELL_NET_IP_ADDRESS_SIZE, false);
+    }
+
+    *((int32_t *) pParameter) = result;
+}
+
 // Callback via which the user's base station connection
 // status callback is called.  This must be called through
 // the uAtClientCallback() mechanism in order to prevent
@@ -403,17 +421,17 @@ static void CSCON_urc(uAtClientHandle_t atHandle,
  * STATIC FUNCTIONS: REGISTRATION RELATED
  * -------------------------------------------------------------- */
 
-// Callback function for the cellular connection process
+// Callback function for the cellular connection process.
 static bool keepGoingLocalCb(const uCellPrivateInstance_t *pInstance)
 {
     bool keepGoing = true;
 
     if (pInstance->pKeepGoingCallback != NULL) {
-        keepGoing = pInstance->pKeepGoingCallback();
+        keepGoing = pInstance->pKeepGoingCallback(pInstance->handle);
     } else {
         if ((pInstance->startTimeMs > 0) &&
             (uPortGetTickTimeMs() > pInstance->startTimeMs +
-             U_CELL_NET_CONNECT_TIMEOUT_SECONDS)) {
+             (U_CELL_NET_CONNECT_TIMEOUT_SECONDS * 1000))) {
             keepGoing = false;
         }
     }
@@ -744,12 +762,18 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
     uCellNetStatus_t status;
     int32_t rat = (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
     bool gotUrc;
+    size_t errorCount = 0;
 
     // Come out of airplane mode and try to register
     // Wait for flip time to expire first though
     while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
            (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
         uPortTaskBlock(1000);
+    }
+    // Reset the current registration status
+    for (size_t x = 0; x < sizeof(pInstance->networkStatus) /
+         sizeof(pInstance->networkStatus[0]); x++) {
+        pInstance->networkStatus[x] = U_CELL_NET_STATUS_UNKNOWN;
     }
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+CFUN=1");
@@ -867,7 +891,15 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                                  gRegTypes[regType].domain);
                 uAtClientResponseStop(atHandle);
                 if (uAtClientUnlock(atHandle) != 0) {
-                    keepGoing = false;
+                    // We're prodding the module pretty often
+                    // while it is busy, it is possible for
+                    // the responses to fall outside of the
+                    // nominal responseMaxWaitMs, so
+                    // allow a few errors before we give up
+                    errorCount++;
+                    if (errorCount > 10) {
+                        keepGoing = false;
+                    }
                 } else {
                     uPortTaskBlock(300);
                 }
@@ -918,7 +950,7 @@ static int32_t attachNetwork(const uCellPrivateInstance_t *pInstance)
 
 // Disconnect from the network.
 static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
-                                 bool (pKeepGoingCallback) (void))
+                                 bool (pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -928,10 +960,10 @@ static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
     if (errorCode == 0) {
         for (int32_t count = 10;
              (count > 0) && uCellPrivateIsRegistered(pInstance) &&
-             ((pKeepGoingCallback == NULL) || pKeepGoingCallback());
+             ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->handle));
              count--) {
             for (size_t x = 0; (x < sizeof(gRegTypes) / sizeof(gRegTypes[0])) &&
-                 ((pKeepGoingCallback == NULL) || pKeepGoingCallback()); x++) {
+                 ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->handle)); x++) {
                 if (gRegTypes[x].supportedRatsBitmap &
                     pInstance->pModule->supportedRatsBitmap) {
                     // Prod the modem to see if it's done
@@ -1086,6 +1118,7 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
     int32_t errorCode = (int32_t) U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     bool activated = false;
+    int32_t uupsdaUrcResult = -1;
 
     for (size_t x = 3; (x > 0) && keepGoingLocalCb(pInstance) &&
          (errorCode != 0); x--) {
@@ -1109,14 +1142,20 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
         // didn't come.
         uAtClientUnlock(atHandle);
         if (activated) {
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            // Note: SARA-R4 only supports a single context at any
-            // one time and so doesn't require/support AT+UPSD.
-            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+            if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                // Note: SARA-R4 only supports a single context at any
+                // one time and so doesn't require/support AT+UPSD.
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            } else {
                 // SARA-R5 pattern: use AT+UPSD to map the
                 // context to an internal modem profile
                 // e.g. AT+UPSD=0,100,1, then
                 // activate that profile e.g. AT+UPSDA=0,3.
+                // The context is not actually activated until
+                // the +UUPSDA URC comes back, so set a URC
+                // handler to capture that
+                uAtClientSetUrcHandler(atHandle, "+UUPSDA:", UUPSDA_urc,
+                                       &uupsdaUrcResult);
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UPSD=");
                 uAtClientWriteInt(atHandle, profileId);
@@ -1127,7 +1166,19 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
                 uAtClientWriteInt(atHandle, profileId);
                 uAtClientWriteInt(atHandle, 3);
                 uAtClientCommandStopReadResponse(atHandle);
-                errorCode = uAtClientUnlock(atHandle);
+                if (uAtClientUnlock(atHandle) == 0) {
+                    // Wait for the URC to arrive
+                    for (size_t y = 3;
+                         (y > 0) && (uupsdaUrcResult < 0) &&
+                         keepGoingLocalCb(pInstance);
+                         y--) {
+                        uPortTaskBlock(1000);
+                    }
+                }
+                uAtClientRemoveUrcHandler(atHandle, "+UUPSDA:");
+                if (uupsdaUrcResult == 0) {
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
             }
         } else {
             uPortTaskBlock(2000);
@@ -1363,7 +1414,7 @@ static  int32_t deactivateUpsd(const uCellPrivateInstance_t *pInstance,
 // NOTE: returns 0 (success) if the current context is adequate, else error.
 static int32_t handleExistingContext(uCellPrivateInstance_t *pInstance,
                                      const char *pApn,
-                                     bool (pKeepGoingCallback) (void))
+                                     bool (pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_CELL_ERROR_NOT_CONNECTED;
     bool hasContext = false;
@@ -1655,7 +1706,7 @@ int32_t uCellNetConnect(int32_t cellHandle,
                         const char *pMccMnc,
                         const char *pApn, const char *pUsername,
                         const char *pPassword,
-                        bool (*pKeepGoingCallback) (void))
+                        bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1836,7 +1887,7 @@ int32_t uCellNetConnect(int32_t cellHandle,
 // Register with the cellular network.
 int32_t uCellNetRegister(int32_t cellHandle,
                          const char *pMccMnc,
-                         bool (*pKeepGoingCallback) (void))
+                         bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1916,7 +1967,7 @@ int32_t uCellNetRegister(int32_t cellHandle,
 int32_t uCellNetActivate(int32_t cellHandle,
                          const char *pApn, const char *pUsername,
                          const char *pPassword,
-                         bool (*pKeepGoingCallback) (void))
+                         bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2046,7 +2097,7 @@ int32_t uCellNetActivate(int32_t cellHandle,
 
 // Deactivate the PDP context.
 int32_t uCellNetDeactivate(int32_t cellHandle,
-                           bool (*pKeepGoingCallback) (void))
+                           bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2090,7 +2141,7 @@ int32_t uCellNetDeactivate(int32_t cellHandle,
 
 // Disconnect from the network.
 int32_t uCellNetDisconnect(int32_t cellHandle,
-                           bool (*pKeepGoingCallback) (void))
+                           bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2138,7 +2189,7 @@ int32_t uCellNetDisconnect(int32_t cellHandle,
 int32_t uCellNetScanGetFirst(int32_t cellHandle,
                              char *pName, size_t nameSize,
                              char *pMccMnc, uCellNetRat_t *pRat,
-                             bool (*pKeepGoingCallback) (void))
+                             bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCodeOrNumber = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2193,7 +2244,7 @@ int32_t uCellNetScanGetFirst(int32_t cellHandle,
                      (x > 0) && (errorCodeOrNumber <= 0) &&
                      (uPortGetTickTimeMs() < pInstance->startTimeMs +
                       (U_CELL_NET_SCAN_TIME_SECONDS * 1000)) &&
-                     ((pKeepGoingCallback == NULL) || (pKeepGoingCallback()));
+                     ((pKeepGoingCallback == NULL) || (pKeepGoingCallback(cellHandle)));
                      x--) {
                     uAtClientLock(atHandle);
                     // Set the timeout to a second so that we
@@ -2215,7 +2266,7 @@ int32_t uCellNetScanGetFirst(int32_t cellHandle,
                     while ((bytesRead <= 0) &&
                            (uPortGetTickTimeMs() < innerStartTimeMs +
                             (U_CELL_NET_SCAN_TIME_SECONDS * 1000 / 3)) &&
-                           ((pKeepGoingCallback == NULL) || (pKeepGoingCallback()))) {
+                           ((pKeepGoingCallback == NULL) || (pKeepGoingCallback(cellHandle)))) {
                         uAtClientResponseStart(atHandle, "+COPS:");
                         bytesRead = uAtClientReadBytes(atHandle, pBuffer,
                                                        U_CELL_NET_SCAN_LENGTH_BYTES,

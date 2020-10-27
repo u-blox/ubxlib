@@ -32,64 +32,6 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_CELL_TEST_PRIVATE_CONNECT_TIMEOUT_SECONDS
-/** The time in seconds allowed for a connection to complete.
- */
-# define U_CELL_TEST_PRIVATE_CONNECT_TIMEOUT_SECONDS 240
-#endif
-
-#ifndef U_CELL_TEST_PRIVATE_CONTEXT_ACTIVATION_TIMEOUT_SECONDS
-/** The time in seconds allowed for context activation complete.
- */
-# define U_CELL_TEST_PRIVATE_CONTEXT_ACTIVATION_TIMEOUT_SECONDS 60
-#endif
-
-#ifndef U_CELL_TEST_PRIVATE_APN
-/** The APN to use during cellular testing.
- */
-# define U_CELL_TEST_PRIVATE_APN NULL
-#endif
-
-#ifndef U_CELL_TEST_PRIVATE_EUTRAN_APN
-/** The test box that we use at u-blox for testing
- * cat-M1/NB1 does not allow registration without
- * an APN being supplied, and this is it.
- */
-# define U_CELL_TEST_PRIVATE_EUTRAN_APN "internet"
-#endif
-
-#ifndef U_CELL_TEST_PRIVATE_USERNAME
-/** The user name to use during cellular testing.
- */
-# define U_CELL_TEST_PRIVATE_USERNAME NULL
-#endif
-
-#ifndef U_CELL_TEST_PRIVATE_PASSWORD
-/** The password to use during cellular testing.
- */
-# define U_CELL_TEST_PRIVATE_PASSWORD NULL
-#endif
-
-#ifndef U_CELL_TEST_PRIVATE_MNO_PROFILE
-/** The MNO profile to use during testing: Europe (100),
- * which is good for the default band mask below.
- */
-#define U_CELL_TEST_PRIVATE_MNO_PROFILE 100
-#endif
-
-#ifndef U_CELL_TEST_PRIVATE_BANDMASK1
-/** The bandmask 1 to use during testing. 0x080092 is bands
- * 2, 5, 8 and 20.
- */
-# define U_CELL_TEST_PRIVATE_BANDMASK1   0x080092ULL
-#endif
-
-#ifndef U_CELL_TEST_PRIVATE_BANDMASK2
-/** The bandmask 2 to use during testing.
- */
-# define U_CELL_TEST_PRIVATE_BANDMASK2   0ULL
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -166,21 +108,6 @@ void uCellTestPrivateCleanup(uCellTestPrivate_t *pParameters);
 //                                         U_CFG_TEST_CELL_MODULE_TYPE
 //                                         is not defined
 const char *pUCellTestPrivateRatStr(uCellNetRat_t rat);
-
-/** Perform a connect/disconnect with default parameters and
- * the given APN.
- *
- * @param cellHandle  the handle.
- * @param pApn        the APN to use, may be NULL.
- * @return            zero on success else negative error code.
- */
-//lint -esym(759, uCellTestPrivateConnectDisconnect) Suppress the "can be
-//lint -esym(765, uCellTestPrivateConnectDisconnect) made static" etc. which
-//lint -esym(714, uCellTestPrivateConnectDisconnect) will occur if
-//                                                   U_CFG_TEST_CELL_MODULE_TYPE
-//                                                   is not defined
-int32_t uCellTestPrivateConnectDisconnect(int32_t cellHandle,
-                                          const char *pApn);
 
 /** Return the sole RAT that the uCellTestPrivatePreamble() ensures
  * will be set before a test begins.

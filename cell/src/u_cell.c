@@ -44,9 +44,12 @@
 
 #include "u_at_client.h"
 
+#include "u_cell_module_type.h"
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
+
+#include "u_network_handle.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -62,7 +65,7 @@
 
 /** The next instance handle to use.
  */
-static int32_t gNextInstanceHandle = 0;
+static int32_t gNextInstanceHandle = (int32_t) U_NETWORK_HANDLE_CELL_MIN;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -186,11 +189,14 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 // Fill the values in
                 memset(pInstance, 0, sizeof(*pInstance));
-                pInstance->handle = gNextInstanceHandle;
-                gNextInstanceHandle++;
-                if (gNextInstanceHandle < 0) {
-                    gNextInstanceHandle = 0;
-                }
+                // Find a free handle
+                do {
+                    pInstance->handle = gNextInstanceHandle;
+                    gNextInstanceHandle++;
+                    if (gNextInstanceHandle > (int32_t) U_NETWORK_HANDLE_CELL_MAX) {
+                        gNextInstanceHandle = (int32_t) U_NETWORK_HANDLE_CELL_MIN;
+                    }
+                } while (pUCellPrivateGetInstance(pInstance->handle) != NULL);
                 pInstance->atHandle = atHandle;
                 pInstance->pinEnablePower = pinEnablePower;
                 pInstance->pinPwrOn = pinPwrOn;

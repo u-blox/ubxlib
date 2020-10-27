@@ -91,13 +91,13 @@ def print_env(returned_env, printer, prompt):
         printer.string("{}EMPTY".format(prompt))
 
 def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
-            install_lock, printer, prompt, reporter):
+            system_lock, printer, prompt, reporter):
     '''Install the Espressif tools and esp-idf'''
     returned_env = {}
     count = 0
 
     # Acquire the install lock as this is a global operation
-    if u_utils.install_lock_acquire(install_lock, printer, prompt):
+    if u_utils.install_lock_acquire(system_lock, printer, prompt):
         # Fetch the repo
         if u_utils.fetch_repo(esp_idf_url, esp_idf_dir,
                               esp_idf_branch, printer, prompt):
@@ -148,7 +148,7 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                            u_report.EVENT_FAILED,
                            "unable to fetch " + esp_idf_url)
-        u_utils.install_lock_release(install_lock, printer, prompt)
+        u_utils.install_lock_release(system_lock, printer, prompt)
     else:
         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                        u_report.EVENT_FAILED,
@@ -169,17 +169,14 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
         if clean:
             u_utils.deltree(build_dir, printer, prompt)
             os.makedirs(build_dir)
-            # Unfortunately there doesn't seem to be
-            # a way to force ESP-IDF to regenerate
-            # the sdkconfig file from the sdkconfig.defaults
-            # file so we have to delete it explicitly
-            # as it is stored over in the project
-            # directory
-            sdkconfig_path = ubxlib_dir + os.sep +                             \
-                             "port\\platform\\espressif\\esp32\\sdk\\esp-idf" \
-                             + os.sep + PROJECT_SUBDIR + os.sep + "sdkconfig"
-            if os.path.exists(sdkconfig_path):
-                os.remove(sdkconfig_path)
+            # Note: used to delete sdkconfig here to
+            # force it to be regenerated from the
+            # sdkconfig.defaults file however we can't
+            # do that with parallel builds as the file
+            # might be in use.  Just need to be sure
+            # that none of our builds fiddle with
+            # it (which they shouldn't for consistency
+            # anyway).
     else:
         os.makedirs(build_dir)
 
@@ -272,7 +269,7 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
     return return_code
 
 def run(instance, sdk, connection, connection_lock, platform_lock,
-        clean, defines, ubxlib_dir, working_dir, install_lock,
+        clean, defines, ubxlib_dir, working_dir, system_lock,
         printer, reporter, test_report_handle):
     '''Build/run on ESP32'''
     return_value = -1
@@ -315,7 +312,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock,
         esp_idf_dir = ESP_IDF_ROOT + os.sep + esp_idf_location["subdir"]
         if esp_idf_location:
             returned_env = install(esp_idf_location["url"], esp_idf_dir,
-                                   esp_idf_location["branch"], install_lock,
+                                   esp_idf_location["branch"], system_lock,
                                    printer, prompt, reporter)
             if returned_env:
                 # From here on the ESP32 tools need to set up

@@ -211,11 +211,12 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
     debug_file_path = None
     summary_report_handle = None
 
-    # Create a lock to cover install processes
-    # that any process of u_run.main() may need
-    # to perform outside of its working directory
+    # Create a lock to cover things that cross
+    # platforms or that any process of u_run.main()
+    # may need to perform outside of its working
+    # directory
     manager = Manager()
-    install_lock = manager.RLock()
+    system_lock = manager.RLock()
 
     # It is possible, on some platforms, for the SDKs
     # to be a bit pants at running in multiple instances
@@ -307,7 +308,7 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
                                                   filter_string, True,
                                                   ubxlib_dir, this_working_dir,
                                                   process["connection_lock"],
-                                                  install_lock,
+                                                  system_lock,
                                                   process["platform_lock"],
                                                   print_queue, report_queue,
                                                   summary_report_file_path,

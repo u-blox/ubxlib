@@ -51,12 +51,14 @@
 
 #include "u_at_client.h"
 
+#include "u_cell_module_type.h"
 #include "u_cell.h"
 #include "u_cell_net.h"     // Required by u_cell_private.h
 #include "u_cell_private.h" // So that we can get at some innards
 #include "u_cell_pwr.h"
 #include "u_cell_info.h"
 
+#include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
 
 /* ----------------------------------------------------------------
@@ -230,7 +232,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
 
     uPortLog("U_CELL_INFO_TEST: checking values after registration...\n");
     gStopTimeMs = uPortGetTickTimeMs() +
-                  (U_CELL_TEST_PRIVATE_CONNECT_TIMEOUT_SECONDS * 1000);
+                  (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
     U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL, keepGoingCallback) == 0);
     U_PORT_TEST_ASSERT(uCellNetIsRegistered(cellHandle));
 

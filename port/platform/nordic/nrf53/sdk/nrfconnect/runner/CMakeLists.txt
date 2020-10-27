@@ -10,17 +10,20 @@ set(UBXLIB_PF_COMMON ${UBXLIB_BASE}/port/platform/common)
 set(NRF5340_BASE ../../..)
 
 #nrf5340 test runner application
-target_include_directories(app PRIVATE ${NRF5340_BASE}/src/ ${NRF5340_BASE}/cfg )
+target_include_directories(app PRIVATE ${NRF5340_BASE}/src/ ${NRF5340_BASE}/cfg ${UBXLIB_PF_COMMON}/runner)
+target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/runner/u_runner.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/app/u_main.c)
+
+#ubxlib common
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/error/api)
+
+#ubxlib port
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/port/api ${UBXLIB_PF_COMMON}/event_queue)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_debug.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_os.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_gpio.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_uart.c)
-
-#ubxlib common
-target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/error/api ${UBXLIB_BASE}/port/api ${UBXLIB_PF_COMMON}/runner ${UBXLIB_PF_COMMON}/event_queue)
-target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/runner/u_runner.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/port/test/u_port_test.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/event_queue/u_port_event_queue.c)
 
@@ -30,6 +33,20 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/src/u_at_client.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test_data.c)
 
+#network
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/network/api ${UBXLIB_BASE}/common/network/src  ${UBXLIB_BASE}/common/network/test)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_ble.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_cell.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/test/u_network_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/test/u_network_test_shared_cfg.c)
+
+#sock
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/sock/api ${UBXLIB_BASE}/common/sock/test)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/sock/src/u_sock.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/sock/test/u_sock_test.c)
+
 #cell API
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/cell/api ${UBXLIB_BASE}/cell/src ${UBXLIB_BASE}/cell/test)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell.c)
@@ -37,13 +54,18 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_pwr.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_cfg.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_info.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_net.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sock.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_private.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_pwr_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_cfg_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_info_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_net_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sock_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_private.c)
+
+# examples
+target_sources(app PRIVATE ${UBXLIB_BASE}/example/sockets/main.c)
 
 # unity
 target_compile_definitions(app PRIVATE UNITY_INCLUDE_CONFIG_H)

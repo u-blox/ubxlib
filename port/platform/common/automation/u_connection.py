@@ -20,7 +20,7 @@ CONNECTION_LIST = [None,      # Instance 0, Lint, no connection, no need for a l
                    None,      # Instance 9, reserved
                    # Instance 10, WHRE board
                    {"lock": None, "serial_port": "COM10", "debugger": None},
-                   # Instance 11, ESP32, SARA-R412M-02B
+                   # Instance 11, ESP32
                    {"lock": None, "serial_port": "COM8", "debugger": None},
                    # Instance 12, ESP32, SARA-R5
                    {"lock": None, "serial_port": "COM9", "debugger": None},

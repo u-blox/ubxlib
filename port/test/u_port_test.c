@@ -696,11 +696,14 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
                                           bytesToSend) == bytesToSend);
         bytesSent += bytesToSend;
         uPortLog("U_PORT_TEST: %d byte(s) sent.\n", bytesSent);
-        if (!flowControlOn) {
-            // If running without flow control, give the
-            // receive task time to do its stuff
-            uPortTaskBlock(10);
-        }
+        // Yield so that the receive task has chance to do
+        // its stuff.  This shouldn't really be necessary
+        // but without it ESP32 seems to occasionally (1 in 20
+        // or 30 runs) get stuck waiting for a transmit to
+        // complete when flow control is on, suggesting that
+        // it has been flow-controlled off due to the RX not
+        // being serviced fast enough
+        uPortTaskBlock(U_CFG_OS_YIELD_MS);
     }
 
     // Wait long enough for everything to have been received

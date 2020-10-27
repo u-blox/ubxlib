@@ -48,6 +48,12 @@ extern "C" {
 # define U_CELL_AT_BUFFER_LENGTH_BYTES U_AT_CLIENT_BUFFER_LENGTH_BYTES
 #endif
 
+#ifndef U_CELL_UART_BAUD_RATE
+/** The default baud rate to communicate with a cellular module.
+ */
+# define U_CELL_UART_BAUD_RATE 115200
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -71,32 +77,6 @@ typedef enum {
     U_CELL_ERROR_VALUE_OUT_OF_RANGE = U_ERROR_CELL_MAX - 9,  /**< -265 if U_ERROR_BASE is 0. */
     U_CELL_ERROR_TEMPORARY_FAILURE = U_ERROR_CELL_MAX - 10  /**< -266 if U_ERROR_BASE is 0. */
 } uCellErrorCode_t;
-
-/** The possible types of cellular module.
- * Note: if you add a new module type here, check the
- * U_CELL_PRIVATE_MODULE_xxx macros in u_cell_private.h
- * to see if they need updating and also update the
- * tables in u_cell_cfg.c and u_cell_private.c.
- * Note: order is important as these are used to index
- * into a statically defined array in u_cell_cfg.c.
- */
-//lint -estring(788, uCellModuleType_t::U_CELL_MODULE_TYPE_MAX_NUM)
-// Suppress not used within defaulted switch
-typedef enum {
-    U_CELL_MODULE_TYPE_SARA_U201 = 0,
-    U_CELL_MODULE_TYPE_SARA_R410M_02B = 1, /**<  The difference between the
-                                                 R410M module flavours is
-                                                 the band support, which is
-                                                 not "known" by this driver,
-                                                 hence specifying
-                                                 U_CELL_MODULE_TYPE_SARA_R410M_02B
-                                                 should work for all SARA-R410M
-                                                 module varieties. */
-    U_CELL_MODULE_TYPE_SARA_R412M_02B = 2,
-    U_CELL_MODULE_TYPE_SARA_R412M_03B = 3,
-    U_CELL_MODULE_TYPE_SARA_R5 = 4,
-    U_CELL_MODULE_TYPE_MAX_NUM
-} uCellModuleType_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS

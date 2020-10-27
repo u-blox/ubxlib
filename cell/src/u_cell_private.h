@@ -132,7 +132,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION,
     U_CELL_PRIVATE_FEATURE_MNO_PROFILE,
     U_CELL_PRIVATE_FEATURE_CSCON,
-    U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST
+    U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST,
+    U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -235,7 +236,7 @@ typedef struct uCellPrivateInstance_t {
     bool rebootIsRequired;   /**< Set to true if a reboot of the module is
                                   required, e.g. as a result of a configuration
                                   change. */
-    bool (*pKeepGoingCallback) (void);  /**< Used while connecting. */
+    bool (*pKeepGoingCallback) (int32_t);  /**< Used while connecting. */
     void (*pRegistrationStatusCallback) (uCellNetRegDomain_t, uCellNetStatus_t, void *);
     void *pRegistrationStatusCallbackParameter;
     void (*pConnectionStatusCallback) (bool, void *);
@@ -292,6 +293,14 @@ uCellPrivateInstance_t *pUCellPrivateGetInstance(int32_t handle);
  * @param pParameters pointer to a radio parameters structure.
  */
 void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters);
+
+/** Clear the dynamic parameters of an instance, so the network
+ * status, the active RAT and the radio parameters.  This should
+ * be called when the module is being rebooted or powered off.
+ *
+ * @param pInstance a pointer to the instance.
+ */
+void uCellPrivateClearDynamicParameters(uCellPrivateInstance_t *pInstance);
 
 /** Ensure that a module is powerered up if it isn't already
  * and return the AT+CFUN mode it was originally in so that

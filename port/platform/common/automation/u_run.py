@@ -38,7 +38,7 @@ def signal_handler(sig, frame):
 
 def main(database, instance, filter_string, clean,
          ubxlib_dir, working_dir, connection_lock,
-         install_lock, platform_lock, print_queue,
+         system_lock, platform_lock, print_queue,
          report_queue, summary_report_file_path,
          test_report_file_path, debug_file_path):
     '''Main as a function'''
@@ -141,26 +141,26 @@ def main(database, instance, filter_string, clean,
                     return_value = u_run_esp32.run(instance, sdk, connection,
                                                    connection_lock, platform_lock,
                                                    clean, defines, ubxlib_dir,
-                                                   working_dir, install_lock,
+                                                   working_dir, system_lock,
                                                    printer, reporter,
                                                    test_report_handle)
                 elif platform.lower() == "nrf52":
                     return_value = u_run_nrf52.run(instance, sdk, connection,
                                                    connection_lock, platform_lock,
                                                    clean, defines, ubxlib_dir,
-                                                   working_dir, printer,
+                                                   working_dir, system_lock, printer,
                                                    reporter, test_report_handle)
                 elif platform.lower() == "nrf53":
                     return_value = u_run_nrf53.run(instance, sdk, connection,
                                                    connection_lock, platform_lock,
                                                    clean, defines, ubxlib_dir,
-                                                   working_dir, printer,
+                                                   working_dir, system_lock, printer,
                                                    reporter, test_report_handle)
                 elif platform.lower() == "stm32f4":
                     return_value = u_run_stm32f4.run(instance, sdk, connection,
                                                      connection_lock, platform_lock,
                                                      clean, defines, ubxlib_dir,
-                                                     working_dir, printer,
+                                                     working_dir, system_lock, printer,
                                                      reporter, test_report_handle)
                 else:
                     printer.string("{}don't know how to handle platform \"{}\".".    \

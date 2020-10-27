@@ -46,6 +46,7 @@
 
 #include "u_at_client.h"
 
+#include "u_cell_module_type.h"
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
@@ -87,19 +88,25 @@ static int32_t moduleIsAlive(const uCellPrivateInstance_t *pInstance,
                              int32_t attempts)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_RESPONDING;
+    uAtClientDeviceError_t deviceError;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
     bool isAlive = false;
 
     // See if the cellular module is responding at the AT interface
-    // by poking it with "AT" up to "attempts" times,
-    // waiting 1 second for an "OK" response each
-    // time
+    // by poking it with "AT" up to "attempts" times.
+    // The response can be "OK" or it can also be "CMS/CMS ERROR"
+    // if the modem happened to be awake and in the middle
+    // of something from a previous command.
+    // Wait 1 second for a response each time
     for (int32_t x = 0; !isAlive && (x < attempts); x++) {
-        uAtClientLock(pInstance->atHandle);
-        uAtClientTimeoutSet(pInstance->atHandle,
+        uAtClientLock(atHandle);
+        uAtClientTimeoutSet(atHandle,
                             pInstance->pModule->responseMaxWaitMs);
-        uAtClientCommandStart(pInstance->atHandle, "AT");
-        uAtClientCommandStopReadResponse(pInstance->atHandle);
-        isAlive = (uAtClientUnlock(pInstance->atHandle) == 0);
+        uAtClientCommandStart(atHandle, "AT");
+        uAtClientCommandStopReadResponse(atHandle);
+        uAtClientDeviceErrorGet(atHandle, &deviceError);
+        isAlive = (uAtClientUnlock(atHandle) == 0) ||
+                  (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
     }
 
     if (isAlive) {
@@ -127,7 +134,8 @@ static bool moduleConfigureOne(uAtClientHandle_t atHandle,
 }
 
 // Configure the cellular module.
-static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance)
+static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
+                               bool andRadioOff)
 {
     int32_t errorCode = (int32_t) U_CELL_ERROR_NOT_CONFIGURED;
     bool success = true;
@@ -170,20 +178,24 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance)
         }
     }
 
-    // Finally, switch the radio off until commanded to connect
     if (success) {
-        // Wait for flip time to expire
-        while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
-               (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
-            uPortTaskBlock(1000);
-        }
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+CFUN=");
-        uAtClientWriteInt(atHandle,
-                          pInstance->pModule->radioOffCfun);
-        uAtClientCommandStopReadResponse(atHandle);
-        if (uAtClientUnlock(atHandle) == 0) {
-            pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
+        if (andRadioOff) {
+            // switch the radio off until commanded to connect
+            // Wait for flip time to expire
+            while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
+                   (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
+                uPortTaskBlock(1000);
+            }
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+CFUN=");
+            uAtClientWriteInt(atHandle,
+                              pInstance->pModule->radioOffCfun);
+            uAtClientCommandStopReadResponse(atHandle);
+            if (uAtClientUnlock(atHandle) == 0) {
+                pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        } else {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -193,7 +205,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance)
 
 // Wait for power off to complete
 static void waitForPowerOff(uCellPrivateInstance_t *pInstance,
-                            bool (*pKeepGoingCallback) (void))
+                            bool (*pKeepGoingCallback) (int32_t))
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
     bool moduleIsOff = false;
@@ -201,7 +213,7 @@ static void waitForPowerOff(uCellPrivateInstance_t *pInstance,
                         (((int64_t) pInstance->pModule->powerDownWaitSeconds) * 1000);
 
     while (!moduleIsOff && (uPortGetTickTimeMs() < endTimeMs) &&
-           ((pKeepGoingCallback == NULL) || pKeepGoingCallback())) {
+           ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->handle))) {
         if (pInstance->pinVInt >= 0) {
             // If we have a VInt pin then wait until that
             // goes low
@@ -229,7 +241,7 @@ static void waitForPowerOff(uCellPrivateInstance_t *pInstance,
 // Power the cellular module off.
 // Note: gUCellPrivateMutex must be locked before this is called
 static int32_t powerOff(uCellPrivateInstance_t *pInstance,
-                        bool (*pKeepGoingCallback) (void))
+                        bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -238,8 +250,8 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
     // Send the power off command and then pull the power
     // No error checking, we're going dowwwwwn...
     uAtClientLock(atHandle);
-    // Clear out the old RF readings
-    uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
+    // Clear the dynamic parameters
+    uCellPrivateClearDynamicParameters(pInstance);
     uAtClientTimeoutSet(atHandle,
                         U_CELL_PRIVATE_CPWROFF_WAIT_TIME_SECONDS * 1000);
     uAtClientCommandStart(atHandle, "AT+CPWROFF");
@@ -263,7 +275,7 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
 // to be entered at a power cycle
 // Note: gUCellPrivateMutex must be locked before this is called
 static void quickPowerOff(uCellPrivateInstance_t *pInstance,
-                          bool (*pKeepGoingCallback) (void))
+                          bool (*pKeepGoingCallback) (int32_t))
 {
     if (pInstance->pinPwrOn >= 0) {
         // Power off the module by pulling the PWR_ON pin
@@ -332,7 +344,7 @@ bool uCellPwrIsAlive(int32_t cellHandle)
 
 // Power the cellular module on.
 int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
-                   bool (*pKeepGoingCallback) (void))
+                   bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -361,8 +373,14 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                 if (((pInstance->pinVInt >= 0) && uPortGpioGet(pInstance->pinVInt)) ||
                     (moduleIsAlive(pInstance, 1) == 0)) {
                     uPortLog("U_CELL_PWR: powering on, module is already on.\n");
-                    // Configure the module
-                    errorCode = moduleConfigure(pInstance);
+                    // Configure the module.  Since it was already
+                    // powered on we might have been called from
+                    // a state where everything was already fine
+                    // and dandy so only switch the radio off at
+                    // the end of configuration if we are not
+                    // already registered
+                    errorCode = moduleConfigure(pInstance,
+                                                !uCellPrivateIsRegistered(pInstance));
                     if (errorCode != 0) {
                         // I have seen situations where the module responds
                         // initially and then fails configuration.  If that is
@@ -374,7 +392,7 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                 // Two goes at this, 'cos I've seen some module types
                 // fail during initial configuration.
                 for (size_t x = 2; (x > 0) && (errorCode != 0) && (platformError == 0) &&
-                     ((pKeepGoingCallback == NULL) || pKeepGoingCallback()); x--) {
+                     ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle)); x--) {
                     uPortLog("U_CELL_PWR: powering on.\n");
                     // First, switch on the volts
                     if (pInstance->pinEnablePower >= 0) {
@@ -410,13 +428,13 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                         // and, if so, configure it
                         for (size_t y = U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON;
                              (y > 0) && (errorCode != 0) &&
-                             ((pKeepGoingCallback == NULL) || pKeepGoingCallback());
+                             ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle));
                              y--) {
                             errorCode = moduleIsAlive(pInstance, 1);
                         }
                         if (errorCode == 0) {
                             // Configure the module
-                            errorCode = moduleConfigure(pInstance);
+                            errorCode = moduleConfigure(pInstance, true);
                             if (errorCode != 0) {
                                 // If the module fails configuration, power it
                                 // off and try again
@@ -447,7 +465,7 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
 
 // Power the cellular module off.
 int32_t uCellPwrOff(int32_t cellHandle,
-                    bool (*pKeepGoingCallback) (void))
+                    bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -471,7 +489,7 @@ int32_t uCellPwrOff(int32_t cellHandle,
 
 // Remove power to the cellular module using HW lines.
 int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
-                        bool (*pKeepGoingCallback) (void))
+                        bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -498,8 +516,8 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
                     // low for the correct number of milliseconds
                     uPortTaskBlock(pInstance->pModule->powerOffPullMs);
                     uPortGpioSet(pInstance->pinPwrOn, 1);
-                    // Clear out the old RF readings
-                    uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
+                    // Clear the dynamic parameters
+                    uCellPrivateClearDynamicParameters(pInstance);
                     // Wait for the module to power down
                     waitForPowerOff(pInstance, pKeepGoingCallback);
                     // Now switch off power if possible
@@ -542,7 +560,7 @@ bool uCellPwrRebootIsRequired(int32_t cellHandle)
 
 // Re-boot the cellular module.
 int32_t uCellPwrReboot(int32_t cellHandle,
-                       bool (*pKeepGoingCallback) (void))
+                       bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -566,8 +584,8 @@ int32_t uCellPwrReboot(int32_t cellHandle,
             uAtClientLock(atHandle);
             uAtClientTimeoutSet(atHandle,
                                 U_CELL_PRIVATE_AT_CFUN_OFF_RESPONSE_TIME_SECONDS * 1000);
-            // Clear out the old RF readings
-            uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
+            // Clear the dynamic parameters
+            uCellPrivateClearDynamicParameters(pInstance);
             uAtClientCommandStart(atHandle, "AT+CFUN=");
             if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
                 // SARA-R5 doesn't support 15 (which doesn't reset the SIM)
@@ -588,7 +606,7 @@ int32_t uCellPwrReboot(int32_t cellHandle,
                 // IMPORTANT: this won't work if a SIM PIN needs
                 // to be entered at a power cycle
                 for (size_t x = 2; (x > 0) && (!success) &&
-                     ((pKeepGoingCallback == NULL) || pKeepGoingCallback()); x--) {
+                     ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle)); x--) {
                     if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
                         // SARA-R5 chucks out a load of stuff after
                         // boot at the moment: flush it away
@@ -601,7 +619,7 @@ int32_t uCellPwrReboot(int32_t cellHandle,
                                               U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON);
                     if (errorCode == 0) {
                         // Configure the module
-                        errorCode = moduleConfigure(pInstance);
+                        errorCode = moduleConfigure(pInstance, true);
                     }
                     if (errorCode == 0) {
                         success = true;

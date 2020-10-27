@@ -4,9 +4,9 @@ This repository contains the C code support library for u-blox modules.  The lib
 ![Architecture](architecture.jpg)
 
 # What Is Included
-The APIs for each type of u-blox module can be found in the relevant directory (e.g `cell` for cellular modules).  The `common` directory contains APIs and 'helper' modules that are shared by u-blox modules (e.g. an AT client).  All APIs are documented in the API header files.
+The APIs for each type of u-blox module can be found in the relevant directory (e.g `cell` for cellular modules and `BLE`/`wifi` for BLE/Wifi modules).  The `common` directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the network API and the sockets API.  All APIs are documented in the API header files.
 
-Examples demonstrating the use of the APIs can be found in the `examples` directory.
+Examples demonstrating the use of the APIs can be found in the `example` directory.
 
 Each API includes a `test` sub-directory containing the tests for that API which you may compile and run if you wish.
 

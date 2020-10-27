@@ -366,6 +366,10 @@ static void removeClient(uAtClientInstance_t *pClient)
 {
     uAtClientUrc_t *pUrc;
 
+    // Lock the stream first to avoid pulling
+    // the rug out from under a URC
+    U_PORT_MUTEX_LOCK(pClient->streamMutex);
+
     U_PORT_MUTEX_LOCK(pClient->mutex);
 
     // Remove it from the list
@@ -388,6 +392,7 @@ static void removeClient(uAtClientInstance_t *pClient)
     }
 
     // Delete the stream mutex
+    U_PORT_MUTEX_UNLOCK(pClient->streamMutex);
     uPortMutexDelete(pClient->streamMutex);
 
     // Free the receive buffer if it was malloc()ed.

@@ -6,8 +6,10 @@ set(COMPONENT_ADD_INCLUDEDIRS
                    "../../../../../../../../cell/api"
                    "../../../../../../../../cell/src"
 # Common component APIs
-                   "../../../../../../../../common/at_client/api"
                    "../../../../../../../../common/error/api"
+                   "../../../../../../../../common/sock/api"
+                   "../../../../../../../../common/network/api"
+                   "../../../../../../../../common/at_client/api"
 # The API for the porting layer
                    "../../../../../../../api"
 # The private API for the event queue
@@ -23,7 +25,15 @@ set(COMPONENT_SRCS
                    "../../../../../../../../cell/src/u_cell_cfg.c"
                    "../../../../../../../../cell/src/u_cell_info.c"
                    "../../../../../../../../cell/src/u_cell_net.c"
+                   "../../../../../../../../cell/src/u_cell_sock.c"
                    "../../../../../../../../cell/src/u_cell_private.c"
+# The common network layer
+                   "../../../../../../../../common/network/src/u_network.c"
+                   "../../../../../../../../common/network/src/u_network_private_ble.c"
+                   "../../../../../../../../common/network/src/u_network_private_cell.c"
+                   "../../../../../../../../common/network/src/u_network_private_wifi.c"
+# The common sock layer
+                   "../../../../../../../../common/sock/src/u_sock.c"
 # The common AT client
                    "../../../../../../../../common/at_client/src/u_at_client.c"
 # The porting layer
@@ -38,6 +48,8 @@ set(COMPONENT_SRCS
 set(COMPONENT_PRIV_INCLUDEDIRS
 # The common AT client
                    "../../../../../../../../common/at_client/src"
+# The common network layer
+                   "../../../../../../../../common/network/src"
 # The porting layer
                    "../../../../src")
 register_component()

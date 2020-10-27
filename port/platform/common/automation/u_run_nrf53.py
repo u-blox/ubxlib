@@ -44,8 +44,8 @@ BUILD_GUARD_TIME_SECONDS = u_settings.NRF53_BUILD_GUARD_TIME_SECONDS #60 * 30
 # The guard time waiting for a lock on the HW connection seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = u_connection.CONNECTION_LOCK_GUARD_TIME_SECONDS
 
-# The guard time waiting for a platform lock in seconds
-PLATFORM_LOCK_GUARD_TIME_SECONDS = u_utils.PLATFORM_LOCK_GUARD_TIME_SECONDS
+# The guard time waiting for a install lock in seconds
+INSTALL_LOCK_WAIT_SECONDS = u_utils.INSTALL_LOCK_WAIT_SECONDS
 
 # The download guard time for this build in seconds
 DOWNLOAD_GUARD_TIME_SECONDS = u_utils.DOWNLOAD_GUARD_TIME_SECONDS
@@ -242,14 +242,17 @@ def build(clean, ubxlib_dir, defines, env, printer, prompt, reporter):
     return hex_file_path
 
 def run(instance, sdk, connection, connection_lock, platform_lock, clean, defines,
-        ubxlib_dir, working_dir, printer, reporter, test_report_handle):
+        ubxlib_dir, working_dir, system_lock, printer, reporter, test_report_handle):
     '''Build/run on NRF53'''
     return_value = -1
     hex_file_path = None
     instance_text = u_utils.get_instance_text(instance)
 
-    # Only one SDK for NRF53
+    # Only one SDK for NRF53 and, since NRF52 and NRF53 share
+    # stuff we don't use the platform lock we have to use the
+    # system lock instead to ensure no parallelism
     del sdk
+    del platform_lock
 
     prompt = PROMPT + instance_text + ": "
 
@@ -309,12 +312,12 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                             # on more than one platform at a time seems to cause
                             # problems (even though it should be tied to the
                             # serial number of the given debugger on that board),
-                            # lock the platform for this.  Once we've got the
+                            # lock the system for this.  Once we've got the
                             # Telnet session opened with the platform it seems
                             # fine to let other downloads/logging-starts happen.
-                            with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
-                                              "platform", printer, prompt) as locked_platform:
-                                if locked_platform:
+                            with u_utils.Lock(system_lock, INSTALL_LOCK_WAIT_SECONDS,
+                                              "system", printer, prompt) as locked_system:
+                                if locked_system:
                                     reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                    u_report.EVENT_START)
                                     if download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
@@ -322,7 +325,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                         reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                        u_report.EVENT_COMPLETE)
                                         # OK to release the platform lock again.
-                                        platform_lock.release()
+                                        system_lock.release()
                                         reporter.event(u_report.EVENT_TYPE_TEST,
                                                        u_report.EVENT_START)
                                         # Monitor progress
@@ -357,11 +360,11 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                        u_report.EVENT_FAILED,
                                                        "check debug log for details")
                                 else:
-                                    # Release the platform lock again.
-                                    platform_lock.release()
+                                    # Release the system lock again.
+                                    system_lock.release()
                                     reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                    u_report.EVENT_FAILED,
-                                                   "unable to lock the platform")
+                                                   "unable to lock the system")
                         else:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                            u_report.EVENT_FAILED,

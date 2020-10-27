@@ -45,12 +45,14 @@
 
 #include "u_at_client.h"
 
+#include "u_cell_module_type.h"
 #include "u_cell.h"
 #include "u_cell_net.h"     // Required by u_cell_private.h
 #include "u_cell_private.h" // So that we can get at some innards
 #include "u_cell_pwr.h"
 #include "u_cell_cfg.h"
 
+#include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
 
 /* ----------------------------------------------------------------
@@ -64,10 +66,6 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
-
-/** Used for keepGoingCallback() timeout.
- */
-static int64_t gStopTimeMs;
 
 #ifndef U_CELL_NET_TEST_RAT
 /** When we do testing by default we set a single RAT to make
@@ -105,18 +103,6 @@ static const char *const pRatStr[] = {"unknown or not used",
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-
-// Callback function for the cellular connection process
-static bool keepGoingCallback()
-{
-    bool keepGoing = true;
-
-    if (uPortGetTickTimeMs() > gStopTimeMs) {
-        keepGoing = false;
-    }
-
-    return keepGoing;
-}
 
 // Set the given context.
 static void contextSet(int32_t cellHandle,
@@ -255,7 +241,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
         if (powerOn) {
             // Power up
             uPortLog("U_CELL_TEST_PRIVATE: powering on...\n");
-            errorCode = uCellPwrOn(cellHandle, NULL, NULL);
+            errorCode = uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN, NULL);
             if (errorCode == 0) {
                 errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
                 pModule = pUCellPrivateGetModule(cellHandle);
@@ -267,9 +253,9 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                         // to the one we want
                         mnoProfile = uCellCfgGetMnoProfile(cellHandle);
                         if ((mnoProfile >= 0) &&
-                            (mnoProfile != U_CELL_TEST_PRIVATE_MNO_PROFILE)) {
+                            (mnoProfile != U_CELL_TEST_CFG_MNO_PROFILE)) {
                             errorCode = uCellCfgSetMnoProfile(cellHandle,
-                                                              U_CELL_TEST_PRIVATE_MNO_PROFILE);
+                                                              U_CELL_TEST_CFG_MNO_PROFILE);
                             // SARA-R412M-02B modules with SW version M0.10.0 fresh out of
                             // the box are set to MNO profile 0 which stops any configuration
                             // being performed (setting the RAT won't work, for instance) so
@@ -344,14 +330,14 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                             // All the bands in U_CELL_TEST_PRIVATE_BANDMASKx
                             // must be present in bandMaskx
                             //lint -e{774, 587} Suppress always evaluates to True
-                            if (((U_CELL_TEST_PRIVATE_BANDMASK1 & bandMask1) == U_CELL_TEST_PRIVATE_BANDMASK1) &&
-                                ((U_CELL_TEST_PRIVATE_BANDMASK2 & bandMask2) == U_CELL_TEST_PRIVATE_BANDMASK2)) {
+                            if (((U_CELL_TEST_CFG_BANDMASK1 & bandMask1) == U_CELL_TEST_CFG_BANDMASK1) &&
+                                ((U_CELL_TEST_CFG_BANDMASK2 & bandMask2) == U_CELL_TEST_CFG_BANDMASK2)) {
                                 // Nothing to do, we have our bands included
                             } else {
                                 // Set the band masks
                                 errorCode = uCellCfgSetBandMask(cellHandle, primaryRat,
-                                                                U_CELL_TEST_PRIVATE_BANDMASK1,
-                                                                U_CELL_TEST_PRIVATE_BANDMASK2);
+                                                                U_CELL_TEST_CFG_BANDMASK1,
+                                                                U_CELL_TEST_CFG_BANDMASK2);
                                 rebootRequired = true;
                             }
                         }
@@ -360,7 +346,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                             // denied service, so set the AT+CGDCONT
                             // entry correctly
                             contextSet(cellHandle, U_CELL_NET_CONTEXT_ID,
-                                       U_CELL_TEST_PRIVATE_EUTRAN_APN);
+                                       U_CELL_TEST_CFG_EUTRAN_APN);
                         }
                     }
 
@@ -446,74 +432,6 @@ uCellNetRat_t uCellTestPrivateInitRatGet(uint32_t supportedRatsBitmap)
 
     return rat;
 #endif
-}
-
-// Perform a connect/disconnect.
-// Note: this is not actually used here any more, it will be moved
-// to the sockets code when that is implemented.
-int32_t uCellTestPrivateConnectDisconnect(int32_t cellHandle,
-                                          const char *pApn)
-{
-    int32_t errorCode;
-    int64_t startTimeMs;
-    uCellNetStatus_t status;
-    uCellNetRat_t rat;
-    char buffer[U_CELL_NET_IP_ADDRESS_SIZE];
-    int32_t mcc = 0;
-    int32_t mnc = 0;
-
-    // Connect with a sensible timeout
-    startTimeMs = uPortGetTickTimeMs();
-    gStopTimeMs = startTimeMs +
-                  (U_CELL_TEST_PRIVATE_CONNECT_TIMEOUT_SECONDS * 1000);
-    errorCode = uCellNetConnect(cellHandle, NULL, pApn, NULL, NULL,
-                                keepGoingCallback);
-
-    // Check that we're connected
-    if (errorCode == 0) {
-        status = uCellNetGetNetworkStatus(cellHandle,
-                                          U_CELL_NET_REG_DOMAIN_PS);
-        errorCode = (int32_t) U_CELL_ERROR_NOT_CONNECTED;
-        if (uCellNetIsRegistered(cellHandle) &&
-            ((status == U_CELL_NET_STATUS_REGISTERED_HOME) ||
-             (status == U_CELL_NET_STATUS_REGISTERED_ROAMING) ||
-             (status == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME) ||
-             (status == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING))) {
-            // Print useful stuff
-            rat = uCellNetGetActiveRat(cellHandle);
-            errorCode = uCellNetGetOperatorStr(cellHandle, buffer,
-                                               sizeof(buffer));
-            if (errorCode >= 0) {
-                uPortLog("U_CELL_TEST_PRIVATE: registered on \"%s\" (%s).\n",
-                         buffer, pUCellTestPrivateRatStr(rat));
-                errorCode = uCellNetGetMccMnc(cellHandle, &mcc, &mnc);
-            }
-            if (errorCode == 0) {
-                uPortLog("U_CELL_TEST_PRIVATE: MCC/MNC %d%d.\n", mcc, mnc);
-                errorCode = uCellNetGetIpAddressStr(cellHandle, buffer);
-            }
-            if (errorCode >= 0) {
-                uPortLog("U_CELL_TEST_PRIVATE: IP address \"%s\".\n", buffer);
-                errorCode = uCellNetGetApnStr(cellHandle, buffer, sizeof(buffer));
-            }
-            if (errorCode >= 0) {
-                uPortLog("U_CELL_TEST_PRIVATE: APN used was \"%s\".\n", buffer);
-            }
-
-            // Disconnect
-            uPortLog("U_CELL_TEST_PRIVATE: disconnecting...\n");
-            errorCode = uCellNetDisconnect(cellHandle, NULL);
-
-        } else {
-            uPortLog("U_CELL_TEST_PRIVATE: connect failed (status %d).\n",
-                     status);
-        }
-    } else {
-        uPortLog("U_CELL_TEST_PRIVATE: connect timed out after %d second(s).\n",
-                 (uPortGetTickTimeMs() - startTimeMs) / 1000);
-    }
-
-    return errorCode;
 }
 
 // End of file

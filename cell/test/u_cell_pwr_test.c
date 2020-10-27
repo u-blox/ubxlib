@@ -50,11 +50,13 @@
 
 #include "u_at_client.h"
 
+#include "u_cell_module_type.h"
 #include "u_cell.h"
 #include "u_cell_net.h"     // Required by u_cell_private.h
 #include "u_cell_private.h" // So that we can get at some innards
 #include "u_cell_pwr.h"
 
+#include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
 
 /* ----------------------------------------------------------------
@@ -77,14 +79,22 @@ static int64_t gStopTimeMS;
  */
 static uCellTestPrivate_t gHandles = {-1};
 
+/** A variable to track errors in the callbacks.
+ */
+static int32_t gCallbackErrorCode = 0;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
 // Callback function for the cellular power-down process
-static bool keepGoingCallback()
+static bool keepGoingCallback(int32_t cellHandle)
 {
     bool keepGoing = true;
+
+    if (cellHandle != gHandles.cellHandle) {
+        gCallbackErrorCode = 1;
+    }
 
     if (uPortGetTickTimeMs() > gStopTimeMS) {
         keepGoing = false;
@@ -97,7 +107,7 @@ static bool keepGoingCallback()
 static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                                int32_t pinVint)
 {
-    bool (*pKeepGoingCallback) (void) = NULL;
+    bool (*pKeepGoingCallback) (int32_t) = NULL;
     int32_t cellHandle;
     bool trulyHardPowerOff = false;
     const uCellPrivateModule_t *pModule;
@@ -165,7 +175,8 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
         // else at least that's the case on SARA-R4 when you want to
         // have power saving
         uPortLog("U_CELL_PWR_TEST: powering on...\n");
-        U_PORT_TEST_ASSERT(uCellPwrOn(cellHandle, NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN,
+                                      NULL) == 0);
         uPortLog("U_CELL_PWR_TEST: checking that module is alive...\n");
         U_PORT_TEST_ASSERT(uCellPwrIsAlive(cellHandle));
         // Test with and without a keep-going callback
@@ -214,7 +225,8 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
         U_PORT_TEST_ASSERT(!uCellPwrIsPowered(cellHandle));
 # endif
         uPortLog("U_CELL_PWR_TEST: powering on...\n");
-        U_PORT_TEST_ASSERT(uCellPwrOn(cellHandle, NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN,
+                                      NULL) == 0);
         uPortLog("U_CELL_PWR_TEST: checking that module is alive...\n");
         U_PORT_TEST_ASSERT(uCellPwrIsAlive(cellHandle));
         // Let the module sort itself out
@@ -291,6 +303,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 # if U_CFG_APP_PIN_CELL_VINT >= 0
     testPowerAliveVInt(&gHandles, U_CFG_APP_PIN_CELL_VINT);
 # endif
+
+    U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

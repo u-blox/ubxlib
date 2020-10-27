@@ -112,12 +112,14 @@ bool uCellPwrIsAlive(int32_t cellHandle);
  *                           If this function is forced to return
  *                           It is advisable to call
  *                           uCellPwrIsAlive() to confirm
- *                           the final state of the module.
+ *                           the final state of the module. The
+ *                           single int32_t parameter is the
+ *                           cell handle.
  * @return                   zero on success or negative error
  *                           code on failure.
  */
 int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
-                   bool (*pKeepGoingCallback) (void));
+                   bool (*pKeepGoingCallback) (int32_t));
 
 /** Power the cellular module off.
  *
@@ -138,12 +140,13 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
  *                           It is advisable for the callback
  *                           function to always return true,
  *                           allowing the cellular module to
- *                           power off cleanly.
+ *                           power off cleanly. The single int32_t
+ *                           parameter is the cell handle.
  * @return                   zero on success or negative error
  *                           code on failure.
  */
 int32_t uCellPwrOff(int32_t cellHandle,
-                    bool (*pKeepGoingCallback) (void));
+                    bool (*pKeepGoingCallback) (int32_t));
 
 /** Remove power to the cellular module using HW lines.
  * If both the pinPwrOn and pinEnablePower parameters to
@@ -179,13 +182,14 @@ int32_t uCellPwrOff(int32_t cellHandle,
  *                           It is advisable for the callback
  *                           function to always return true,
  *                           allowing the cellular module to
- *                           power off cleanly.
+ *                           power off cleanly. The single int32_t
+ *                           parameter is the cell handle.
  *                           Ignored if trulyHard is true.
  * @return                   zero on success or negative error
  *                           code on failure.
  */
 int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
-                        bool (*pKeepGoingCallback) (void));
+                        bool (*pKeepGoingCallback) (int32_t));
 
 
 /** If a reboot of the cellular instance is required, e.g.
@@ -226,12 +230,14 @@ bool uCellPwrRebootIsRequired(int32_t cellHandle);
  *                           If this function is forced to return
  *                           It is advisable to call
  *                           uCellPwrIsAlive() to confirm
- *                           the final state of the module.
+ *                           the final state of the module. The
+ *                           single int32_t parameter is the
+ *                           cell handle.
  * @return                   zero on success or negative error
  *                           code on failure.
  */
 int32_t uCellPwrReboot(int32_t cellHandle,
-                       bool (*pKeepGoingCallback) (void));
+                       bool (*pKeepGoingCallback) (int32_t));
 
 #ifdef __cplusplus
 }

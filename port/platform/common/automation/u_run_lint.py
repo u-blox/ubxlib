@@ -24,19 +24,27 @@ LINT_PLATFORM_CONFIG_FILES = u_settings.LINT_PLATFORM_CONFIG_FILES #["co-gcc.lnt
 # Lint does not recurse and, in fact, we don't want it
 # to as it cannot handle the platform-based code under
 # \port\platform.
-LINT_DIRS = ["cell\\src", "cell\\test",
+# Note that examples are DELIBERATELY not added
+# here as we need more lee-way and don't want Lint
+# suppressions cluttering them up.
+LINT_DIRS = ["common\\network\\src", "common\\network\\test",
+             "common\\sock\\src", "common\\sock\\test", 
              "common\\at_client\\src", "common\\at_client\\test",
+             "cell\\src", "cell\\test",
              "port\\clib", "port\\platform\\common\\event_queue",
              "port\\test", "port\\platform\\common\\runner"]
 
 # Include directories for ubxlib, off the ubxlib root.
 UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
                        "cfg",
+                       "common\\network\\api",
+                       "common\\network\\src",
+                       "common\\network\\test",
+                       "common\\sock\\api",
+                       "common\\sock\\test",
                        "common\\error\\api",
-                       "cell\\api",
-                       "cell\\src",
-                       "cell\\test",
                        "common\\at_client\\api",
+                       "cell\\api", "cell\\src", "cell\\test",
                        "port\\api",
                        "port\\platform\\common\\event_queue",
                        "port\\platform\\common\\runner",

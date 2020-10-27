@@ -88,7 +88,6 @@ STLINK_SWO_PORT = u_settings.STM32_STLINK_SWO_PORT #
 # The list of commands to be sent to ST-LINK_gdbserver
 # when it is opened
 GDB_SERVER_COMMANDS = ["-cp " + STM32_PROGRAMMER_BIN_PATH,
-                       "-e",
                        "-d",
                        "-a " + str(SYSTEM_CORE_CLOCK_HZ),
                        "-b {:.0f}".format(SYSTEM_CORE_CLOCK_HZ / SWO_CLOCK_HZ)]
@@ -409,11 +408,16 @@ def gdb_client(gdb_port):
     '''Assemble the command line for the ST-flavour GNU ARM GDB client'''
     call_list = [STM32_GNU_ARM_GDB_SERVER_PATH]
 
-    # Switch off confirm otherwise "run" asks for confirmation
-    call_list.append("--eval-command=set confirm off")
-    # Extended remote so that we get to use "run"
-    call_list.append("--eval-command=target extended-remote localhost:" + str(gdb_port))
-    call_list.append("--eval-command=run")
+    # This switches off all confirmation y/n prompts
+    call_list.append("--batch")
+    # Not sure if this is necessary or not
+    call_list.append("--eval-command=set architecture arm")
+    # Connect to the target
+    call_list.append("--eval-command=target remote localhost:" + str(gdb_port))
+    # Reset the target
+    call_list.append("--eval-command=monitor reset")
+    # Run the target
+    call_list.append("--eval-command=continue")
 
     return call_list
 
@@ -444,7 +448,7 @@ def swo_decode_thread(swo_socket, swo_decoded_text_file):
 # .gitignore file, and build that instead of "runner".
 
 def run(instance, sdk, connection, connection_lock, platform_lock, clean, defines,
-        ubxlib_dir, working_dir, printer, reporter, test_report_handle):
+        ubxlib_dir, working_dir, system_lock, printer, reporter, test_report_handle):
     '''Build/run on STM32F4'''
     return_value = -1
     sdk_dir = ubxlib_dir + os.sep + SDK_DIR
@@ -462,6 +466,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
     # Only one SDK for STM32F4 and no issues with running in parallel
     del sdk
     del platform_lock
+    del system_lock
 
     prompt = PROMPT + instance_text + ": "
 

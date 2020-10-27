@@ -65,8 +65,8 @@ BUILD_GUARD_TIME_SECONDS = u_settings.NRF52_BUILD_GUARD_TIME_SECONDS #60 * 30
 # The guard time waiting for a lock on the HW connection seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = u_connection.CONNECTION_LOCK_GUARD_TIME_SECONDS
 
-# The guard time waiting for a platform lock in seconds
-PLATFORM_LOCK_GUARD_TIME_SECONDS = u_utils.PLATFORM_LOCK_GUARD_TIME_SECONDS
+# The guard time waiting for a install lock in seconds
+INSTALL_LOCK_WAIT_SECONDS = u_utils.INSTALL_LOCK_WAIT_SECONDS
 
 # The download guard time for this build in seconds
 DOWNLOAD_GUARD_TIME_SECONDS = u_utils.DOWNLOAD_GUARD_TIME_SECONDS
@@ -324,12 +324,18 @@ def build_ses(clean, ubxlib_dir, defines,
     return hex_file_path
 
 def run(instance, sdk, connection, connection_lock, platform_lock, clean, defines,
-        ubxlib_dir, working_dir, printer, reporter, test_report_handle):
+        ubxlib_dir, working_dir, system_lock, printer, reporter, test_report_handle):
     '''Build/run on NRF52'''
     return_value = -1
     hex_file_path = None
     instance_text = u_utils.get_instance_text(instance)
     swo_port = u_utils.JLINK_SWO_PORT
+    downloaded = False
+
+    # Since NRF52 and NRF53 share stuff we don't use
+    # the platform lock we have to use the system lock
+    # instead to ensure no parallelism
+    del platform_lock
 
     prompt = PROMPT + instance_text + ": "
 
@@ -383,25 +389,38 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                            printer, prompt) as locked_connection:
                         if locked_connection:
                             # Do the download
-                            # On NRF52 doing a download or starting SWO logging
+                            # On NRF52/53 doing a download or starting SWO logging
                             # on more than one platform at a time seems to cause
                             # problems, even though it should be tied to the
                             # serial number of the given debugger on that board,
-                            # so lock the platform for this.  Once we've got the
+                            # so lock the system for this.  Once we've got the
                             # Telnet session opened with the platform it seems
                             # fine to let other downloads/logging-starts happen.
-                            with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
-                                              "platform", printer, prompt) as locked_platform:
-                                if locked_platform:
+                            with u_utils.Lock(system_lock, INSTALL_LOCK_WAIT_SECONDS,
+                                              "system", printer, prompt) as locked_system:
+                                if locked_system:
                                     reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                    u_report.EVENT_START)
-                                    if download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
-                                                hex_file_path, printer, prompt):
+                                    # I have seen the download fail on occasion
+                                    # so give this two bites of the cherry
+                                    retries = 2
+                                    while not downloaded and (retries > 0):
+                                        downloaded = download(connection,
+                                                              DOWNLOAD_GUARD_TIME_SECONDS,
+                                                              hex_file_path,
+                                                              printer, prompt)
+                                        retries -= 1
+                                        if not downloaded and (retries > 0):
+                                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                           u_report.EVENT_WARNING,
+                                                           "unable to download, will retry...")
+                                            sleep(5)
+                                    if downloaded:
                                         reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                        u_report.EVENT_COMPLETE)
                                         reporter.event(u_report.EVENT_TYPE_TEST,
                                                        u_report.EVENT_START)
-                                        # I have seen downloads succeeds and then
+                                        # I have seen downloads succeed and then
                                         # the Telnet connection fail, so add a
                                         # little sleep here to make sure one
                                         # has really finished before the other starts
@@ -423,8 +442,12 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                                                 printer, prompt)
                                             if telnet_handle is not None:
                                                 # Once we've got a Telnet session running
-                                                # it is OK to release the platform lock again.
-                                                platform_lock.release()
+                                                # it is OK to release the platform lock again
+                                                # but leave a little while before
+                                                # doing so to give the debugger a nice
+                                                # rest
+                                                sleep(1)
+                                                system_lock.release()
                                                 # Monitor progress
                                                 return_value = u_monitor.    \
                                                                main(telnet_handle,
@@ -452,7 +475,12 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                 else:
                                     reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                    u_report.EVENT_FAILED,
-                                                   "unable to lock the platform")
+                                                   "unable to lock the system")
+                            # Wait for a short while before giving
+                            # the connection lock away to make sure
+                            # that everything really has shut down
+                            # in the debugger
+                            sleep(5)
                         else:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                            u_report.EVENT_FAILED,

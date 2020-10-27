@@ -41,6 +41,7 @@
 
 #include "u_at_client.h"
 
+#include "u_cell_module_type.h"
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
@@ -83,7 +84,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 2 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)) /* features */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -93,7 +95,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)) /* features */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -170,6 +173,24 @@ void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters
     pParameters->earfcn = -1;
 }
 
+// Clear the dynamic parameters of an instance,
+// so the network status, the active RAT and
+// the
+void uCellPrivateClearDynamicParameters(uCellPrivateInstance_t *pInstance)
+{
+    for (size_t x = 0;
+         x < sizeof(pInstance->networkStatus) / sizeof(pInstance->networkStatus[0]);
+         x++) {
+        pInstance->networkStatus[x] = U_CELL_NET_STATUS_UNKNOWN;
+    }
+    for (size_t x = 0;
+         x < sizeof(pInstance->rat) / sizeof(pInstance->rat[0]);
+         x++) {
+        pInstance->rat[x] = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
+    }
+    uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
+}
+
 // Ensure that a module is powered up.
 int32_t  uCellPrivateCFunOne(uCellPrivateInstance_t *pInstance)
 {
@@ -195,6 +216,9 @@ int32_t  uCellPrivateCFunOne(uCellPrivateInstance_t *pInstance)
         uAtClientCommandStopReadResponse(atHandle);
         if (uAtClientUnlock(atHandle) == 0) {
             pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
+            // And don't do anything for a second,
+            // as the module might not be quite ready yet
+            uPortTaskBlock(1000);
         }
     }
 

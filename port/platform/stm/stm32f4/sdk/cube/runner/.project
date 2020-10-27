@@ -37,6 +37,46 @@
 			<locationURI>$%7BPLATFORM_PATH%7D/app</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Example/Sockets/main.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/example/sockets/main.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/Network/u_network.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/Network/u_network_private_ble.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_ble.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/Network/u_network_private_cell.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_cell.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/Network/u_network_private_wifi.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_wifi.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/Sock/u_sock.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/sock/src/u_sock.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/AtClient/u_at_client.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/at_client/src/u_at_client.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/u_runner.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/runner/u_runner.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell.c</locationURI>
@@ -62,14 +102,29 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_net.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Cell/u_cell_sock.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_sock.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_private.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Common/AtClient/u_at_client.c</name>
+			<name>Ubxlib/U-Blox/Test/Network/u_network_test.c</name>
 			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/common/at_client/src/u_at_client.c</locationURI>
+			<locationURI>$%7BUBX_PATH%7D/common/network/test/u_network_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Network/u_network_test_shared_cfg.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/test/u_network_test_shared_cfg.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Sock/u_sock_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/sock/test/u_sock_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test.c</name>
@@ -95,6 +150,11 @@
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_net_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_net_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Cell/u_cell_sock_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_sock_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test_private.c</name>
@@ -150,11 +210,6 @@
 			<name>Ubxlib/U-Blox/Test/Port/u_port_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/port/test/u_port_test.c</locationURI>
-		</link>
-		<link>
-			<name>Ubxlib/U-Blox/u_runner.c</name>
-			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/port/platform/common/runner/u_runner.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Third-Party/unity.c</name>
@@ -300,6 +355,31 @@
 			<name>Ubxlib/Inc/U-Blox/common/error/api</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/error/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/sock/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/sock/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/sock/test</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/sock/test</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/network/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/network/src</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/src</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/network/test</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/test</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/cell/api</name>

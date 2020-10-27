@@ -47,6 +47,7 @@
 
 #include "u_at_client.h"
 
+#include "u_cell_module_type.h"
 #include "u_cell.h"
 
 /* ----------------------------------------------------------------
