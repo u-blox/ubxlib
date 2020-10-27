@@ -24,8 +24,13 @@ target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_debug.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_os.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_gpio.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_uart.c)
-target_sources(app PRIVATE ${UBXLIB_BASE}/port/test/u_port_test.c)
+
+#ubxlib common
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/error/api ${UBXLIB_BASE}/port/api ${UBXLIB_PF_COMMON}/runner ${UBXLIB_PF_COMMON}/event_queue)
+target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/mbedtls/u_port_crypto.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/event_queue/u_port_event_queue.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/port/test/u_port_test.c)
+target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/runner/u_runner.c)
 
 #at-client
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/at_client/api ${UBXLIB_BASE}/common/at_client/src ${UBXLIB_BASE}/common/at_client/test)

@@ -77,6 +77,11 @@ SRC_FILES += \
   $(NRF5_PATH)/external/freertos/source/tasks.c \
   $(NRF5_PATH)/external/freertos/source/timers.c \
   ../../../../../../../example/sockets/main.c \
+  $(NRF5_PATH)/external/mbedtls/library/sha256.c \
+  $(NRF5_PATH)/external/mbedtls/library/md.c \
+  $(NRF5_PATH)/external/mbedtls/library/md_wrap.c \
+  $(NRF5_PATH)/external/mbedtls/library/md5.c \
+  $(NRF5_PATH)/external/mbedtls/library/aes.c \
   ../../../../../../../cell/src/u_cell.c \
   ../../../../../../../cell/src/u_cell_pwr.c \
   ../../../../../../../cell/src/u_cell_cfg.c \
@@ -107,6 +112,7 @@ SRC_FILES += \
   ../../../src/u_port_os.c \
   ../../../src/u_port_uart.c \
   ../../../src/u_port_private.c \
+  ../../../../../common/mbedtls/u_port_crypto.c \
   ../../../../../common/event_queue/u_port_event_queue.c \
   ../../../src/heap_useNewlib.c \
   ../../../../../../test/u_port_test.c \
@@ -148,7 +154,7 @@ INC_FOLDERS += \
   $(NRF5_PATH)/components/libraries/log/src \
   $(NRF5_PATH)/external/segger_rtt \
   $(NRF5_PATH)/components/libraries/hardfault \
-  ../../../../../../../cell/test \
+  $(NRF5_PATH)/external/mbedtls/include \
   ../../../../../../../cell/api \
   ../../../../../../../cell/src \
   ../../../../../../../cell/test \

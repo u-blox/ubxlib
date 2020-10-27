@@ -37,6 +37,7 @@ set(COMPONENT_SRCS
 # The common AT client
                    "../../../../../../../../common/at_client/src/u_at_client.c"
 # The porting layer
+                   "../../../../../../common/mbedtls/u_port_crypto.c"
                    "../../../../../../common/event_queue/u_port_event_queue.c"
                    "../../../../src/u_port.c"
                    "../../../../src/u_port_debug.c"
@@ -52,6 +53,10 @@ set(COMPONENT_PRIV_INCLUDEDIRS
                    "../../../../../../../../common/network/src"
 # The porting layer
                    "../../../../src")
+
+# For crypto functions
+set(COMPONENT_REQUIRES mbedtls)
+
 register_component()
 
 if (DEFINED ENV{U_FLAGS})

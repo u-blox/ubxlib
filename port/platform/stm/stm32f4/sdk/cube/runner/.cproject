@@ -63,6 +63,7 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/include}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/CMSIS_RTOS}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/mbedTLS/include}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/Inc/STM32F4xx_HAL_Driver/Inc}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/Inc/STM32F4xx_HAL_Driver/Inc/Legacy}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/Inc/CMSIS/Include}"/>
@@ -192,6 +193,7 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/include}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/CMSIS_RTOS}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/mbedTLS/include}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/Inc/STM32F4xx_HAL_Driver/Inc}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/Inc/STM32F4xx_HAL_Driver/Inc/Legacy}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/Inc/CMSIS/Include}"/>

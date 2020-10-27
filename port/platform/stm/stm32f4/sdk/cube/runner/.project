@@ -202,6 +202,11 @@
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/event_queue/u_port_event_queue.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Port/u_port_crypto.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/mbedtls/u_port_crypto.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Port/u_port_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BPLATFORM_PATH%7D/src/u_port_private.c</locationURI>
@@ -467,6 +472,36 @@
 			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/FreeRTOS/Source/timers.c</locationURI>
 		</link>
 		<link>
+			<name>Middlewares/Third_Party/mbedTLS/Library/sha256.c</name>
+			<type>1</type>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/sha256.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/Third_Party/mbedTLS/Library/md.c</name>
+			<type>1</type>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/md.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/Third_Party/mbedTLS/Library/md_wrap.c</name>
+			<type>1</type>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/md_wrap.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/Third_Party/mbedTLS/Library/md5.c</name>
+			<type>1</type>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/md5.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/Third_Party/mbedTLS/Library/aes.c</name>
+			<type>1</type>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/aes.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/Third_Party/mbedTLS/Library/platform_util.c</name>
+			<type>1</type>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/platform_util.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/Inc/U-Blox/platform/common/runner</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/runner</locationURI>
@@ -480,6 +515,11 @@
 			<name>Middlewares/Inc/Third_Party/FreeRTOS/Source/include</name>
 			<type>2</type>
 			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/FreeRTOS/Source/include</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/Inc/Third_Party/mbedTLS/include</name>
+			<type>2</type>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/include</locationURI>
 		</link>
 		<link>
 			<name>Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.c</name>
