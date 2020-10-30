@@ -27,5 +27,6 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 - The heap management code (`heap_useNewlib.c`), required because some of the platforms that use newlib and FreeRTOS don't provide the necessary memory management for them to play together, is copyright Dave Nadler.
 - The AT client code in `common/at_client` is derived from the Apache 2.0 licensed AT parser of mbed-os.
 - The `stm32f4` platform directory necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
+- The `go` UDP echo server at `common/sock/test/echo_server/echo-server-udp.go` is based on that of AWS FreeRTOS.
 
 In all cases copyright, and our thanks, remain with the original authors.

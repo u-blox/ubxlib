@@ -1987,7 +1987,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
                                                   U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
             // Add the port number we will use
-            remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
+            remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
 
             // Create the TCP socket
             gTestConfig.descriptor = uSockCreate(networkHandle,

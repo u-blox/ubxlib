@@ -31,41 +31,37 @@
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME
 /** Echo server to use for UDP sockets testing as a domain name.
  */
-# define U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME  "echo.u-blox.com"
+# define U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME  "ciot.it-sgn.u-blox.com"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS
 /** Echo server to use for UDP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS  "195.34.89.241"
+# define U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS  "185.215.195.132"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_PORT
 /** Port number on the echo server to use for UDP testing.
  */
-# define U_SOCK_TEST_ECHO_UDP_SERVER_PORT  7
+# define U_SOCK_TEST_ECHO_UDP_SERVER_PORT  5050
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME
 /** Echo server to use for TCP sockets testing as a domain name.
- * (note: the u-blox one adds a prefix to the echoed TCP packets
- * which is undesirable; mbed don't seem to mind us using theirs).
  */
-# define U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME  "echo.mbedcloudtesting.com"
+# define U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME  "ciot.it-sgn.u-blox.com"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS
 /** Echo server to use for TCP sockets testing as an IP address.
- * (note: the u-blox one adds a prefix to the echoed TCP packets
- * which is undesirable; mbed don't seem to mind us using theirs).
  */
-# define U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS  "52.215.34.155"
+# define U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS  "185.215.195.132"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_PORT
 /** Port number on the echo server to use for TCP testing.
  */
-# define U_SOCK_TEST_ECHO_TCP_SERVER_PORT  7
+# define U_SOCK_TEST_ECHO_TCP_SERVER_PORT  5055
 #endif
 
 #ifndef U_SOCK_TEST_LOCAL_PORT

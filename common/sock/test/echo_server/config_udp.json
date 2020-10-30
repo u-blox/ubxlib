@@ -1,0 +1,5 @@
+{
+    "verbose": true,
+    "logging": false,
+    "server-port": "5050"
+}

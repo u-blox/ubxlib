@@ -66,8 +66,8 @@
  * -------------------------------------------------------------- */
 
 // Echo server URL and port number
-#define MY_SERVER_NAME "echo.mbedcloudtesting.com"
-#define MY_SERVER_PORT 7
+#define MY_SERVER_NAME "ciot.it-sgn.u-blox.com"
+#define MY_SERVER_PORT 5055
 
 #ifndef U_CFG_ENABLE_LOGGING
 # define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
