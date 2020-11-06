@@ -68,7 +68,7 @@
 #warning "This wrapper was verified for newlib version 3.0.0 and then checked again for minor revision 1; please ensure newlib's external requirements for malloc-family are unchanged!"
 #endif
 
-#include "freeRTOS.h" // defines public interface we're implementing here
+#include "FreeRTOS.h" // defines public interface we're implementing here
 #if !defined(configUSE_NEWLIB_REENTRANT) ||  (configUSE_NEWLIB_REENTRANT!=1)
 #warning "#define configUSE_NEWLIB_REENTRANT 1 // Required for thread-safety of newlib sprintf, strtok, etc..."
 // If you're *REALLY* sure you don't need FreeRTOS's newlib reentrancy support, remove this warning...
