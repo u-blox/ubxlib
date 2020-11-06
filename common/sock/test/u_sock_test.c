@@ -134,8 +134,8 @@
 
 // Do some cross-checking
 #ifdef U_AT_CLIENT_URC_TASK_PRIORITY
-# if (U_AT_CLIENT_URC_TASK_PRIORITY) <= U_SOCK_TEST_TASK_PRIORITY)
-#  error U_AT_CLIENT_URC_TASK_PRIORITY must greater than U_SOCK_TEST_TASK_PRIORITY
+# if (U_AT_CLIENT_URC_TASK_PRIORITY) <= (U_SOCK_TEST_TASK_PRIORITY)
+#  error U_AT_CLIENT_URC_TASK_PRIORITY must be greater than U_SOCK_TEST_TASK_PRIORITY
 # endif
 #endif
 
@@ -1182,7 +1182,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
 
             // Close the socket
             U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
-            uPortLog("U_CELL_TEST: waiting up to %d second(s) for TCP"
+            uPortLog("U_SOCK_TEST: waiting up to %d second(s) for TCP"
                      " socket to close...\n",
                      U_SOCK_TEST_TCP_CLOSE_SECONDS);
             for (y = 0; (y < U_SOCK_TEST_TCP_CLOSE_SECONDS) &&

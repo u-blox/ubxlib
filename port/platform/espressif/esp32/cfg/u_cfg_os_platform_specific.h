@@ -62,7 +62,7 @@
 #define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES CONFIG_MAIN_TASK_STACK_SIZE
 
 /** The priority of the task running the examples and tests: should
- * be low.
+ * be low but must be higher than the minimum.
  */
 #define U_CFG_OS_APP_TASK_PRIORITY CONFIG_ESP32_PTHREAD_TASK_PRIO_DEFAULT
 

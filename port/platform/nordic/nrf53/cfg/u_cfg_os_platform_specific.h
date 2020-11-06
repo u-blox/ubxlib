@@ -53,7 +53,7 @@
 
 #ifndef U_CFG_OS_APP_TASK_PRIORITY
 /** The priority of the task running the examples and tests: should
- * be low.
+ * be low but must be higher than the minimum.
  */
 # define U_CFG_OS_APP_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 1)
 #endif

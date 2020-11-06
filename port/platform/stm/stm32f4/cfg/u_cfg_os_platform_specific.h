@@ -62,8 +62,8 @@
  */
 #define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES (1024 * 8)
 
-/** The priority of the task running the examples/tests: should be
- * low.
+/** The priority of the task running the examples/tests: should
+ * be low but must be higher than the minimum.
  */
 #define U_CFG_OS_APP_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 1)
 

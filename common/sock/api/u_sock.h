@@ -575,14 +575,10 @@ int32_t uSockShutdown(uSockDescriptor_t descriptor,
  * of the task within which the callback is run is implementation
  * dependent.  TODO: better guidance.
  *
- * IMPORTANT: don't spend long in your callback, i.e. don't
- * call back into this API, don't call things that will cause any
- * sort of processing load or might get stuck.
- * ALSO IMPORTANT: if you use the callback to send an OS
- * signal to a task that then calls one of this module's data
- * reception functions, make sure that task is running at a
- * lower priority than the callback otherwise it will lock-out
- * this module.
+ * IMPORTANT: don't spend long in your callback, i.e. don't call
+ * directly back into this API (only do that via another task
+ * or you risk mutex deadlocks). don't call things that will cause
+ * any sort of processing load or might get stuck.
  *
  * @param descriptor         the descriptor of the socket.
  * @param pCallback          the function to call when data arrives,
@@ -602,8 +598,8 @@ void uSockRegisterCallbackData(uSockDescriptor_t descriptor,
  * is implementation dependent.  TODO: better guidance.
  *
  * IMPORTANT: don't spend long in your callback, i.e. don't
- * call back into this API, don't call things that will cause any
- * sort of processing load or might get stuck.
+ * call directly back into this API, don't call things that will
+ * cause any sort of processing load or might get stuck.
  *
  * @param descriptor         the descriptor of the socket.
  * @param pCallback          the function to call, use NULL

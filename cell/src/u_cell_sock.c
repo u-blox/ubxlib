@@ -714,7 +714,7 @@ int32_t uCellSockClose(int32_t cellHandle,
                     uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
                     if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
                                             U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)) {
-                        // Asynchronous closure supported
+                        // Asynchronous closure not supported
                         pCallback = NULL;
                     }
                     if (pCallback != NULL) {
@@ -1083,17 +1083,22 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
                     // Read the amount of data
                     x = uAtClientReadInt(atHandle);
                     uAtClientResponseStop(atHandle);
-                    if ((uAtClientUnlock(atHandle) == 0) && (x >= 0)) {
+                    // Update pending bytes here, before
+                    // unlocking, as otherwise a data callback
+                    // triggered by a URC could be sitting waiting
+                    // to grab the AT lock and jump in before
+                    // pending bytes has been updated, leading it
+                    // back into here again, etc, etc.
+                    if (x > 0) {
                         pSocket->pendingBytes = x;
-                        if ((x > 0) && (pSocket->pDataCallback != NULL)) {
-                            // If we've gone from nothing
-                            // to something call the user
-                            // callback
-                            uAtClientCallback(atHandle,
-                                              dataCallback,
-                                              (void *) sockHandle);
-                        }
+                        // DON'T call the user data callback here:
+                        // we already have the AT interface locked
+                        // and a user might try to call back into 
+                        // here which would result in deadlock.
+                        // They will get their received data, there
+                        // is no need to worry.
                     }
+                    uAtClientUnlock(atHandle);
                 }
                 if (pSocket->pendingBytes > 0) {
                     // In the UDP case we HAVE to read the number
@@ -1306,17 +1311,22 @@ int32_t uCellSockRead(int32_t cellHandle,
                     // Read the amount of data
                     x = uAtClientReadInt(atHandle);
                     uAtClientResponseStop(atHandle);
-                    if ((uAtClientUnlock(atHandle) == 0) && (x >= 0)) {
+                    // Update pending bytes here, before
+                    // unlocking, as otherwise a data callback
+                    // triggered by a URC could be sitting waiting
+                    // to grab the AT lock and jump in before
+                    // pending bytes has been updated, leading it
+                    // back into here again, etc, etc.
+                    if (x > 0) {
                         pSocket->pendingBytes = x;
-                        if ((x > 0) && (pSocket->pDataCallback != NULL)) {
-                            // If we've gone from nothing
-                            // to something call the user
-                            // callback
-                            uAtClientCallback(atHandle,
-                                              dataCallback,
-                                              (void *) sockHandle);
-                        }
+                        // DON'T call the user data callback here:
+                        // we already have the AT interface locked
+                        // and a user might try to call back into 
+                        // here which would result in deadlock.
+                        // They will get their received data, there
+                        // is no need to worry.
                     }
+                    uAtClientUnlock(atHandle);
                 }
                 if (pSocket->pendingBytes > 0) {
                     negErrnoLocalOrSize = U_SOCK_ENONE;
