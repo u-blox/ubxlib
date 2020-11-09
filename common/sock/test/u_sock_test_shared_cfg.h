@@ -31,7 +31,7 @@
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME
 /** Echo server to use for UDP sockets testing as a domain name.
  */
-# define U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME  "ciot.it-sgn.u-blox.com"
+# define U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME  "ubxlib.it-sgn.u-blox.com"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS
@@ -49,7 +49,7 @@
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME
 /** Echo server to use for TCP sockets testing as a domain name.
  */
-# define U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME  "ciot.it-sgn.u-blox.com"
+# define U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME  "ubxlib.it-sgn.u-blox.com"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS

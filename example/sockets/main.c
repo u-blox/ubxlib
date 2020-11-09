@@ -66,7 +66,7 @@
  * -------------------------------------------------------------- */
 
 // Echo server URL and port number
-#define MY_SERVER_NAME "ciot.it-sgn.u-blox.com"
+#define MY_SERVER_NAME "ubxlib.it-sgn.u-blox.com"
 #define MY_SERVER_PORT 5055
 
 #ifndef U_CFG_ENABLE_LOGGING
