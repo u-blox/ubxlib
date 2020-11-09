@@ -804,6 +804,9 @@ static int32_t handleNullBuffer(uAtClientHandle_t atClientHandle,
     // U_AT_CLIENT_TEST_BYTES_TWO
 
     (void) pParameter;
+#if !U_CFG_ENABLE_LOGGING
+    (void) index;
+#endif
 
     uPortLog("U_AT_CLIENT_TEST_%d: checking that string/byte reads"
              " into a NULL buffer work.\n", index + 1);
@@ -882,6 +885,10 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
     int64_t startTime;
     int32_t duration;
     const uAtClientTestEchoError_t *pError;
+
+#if !U_CFG_ENABLE_LOGGING
+    (void) index;
+#endif
 
     startTime = uPortGetTickTimeMs();
     pError = (const uAtClientTestEchoError_t *) pParameter;

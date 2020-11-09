@@ -1093,7 +1093,7 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
                         pSocket->pendingBytes = x;
                         // DON'T call the user data callback here:
                         // we already have the AT interface locked
-                        // and a user might try to call back into 
+                        // and a user might try to call back into
                         // here which would result in deadlock.
                         // They will get their received data, there
                         // is no need to worry.
@@ -1321,7 +1321,7 @@ int32_t uCellSockRead(int32_t cellHandle,
                         pSocket->pendingBytes = x;
                         // DON'T call the user data callback here:
                         // we already have the AT interface locked
-                        // and a user might try to call back into 
+                        // and a user might try to call back into
                         // here which would result in deadlock.
                         // They will get their received data, there
                         // is no need to worry.

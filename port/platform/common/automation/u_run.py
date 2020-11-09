@@ -170,8 +170,8 @@ def main(database, instance, filter_string, clean,
         else:
             # No connection, must be a local thing
             if instance[0] == 0:
-                return_value = u_run_lint.run(instance, ubxlib_dir, working_dir,
-                                              printer, reporter)
+                return_value = u_run_lint.run(instance, defines, ubxlib_dir,
+                                              working_dir, printer, reporter)
             elif instance[0] == 1:
                 return_value = u_run_doxygen.run(instance, ubxlib_dir, working_dir,
                                                  printer, reporter)
@@ -182,8 +182,8 @@ def main(database, instance, filter_string, clean,
                 return_value = u_run_pylint.run(instance, ubxlib_dir, working_dir,
                                                 printer, reporter)
             elif instance[0] == 4:
-                printer.string("{}reserved, nothing to do.".format(PROMPT))
-                return_value = 0
+                return_value = u_run_lint.run(instance, defines, ubxlib_dir,
+                                              working_dir, printer, reporter)
             elif instance[0] == 5:
                 printer.string("{}reserved, nothing to do.".format(PROMPT))
                 return_value = 0

@@ -68,6 +68,7 @@ ECHO:=echo
 TOUCH:=touch
 AWK:=gawk
 
+$(info    CFLAGS will be "$(CFLAGS)")
 $(info    GCC_BIN will be "$(GCC_BIN)")
 $(info    GXX_BIN will be "$(GXX_BIN)")
 $(info    RM will be "$(RM)")
@@ -124,19 +125,19 @@ macros:
 # provide an 'awk' with the Lint distro.
 include_path:
 	$(GXX) -v -c $(E).cpp 2>&1 \
-	| $(AWK) "					\
-	    BEGIN  {S=0}				\
-	    /search starts here:/  {S=1;next;}		\
-	    S && /Library\/Frameworks/ {next;}		\
-	    S && /^ /  {				\
-		sub(\"^ \",\"\");				\
-		gsub(\"//*\",\"/\");			\
-		sub(\"\xd$$\",\"\");			\
-		sub(\"/$$\",\"\");				\
-		printf(\"--i\"%s\"\n\", $$0);		\
-		next;					\
-	    }						\
-	    S  {exit;}					\
+	| $(AWK) " \
+	    BEGIN  {S=0} \
+	    /search starts here:/  {S=1;next;} \
+	    S && /Library\/Frameworks/ {next;} \
+	    S && /^ /  { \
+		sub(\"^ \",\"\"); \
+		gsub(\"//*\",\"/\"); \
+		sub(\"\xd$$\",\"\"); \
+		sub(\"/$$\",\"\"); \
+		printf(\"--i\"%s\"\n\", $$0); \
+		next; \
+	    } \
+	    S  {exit;} \
 	    " >gcc-include-path.lnt
 
 
@@ -147,18 +148,18 @@ include_path:
 sizes:
 	$(RM) $(SIZE_GEN)*
 	@$(ECHO) \
-extern  "C" int printf(const char*, ...);\
-int main() {\
-printf( "-ss%%u  ", sizeof(short) );\
-printf( "-si%%u  ", sizeof(int) );\
-printf( "-sl%%u  ", sizeof(long) );\
-printf( "-sll%%u  ", sizeof(long long) );\
-printf( "-sf%%u  ", sizeof(float) );\
-printf( "-sd%%u  ", sizeof(double) );\
-printf( "-sld%%u  ", sizeof(long double) );\
-printf( "-sp%%u  ", sizeof(void*) );\
-printf( "-sw%%u  ", sizeof(wchar_t) );\
-}\
+extern  "C" int printf(const char*, ...); \
+int main() { \
+printf( "-ss%%u  ", sizeof(short) ); \
+printf( "-si%%u  ", sizeof(int) ); \
+printf( "-sl%%u  ", sizeof(long) ); \
+printf( "-sll%%u  ", sizeof(long long) ); \
+printf( "-sf%%u  ", sizeof(float) ); \
+printf( "-sd%%u  ", sizeof(double) ); \
+printf( "-sld%%u  ", sizeof(long double) ); \
+printf( "-sp%%u  ", sizeof(void*) ); \
+printf( "-sw%%u  ", sizeof(wchar_t) ); \
+} \
  >$(SIZE_GEN).cc
 	$(GXX) $(SIZE_GEN).cc -o $(SIZE_GEN)
 	$(SIZE_GEN) >size-options.lnt

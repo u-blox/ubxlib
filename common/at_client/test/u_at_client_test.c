@@ -805,6 +805,10 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
     bool standalone = false;
     char *pBuffer;
 
+#if !U_CFG_ENABLE_LOGGING
+    (void) pPostfix;
+#endif
+
     pBuffer = (char *) malloc(U_AT_CLIENT_TEST_RESPONSE_BUFFER_LENGTH);
     if (pBuffer != NULL) {
         lastError = 0;

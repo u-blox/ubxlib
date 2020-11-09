@@ -43,3 +43,8 @@
  */
 +libm(unity_internals.h)
 +libm(unity_config.h)
+
+/* Don't worry about u_cfg_sw.h heing unused, it won't
+ * be if logging is switched off.
+ */
+-esym(766, u_cfg_sw.h)

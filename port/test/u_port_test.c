@@ -399,6 +399,9 @@ static void osReentTask(void *pParameter)
 }
 
 // The test task for OS stuff.
+//lint -esym(818, pParameters) Suppress "could be const"
+// since this has to match the function signature
+// exactly to avoid a compiler warning
 static void osTestTask(void *pParameters)
 {
     int32_t queueItem = 0;
@@ -1095,6 +1098,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     U_PORT_TEST_ASSERT(uartHandle >= 0);
     uPortLog("U_PORT_TEST: waiting %d ms...\n",
              U_PORT_TEST_OS_BLOCK_TIME_MS);
+    //lint -e(838) Suppress previous value not used which
+    // will occur if uPortLog() is compiled out
     timeNowMs = uPortGetTickTimeMs();
     uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
     timeDelta = uPortGetTickTimeMs() - timeNowMs;
@@ -1122,6 +1127,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
                        (timeDelta <= U_PORT_TEST_OS_BLOCK_TIME_MS +
                         U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS));
 
+    //lint -esym(438, timeDelta) Suppress value not used, which
+    // will occur if uPortLog() is compiled out
     timeDelta = uPortGetTickTimeMs() - startTimeMs;
     uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"
              " the test took %d second(s).\n", (int32_t) (timeDelta / 1000));
@@ -1213,6 +1220,8 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     }
 
     // Bonus iteration with NULL parameter
+    //lint -esym(438, x) Suppress value not used, which
+    // will occur if uPortLog() is compiled out
     x++;
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMaxHandle,
                                            NULL, 0) == 0);

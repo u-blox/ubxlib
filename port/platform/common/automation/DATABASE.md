@@ -11,7 +11,7 @@ The platform field must match a unique platform name from under one of the `plat
 | 1     | Run Doxygen                                |           |            |                                  |                                             |                                          |
 | 2     | Run AStyle style checker (for advice only) |           |            |                                  |                                             |                                          |
 | 3     | Run Pylint                                 |           |            |                                  |                                             |                                          |
-| 4     | Reserved                                   |           |            |                                  |                                             |                                          |
+| 4     | Run Lint with logging off                  |           |            |                                  |                                             | U_CFG_ENABLE_LOGGING=0                   |
 | 5     | Reserved                                   |           |            |                                  |                                             |                                          |
 | 6     | Reserved                                   |           |            |                                  |                                             |                                          |
 | 7     | Reserved                                   |           |            |                                  |                                             |                                          |

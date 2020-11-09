@@ -32,8 +32,8 @@ EXT_DISCARD = ["md", "txt", "jpg", "png", "gitignore"]
 # A list of file extensions to keep for code files
 EXT_CODE = ["c", "cpp", "h", "hpp"]
 
-# The instances to always run: Lint, Doxygen and AStyle
-INSTANCES_ALWAYS = [[0], [1], [2]]
+# The instances to always run: Lint (with and without logging), Doxygen and AStyle
+INSTANCES_ALWAYS = [[0], [1], [2], [3]]
 
 def instances_string(instances):
     '''Return a string of the form "1.2.3, 0.1"'''

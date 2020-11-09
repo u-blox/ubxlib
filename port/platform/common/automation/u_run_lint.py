@@ -28,7 +28,7 @@ LINT_PLATFORM_CONFIG_FILES = u_settings.LINT_PLATFORM_CONFIG_FILES #["co-gcc.lnt
 # here as we need more lee-way and don't want Lint
 # suppressions cluttering them up.
 LINT_DIRS = ["common\\network\\src", "common\\network\\test",
-             "common\\sock\\src", "common\\sock\\test", 
+             "common\\sock\\src", "common\\sock\\test",
              "common\\at_client\\src", "common\\at_client\\test",
              "cell\\src", "cell\\test",
              "port\\clib", "port\\platform\\common\\event_queue",
@@ -51,7 +51,7 @@ UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
                        "port\\platform\\lint\\stubs"]
 
 # Include directories for the C compiler and its C library.
-COMPILER_INCLUDE_DIRS = u_settings.LINT_COMPILER_INCLUDE_DIRS 
+COMPILER_INCLUDE_DIRS = u_settings.LINT_COMPILER_INCLUDE_DIRS
 
 # Table of "where.exe" search paths for tools required
 # plus hints as to how to install the tools
@@ -107,12 +107,24 @@ def check_installation(tools_list, compiler_dirs_list, printer, prompt):
 
     return success
 
-def create_lint_config(lint_platform_path, printer, prompt):
+def create_lint_config(lint_platform_path, defines, printer, prompt):
     '''Create the Lint configuration files'''
     call_list = []
 
+    # Get the defines
+    if defines:
+        # Create the CFLAGS string
+        cflags = ""
+        for idx, define in enumerate(defines):
+            if idx == 0:
+                cflags = "-D" + define
+            else:
+                cflags += " -D" + define
+
     # Run make to create the configuration files
     call_list.append("make")
+    if defines:
+        call_list.append("CFLAGS=" + cflags)
     call_list.append("-f")
     call_list.append(lint_platform_path + os.sep + "co-gcc.mak")
 
@@ -142,10 +154,11 @@ def get_file_list(ubxlib_dir, lint_dirs):
 
     return file_list
 
-def run(instance, ubxlib_dir, working_dir, printer, reporter):
+def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
     '''Run Lint'''
     return_value = 1
     call_list = []
+    defines_list = {}
     instance_text = u_utils.get_instance_text(instance)
 
     prompt = PROMPT + instance_text + ": "
@@ -171,11 +184,15 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                 # Create the local Lint configuration files
                 if create_lint_config(ubxlib_dir + os.sep +
                                       LINT_PLATFORM_PATH,
-                                      printer, prompt):
+                                      defines, printer, prompt):
                     # Get the file list
                     file_list = get_file_list(ubxlib_dir, LINT_DIRS)
+
                     # Assemble the call list
                     call_list.append("flexelint")
+                    if defines:
+                        for item in defines:
+                            call_list.append("-d" + item)
                     for item in COMPILER_INCLUDE_DIRS:
                         call_list.append("-i\"" + item + "\"")
                     call_list.append("-i\"" + u_utils.UNITY_SUBDIR + os.sep + "src\"")
