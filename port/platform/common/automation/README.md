@@ -4,6 +4,33 @@ The files in here are used internally within u-blox to automate testing of `ubxl
 # Reading The Jenkins Output
 Since much of the test execution is inside these Python scripts the Jenkins level Groovy script `Jenkinsfile` doesn't do a great deal.  To see how testing has gone look in the Jenkins artifacts for files named `summary.log`.  There should be one at the top level and another inside the folder for each instance.  Check the top level `summary.log` to see how the run went.  The `summary.log` file inside each instance folder contains the portion of the summary for that instance but adds no aditional information so, if there is a problem, check the `debug.log` file inside the instance folder for more detailed information.
 
+# Running Scripts Locally
+You may need to run the automated tests locally, e.g. when sifting through Lint issues or checking for Doxygen issues, or simply running tests on a locally-connected board in the same way as they would run on the automated test system.  To do this, assuming you have the required tools installed (the scripts will often tell you if a tool is not found and give a hint as to where to find it), the simplest way to do this is to `CD` to this directory and run, for instance:
+
+```
+python u_run.py 0 -w c:\temp -u c:\projects\ubxlib_priv -d debug.log
+```
+
+...where `0` is the instance you want to run (in this case Lint), `c:\temp` is a temporary working directory (replace as appropriate), `c:\projects\ubxlib_priv` the location of the root of this repo (replace as appropriate) and `debug.log` a place to write the detailed trace information.
+
+If you are trying to locally run a test which talks to real hardware you will also need to locally edit the file `u_connection.py` to override the debugger serial number and/or COM port the scripts would use for that board on the automated test system.  For local testing, assuming you only have one board connected, locate the entry for the instance you plan to run in the top of that file and set `serial_port` to the port the board appears as on your local machine and set `debugger` (if present) to `None`. For instance, to run instance 16 locally you might open that file and change:
+
+```
+                   # Instance 16, NRF52, SARA-R410M-02B
+                   {"lock": None, "serial_port": "COM7", "debugger": "683920969",
+                    "swo_port": u_utils.JLINK_SWO_PORT + 1},
+```
+
+...to:
+
+```
+                   # Instance 16, NRF52, SARA-R410M-02B
+                   {"lock": None, "serial_port": "COM3", "debugger": None,
+                    "swo_port": u_utils.JLINK_SWO_PORT + 1},
+```
+
+Be **very careful** not to accidentally check your local change in.
+
 # Script Usage
 The main intended entry point into automation is the `u_pull_request.py` Python script.  You can run it with parameter `-h` to obtain usage information but basically the form is:
 
