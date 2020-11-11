@@ -6,12 +6,7 @@ import sys
 import json
 import os
 
-# The change of name below from settings.json to
-# settings_bis.json is a temporary change only to
-# facilitate testing of this PR. The name will
-# be reverted to settings.json before it is
-# submitted as a PR.
-__path = os.path.expanduser("~/.ubx_automation/settings_bis.json")
+__path = os.path.expanduser("~/.ubx_automation/settings.json")
 __useDefaultSettings = True
 __storeSettings = True
 __settings = {}
