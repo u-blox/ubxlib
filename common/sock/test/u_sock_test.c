@@ -123,13 +123,22 @@
 # define U_SOCK_TEST_NON_BLOCKING_TIME_MS (U_SOCK_RECEIVE_POLL_INTERVAL_MS + 250)
 #endif
 
-#ifndef U_SOCK_TEST_TIME_MARGIN_MS
-/** Margin on timers during sockets testing.
+#ifndef U_SOCK_TEST_TIME_MARGIN_PLUS_MS
+/** Positive margin on timers during sockets testing.
  * This has to be pretty sloppy because any AT command
  * delay will contribute to it in the case of a
  * cellular module.
  */
-# define U_SOCK_TEST_TIME_MARGIN_MS 1000
+# define U_SOCK_TEST_TIME_MARGIN_PLUS_MS 1000
+#endif
+
+#ifndef U_SOCK_TEST_TIME_MARGIN_MINUS_MS
+/** Negative margin on timers during sockets testing:
+ * should be pretty small, certainly not larger than
+ * 2 seconds which is the smallest timeout
+ * we set in these tests.
+ */
+# define U_SOCK_TEST_TIME_MARGIN_MINUS_MS 100
 #endif
 
 // Do some cross-checking
@@ -137,6 +146,10 @@
 # if (U_AT_CLIENT_URC_TASK_PRIORITY) <= (U_SOCK_TEST_TASK_PRIORITY)
 #  error U_AT_CLIENT_URC_TASK_PRIORITY must be greater than U_SOCK_TEST_TASK_PRIORITY
 # endif
+#endif
+
+#if U_SOCK_TEST_TIME_MARGIN_PLUS_MS > U_SOCK_RECEIVE_TIMEOUT_DEFAULT_MS
+# error U_SOCK_TEST_TIME_MARGIN_PLUS_MS cannot be larger than U_SOCK_RECEIVE_TIMEOUT_DEFAULT_MS
 #endif
 
 /* ----------------------------------------------------------------
@@ -1378,9 +1391,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
             errno = 0;
             uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing took"
                      " %d millisecond(s)...\n", (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs >= timeoutMs);
+            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
             U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
-                               U_SOCK_TEST_TIME_MARGIN_MS);
+                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
             timeout.tv_sec = 0;
             timeout.tv_usec = 500000;
             timeoutMs = (((int64_t) timeout.tv_sec) * 1000) +
@@ -1401,9 +1415,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
             errno = 0;
             uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing took"
                      " %d millisecond(s)...\n", (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs >= timeoutMs);
+            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
             U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
-                               U_SOCK_TEST_TIME_MARGIN_MS);
+                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
 
             // Close the UDP socket
             U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
@@ -1483,8 +1498,11 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
             U_PORT_TEST_ASSERT(errorCode == 0);
 
             // Set a short time-out so that we're not hanging around
+            // Not setting it so short, though, that the margins we
+            // allow could overlap (i.e. a lot less than
+            // U_SOCK_TEST_TIME_MARGIN_PLUS_MS)
             uPortLog("U_SOCK_TEST: setting a short socket timeout to save time...\n");
-            timeout.tv_sec = 1;
+            timeout.tv_sec = 2;
             timeout.tv_usec = 0;
             timeoutMs = ((int64_t) timeout.tv_sec) * 1000 + timeout.tv_usec / 1000;
             U_PORT_TEST_ASSERT(uSockOptionSet(descriptor,
@@ -1500,8 +1518,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
             elapsedMs = uPortGetTickTimeMs() - startTimeMs;
             uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing"
                      " took %d millisecond(s)...\n", (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs >= timeoutMs);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs + U_SOCK_TEST_TIME_MARGIN_MS);
+            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
             startTimeMs = uPortGetTickTimeMs();
             U_PORT_TEST_ASSERT(uSockRead(descriptor, pData,
                                          sizeof(pData)) < 0);
@@ -1510,8 +1530,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
             elapsedMs = uPortGetTickTimeMs() - startTimeMs;
             uPortLog("U_SOCK_TEST: uSockRead() of nothing took %d "
                      " millisecond(s)...\n", (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs >= timeoutMs);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs + U_SOCK_TEST_TIME_MARGIN_MS);
+            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
 
             uPortLog("U_SOCK_TEST: get current non-blocking state...\n");
             isBlocking = uSockBlockingGet(descriptor);
@@ -1536,7 +1558,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
             uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing with"
                      " blocking off took %d millisecond(s)...\n",
                      (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs < U_SOCK_TEST_NON_BLOCKING_TIME_MS);
+            U_PORT_TEST_ASSERT(elapsedMs < U_SOCK_TEST_NON_BLOCKING_TIME_MS +
+                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
             startTimeMs = uPortGetTickTimeMs();
             U_PORT_TEST_ASSERT(uSockRead(descriptor, pData,
                                          sizeof(pData)) < 0);
@@ -1546,7 +1569,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
             uPortLog("U_SOCK_TEST: uSockRead() of nothing with"
                      " blocking off took %d millisecond(s)...\n",
                      (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs < U_SOCK_TEST_NON_BLOCKING_TIME_MS);
+            U_PORT_TEST_ASSERT(elapsedMs < U_SOCK_TEST_NON_BLOCKING_TIME_MS +
+                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
 
             uPortLog("U_SOCK_TEST: set blocking again...\n");
             uSockBlockingSet(descriptor, true);
@@ -1562,8 +1586,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
             uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing with"
                      " blocking on took %d millisecond(s)...\n",
                      (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs >= timeoutMs);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs + U_SOCK_TEST_TIME_MARGIN_MS);
+            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
             startTimeMs = uPortGetTickTimeMs();
             U_PORT_TEST_ASSERT(uSockRead(descriptor, pData,
                                          sizeof(pData)) < 0);
@@ -1573,8 +1599,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
             uPortLog("U_SOCK_TEST: uSockRead() of nothing with"
                      " blocking on took %d millisecond(s)...\n",
                      (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs >= timeoutMs);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs + U_SOCK_TEST_TIME_MARGIN_MS);
+            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
 
             // Close the socket
             U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
@@ -1702,7 +1730,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
                     //lint -e{441} Suppress loop variable not found in
                     // condition: we're using time instead
                     for (y = 0; (offset < sizeof(gSendData) - 1) &&
-                         (uPortGetTickTimeMs() - startTimeMs < 10000); y++) {
+                         (uPortGetTickTimeMs() - startTimeMs < 15000); y++) {
                         z = uSockReceiveFrom(descriptor, NULL,
                                              pDataReceived + offset +
                                              U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
@@ -1887,7 +1915,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                          " %d byte(s).\n", y, offset);
 
                 // Give the data time to come back
-                for (size_t z = 10; (z > 0) &&
+                for (size_t z = 15; (z > 0) &&
                      (gTestConfig.bytesReceived < gTestConfig.bytesToSend); z--) {
                     uPortTaskBlock(1000);
                 }
@@ -1900,14 +1928,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                 if (gTestConfig.packetsReceived > 0) {
                     // Check that we reassembled everything correctly
                     // If the data is not complete then allow it
-                    // if the number of packets received is one
+                    // if the number of packets received is one or two
                     // less than that sent, just to reduce the chances
-                    // of failure due to internet datagram loss
+                    // of failure due to datagram loss across an RF link
                     if (!checkAgainstSentData(gSendData,
                                               gTestConfig.bytesToSend,
                                               gTestConfig.pBuffer,
                                               gTestConfig.bytesReceived)) {
-                        U_PORT_TEST_ASSERT(gTestConfig.packetsReceived == y - 1);
+                        U_PORT_TEST_ASSERT((gTestConfig.packetsReceived == y - 1) ||
+                                           (gTestConfig.packetsReceived == y - 2));
                     }
                 }
 

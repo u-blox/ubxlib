@@ -39,9 +39,12 @@
  * debugger configure it rather than it being configured
  * automagically during startup; the drawback of that approach
  * is that if the target resets while the debugger is running
- * all further output will be lost. 2 MHz is a good value.
+ * all further output will be lost. In theory this can run
+ * at 2 MHz but I've found that is not reliable on all boards.
+ * 125,000 chosen because it's one of the options in the STM32Cube
+ * IDE configuration dialog that is around 100 kHz and seems stable.
  */
-# define U_CFG_HW_SWO_CLOCK_HZ 2000000
+# define U_CFG_HW_SWO_CLOCK_HZ 125000
 #endif
 
 /* ----------------------------------------------------------------

@@ -637,6 +637,7 @@ int32_t uCellSockConnect(int32_t cellHandle,
     int32_t errnoLocal = U_SOCK_EINVAL;
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
+    uAtClientDeviceError_t deviceError;
     uCellSockSocket_t *pSocket;
     char buffer[U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES];
     char *pRemoteIpAddress;
@@ -654,21 +655,32 @@ int32_t uCellSockConnect(int32_t cellHandle,
                 pRemoteIpAddress = pUSockDomainRemovePort(buffer);
                 errnoLocal = U_SOCK_EHOSTUNREACH;
                 // Connect the socket through the cellular module
-                uAtClientLock(atHandle);
-                // Leave a little longer to connect
-                uAtClientTimeoutSet(atHandle,
-                                    U_CELL_SOCK_CONNECT_TIMEOUT_SECONDS * 1000);
-                uAtClientCommandStart(atHandle, "AT+USOCO=");
-                // Write module socket handle
-                uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
-                // Write IP address
-                uAtClientWriteString(atHandle, pRemoteIpAddress, true);
-                // Write port number
-                uAtClientWriteInt(atHandle, pRemoteAddress->port);
-                uAtClientCommandStopReadResponse(atHandle);
-                if (uAtClientUnlock(atHandle) == 0) {
-                    // All good
-                    errnoLocal = U_SOCK_ENONE;
+                // If have seen modules return ERROR to this
+                // immediately so try a few times
+                deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR;
+                for (size_t x = 3; (x > 0) &&
+                     (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
+                     x--) {
+                    uAtClientLock(atHandle);
+                    // Leave a little longer to connect
+                    uAtClientTimeoutSet(atHandle,
+                                        U_CELL_SOCK_CONNECT_TIMEOUT_SECONDS * 1000);
+                    uAtClientCommandStart(atHandle, "AT+USOCO=");
+                    // Write module socket handle
+                    uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
+                    // Write IP address
+                    uAtClientWriteString(atHandle, pRemoteIpAddress, true);
+                    // Write port number
+                    uAtClientWriteInt(atHandle, pRemoteAddress->port);
+                    uAtClientCommandStopReadResponse(atHandle);
+                    uAtClientDeviceErrorGet(atHandle, &deviceError);
+                    if (uAtClientUnlock(atHandle) == 0) {
+                        // All good
+                        errnoLocal = U_SOCK_ENONE;
+                    }
+                    if (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) {
+                        uPortTaskBlock(1000);
+                    }
                 }
             }
         }

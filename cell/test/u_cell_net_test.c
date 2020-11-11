@@ -183,6 +183,9 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     char *pParameter1 = "Boo!";
     char *pParameter2 = "Bah!";
 
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);
@@ -348,7 +351,15 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     // Disconnect
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
 
-    U_PORT_TEST_ASSERT(gLastNetStatus == U_CELL_NET_STATUS_NOT_REGISTERED);
+    // Make sure the registration status callback doesn't say we are
+    // registered
+    U_PORT_TEST_ASSERT((gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_HOME) &&
+                       (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_ROAMING) &&
+                       (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_HOME) &&
+                       (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_ROAMING) &&
+                       (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME) &&
+                       (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING));
+
     // Note: can't check that gIsConnected is false here as the RRC
     // connection may not yet be closed.
     U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
@@ -373,6 +384,9 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     int32_t y = 0;
     uCellNetRat_t rat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
 
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);
@@ -384,8 +398,9 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     //lint -esym(613, pModule) Suppress possible use of NULL pointer
     // for pModule from now on
 
-    // Search with a very short time-out to check that aborts work
-    gStopTimeMs = uPortGetTickTimeMs() + 1000;
+    // Search with a short time-out to check that aborts work
+    // (though not a timeout so short that it upsets the module).
+    gStopTimeMs = uPortGetTickTimeMs() + 5000;
     U_PORT_TEST_ASSERT(uCellNetScanGetFirst(cellHandle, buffer,
                                             sizeof(buffer), mccMnc, &rat,
                                             keepGoingCallback) < 0);

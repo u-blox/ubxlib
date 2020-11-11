@@ -142,6 +142,10 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
     //lint -esym(613, pModule) Suppress possible use of NULL pointer
     // for pModule from now on
 
+    // Let the module state settle in case it is on but still
+    // booting
+    uPortTaskBlock((pModule->bootWaitSeconds) * 1000);
+
     // If the module is on at the start, switch it off.
     if (uCellPwrIsAlive(cellHandle)) {
         uPortLog("U_CELL_PWR_TEST: powering off to begin test.\n");
@@ -269,6 +273,9 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 {
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
     // Note: not using the standard preamble here as
     // we need to fiddle with the parameters into
     // uCellInit().
@@ -315,6 +322,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
 {
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);

@@ -11,9 +11,9 @@ from telnetlib import Telnet # For talking to JLink server
 import socket
 import shutil                   # To delete a directory tree
 import subprocess
+import platform                 # Figure out current OS
 import serial                   # Pyserial (make sure to do pip install pyserial)
 import psutil                   # For killing things (make sure to do pip install psutil)
-import platform                 # Figure out current OS
 import u_settings
 
 # How long to wait for an install lock in seconds
@@ -25,6 +25,10 @@ UNITY_URL = u_settings.UNITY_URL #"https://github.com/ThrowTheSwitch/Unity"
 # The sub-directory that Unity is usually put in
 # (off the working directory)
 UNITY_SUBDIR = u_settings.UNITY_SUBDIR #"Unity"
+
+# The path to DevCon, a Windows tool that allows
+# USB devices to be reset, amongst other things
+DEVCON_PATH = u_settings.DEVCON_PATH #"devcon.exe"
 
 # The path to jlink.exe (or just the name 'cos it's on the path)
 JLINK_PATH = u_settings.JLINK_PATH #"jlink.exe"
@@ -155,6 +159,66 @@ def has_admin():
             admin = True
 
     return admin
+
+# Reset a USB port with the given Device Description
+def usb_reset(device_description, printer, prompt):
+    ''' Reset a device'''
+    instance_id = None
+    found = False
+    success = False
+
+    try:
+        # Run devcon and parse the output to find the given device
+        printer.string("{}running {} to look for \"{}\"...".   \
+                       format(prompt, DEVCON_PATH, device_description))
+        cmd = [DEVCON_PATH, "hwids", "=ports"]
+        text = subprocess.check_output(cmd,
+                                       stderr=subprocess.STDOUT,
+                                       shell=True) # Jenkins hangs without this
+        for line in text.splitlines():
+            # The format of a devcon entry is this:
+            # 
+            # USB\VID_1366&PID_1015&MI_00\6&38E81674&0&0000
+            #     Name: JLink CDC UART Port (COM45)
+            #     Hardware IDs:
+            #         USB\VID_1366&PID_1015&REV_0100&MI_00
+            #         USB\VID_1366&PID_1015&MI_00
+            #     Compatible IDs:
+            #         USB\Class_02&SubClass_02&Prot_00
+            #         USB\Class_02&SubClass_02
+            #         USB\Class_02
+            #
+            # Grab what we hope is the instance ID
+            line = line.decode()
+            if line.startswith("USB"):
+                instance_id = line
+            else:
+                # If the next line is the Name we want then we're done
+                if instance_id and ("Name: " + device_description in line):
+                    found = True
+                    printer.string("{}\"{}\" found with instance ID \"{}\"".    \
+                                   format(prompt, device_description,
+                                          instance_id))
+                    break
+                instance_id = None
+        if found:
+            # Now run devcon to reset the device
+            printer.string("{}running {} to reset device \"{}\"...".   \
+                           format(prompt, DEVCON_PATH, instance_id))
+            cmd = [DEVCON_PATH, "restart", "@" + instance_id]
+            text = subprocess.check_output(cmd,
+                                           stderr=subprocess.STDOUT,
+                                           shell=False) # Has to be False or devcon won't work
+            for line in text.splitlines():
+                printer.string("{}{}".format(prompt, line.decode()))
+            success = True
+        else:
+            printer.string("{}device with description \"{}\" not found.".   \
+                           format(prompt, device_description))
+    except subprocess.CalledProcessError:
+        printer.string("{} unable to find and reset device.".format(prompt))
+
+    return success
 
 # Open the required serial port.
 def open_serial(serial_name, speed, printer, prompt):
@@ -358,8 +422,8 @@ def exe_terminate(process_pid):
     '''Jonathan's killer'''
     process = psutil.Process(process_pid)
     for proc in process.children(recursive=True):
-        proc.kill()
-    process.kill()
+        proc.terminate()
+    process.terminate()
 
 def read_from_process_and_queue(process, read_queue):
     '''Read from a process, non-blocking'''
@@ -448,7 +512,7 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
         # So, here we poll for the return value, which is normally
         # how things will end, and we start another thread which
         # reads from the process's stdout.  If the thread sees
-        # nothing for guard_time_seconds then we kill the
+        # nothing for guard_time_seconds then we terminate the
         # process.
         read_queue = queue.Queue()
         read_thread = threading.Thread(target=read_from_process_and_queue,
@@ -566,7 +630,7 @@ class ExeRun():
                                         self._call_list[0]))
         return_value = self._process.poll()
         if not return_value:
-            self._process.kill()
+            self._process.terminate()
             while self._process.poll() is None:
                 pass
             self._printer.string("{}{} pid {} ended".format(self._prompt,

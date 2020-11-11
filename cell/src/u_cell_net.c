@@ -1117,21 +1117,28 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
 {
     int32_t errorCode = (int32_t) U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE;
     uAtClientHandle_t atHandle = pInstance->atHandle;
+    uAtClientDeviceError_t deviceError;
     bool activated = false;
+    bool ours;
     int32_t uupsdaUrcResult = -1;
 
-    for (size_t x = 3; (x > 0) && keepGoingLocalCb(pInstance) &&
-         (errorCode != 0); x--) {
+    deviceError.type = U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR;
+    for (size_t x = 5; (x > 0) && keepGoingLocalCb(pInstance) &&
+         (errorCode != 0) &&
+         ((deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) ||
+          (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR)); x--) {
         uAtClientLock(atHandle);
         uAtClientTimeoutSet(atHandle,
                             pInstance->pModule->responseMaxWaitMs);
         uAtClientCommandStart(atHandle, "AT+CGACT?");
         uAtClientCommandStop(atHandle);
+        ours = false;
         for (size_t y = 0; (y < U_CELL_NET_MAX_NUM_CONTEXTS) &&
-             !activated; y++) {
+             !ours; y++) {
             uAtClientResponseStart(atHandle, "+CGACT:");
             // Check if this is our context ID
             if (uAtClientReadInt(atHandle) == contextId) {
+                ours = true;
                 // If it is, 1 means activated
                 activated = (uAtClientReadInt(atHandle) == 1);
             }
@@ -1188,6 +1195,11 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
             uAtClientWriteInt(atHandle, 1);
             uAtClientWriteInt(atHandle, contextId);
             uAtClientCommandStopReadResponse(atHandle);
+            // If we get back ERROR then the module wasn't
+            // ready, if we get back CMS/CME error then
+            // likely the network has actively rejected us,
+            // e.g. due to an invalid APN
+            uAtClientDeviceErrorGet(atHandle, &deviceError);
             uAtClientUnlock(atHandle);
         }
     }
@@ -1320,6 +1332,7 @@ static int32_t activateContextUpsd(const uCellPrivateInstance_t *pInstance,
 static bool isActive(const uCellPrivateInstance_t *pInstance,
                      int32_t contextId)
 {
+    bool ours = false;
     bool active = false;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t y = 0;
@@ -1328,11 +1341,12 @@ static bool isActive(const uCellPrivateInstance_t *pInstance,
     uAtClientCommandStart(atHandle, "AT+CGACT?");
     uAtClientCommandStop(atHandle);
     for (size_t x = 0; (x < U_CELL_NET_MAX_NUM_CONTEXTS) &&
-         (y >= 0) && !active; x++) {
+         (y >= 0) && !ours; x++) {
         uAtClientResponseStart(atHandle, "+CGACT:");
         // Check if this is our context ID
         y = uAtClientReadInt(atHandle);
         if (y == contextId) {
+            ours = true;
             // If it is, 1 means activated
             // (if it is negative we will exit)
             active = (uAtClientReadInt(atHandle) == 1);

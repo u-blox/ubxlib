@@ -19,6 +19,9 @@ If a line starting with `test:` is *not* included (the usual case) then the file
 
 For each instance ID the `u_run.py` script, the thing that ultimately does the work, will return a value which is zero for success or otherwise the number of failures that occurred during the run.  Search the output from the script for the word `EXITING` to find its return value.
 
+# Reading The Results From A `u_pull_request.py` Run 
+When `u_pull_request.py` has completed, the outcome is stored in the summary log and debug log files.  The best approach to looking for failures is to search for " \*\*\* ", i.e. a space, three asterisks, then a space, in these files.  Search first in the top-level summary log file to find any failures or warnings and determine which instance causd them.  When you have determined the instance, go to the directory of that instance, open the debug log file there and search for the same string again to find the failure and warning markers within the detailed trace.
+
 # Script Descriptions
 `Jenkinsfile`: tells Jenkins what to do, written in Groovy stages.  Key point to note is that the archived files will be `summary.log` for a quick overview, `test_report.xml` for an XML formatted report on any tests that are executed on the target HW and `debug.log` for the full detailed debug on each build/download/run (which is also spewed to the console by Jenkins).
 
@@ -47,6 +50,8 @@ python u_run.py 0 -w z:\_jenkins_work -u z:\ -s summary.log -d debug.log -t repo
 ```
 
 ...with `z:` `subst`ed to the root of the `ubxlib` directory (and the directory `_jenkins_work` created beforehand).  This is sometimes useful if `u_pull_request.py` reports an exception but can't tell you where it is because it has no way of tracing back into the multiple `u_run.py` processes it would have launched.
+
+`u_settings.py`: stores and retrieves the paths etc. used by the various scripts.  The settings file is `settings.json` in a directory named `.ubx_automation` off the current user's home directory.  If no settings file exists a default one is first written.  If new settings are added when an existing settings file exists then they are merged into it and stored to preserve backwards-compatibility. If you **change** an existing setting in `u_settings.py` you must delete the `.ubx_automation` directory for the new default settings to be written and read back into your script. **IMPORTANT**: if you do this then while testing your branch you **must**, temporarily, change the name of the settings file, e.g. to something like `settings_my_change_name.json`.  This is because other branches being run on the test machine (e.g. `master`) will be using the original settings and your change will mess them up.  Once your PR is tested and ready to merge you can change the name back again to `settings.json`.
 
 `u_run_astyle.py`: run an advisory-only (i.e. no error will be thrown ever) AStyle check; called by `u_run.py`.  NOTE: because of the way AStyle directory selection works, if you add a new directory off the `ubxlib` root directory (i.e. you add something like `ubxlib\blah`) YOU MUST ALSO ADD it to the `ASTYLE_DIRS` variable of this script.  To AStyle your files before submission, install `AStyle` version 3.1 and, from the `ubxlib` root directory, run:
 

@@ -78,6 +78,10 @@ static void appTask(void *pParam)
     uRunnerRunAll("U_APP: ");
 #endif
 
+    // The things that we have run may have
+    // called deinit so call init again here.
+    uPortInit();
+
     UNITY_END();
 
     uPortLog("\n\nU_APP: application task ended.\n");

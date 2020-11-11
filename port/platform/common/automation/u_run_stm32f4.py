@@ -4,7 +4,7 @@
 
 import os
 from time import sleep, time
-from threading import Thread
+from multiprocessing import Process  # To launch swo_decoder.py
 import socket
 import subprocess
 import u_monitor
@@ -33,22 +33,25 @@ PROMPT = "u_run_stm32f4_"
 STM32CUBE_FW_PATH = u_settings.STM32_STM32CUBE_FW_PATH #"C:\\STM32Cube_FW_F4"
 
 # Location of the STM32Cube IDE directory
-STM32CUBE_IDE_PATH = u_settings.STM32_STM32CUBE_IDE_PATH #"C:\\ST\\STM32CubeIDE_1.3.0\\STM32CubeIDE"
+STM32CUBE_IDE_PATH = u_settings.STM32_STM32CUBE_IDE_PATH #"C:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE"
 
-# Location of the STM32 Cube Progammer bin directory in the
-# STM32Cube IDE directory
-STM32_PROGRAMMER_BIN_PATH = u_settings.STM32_STM32_PROGRAMMER_BIN_PATH #
 # Location of STM32_Programmer_CLI.exe in
 # the STM32Cube IDE directory
-STM32_PROGRAMMER_CLI_PATH = u_settings.STM32_STM32_PROGRAMMER_CLI_PATH #STM32_PROGRAMMER_BIN_PATH + "\\STM32_Programmer_CLI.exe"
+STM32_PROGRAMMER_CLI_PATH = u_settings.STM32_STM32_PROGRAMMER_CLI_PATH #
 
-# Location of the ST-LINK_gdbserver executable, which can
+# Location of the OpenOCD executable, which can
 # be found deep in the STM32Cube IDE directories
-STLINK_GDB_SERVER_PATH = u_settings.STM32_STLINK_GDB_SERVER_PATH #
+OPENOCD_PATH = u_settings.STM32_OPENOCD_PATH #
 
-# Location of the ST-flavour GNU ARM GDB executable, which can
-# be found deep in the STM32Cube IDE directories
-STM32_GNU_ARM_GDB_SERVER_PATH = u_settings.STM32_STM32_GNU_ARM_GDB_SERVER_PATH #
+# Location of the OpenOCD scripts directory, which can
+# also be found deep in the STM32Cube IDE directories
+OPENOCD_SCRIPTS_PATH = u_settings.STM32_OPENOCD_SCRIPTS_PATH #
+
+# The OpenOCD script file provided by ST for their STLink interface
+OPENOCD_STLINK_INTERFACE_SCRIPT = u_settings.STM32_OPENOCD_STLINK_INTERFACE_SCRIPT #
+
+# The OpenOCD script file provided by ST for their STM32F4 target
+OPENOCD_STM32F4_TARGET_SCRIPT = u_settings.STM32_OPENOCD_STM32F4_TARGET_SCRIPT #
 
 # The subdirectory of the working directory in which the
 # STM32F4 Cube IDE should create the workspace
@@ -79,22 +82,22 @@ SYSTEM_CORE_CLOCK_HZ = u_settings.STM32_SYSTEM_CORE_CLOCK_HZ #
 # if that is provided.
 SWO_CLOCK_HZ = u_settings.STM32_SWO_CLOCK_HZ #
 
-# The port number to use for GDB comms with ST-LINK GDB server
-STLINK_GDB_PORT = u_settings.STM32_STLINK_GDB_PORT #
-
-# The port number to use for SWO output from the ST-LINK GDB server
-STLINK_SWO_PORT = u_settings.STM32_STLINK_SWO_PORT #
-
-# The list of commands to be sent to ST-LINK_gdbserver
-# when it is opened
-GDB_SERVER_COMMANDS = ["-cp " + STM32_PROGRAMMER_BIN_PATH,
-                       "-d",
-                       "-a " + str(SYSTEM_CORE_CLOCK_HZ),
-                       "-b {:.0f}".format(SYSTEM_CORE_CLOCK_HZ / SWO_CLOCK_HZ)]
+# The name of the temporary file in which SWO data is stored
+SWO_DATA_FILE = u_settings.STM32_SWO_DATA_FILE #
 
 # The name of the temporary file in which decoded SWO text
 # is stored by swo_decode_process
 SWO_DECODED_TEXT_FILE = u_settings.STM32_SWO_DECODED_TEXT_FILE #
+
+# The list of commands to be sent to OpenOCD when it is opened
+OPENOCD_COMMANDS = ["init", # Always required at the start
+                    "itm port 0 on", # ITM on
+                    # Write SWO data to file at the given rate
+                    "tpiu config internal " + SWO_DATA_FILE +         \
+                    " uart off " + str(SYSTEM_CORE_CLOCK_HZ) + " " +  \
+                    str(SWO_CLOCK_HZ),
+                    "reset init",  # Reset the processor
+                    "resume"]  # Start the processor
 
 # The guard time for this build in seconds,
 # noting that it can be quite long when
@@ -103,6 +106,9 @@ BUILD_GUARD_TIME_SECONDS = u_settings.STM32_BUILD_GUARD_TIME_SECONDS #60 * 30
 
 # The guard time waiting for a lock on the HW connection seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = u_connection.CONNECTION_LOCK_GUARD_TIME_SECONDS
+
+# The guard time to lock the whole STM32F4 platform in seconds
+PLATFORM_LOCK_GUARD_TIME_SECONDS = u_utils.PLATFORM_LOCK_GUARD_TIME_SECONDS
 
 # The download guard time for this build in seconds
 DOWNLOAD_GUARD_TIME_SECONDS = u_utils.DOWNLOAD_GUARD_TIME_SECONDS
@@ -127,15 +133,29 @@ PATHS_LIST = [{"name": "STM32CUBE_IDE_PATH",
                "hint": "can't find the STM32 programmer CLI, it should be"  \
                        " provided as part of the STM32Cube IDE. Maybe you"  \
                        " upgraded it and haven't update the paths?"},
-              {"name": "STLINK_GDB_SERVER_PATH",
-               "path_string": STLINK_GDB_SERVER_PATH,
-               "hint": "can't find ST-LINK_gdbserver, it should be provided" \
-                       " as part of the STM32Cube IDE. Maybe you upgraded"   \
-                       " it and haven't update the paths?"},
-              {"name": "STM32_GNU_ARM_GDB_SERVER_PATH",
-               "path_string": STM32_GNU_ARM_GDB_SERVER_PATH,
-               "hint": "can't find the STM32-flavour GNU ARM GDB server," \
-                       " which should be provided as part of the STM32Cube"   \
+              {"name": "OPENOCD_PATH",
+               "path_string": OPENOCD_PATH,
+               "hint": "can't find OpenOCD, it should be provided as part"  \
+                       " of the STM32Cube IDE. Maybe you upgraded it and"   \
+                       " haven't update the paths?"},
+              {"name": "OPENOCD_SCRIPTS_PATH",
+               "path_string": OPENOCD_SCRIPTS_PATH,
+               "hint": "can't find the ST configuration scripts for OpenOCD" \
+                       " they should be provided as part of the STM32Cube"   \
+                       " IDE. Maybe you upgraded it and haven't update the"  \
+                       " paths?"},
+              {"name": "OPENOCD_STLINK_INTERFACE_SCRIPT",
+               "path_string": OPENOCD_SCRIPTS_PATH + os.sep + "interface" + \
+                              os.sep + OPENOCD_STLINK_INTERFACE_SCRIPT,
+               "hint": "can't find the STLink interface script for OpenOCD." \
+                       " It should be provided as part of the STM32Cube"     \
+                       " IDE. Maybe you upgraded it and haven't update the"  \
+                       " paths?"},
+              {"name": "OPENOCD_STM32F4_TARGET_SCRIPT",
+               "path_string": OPENOCD_SCRIPTS_PATH + os.sep + "target" + \
+                              os.sep + OPENOCD_STM32F4_TARGET_SCRIPT,
+               "hint": "can't find the STM32F4 target script for OpenOCD." \
+                       " It should be provided as part of the STM32Cube"     \
                        " IDE. Maybe you upgraded it and haven't update the"  \
                        " paths?"}]
 
@@ -373,7 +393,6 @@ def download(connection, guard_time_seconds, elf_path, printer, prompt):
         call_list.append("sn=" + connection["debugger"])
     call_list.append("-w")       # write the
     call_list.append(elf_path)   # ELF file
-    call_list.append("-v")       # verify the download
     call_list.append("-rst")     # and reset the target
 
     # Print what we're gonna do
@@ -386,59 +405,45 @@ def download(connection, guard_time_seconds, elf_path, printer, prompt):
     # Call it
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt)
 
-def gdb_server(commands, swo_port, gdb_port, connection):
-    '''Assemble the command line for the ST-LINK GDB server'''
-    call_list = [STLINK_GDB_SERVER_PATH]
+def open_ocd(commands, connection):
+    '''Assemble the command line for OpenOCD: it's a doozy'''
+    call_list = []
 
-    # Stick in all the given stuff
-    for item in commands:
-        call_list.append(item)
-
-    # Add the ports
-    call_list.append("-p " + str(gdb_port))
-    call_list.append("-z " + str(swo_port))
-
-    # Add the debugger ID
+    call_list.append(OPENOCD_PATH)
+    call_list.append("-f")
+    call_list.append(OPENOCD_SCRIPTS_PATH + os.sep + "interface" + \
+                     os.sep + OPENOCD_STLINK_INTERFACE_SCRIPT)
+    call_list.append("-f")
+    call_list.append(OPENOCD_SCRIPTS_PATH + os.sep + "target" + \
+                     os.sep + OPENOCD_STM32F4_TARGET_SCRIPT)
+    call_list.append("-s")
+    call_list.append(OPENOCD_SCRIPTS_PATH)
     if connection and "debugger" in connection and connection["debugger"]:
-        call_list.append("-i " + connection["debugger"])
+        call_list.append("-c")
+        call_list.append("hla_serial " + connection["debugger"])
+    for command in commands:
+        call_list.append("-c")
+        call_list.append(command)
 
     return call_list
 
-def gdb_client(gdb_port):
-    '''Assemble the command line for the ST-flavour GNU ARM GDB client'''
-    call_list = [STM32_GNU_ARM_GDB_SERVER_PATH]
-
-    # This switches off all confirmation y/n prompts
-    call_list.append("--batch")
-    # Not sure if this is necessary or not
-    call_list.append("--eval-command=set architecture arm")
-    # Connect to the target
-    call_list.append("--eval-command=target remote localhost:" + str(gdb_port))
-    # Reset the target
-    call_list.append("--eval-command=monitor reset")
-    # Run the target
-    call_list.append("--eval-command=continue")
-
-    return call_list
-
-def swo_decode_thread(swo_socket, swo_decoded_text_file):
-    '''Grab SWO data from a socket, decode it and write it to file'''
-    file_handle = open(swo_decoded_text_file, "wb")
+def swo_decode_process(swo_data_file, swo_decoded_text_file):
+    '''Grab SWO data from a file, decode it and write it to another file'''
+    file_handle_in = open(swo_data_file, "rb")
+    file_handle_out = open(swo_decoded_text_file, "wb")
     decoder = u_utils.SwoDecoder(0, True)
     try:
-        # Will exit if swo_socket closes or on CTRL-C
-        swo_socket.settimeout(0.1)
+        # Will exit if on CTRL-C
         while True:
             try:
-                decoded_data = decoder.decode(swo_socket.recv(1024))
-                # Just to be different, the ST-Link decode strips
-                # line endings from CR/LF to LF.  Switch them back
-                file_handle.write(decoded_data)
-                file_handle.flush()
+                decoded_data = decoder.decode(file_handle_in.read(1024))
+                file_handle_out.write(decoded_data)
+                file_handle_out.flush()
             except socket.timeout:
                 pass
     except (KeyboardInterrupt, OSError, ConnectionAbortedError):
-        file_handle.close()
+        file_handle_out.close()
+        file_handle_in.close()
 
 # IMPORTANT: Eclipse, on which the STM32Cube is based
 # has a very peculiar and immutable way of dealing with paths.
@@ -457,15 +462,13 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
     # one process is running this
     updated_project_name_prefix = UPDATED_PROJECT_NAME_PREFIX + str(os.getpid()) + "_"
     workspace_subdir = STM32CUBE_IDE_WORKSPACE_SUBDIR + "_" + str(os.getpid())
-    swo_port = u_utils.STLINK_SWO_PORT
-    gdb_port = u_utils.STLINK_GDB_PORT
     elf_path = None
     downloaded = False
     running = False
 
-    # Only one SDK for STM32F4 and no issues with running in parallel
+    # Only one SDK for STM32F4 and don't need the system
+    # lock (the platform lock is sufficient)
     del sdk
-    del platform_lock
     del system_lock
 
     prompt = PROMPT + instance_text + ": "
@@ -550,98 +553,98 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                     # Lock the connection.
                     with u_connection.Lock(connection, connection_lock,
                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                           printer, prompt) as locked:
-                        if locked:
-                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                           u_report.EVENT_START)
-                            # Do the download.  I have seen the STM32F4 debugger
-                            # barf on occasions so give this two bites of
-                            # the cherry
-                            retries = 2
-                            while not downloaded and (retries > 0):
-                                downloaded = download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
-                                                      elf_path, printer, prompt)
-                                retries -= 1
-                                if not downloaded:
-                                    sleep(5)
-                            if downloaded:
-                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_COMPLETE)
-                                reporter.event(u_report.EVENT_TYPE_TEST,
-                                               u_report.EVENT_START)
-                                if connection and "swo_port" in connection:
-                                    swo_port = connection["swo_port"]
-                                if connection and "gdb_port" in connection:
-                                    gdb_port = connection["gdb_port"]
-
-                                try:
-                                    # Two bites at the cherry again
+                                           printer, prompt) as locked_connection:
+                        if locked_connection:
+                            # I have seen download failures occur if two
+                            # ST-Link connections are initiated at the same time.
+                            with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
+                                              "platform", printer, prompt) as locked_platform:
+                                if locked_platform:
+                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                   u_report.EVENT_START)
+                                    # Do the download.  I have seen the STM32F4 debugger
+                                    # barf on occasions so give this two bites of
+                                    # the cherry
                                     retries = 2
-                                    while not running and (retries > 0):
-                                        # First, start the ST-LINK GDB server
-                                        with u_utils.ExeRun(gdb_server(GDB_SERVER_COMMANDS,
-                                                                       swo_port, gdb_port,
-                                                                       connection),
-                                                            printer, prompt):
-                                            # Open a socket to the SWO port
-                                            # of the ST-LINK GDB server after a little sleep
-                                            sleep(1)
-                                            with socket.socket(socket.AF_INET,
-                                                               socket.SOCK_STREAM) as swo_socket:
-                                                try:
-                                                    swo_socket.connect(("localhost", swo_port))
-                                                    # Start a thread which reads the
-                                                    # SWO output, decodes it and writes it to file
-                                                    read_thread = Thread(target=swo_decode_thread,
-                                                                         args=(swo_socket,
-                                                                               SWO_DECODED_TEXT_FILE))
-                                                    read_thread.start()
-                                                    # Now start the GNU ARM GDB client
-                                                    # that will start the target running
-                                                    # after a little sleep
-                                                    sleep(1)
-                                                    with u_utils.ExeRun(gdb_client(gdb_port),
-                                                                        printer, prompt):
-                                                        running = True
-                                                        # Open the SWO decoded text file for
-                                                        # reading, binary to prevent the line
-                                                        # endings being munged.
-                                                        file_handle = open(SWO_DECODED_TEXT_FILE,
-                                                                           "rb")
-                                                        # Monitor progress based on the decoded
-                                                        # SWO text
-                                                        return_value = u_monitor.          \
-                                                                       main(file_handle,
-                                                                            u_monitor.CONNECTION_PIPE,
-                                                                            RUN_GUARD_TIME_SECONDS,
-                                                                            RUN_INACTIVITY_TIME_SECONDS,
-                                                                            instance, printer,
-                                                                            reporter,
-                                                                            test_report_handle)
-                                                        file_handle.close()
-                                                    swo_socket.close()
-                                                    read_thread.join()
-                                                except socket.error:
-                                                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                                   u_report.EVENT_FAILED,
-                                                                   "unable to connect to port " +  \
-                                                                   str(swo_port))
+                                    while not downloaded and (retries > 0):
+                                        downloaded = download(connection,
+                                                              DOWNLOAD_GUARD_TIME_SECONDS,
+                                                              elf_path, printer, prompt)
                                         retries -= 1
-                                        if not running:
+                                        if not downloaded:
+                                            if connection and "serial_port" in connection \
+                                               and connection["serial_port"]:
+                                                # Before retrying, reset the USB port
+                                                u_utils.usb_reset("STMicroelectronics STLink" \
+                                                                  "Virtual COM Port (" +
+                                                                  connection["serial_port"] +
+                                                                  ")", printer, prompt)
                                             sleep(5)
-                                except KeyboardInterrupt:
-                                    # Tidy up process on SIGINT
-                                    printer.string("{}caught CTRL-C, terminating...".format(prompt))
-                                    return_value = -1
-                                if return_value == 0:
-                                    reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_COMPLETE)
-                                else:
-                                    reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_FAILED)
-                            else:
-                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_FAILED)
+                                    # Once the download has been done (or not) the platform lock
+                                    # can be released, after a little safety sleep
+                                    sleep(1)
+                                    platform_lock.release()
+                                    if downloaded:
+                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                       u_report.EVENT_COMPLETE)
+                                        # Create and empty the SWO data file and decoded text file
+                                        file_handle = open(SWO_DATA_FILE, "w").close()
+                                        file_handle = open(SWO_DECODED_TEXT_FILE, "w").close()
+                                        reporter.event(u_report.EVENT_TYPE_TEST,
+                                                       u_report.EVENT_START)
+                                        try:
+                                            # Start a process which reads the
+                                            # SWO output from a file, decodes it and
+                                            # writes it back to a file
+                                            process = Process(target=swo_decode_process,
+                                                              args=(SWO_DATA_FILE,
+                                                                    SWO_DECODED_TEXT_FILE))
+                                            process.start()
+                                            # Two bites at the cherry again
+                                            retries = 2
+                                            while not running and (retries > 0):
+                                                # Now start Open OCD to reset the target
+                                                # and capture SWO output
+                                                sleep(1)
+                                                with u_utils.ExeRun(open_ocd(OPENOCD_COMMANDS,
+                                                                             connection),
+                                                                    printer, prompt):
+                                                    running = True
+                                                    # Open the SWO decoded text file for
+                                                    # reading, binary to prevent the line
+                                                    # endings being munged.
+                                                    file_handle = open(SWO_DECODED_TEXT_FILE,
+                                                                       "rb")
+                                                    # Monitor progress based on the decoded
+                                                    # SWO text
+                                                    return_value = u_monitor.          \
+                                                                   main(file_handle,
+                                                                        u_monitor.CONNECTION_PIPE,
+                                                                        RUN_GUARD_TIME_SECONDS,
+                                                                        RUN_INACTIVITY_TIME_SECONDS,
+                                                                        instance, printer,
+                                                                        reporter,
+                                                                        test_report_handle)
+                                                    file_handle.close()
+                                                retries -= 1
+                                                if not running:
+                                                    sleep(5)
+                                            process.terminate()
+                                        except KeyboardInterrupt:
+                                            # Tidy up process on SIGINT
+                                            printer.string("{}caught CTRL-C, terminating...".
+                                                           format(prompt))
+                                            process.terminate()
+                                            return_value = -1
+                                        if return_value == 0:
+                                            reporter.event(u_report.EVENT_TYPE_TEST,
+                                                           u_report.EVENT_COMPLETE)
+                                        else:
+                                            reporter.event(u_report.EVENT_TYPE_TEST,
+                                                           u_report.EVENT_FAILED)
+                                    else:
+                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                       u_report.EVENT_FAILED)
                         else:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                            u_report.EVENT_FAILED,

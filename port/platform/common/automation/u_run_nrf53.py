@@ -248,11 +248,10 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
     hex_file_path = None
     instance_text = u_utils.get_instance_text(instance)
 
-    # Only one SDK for NRF53 and, since NRF52 and NRF53 share
-    # stuff we don't use the platform lock we have to use the
-    # system lock instead to ensure no parallelism
+    # Only one SDK for NRF53
     del sdk
     del platform_lock
+    del system_lock
 
     prompt = PROMPT + instance_text + ": "
 
@@ -307,64 +306,45 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                            printer, prompt) as locked_connection:
                         if locked_connection:
                             # Do the download
-                            # In case NRF53 suffers from the same problem as
-                            # NRF52, where doing a download or starting SWO logging
-                            # on more than one platform at a time seems to cause
-                            # problems (even though it should be tied to the
-                            # serial number of the given debugger on that board),
-                            # lock the system for this.  Once we've got the
-                            # Telnet session opened with the platform it seems
-                            # fine to let other downloads/logging-starts happen.
-                            with u_utils.Lock(system_lock, INSTALL_LOCK_WAIT_SECONDS,
-                                              "system", printer, prompt) as locked_system:
-                                if locked_system:
-                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                   u_report.EVENT_START)
-                                    if download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
-                                                hex_file_path, returned_env, printer, prompt):
-                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                       u_report.EVENT_COMPLETE)
-                                        # OK to release the platform lock again.
-                                        system_lock.release()
-                                        reporter.event(u_report.EVENT_TYPE_TEST,
-                                                       u_report.EVENT_START)
-                                        # Monitor progress
-                                        # Open the COM port to get debug output
-                                        serial_handle = u_utils.open_serial(connection["serial_port"],
-                                                                            115200,
-                                                                            printer,
-                                                                            prompt)
-                                        if serial_handle is not None:
-                                            # Monitor progress
-                                            return_value = u_monitor. \
-                                                           main(serial_handle,
-                                                                u_monitor.CONNECTION_SERIAL,
-                                                                RUN_GUARD_TIME_SECONDS,
-                                                                RUN_INACTIVITY_TIME_SECONDS,
-                                                                instance, printer, reporter,
-                                                                test_report_handle)
-                                            serial_handle.close()
-                                        else:
-                                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                           u_report.EVENT_FAILED,
-                                                           "unable to open serial port " + \
-                                                           connection["serial_port"])
-                                        if return_value == 0:
-                                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                                           u_report.EVENT_COMPLETE)
-                                        else:
-                                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                                           u_report.EVENT_FAILED)
-                                    else:
-                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                       u_report.EVENT_FAILED,
-                                                       "check debug log for details")
+                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                           u_report.EVENT_START)
+                            if download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
+                                        hex_file_path, returned_env, printer, prompt):
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                               u_report.EVENT_COMPLETE)
+                                reporter.event(u_report.EVENT_TYPE_TEST,
+                                               u_report.EVENT_START)
+                                # Monitor progress
+                                # Open the COM port to get debug output
+                                serial_handle = u_utils.open_serial(connection["serial_port"],
+                                                                    115200,
+                                                                    printer,
+                                                                    prompt)
+                                if serial_handle is not None:
+                                    # Monitor progress
+                                    return_value = u_monitor. \
+                                                   main(serial_handle,
+                                                        u_monitor.CONNECTION_SERIAL,
+                                                        RUN_GUARD_TIME_SECONDS,
+                                                        RUN_INACTIVITY_TIME_SECONDS,
+                                                        instance, printer, reporter,
+                                                        test_report_handle)
+                                    serial_handle.close()
                                 else:
-                                    # Release the system lock again.
-                                    system_lock.release()
                                     reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                    u_report.EVENT_FAILED,
-                                                   "unable to lock the system")
+                                                   "unable to open serial port " + \
+                                                   connection["serial_port"])
+                                if return_value == 0:
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                   u_report.EVENT_COMPLETE)
+                                else:
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                   u_report.EVENT_FAILED)
+                            else:
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                               u_report.EVENT_FAILED,
+                                               "check debug log for details")
                         else:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                            u_report.EVENT_FAILED,

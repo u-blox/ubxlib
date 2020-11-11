@@ -170,6 +170,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
 {
     const uCellPrivateModule_t *pModule;
 
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);
@@ -201,6 +204,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
     const uCellPrivateModule_t *pModule;
     int32_t numSupportedRats = 0;
     uCellNetRat_t supportedRats[U_CELL_NET_RAT_MAX_NUM];
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -276,6 +282,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
     int32_t numRats;
     int32_t repeats;
     int32_t y;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -484,6 +493,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
     const uCellPrivateModule_t *pModule;
     int32_t readMnoProfile;
     int32_t mnoProfile;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,

@@ -63,7 +63,7 @@
 
 /** The guard time for the OS test.
  */
-#define U_PORT_TEST_OS_GUARD_DURATION_MS 2400
+#define U_PORT_TEST_OS_GUARD_DURATION_MS 2800
 
 /** The task block duration to use in testing the
  * time for which a block lasts.  This needs to
@@ -986,7 +986,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     uPortLog("U_PORT_TEST: unlocking mutex, allowing task to execute\n");
     U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);;
     // Pause to let the task print its opening messages
-    uPortTaskBlock(1000);
+    uPortTaskBlock(1200);
 
     uPortLog("U_PORT_TEST: trying to lock the mutex, should fail...\n");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);

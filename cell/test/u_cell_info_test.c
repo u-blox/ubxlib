@@ -109,6 +109,9 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
     char buffer[64];
     int32_t bytesRead;
 
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);
@@ -205,6 +208,9 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     int32_t x;
     int32_t snrDb;
     size_t count;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,

@@ -34,6 +34,7 @@
 #include "u_error_common.h"
 #include "u_port.h"
 #include "u_port_debug.h"
+#include "u_port_os.h"
 #include "u_port_gpio.h"
 
 #include "u_runner.h"
@@ -85,6 +86,8 @@ static void appTask(void *pParam)
     uPortGpioSet(U_CFG_APP_PIN_CELL_RESET, 1);
 #endif
 
+    uPortTaskBlock(100);
+
     uPortLog("\n\nU_APP: application task started.\n");
 
     // Call Unity hook
@@ -102,10 +105,15 @@ static void appTask(void *pParam)
     uRunnerRunAll("U_APP: ");
 #endif
 
+    // The things that we have run may have
+    // called deinit so call init again here.
+    uPortInit();
+
     // Call Unity hook
     UNITY_END();
 
     uPortLog("\n\nU_APP: application task ended.\n");
+
     uPortDeinit();
 
     while (1) {}

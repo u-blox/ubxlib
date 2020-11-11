@@ -6,7 +6,12 @@ import sys
 import json
 import os
 
-__path = os.path.expanduser("~/.ubx_automation/settings.json")
+# The change of name below from settings.json to
+# settings_bis.json is a temporary change only to
+# facilitate testing of this PR. The name will
+# be reverted to settings.json before it is
+# submitted as a PR.
+__path = os.path.expanduser("~/.ubx_automation/settings_bis.json")
 __useDefaultSettings = True
 __storeSettings = True
 __settings = {}
@@ -94,32 +99,30 @@ __defaultSettings["NRF53_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run_pylint.py
 # u_run_stm32f4.py
 __defaultSettings["STM32_STM32CUBE_FW_PATH"] = "C:\\STM32Cube_FW_F4"
-__defaultSettings["STM32_STM32CUBE_IDE_PATH"] = "C:\\ST\\STM32CubeIDE_1.3.0\\STM32CubeIDE"
-__defaultSettings["STM32_STM32_PROGRAMMER_BIN_PATH"] =                             \
+__defaultSettings["STM32_STM32CUBE_IDE_PATH"] = "C:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE"
+__defaultSettings["STM32_STM32_PROGRAMMER_CLI_PATH"] =                      \
     __defaultSettings["STM32_STM32CUBE_IDE_PATH"] + "\\plugins\\"                  \
     + "com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer."              \
-    + "win32_1.3.0.202002181050\\tools\\bin"
-__defaultSettings["STM32_STM32_PROGRAMMER_CLI_PATH"] =                             \
-    __defaultSettings["STM32_STM32_PROGRAMMER_BIN_PATH"] + "\\STM32_Programmer_CLI.exe"
-__defaultSettings["STM32_STLINK_GDB_SERVER_PATH"] =                                \
+    + "win32_1.4.0.202007081208\\tools\\bin\\STM32_Programmer_CLI.exe"
+__defaultSettings["STM32_OPENOCD_PATH"] =                                          \
     __defaultSettings["STM32_STM32CUBE_IDE_PATH"] + "\\plugins\\"                  \
-    + "com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server."           \
-    + "win32_1.3.0.202002181050\\tools\\bin\\ST-LINK_gdbserver.exe"
-__defaultSettings["STM32_STM32_GNU_ARM_GDB_SERVER_PATH"] =                         \
+    + "com.st.stm32cube.ide.mcu.externaltools.openocd."                     \
+    + "win32_1.4.0.202007081208\\tools\\bin\\openocd.exe"
+__defaultSettings["STM32_OPENOCD_SCRIPTS_PATH"] =                                  \
     __defaultSettings["STM32_STM32CUBE_IDE_PATH"] + "\\plugins\\"                  \
-    + "com.st.stm32cube.ide.mcu.externaltools."                             \
-    + "gnu-tools-for-stm32.7-2018-q2-update.win32_1.0.0.201904181610\\"     \
-    + "tools\\bin\\arm-none-eabi-gdb.exe"
-__defaultSettings["STM32_STM32CUBE_IDE_WORKSPACE_SUBDIR"] = "workspace_1.3.0"
+    + "com.st.stm32cube.ide.mcu.debug."                                     \
+    + "openocd_1.4.0.202007081208\\resources\\openocd\\st_scripts"
+__defaultSettings["STM32_OPENOCD_STLINK_INTERFACE_SCRIPT"] = "stlink.cfg"
+__defaultSettings["STM32_OPENOCD_STM32F4_TARGET_SCRIPT"] = "stm32f4x.cfg"
+__defaultSettings["STM32_STM32CUBE_IDE_WORKSPACE_SUBDIR"] = "workspace_1.4.0"
 __defaultSettings["STM32_SDK_DIR"] = "port\\platform\\stm\\stm32f4\\sdk\\cube"
 __defaultSettings["STM32_PROJECT_NAME"] = "runner"
 __defaultSettings["STM32_UPDATED_PROJECT_NAME_PREFIX"] = "test_only_"
 __defaultSettings["STM32_PROJECT_CONFIGURATION"] = "Debug"
 __defaultSettings["STM32_MAX_NUM_DEFINES"] = 20
 __defaultSettings["STM32_SYSTEM_CORE_CLOCK_HZ"] = 168000000
-__defaultSettings["STM32_SWO_CLOCK_HZ"] = 2000000
-__defaultSettings["STM32_STLINK_GDB_PORT"] = 61234
-__defaultSettings["STM32_STLINK_SWO_PORT"] = 61235
+__defaultSettings["STM32_SWO_CLOCK_HZ"] = 125000
+__defaultSettings["STM32_SWO_DATA_FILE"] = "swo.dat"
 __defaultSettings["STM32_SWO_DECODED_TEXT_FILE"] = "swo.txt"
 __defaultSettings["STM32_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run.py
@@ -128,6 +131,7 @@ __defaultSettings["BRANCH_DEFAULT"] = "origin/master"
 __defaultSettings["INSTALL_LOCK_WAIT_SECONDS"] = 60*60
 __defaultSettings["UNITY_URL"] = "https://github.com/ThrowTheSwitch/Unity"
 __defaultSettings["UNITY_SUBDIR"] = "Unity"
+__defaultSettings["DEVCON_PATH"] = "devcon"
 __defaultSettings["JLINK_PATH"] = "jlink.exe"
 __defaultSettings["JLINK_SWO_PORT"] = 19021
 __defaultSettings["STLINK_GDB_PORT"] = 61200

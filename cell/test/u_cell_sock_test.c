@@ -489,6 +489,10 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     pBuffer = (char *) malloc(U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
+    // In case a previous test failed
+    uCellSockDeinit();
+    uCellTestPrivateCleanup(&gHandles);
+
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);
@@ -574,7 +578,11 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
                             &echoServerAddressUdp,
                             gAllChars, sizeof(gAllChars));
         if (y == sizeof(gAllChars)) {
-            // Wait for the answer
+            // Wait a little while to get a data callback
+            // triggered by a URC
+            for (size_t a = 10; (a > 0) && !gDataCallbackCalledUdp; a--) {
+                uPortTaskBlock(1000);
+            }
             y = 0;
             for (size_t z = 10; (z > 0) &&
                  (y != sizeof(gAllChars)); z--) {
@@ -632,6 +640,12 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     }
     uPortLog("U_CELL_SOCK_TEST: %d byte(s) sent in %d chunks.\n",
              y, count);
+
+    // Wait a little while to get a data callback
+    // triggered by a URC
+    for (size_t x = 10; (x > 0) && !gDataCallbackCalledTcp; x--) {
+        uPortTaskBlock(1000);
+    }
 
     // Get the data back again
     uPortLog("U_CELL_SOCK_TEST: receiving TCP echo data back"
@@ -718,6 +732,10 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     void *pValue;
     void *pValueSaved;
     size_t length = 0;
+
+    // In case a previous test failed
+    uCellSockDeinit();
+    uCellTestPrivateCleanup(&gHandles);
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,

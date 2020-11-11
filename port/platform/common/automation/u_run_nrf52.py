@@ -119,7 +119,20 @@ TOOLS_LIST = [{"type": "gcc", "which_string": "make",
                        " the latest version of their JLink tools from"       \
                        " https://www.segger.com/downloads/jlink/JLink_Windows.exe" \
                        " and add them to the path.",
-               "version_switch": None}]
+               "version_switch": None},
+              {"type": None, "which_string": u_utils.DEVCON_PATH,
+               "hint": "can't find the devcon tool, see here "             \
+                       " https://networchestration.wordpress.com/"         \
+                       "2016/07/11/how-to-obtain-device-console-utility-"  \
+                       "devcon-exe-without-downloading-and-installing-the" \
+                       "-entire-windows-driver-kit-100-working-method/"    \
+                       " for how to install it without downloading the"    \
+                       " entire Windows dev kit for the privilege; make"   \
+                       " sure it is on the path. IMPORTANT do also make"   \
+                       " sure that it is the correct 32-bit (x86)/64-bit"  \
+                       " (amd64) version for this computer or it won't work.",
+               "version_switch": None}
+]
 
 def check_installation(sdk, tools_list, printer, prompt):
     '''Check that everything required has been installed'''
@@ -414,6 +427,12 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                             reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                            u_report.EVENT_WARNING,
                                                            "unable to download, will retry...")
+                                            if connection and "serial_port" in connection \
+                                               and connection["serial_port"]:
+                                                # Before retrying, reset the USB port
+                                                u_utils.usb_reset("JLink CDC UART Port (" +
+                                                                  connection["serial_port"] +
+                                                                  ")", printer, prompt)
                                             sleep(5)
                                     if downloaded:
                                         reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
