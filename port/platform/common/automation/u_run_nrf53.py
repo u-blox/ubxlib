@@ -305,22 +305,24 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,
                                            printer, prompt) as locked_connection:
                         if locked_connection:
-                            # Do the download
-                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                           u_report.EVENT_START)
-                            if download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
-                                        hex_file_path, returned_env, printer, prompt):
+                            # On the NRF53 platform we capture debug
+                            # on the COM port.  This output begins the moment
+                            # the target is reset after a download so to
+                            # ensure we capture the lot, start logging first
+                            serial_handle = u_utils.open_serial(connection["serial_port"],
+                                                                115200,
+                                                                printer,
+                                                                prompt)
+                            if serial_handle is not None:
+                                # Do the download
                                 reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_COMPLETE)
-                                reporter.event(u_report.EVENT_TYPE_TEST,
                                                u_report.EVENT_START)
-                                # Monitor progress
-                                # Open the COM port to get debug output
-                                serial_handle = u_utils.open_serial(connection["serial_port"],
-                                                                    115200,
-                                                                    printer,
-                                                                    prompt)
-                                if serial_handle is not None:
+                                if download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
+                                            hex_file_path, returned_env, printer, prompt):
+                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                   u_report.EVENT_COMPLETE)
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                   u_report.EVENT_START)
                                     # Monitor progress
                                     return_value = u_monitor. \
                                                    main(serial_handle,
@@ -331,10 +333,9 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                         test_report_handle)
                                     serial_handle.close()
                                 else:
-                                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                    u_report.EVENT_FAILED,
-                                                   "unable to open serial port " + \
-                                                   connection["serial_port"])
+                                                   "check debug log for details")
                                 if return_value == 0:
                                     reporter.event(u_report.EVENT_TYPE_TEST,
                                                    u_report.EVENT_COMPLETE)
@@ -342,9 +343,10 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                     reporter.event(u_report.EVENT_TYPE_TEST,
                                                    u_report.EVENT_FAILED)
                             else:
-                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                u_report.EVENT_FAILED,
-                                               "check debug log for details")
+                                               "unable to open serial port " + \
+                                               connection["serial_port"])
                         else:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                            u_report.EVENT_FAILED,
