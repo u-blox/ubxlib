@@ -51,6 +51,7 @@
 #include "u_port_uart.h"
 #include "u_port_event_queue.h"
 #include "u_port_clib_platform_specific.h"
+#include "u_short_range_edm_stream.h"
 
 #include "u_at_client.h"
 
@@ -387,6 +388,9 @@ static void removeClient(uAtClientInstance_t *pClient)
         case U_AT_CLIENT_STREAM_TYPE_UART:
             uPortUartEventCallbackRemove(pClient->streamHandle);
             break;
+        case U_AT_CLIENT_STREAM_TYPE_EDM:
+            uShortRangeEdmStreamAtCallbackRemove(pClient->streamHandle);
+            break;
         default:
             break;
     }
@@ -568,6 +572,9 @@ static bool bufferFill(uAtClientInstance_t *pClient,
             case U_AT_CLIENT_STREAM_TYPE_UART:
                 eventIsCallback = uPortUartEventIsCallback(pClient->streamHandle);
                 break;
+            case U_AT_CLIENT_STREAM_TYPE_EDM:
+                eventIsCallback = uShortRangeEdmStreamAtEventIsCallback(pClient->streamHandle);
+                break;
             default:
                 break;
         }
@@ -597,6 +604,13 @@ static bool bufferFill(uAtClientInstance_t *pClient,
                                            pReceiveBuffer->length,
                                            pReceiveBuffer->dataBufferSize -
                                            pReceiveBuffer->length);
+                break;
+            case U_AT_CLIENT_STREAM_TYPE_EDM:
+                readLength = uShortRangeEdmStreamAtRead(pClient->streamHandle,
+                                                        U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                                        pReceiveBuffer->length,
+                                                        pReceiveBuffer->dataBufferSize -
+                                                        pReceiveBuffer->length);
                 break;
             default:
                 break;
@@ -1153,6 +1167,9 @@ static size_t write(uAtClientInstance_t *pClient,
                 thisLengthWritten = uPortUartWrite(pClient->streamHandle,
                                                    pDataToWrite, lengthToWrite);
                 break;
+            //Write handled in intercept
+            case U_AT_CLIENT_STREAM_TYPE_EDM:
+                break;
             default:
                 break;
         }
@@ -1330,6 +1347,9 @@ static int32_t getReceiveSize(const uAtClientInstance_t *pClient)
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             receiveSize = uPortUartGetReceiveSize(pClient->streamHandle);
+            break;
+        case U_AT_CLIENT_STREAM_TYPE_EDM:
+            receiveSize = uShortRangeEdmStreamAtGetReceiveSize(pClient->streamHandle);
             break;
         default:
             break;
@@ -1523,6 +1543,11 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                                                           urcCallback, pClient,
                                                                           U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
                                                                           U_AT_CLIENT_URC_TASK_PRIORITY);
+                                    break;
+                                case U_AT_CLIENT_STREAM_TYPE_EDM:
+                                    errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient,
+                                                                                  U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
+                                                                                  U_AT_CLIENT_URC_TASK_PRIORITY);
                                     break;
                                 default:
                                     // streamType is checked on entry
@@ -1772,6 +1797,14 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             sizeBytes = uPortUartGetReceiveSize(pClient->streamHandle);
+            if ((sizeBytes > 0) ||
+                (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
+                uPortUartEventSend(pClient->streamHandle,
+                                   U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+            }
+            break;
+        case U_AT_CLIENT_STREAM_TYPE_EDM:
+            sizeBytes = uShortRangeEdmStreamAtGetReceiveSize(pClient->streamHandle);
             if ((sizeBytes > 0) ||
                 (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
                 uPortUartEventSend(pClient->streamHandle,
@@ -2343,6 +2376,9 @@ int32_t uAtClientUrcHandlerStackMinFree(uAtClientHandle_t atHandle)
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             stackMinFree = uPortUartEventStackMinFree(pClient->streamHandle);
+            break;
+        case U_AT_CLIENT_STREAM_TYPE_EDM:
+            stackMinFree = uPortShortRangeEdmStremAtEventStackMinFree(pClient->streamHandle);
             break;
         default:
             break;

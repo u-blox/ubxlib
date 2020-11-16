@@ -50,6 +50,9 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/sock/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/sock/test}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/at_client/api}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/api}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/src}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/test}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/src}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/test}"/>
@@ -180,6 +183,9 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/sock/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/sock/test}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/at_client/api}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/api}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/src}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/test}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/src}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/test}"/>

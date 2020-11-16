@@ -223,6 +223,38 @@
 # define U_CFG_TEST_PIN_UART_B_RTS   -1
 #endif
 
+/** UART with connected short range module
+ */
+#ifndef U_CFG_TEST_SHORT_RANGE_UART
+# define U_CFG_TEST_SHORT_RANGE_UART        -1
+#endif
+
+/** Module connected or not
+ */
+#ifndef U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED
+# define U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED  -1
+#endif
+
+/** Stream type UART == 1, else EDM
+ * On applicable if module connected
+ */
+#ifndef U_CFG_TEST_SHORT_RANGE_STREAM_TYPE_UART
+# define U_CFG_TEST_SHORT_RANGE_STREAM_TYPE_UART 1
+#endif
+
+/** Short range test with connecting phone
+ */
+#ifndef C_CFG_TEST_SHORT_RANGE_REMOTE_SPS_CONNECT
+# define C_CFG_TEST_SHORT_RANGE_REMOTE_SPS_CONNECT -1
+#endif
+
+/** Short range test with connecting phone
+ */
+#ifndef U_CFG_TEST_SHORT_RANGE_UART_MANUAL
+# define U_CFG_TEST_SHORT_RANGE_UART_MANUAL -1
+#endif
+
+
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 
 // End of file

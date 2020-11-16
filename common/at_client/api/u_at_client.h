@@ -360,6 +360,7 @@ typedef void *uAtClientHandle_t;
 //lint -estring(788, uAtClientStream_t::U_AT_CLIENT_STREAM_TYPE_MAX) Suppress not used within defaulted switch
 typedef enum {
     U_AT_CLIENT_STREAM_TYPE_UART,
+    U_AT_CLIENT_STREAM_TYPE_EDM,
     U_AT_CLIENT_STREAM_TYPE_MAX
 } uAtClientStream_t;
 

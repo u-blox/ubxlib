@@ -17,9 +17,9 @@ import u_data # Accesses the instance database
 # (a)    .md/.jpg etc. file                            ignore.
 # (b)     platform sdk file          run all instances supporting that platform, that SDK.
 # (c)    platform .c .h file         run all instances supporting that platform, one SDK.
-# (d) API/implementation *.c *.h file    run all instances supporting that API;
-#                                           if just one then return a filter
-#                                           string for that one, else run all.
+# (d) API/implementation *.c *.h file    run all instances supporting that API (according
+#                                           to DATABASE.md); if just one then return
+#                                           a filter string for that one, else run all.
 # (e)       any .py file                      run Pylint to check for errors.
 # (f)          any                            run Doxygen to check for errors.
 

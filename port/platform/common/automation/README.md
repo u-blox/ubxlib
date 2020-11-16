@@ -33,6 +33,8 @@ If you are trying to run locally a test which talks to real hardware you will al
 
 Be **very careful** not to accidentally push your local change to this file back into the repo.
 
+NOTE: if you need to change a setting (e.g. the path to a tool) it is best to edit that setting in the `settings.json` file, which is stored in the `.ubx_automation` directory off the current user's home directory.  If you change it in the `u_settings.py` script file directly you **must** delete the `.ubx_automation` directory in order that the `u_settings.py` script re-writes the `settings.json` file with the new default values; and of course be very careful not to accidentally push your change to the `u_settings.py` script file back into the repo.
+
 # Script Usage
 The main intended entry point into automation is the `u_pull_request.py` Python script.  You can run it with parameter `-h` to obtain usage information but basically the form is:
 
@@ -104,6 +106,7 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 `u_utils.py`: utility functions used by all of the above.
 
 # Maintenance
+- If you add a new API make sure that it is listed in the `APIs available` column of at least one row in `DATABASE.md`, otherwise `u_select.py` will **not**  select it for testing on a Pull Request.
 - If you add a new board to the test machine or change the COM port or debugger serial number that an existing board uses on the test machine, update `u_connection.py` to match.
 - If you add a new platform or test suite, add it to `DATABASE.md` and make sure that the result is parsed correctly by `u_data.py` (e.g. by running `u_pull_request.py` from the command-line and checking that everything is correct).
 - If you add a new item in the range 0 to 9 (i.e. a checker with no platform), update `u_run.py` to include it.

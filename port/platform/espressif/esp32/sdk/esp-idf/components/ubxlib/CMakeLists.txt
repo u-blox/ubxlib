@@ -10,6 +10,8 @@ set(COMPONENT_ADD_INCLUDEDIRS
                    "../../../../../../../../common/sock/api"
                    "../../../../../../../../common/network/api"
                    "../../../../../../../../common/at_client/api"
+                   "../../../../../../../../common/short_range/api"
+                   "../../../../../../../../common/short_range/src"
 # The API for the porting layer
                    "../../../../../../../api"
 # The private API for the event queue
@@ -36,6 +38,11 @@ set(COMPONENT_SRCS
                    "../../../../../../../../common/sock/src/u_sock.c"
 # The common AT client
                    "../../../../../../../../common/at_client/src/u_at_client.c"
+# The common short range layer
+                   "../../../../../../../../common/short_range/src/u_short_range.c"
+                   "../../../../../../../../common/short_range/src/u_short_range_edm.c"
+                   "../../../../../../../../common/short_range/src/u_short_range_edm_stream.c"
+                   "../../../../../../../../common/short_range/src/u_short_range_private.c"
 # The porting layer
                    "../../../../../../common/mbedtls/u_port_crypto.c"
                    "../../../../../../common/event_queue/u_port_event_queue.c"

@@ -106,6 +106,12 @@ SRC_FILES += \
   ../../../../../../../common/at_client/src/u_at_client.c \
   ../../../../../../../common/at_client/test/u_at_client_test.c \
   ../../../../../../../common/at_client/test/u_at_client_test_data.c \
+  ../../../../../../../common/short_range/src/u_short_range.c \
+  ../../../../../../../common/short_range/src/u_short_range_edm.c \
+  ../../../../../../../common/short_range/src/u_short_range_edm_stream.c \
+  ../../../../../../../common/short_range/src/u_short_range_private.c \
+  ../../../../../../../common/short_range/test/u_short_range_test.c \
+  ../../../../../../../common/short_range/test/u_short_range_test_private.c \
   ../../../src/u_port.c \
   ../../../src/u_port_debug.c \
   ../../../src/u_port_gpio.c \
@@ -167,6 +173,9 @@ INC_FOLDERS += \
   ../../../../../../../common/at_client/src \
   ../../../../../../../common/at_client/test \
   ../../../../../../../common/error/api \
+  ../../../../../../../common/short_range/api \
+  ../../../../../../../common/short_range/src \
+  ../../../../../../../common/short_range/test \
   ../../../../../../api \
   ../../../../../../../cfg \
   ../../../../../../clib \
