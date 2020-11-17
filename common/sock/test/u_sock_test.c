@@ -869,7 +869,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
 {
-    int32_t errorCode = -1;
+    int32_t errorCode;
     int32_t networkHandle;
     uSockAddress_t remoteAddress;
     uSockAddress_t address;
@@ -970,6 +970,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
                          U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
                          U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
                 // Connections can fail so allow this a few goes
+                errorCode = -1;
                 for (size_t y = 2; (y > 0) && (errorCode < 0); y--) {
                     errorCode = uSockConnect(descriptor, &remoteAddress);
                     uPortLog("U_SOCK_TEST: uSockConnect() returned %d, errno %d.\n",
@@ -1018,7 +1019,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
 {
-    int32_t errorCode = -1;
+    int32_t errorCode;
     int32_t networkHandle;
     uSockAddress_t remoteAddress;
     uSockAddress_t address;
@@ -1084,6 +1085,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
                      U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                      U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
             // Connections can fail so allow this a few goes
+            errorCode = -1;
             for (y = 2; (y > 0) && (errorCode < 0); y--) {
                 errorCode = uSockConnect(descriptor, &remoteAddress);
                 if (errorCode < 0) {
