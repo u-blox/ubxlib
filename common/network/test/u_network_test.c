@@ -90,6 +90,13 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
     uSockAddress_t address;
     char buffer[32];
     int32_t y;
+    int32_t heapUsed;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uNetworkInit() == 0);
@@ -186,6 +193,15 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
 
     uNetworkDeinit();
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_NETWORK_TEST: 0 byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -194,7 +210,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
  */
 U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
 {
-    int32_t minFreeStackBytes;
+    int32_t y;
 
     // The network test configuration is shared
     // between the network and sockets tests so
@@ -205,14 +221,19 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
     }
     uNetworkDeinit();
 
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    y = uPortTaskStackMinFree(NULL);
     uPortLog("U_NETWORK_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+             " byte(s) free at the end of these tests.\n", y);
+    U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
     uPortDeinit();
+
+    y = uPortGetHeapMinFree();
+    if (y >= 0) {
+        uPortLog("U_NETWORK_TEST: heap had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", y);
+        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
+    }
 }
 
 // End of file

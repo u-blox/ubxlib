@@ -1423,26 +1423,31 @@ void uSockCleanUp()
                         pContainer->pNext->pPrevious = pContainer->pPrevious;
                     }
 
-                    // Remember the next pointer
+                    // Remember the next pointer and the
+                    // network handle
                     pTmp = pContainer->pNext;
-
-                    // Call the clean-up function in the underlying
-                    // socket layer, where present
                     networkHandle = pContainer->socket.networkHandle;
-                    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-                        uCellSockCleanup(networkHandle);
-                    } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                        // TODO
-                    }
 
                     // Free the memory
                     free(pContainer);
                     // Move to the next entry
                     pContainer = pTmp;
                 } else {
+                    // Remember the network handle
+                    networkHandle = pContainer->socket.networkHandle;
                     pContainer->socket.state = U_SOCK_STATE_CLOSED;
                     // Move on
                     pContainer = pContainer->pNext;
+                }
+
+                if (networkHandle >= 0) {
+                    // Call the clean-up function in the underlying
+                    // socket layer, where present
+                    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+                        uCellSockCleanup(networkHandle);
+                    } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
+                        // TODO
+                    }
                 }
             } else {
                 // Move on but count the number of non-closed sockets

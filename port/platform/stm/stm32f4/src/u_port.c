@@ -32,6 +32,9 @@
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
 
+#include "u_heap_check.h"
+
+#include "FreeRTOS.h" // For xPortGetFreeHeapSize()
 #include "stm32f437xx.h"
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
@@ -188,6 +191,18 @@ int64_t uPortGetTickTimeMs()
     }
 
     return tickTime;
+}
+
+// Get the minimum amount of heap free, ever, in bytes.
+int32_t uPortGetHeapMinFree()
+{
+    return (int32_t) uHeapCheckGetMinFree();
+}
+
+// Get the current free heap.
+int32_t uPortGetHeapFree()
+{
+    return (int32_t) xPortGetFreeHeapSize();
 }
 
 // End of file

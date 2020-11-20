@@ -30,7 +30,10 @@
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
 
+#include "freertos/FreeRTOS.h" // For xPortGetFreeHeapSize()
+
 #include "esp_timer.h" // For esp_timer_get_time()
+#include "esp_system.h" // For esp_get_minimum_free_heap_size()
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -107,6 +110,18 @@ void uPortDeinit()
 int64_t uPortGetTickTimeMs()
 {
     return esp_timer_get_time() / 1000;
+}
+
+// Get the minimum amount of heap free, ever, in bytes.
+int32_t uPortGetHeapMinFree()
+{
+    return (int32_t) esp_get_minimum_free_heap_size();
+}
+
+// Get the current free heap.
+int32_t uPortGetHeapFree()
+{
+    return (int32_t) xPortGetFreeHeapSize();
 }
 
 // End of file

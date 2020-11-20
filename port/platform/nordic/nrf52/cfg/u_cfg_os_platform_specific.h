@@ -25,6 +25,18 @@
  */
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR NRF52: HEAP
+ * -------------------------------------------------------------- */
+
+/** Not stricty speaking part of the OS but there's nowhere better
+ * to put this.  Set this to 1 if the C library does not free memory
+ * that it has alloced internally when a task is deleted.
+ * For instance, newlib when it is compiled in a certain way
+ * does this on some platforms.
+ */
+#define U_CFG_OS_CLIB_LEAKS 0
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR NRF52: OS GENERIC
  * -------------------------------------------------------------- */
 
@@ -46,10 +58,10 @@
 
 #ifndef U_CFG_OS_YIELD_MS
 /** The amount of time to block for to ensure that a yield
- * occurs. This set to 1 ms as the NRF52 platform has a
+ * occurs. This set to 2 ms as the NRF52 platform has a
  * 1 ms tick.
  */
-# define U_CFG_OS_YIELD_MS 1
+# define U_CFG_OS_YIELD_MS 2
 #endif
 
 /* ----------------------------------------------------------------

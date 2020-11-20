@@ -478,6 +478,20 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     int32_t z;
     size_t count;
     char *pBuffer;
+    int32_t heapUsed;
+
+    // In case a previous test failed
+    uCellSockDeinit();
+    uCellTestPrivateCleanup(&gHandles);
+
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // If we memset these here we can do memcmp's afterwards
     // 'cos we don't have to worry about the bits in the packing
@@ -488,10 +502,6 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     // Malloc a buffer to receive things into.
     pBuffer = (char *) malloc(U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
     U_PORT_TEST_ASSERT(pBuffer != NULL);
-
-    // In case a previous test failed
-    uCellSockDeinit();
-    uCellTestPrivateCleanup(&gHandles);
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -721,6 +731,13 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
 
     // Free memory
     free(pBuffer);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_SOCK_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Test setting/getting socket options.
@@ -732,10 +749,14 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     void *pValue;
     void *pValueSaved;
     size_t length = 0;
+    int32_t heapUsed;
 
     // In case a previous test failed
     uCellSockDeinit();
     uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -839,6 +860,13 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_SOCK_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -847,19 +875,24 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
  */
 U_PORT_TEST_FUNCTION("[cellSock]", "cellSockCleanUp")
 {
-    int32_t minFreeStackBytes;
+    int32_t x;
 
     uCellSockDeinit();
     uCellTestPrivateCleanup(&gHandles);
 
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    x = uPortTaskStackMinFree(NULL);
     uPortLog("U_CELL_SOCK_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+             " byte(s) free at the end of these tests.\n", x);
+    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
     uPortDeinit();
+
+    x = uPortGetHeapMinFree();
+    if (x >= 0) {
+        uPortLog("U_CELL_SOCK_TEST: heap had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
+    }
 }
 
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE

@@ -11,7 +11,7 @@ JLINK_SERIAL_NUMBER :=
 # (and in the SES SDK you'll find a variable
 # "arm_linker_heap_size" nestling in the .emProject
 # file, if you want to align the two SDKs).
-HEAP_SIZE        := 32768
+HEAP_SIZE        := 40960
 
 $(info    OUTPUT_DIRECTORY will be "$(OUTPUT_DIRECTORY)")
 $(info    UNITY_PATH will be "$(UNITY_PATH)")
@@ -124,6 +124,7 @@ SRC_FILES += \
   ../../../../../../test/u_port_test.c \
   ../../../app/u_main.c \
   ../../../../../common/runner/u_runner.c \
+  ../../../../../common/heap_check/u_heap_check.c \
   $(UNITY_PATH)/src/unity.c \
 
 # Include folders common to all targets
@@ -183,6 +184,7 @@ INC_FOLDERS += \
   ../../../../../common/event_queue \
   ../../../../../../test \
   ../../../../../common/runner \
+  ../../../../../common/heap_check \
   ../../../app \
   $(UNITY_PATH)/src \
 
@@ -237,6 +239,13 @@ LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 LDFLAGS += -Wl,--gc-sections
 # use newlib in nano version
 LDFLAGS += --specs=nano.specs
+# wrap malloc for max heap usage tracking
+LDFLAGS += -Wl,--wrap=malloc
+LDFLAGS += -Wl,--wrap=_malloc_r
+LDFLAGS += -Wl,--wrap=calloc
+LDFLAGS += -Wl,--wrap=_calloc_r
+LDFLAGS += -Wl,--wrap=realloc
+LDFLAGS += -Wl,--wrap=_realloc_r
 
 nrf52840_xxaa: CFLAGS += -D__HEAP_SIZE=$(HEAP_SIZE)
 nrf52840_xxaa: CFLAGS += -D__STACK_SIZE=8192

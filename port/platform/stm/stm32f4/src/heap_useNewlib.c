@@ -119,7 +119,7 @@ register char *stack_ptr asm("sp");
 // Kludge below uses CubeMX-generated symbols instead of sane LD definitions
 #define __HeapBase  end
 #define __HeapLimit _estack // except in K64F this was already adjusted in LD for stack...
-static int heapBytesRemaining;
+static int heapBytesRemaining = 0;
 // no DRN HEAP_SIZE symbol from LD... // that's (&__HeapLimit)-(&__HeapBase)
 uint32_t TotalHeapSize; // publish for diagnostic routines; filled in first _sbrk call.
 #else
@@ -128,7 +128,6 @@ uint32_t TotalHeapSize; // publish for diagnostic routines; filled in first _sbr
 extern char HEAP_SIZE;  // make sure to define this symbol in linker LD command file
 static int heapBytesRemaining = (int) &HEAP_SIZE; // that's (&__HeapLimit)-(&__HeapBase)
 #endif
-
 
 #ifdef MALLOCS_INSIDE_ISRs // STM code to avoid malloc within ISR (USB CDC stack)
 // We can't use vTaskSuspendAll() within an ISR.
@@ -145,6 +144,16 @@ static int heapBytesRemaining = (int) &HEAP_SIZE; // that's (&__HeapLimit)-(&__H
 static int totalBytesProvidedBySBRK = 0;
 #endif
 extern char __HeapBase, __HeapLimit;  // make sure to define these symbols in linker LD command file
+
+// Return the value of "heap bytes remaining", which
+// is the size not yet passed to newlib by malloc().
+// Since newlib only asks for memory when it needs
+// more and it never comes back this is a measure of
+// the minimum heap remaining EVER.
+int uPortInternalGetSbrkFreeBytes()
+{
+    return heapBytesRemaining;
+}
 
 //! _sbrk_r version supporting reentrant newlib (depends upon above symbols defined by linker control file).
 void *_sbrk_r(struct _reent *pReent, int incr)
@@ -240,35 +249,6 @@ void __env_unlock()
 {
     (void)xTaskResumeAll();
 };
-
-#if 1 // Provide malloc debug and accounting wrappers
-/// /brief  Wrap malloc/malloc_r to help debug who requests memory and why.
-/// To use these, add linker options: -Xlinker --wrap=malloc -Xlinker --wrap=_malloc_r
-// Note: These functions are normally unused and stripped by linker.
-int TotalMallocdBytes;
-int MallocCallCnt;
-static bool inside_malloc;
-void *__wrap_malloc(size_t nbytes)
-{
-    extern void *__real_malloc(size_t nbytes);
-    MallocCallCnt++;
-    TotalMallocdBytes += nbytes;
-    inside_malloc = true;
-    void *p = __real_malloc(nbytes); // will call malloc_r...
-    inside_malloc = false;
-    return p;
-};
-void *__wrap__malloc_r(void *reent, size_t nbytes)
-{
-    extern void *__real__malloc_r(size_t nbytes);
-    if (!inside_malloc) {
-        MallocCallCnt++;
-        TotalMallocdBytes += nbytes;
-    };
-    void *p = __real__malloc_r(nbytes);
-    return p;
-};
-#endif
 
 // ================================================================================================
 // Implement FreeRTOS's memory API using newlib-provided malloc family.

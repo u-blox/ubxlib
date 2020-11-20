@@ -107,6 +107,22 @@ void uPortDeinit();
  */
 int64_t uPortGetTickTimeMs();
 
+/** Get the heap high watermark, the minimum amount of heap
+ * free, ever.
+ *
+ * @return the minimum amount of heap free in bytes or negative
+ *         error code.
+ */
+int32_t uPortGetHeapMinFree();
+
+/** Get the current free heap size.  This may be called at
+ * any time, even before uPortInit() or after uPortDeinit().
+ *
+ * @return the amount of free heap in bytes or negative
+ *         error code.
+ */
+int32_t uPortGetHeapFree();
+
 #ifdef __cplusplus
 }
 #endif

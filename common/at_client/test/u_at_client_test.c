@@ -117,6 +117,10 @@ static int32_t gUartBHandle = -1;
  */
 static int32_t gConsecutiveTimeout;
 
+/** For tracking heap lost to memory  lost by the C library.
+ */
+static size_t gSystemHeapLost = 0;
+
 # if (U_CFG_TEST_UART_B >= 0)
 
 /** AT server buffer used by atServerCallback() and atEchoServerCallback().
@@ -143,8 +147,18 @@ static void consecutiveTimeoutCallback(uAtClientHandle_t atHandle,
                                        int32_t *pCount)
 {
     (void) atHandle;
+#if U_CFG_OS_CLIB_LEAKS
+    int32_t heapUsed = uPortGetHeapFree();
+#endif
+
     uPortLog("U_AT_CLIENT_TEST: AT consecutive timeout callback"
              " called with %d.\n", *pCount);
+
+#if U_CFG_OS_CLIB_LEAKS
+    // Take account of any heap lost through the printf()
+    gSystemHeapLost += (size_t) (unsigned) (heapUsed - uPortGetHeapFree());
+#endif
+
     gConsecutiveTimeout = *pCount;
 }
 
@@ -445,6 +459,9 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
     size_t increment;
     char *pBuffer;
     const char *pTmp;
+#if U_CFG_OS_CLIB_LEAKS
+    int32_t heapUsed;
+#endif
 
     (void) uartHandle;
 
@@ -470,10 +487,24 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
         }
 
         if (receiveLength > 0) {
+#if U_CFG_OS_CLIB_LEAKS
+            // Calling printf() from a new task causes newlib
+            // to allocate additional memory which, depending
+            // on the OS/system, may not be recovered;
+            // take account of that here.
+            heapUsed = uPortGetHeapFree();
+#endif
+
             uPortLog("U_AT_SERVER_TEST_%d: received command: \"",
                      pCheckCommandResponse->index + 1);
             uAtClientTestPrint(gAtServerBuffer, receiveLength);
             uPortLog("\".\n");
+
+#if U_CFG_OS_CLIB_LEAKS
+            // Take account of any heap lost through the first
+            // printf()
+            gSystemHeapLost += (size_t) (unsigned) (heapUsed - uPortGetHeapFree());
+#endif
 
             // Check what we received
             pCommand = &(pCheckCommandResponse->pTestSet[pCheckCommandResponse->index].command);
@@ -960,7 +991,14 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
     bool thingIsOn;
     int32_t x;
     char c;
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     gUartAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                  U_CFG_TEST_BAUD_RATE,
@@ -1050,6 +1088,18 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
     uPortUartClose(gUartAHandle);
     gUartAHandle = -1;
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_AT_CLIENT_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
 # if (U_CFG_TEST_UART_B >= 0)
@@ -1078,12 +1128,19 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     char buffer[5]; // Enough characters for a 3 digit index as a string
     char t = 'T';
     char r = 'R';
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
     memset(&checkCommandResponse, 0, sizeof(checkCommandResponse));
     checkCommandResponse.pTestSet = gAtClientTestSet1;
     memset(&checkUrc, 0, sizeof(checkUrc));
     checkUrc.pUrc = NULL;
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     // Set up everything with the two UARTs
@@ -1411,6 +1468,18 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     U_PORT_TEST_ASSERT(checkUrc.count == U_AT_CLIENT_TEST_NUM_URCS_SET_1);
     U_PORT_TEST_ASSERT(checkUrc.passIndex == U_AT_CLIENT_TEST_NUM_URCS_SET_1);
     U_PORT_TEST_ASSERT(gConsecutiveTimeout == 0);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_AT_CLIENT_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
 /** Add an AT client and use an AT echo responder to bounce-back
@@ -1428,10 +1497,17 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
     size_t x = 0;
     int32_t lastError = -1;
     int32_t y;
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
     memset(&checkUrc, 0, sizeof(checkUrc));
     checkUrc.pUrc = NULL;
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     // Set up everything with the two UARTs
@@ -1570,6 +1646,18 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
     U_PORT_TEST_ASSERT(lastError == 0);
     U_PORT_TEST_ASSERT(checkUrc.count == U_AT_CLIENT_TEST_NUM_URCS_SET_2);
     U_PORT_TEST_ASSERT(checkUrc.passIndex == U_AT_CLIENT_TEST_NUM_URCS_SET_2);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_AT_CLIENT_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
 # endif
@@ -1581,7 +1669,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
  */
 U_PORT_TEST_FUNCTION("[atClient]", "atClientCleanUp")
 {
-    int32_t minFreeStackBytes;
+    int32_t x;
 
     uAtClientDeinit();
     if (gUartAHandle >= 0) {
@@ -1591,14 +1679,19 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCleanUp")
         uPortUartClose(gUartBHandle);
     }
 
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
-    uPortLog("U_AT_CLIENT_TEST: main task stack had a minimum of"
-             " %d byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    x = uPortTaskStackMinFree(NULL);
+    uPortLog("U_AT_CLIENT_TEST: main task stack had a minimum of %d"
+             " byte(s) free at the end of these tests.\n", x);
+    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
     uPortDeinit();
+
+    x = uPortGetHeapMinFree();
+    if (x >= 0) {
+        uPortLog("U_AT_CLIENT_TEST: heap had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
+    }
 }
 
 // End of file

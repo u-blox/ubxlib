@@ -44,6 +44,16 @@
                                                                      group)
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: HEAP RELATED
+ * -------------------------------------------------------------- */
+
+/** The minimum free heap space permitted, i.e. what's left for
+ * user code.  Unfortunately Zephyr does not offer a way to measure
+ * hte minimum free heap space left so settings this to -1 for now.
+ */
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES -1
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED
  * -------------------------------------------------------------- */
 

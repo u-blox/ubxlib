@@ -39,6 +39,16 @@
                                                                      group)
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: HEAP RELATED
+ * -------------------------------------------------------------- */
+
+/** The minimum free heap space permitted, i.e. what's left for
+ * user code.  This is assuming a heap size of 40 kbytes (set
+ * in the Makefile/FreeRTOSConfig.h file and the SES XML file).
+ */
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 8)
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED
  * -------------------------------------------------------------- */
 

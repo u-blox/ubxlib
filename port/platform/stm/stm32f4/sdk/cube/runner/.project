@@ -97,6 +97,11 @@
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/runner/u_runner.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Common/u_heap_check.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/heap_check/u_heap_check.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell.c</locationURI>
@@ -551,6 +556,11 @@
 			<name>Ubxlib/Inc/U-Blox/platform/common/runner</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/runner</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/platform/common/heap_check</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/heap_check</locationURI>
 		</link>
 		<link>
 			<name>Middlewares/Inc/Third_Party/FreeRTOS/Source/CMSIS_RTOS</name>

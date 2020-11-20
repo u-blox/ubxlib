@@ -83,6 +83,12 @@ static uCellTestPrivate_t gHandles = {-1};
  */
 static int32_t gCallbackErrorCode = 0;
 
+/** For tracking heap lost to allocations made
+ * by the C library in new tasks: newlib does NOT
+ * necessarily reclaim it on task deletion.
+ */
+static size_t gSystemHeapLost = 0;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -273,8 +279,14 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 {
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // Note: not using the standard preamble here as
     // we need to fiddle with the parameters into
@@ -316,14 +328,32 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
 /** Test reboot.
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
 {
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -341,6 +371,18 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -349,18 +391,23 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrCleanUp")
 {
-    int32_t minFreeStackBytes;
+    int32_t x;
 
     uCellTestPrivateCleanup(&gHandles);
 
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    x = uPortTaskStackMinFree(NULL);
     uPortLog("U_CELL_PWR_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+             " byte(s) free at the end of these tests.\n", x);
+    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
     uPortDeinit();
+
+    x = uPortGetHeapMinFree();
+    if (x >= 0) {
+        uPortLog("U_CELL_PWR_TEST: heap had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
+    }
 }
 
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE

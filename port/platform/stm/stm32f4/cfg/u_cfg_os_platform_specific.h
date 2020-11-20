@@ -25,6 +25,19 @@
  */
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR STM32F4: HEAP
+ * -------------------------------------------------------------- */
+
+/** Not stricty speaking part of the OS but there's nowhere better
+ * to put this.  newlib on this platform doesn't recover memory
+ * properly on task deletion: if you printf() from a task, the first
+ * time it will malloc() 1468 bytes of memory and will never give
+ * that back, even if you delete the task.  So either don't printf()
+ * from the task at all or don't delete it.
+ */
+#define U_CFG_OS_CLIB_LEAKS 1
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR STM32F4: OS GENERIC
  * -------------------------------------------------------------- */
 
@@ -47,10 +60,10 @@
 
 #ifndef U_CFG_OS_YIELD_MS
 /** The amount of time to block for to ensure that a yield
- * occurs. This set to 1 ms as the STM32F4 platform has a
+ * occurs. This set to 2 ms as the STM32F4 platform has a
  * 1 ms tick.
  */
-# define U_CFG_OS_YIELD_MS 1
+# define U_CFG_OS_YIELD_MS 2
 #endif
 
 /* ----------------------------------------------------------------

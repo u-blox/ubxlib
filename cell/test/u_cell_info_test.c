@@ -108,9 +108,13 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
     int32_t cellHandle;
     char buffer[64];
     int32_t bytesRead;
+    int32_t heapUsed;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -198,6 +202,13 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Test all the radio parameters functions.
@@ -208,9 +219,13 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     int32_t x;
     int32_t snrDb;
     size_t count;
+    int32_t heapUsed;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -266,7 +281,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     }
     U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) < 0);
     if (U_CELL_PRIVATE_RAT_IS_EUTRAN(uCellNetGetActiveRat(cellHandle))) {
-        // Only get this if we have RSRP a well
+        // Only get this if we have RSRP as well
         x = uCellInfoGetSnrDb(cellHandle, &snrDb);
         if (x == 0) {
             uPortLog("U_CELL_INFO_TEST: SNR is %d dB.\n", snrDb);
@@ -280,6 +295,13 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_INFO_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heap < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -288,18 +310,23 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
  */
 U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoCleanUp")
 {
-    int32_t minFreeStackBytes;
+    int32_t x;
 
     uCellTestPrivateCleanup(&gHandles);
 
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    x = uPortTaskStackMinFree(NULL);
     uPortLog("U_CELL_INFO_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+             " byte(s) free at the end of these tests.\n", x);
+    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
     uPortDeinit();
+
+    x = uPortGetHeapMinFree();
+    if (x >= 0) {
+        uPortLog("U_CELL_INFO_TEST: heap had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
+    }
 }
 
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE

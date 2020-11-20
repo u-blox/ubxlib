@@ -37,6 +37,7 @@
 #include "string.h"    // memcpy(), memcmp(), strlen()
 
 #include "u_cfg_sw.h"
+#include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
 
@@ -171,67 +172,104 @@ static void registrationStatusCallback(uAtClientHandle_t atHandle,
 // might be called from a URC.
 static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
                              uCellNetStatus_t status, int32_t rat,
-                             uCellNetRegDomain_t domain)
+                             uCellNetRegDomain_t domain,
+                             bool fromUrc)
 {
     uCellNetRegistationStatus_t *pStatus;
+    bool printAllowed = true;
+#if U_CFG_OS_CLIB_LEAKS
+    // If we're in a URC and the C library leaks memory
+    // when printf() is called from a dynamically
+    // allocated task (which a URC is), then don't
+    // print stuff
+    if (fromUrc) {
+        printAllowed = false;
+    }
+#endif
 
     switch (status) {
         case U_CELL_NET_STATUS_NOT_REGISTERED:
             // Not (yet) registered (+CxREG: 0)
-            uPortLog("%d: NReg\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: NReg\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_REGISTERED_HOME:
             // Registered on the home network (+CxREG: 1)
-            uPortLog("%d: RegH\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: RegH\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_SEARCHING:
             // Searching for a network (+CxREG: 2)
-            uPortLog("%d: Search\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: Search\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_REGISTRATION_DENIED:
             // Registeration denied (+CxREG: 3)
-            uPortLog("%d: Deny\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: Deny\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_OUT_OF_COVERAGE:
             // Out of coverage (+CxREG: 4)
-            uPortLog("%d: OoC\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: OoC\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_REGISTERED_ROAMING:
             // Registered on a roaming network (+CxREG: 5)
-            uPortLog("%d: RegR\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: RegR\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_HOME:
             // Registered for SMS only on the home network
             // (+CxREG: 6)
-            uPortLog("%d: RegS\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: RegS\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_ROAMING:
             // Registered for SMS only on a roaming network
             // (+CxREG: 7)
-            uPortLog("%d: RegS\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: RegS\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_EMERGENCY_ONLY:
             // Registered for emergency service only (+CxREG: 8)
-            uPortLog("%d: RegE\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: RegE\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME:
             // Registered on the home network, CFSB not preferred
             // (+CxREG: 9)
-            uPortLog("%d: RegNC\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: RegNC\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING:
             // Registered on a roaming network, CFSB not preferred
             // (+CxREG: 10)
-            uPortLog("%d: RegNC\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: RegNC\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_TEMPORARY_NETWORK_BARRING:
             // Temporary barring
-            uPortLog("%d: NRegB\n", rat);
+            if (printAllowed) {
+                uPortLog("%d: NRegB\n", rat);
+            }
             break;
         case U_CELL_NET_STATUS_UNKNOWN:
         default:
             // Unknown registration status
-            uPortLog("%d: Unk %d\n", rat, status);
+            if (printAllowed) {
+                uPortLog("%d: Unk %d\n", rat, status);
+            }
             break;
     }
 
@@ -314,7 +352,7 @@ static inline void CXREG_urc(uCellPrivateInstance_t *pInstance,
         // Read the RAT that we're on
         rat = uAtClientReadInt(atHandle);
     }
-    setNetworkStatus(pInstance, status, rat, domain);
+    setNetworkStatus(pInstance, status, rat, domain, true);
 }
 
 // Registration on a network in the circuit switched
@@ -888,7 +926,8 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                 }
                 // Set the status
                 setNetworkStatus(pInstance, status, rat,
-                                 gRegTypes[regType].domain);
+                                 gRegTypes[regType].domain,
+                                 false);
                 uAtClientResponseStop(atHandle);
                 if (uAtClientUnlock(atHandle) != 0) {
                     // We're prodding the module pretty often
@@ -988,7 +1027,7 @@ static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
                         setNetworkStatus(pInstance,
                                          g3gppStatusToCellStatus[status3gpp],
                                          (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,
-                                         gRegTypes[x].domain);
+                                         gRegTypes[x].domain, false);
                     }
                     uAtClientResponseStop(atHandle);
                     uAtClientUnlock(atHandle);

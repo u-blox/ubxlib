@@ -668,14 +668,22 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
 static uSockDescriptor_t openSocketAndUseIt(int32_t networkHandle,
                                             const uSockAddress_t *pRemoteAddress,
                                             uSockType_t type,
-                                            uSockProtocol_t protocol)
+                                            uSockProtocol_t protocol,
+                                            int32_t *pHeapXxxSockInitLoss)
 {
     int32_t errorCode = -1;
     uSockDescriptor_t descriptor;
     uSockAddress_t address;
 
     uPortLog("U_SOCK_TEST: creating socket...\n");
+    // Creating a socket may use heap in the underlying
+    // network layer which will be reclaimed when the
+    // network layer is closed but we don't do that here
+    // to save time so need to allow for it in the heap loss
+    // calculation
+    *pHeapXxxSockInitLoss += uPortGetHeapFree();
     descriptor = uSockCreate(networkHandle, type, protocol);
+    *pHeapXxxSockInitLoss -= uPortGetHeapFree();
     uPortLog("U_SOCK_TEST: socket descriptor %d, errno %d.\n",
              descriptor, errno);
     if (descriptor >= 0) {
@@ -764,6 +772,13 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
     int32_t port;
     uSockAddress_t address;
     char *pAddress;
+    int32_t heapUsed;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
 
     // No need to initialise anything for this test
     for (size_t x = 0; x < sizeof(gTestAddressList) /
@@ -863,13 +878,20 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
         // Leave a gap in order not overwhelm the debug output
         uPortTaskBlock(10);
     }
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_SOCK_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Basic UDP test.
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
 {
-    int32_t errorCode;
+    int32_t errorCode = -1;
     int32_t networkHandle;
     uSockAddress_t remoteAddress;
     uSockAddress_t address;
@@ -877,6 +899,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
     bool dataCallbackCalled;
     size_t sizeBytes;
     bool success = false;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -886,18 +911,33 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
     // a network underneath us
     stdPreamble();
 
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
+
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
         if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
             uPortLog("U_SOCK_TEST: doing basic UDP test on %s.\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
                      U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
             // Look up the address of the server we use for UDP echo
+            // The first call to a sockets API needs to
+            // initialise the underlying sockets layer; take
+            // account of that initialisation heap cost here.
+            heapSockInitLoss = uPortGetHeapFree();
             U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                   U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
+            heapSockInitLoss -= uPortGetHeapFree();
+
             // Add the port number we will use
             remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
@@ -906,8 +946,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
             for (size_t retries = 2; !success && (retries > 0); retries--) {
                 success = true;
                 // Create a UDP socket
+                // Creating a socket may use heap in the underlying
+                // network layer which will be reclaimed when the
+                // network layer is closed but we don't do that here
+                // to save time so need to allow for it in the heap loss
+                // calculation
+                heapXxxSockInitLoss += uPortGetHeapFree();
                 descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
                                          U_SOCK_PROTOCOL_UDP);
+                heapXxxSockInitLoss -= uPortGetHeapFree();
                 U_PORT_TEST_ASSERT(descriptor >= 0);
                 U_PORT_TEST_ASSERT(errno == 0);
 
@@ -970,7 +1017,6 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
                          U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
                          U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
                 // Connections can fail so allow this a few goes
-                errorCode = -1;
                 for (size_t y = 2; (y > 0) && (errorCode < 0); y--) {
                     errorCode = uSockConnect(descriptor, &remoteAddress);
                     uPortLog("U_SOCK_TEST: uSockConnect() returned %d, errno %d.\n",
@@ -1010,6 +1056,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
                 uSockCleanUp();
+
+                // Check for memory leaks
+                heapUsed -= uPortGetHeapFree();
+                uPortLog("U_SOCK_TEST: during this part of the test %d"
+                         " byte(s) were lost to sockets initialisation;"
+                         " we have leaked %d byte(s).\n",
+                         heapSockInitLoss + heapXxxSockInitLoss,
+                         heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+                U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
             }
         }
     }
@@ -1019,7 +1074,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
 {
-    int32_t errorCode;
+    int32_t errorCode = -1;
     int32_t networkHandle;
     uSockAddress_t remoteAddress;
     uSockAddress_t address;
@@ -1031,6 +1086,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
     int32_t y;
     char *pDataReceived;
     int64_t startTimeMsMs;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -1040,24 +1098,47 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
     // a network underneath us
     stdPreamble();
 
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
+
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
         if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
             uPortLog("U_SOCK_TEST: doing basic TCP test on %s.\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
                      U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
+
             // Look up the address of the server we use for TCP echo
+            // The first call to a sockets API needs to
+            // initialise the underlying sockets layer; take
+            // account of that initialisation heap cost here.
+            heapSockInitLoss = uPortGetHeapFree();
             U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                   U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
+            heapSockInitLoss -= uPortGetHeapFree();
+
             // Add the port number we will use
             remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
 
             // Create a TCP socket
+            // Creating a socket may use heap in the underlying
+            // network layer which will be reclaimed when the
+            // network layer is closed but we don't do that here
+            // to save time so need to allow for it in the heap loss
+            // calculation
+            heapXxxSockInitLoss += uPortGetHeapFree();
             descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_STREAM,
                                      U_SOCK_PROTOCOL_TCP);
+            heapXxxSockInitLoss -= uPortGetHeapFree();
             U_PORT_TEST_ASSERT(descriptor >= 0);
             U_PORT_TEST_ASSERT(errno == 0);
 
@@ -1085,7 +1166,6 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
                      U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                      U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
             // Connections can fail so allow this a few goes
-            errorCode = -1;
             for (y = 2; (y > 0) && (errorCode < 0); y--) {
                 errorCode = uSockConnect(descriptor, &remoteAddress);
                 if (errorCode < 0) {
@@ -1208,6 +1288,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
             uSockCleanUp();
 
             free(pDataReceived);
+
+            // Check for memory leaks
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SOCK_TEST: during this part of the test %d"
+                     " byte(s) were lost to sockets initialisation;"
+                     " we have leaked %d byte(s).\n",
+                     heapSockInitLoss + heapXxxSockInitLoss,
+                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
         }
     }
 }
@@ -1223,6 +1312,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
     int32_t networkHandle;
     uSockAddress_t remoteAddress;
     uSockDescriptor_t descriptor[U_SOCK_MAX_NUM_SOCKETS + 1];
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -1236,14 +1328,23 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
         if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
             uPortLog("U_SOCK_TEST: testing max num sockets on %s.\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
                      U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
             // Look up the address of the server we use for UDP echo
+            // The first call to a sockets API needs to
+            // initialise the underlying sockets layer; take
+            // account of that initialisation heap cost here.
+            heapSockInitLoss = uPortGetHeapFree();
             U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                   U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
+            heapSockInitLoss -= uPortGetHeapFree();
+
             // Add the port number we will use
             remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
@@ -1257,7 +1358,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
                 descriptor[y] = openSocketAndUseIt(networkHandle,
                                                    &remoteAddress,
                                                    U_SOCK_TYPE_DGRAM,
-                                                   U_SOCK_PROTOCOL_UDP);
+                                                   U_SOCK_PROTOCOL_UDP,
+                                                   &heapXxxSockInitLoss);
                 U_PORT_TEST_ASSERT(descriptor[y] >= 0);
                 U_PORT_TEST_ASSERT(errno == 0);
             }
@@ -1268,7 +1370,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
                                             sizeof(descriptor[0])) - 1] = openSocketAndUseIt(networkHandle,
                                                                          &remoteAddress,
                                                                          U_SOCK_TYPE_DGRAM,
-                                                                         U_SOCK_PROTOCOL_UDP);
+                                                                         U_SOCK_PROTOCOL_UDP,
+                                                                         &heapXxxSockInitLoss);
             U_PORT_TEST_ASSERT(descriptor[(sizeof(descriptor) /
                                                                sizeof(descriptor[0])) - 1] < 0);
             U_PORT_TEST_ASSERT(errno > 0);
@@ -1286,7 +1389,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
             descriptor[0] = openSocketAndUseIt(networkHandle,
                                                &remoteAddress,
                                                U_SOCK_TYPE_DGRAM,
-                                               U_SOCK_PROTOCOL_UDP);
+                                               U_SOCK_PROTOCOL_UDP,
+                                               &heapXxxSockInitLoss);
             U_PORT_TEST_ASSERT(descriptor[0] >= 0);
             U_PORT_TEST_ASSERT(errno == 0);
 
@@ -1309,7 +1413,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
             descriptor[0] = openSocketAndUseIt(networkHandle,
                                                &remoteAddress,
                                                U_SOCK_TYPE_DGRAM,
-                                               U_SOCK_PROTOCOL_UDP);
+                                               U_SOCK_PROTOCOL_UDP,
+                                               &heapXxxSockInitLoss);
             U_PORT_TEST_ASSERT(descriptor[0] >= 0);
             U_PORT_TEST_ASSERT(errno == 0);
             uPortLog("U_SOCK_TEST: closing socket %d again.\n",
@@ -1320,6 +1425,16 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
 
             uPortLog("U_SOCK_TEST: cleaning up properly...\n");
             uSockCleanUp();
+
+            // Check for memory leaks
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SOCK_TEST: during this part of the test"
+                     " 0 byte(s) of heap were lost to the C library"
+                     " and %d byte(s) were lost to sockets initialisation;"
+                     " we have leaked %d byte(s).\n",
+                     heapSockInitLoss + heapXxxSockInitLoss,
+                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
         }
     }
 }
@@ -1339,6 +1454,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
     int64_t startTimeMs;
     int64_t timeoutMs;
     int64_t elapsedMs;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -1352,22 +1470,38 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
         if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
             uPortLog("U_SOCK_TEST: doing socket options test on %s.\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
                      U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
             // Look up the address of the server we use for UDP echo
+            // The first call to a sockets API needs to
+            // initialise the underlying sockets layer; take
+            // account of that initialisation heap cost here.
+            heapSockInitLoss = uPortGetHeapFree();
             U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                   U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
+            heapSockInitLoss -= uPortGetHeapFree();
+
             // Add the port number we will use
             remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
             // Create a UDP socket, which is sufficient
             // for the options we can test here and doesn't
             // require a potentially long uSockClose() time.
+            // Creating a socket may use heap in the underlying
+            // network layer which will be reclaimed when the
+            // network layer is closed but we don't do that here
+            // to save time so need to allow for it in the heap loss
+            // calculation
+            heapXxxSockInitLoss += uPortGetHeapFree();
             descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
                                      U_SOCK_PROTOCOL_UDP);
+            heapXxxSockInitLoss -= uPortGetHeapFree();
             U_PORT_TEST_ASSERT(descriptor >= 0);
             U_PORT_TEST_ASSERT(errno == 0);
 
@@ -1425,6 +1559,16 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
             // Close the UDP socket
             U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
             uSockCleanUp();
+
+            // Check for memory leaks
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SOCK_TEST: during this part of the test"
+                     " 0 byte(s) of heap were lost to the C library"
+                     " and %d byte(s) were lost to sockets initialisation;"
+                     " we have leaked %d byte(s).\n",
+                     heapSockInitLoss + heapXxxSockInitLoss,
+                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
         }
     }
 }
@@ -1444,6 +1588,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
     int64_t startTimeMs;
     int64_t timeoutMs;
     int64_t elapsedMs;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -1457,20 +1604,36 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
         if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
             uPortLog("U_SOCK_TEST: doing non-blocking test on %s.\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
                      U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
             // Look up the address of the server we use for TCP echo
+            // The first call to a sockets API needs to
+            // initialise the underlying sockets layer; take
+            // account of that initialisation heap cost here.
+            heapSockInitLoss = uPortGetHeapFree();
             U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                   U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
+            heapSockInitLoss -= uPortGetHeapFree();
+
             // Add the port number we will use
             remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
 
             // Create the TCP socket
+            // Creating a socket may use heap in the underlying
+            // network layer which will be reclaimed when the
+            // network layer is closed but we don't do that here
+            // to save time so need to allow for it in the heap loss
+            // calculation
+            heapXxxSockInitLoss += uPortGetHeapFree();
             descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_STREAM,
                                      U_SOCK_PROTOCOL_TCP);
+            heapXxxSockInitLoss -= uPortGetHeapFree();
             U_PORT_TEST_ASSERT(descriptor >= 0);
             U_PORT_TEST_ASSERT(errno == 0);
 
@@ -1617,6 +1780,16 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
             }
             U_PORT_TEST_ASSERT(closedCallbackCalled);
             uSockCleanUp();
+
+            // Check for memory leaks
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SOCK_TEST: during this part of the test"
+                     " 0 byte(s) of heap were lost to the C library"
+                     " and %d byte(s) were lost to sockets initialisation;"
+                     " we have leaked %d byte(s).\n",
+                     heapSockInitLoss + heapXxxSockInitLoss,
+                     heapUsed - (heapSockInitLoss + heapSockInitLoss));
+            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
         }
     }
 }
@@ -1641,6 +1814,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
     int32_t z;
     char *pDataReceived;
     int64_t startTimeMs;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -1650,18 +1826,33 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
     // a network underneath us
     stdPreamble();
 
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
+
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
         if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
             uPortLog("U_SOCK_TEST: doing UDP non-ping-pong test on %s.\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
                      U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
             // Look up the address of the server we use for UDP echo
+            // The first call to a sockets API needs to
+            // initialise the underlying sockets layer; take
+            // account of that initialisation heap cost here.
+            heapSockInitLoss = uPortGetHeapFree();
             U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                   U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
+            heapSockInitLoss -= uPortGetHeapFree();
+
             // Add the port number we will use
             remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
@@ -1669,8 +1860,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
             // if that is the case
             for (size_t retries = 2; (sizeBytes == 0) &&  (retries > 0); retries--) {
                 // Create the UDP socket
+                // Creating a socket may use heap in the underlying
+                // network layer which will be reclaimed when the
+                // network layer is closed but we don't do that here
+                // to save time so need to allow for it in the heap loss
+                // calculation
+                heapXxxSockInitLoss += uPortGetHeapFree();
                 descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
                                          U_SOCK_PROTOCOL_UDP);
+                heapXxxSockInitLoss -= uPortGetHeapFree();
                 U_PORT_TEST_ASSERT(descriptor >= 0);
                 U_PORT_TEST_ASSERT(errno == 0);
 
@@ -1776,6 +1974,14 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
             U_PORT_TEST_ASSERT(allPacketsReceived);
             U_PORT_TEST_ASSERT(dataCallbackCalled);
 
+            // Check for memory leaks
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SOCK_TEST: during this part of the test %d"
+                     " byte(s) were lost to sockets initialisation;"
+                     " we have leaked %d byte(s).\n",
+                     heapSockInitLoss + heapXxxSockInitLoss,
+                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
         }
     }
 }
@@ -1791,6 +1997,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
     size_t offset;
     int32_t y;
     int32_t stackMinFreeBytes;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -1800,10 +2009,19 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
     // a network underneath us
     stdPreamble();
 
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
+
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
         if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
             uPortLog("U_SOCK_TEST: doing UDP asynchronous"
                      " receive test on %s.\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -1814,9 +2032,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                      U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
 
             // Look up the address of the server we use for UDP echo
+            // The first call to a sockets API needs to
+            // initialise the underlying sockets layer; take
+            // account of that initialisation heap cost here.
+            heapSockInitLoss = uPortGetHeapFree();
             U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                   U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
+            heapSockInitLoss -= uPortGetHeapFree();
+
             // Add the port number we will use
             remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
@@ -1826,9 +2050,16 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                  (retries > 0); retries--) {
                 gTestConfig.bytesReceived = 0;
                 // Create the UDP socket
+                // Creating a socket may use heap in the underlying
+                // network layer which will be reclaimed when the
+                // network layer is closed but we don't do that here
+                // to save time so need to allow for it in the heap loss
+                // calculation
+                heapXxxSockInitLoss += uPortGetHeapFree();
                 gTestConfig.descriptor = uSockCreate(networkHandle,
                                                      U_SOCK_TYPE_DGRAM,
                                                      U_SOCK_PROTOCOL_UDP);
+                heapXxxSockInitLoss -= uPortGetHeapFree();
                 U_PORT_TEST_ASSERT(gTestConfig.descriptor >= 0);
                 U_PORT_TEST_ASSERT(errno == 0);
                 gTestConfig.isTcp = false;
@@ -1862,7 +2093,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                                                                    U_SOCK_TEST_RECEIVE_QUEUE_LENGTH);
                 U_PORT_TEST_ASSERT(gTestConfig.eventQueueHandle >= 0);
 
-                // Ask the sockst API for a pointer to gTestConfig
+                // Ask the sockets API for a pointer to gTestConfig
                 // to be sent to our trampoline function,
                 // sendToEventQueue(), whenever UDP data arrives.
                 // sendToEventQueue() will then forward the
@@ -1975,6 +2206,27 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
             }
 
             U_PORT_TEST_ASSERT(gTestConfig.packetsReceived > 0);
+
+#if !U_CFG_OS_CLIB_LEAKS
+            // Check for memory leaks but only
+            // if we don't have a leaky C library:
+            // if we do there's no telling what
+            // it might have left hanging after
+            // the creation and deletion of the
+            // tasks above.
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SOCK_TEST: during this part of the test %d"
+                     " byte(s) of heap were lost to the C library"
+                     " and %d byte(s) were lost to sockets initialisation;"
+                     " we have leaked %d byte(s).\n",
+                     heapSockInitLoss + heapXxxSockInitLoss,
+                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+#else
+            (void) heapUsed;
+            (void) heapSockInitLoss;
+            (void) heapXxxSockInitLoss;
+#endif
         }
     }
 }
@@ -1991,6 +2243,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
     int32_t y;
     int32_t z;
     int32_t stackMinFreeBytes;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -2000,10 +2255,19 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
     // a network underneath us
     stdPreamble();
 
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
+
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
         if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
             uPortLog("U_SOCK_TEST: doing TCP asynchronous"
                      " receive test on %s.\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -2014,16 +2278,29 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
                      U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
 
             // Look up the address of the server we use for TCP echo
+            // The first call to a sockets API needs to
+            // initialise the underlying sockets layer; take
+            // account of that initialisation heap cost here.
+            heapSockInitLoss = uPortGetHeapFree();
             U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                   U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
+            heapSockInitLoss -= uPortGetHeapFree();
+
             // Add the port number we will use
             remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
 
             // Create the TCP socket
+            // Creating a socket may use heap in the underlying
+            // network layer which will be reclaimed when the
+            // network layer is closed but we don't do that here
+            // to save time so need to allow for it in the heap loss
+            // calculation
+            heapXxxSockInitLoss += uPortGetHeapFree();
             gTestConfig.descriptor = uSockCreate(networkHandle,
                                                  U_SOCK_TYPE_STREAM,
                                                  U_SOCK_PROTOCOL_TCP);
+            heapXxxSockInitLoss -= uPortGetHeapFree();
             U_PORT_TEST_ASSERT(gTestConfig.descriptor >= 0);
             U_PORT_TEST_ASSERT(errno == 0);
             gTestConfig.isTcp = true;
@@ -2172,6 +2449,26 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
 
             // Free memory
             free(gTestConfig.pBuffer);
+
+#if !U_CFG_OS_CLIB_LEAKS
+            // Check for memory leaks but only
+            // if we don't have a leaky C library:
+            // if we do there's no telling what
+            // it might have left hanging after
+            // the creation and deletion of the
+            // tasks above.
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SOCK_TEST: during this part of the test %d"
+                     " byte(s) were lost to sockets initialisation;"
+                     " we have leaked %d byte(s).\n",
+                     heapSockInitLoss + heapXxxSockInitLoss,
+                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+#else
+            (void) heapUsed;
+            (void) heapSockInitLoss;
+            (void) heapXxxSockInitLoss;
+#endif
         }
     }
 }
@@ -2182,7 +2479,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
 {
-    int32_t minFreeStackBytes;
+    int32_t y;
 
     osCleanup();
 
@@ -2195,14 +2492,19 @@ U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
     }
     uNetworkDeinit();
 
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    y = uPortTaskStackMinFree(NULL);
     uPortLog("U_SOCK_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+             " byte(s) free at the end of these tests.\n", y);
+    U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
     uPortDeinit();
+
+    y = uPortGetHeapMinFree();
+    if (y >= 0) {
+        uPortLog("U_SOCK_TEST: heap had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", y);
+        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
+    }
 }
 
 // End of file

@@ -102,8 +102,16 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     int32_t cellHandleB;
 # endif
     uAtClientHandle_t atClientHandle = (uAtClientHandle_t) -1;
+    int32_t heapUsed;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
+
     gUartAHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                  U_CFG_TEST_BAUD_RATE,
                                  NULL,
@@ -170,7 +178,6 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
                                 -1, -1, -1, false) < 0);
 
     // Don't remove this one, let uCellDeinit() do it
-
 # endif
 
     uPortLog("U_CELL_TEST: removing first cellular instance...\n");
@@ -190,6 +197,7 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
 
     uPortLog("U_CELL_TEST: removing AT client...\n");
     uAtClientRemove(atClientHandleA);
+
     uAtClientDeinit();
 
     uPortUartClose(gUartAHandle);
@@ -201,6 +209,21 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
 # endif
 
     uPortDeinit();
+
+#ifndef __XTENSA__
+    // Check for memory leaks
+    // TODO: this if'ed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+#else
+    (void) heapUsed;
+#endif
 }
 #endif
 
@@ -210,8 +233,7 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
  */
 U_PORT_TEST_FUNCTION("[cell]", "cellCleanUp")
 {
-    int32_t minFreeStackBytes;
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    int32_t x;
 
     uCellDeinit();
     uAtClientDeinit();
@@ -222,13 +244,19 @@ U_PORT_TEST_FUNCTION("[cell]", "cellCleanUp")
         uPortUartClose(gUartBHandle);
     }
 
+    x = uPortTaskStackMinFree(NULL);
     uPortLog("U_CELL_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+             " byte(s) free at the end of these tests.\n", x);
+    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
     uPortDeinit();
+
+    x = uPortGetHeapMinFree();
+    if (x >= 0) {
+        uPortLog("U_CELL_TEST: heap had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
+    }
 }
 
 // End of file

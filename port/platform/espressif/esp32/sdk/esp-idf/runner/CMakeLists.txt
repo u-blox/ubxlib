@@ -8,7 +8,7 @@ set(EXTRA_COMPONENT_DIRS "../components"
                          "ubxlib_runner")
 
 # Reduce the component list to a minimum
-set(COMPONENTS "esp32" "esptool_py" "unity" "ubxlib" "main" "ubxlib_runner")
+set(COMPONENTS "esp32" "esptool_py" "unity" "ubxlib" "main" "ubxlib_runner" "heap")
 
 # Set the components to include the "tests" for.
 # This is intended to be overriden in the CMake cache

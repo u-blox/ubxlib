@@ -27,13 +27,19 @@
 
 #include "u_cfg_sw.h"
 #include "u_cfg_hw_platform_specific.h"
+
 #include "u_error_common.h"
+
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_private.h"
 #include "u_port_event_queue_private.h"
+
+#ifndef __SES_ARM
+#include "u_heap_check.h"
+#endif
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -155,6 +161,26 @@ int64_t uPortGetTickTimeMs()
     }
 
     return tickTime;
+}
+
+// Get the minimum amount of heap free, ever, in bytes.
+int32_t uPortGetHeapMinFree()
+{
+    int32_t minFree = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+
+#ifndef __SES_ARM
+    // Segger Embedded Studio uses its own C libraries which
+    // do not offer a way to monitor max heap usage
+    minFree = (int32_t) uHeapCheckGetMinFree();
+#endif
+
+    return minFree;
+}
+
+// Get the current free heap.
+int32_t uPortGetHeapFree()
+{
+    return (int32_t) xPortGetFreeHeapSize();
 }
 
 // End of file

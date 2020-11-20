@@ -154,6 +154,16 @@ void uPortPrintDetailedSbrkDebug()
 # define SBRK_DETAILED_LOG(_event)
 #endif
 
+// Return the value of "heap bytes remaining", which
+// is the size not yet passed to newlib by malloc().
+// Since newlib only asks for memory when it needs
+// more and it never comes back this is a measure of
+// the minimum heap remaining EVER.
+int uPortInternalGetSbrkFreeBytes()
+{
+    return heapBytesRemaining;
+}
+
 //! _sbrk_r version supporting reentrant newlib (depends upon above symbols defined by linker control file).
 void *_sbrk_r(struct _reent *pReent, int incr)
 {
@@ -235,34 +245,6 @@ void __env_lock()
 void __env_unlock()
 {
     (void)xTaskResumeAll();
-};
-
-// Provide malloc debug and accounting wrappers
-/// /brief  Wrap malloc/malloc_r to help debug who requests memory and why.
-/// To use these, add linker options: -Xlinker --wrap=malloc -Xlinker --wrap=_malloc_r
-// Note: These functions are normally unused and stripped by linker.
-int TotalMallocdBytes;
-int MallocCallCnt;
-static bool inside_malloc;
-void *__wrap_malloc(size_t nbytes)
-{
-    extern void *__real_malloc(size_t nbytes);
-    MallocCallCnt++;
-    TotalMallocdBytes += nbytes;
-    inside_malloc = true;
-    void *p = __real_malloc(nbytes); // will call malloc_r...
-    inside_malloc = false;
-    return p;
-};
-void *__wrap__malloc_r(void *reent, size_t nbytes)
-{
-    extern void *__real__malloc_r(size_t nbytes);
-    if (!inside_malloc) {
-        MallocCallCnt++;
-        TotalMallocdBytes += nbytes;
-    };
-    void *p = __real__malloc_r(nbytes);
-    return p;
 };
 
 // ================================================================================================

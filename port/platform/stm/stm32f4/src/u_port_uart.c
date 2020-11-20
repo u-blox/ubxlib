@@ -492,10 +492,10 @@ static bool removeUart(uPortUartData_t *pUartData)
         // NULL the entries in the two tables
         gpUart[pList->uart] = NULL;
         gpDmaUart[pList->pConstData->dmaEngine][pList->pConstData->dmaStream] = NULL;
-        // Free memory and NULL the pointer if it's the head
+        // Free memory and set the new head pointer if it's the head
         free(pList);
         if (pList == gpUartDataHead) {
-            gpUartDataHead = NULL;
+            gpUartDataHead = pList->pNext;
         }
     }
 

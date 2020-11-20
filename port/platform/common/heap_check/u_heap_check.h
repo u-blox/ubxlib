@@ -14,27 +14,39 @@
  * limitations under the License.
  */
 
-#ifndef _U_CFG_OS_PLATFORM_SPECIFIC_H_
-#define _U_CFG_OS_PLATFORM_SPECIFIC_H_
-
-/* No #includes allowed here */
+#ifndef _U_PORT_HEAP_CHECK_H_
+#define _U_PORT_HEAP_CHECK_H_
 
 /** @file
- * @brief This header file contains dummy OS configuration
- * information for Lint.
+ * @brief Functions for heap checking.
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#define U_CFG_OS_CLIB_LEAKS 1
-#define U_CFG_OS_PRIORITY_MIN 0
-#define U_CFG_OS_PRIORITY_MAX 10
-#define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES 1024
-#define U_CFG_OS_APP_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 5)
-#define U_CFG_OS_YIELD_MS 1
+/* ----------------------------------------------------------------
+ * TYPES
+ * -------------------------------------------------------------- */
 
-#endif // _U_CFG_OS_PLATFORM_SPECIFIC_H_
+/* ----------------------------------------------------------------
+ * FUNCTIONS
+ * -------------------------------------------------------------- */
+
+/** Get the minimum heap free, ever.
+ *
+ * @return the minimum heap free, ever, in bytes.
+ */
+size_t uHeapCheckGetMinFree(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // _U_PORT_HEAP_CHECK_H_
 
 // End of file

@@ -298,6 +298,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                 if (pinRts < 0) {
                     pinRts = UART_PIN_NO_CHANGE;
                 }
+
                 espError = uart_set_pin(uart, pinTx, pinRx,
                                         pinRts, pinCts);
                 if (espError == ESP_OK) {

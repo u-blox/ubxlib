@@ -255,6 +255,10 @@ static const char gAes128CbcClear[] = "Single block msg";
 static const char gAes128CbcEncrypted[] =
     "\xe3\x53\x77\x9c\x10\x79\xae\xb8\x27\x08\x94\x2d\xbe\x77\x18\x1a";
 
+/** For tracking heap lost to memory  lost by the C library.
+ */
+static size_t gSystemHeapLost = 0;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -300,6 +304,7 @@ static void osReentTask(void *pParameter)
         // Copy the string into RAM so that strtok can
         // fiddle with it
         strncpy(str, "a,b,c", sizeof(str));
+
         // Do a strtok()
         strtok(str, ",");
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
@@ -406,6 +411,15 @@ static void osTestTask(void *pParameters)
 {
     int32_t queueItem = 0;
     int32_t index = 0;
+#if U_CFG_OS_CLIB_LEAKS
+    int32_t heapClibLoss;
+
+    // Calling C library functions from a new task
+    // allocates additional memory which, depending
+    // on the OS/system, may not be recovered;
+    // take account of that here.
+    heapClibLoss = uPortGetHeapFree();
+#endif
 
     // Fill in the parameter
     strncpy(gTaskParameter, "Boo!", sizeof(gTaskParameter));
@@ -419,6 +433,12 @@ static void osTestTask(void *pParameters)
              " \"%s\".\n", (int) gTaskHandle, pParameters,
              (const char *) pParameters);
     U_PORT_TEST_ASSERT(strcmp((const char *) pParameters, gTaskParameter) == 0);
+
+#if U_CFG_OS_CLIB_LEAKS
+    // Take account of any heap lost through the first
+    // printf()
+    gSystemHeapLost += (size_t) (unsigned) (heapClibLoss - uPortGetHeapFree());
+#endif
 
     U_PORT_TEST_ASSERT(uPortTaskIsThis(gTaskHandle));
 
@@ -848,6 +868,22 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     int32_t taskParameter[U_PORT_TEST_OS_NUM_REENT_TASKS];
     uPortTaskHandle_t taskHandle[U_PORT_TEST_OS_NUM_REENT_TASKS];
     int32_t stackMinFreeBytes;
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+#if U_CFG_OS_CLIB_LEAKS
+    int32_t heapClibLoss;
+#endif
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
+    heapUsed = uPortGetHeapFree();
 
     // Note: deliberately do NO printf()s until we have
     // set up the test scenario
@@ -861,6 +897,13 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // before stopping
     gWaitForStop = true;
 
+#if U_CFG_OS_CLIB_LEAKS
+    // Calling C library functions from new tasks will
+    // allocate additional memory which, depending
+    // on the OS/system, may not be recovered;
+    // take account of that here.
+    heapClibLoss = uPortGetHeapFree();
+#endif
     // Create a few tasks that wait on the flag
     // and then all try to call stdlib functions
     // that might cause memory issues at once.
@@ -912,15 +955,33 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     gWaitForStop = false;
 
     // Let the idle task tidy-away the tasks
-    uPortTaskBlock(U_CFG_OS_YIELD_MS);
+    uPortTaskBlock(U_CFG_OS_YIELD_MS + 1000);
+
+#if U_CFG_OS_CLIB_LEAKS
+    // Take account of any heap lost through the
+    // library calls
+    gSystemHeapLost += (size_t) (unsigned) (heapClibLoss - uPortGetHeapFree());
+#endif
 
     // If the returnCode is 0 then that
     // is success.  If it is negative
-    // than that then it indicates an error
+    // that it indicates an error.
     uPortLog("U_PORT_TEST: reentrancy task(s) returned %d.\n", returnCode);
     U_PORT_TEST_ASSERT(returnCode == 0);
 
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
 /** Test all the normal OS stuff.
@@ -931,7 +992,14 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     int64_t startTimeMs;
     int64_t timeNowMs;
     int32_t stackMinFreeBytes;
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     startTimeMs = uPortGetTickTimeMs();
@@ -1041,6 +1109,18 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
                        (timeNowMs < U_PORT_TEST_OS_GUARD_DURATION_MS));
 
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
 #if (U_CFG_TEST_UART_A >= 0)
@@ -1058,7 +1138,14 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     int64_t timeNowMs;
     int64_t timeDelta;
     int32_t uartHandle;
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     uPortLog("U_PORT_TEST: running this test will take around"
@@ -1138,6 +1225,18 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
              (int32_t) (timeDelta / 1000));
 
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 #endif
 
@@ -1149,6 +1248,14 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     uint8_t fill;
     size_t x;
     int32_t stackMinFreeBytes;
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
 
     // Reset error flags and counters
     gEventQueueMaxErrorFlag = 0;
@@ -1274,6 +1381,18 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     free(pParam);
 
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
 /** Test: strtok_r since we have our own implementation on
@@ -1283,7 +1402,13 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
 {
     char *pSave;
     char buffer[8];
+    int32_t heapUsed;
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     uPortLog("U_PORT_TEST: testing strtok_r...\n");
@@ -1324,6 +1449,13 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
 
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 #if (U_CFG_TEST_PIN_A >= 0) && (U_CFG_TEST_PIN_B >= 0) && \
@@ -1333,7 +1465,13 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
 U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
 {
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+    int32_t heapUsed;
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     uPortLog("U_PORT_TEST: testing GPIOs.\n");
@@ -1446,6 +1584,13 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
     // it is not supported on all platforms.
 
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 #endif
 
@@ -1454,6 +1599,14 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
  */
 U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
 {
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     // Run a UART test at 115,200
@@ -1466,6 +1619,18 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
     }
 
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 #endif
 
@@ -1476,10 +1641,27 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
 {
     char buffer[64];
     char iv[U_PORT_CRYPTO_AES128_INITIALISATION_VECTOR_LENGTH_BYTES];
+    int32_t heapUsed;
 
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+
+    // On some platforms (e.g. ESP32) the crypto libraries
+    // allocate a semaphore when they are first called
+    // which is never deleted.  To avoid that getting in their
+    // way of our heap loss calculation, make a call to one
+    // of the crypto functions here.
+    uPortCryptoSha256(gSha256Input, sizeof(gSha256Input) - 1,
+                      buffer);
+    memset(buffer, 0, sizeof(buffer));
+
+    heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     uPortLog("U_PORT_TEST: testing SHA256...\n");
+
     U_PORT_TEST_ASSERT(uPortCryptoSha256(gSha256Input,
                                          sizeof(gSha256Input) - 1,
                                          buffer) == 0);
@@ -1515,23 +1697,36 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
                               sizeof(gAes128CbcClear) - 1) == 0);
 
     uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
+
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
  */
 U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 {
-    int32_t minFreeStackBytes;
+    int32_t x;
 
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
-    uPortLog("U_PORT_TEST: main task stack had a minimum of %d byte(s)"
-             " free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    x = uPortTaskStackMinFree(NULL);
+    uPortLog("U_PORT_TEST: main task stack had a minimum of %d"
+             " byte(s) free at the end of these tests.\n", x);
+    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
     uPortDeinit();
+
+    x = uPortGetHeapMinFree();
+    if (x >= 0) {
+        uPortLog("U_PORT_TEST: heap had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
+    }
 }
 
 // End of file

@@ -169,9 +169,13 @@ static void testBandMask(int32_t cellHandle,
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
 {
     const uCellPrivateModule_t *pModule;
+    int32_t heapUsed;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -194,6 +198,13 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Test getting/setting RAT.
@@ -204,9 +215,13 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
     const uCellPrivateModule_t *pModule;
     int32_t numSupportedRats = 0;
     uCellNetRat_t supportedRats[U_CELL_NET_RAT_MAX_NUM];
+    int32_t heapUsed;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -263,6 +278,13 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Test getting/setting RAT at a rank.
@@ -282,9 +304,19 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
     int32_t numRats;
     int32_t repeats;
     int32_t y;
+    int32_t heapUsed;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
+
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -340,6 +372,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
             }
         }
     }
+
     // Now set up the maximum number of supported RATs
     // deliberately checking out of range values
     uPortLog("U_CELL_CFG_TEST: now set a RAT at all %d possible ranks.\n",
@@ -359,6 +392,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
                                                   rank) < 0);
         }
     }
+
     uPortLog("U_CELL_CFG_TEST: expected RAT list is now:\n");
     for (rank = 0; rank < pModule->maxNumSimultaneousRats; rank++) {
         uPortLog("  rank %d: %d.\n", rank, supportedRats[rank]);
@@ -366,6 +400,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
     U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
     U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
     U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
+
     // Check that worked and remember what was set
     for (rank = 0; rank <= pModule->maxNumSimultaneousRats; rank++) {
         y = uCellCfgGetRatRank(cellHandle, supportedRats[rank]);
@@ -380,6 +415,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
             U_PORT_TEST_ASSERT(y < 0);
         }
     }
+
     uPortLog("U_CELL_CFG_TEST: RAT list read back was:\n");
     for (rank = 0; rank < pModule->maxNumSimultaneousRats; rank++) {
         uPortLog("  rank %d: %d.\n", rank, supportedRats[rank]);
@@ -483,6 +519,13 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Test getting/setting MNO profile.
@@ -493,9 +536,13 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
     const uCellPrivateModule_t *pModule;
     int32_t readMnoProfile;
     int32_t mnoProfile;
+    int32_t heapUsed;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
 
     // Do the standard preamble
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
@@ -562,6 +609,13 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -570,18 +624,23 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgCleanUp")
 {
-    int32_t minFreeStackBytes;
+    int32_t x;
 
     uCellTestPrivateCleanup(&gHandles);
 
-    minFreeStackBytes = uPortTaskStackMinFree(NULL);
+    x = uPortTaskStackMinFree(NULL);
     uPortLog("U_CELL_CFG_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+             " byte(s) free at the end of these tests.\n", x);
+    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
     uPortDeinit();
+
+    x = uPortGetHeapMinFree();
+    if (x >= 0) {
+        uPortLog("U_CELL_CFG_TEST: heap had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
+    }
 }
 
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE

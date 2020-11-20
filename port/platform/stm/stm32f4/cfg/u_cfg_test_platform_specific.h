@@ -39,6 +39,23 @@
                                                                      name)
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: HEAP RELATED
+ * -------------------------------------------------------------- */
+
+/** The minimum free heap space permitted, i.e. what's left for
+ * user code.  IMPORTANT: this takes into account the fact that
+ * in our test code we call printf() from tasks which are created
+ * and deleted, and since the newlib implementation used on this
+ * platform does not free the memory it malloc()ates on the first
+ * printf() from a new task, we lose 1468 bytes of heap every time
+ * we delete a task, and hence the heap just leaks away over time.
+ * This is not an issue in normal use as we never call printf() from
+ * a task that is created and deleted but if _you_ do you should note
+ * this problem and probably never delete the task.
+ */
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 55)
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED
  * -------------------------------------------------------------- */
 

@@ -565,19 +565,20 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     bool eventIsCallback = false;
     char *pDataRead;
 
+    // Determine if we're in a callback or not
+    switch (pClient->streamType) {
+        case U_AT_CLIENT_STREAM_TYPE_UART:
+            eventIsCallback = uPortUartEventIsCallback(pClient->streamHandle);
+            break;
+        case U_AT_CLIENT_STREAM_TYPE_EDM:
+            eventIsCallback = uShortRangeEdmStreamAtEventIsCallback(pClient->streamHandle);
+            break;
+        default:
+            break;
+    }
     // If we're blocking, set the timeout value.
     if (blocking) {
         atTimeoutMs = pClient->atTimeoutMs;
-        switch (pClient->streamType) {
-            case U_AT_CLIENT_STREAM_TYPE_UART:
-                eventIsCallback = uPortUartEventIsCallback(pClient->streamHandle);
-                break;
-            case U_AT_CLIENT_STREAM_TYPE_EDM:
-                eventIsCallback = uShortRangeEdmStreamAtEventIsCallback(pClient->streamHandle);
-                break;
-            default:
-                break;
-        }
         if (eventIsCallback) {
             // Short timeout if we're in a URC callback
             atTimeoutMs = U_AT_CLIENT_URC_TIMEOUT_MS;
@@ -586,12 +587,20 @@ static bool bufferFill(uAtClientInstance_t *pClient,
 
     // Reset buffer if it's become full
     if (pReceiveBuffer->length == pReceiveBuffer->dataBufferSize) {
-        if (pClient->debugOn) {
-            uPortLog("U_AT_CLIENT_%d-%d: !!! overflow.\n",
-                     pClient->streamType, pClient->streamHandle);
+#if U_CFG_OS_CLIB_LEAKS
+        // If the C library leaks then don't print
+        // in a callback as it will leak
+        if (!eventIsCallback) {
+#endif
+            if (pClient->debugOn) {
+                uPortLog("U_AT_CLIENT_%d-%d: !!! overflow.\n",
+                         pClient->streamType, pClient->streamHandle);
+            }
+            printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer),
+                    pReceiveBuffer->length);
+#if U_CFG_OS_CLIB_LEAKS
         }
-        printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer),
-                pReceiveBuffer->length);
+#endif
         bufferReset(pClient);
     }
 
@@ -640,9 +649,17 @@ static bool bufferFill(uAtClientInstance_t *pClient,
                                                       pReceiveBuffer->length);
         }
 
-        printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                pReceiveBuffer->length + pReceiveBuffer->readIndex,
-                readLength);
+#if U_CFG_OS_CLIB_LEAKS
+        // If the C library leaks then don't print
+        // in a callback as it will leak
+        if (!eventIsCallback) {
+#endif
+            printAt(pClient, U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                    pReceiveBuffer->length + pReceiveBuffer->readIndex,
+                    readLength);
+#if U_CFG_OS_CLIB_LEAKS
+        }
+#endif
         pReceiveBuffer->length += readLength;
     } else {
         // If there was no data and there is an intercept function,
@@ -1380,12 +1397,16 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
             pReceiveBuffer = pClient->pReceiveBuffer;
             while (((sizeOrError = getReceiveSize(pClient)) > 0) ||
                    (pReceiveBuffer->readIndex < pReceiveBuffer->length)) {
+#if !U_CFG_OS_CLIB_LEAKS
+                // Don't do this if CLIB is leaky on this platform since it's
+                // the printf() that leaks
                 if (pClient->debugOn) {
                     uPortLog("U_AT_CLIENT_%d-%d: possible URC data readable %d,"
                              " already buffered %u.\n", pClient->streamType,
                              pClient->streamHandle, sizeOrError,
                              pReceiveBuffer->length - pReceiveBuffer->readIndex);
                 }
+#endif
                 pClient->scope = U_AT_CLIENT_SCOPE_NONE;
                 for (size_t x = 0; x < U_AT_CLIENT_URC_DATA_LOOP_GUARD; x++) {
                     // Search through the URCs
@@ -1421,10 +1442,14 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
                         }
                     }
                 }
+#if !U_CFG_OS_CLIB_LEAKS
+                // Don't do this if CLIB is leaky on this platform since it's
+                // the printf() that leaks
                 if (pClient->debugOn) {
                     uPortLog("U_AT_CLIENT_%d-%d: URC checking done.\n",
                              pClient->streamType, pClient->streamHandle);
                 }
+#endif
             }
 
             // Just unlock the stream without

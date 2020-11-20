@@ -336,7 +336,6 @@ void uCellRemove(int32_t cellHandle)
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
-
     }
 }
 

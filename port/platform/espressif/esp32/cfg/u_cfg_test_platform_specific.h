@@ -41,6 +41,15 @@
                                                     group)
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: HEAP RELATED
+ * -------------------------------------------------------------- */
+
+/** The minimum free heap space permitted, i.e. what's left for
+ * user code.
+ */
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 250)
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED
  * -------------------------------------------------------------- */
 
