@@ -162,7 +162,6 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
     '''Run Lint'''
     return_value = 1
     call_list = []
-    defines_list = {}
     instance_text = u_utils.get_instance_text(instance)
 
     prompt = PROMPT + instance_text + ": "

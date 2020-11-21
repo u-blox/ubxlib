@@ -222,7 +222,7 @@ def get_cellular_module_for_instance(database, instance):
                     # SARA is assumed to be a cellular module
                     if module.startswith("SARA"):
                         module_name = CELLULAR_MODULE_TYPE_PREFIX + module
-                        break;
+                        break
 
     return module_name
 

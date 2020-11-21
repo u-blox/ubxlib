@@ -119,18 +119,6 @@ TOOLS_LIST = [{"type": "gcc", "which_string": "make",
                        " the latest version of their JLink tools from"       \
                        " https://www.segger.com/downloads/jlink/JLink_Windows.exe" \
                        " and add them to the path.",
-               "version_switch": None},
-              {"type": None, "which_string": u_utils.DEVCON_PATH,
-               "hint": "can't find the devcon tool, see here "             \
-                       " https://networchestration.wordpress.com/"         \
-                       "2016/07/11/how-to-obtain-device-console-utility-"  \
-                       "devcon-exe-without-downloading-and-installing-the" \
-                       "-entire-windows-driver-kit-100-working-method/"    \
-                       " for how to install it without downloading the"    \
-                       " entire Windows dev kit for the privilege; make"   \
-                       " sure it is on the path. IMPORTANT do also make"   \
-                       " sure that it is the correct 32-bit (x86)/64-bit"  \
-                       " (amd64) version for this computer or it won't work.",
                "version_switch": None}
 ]
 
@@ -345,10 +333,12 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
     swo_port = u_utils.JLINK_SWO_PORT
     downloaded = False
 
-    # Since NRF52 and NRF53 share stuff we don't use
-    # the platform lock we have to use the system lock
-    # instead to ensure no parallelism
-    del platform_lock
+    # Don't need the system lock but do need to lock NRF52
+    # as otherwise startup of RTT logging sometimes fails.
+    # Note: if we move NRF53 to RTT logging then we will
+    # need to switch this to using the system lock here to
+    # cover both NRF52 and NRF53
+    del system_lock
 
     prompt = PROMPT + instance_text + ": "
 
@@ -402,16 +392,16 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                            printer, prompt) as locked_connection:
                         if locked_connection:
                             # Do the download
-                            # On NRF52/53 doing a download or starting SWO logging
+                            # On NRF52 doing a download or starting SWO logging
                             # on more than one platform at a time seems to cause
                             # problems, even though it should be tied to the
                             # serial number of the given debugger on that board,
                             # so lock the system for this.  Once we've got the
                             # Telnet session opened with the platform it seems
                             # fine to let other downloads/logging-starts happen.
-                            with u_utils.Lock(system_lock, INSTALL_LOCK_WAIT_SECONDS,
-                                              "system", printer, prompt) as locked_system:
-                                if locked_system:
+                            with u_utils.Lock(platform_lock, INSTALL_LOCK_WAIT_SECONDS,
+                                              "system", printer, prompt) as locked_platform:
+                                if locked_platform:
                                     reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                    u_report.EVENT_START)
                                     # I have seen the download fail on occasion
@@ -427,12 +417,6 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                             reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                            u_report.EVENT_WARNING,
                                                            "unable to download, will retry...")
-                                            if connection and "serial_port" in connection \
-                                               and connection["serial_port"]:
-                                                # Before retrying, reset the USB port
-                                                u_utils.usb_reset("JLink CDC UART Port (" +
-                                                                  connection["serial_port"] +
-                                                                  ")", printer, prompt)
                                             sleep(5)
                                     if downloaded:
                                         reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
@@ -454,7 +438,8 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                            connection["debugger"]:
                                             RUN_JLINK.append("-USB")
                                             RUN_JLINK.append(connection["debugger"])
-                                        with u_utils.ExeRun(RUN_JLINK, printer, prompt):
+                                        with u_utils.ExeRun(RUN_JLINK, printer, prompt,
+                                                            with_stdin=True) as process_jlink:
                                             # Open the Telnet port to JLink
                                             # to get the debug output
                                             telnet_handle = u_utils.open_telnet(swo_port,
@@ -466,7 +451,7 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                 # doing so to give the debugger a nice
                                                 # rest
                                                 sleep(1)
-                                                system_lock.release()
+                                                platform_lock.release()
                                                 # Monitor progress
                                                 return_value = u_monitor.    \
                                                                main(telnet_handle,
@@ -481,6 +466,11 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                                u_report.EVENT_FAILED,
                                                                "unable to open SWO port " +  \
                                                                str(swo_port))
+                                            # JLink is VERY touchy as to how it exits,
+                                            # need to send it "exit\n" over stdin
+                                            # for it to exit cleanly
+                                            process_jlink.stdin.write("exit\n".encode())
+                                            sleep(5)
                                         if return_value == 0:
                                             reporter.event(u_report.EVENT_TYPE_TEST,
                                                            u_report.EVENT_COMPLETE)

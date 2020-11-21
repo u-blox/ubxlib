@@ -10,6 +10,7 @@ import stat                     # To help deltree out
 from telnetlib import Telnet # For talking to JLink server
 import socket
 import shutil                   # To delete a directory tree
+import signal                   # For CTRL_C_EVENT
 import subprocess
 import platform                 # Figure out current OS
 import serial                   # Pyserial (make sure to do pip install pyserial)
@@ -177,7 +178,7 @@ def usb_reset(device_description, printer, prompt):
                                        shell=True) # Jenkins hangs without this
         for line in text.splitlines():
             # The format of a devcon entry is this:
-            # 
+            #
             # USB\VID_1366&PID_1015&MI_00\6&38E81674&0&0000
             #     Name: JLink CDC UART Port (COM45)
             #     Hardware IDs:
@@ -588,11 +589,12 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
 
 class ExeRun():
     '''Run an executable as a "with:"'''
-    def __init__(self, call_list, printer, prompt, shell_cmd=False):
+    def __init__(self, call_list, printer, prompt, shell_cmd=False, with_stdin=False):
         self._call_list = call_list
         self._printer = printer
         self._prompt = prompt
         self._shell_cmd = shell_cmd
+        self._with_stdin=with_stdin
         self._process = None
     def __enter__(self):
         if self._printer:
@@ -606,10 +608,19 @@ class ExeRun():
                                                            text))
         try:
             # Start exe
-            self._process = subprocess.Popen(self._call_list,
-                                             stdout=subprocess.PIPE,
-                                             stderr=subprocess.STDOUT,
-                                             shell=self._shell_cmd)
+            if self._with_stdin:
+                self._process = subprocess.Popen(self._call_list,
+                                                 stdin=subprocess.PIPE,
+                                                 stdout=subprocess.PIPE,
+                                                 stderr=subprocess.STDOUT,
+                                                 shell=self._shell_cmd,
+                                                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+            else:
+                self._process = subprocess.Popen(self._call_list,
+                                                 stdout=subprocess.PIPE,
+                                                 stderr=subprocess.STDOUT,
+                                                 shell=self._shell_cmd,
+                                                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
             self._printer.string("{}{} pid {} started".format(self._prompt,
                                                               self._call_list[0],
                                                               self._process.pid))
@@ -630,12 +641,30 @@ class ExeRun():
                                         self._call_list[0]))
         return_value = self._process.poll()
         if not return_value:
-            self._process.terminate()
-            while self._process.poll() is None:
-                pass
-            self._printer.string("{}{} pid {} ended".format(self._prompt,
-                                                            self._call_list[0],
-                                                            self._process.pid))
+            retry = 5
+            while (self._process.poll() is None) and (retry > 0):
+                # Try to stop with CTRL-C
+                self._process.send_signal(signal.CTRL_BREAK_EVENT)
+                sleep(1)
+                retry -= 1
+            return_value = self._process.poll()
+            if not return_value:
+                # Terminate with a vengeance
+                self._process.terminate()
+                while self._process.poll() is None:
+                    pass
+                self._printer.string("{}{} pid {} terminated".format(self._prompt,
+                                                                     self._call_list[0],
+                                                                     self._process.pid))
+            else:
+                self._printer.string("{}{} pid {} CTRL-C'd".format(self._prompt,
+                                                                   self._call_list[0],
+                                                                   self._process.pid))
+        else:
+            self._printer.string("{}{} pid {} already ended".format(self._prompt,
+                                                                    self._call_list[0],
+                                                                    self._process.pid))
+
         return return_value
 
 # Simple SWO decoder: only handles single bytes of application
