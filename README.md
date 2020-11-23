@@ -21,6 +21,26 @@ Having chosen your platform and installed the tool chain, navigate to the direct
 
 Configuration information for the examples and the tests can be found in the `cfg` directory of your chosen platform.  Depending on how you have connected your MCU to a u-blox module you may need to override this configuration, e.g. to change which MCU pin is connected to which pin of the u-blox module.  The `README.md` for your chosen SDK will tell you how to override conditional compilation flags in order to do this.
 
+
+# Which APIs are supported on which u-blox modules?
+
+|           |             | ubxlib hosts ||||
+|-----------|:-----------:|--------------|-----|-----|-----|
+|                         |              |C030 board|NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B10 series|
+|                         |              |**MCU**||||
+|                         |              |ST-Micro STM32|Espressif ESP32|Nordic nRF52|Nordic nRF53|
+|                         |              |**Toolchain**||||
+|                         |              |Cube|ESP-IDF|GCC<br />Segger ES (nRF5)|nRF Connect<br />for desktop|
+|                         |              |**RTOS / SDK**||||
+|                         |              |FreeRTOS|FreeRTOS|FreeRTOS|Zephyr|
+| **ubxlib peripheral**   |**API**       |||||
+| SARA-R41x series<br />SARA-U2 series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [Cellular](https://github.com/u-blox/ubxlib_priv/blob/master/cell/api/u_cell.h "Cellular Control API")<br />[Network](https://github.com/u-blox/ubxlib_priv/blob/master/cell/api/u_cell_net.h "Cellular Network API")<br />[Socket](https://github.com/u-blox/ubxlib_priv/blob/master/cell/api/u_cell_sock.h "Cellular Socket API")|Yes|Yes|Yes|Yes|
+| SARA-R510M8S            | GNSS|Q1 2021|Q1 2021|Q1 2021|Q1 2021|
+|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|Bluetooth<br />Network|Yes|Yes|N/A|N/A|
+|NINA-W13|WiFi<br />Network<br />Socket|Q1 2021|N/A|Q1 2021|Q1 2021|
+|NINA-W15|WiFi<br />Bluetooth<br />Network<br />Socket|Q1 2021|N/A|N/A|N/A|
+|ZOE-M8|GNSS|Q1 2021|Q1 2021|Q1 2021|Q1 2021|
+
 # License
 The software in this repository is Apache 2.0 licensed and copyright u-blox with the following exceptions:
 
