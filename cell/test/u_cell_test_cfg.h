@@ -55,9 +55,10 @@
 #ifndef U_CELL_TEST_CFG_EUTRAN_APN
 /** The test box that we use at u-blox for testing
  * cat-M1/NB1 does not allow registration without
- * an APN being supplied, and this is it.
+ * an APN being supplied, and this is it.  Must be
+ * WITHOUT quotes.
  */
-# define U_CELL_TEST_CFG_EUTRAN_APN "internet"
+# define U_CELL_TEST_CFG_EUTRAN_APN internet
 #endif
 
 #ifndef U_CELL_TEST_CFG_USERNAME
@@ -80,16 +81,31 @@
 #endif
 
 #ifndef U_CELL_TEST_CFG_BANDMASK1
-/** The bandmask 1 to use during testing. 0x080092 is bands
- * 2, 5, 8 and 20.
+/** The bandmask 1 to use during testing. 0x000010 is
+ * band 5; must be different from
+ * U_CELL_TEST_CFG_ALT_BANDMASK1.
  */
-# define U_CELL_TEST_CFG_BANDMASK1   0x080092ULL
+# define U_CELL_TEST_CFG_BANDMASK1   0x000010ULL
 #endif
 
 #ifndef U_CELL_TEST_CFG_BANDMASK2
 /** The bandmask 2 to use during testing.
  */
 # define U_CELL_TEST_CFG_BANDMASK2   0ULL
+#endif
+
+#ifndef U_CELL_TEST_CFG_ALT_BANDMASK1
+/** The alternative bandmask 1 to use during testing.
+ * 0x080092 is bands 2, 5, 8 and 20.  Must be different
+ * from U_CELL_TEST_CFG_BANDMASK1.
+ */
+# define U_CELL_TEST_CFG_ALT_BANDMASK1   0x080092ULL
+#endif
+
+#ifndef U_CELL_TEST_CFG_ALT_BANDMASK2
+/** The alternative bandmask 2 to use during testing.
+ */
+# define U_CELL_TEST_CFG_ALT_BANDMASK2   0ULL
 #endif
 
 #endif // _U_CELL_TEST_CFG_H_

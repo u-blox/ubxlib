@@ -127,16 +127,16 @@ static void testBandMask(int32_t cellHandle,
     // Take the existing values and mask off every other bit
     uPortLog("U_CELL_CFG_TEST: setting band mask for %s to"
              " 0x%08x%08x %08x%08x...\n", pRatString,
-             (uint32_t) ((originalBandMask2 & 0xaaaaaaaaaaaaaaaaULL) >> 32),
-             (uint32_t) (originalBandMask2 & 0xaaaaaaaaaaaaaaaaULL),
-             (uint32_t) ((originalBandMask1 & 0xaaaaaaaaaaaaaaaaULL) >> 32),
-             (uint32_t) (originalBandMask1 & 0xaaaaaaaaaaaaaaaaULL));
+             (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK2 >> 32),
+             (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK2),
+             (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK1 >> 32),
+             (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK1));
 
     U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
 
     errorCode = uCellCfgSetBandMask(cellHandle, rat,
-                                    originalBandMask1 & 0xaaaaaaaaaaaaaaaaULL,
-                                    originalBandMask2 & 0xaaaaaaaaaaaaaaaaULL);
+                                    U_CELL_TEST_CFG_ALT_BANDMASK1,
+                                    U_CELL_TEST_CFG_ALT_BANDMASK2);
     if (supportedRatsBitmap & (1UL << (int32_t) rat)) {
         U_PORT_TEST_ASSERT(errorCode == 0);
         U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
@@ -150,11 +150,8 @@ static void testBandMask(int32_t cellHandle,
         uPortLog("U_CELL_CFG_TEST: new %s band mask is 0x%08x%08x %08x%08x...\n",
                  pRatString, (uint32_t) (bandMask2 >> 32), (uint32_t) bandMask2,
                  (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
-        U_PORT_TEST_ASSERT(bandMask1 == (originalBandMask1 & 0xaaaaaaaaaaaaaaaaULL));
-        U_PORT_TEST_ASSERT(bandMask2 == (originalBandMask2 & 0xaaaaaaaaaaaaaaaaULL));
-        uPortLog("U_CELL_CFG_TEST: band mask for %s is now 0x%08x%08x %08x%08x...\n",
-                 pRatString, (uint32_t) (bandMask2 >> 32), (uint32_t) bandMask2,
-                 (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
+        U_PORT_TEST_ASSERT(bandMask1 == U_CELL_TEST_CFG_ALT_BANDMASK1);
+        U_PORT_TEST_ASSERT(bandMask2 == U_CELL_TEST_CFG_ALT_BANDMASK2);
     } else {
         U_PORT_TEST_ASSERT(errorCode != 0);
     }

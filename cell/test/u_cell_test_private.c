@@ -327,13 +327,10 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                         errorCode = uCellCfgGetBandMask(cellHandle, primaryRat,
                                                         &bandMask1, &bandMask2);
                         if (errorCode == 0) {
-                            // All the bands in U_CELL_TEST_PRIVATE_BANDMASKx
-                            // must be present in bandMaskx
+                            // bandMaskx must be exactly U_CELL_TEST_CFG_BANDMASKx
                             //lint -e{774, 587} Suppress always evaluates to True
-                            if (((U_CELL_TEST_CFG_BANDMASK1 & bandMask1) == U_CELL_TEST_CFG_BANDMASK1) &&
-                                ((U_CELL_TEST_CFG_BANDMASK2 & bandMask2) == U_CELL_TEST_CFG_BANDMASK2)) {
-                                // Nothing to do, we have our bands included
-                            } else {
+                            if ((bandMask1 != U_CELL_TEST_CFG_BANDMASK1) ||
+                                (bandMask2 != U_CELL_TEST_CFG_BANDMASK2)) {
                                 // Set the band masks
                                 errorCode = uCellCfgSetBandMask(cellHandle, primaryRat,
                                                                 U_CELL_TEST_CFG_BANDMASK1,
@@ -346,7 +343,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                             // denied service, so set the AT+CGDCONT
                             // entry correctly
                             contextSet(cellHandle, U_CELL_NET_CONTEXT_ID,
-                                       U_CELL_TEST_CFG_EUTRAN_APN);
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_EUTRAN_APN));
                         }
                     }
 
