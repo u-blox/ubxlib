@@ -40,6 +40,10 @@ extern "C" {
  */
 #define U_PORT_MUTEX_UNLOCK(x)    } uPortMutexUnlock(x)
 
+/** Constants related to acquiring executable chunks of RAM memory
+ */
+#define U_PORT_EXECUTABLE_CHUNK_NO_FLAGS      0
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -55,6 +59,18 @@ typedef void *uPortQueueHandle_t;
 /** Task handle.
  */
 typedef void *uPortTaskHandle_t;
+
+typedef enum {
+    U_PORT_NO_EXECUTABLE_CHUNK      =  -1,
+    U_PORT_EXECUTABLE_CHUNK_INDEX_0 =   0,
+} uPortChunkIndex_t;
+
+/** For future implementations. Will likely hold
+ *  features such as cacheable, shareable, bufferable etc.
+ *  as typically available in MPU settings if they can be
+ *  set during runtime.
+ */
+typedef uint32_t uPortExeChunkFlags_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: TASKS
@@ -247,6 +263,36 @@ int32_t uPortMutexTryLock(const uPortMutexHandle_t mutexHandle,
  * @return              zero on success else negative error code.
  */
 int32_t uPortMutexUnlock(const uPortMutexHandle_t mutexHandle);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: ACQUIRING EXECUTABLE MEMORY
+ * -------------------------------------------------------------- */
+
+/** Create or prepare a chunk of RAM for executing for example a
+ *  library loaded by lib_common functionality.
+ *
+ * @param pChunkToMakeExecutable for implementations where a chunk's
+ *                               permissions can be dynamically changed.
+ *                               Set to NULL if not used.
+ * @param pSize                  for implementations where a chunk's
+ *                               size needs to be given.
+ *                               For all implementations returns size of
+ *                               chunk.
+ * @param flags                  for implementations where a chunk's
+ *                               MPU flags can be set at runtime.
+ *                               Set to U_PORT_EXECUTABLE_CHUNK_NO_FLAGS
+ *                               if not used.
+ * @param index                  for implementations where a chunk
+ *                               can only be specified at compile time.
+ *                               Index allows the user to specify several
+ *                               chunks at compile time.
+ *                               Set to U_PORT_NO_EXECUTABLE_CHUNK if not used.
+ * @return                       pointer to memory area or NULL if failed
+ */
+void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
+                                  size_t *pSize,
+                                  uPortExeChunkFlags_t flags,
+                                  uPortChunkIndex_t index);
 
 #ifdef __cplusplus
 }

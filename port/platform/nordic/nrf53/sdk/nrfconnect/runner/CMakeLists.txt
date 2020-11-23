@@ -38,6 +38,12 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/src/u_at_client.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test_data.c)
 
+#lib-common
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/lib_common/api ${UBXLIB_BASE}/common/lib_common/test)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/lib_common/src/u_lib_handler.c)
+include(./lib_common_test.cmake)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/lib_common/test/u_lib_common_test.c)
+
 #network
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/network/api ${UBXLIB_BASE}/common/network/src  ${UBXLIB_BASE}/common/network/test)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network.c)

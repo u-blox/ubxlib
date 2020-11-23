@@ -69,6 +69,15 @@
  */
 # define U_CFG_OS_APP_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 1)
 #endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR NRF5340: SIZES OF EXECUTABLE CHUNKS OF RAM
+ * -------------------------------------------------------------- */
+
+/**  Defined here as an example, used in nRF53 lib_common tests
+ */
+#define U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE  256
+
 #endif // _U_CFG_OS_PLATFORM_SPECIFIC_H_
 
 // End of file

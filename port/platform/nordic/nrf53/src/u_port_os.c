@@ -42,6 +42,12 @@
 #ifndef portMAX_DELAY
 #define portMAX_DELAY K_FOREVER
 #endif
+
+static uint8_t __aligned(32) exe_chunk_0[U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE];
+// make this ram part executable
+K_MEM_PARTITION_DEFINE(chunk0_reloc, exe_chunk_0, sizeof(exe_chunk_0),
+                       K_MEM_PARTITION_P_RWX_U_RWX);
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -336,6 +342,25 @@ int32_t uPortMutexUnlock(const uPortMutexHandle_t mutexHandle)
     }
 
     return (int32_t) errorCode;
+}
+
+// Simple implementation of making a chunk of RAM executable in Zephyr
+void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
+                                  size_t *pSize,
+                                  uPortExeChunkFlags_t flags,
+                                  uPortChunkIndex_t index)
+{
+    static struct k_mem_domain dom0;
+    struct k_mem_partition *app_parts[] = { &chunk0_reloc };
+    (void)pChunkToMakeExecutable;
+    (void)flags;
+    (void)index;
+
+    k_mem_domain_init(&dom0, ARRAY_SIZE(app_parts), app_parts);
+
+    *pSize = U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE;
+
+    return exe_chunk_0;
 }
 
 // End of file
