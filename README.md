@@ -4,7 +4,7 @@ This repository contains the C code support library for u-blox modules.  The lib
 ![Architecture](architecture.jpg)
 
 # What Is Included
-The APIs for each type of u-blox module can be found in the relevant directory (e.g `cell` for cellular modules and `BLE`/`wifi` for BLE/Wifi modules).  The `common` directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the network API and the sockets API.  All APIs are documented in the API header files.
+The APIs for each type of u-blox module can be found in the relevant directory (e.g `cell` for cellular modules and `ble`/`wifi` for BLE/Wifi modules).  The `common` directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the network API and the sockets API.  All APIs are documented in the API header files.
 
 Examples demonstrating the use of the APIs can be found in the `example` directory.
 
@@ -30,9 +30,9 @@ The key APIs provided by this repo, and their relationships with each other, are
 - If you wish to bring up a network and don't care about the details, use the common [network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network/README.md) API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
 - If you wish to use a socket over that network, use the common [sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock/README.md) API.
 - If you wish to take finer control of your [cellular](https://github.com/u-blox/ubxlib_priv/blob/master/cell/README.md), BLE or Wifi connection, use the respective control API directly.
-- To use GNSS, use the gnss API.
+- GNSS is used via the gnss API.
 - The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](https://github.com/u-blox/ubxlib_priv/blob/master/common/short_range/README.md) API.
-- The [AT client](https://github.com/u-blox/ubxlib_priv/blob/master/common/at_client/README.md) API is used by the cellular and short_range APIs to talk to AT-based u-blox modules.
+- The [AT client](https://github.com/u-blox/ubxlib_priv/blob/master/common/at_client/README.md) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
 - The ubx API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
 - The [port](https://github.com/u-blox/ubxlib_priv/blob/master/port/README.md) API permits all of the above to run on different hosts.
 
@@ -49,7 +49,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS|Zephyr|
 | **ubxlib peripheral**   |**API**       |||||
 | SARA-R41x series<br />SARA-U2 series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](https://github.com/u-blox/ubxlib_priv/blob/master/cell/README.md "cell API")<br />[network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network/README.md "network API")<br />[sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock/README.md "sock API")|Yes|Yes|Yes|Yes|
-| SARA-R510M8S            | GNSS|Q1 2021|Q1 2021|Q1 2021|Q1 2021|
+| SARA-R510M8S            | gnss|Q1 2021|Q1 2021|Q1 2021|Q1 2021|
 |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|ble<br />[network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network/README.md "network API")|Yes|Yes|N/A|N/A|
 |NINA-W13|wifi<br />[network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network/README.md "network API")<br />[sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock/README.md "sock API")|Q1 2021|N/A|Q1 2021|Q1 2021|
 |NINA-W15|wifi<br />ble<br />[network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network/README.md "network API")<br />[sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock/README.md "sock API")|Q1 2021|N/A|N/A|N/A|
