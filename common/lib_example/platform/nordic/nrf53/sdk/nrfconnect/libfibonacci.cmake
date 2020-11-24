@@ -21,10 +21,13 @@ set(library_build_dir ${CMAKE_CURRENT_BINARY_DIR}/libfibonacci)
 
 find_program(CMAKE_OBJCOPY objcopy)
 find_program(CMAKE_OBJDUMP objdump)
+
+if (CMAKE_HOST_WIN32)
 set(CMAKE_SH ${UBXLIB_BASE}/../toolchain/bin/sh.exe)
 file(TO_NATIVE_PATH  ${CMAKE_SH} CMAKE_SH_PATH)
 set(CMAKE_SHELL_COMMAND "${CMAKE_SH_PATH} -c")
 set (mkdir_delimeter "'")
+endif (CMAKE_HOST_WIN32)
 
 if(CMAKE_GENERATOR STREQUAL "Unix Makefiles")
 # https://www.gnu.org/software/make/manual/html_node/MAKE-Variable.html

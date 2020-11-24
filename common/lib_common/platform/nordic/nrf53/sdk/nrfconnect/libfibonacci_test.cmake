@@ -25,12 +25,15 @@ include(ExternalProject)
 
 find_program(CMAKE_OBJCOPY objcopy)
 find_program(CMAKE_OBJDUMP objdump)
+set(lib_flags 4)
+
+if (CMAKE_HOST_WIN32)
 set(CMAKE_SH $ENV{ZEPHYR_BASE}/../toolchain/bin/sh.exe)
 file(TO_NATIVE_PATH  ${CMAKE_SH} CMAKE_SH_PATH)
 set(CMAKE_SHELL_COMMAND "${CMAKE_SH_PATH} -c")
 set (mkdir_delimeter "'")
 set(echo_delimeter "'")
-set(lib_flags 4)
+endif (CMAKE_HOST_WIN32)
 
 if(CMAKE_GENERATOR STREQUAL "Unix Makefiles")
 # https://www.gnu.org/software/make/manual/html_node/MAKE-Variable.html
