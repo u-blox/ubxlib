@@ -16,7 +16,7 @@ set(external_project_cflags
 
 include(ExternalProject)
 
-set(library_src_dir   ${UBXLIB_BASE}/common/lib_example )
+set(library_src_dir   ${UBXLIB_BASE}/common/lib_common/example )
 set(library_build_dir ${CMAKE_CURRENT_BINARY_DIR}/libfibonacci)
 
 find_program(CMAKE_OBJCOPY objcopy)

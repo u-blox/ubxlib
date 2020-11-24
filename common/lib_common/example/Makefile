@@ -11,7 +11,7 @@ LIB_FLAGS = 4 # this lib needs malloc
 # Building parameters
 
 # Path to ubxlib
-UBXLIB_PATH = ../../
+UBXLIB_PATH = ../../../
 # Library include directories
 INCLUDE = . api
 # Library source files

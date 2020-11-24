@@ -148,7 +148,7 @@ When the library is not needed anymore, it should be closed. If the library impl
 # Writing a library
 How to write a new library.
 
-*There is an example library in `common/lib_example`, libfibonacci, which is used as reference in following paragraphs.*
+*There is an example library in `common/lib_common/example`, libfibonacci, which is used as reference in following paragraphs.*
 
 ## Three golden rules
 
@@ -239,12 +239,12 @@ For example:
 int libFooInitFunctions(
     void *ctx, 
     int (*pstrcmp)(const char *, const char *), 
-    int (*pmemcoy)(void *, const void *, uint32_t)
+    int (*pmemcpy)(void *, const void *, uint32_t)
 );
 ...
 ```
 
-*The example library `common/lib_example` keeps a state struct, which is malloced on open and freed on close.*
+*The example library `common/lib_common/example` keeps a state struct, which is malloced on open and freed on close.*
 
 ## Building the library
 
@@ -296,7 +296,7 @@ LIB_FLAGS = 4 # this lib needs malloc
 # Building parameters
 
 # Path to ubxlib
-UBXLIB_PATH = ../../
+UBXLIB_PATH = ../../../
 # Library include directories
 INCLUDE = . api
 # Library source files
@@ -308,5 +308,5 @@ include $(UBXLIB_PATH)/common/lib_common/makelib.mk
 
 `makelib.mk` uses ordinary environment variables such as `CC`, `PREFIX`, `CFLAGS`, etc which makes it reconfigurable for different build systems (e.g. CMake) and cross-compiling. 
 
-*If you try running `make` in the example library directory `common/lib_example`, the default environment will be used. This will compile the library for your current platform, probably x86-64, given you have a build environment.*
+*If you try running `make` in the example library directory `common/lib_common/example`, the default environment will be used. This will compile the library for your current platform, probably x86-64, given you have a build environment.*
 

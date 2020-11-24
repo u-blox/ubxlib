@@ -4,19 +4,19 @@ cmake_minimum_required(VERSION 3.13.1)
 
 find_package(Zephyr HINTS $ENV{ZEPHYR_BASE})
 project(ubxlib_lib_example_app)
-set(UBXLIB_BASE ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../../..)
+set(UBXLIB_BASE ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../../../..)
 set(UBXLIB_PF_COMMON ${UBXLIB_BASE}/port/platform/common)
 set(NRF5340_BASE ${UBXLIB_BASE}/port/platform/nordic/nrf53)
 
 # include the custom target for building libfibonacci
-include(${UBXLIB_BASE}/common/lib_example/platform/nordic/nrf53/sdk/nrfconnect/libfibonacci.cmake)
+include(${UBXLIB_BASE}/common/lib_common/example/platform/nordic/nrf53/sdk/nrfconnect/libfibonacci.cmake)
 
 # include libfibonacci's api
-target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/lib_example/api)
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/lib_common/example/api)
 
 # lib fibonacci example application
 target_include_directories(app PRIVATE ${NRF5340_BASE}/src/ ${NRF5340_BASE}/cfg )
-target_sources(app PRIVATE ${UBXLIB_BASE}/common/lib_example/example-app/platform/nordic/nrf53/sdk/nrfconnect/u_libexample_example_app_nrf53.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/lib_common/example/example-app/platform/nordic/nrf53/sdk/nrfconnect/u_libexample_example_app_nrf53.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_debug.c)
 target_sources(app PRIVATE ${NRF5340_BASE}/src/u_port_os.c)
