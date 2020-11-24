@@ -21,8 +21,22 @@ Having chosen your platform and installed the tool chain, navigate to the direct
 
 Configuration information for the examples and the tests can be found in the `cfg` directory of your chosen platform.  Depending on how you have connected your MCU to a u-blox module you may need to override this configuration, e.g. to change which MCU pin is connected to which pin of the u-blox module.  The `README.md` for your chosen SDK will tell you how to override conditional compilation flags in order to do this.
 
+# APIs
 
-# Which APIs are supported on which u-blox modules?
+The key APIs provided by this repo, and their relationships with each other, are shown in the picture below.
+
+![APIs](apis.jpg)
+
+- If you wish to bring up a network and don't care about the details, use the common Network API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
+- If you wish to use a socket over that network, use the common Sockets API.
+- If you wish to take finer control of your cellular, BLE or Wifi connection, use the respective control API directly.
+- To use GNSS, use the GNSS API.
+- The BLE and Wifi APIs are internally common within u-blox and so they both use the common Short Range API.
+- The AT client API is used by the Cellular and Short Range APIs to talk to AT-based u-blox modules.
+- The UBX API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
+- The port API permits all of the above to run on different hosts.
+
+# Which APIs Are Supported On Which u-blox Modules?
 
 |           |             | ubxlib hosts ||||
 |-----------|:-----------:|--------------|-----|-----|-----|
@@ -34,11 +48,11 @@ Configuration information for the examples and the tests can be found in the `cf
 |                         |              |**RTOS / SDK**||||
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS|Zephyr|
 | **ubxlib peripheral**   |**API**       |||||
-| SARA-R41x series<br />SARA-U2 series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [Cellular](https://github.com/u-blox/ubxlib_priv/blob/master/cell/api/u_cell.h "Cellular Control API")<br />[Network](https://github.com/u-blox/ubxlib_priv/blob/master/cell/api/u_cell_net.h "Cellular Network API")<br />[Socket](https://github.com/u-blox/ubxlib_priv/blob/master/cell/api/u_cell_sock.h "Cellular Socket API")|Yes|Yes|Yes|Yes|
+| SARA-R41x series<br />SARA-U2 series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [Cellular](https://github.com/u-blox/ubxlib_priv/blob/master/cell/api/u_cell.h "Cellular Control API")<br />[Network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network/api/u_network.h "Network API")<br />[Sockets](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock/api/u_sock.h "Sockets API")|Yes|Yes|Yes|Yes|
 | SARA-R510M8S            | GNSS|Q1 2021|Q1 2021|Q1 2021|Q1 2021|
-|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|Bluetooth<br />Network|Yes|Yes|N/A|N/A|
-|NINA-W13|WiFi<br />Network<br />Socket|Q1 2021|N/A|Q1 2021|Q1 2021|
-|NINA-W15|WiFi<br />Bluetooth<br />Network<br />Socket|Q1 2021|N/A|N/A|N/A|
+|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|Bluetooth<br />[Network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network/api/u_network.h "Network API")|Yes|Yes|N/A|N/A|
+|NINA-W13|WiFi<br />[Network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network/api/u_network.h "Network API")<br />[Sockets](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock/api/u_sock.h "Sockets API")|Q1 2021|N/A|Q1 2021|Q1 2021|
+|NINA-W15|WiFi<br />Bluetooth<br />[Network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network/api/u_network.h "Network API")<br />[Sockets](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock/api/u_sock.h "Sockets API")|Q1 2021|N/A|N/A|N/A|
 |ZOE-M8|GNSS|Q1 2021|Q1 2021|Q1 2021|Q1 2021|
 
 # License
