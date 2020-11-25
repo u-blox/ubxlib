@@ -525,32 +525,32 @@
 		<link>
 			<name>Middlewares/Third_Party/mbedTLS/Library/sha256.c</name>
 			<type>1</type>
-			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/sha256.c</locationURI>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/library/sha256.c</locationURI>
 		</link>
 		<link>
 			<name>Middlewares/Third_Party/mbedTLS/Library/md.c</name>
 			<type>1</type>
-			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/md.c</locationURI>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/library/md.c</locationURI>
 		</link>
 		<link>
 			<name>Middlewares/Third_Party/mbedTLS/Library/md_wrap.c</name>
 			<type>1</type>
-			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/md_wrap.c</locationURI>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/library/md_wrap.c</locationURI>
 		</link>
 		<link>
 			<name>Middlewares/Third_Party/mbedTLS/Library/md5.c</name>
 			<type>1</type>
-			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/md5.c</locationURI>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/library/md5.c</locationURI>
 		</link>
 		<link>
 			<name>Middlewares/Third_Party/mbedTLS/Library/aes.c</name>
 			<type>1</type>
-			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/aes.c</locationURI>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/library/aes.c</locationURI>
 		</link>
 		<link>
 			<name>Middlewares/Third_Party/mbedTLS/Library/platform_util.c</name>
 			<type>1</type>
-			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/Library/platform_util.c</locationURI>
+			<locationURI>$%7BSTM32CUBE_FW_PATH%7D/Middlewares/Third_Party/mbedTLS/library/platform_util.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/platform/common/runner</name>
