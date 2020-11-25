@@ -303,6 +303,16 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
                 if process["platform"] == platform_lock["platform"]:
                     process["platform_lock"] = platform_lock["lock"]
                     break
+            # START: HACK HACK HACK HACK HACK
+            # NRF52 and NRF53 share tools but are, of course, distinct
+            # platforms.  They NEED to share a platform lock so here
+            # we attach NRF53 to NRF52's platform lock
+            if process["platform"].lower() == "nrf53":
+                for platform_lock in platform_locks:
+                    if platform_lock["platform"].lower() == "nrf52":
+                        process["platform_lock"] = platform_lock["lock"]
+                        break
+            # END: HACK HACK HACK HACK HACK
             process["handle"] = pool.apply_async(u_run.main,
                                                  (database, instance,
                                                   filter_string, True,

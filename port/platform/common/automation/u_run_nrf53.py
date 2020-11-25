@@ -3,7 +3,7 @@
 '''Build/run ubxlib for NRF53 and report results.'''
 
 import os                    # For sep(), getcwd()
-from time import time
+from time import time, sleep
 import u_connection
 import u_monitor
 import u_report
@@ -249,8 +249,9 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
     instance_text = u_utils.get_instance_text(instance)
 
     # Only one SDK for NRF53
+    # Don't need the system lock but do need to lock NRF53/52
+    # as otherwise startup of RTT logging sometimes fails.
     del sdk
-    del platform_lock
     del system_lock
 
     prompt = PROMPT + instance_text + ": "
@@ -314,34 +315,55 @@ def run(instance, sdk, connection, connection_lock, platform_lock, clean, define
                                                                 printer,
                                                                 prompt)
                             if serial_handle is not None:
-                                # Do the download
-                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_START)
-                                if download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
-                                            hex_file_path, returned_env, printer, prompt):
-                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                   u_report.EVENT_COMPLETE)
-                                    reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_START)
-                                    # Monitor progress
-                                    return_value = u_monitor. \
-                                                   main(serial_handle,
-                                                        u_monitor.CONNECTION_SERIAL,
-                                                        RUN_GUARD_TIME_SECONDS,
-                                                        RUN_INACTIVITY_TIME_SECONDS,
-                                                        instance, printer, reporter,
-                                                        test_report_handle)
-                                    serial_handle.close()
-                                else:
-                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                   u_report.EVENT_FAILED,
-                                                   "check debug log for details")
-                                if return_value == 0:
-                                    reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_COMPLETE)
-                                else:
-                                    reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_FAILED)
+                                # On NRF52/53 doing a download (or starting RTT logging)
+                                # on more than one platform at a time seems to cause
+                                # problems, even though it should be tied to the
+                                # serial number of the given debugger on that board,
+                                # so lock the system for this.  Once we've got the
+                                # NRF53 download done it seems fine to let other
+                                # downloads/logging-starts happen.
+                                with u_utils.Lock(platform_lock, INSTALL_LOCK_WAIT_SECONDS,
+                                                  "system", printer, prompt) as locked_platform:
+                                    if locked_platform:
+                                        # Do the download
+                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                       u_report.EVENT_START)
+                                        if download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
+                                                    hex_file_path, returned_env, printer, prompt):
+                                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                           u_report.EVENT_COMPLETE)
+                                            # Once we've done the download it is OK
+                                            # to release the platform lock again
+                                            # but leave a little while before
+                                            # doing so to give the debugger a nice
+                                            # rest
+                                            sleep(1)
+                                            platform_lock.release()
+                                            reporter.event(u_report.EVENT_TYPE_TEST,
+                                                           u_report.EVENT_START)
+                                            # Monitor progress
+                                            return_value = u_monitor. \
+                                                           main(serial_handle,
+                                                                u_monitor.CONNECTION_SERIAL,
+                                                                RUN_GUARD_TIME_SECONDS,
+                                                                RUN_INACTIVITY_TIME_SECONDS,
+                                                                instance, printer, reporter,
+                                                                test_report_handle)
+                                            serial_handle.close()
+                                        else:
+                                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                           u_report.EVENT_FAILED,
+                                                           "check debug log for details")
+                                        if return_value == 0:
+                                            reporter.event(u_report.EVENT_TYPE_TEST,
+                                                           u_report.EVENT_COMPLETE)
+                                        else:
+                                            reporter.event(u_report.EVENT_TYPE_TEST,
+                                                           u_report.EVENT_FAILED)
+                                    else:
+                                        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                                       u_report.EVENT_FAILED,
+                                                       "unable to lock the platform")
                             else:
                                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                u_report.EVENT_FAILED,
