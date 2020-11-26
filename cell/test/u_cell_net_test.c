@@ -413,13 +413,6 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     //lint -esym(613, pModule) Suppress possible use of NULL pointer
     // for pModule from now on
 
-    // Search with a short time-out to check that aborts work
-    // (though not a timeout so short that it upsets the module).
-    gStopTimeMs = uPortGetTickTimeMs() + 5000;
-    U_PORT_TEST_ASSERT(uCellNetScanGetFirst(cellHandle, buffer,
-                                            sizeof(buffer), mccMnc, &rat,
-                                            keepGoingCallback) < 0);
-
     // Scan for networks properly
     // Have seen this fail on some occasions so give it two goes
     for (size_t x = 2; (x > 0) && (y <= 0); x--) {
