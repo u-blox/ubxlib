@@ -37,6 +37,18 @@ extern "C" {
 # define U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES U_AT_CLIENT_BUFFER_LENGTH_BYTES
 #endif
 
+#ifndef U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES
+/** Corresponds to the large posible short range EDM packet
+ */
+# define U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES 4000
+#endif
+
+#ifndef U_SHORT_RANGE_UART_BAUD_RATE
+/** The default baud rate to communicate with short range module.
+ */
+# define U_SHORT_RANGE_UART_BAUD_RATE 115200
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -50,6 +62,8 @@ typedef enum {
     U_SHORT_RANGE_ERROR_NOT_CONFIGURED = U_ERROR_SHORT_RANGE_MAX - 1, /**< -4097 if U_ERROR_BASE is 0. */
     U_SHORT_RANGE_ERROR_VALUE_OUT_OF_RANGE = U_ERROR_SHORT_RANGE_MAX - 2, /**< -4098 if U_ERROR_BASE is 0. */
     U_SHORT_RANGE_ERROR_INVALID_MODE = U_ERROR_SHORT_RANGE_MAX - 3, /**< -4099 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_NOT_DETECTED = U_ERROR_SHORT_RANGE_MAX - 4, /**< -4100 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_WRONG_TYPE = U_ERROR_SHORT_RANGE_MAX - 5, /**< -4101 if U_ERROR_BASE is 0. */
 } uShortRangeErrorCode_t;
 
 /** The possible types of short range module.
@@ -61,8 +75,16 @@ typedef enum {
  */
 //lint -estring(788, uShortRangeModuleType_t::U_SHORT_RANGE_MODULE_TYPE_MAX_NUM) Suppress not used within defaulted switch
 typedef enum {
-    U_SHORT_RANGE_MODULE_TYPE_B1 = 0, /**< Modules NINA-B1 and ANNA-B1. */
-    U_SHORT_RANGE_MODULE_TYPE_MAX_NUM
+    U_SHORT_RANGE_MODULE_TYPE_NINA_B1 = 0, /**< Modules NINA-B1. BLE only*/
+    U_SHORT_RANGE_MODULE_TYPE_ANNA_B1, /**< Modules ANNA-B1. BLE only */
+    U_SHORT_RANGE_MODULE_TYPE_NINA_B3, /**< Modules NINA-B3. BLE only */
+    U_SHORT_RANGE_MODULE_TYPE_NINA_B4, /**< Modules NINA-B4. BLE only */
+    U_SHORT_RANGE_MODULE_TYPE_NINA_B2, /**< Modules NINA-B2. BLE and Classic */
+    U_SHORT_RANGE_MODULE_TYPE_NINA_W13, /**< Modules NINA-W13. Wifi */
+    U_SHORT_RANGE_MODULE_TYPE_NINA_W15, /**< Modules NINA-W15. Wifi, BLE and Classic */
+    U_SHORT_RANGE_MODULE_TYPE_ODIN_W2, /**< Modules NINA-B1. Wifi, BLE and Classic */
+    U_SHORT_RANGE_MODULE_TYPE_MAX_NUM,
+    U_SHORT_RANGE_MODULE_TYPE_INVALID = U_SHORT_RANGE_MODULE_TYPE_MAX_NUM,
 } uShortRangeModuleType_t;
 
 typedef enum {
@@ -71,6 +93,17 @@ typedef enum {
     U_SHORT_RANGE_BLE_ROLE_PERIPHERAL, /**< Peripheral only mode. */
     U_SHORT_RANGE_BLE_ROLE_CENTRAL_AND_PERIPHERAL, /**< Simutanious central and peripheral mode. */
 } uShortRangeBleRole_t;
+
+typedef enum {
+    U_SHORT_RANGE_SERVER_DISABLED = 0, /**< Disabled status. */
+    U_SHORT_RANGE_SERVER_SPS = 6 /**< SPS server. */
+} uShortRangeServerType_t;
+
+typedef struct {
+    uShortRangeBleRole_t role;
+    bool spsServer;
+} uShortRangeBleCfg_t;
+
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -123,17 +156,35 @@ int32_t uShortRangeSetDataCallback(int32_t shortRangeHandle,
                                    void (*pCallback) (int32_t, size_t, char *, void *),
                                    void *pCallbackParameter);
 
+/** Detect the module connected to the handle. Will attempt to change the mode on
+ * the module to communicate with it. No change to UART configuration is done,
+ * so even if this fails, as last attempt to recover, it could work to  re-init
+ * the UART on a different baud rate. This sould recover that module if another
+ * rate than the default one has been used.
+ *
+ * @param shortRangeHandle   the handle of the short range instance.
+ * @return                   Module on success, U_SHORT_RANGE_MODULE_TYPE_INVALID
+ *                           on failure.
+ */
+uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle);
+
 /** Send data
+ * By design of the module, in command/data mode it will broacast on all connections
+ * and in extended data mode (EDM) it only sends on the given channel. This is controlled
+ * from ubx-lib with the choice of stream type provided to the at client (see uAtClientStream_t).
+ * If u_network.h was used to set this up, EDM is used.
+ *
+ * If UART stream is used, uShortRangeDataMode() must be called before using this command.
  *
  * @param shortRangeHandle the handle of the short range instance.
- * @param connHandle       the handle of the connection to send on.
+ * @param channel          channel id. EDM only.
  * @param pData            pointer to the data.
  * @param length           length of data.
  * @return                 zero on success or negative error code
  *                         on failure.
  */
 int32_t uShortRangeData(int32_t shortRangeHandle,
-                        int32_t connHandle,
+                        int32_t channel,
                         const char *pData,
                         int32_t length);
 
@@ -150,13 +201,13 @@ int32_t uShortRangeAttention(int32_t shortRangeHandle);
  * Function is blocking and might require a module re-boot, this can mean
  * up to 500ms before it returns.
  *
- * @note: u_short_range_cfg.h contains the configuration values
- *
- * @param shortRangeHandle the handle of the short range instance.
- * @return                 zero on success or negative error code
- *                         on failure.
+ * @param shortRangeHandle  the handle of the short range instance.
+ * @param pShortRangeBleCfg pointer to the struct holding the configuration.
+ * @return                  zero on success or negative error code
+ *                          on failure.
  */
-int32_t uShortRangeConfigure(int32_t shortRangeHandle);
+int32_t uShortRangeConfigure(int32_t shortRangeHandle,
+                             const uShortRangeBleCfg_t *pShortRangeBleCfg);
 
 /** Checks ble role.
  *
@@ -223,7 +274,7 @@ int32_t uShortRangeBtConnectionStatusCallback(int32_t shortRangeHandle,
  *                           on failure.
  */
 int32_t uShortRangeSpsConnectionStatusCallback(int32_t shortRangeHandle,
-                                               void (*pCallback) (int32_t, char *, void *),
+                                               void (*pCallback) (int32_t, char *, int32_t, int32_t, int32_t, void *),
                                                void *pCallbackParameter);
 
 

@@ -65,6 +65,8 @@
       <file file_name="../../../../../../../common/short_range/api/u_short_range_edm_stream.h" />
       <file file_name="../../../../../../../common/short_range/src/u_short_range_cfg.h" />
       <file file_name="../../../../../../../common/short_range/src/u_short_range.c" />
+      <file file_name="../../../../../../../common/short_range/src/u_short_range_at_commands.h" />
+      <file file_name="../../../../../../../common/short_range/src/u_short_range_at_commands.c" />
       <file file_name="../../../../../../../common/short_range/src/u_short_range_edm.h" />
       <file file_name="../../../../../../../common/short_range/src/u_short_range_edm.c" />
       <file file_name="../../../../../../../common/short_range/src/u_short_range_edm_stream.c" />

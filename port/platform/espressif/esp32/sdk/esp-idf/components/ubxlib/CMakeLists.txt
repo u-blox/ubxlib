@@ -40,6 +40,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../../common/at_client/src/u_at_client.c"
 # The common short range layer
                    "../../../../../../../../common/short_range/src/u_short_range.c"
+                   "../../../../../../../../common/short_range/src/u_short_range_at_commands.c"
                    "../../../../../../../../common/short_range/src/u_short_range_edm.c"
                    "../../../../../../../../common/short_range/src/u_short_range_edm_stream.c"
                    "../../../../../../../../common/short_range/src/u_short_range_private.c"

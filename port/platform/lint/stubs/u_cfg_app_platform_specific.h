@@ -40,6 +40,13 @@
 #define U_CFG_APP_PIN_CELL_RXD              0
 #define U_CFG_APP_PIN_CELL_CTS              0
 #define U_CFG_APP_PIN_CELL_RTS              0
+#define U_CFG_APP_SHORT_RANGE_TYPE          2
+#define U_CFG_APP_SHORT_RANGE_PIN_UART_TXD  0
+#define U_CFG_APP_SHORT_RANGE_PIN_UART_RXD  0
+#define U_CFG_APP_SHORT_RANGE_PIN_UART_CTS  0
+#define U_CFG_APP_SHORT_RANGE_PIN_UART_RTS  0
+#define U_CFG_APP_SHORT_RANGE_UART          0
+#define U_CFG_APP_SHORT_RANGE_ROLE          0
 
 #endif // _U_CFG_APP_APP_PLATFORM_SPECIFIC_H_
 

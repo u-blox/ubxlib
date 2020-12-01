@@ -1832,8 +1832,8 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
             sizeBytes = uShortRangeEdmStreamAtGetReceiveSize(pClient->streamHandle);
             if ((sizeBytes > 0) ||
                 (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
-                uPortUartEventSend(pClient->streamHandle,
-                                   U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+                uShortRangeEdmStreamAtEventSend(pClient->streamHandle,
+                                                U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
             }
             break;
         default:

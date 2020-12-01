@@ -91,9 +91,35 @@ static const char gTestData[] =  "_____0000:012345678901234567890123456789012345
 #endif
 static uShortRangeTestPrivate_t gHandles = {-1, -1, NULL, -1};
 
+#if (C_CFG_TEST_SHORT_RANGE_REMOTE_SPS_CONNECT == 1)
+
+static int32_t gConnHandle;
+static volatile int32_t gBytesReceived = 0;
+static volatile int32_t gErrors = 0;
+static volatile int32_t gIndexInBlock = 0;
+static volatile int32_t gTotalData = 4000;
+static volatile int32_t gBytesSent = 0;
+
+#endif
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+static void resetGlobals()
+{
+    gHandles.uartHandle = -1;
+    gHandles.edmStreamHandle = -1;
+    gHandles.atClientHandle = NULL;
+    gHandles.shortRangeHandle = -1;
+
+#if (C_CFG_TEST_SHORT_RANGE_REMOTE_SPS_CONNECT == 1)
+    gBytesReceived = 0;
+    gErrors = 0;
+    gIndexInBlock = 0;
+    gTotalData = 4000;
+    gBytesSent = 0;
+#endif
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -109,6 +135,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeInitialisation")
     uShortRangeDeinit();
     uAtClientDeinit();
     uPortDeinit();
+    resetGlobals();
 }
 
 #if (U_CFG_TEST_SHORT_RANGE_UART >= 0)
@@ -133,24 +160,26 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddUart")
     U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
 
     uPortLog("U_SHORT_RANGE_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_B);
+             U_CFG_TEST_SHORT_RANGE_UART);
     gHandles.atClientHandle = uAtClientAdd(gHandles.uartHandle, U_AT_CLIENT_STREAM_TYPE_UART,
                                            NULL, U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle != NULL);
 
     uPortLog("U_SHORT_RANGE_TEST: adding a short range instance on that AT client...\n");
-    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_B1, gHandles.atClientHandle);
+    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
+                                               gHandles.atClientHandle);
     U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
 
     uPortLog("U_SHORT_RANGE_TEST: adding another instance on the same AT client,"
              " should fail...\n");
-    U_PORT_TEST_ASSERT(uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_B1, gHandles.atClientHandle));
+    U_PORT_TEST_ASSERT(uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1, gHandles.atClientHandle));
 
     uPortLog("U_SHORT_RANGE_TEST: removing first short range instance...\n");
     uShortRangeRemove(gHandles.shortRangeHandle);
 
     uPortLog("U_SHORT_RANGE_TEST: adding it again...\n");
-    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_B1, gHandles.atClientHandle);
+    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
+                                               gHandles.atClientHandle);
     U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
 
     uPortLog("U_SHORT_RANGE_TEST: deinitialising short range API...\n");
@@ -164,6 +193,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddUart")
     gHandles.uartHandle = -1;
 
     uPortDeinit();
+    resetGlobals();
 }
 
 /** Add a ShortRange instance and remove it again using an edm stream.
@@ -197,21 +227,24 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddEdm")
     U_PORT_TEST_ASSERT(gHandles.atClientHandle != NULL);
 
     uPortLog("U_SHORT_RANGE_TEST: adding a short range instance on that AT client...\n");
-    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_B1, gHandles.atClientHandle);
+    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
+                                               gHandles.atClientHandle);
     U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
 
     uPortLog("U_SHORT_RANGE_TEST: adding another instance on the same AT client,"
              " should fail...\n");
-    U_PORT_TEST_ASSERT(uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_B1, gHandles.atClientHandle));
+    U_PORT_TEST_ASSERT(uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1, gHandles.atClientHandle));
 
     uPortLog("U_SHORT_RANGE_TEST: removing first short range instance...\n");
     uShortRangeRemove(gHandles.shortRangeHandle);
 
     uPortLog("U_SHORT_RANGE_TEST: adding it again...\n");
-    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_B1, gHandles.atClientHandle);
+    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
+                                               gHandles.atClientHandle);
     U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
 
     uPortLog("U_SHORT_RANGE_TEST: deinitialising short range API...\n");
+    uShortRangeRemove(gHandles.shortRangeHandle);
     uShortRangeDeinit();
 
     uPortLog("U_SHORT_RANGE_TEST: removing AT client...\n");
@@ -225,19 +258,33 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddEdm")
     gHandles.uartHandle = -1;
 
     uPortDeinit();
+    resetGlobals();
 }
 
-#if (U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED > 0)
-#if (U_CFG_TEST_SHORT_RANGE_STREAM_TYPE_UART == 1)
+#if (U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED >= 0)
+
 /** Short range edm stream add and sent attention command.
  */
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddAndDetect")
 {
     // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_B1,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
+                                                      &gHandles) == 0);
+    uShortRangeTestPrivatePostamble(&gHandles);
+}
+
+
+/** Short range edm stream add and sent attention command.
+ */
+U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddAndDetect")
+{
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
                                                       U_AT_CLIENT_STREAM_TYPE_UART,
                                                       &gHandles) == 0);
     uShortRangeTestPrivatePostamble(&gHandles);
+    resetGlobals();
 }
 
 /** Short range mode change.
@@ -245,7 +292,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddAndDetect")
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeModeChange")
 {
     // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_B1,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
                                                       U_AT_CLIENT_STREAM_TYPE_UART,
                                                       &gHandles) == 0);
 
@@ -257,35 +304,55 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeModeChange")
                                               &gHandles.atClientHandle) == 0);
 
     uShortRangeTestPrivatePostamble(&gHandles);
+    resetGlobals();
 }
 
 /** Short range mode change.
  */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeModeChange")
+U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeRecover")
 {
     // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_B1,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
+                                                      &gHandles) == 0);
+    uShortRangeTestPrivatePostamble(&gHandles);
+
+    // Module in EDM, start up in command mode
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
                                                       U_AT_CLIENT_STREAM_TYPE_UART,
                                                       &gHandles) == 0);
 
-    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.shortRangeHandle) == 0);
-    U_PORT_TEST_ASSERT(uShortRangeDataMode(gHandles.shortRangeHandle) == 0);
-    // should fail
-    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.shortRangeHandle) != 0);
-    U_PORT_TEST_ASSERT(uShortRangeCommandMode(gHandles.shortRangeHandle,
-                                              &gHandles.atClientHandle) == 0);
+    uShortRangeDataMode(gHandles.shortRangeHandle);
+    gHandles.atClientHandle = NULL;
 
     uShortRangeTestPrivatePostamble(&gHandles);
+
+    // Module in data mode, start up in EDM mode
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
+                                                      &gHandles) == 0);
+
+    uShortRangeTestPrivatePostamble(&gHandles);
+
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+                                                      U_AT_CLIENT_STREAM_TYPE_UART,
+                                                      &gHandles) == 0);
+
+    uShortRangeDataMode(gHandles.shortRangeHandle);
+    gHandles.atClientHandle = NULL;
+
+    uShortRangeTestPrivatePostamble(&gHandles);
+
+    // Module in data mode, start up in command mode
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
+                                                      &gHandles) == 0);
+
+    uShortRangeTestPrivatePostamble(&gHandles);
+    resetGlobals();
 }
 
 #if (C_CFG_TEST_SHORT_RANGE_REMOTE_SPS_CONNECT == 1)
-
-static int32_t gConnHandle;
-static volatile int32_t gBytesReceived = 0;
-static volatile int32_t gErrors = 0;
-static volatile int32_t gIndexInBlock = 0;
-static volatile int32_t gTotalData = 4000;
-static volatile int32_t gBytesSent = 0;
 
 static void shortRangeConnectBtConnectionDataCallback(int32_t connHandle,
                                                       char *address, void *pParameters)
@@ -312,38 +379,36 @@ static void shortRangeConnectDataModeCallback(int32_t connHandle, size_t length,
              gErrors);
 }
 
-static void shortRangeConnectSpsConnectionCallback(int32_t connHandle,
-                                                   char *address, void *pParameters)
+static void shortRangeConnectSpsConnectionCallback(int32_t connHandle, char *address, int32_t type,
+                                                   int32_t channel, int32_t mtu, void *pParameters)
 {
     int32_t bytesToSend;
     int32_t *pHandle = (int32_t *)pParameters;
     gConnHandle = connHandle;
-    uShortRangeDataMode(*pHandle);
-    uPortTaskBlock(100);
+    if (gHandles.edmStreamHandle == -1) {
+        uShortRangeDataMode(*pHandle);
+        uPortTaskBlock(100);
+    }
 
-    while (gBytesSent < gTotalData) {
-        // -1 to omit gTestData string terminator
-        bytesToSend = sizeof(gTestData) - 1;
-        if (bytesToSend > gTotalData - gBytesSent) {
-            bytesToSend = gTotalData - gBytesSent;
+    if (type == 0) {
+        while (gBytesSent < gTotalData) {
+            // -1 to omit gTestData string terminator
+            bytesToSend = sizeof(gTestData) - 1;
+            if (bytesToSend > gTotalData - gBytesSent) {
+                bytesToSend = gTotalData - gBytesSent;
+            }
+            uShortRangeData(*pHandle, channel, (char *)gTestData, bytesToSend);
+
+            gBytesSent += bytesToSend;
+            uPortLog("U_SHORT_RANGE_TEST: %d byte(s) sent.\n", gBytesSent);
         }
-        uShortRangeData(*pHandle, connHandle, (char *)gTestData, bytesToSend);
-
-        gBytesSent += bytesToSend;
-        uPortLog("U_SHORT_RANGE_TEST: %d byte(s) sent.\n", gBytesSent);
-        //uPortTaskBlock(U_CFG_OS_YIELD_MS);
     }
 }
 
 /** Connects to a remote SPS central that must echo all incoming data.
  */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeSpsConnect")
+static void spsConnect()
 {
-    // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_B1,
-                                                      U_AT_CLIENT_STREAM_TYPE_UART,
-                                                      &gHandles) == 0);
-
     // Add unsolicited response cb
     uShortRangeBtConnectionStatusCallback(gHandles.shortRangeHandle,
                                           shortRangeConnectBtConnectionDataCallback, NULL);
@@ -363,11 +428,32 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeSpsConnect")
     U_PORT_TEST_ASSERT(gErrors == 0);
 
     //Clean up
-    U_PORT_TEST_ASSERT(uShortRangeCommandMode(gHandles.shortRangeHandle,
-                                              &gHandles.atClientHandle) == 0);
+    if (gHandles.edmStreamHandle == -1) {
+        U_PORT_TEST_ASSERT(uShortRangeCommandMode(gHandles.shortRangeHandle,
+                                                  &gHandles.atClientHandle) == 0);
+    }
     U_PORT_TEST_ASSERT(uShortRangeDisconnect(gHandles.shortRangeHandle, gConnHandle) == 0);
 
     uShortRangeTestPrivatePostamble(&gHandles);
+    resetGlobals();
+}
+
+U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeSpsConnect")
+{
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+                                                      U_AT_CLIENT_STREAM_TYPE_UART,
+                                                      &gHandles) == 0);
+    spsConnect();
+}
+
+U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeSpsConnectEdm")
+{
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
+                                                      &gHandles) == 0);
+    spsConnect();
 }
 
 #endif
@@ -410,7 +496,7 @@ static void shortRangeSPSConnectionCallback(int32_t connHandle,
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeSpsServer")
 {
     // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_B1,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
                                                       U_AT_CLIENT_STREAM_TYPE_UART,
                                                       &gHandles) == 0);
 
@@ -434,206 +520,6 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeSpsServer")
 
     uShortRangeTestPrivatePostamble(&gHandles);
 }
-#endif
-#else //EDM Stream
-
-/** Short range edm stream add and sent attention command.
- */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddAndDetect")
-{
-    // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_B1,
-                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                      &gHandles) == 0);
-    uShortRangeTestPrivatePostamble(&gHandles);
-}
-
-/** Test get setting.
- */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeEdmCheckConfig")
-{
-    const uShortRangePrivateModule_t *pModule;
-
-    // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_B1,
-                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                      &gHandles) == 0);
-
-    // Get the private module data as we need it for testing
-    pModule = pUShortRangePrivateGetModule(gHandles.shortRangeHandle);
-    U_PORT_TEST_ASSERT(pModule != NULL);
-    //lint -esym(613, pModule) Suppress possible use of NULL pointer
-    // for pModule from now on
-
-    uShortRangeBleRole_t role;
-    U_PORT_TEST_ASSERT(uShortRangeCheckBleRole(gHandles.shortRangeHandle, &role) == 0);
-    U_PORT_TEST_ASSERT(role == U_SHORT_RANGE_BLE_ROLE_PERIPHERAL);
-
-    // Do the standard postamble, leaving the module on for the next
-    // test to speed things up
-    uShortRangeTestPrivatePostamble(&gHandles);
-}
-
-#if (C_CFG_TEST_SHORT_RANGE_REMOTE_SPS_CONNECT == 1)
-
-static int32_t gConnHandle;
-static volatile int32_t gBytesReceived = 0;
-static volatile int32_t gErrors = 0;
-static volatile int32_t gIndexInBlock = 0;
-static volatile int32_t gTotalData = 4000;
-static volatile int32_t gBytesSent = 0;
-
-static void shortRangeEdmConnectAtBtConnectionDataCallback(int32_t connHandle,
-                                                           char *address, void *pParameters)
-{
-    uPortLog("U_SHORT_RANGE_TEST: Connected Bt handle %d\n", connHandle);
-}
-
-static void shortRangeEdmConnectSpsConnectionCallback(int32_t connHandle,
-                                                      char *address, void *pParameters)
-{
-    gConnHandle = connHandle;
-}
-
-static void shortRangeEdmConnectDataCallback(int32_t handle, int32_t channel, int32_t length,
-                                             char *pData, void *pParameters)
-{
-    // Compare the data with the expected data
-    for (int32_t x = 0; (x < length); x++) {
-        gBytesReceived++;
-        if (gTestData[gIndexInBlock] == *(pData + x)) {
-            gIndexInBlock++;
-            if (gIndexInBlock >= sizeof(gTestData) - 1) {
-                gIndexInBlock = 0;
-            }
-        } else {
-            gErrors++;
-        }
-    }
-    uPortLog("U_SHORT_RANGE_TEST: Received %d of data, total %d, error %d\n", length, gBytesReceived,
-             gErrors);
-}
-
-static void shortRangeEdmConnectBtConnectionDataCallback(int32_t streamHandle, uint32_t type,
-                                                         uint32_t channel,
-                                                         bool ble, char *address, void *pParam)
-{
-    int32_t bytesToSend;
-
-    while (gBytesSent < gTotalData) {
-        // -1 to omit gTestData string terminator
-        bytesToSend = sizeof(gTestData) - 1;
-        if (bytesToSend > gTotalData - gBytesSent) {
-            bytesToSend = gTotalData - gBytesSent;
-        }
-
-        uShortRangeEdmStreamWrite(streamHandle, channel, gTestData, bytesToSend);
-
-        gBytesSent += bytesToSend;
-        uPortLog("U_SHORT_RANGE_TEST: %d byte(s) sent.\n", gBytesSent);
-    }
-}
-
-/** Connects to a remote SPS central that must echo all incoming data.
- */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeEdmSpsConnect")
-{
-    // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_B1,
-                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                      &gHandles) == 0);
-
-    // Add unsolicited response cb
-    uShortRangeBtConnectionStatusCallback(gHandles.shortRangeHandle,
-                                          shortRangeEdmConnectAtBtConnectionDataCallback, NULL);
-    uShortRangeSpsConnectionStatusCallback(gHandles.shortRangeHandle,
-                                           shortRangeEdmConnectSpsConnectionCallback, &gHandles.shortRangeHandle);
-    uShortRangeEdmStreamBtEventCallbackSet(gHandles.edmStreamHandle,
-                                           shortRangeEdmConnectBtConnectionDataCallback, NULL, 1536, U_CFG_OS_PRIORITY_MAX - 5);
-    uShortRangeEdmStreamDataEventCallbackSet(gHandles.edmStreamHandle, shortRangeEdmConnectDataCallback,
-                                             (void *)gHandles.edmStreamHandle, 1536, U_CFG_OS_PRIORITY_MAX - 5);
-
-    U_PORT_TEST_ASSERT(uShortRangeConnectSps(gHandles.shortRangeHandle, gRemoteSpsAddress) == 0);
-
-    while (gBytesSent < gTotalData) {};
-    // All sent, give some time to finish receiving
-    uPortTaskBlock(2000);
-
-    U_PORT_TEST_ASSERT(gTotalData == gBytesReceived);
-    U_PORT_TEST_ASSERT(gErrors == 0);
-
-    uShortRangeAttention(gHandles.shortRangeHandle);
-    U_PORT_TEST_ASSERT(uShortRangeDisconnect(gHandles.shortRangeHandle, gConnHandle) == 0);
-
-    uShortRangeTestPrivatePostamble(&gHandles);
-}
-
-#endif
-
-#if (U_CFG_TEST_SHORT_RANGE_UART_MANUAL >= 0)
-
-static int32_t gManualConnHandle;
-
-static void shortRangeBtConnectionDataCallback(int32_t connHandle,
-                                               char *address, void *pParameters)
-{
-    uPortLog("U_SHORT_RANGE_TEST: Connected ACL handle %d\n", connHandle);
-}
-
-static void shortRangeEdmDataCallback(int32_t handle, int32_t channel, int32_t length,
-                                      char *pData, void *pParameters)
-{
-    uPortLog("U_SHORT_RANGE_TEST: Channel %d, %d of data\n", channel, length);
-    uPortLog("U_SHORT_RANGE_TEST: Data: %s\n", pData);
-
-    uShortRangeEdmStreamWrite(handle, channel, pData, length);
-}
-
-static void shortRangeEdmBtConnectionDataCallback(int32_t streamHandle, uint32_t type,
-                                                  uint32_t channel,
-                                                  bool ble, char *address, void *pParam)
-{
-    //check address
-    uPortLog("U_SHORT_RANGE_TEST: Edm bt coonnection event: %d\n", type);
-    //Write data on channel
-    char hi[2] = "Hi";
-    uShortRangeEdmStreamWrite(streamHandle, channel, &hi, 2);
-
-}
-
-static void shortRangeSpsConnectionDataCallback(int32_t connHandle,
-                                                char *address, void *pParameters)
-{
-    gManualConnHandle = connHandle;
-}
-
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeSpsServerEdm")
-{
-    // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_B1,
-                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                      &gHandles) == 0);
-
-    // Add unsolicited response cb
-    uShortRangeBtConnectionStatusCallback(gHandles.shortRangeHandle,
-                                          shortRangeBtConnectionDataCallback, NULL);
-    uShortRangeSpsConnectionStatusCallback(gHandles.shortRangeHandle,
-                                           shortRangeSpsConnectionDataCallback, &gHandles.shortRangeHandle);
-    uShortRangeEdmStreamBtEventCallbackSet(gHandles.edmStreamHandle,
-                                           shortRangeEdmBtConnectionDataCallback, NULL, 1536, U_CFG_OS_PRIORITY_MAX - 5);
-    uShortRangeEdmStreamDataEventCallbackSet(gHandles.edmStreamHandle, shortRangeEdmDataCallback,
-                                             (void *)gHandles.edmStreamHandle, 1536, U_CFG_OS_PRIORITY_MAX - 5);
-
-    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.shortRangeHandle) == 0);
-
-    // Wait for connection
-    uPortTaskBlock(30000);
-    U_PORT_TEST_ASSERT(uShortRangeDisconnect(gHandles.shortRangeHandle, gManualConnHandle) == 0);
-
-    uShortRangeTestPrivatePostamble(&gHandles);
-}
-
-#endif
 #endif
 #endif
 #endif

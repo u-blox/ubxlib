@@ -108,6 +108,51 @@
 # define U_CFG_APP_PIN_CELL_RTS               -1
 #endif
 
+/** Short range module type, see uShortRangeModuleType_t
+ */
+
+#ifndef U_CFG_APP_SHORT_RANGE_TYPE
+# define U_CFG_APP_SHORT_RANGE_TYPE            2
+#endif
+
+/** Tx pin for UART connected to short range module.
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_TXD
+# define U_CFG_APP_SHORT_RANGE_PIN_UART_TXD   -1
+#endif
+
+/** Rx pin for UART connected to short range module..
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_RXD
+# define U_CFG_APP_SHORT_RANGE_PIN_UART_RXD   -1
+#endif
+
+/** CTS pin for UART connected to short range module..
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_CTS
+# define U_CFG_APP_SHORT_RANGE_PIN_UART_CTS   -1
+#endif
+
+/** RTS pin for UART connected to short range module..
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_RTS
+# define U_CFG_APP_SHORT_RANGE_PIN_UART_RTS   -1
+#endif
+
+/** UART hw block with a connected short range module
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_UART
+# define U_CFG_APP_SHORT_RANGE_UART        -1
+#endif
+
+/** Short range module role
+ * Central: 1
+ * Peripheral: 2
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_ROLE
+# define U_CFG_APP_SHORT_RANGE_ROLE        2
+#endif
+
 #endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 // End of file

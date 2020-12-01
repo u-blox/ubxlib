@@ -50,6 +50,10 @@
 #include "u_cell_test_cfg.h" // For the cellular test macros
 #endif
 
+#include "u_error_common.h"
+#include "u_at_client.h"
+#include "u_short_range.h"
+
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
 
@@ -71,10 +75,97 @@
 /** An echo test string.
  */
 static const char gTestString[] = "Hello from u-blox.";
+static const char gRemoteSpsAddress[] = "0012F398DD12p";
+static const char gTestData[] =  "_____0000:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0100:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0200:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0300:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0400:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0500:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0600:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0700:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0800:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0900:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789";
+//#endif
+
+static volatile int32_t gConnHandle = 0;
+static volatile int32_t gBytesReceived = 0;
+static volatile int32_t gErrors = 0;
+static volatile uint32_t gIndexInBlock = 0;
+static const int32_t gTotalData = 4000;
+static volatile int32_t gBytesSent = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+static void shortRangeConnectBtConnectionDataCallback(int32_t connHandle,
+                                                      char *address, void *pParameters)
+{
+    (void) connHandle;
+    (void) address;
+    (void) pParameters;
+    uPortLog("U_NETWORK_TEST: Connected Bt handle %d\n", connHandle);
+}
+
+//lint -e{818} Suppress 'pData' could be declared as const:
+// need to follow function signature
+static void shortRangeConnectDataModeCallback(int32_t channel, size_t length,
+                                              char *pData, void *pParameters)
+{
+    (void) channel;
+    (void) pParameters;
+    // Compare the data with the expected data
+    for (uint32_t x = 0; (x < length); x++) {
+        gBytesReceived++;
+        if (gTestData[gIndexInBlock] == *(pData + x)) {
+            gIndexInBlock++;
+            if (gIndexInBlock >= sizeof(gTestData) - 1) {
+                gIndexInBlock = 0;
+            }
+        } else {
+            gErrors++;
+        }
+    }
+    uPortLog("U_NETWORK_TEST: Received %d of data, total %d, error %d\n", length, gBytesReceived,
+             gErrors);
+}
+
+static void shortRangeConnectSpsConnectionCallback(int32_t connHandle, char *address, int32_t type,
+                                                   int32_t channel, int32_t mtu, void *pParameters)
+{
+    (void) address;
+    (void) mtu;
+    int32_t bytesToSend;
+    int32_t *pHandle = (int32_t *)pParameters;
+    gConnHandle = connHandle;
+
+    if (type == 0) {
+        while (gBytesSent < gTotalData) {
+            // -1 to omit gTestData string terminator
+            bytesToSend = sizeof(gTestData) - 1;
+            if (bytesToSend > gTotalData - gBytesSent) {
+                bytesToSend = gTotalData - gBytesSent;
+            }
+            uShortRangeData(*pHandle, channel, gTestData, bytesToSend);
+
+            gBytesSent += bytesToSend;
+            uPortLog("U_NETWORK: %d byte(s) sent.\n", gBytesSent);
+        }
+    }
+}
+
+
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -124,60 +215,86 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                      gpUNetworkTestTypeName[pNetworkCfg->type]);
             U_PORT_TEST_ASSERT(uNetworkUp(networkHandle) == 0);
 
-            uPortLog("U_NETWORK_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
-            // Look up the address of the server we use for UDP echo
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                  U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                                                  &(address.ipAddress)) == 0);
-            // Add the port number we will use
-            address.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
+            if (pNetworkCfg->type == U_NETWORK_TYPE_CELL ||
+                pNetworkCfg->type == U_NETWORK_TYPE_WIFI) {
 
-            // Create a UDP socket
-            descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
-                                     U_SOCK_PROTOCOL_UDP);
+                uPortLog("U_NETWORK_TEST: looking up echo server \"%s\"...\n",
+                         U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
+                // Look up the address of the server we use for UDP echo
+                U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
+                                                      U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                                                      &(address.ipAddress)) == 0);
+                // Add the port number we will use
+                address.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
-            // Send and wait for the UDP echo data, trying a few
-            // times to reduce the chance of internet loss getting
-            // in the way
-            uPortLog("U_NETWORK_TEST: sending %d byte(s) to %s:%d over"
-                     " %s...\n", sizeof(gTestString) - 1,
-                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                     U_SOCK_TEST_ECHO_UDP_SERVER_PORT,
-                     gpUNetworkTestTypeName[pNetworkCfg->type]);
-            y = 0;
-            memset(buffer, 0, sizeof(buffer));
-            for (size_t z = 0; (z < U_SOCK_TEST_UDP_RETRIES) &&
-                 (y != sizeof(gTestString) - 1); z++) {
-                y = uSockSendTo(descriptor, &address, gTestString,
-                                sizeof(gTestString) - 1);
-                if (y == sizeof(gTestString) - 1) {
-                    // Wait for the answer
-                    y = 0;
-                    for (size_t w = 10; (w > 0) &&
-                         (y != sizeof(gTestString) - 1); w--) {
-                        y = uSockReceiveFrom(descriptor, NULL,
-                                             buffer, sizeof(buffer));
-                        if (y <= 0) {
-                            uPortTaskBlock(1000);
+                // Create a UDP socket
+                descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
+                                         U_SOCK_PROTOCOL_UDP);
+
+                // Send and wait for the UDP echo data, trying a few
+                // times to reduce the chance of internet loss getting
+                // in the way
+                uPortLog("U_NETWORK_TEST: sending %d byte(s) to %s:%d over"
+                         " %s...\n", sizeof(gTestString) - 1,
+                         U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                         U_SOCK_TEST_ECHO_UDP_SERVER_PORT,
+                         gpUNetworkTestTypeName[pNetworkCfg->type]);
+                y = 0;
+                memset(buffer, 0, sizeof(buffer));
+                for (size_t z = 0; (z < U_SOCK_TEST_UDP_RETRIES) &&
+                     (y != sizeof(gTestString) - 1); z++) {
+                    y = uSockSendTo(descriptor, &address, gTestString,
+                                    sizeof(gTestString) - 1);
+                    if (y == sizeof(gTestString) - 1) {
+                        // Wait for the answer
+                        y = 0;
+                        for (size_t w = 10; (w > 0) &&
+                             (y != sizeof(gTestString) - 1); w--) {
+                            y = uSockReceiveFrom(descriptor, NULL,
+                                                 buffer, sizeof(buffer));
+                            if (y <= 0) {
+                                uPortTaskBlock(1000);
+                            }
                         }
+                        if (y != sizeof(gTestString) - 1) {
+                            uPortLog("U_NETWORK_TEST: failed to receive UDP echo"
+                                     " on try %d.\n", z + 1);
+                        }
+                    } else {
+                        uPortLog("U_NETWORK_TEST: failed to send UDP data on"
+                                 " try %d.\n", z + 1);
                     }
-                    if (y != sizeof(gTestString) - 1) {
-                        uPortLog("U_NETWORK_TEST: failed to receive UDP echo"
-                                 " on try %d.\n", z + 1);
-                    }
-                } else {
-                    uPortLog("U_NETWORK_TEST: failed to send UDP data on"
-                             " try %d.\n", z + 1);
                 }
-            }
-            uPortLog("U_NETWORK_TEST: %d byte(s) echoed over UDP on %s.\n",
-                     y, gpUNetworkTestTypeName[pNetworkCfg->type]);
-            U_PORT_TEST_ASSERT(y == sizeof(gTestString) - 1);
-            U_PORT_TEST_ASSERT(strcmp(buffer, gTestString) == 0);
+                uPortLog("U_NETWORK_TEST: %d byte(s) echoed over UDP on %s.\n",
+                         y, gpUNetworkTestTypeName[pNetworkCfg->type]);
+                U_PORT_TEST_ASSERT(y == sizeof(gTestString) - 1);
+                U_PORT_TEST_ASSERT(strcmp(buffer, gTestString) == 0);
 
-            // Close the socket
-            U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+                // Close the socket
+                U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+            } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
+                uShortRangeBtConnectionStatusCallback(gUNetworkTestCfg[x].handle,
+                                                      shortRangeConnectBtConnectionDataCallback, NULL);
+                uShortRangeSpsConnectionStatusCallback(gUNetworkTestCfg[x].handle,
+                                                       shortRangeConnectSpsConnectionCallback, &gUNetworkTestCfg[x].handle);
+                uShortRangeSetDataCallback(gUNetworkTestCfg[x].handle, shortRangeConnectDataModeCallback,
+                                           &gUNetworkTestCfg[x].handle);
+
+                U_PORT_TEST_ASSERT(uShortRangeConnectSps(gUNetworkTestCfg[x].handle,
+                                                         gRemoteSpsAddress) == 0);
+
+                while (gBytesSent < gTotalData) {
+                    uPortTaskBlock(100);
+                };
+                // All sent, give some time to finish receiving
+                uPortTaskBlock(2000);
+
+                U_PORT_TEST_ASSERT(gTotalData == gBytesReceived);
+                U_PORT_TEST_ASSERT(gErrors == 0);
+
+                //Clean up
+                U_PORT_TEST_ASSERT(uShortRangeDisconnect(gUNetworkTestCfg[x].handle, gConnHandle) == 0);
+            }
         }
     }
 

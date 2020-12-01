@@ -237,7 +237,7 @@ void uShortRangeEdmStreamWifiEventCallbackRemove(int32_t handle);
  */
 int32_t uShortRangeEdmStreamBtEventCallbackSet(int32_t handle,
                                                void (*pFunction)(int32_t, uint32_t, uint32_t,
-                                                                 bool, char *, void *),
+                                                                 bool, int32_t, char *, void *),
                                                void *pParam,
                                                size_t stackSizeBytes,
                                                int32_t priority);

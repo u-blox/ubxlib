@@ -63,9 +63,21 @@
 
 /** The network configuration for BLE.
  */
+#if (U_CFG_APP_SHORT_RANGE_UART >= 0)
 static const uNetworkConfigurationBle_t gConfigurationBle = {
-    U_NETWORK_TYPE_NONE /* TODO: replace this with BLE config info. */
+    U_NETWORK_TYPE_BLE,
+    U_CFG_APP_SHORT_RANGE_TYPE,
+    U_CFG_APP_SHORT_RANGE_UART,
+    U_CFG_APP_SHORT_RANGE_PIN_UART_TXD,
+    U_CFG_APP_SHORT_RANGE_PIN_UART_RXD,
+    U_CFG_APP_SHORT_RANGE_PIN_UART_CTS,
+    U_CFG_APP_SHORT_RANGE_PIN_UART_RTS,
+    U_CFG_APP_SHORT_RANGE_ROLE, // Peripheral
+    true // Enable sps server
 };
+#else
+static const uNetworkConfigurationBle_t gConfigurationBle = {U_NETWORK_TYPE_NONE};
+#endif
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 /** The network configuration for cellular.

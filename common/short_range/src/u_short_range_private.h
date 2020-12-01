@@ -82,8 +82,9 @@ typedef struct uShortRangePrivateInstance_t {
     int64_t startTimeMs;     /**< Used while restarting. */
     void (*pConnectionStatusCallback) (int32_t, char *, void *);
     void *pConnectionStatusCallbackParameter;
-    void (*pSpsConnectionCallback) (int32_t, char *, void *);
+    void (*pSpsConnectionCallback) (int32_t, char *, int32_t, int32_t, int32_t, void *);
     void *pSpsConnectionCallbackParameter;
+    void *pPendingSpsConnectionEvent;
     void (*pDataCallback) (int32_t, size_t, char *, void *);
     void *pDataCallbackParameter;
     char *pBuffer;

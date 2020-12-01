@@ -14,32 +14,31 @@
  * limitations under the License.
  */
 
-#ifndef _U_SHORT_RANGE_CFG_H_
-#define _U_SHORT_RANGE_CFG_H_
+#ifndef _U_SHORT_RANGE_AT_COMMANDS_H_
+#define _U_SHORT_RANGE_AT_COMMANDS_H_
 
 /* No #includes allowed here */
 
 /** @file
- * @brief This header file defines types, functions and inclusions that
- * are common and private to the SHORT_RANGE API.
+ * @brief This header file for AT commands, only include this file from u_short_range.h.
  */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ----------------------------------------------------------------
- * COMPILE-TIME MACROS
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * TYPES
- * -------------------------------------------------------------- */
+int32_t getBleRole(const uAtClientHandle_t atHandle);
+int32_t setBleRole(const uAtClientHandle_t atHandle, int32_t role);
+int32_t getServers(const uAtClientHandle_t atHandle, uShortRangeServerType_t type);
+int32_t setServer(const uAtClientHandle_t atHandle, uShortRangeServerType_t type);
+int32_t restart(const uAtClientHandle_t atHandle, bool store);
+int32_t setEchoOff(const uAtClientHandle_t atHandle, uint8_t retries);
+uShortRangeModuleType_t getModule(const uAtClientHandle_t atHandle);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _U_SHORT_RANGE_CFG_H_
+#endif // _U_SHORT_RANGE_AT_COMMANDS_H_
 
 // End of file

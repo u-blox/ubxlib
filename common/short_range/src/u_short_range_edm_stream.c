@@ -106,7 +106,7 @@ typedef struct uEdmStreamInstance_t {
     int32_t dataEventQueueHandle;
     void (*pAtCallback)(int32_t, uint32_t, void *);
     void *pAtCallbackParam;
-    void (*pBtEventCallback)(int32_t, uint32_t, uint32_t, bool, char *, void *);
+    void (*pBtEventCallback)(int32_t, uint32_t, uint32_t, bool, int32_t, char *, void *);
     void *pBtEventCallbackParam;
     //void (*pWifiEventCallback)(int32_t, uint32_t, void *);
     //void *pWifiEventCallbackParam;
@@ -161,11 +161,6 @@ static void atEventHandler(void *pParam, size_t paramLength)
                                U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
                                gEdmStream.pAtCallbackParam);
     }
-
-
-    gEdmStream.uartBufferAvailable = true;
-    uPortUartEventSend(gEdmStream.uartHandle,
-                       U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
 }
 
 static void btEventHandler(void *pParam, size_t paramLength)
@@ -176,8 +171,8 @@ static void btEventHandler(void *pParam, size_t paramLength)
 
     if (pBtEvent != NULL) {
         if (gEdmStream.pBtEventCallback != NULL) {
-            gEdmStream.pBtEventCallback(gEdmStream.handle, (uint32_t)pBtEvent->type, pBtEvent->channel,
-                                        pBtEvent->ble, (char *)&pBtEvent->address[0],
+            gEdmStream.pBtEventCallback(gEdmStream.handle, (uint32_t) pBtEvent->type, pBtEvent->channel,
+                                        pBtEvent->ble, (int32_t) pBtEvent->frameSize, (char *)&pBtEvent->address[0],
                                         gEdmStream.pBtEventCallbackParam);
         }
     }
@@ -531,7 +526,7 @@ void uShortRangeEdmStreamClose(int32_t handle)
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        if (handle == gEdmStream.handle) {
+        if ((handle != -1) && (handle == gEdmStream.handle)) {
             gEdmStream.handle = -1;
             gEdmStream.uartHandle = -1;
             if (gEdmStream.atHandle != NULL) {
@@ -600,7 +595,7 @@ int32_t uShortRangeEdmStreamAtCallbackSet(int32_t handle,
 //lint -esym(593, pParam) Suppress pParam not being freed here
 int32_t uShortRangeEdmStreamBtEventCallbackSet(int32_t handle,
                                                void (*pFunction)(int32_t, uint32_t, uint32_t,
-                                                                 bool, char *, void *),
+                                                                 bool, int32_t, char *, void *),
                                                void *pParam,
                                                size_t stackSizeBytes,
                                                int32_t priority)
@@ -737,6 +732,9 @@ int32_t uShortRangeEdmStreamAtRead(int32_t handle, void *pBuffer,
                     gEdmStream.atResponseLength = 0;
                     gEdmStream.atResponseRead = 0;
                 }
+                gEdmStream.uartBufferAvailable = true;
+                uPortUartEventSend(gEdmStream.uartHandle,
+                                   U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
             }
         }
 
@@ -806,8 +804,7 @@ int32_t uShortRangeEdmStreamAtEventSend(int32_t handle, uint32_t eventBitMap)
             // The only event we support right now
             (eventBitMap == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
             errorCode = uPortEventQueueSend(gEdmStream.atEventQueueHandle,
-                                            (const void *)handle,
-                                            sizeof(handle));
+                                            &gEdmStream.handle, sizeof(int32_t));
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

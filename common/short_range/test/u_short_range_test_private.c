@@ -138,6 +138,7 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
 
     if (pParameters->atClientHandle != NULL) {
         // So that we can see what we're doing
+        uAtClientTimeoutSet(pParameters->atClientHandle, 2000);
         uAtClientPrintAtSet(pParameters->atClientHandle, true);
         uAtClientDebugSet(pParameters->atClientHandle, true);
         if (uShortRangeInit() == 0) {
@@ -153,9 +154,10 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
         if (streamType == U_AT_CLIENT_STREAM_TYPE_EDM) {
             uShortRangeSetEdm(shortRangeHandle);
         }
-        uPortLog("U_SHORT_RANGE_TEST_PRIVATE: powering on...\n");
-        errorCode = uShortRangeAttention(shortRangeHandle);
-        if (errorCode == 0) {
+        uPortLog("U_SHORT_RANGE_TEST_PRIVATE: Detecting...\n");
+        uShortRangeModuleType_t module = uShortRangeDetectModule(shortRangeHandle);
+
+        if (module != U_SHORT_RANGE_MODULE_TYPE_INVALID) {
             errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
             pModule = pUShortRangePrivateGetModule(shortRangeHandle);
             if (pModule != NULL) {

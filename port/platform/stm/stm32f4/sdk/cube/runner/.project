@@ -77,6 +77,11 @@
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_at_commands.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_at_commands.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_edm.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_edm.c</locationURI>
@@ -87,7 +92,7 @@
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_edm_stream.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_edm.c</name>
+			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_private.c</locationURI>
 		</link>

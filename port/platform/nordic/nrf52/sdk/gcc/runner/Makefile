@@ -107,6 +107,7 @@ SRC_FILES += \
   ../../../../../../../common/at_client/test/u_at_client_test.c \
   ../../../../../../../common/at_client/test/u_at_client_test_data.c \
   ../../../../../../../common/short_range/src/u_short_range.c \
+    ../../../../../../../common/short_range/src/u_short_range_at_commands.c \
   ../../../../../../../common/short_range/src/u_short_range_edm.c \
   ../../../../../../../common/short_range/src/u_short_range_edm_stream.c \
   ../../../../../../../common/short_range/src/u_short_range_private.c \
