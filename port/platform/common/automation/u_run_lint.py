@@ -12,7 +12,7 @@ import u_settings
 PROMPT = "u_run_lint_"
 
 # The path to the Lint directory off the ubxlib root
-LINT_PLATFORM_PATH = "port\\platform\\lint"
+LINT_PLATFORM_PATH = os.path.join("port","platform","lint")
 
 # The .lnt files to be included from the Lint platform
 # directory
@@ -27,32 +27,41 @@ LINT_PLATFORM_CONFIG_FILES = u_settings.LINT_PLATFORM_CONFIG_FILES #["co-gcc.lnt
 # Note that examples are DELIBERATELY not added
 # here as we need more lee-way and don't want Lint
 # suppressions cluttering them up.
-LINT_DIRS = ["common\\network\\src", "common\\network\\test",
-             "common\\sock\\src", "common\\sock\\test",
-             "common\\at_client\\src", "common\\at_client\\test",
-             "cell\\src", "cell\\test", "common\\short_range\\src",
-             "common\\short_range\\test",
-             "port\\clib", "port\\platform\\common\\event_queue",
-             "port\\test", "port\\platform\\common\\runner"]
+LINT_DIRS = [os.path.join("common","network","src"),
+             os.path.join("common","network","test"),
+             os.path.join("common","sock","src"),
+             os.path.join("common","sock","test"),
+             os.path.join("common","at_client","src"),
+             os.path.join("common","at_client","test"),
+             os.path.join("cell","src"),
+             os.path.join("cell","test"),
+             os.path.join("common","short_range","src"),
+             os.path.join("common","short_range","test"),
+             os.path.join("port","clib"),
+             os.path.join("port","platform","common","event_queue"),
+             os.path.join("port","test"),
+             os.path.join("port","platform","common","runner")]
 
 # Include directories for ubxlib, off the ubxlib root.
 UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
-                       "cfg",
-                       "common\\network\\api",
-                       "common\\network\\src",
-                       "common\\network\\test",
-                       "common\\sock\\api",
-                       "common\\sock\\test",
-                       "common\\error\\api",
-                       "common\\at_client\\api",
-                       "common\\short_range\\api",
-                       "common\\short_range\\src",
-                       "common\\short_range\\test",
-                       "cell\\api", "cell\\src", "cell\\test",
-                       "port\\api",
-                       "port\\platform\\common\\event_queue",
-                       "port\\platform\\common\\runner",
-                       "port\\platform\\lint\\stubs"]
+                       os.path.join("cfg"),
+                       os.path.join("common","network","api"),
+                       os.path.join("common","network","src"),
+                       os.path.join("common","network","test"),
+                       os.path.join("common","sock","api"),
+                       os.path.join("common","sock","test"),
+                       os.path.join("common","error","api"),
+                       os.path.join("common","at_client","api"),
+                       os.path.join("common","short_range","api"),
+                       os.path.join("common","short_range","src"),
+                       os.path.join("common","short_range","test"),
+                       os.path.join("cell","api"),
+                       os.path.join("cell","src"),
+                       os.path.join("cell","test"),
+                       os.path.join("port","api"),
+                       os.path.join("port","platform","common","event_queue"),
+                       os.path.join("port","platform","common","runner"),
+                       os.path.join("port","platform","lint","stubs")]
 
 # Include directories for the C compiler and its C library.
 COMPILER_INCLUDE_DIRS = u_settings.LINT_COMPILER_INCLUDE_DIRS

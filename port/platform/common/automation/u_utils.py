@@ -72,6 +72,14 @@ FILTER_MACRO_NAME = u_settings.FILTER_MACRO_NAME #"U_CFG_APP_FILTER"
 # and moved on
 EXE_RUN_QUEUE_WAIT_SECONDS = u_settings.EXE_RUN_QUEUE_WAIT_SECONDS #1
 
+def subprocess_osify(cmd):
+    ''' expects an array of strings being [command, param, ...] '''
+    if platform.system() == "Linux":
+        return [ ' '.join(cmd) ]
+    else:
+        return cmd
+
+
 def get_actual_path(path):
     '''Given a drive number return real path if it is a subst'''
     actual_path = path
@@ -173,7 +181,7 @@ def usb_reset(device_description, printer, prompt):
         printer.string("{}running {} to look for \"{}\"...".   \
                        format(prompt, DEVCON_PATH, device_description))
         cmd = [DEVCON_PATH, "hwids", "=ports"]
-        text = subprocess.check_output(cmd,
+        text = subprocess.check_output(subprocess_osify(cmd),
                                        stderr=subprocess.STDOUT,
                                        shell=True) # Jenkins hangs without this
         for line in text.splitlines():
@@ -207,7 +215,7 @@ def usb_reset(device_description, printer, prompt):
             printer.string("{}running {} to reset device \"{}\"...".   \
                            format(prompt, DEVCON_PATH, instance_id))
             cmd = [DEVCON_PATH, "restart", "@" + instance_id]
-            text = subprocess.check_output(cmd,
+            text = subprocess.check_output(subprocess_osify(cmd),
                                            stderr=subprocess.STDOUT,
                                            shell=False) # Has to be False or devcon won't work
             for line in text.splitlines():
@@ -299,8 +307,8 @@ def fetch_repo(url, directory, branch, printer, prompt):
             printer.string("{}updating code in {}...".
                            format(prompt, directory))
             try:
-                text = subprocess.check_output(["git", "pull",
-                                                "origin", branch],
+                text = subprocess.check_output(subprocess_osify(["git", "pull",
+                                                "origin", branch]),
                                                stderr=subprocess.STDOUT,
                                                shell=True) # Jenkins hangs without this
                 for line in text.splitlines():
@@ -315,7 +323,7 @@ def fetch_repo(url, directory, branch, printer, prompt):
         printer.string("{}cloning from {} into {}...".
                        format(prompt, url, directory))
         try:
-            text = subprocess.check_output(["git", "clone", url, directory],
+            text = subprocess.check_output(subprocess_osify(["git", "clone", url, directory]),
                                            stderr=subprocess.STDOUT,
                                            shell=True) # Jenkins hangs without this
             for line in text.splitlines():
@@ -332,10 +340,10 @@ def fetch_repo(url, directory, branch, printer, prompt):
             printer.string("{}checking out branch {}...".
                            format(prompt, branch))
             try:
-                text = subprocess.check_output(["git", "-c",
+                text = subprocess.check_output(subprocess_osify(["git", "-c",
                                                 "advice.detachedHead=false",
                                                 "checkout",
-                                                "origin/" + branch],
+                                                "origin/" + branch]),
                                                stderr=subprocess.STDOUT,
                                                shell=True) # Jenkins hangs without this
                 for line in text.splitlines():
@@ -350,9 +358,9 @@ def fetch_repo(url, directory, branch, printer, prompt):
                 printer.string("{}recursing sub-modules (can take some time" \
                                " and gives no feedback).".format(prompt))
                 try:
-                    text = subprocess.check_output(["git", "submodule",
+                    text = subprocess.check_output(subprocess_osify(["git", "submodule",
                                                     "update", "--init",
-                                                    "--recursive"],
+                                                    "--recursive"]),
                                                    stderr=subprocess.STDOUT,
                                                    shell=True) # Jenkins hangs without this
                     for line in text.splitlines():
@@ -407,7 +415,7 @@ def exe_version(exe_name, version_switch, printer, prompt):
     if not version_switch:
         version_switch = "--version"
     try:
-        text = subprocess.check_output(["".join(exe_name), version_switch],
+        text = subprocess.check_output(subprocess_osify(["".join(exe_name), version_switch]),
                                        stderr=subprocess.STDOUT,
                                        shell=True)  # Jenkins hangs without this
         for line in text.splitlines():

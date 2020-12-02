@@ -123,6 +123,7 @@ macros:
 # XXX:  We need to do something for people without an AWK
 # implementation---hopefully not here, but perhaps we could
 # provide an 'awk' with the Lint distro.
+#
 include_path:
 	$(GXX) -v -c $(E).cpp 2>&1 \
 	| $(AWK) " \
@@ -134,12 +135,12 @@ include_path:
 		gsub(\"//*\",\"/\"); \
 		sub(\"\xd$$\",\"\"); \
 		sub(\"/$$\",\"\"); \
-		printf(\"--i\"%s\"\n\", $$0); \
+		printf(\"--i"%s"\n\", \"$$0\"); \
 		next; \
 	    } \
 	    S  {exit;} \
 	    " >gcc-include-path.lnt
-
+	cat gcc-include-path.lnt
 
 # 'echo' seems to vary in behavior with respect to its handling
 # of '\n'.  (Is it a newline, or a literal backslash followed by
