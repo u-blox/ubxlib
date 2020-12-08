@@ -1085,7 +1085,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
     size_t offset;
     int32_t y;
     char *pDataReceived;
-    int64_t startTimeMsMs;
+    int64_t startTimeMs;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
@@ -1215,12 +1215,12 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
             memset(pDataReceived,
                    U_SOCK_TEST_FILL_CHARACTER,
                    (sizeof(gSendData) - 1) + (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
-            startTimeMsMs = uPortGetTickTimeMs();
+            startTimeMs = uPortGetTickTimeMs();
             offset = 0;
             //lint -e{441} Suppress loop variable not found in
             // condition: we're using time instead
             for (y = 0; (offset < sizeof(gSendData) - 1) &&
-                 (uPortGetTickTimeMs() - startTimeMsMs < 20000); y++) {
+                 (uPortGetTickTimeMs() - startTimeMs < 20000); y++) {
                 sizeBytes = uSockRead(descriptor,
                                       pDataReceived + offset +
                                       U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
@@ -1235,12 +1235,12 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
             if (sizeBytes < sizeof(gSendData) - 1) {
                 uPortLog("U_SOCK_TEST: only %d byte(s) received after %d ms.\n",
                          sizeBytes,
-                         (int32_t) (uPortGetTickTimeMs() - startTimeMsMs));
+                         (int32_t) (uPortGetTickTimeMs() - startTimeMs));
             } else {
                 uPortLog("U_SOCK_TEST: all %d byte(s) received back after"
                          " %d ms, checking if they were as expected...\n",
                          sizeBytes,
-                         (int32_t) (uPortGetTickTimeMs() - startTimeMsMs));
+                         (int32_t) (uPortGetTickTimeMs() - startTimeMs));
             }
 
             // Check that we reassembled everything correctly

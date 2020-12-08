@@ -220,8 +220,12 @@ typedef struct {
 typedef struct {
     size_t isMalloced;  /** Set to 1 to indicate that data buffer was malloced. */
     size_t dataBufferSize; /** The size of the data buffer which follows this. */
-    size_t length;     /** The number of characters in the buffer. */
-    size_t readIndex;  /** The read position in the buffer. */
+    size_t length;     /** The number of characters that may be read from the buffer. */
+    size_t lengthBuffered;  /** The number of bytes in the buffer: may be larger
+                                than length if there is an intercept function
+                                active and it hasn't yet pocessed the extra
+                                bytes into readable characters. */
+    size_t readIndex;  /** The read start position for characters in the buffer. */
     char mk0[U_AT_CLIENT_MARKER_SIZE]; /** Opening marker. */
 } uAtClientReceiveBuffer_t;
 
@@ -261,15 +265,15 @@ typedef struct uAtClientInstance_t {
     size_t maxRespLength; /** The max length of OK, (CME) (CMS) ERROR and URCs. */
     bool delimiterRequired; /** Is a delimiter to be inserted before the next parameter or not. */
     const char *(*pInterceptTx) (uAtClientHandle_t,
-                                 const char *,
+                                 const char **,
                                  size_t *,
                                  void *); /** Function that intercepts Tx data before it
                                               is given to the stream. */
     void *pInterceptTxContext; /** Context pointer that will be passed to pInterceptTx
                                    as its fourth parameter. */
     char *(*pInterceptRx) (uAtClientHandle_t,
-                           char *, size_t *,
-                           void *); /** Function that intercepts received data before it is
+                           char **, size_t *,
+                           void *); /** Function that intercepts Rx data before it is
                                         processed by the AT client. */
     void *pInterceptRxContext; /** Context pointer that will be passed to pInterceptRx
                                    as its fourth parameter. */
@@ -528,10 +532,30 @@ static int32_t pollTimeRemaining(int32_t atTimeoutMs,
 }
 
 // Zero the buffer.
-static void bufferReset(const uAtClientInstance_t *pClient)
+// totalReset also clears out any buffered data that
+// may be awaiting processing by a receive intercept
+// function
+static void bufferReset(const uAtClientInstance_t *pClient,
+                        bool totalReset)
 {
-    pClient->pReceiveBuffer->readIndex = 0;
-    pClient->pReceiveBuffer->length = 0;
+    uAtClientReceiveBuffer_t *pBuffer = pClient->pReceiveBuffer;
+
+    // If there is no receive intercept function then
+    // the buffered data can be reset also
+    if (totalReset || (pClient->pInterceptRx == NULL)) {
+        pBuffer->lengthBuffered = 0;
+    }
+
+    if (pBuffer->lengthBuffered > 0) {
+        // If there is stuff buffered, which will be beyond
+        // length, need to move that down when we reset
+        memmove(((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t),
+                ((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t) + pBuffer->length,
+                pBuffer->lengthBuffered - pBuffer->length);
+        pBuffer->lengthBuffered -= pBuffer->length;
+    }
+    pBuffer->readIndex = 0;
+    pBuffer->length = 0;
 }
 
 // Set the read position to 0 and move the buffer's
@@ -543,11 +567,12 @@ static void bufferRewind(const uAtClientInstance_t *pClient)
     if ((pBuffer->readIndex > 0) &&
         (pBuffer->length >= pBuffer->readIndex)) {
         pBuffer->length -= pBuffer->readIndex;
+        pBuffer->lengthBuffered -= pBuffer->readIndex;
         // Move what has not been read to the
         // beginning of the buffer
         memmove(((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t),
                 ((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t) + pBuffer->readIndex,
-                pBuffer->length);
+                pBuffer->lengthBuffered);
         pBuffer->readIndex = 0;
     }
 }
@@ -560,10 +585,14 @@ static bool bufferFill(uAtClientInstance_t *pClient,
 {
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
     int32_t atTimeoutMs = -1;
-    int32_t readLength = -1;
-    size_t actualLength = 0;
+    int32_t readLength = 0;
+    size_t x = 0;
+    size_t y;
+    size_t z;
+    size_t length = pReceiveBuffer->lengthBuffered - pReceiveBuffer->length;
     bool eventIsCallback = false;
-    char *pDataRead;
+    char *pData;
+    char *pDataIntercept;
 
     // Determine if we're in a callback or not
     switch (pClient->streamType) {
@@ -576,6 +605,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         default:
             break;
     }
+
     // If we're blocking, set the timeout value.
     if (blocking) {
         atTimeoutMs = pClient->atTimeoutMs;
@@ -585,8 +615,8 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         }
     }
 
-    // Reset buffer if it's become full
-    if (pReceiveBuffer->length == pReceiveBuffer->dataBufferSize) {
+    // Reset buffer if it has become full
+    if (pReceiveBuffer->lengthBuffered == pReceiveBuffer->dataBufferSize) {
 #if U_CFG_OS_CLIB_LEAKS
         // If the C library leaks then don't print
         // in a callback as it will leak
@@ -601,18 +631,22 @@ static bool bufferFill(uAtClientInstance_t *pClient,
 #if U_CFG_OS_CLIB_LEAKS
         }
 #endif
-        bufferReset(pClient);
+        bufferReset(pClient, true);
     }
 
+    // Set up the pointer for the intercept function,
+    // if there is one
+    pDataIntercept = U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                     pReceiveBuffer->length;
     // Do the read
     do {
         switch (pClient->streamType) {
             case U_AT_CLIENT_STREAM_TYPE_UART:
                 readLength = uPortUartRead(pClient->streamHandle,
                                            U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                                           pReceiveBuffer->length,
+                                           pReceiveBuffer->lengthBuffered,
                                            pReceiveBuffer->dataBufferSize -
-                                           pReceiveBuffer->length);
+                                           pReceiveBuffer->lengthBuffered);
                 break;
             case U_AT_CLIENT_STREAM_TYPE_EDM:
                 readLength = uShortRangeEdmStreamAtRead(pClient->streamHandle,
@@ -624,6 +658,121 @@ static bool bufferFill(uAtClientInstance_t *pClient,
             default:
                 break;
         }
+
+        if (readLength > 0) {
+            // lengthBuffered is advanced by the amount we have
+            // read in; may not be the same as the amount of data
+            // available in the buffer for the AT client as
+            // there may be an intercept function in the way
+            pReceiveBuffer->lengthBuffered += readLength;
+            // length starts out as the amount of data that has not yet
+            // been successfully processed by the intercept function
+            length += readLength;
+            x = length;
+        }
+
+        if ((pClient->pInterceptRx != NULL) && (length > 0)) {
+            // There's an intercept function and either we've just
+            // read some new data or there is some left in the buffer
+            // to be processed from last time.  The length available
+            // to the AT parser is now determined by the intercept
+            // function
+            readLength = 0;
+            // Run around the loop until the intercept function has
+            // nothing more to give
+            do {
+                pData = pClient->pInterceptRx((uAtClientHandle_t) pClient,
+                                              &pDataIntercept, &length,
+                                              pClient->pInterceptRxContext);
+                // length is now the length of the data that has been PROCESSED
+                // by the intercept function and is ready to be AT-parsed.
+
+                // Safety check
+                if (length > x) {
+                    length = x;
+                }
+
+                if (pData != NULL) {
+                    // length is the amount of usable data but it may
+                    // be somewhere further on in the buffer (as
+                    // pointed to by pData) so copy everything down in
+                    // the buffer to make it contiguous.
+                    //
+                    // In the picture of the buffer below, "read" is stuff
+                    // the AT client has dealt with, "unread" is stuff that
+                    // has been processed by the intercept function but the AT
+                    // client hasn't looked at yet and "buffered" is stuff
+                    // that the intercept function has yet to process. pData
+                    // is somewhere inside "buffered", pointing to our new
+                    // "length" of processed data.  The intercept function
+                    // will have moved pDataIntercept to somewhere beyond the
+                    // end of "length".
+                    //
+                    // +--------+-------------+-------------------------------+
+                    // |  read  |    unread   |            buffered           |
+                    // +--------+-------------+----------+--------------------+
+                    //       pRB->rI   pRB->l + readLength                pRB->lB
+                    //                        |----------------X--------------|
+                    //                        |----------|- length -|
+                    //                                 pData
+                    //                        |----------+--------------|
+                    //                                             pDataIntercept
+
+                    // First, move the processed stuff, "length" from pData onwards,
+                    // down to join the end of the "unread" section.
+                    memmove(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                            pReceiveBuffer->length + readLength,
+                            pData, length);
+
+                    // We now have:
+                    //
+                    // +--------+-------------+-------------------------------+
+                    // |  read  |    unread   |            buffered           |
+                    // +--------+-------------+-------- ----------------------+
+                    //       pRB->rI   pRB->l + readLength                pRB->lB
+                    //                        |----------------X--------------|
+                    //                        |-length-|
+                    //                        |-------------------------|
+                    //                                             pDataIntercept
+                    //                                                  |- Y -|
+                    //                                 |------ Z -------|
+
+                    // Now we want to move the remaining unprocessed stuff,
+                    // from pDataIntercept up to lengthBuffered, down to join
+                    // the end of "length".
+                    // y is how much stuff there is to move.
+                    y = (U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                         pReceiveBuffer->lengthBuffered) - pDataIntercept;
+                    // Move it
+                    memmove(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                            pReceiveBuffer->length + readLength + length,
+                            pDataIntercept, y);
+                    // Lastly, we need to adjust the things that were at or
+                    // beyond pDataIntercept to take account of the move.
+                    // z is how far things were moved
+                    z = pDataIntercept -
+                        ((U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                          pReceiveBuffer->length + readLength + length));
+                    // Adjust pDataIntercept down by z.
+                    pDataIntercept -= z;
+                    // lengthBuffered is reduced by z
+                    pReceiveBuffer->lengthBuffered -= z;
+                    // Add the length as determined by the
+                    // intercept function to readLength
+                    readLength += (int32_t) length;
+                    // x, the length left to be processed by the intercept
+                    // function, becomes y, as does "length" for the next
+                    // run around the loop
+                    x = y;
+                    length = y;
+                } else {
+                    // The intercept function needs more data,
+                    // put length back to where it was and ask for more
+                    length = x;
+                }
+            } while (pData != NULL);
+        }
+
         // Block for a little while in case the data coming
         // in is stuttering; we want a good load or we'll just
         // be looping on partially obtained strings to no useful
@@ -633,22 +782,6 @@ static bool bufferFill(uAtClientInstance_t *pClient,
              (pollTimeRemaining(atTimeoutMs, pClient->lockTimeMs) > 0));
 
     if (readLength > 0) {
-        // Call the intercept function if there is one
-        if (pClient->pInterceptRx != NULL) {
-            // Cast in two stages to keep Lint happy
-            actualLength = (size_t) (unsigned) readLength;
-            pDataRead = pClient->pInterceptRx((uAtClientHandle_t) pClient,
-                                              U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                                              pReceiveBuffer->length, &actualLength,
-                                              pClient->pInterceptRxContext);
-            readLength = (int32_t) actualLength;
-            // pDataRead may be further forward in the buffer
-            // so add the difference to the read index so that we
-            // effectively drop it
-            pReceiveBuffer->readIndex += pDataRead - (U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                                                      pReceiveBuffer->length);
-        }
-
 #if U_CFG_OS_CLIB_LEAKS
         // If the C library leaks then don't print
         // in a callback as it will leak
@@ -661,15 +794,6 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         }
 #endif
         pReceiveBuffer->length += readLength;
-    } else {
-        // If there was no data and there is an intercept function,
-        // call it with a NULL data pointer so that it can reset
-        // itself
-        if (pClient->pInterceptRx != NULL) {
-            pClient->pInterceptRx((uAtClientHandle_t) pClient,
-                                  NULL, &actualLength,
-                                  pClient->pInterceptRxContext);
-        }
     }
 
     assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
@@ -694,7 +818,7 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
         pReceiveBuffer->readIndex++;
     } else {
         // Everything has been read, try to bring more in
-        bufferReset(pClient);
+        bufferReset(pClient, false);
         if (bufferFill(pClient, true)) {
             // Read something, all good
             character = *(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
@@ -823,7 +947,7 @@ static bool consumeToStopTag(uAtClientInstance_t *pClient)
         if (pClient->stopTag.pTagDef == &gNoStopTag) {
             // If there is no stop tag, consume everything
             // in the buffer
-            bufferReset(pClient);
+            bufferReset(pClient, false);
         } else {
             // Otherwise consume up to the stop tag
             found = consumeToString(pClient, pClient->stopTag.pTagDef->pString);
@@ -1161,40 +1285,57 @@ static size_t write(uAtClientInstance_t *pClient,
                     bool andFlush)
 {
     int32_t thisLengthWritten = 0;
-    size_t lengthToWrite = length;
+    size_t lengthToWrite;
+    const char *pDataStart = pData;
     const char *pDataToWrite = pData;
 
-    // Call the intercept function if there is one
-    if (pClient->pInterceptTx != NULL) {
-        pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
-                                             pData, &lengthToWrite,
-                                             pClient->pInterceptTxContext);
-        // If we are to flush, call the intercept function
-        // again with NULL
-        if (andFlush) {
-            pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
-                                                 NULL, &lengthToWrite,
-                                                 pClient->pInterceptTxContext);
-        }
-    }
-    while ((lengthToWrite > 0) &&
+    while (((pData < pDataStart + length) || andFlush) &&
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
-        switch (pClient->streamType) {
-            case U_AT_CLIENT_STREAM_TYPE_UART:
-                thisLengthWritten = uPortUartWrite(pClient->streamHandle,
-                                                   pDataToWrite, lengthToWrite);
-                break;
-            //Write handled in intercept
-            case U_AT_CLIENT_STREAM_TYPE_EDM:
-                break;
-            default:
-                break;
-        }
-        if (thisLengthWritten > 0) {
-            pDataToWrite += thisLengthWritten;
-            lengthToWrite -= thisLengthWritten;
+        lengthToWrite = length - (pData - pDataStart);
+        if (pClient->pInterceptTx != NULL) {
+            if (pData < pDataStart + length) {
+                // Call the intercept function
+                pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
+                                                     &pData, &lengthToWrite,
+                                                     pClient->pInterceptTxContext);
+            } else {
+                // andFlush must be true: call the intercept
+                // function again with NULL to flush it out
+                pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
+                                                     NULL, &lengthToWrite,
+                                                     pClient->pInterceptTxContext);
+                andFlush = false;
+            }
         } else {
-            setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+            // If there is no intercept function then move pData
+            // on, plus clear andFlush, to indicate that we're done
+            pData = pDataStart + length;
+            andFlush = false;
+        }
+        if ((pDataToWrite == NULL) && (lengthToWrite > 0)) {
+            setError(pClient, U_ERROR_COMMON_UNKNOWN);
+        }
+        while ((lengthToWrite > 0) &&
+               (pDataToWrite != NULL) &&
+               (pClient->error == U_ERROR_COMMON_SUCCESS)) {
+            // Send the data
+            switch (pClient->streamType) {
+                case U_AT_CLIENT_STREAM_TYPE_UART:
+                    thisLengthWritten = uPortUartWrite(pClient->streamHandle,
+                                                       pDataToWrite, lengthToWrite);
+                    break;
+                // Write handled in intercept
+                case U_AT_CLIENT_STREAM_TYPE_EDM:
+                    break;
+                default:
+                    break;
+            }
+            if (thisLengthWritten > 0) {
+                pDataToWrite += thisLengthWritten;
+                lengthToWrite -= thisLengthWritten;
+            } else {
+                setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+            }
         }
     }
 
@@ -1203,8 +1344,8 @@ static size_t write(uAtClientInstance_t *pClient,
     // passed in so it's not easily possible to printAt()
     // exactly what was written, we can only check
     // if *everything* was written
-    if (lengthToWrite == 0) {
-        printAt(pClient, pData, length);
+    if (pClient->error == U_ERROR_COMMON_SUCCESS) {
+        printAt(pClient, pDataStart, length);
     } else {
         length = 0;
     }
@@ -1437,7 +1578,7 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
                         } else {
                             // There is no more data: clear anything that
                             // could not be handled and leave this loop
-                            bufferReset(pClient);
+                            bufferReset(pClient, false);
                             break;
                         }
                     }
@@ -1606,7 +1747,7 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                 // Finally set up the buffer and its protection markers
                                 pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
                                                                           U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
-                                bufferReset(pClient);
+                                bufferReset(pClient, true);
                                 memcpy(pClient->pReceiveBuffer->mk0, U_AT_CLIENT_MARKER,
                                        U_AT_CLIENT_MARKER_SIZE);
                                 memcpy(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
@@ -2467,10 +2608,14 @@ void uAtClientFlush(uAtClientHandle_t atHandle)
                  pClient->streamHandle);
     }
 
-    bufferReset(pClient);
+    bufferReset(pClient, true);
     while (bufferFill(pClient, false)) {
-        bufferReset(pClient);
+        bufferReset(pClient, true);
     }
+
+    // For security
+    memset(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer), 0,
+           pClient->pReceiveBuffer->dataBufferSize);
 
     U_PORT_MUTEX_UNLOCK(pClient->mutex);
 }
@@ -2533,7 +2678,7 @@ int32_t uAtClientStreamGet(uAtClientHandle_t atHandle,
 // Add a transmit intercept function.
 void uAtClientStreamInterceptTx(uAtClientHandle_t atHandle,
                                 const char *(*pCallback) (uAtClientHandle_t,
-                                                          const char *,
+                                                          const char **,
                                                           size_t *,
                                                           void *),
                                 void *pContext)
@@ -2551,7 +2696,7 @@ void uAtClientStreamInterceptTx(uAtClientHandle_t atHandle,
 // Add a receive intercept function.
 void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
                                 char *(*pCallback) (uAtClientHandle_t,
-                                                    char *,
+                                                    char **,
                                                     size_t *,
                                                     void *),
                                 void *pContext)
@@ -2559,6 +2704,11 @@ void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
     U_PORT_MUTEX_LOCK(pClient->mutex);
+
+    // Must reset the buffer before doing this
+    // as there are indexes in there that keep
+    // track of where the intercept function is at
+    bufferReset(pClient, true);
 
     pClient->pInterceptRx = pCallback;
     pClient->pInterceptRxContext = pContext;

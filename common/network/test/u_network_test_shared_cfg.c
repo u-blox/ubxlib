@@ -22,8 +22,9 @@
 
 /** @file
  * @brief Test network configuration information.
- * IMPORTANT this is used when testing *both* the network API
- * and the sockets API, it is SHARED between them.
+ * IMPORTANT this is used when testing *both* the network API,
+ * the sockets API and the u-blox security API, it is SHARED between
+ * them.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -36,6 +37,10 @@
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
+
+//lint -efile(766, u_port.h) Suppress header file not used, which
+// is true if U_CELL_TEST_CFG_APN is not defined
+#include "u_port.h" // For U_PORT_STRINGIFY_QUOTED()
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 #include "u_cell_module_type.h"
@@ -84,9 +89,13 @@ static const uNetworkConfigurationBle_t gConfigurationBle = {U_NETWORK_TYPE_NONE
  */
 static const uNetworkConfigurationCell_t gConfigurationCell = {
     U_NETWORK_TYPE_CELL,
-    U_CELL_TEST_CFG_SIM_PIN,
     U_CFG_TEST_CELL_MODULE_TYPE,
-    U_CELL_TEST_CFG_APN,
+    U_CELL_TEST_CFG_SIM_PIN,
+#ifdef U_CELL_TEST_CFG_APN
+    U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+    NULL,
+#endif
     U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS,
     U_CFG_APP_CELL_UART,
     U_CFG_APP_PIN_CELL_TXD,

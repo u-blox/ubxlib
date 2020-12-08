@@ -39,8 +39,8 @@ A simple usage example, sending data over a TCP socket, is shown below.
 // defined in the u_cfg_app_platform_specific.h
 // file for your chosen platform.
 const uNetworkConfigurationCell_t gConfiguration = {U_NETWORK_TYPE_CELL,
-                                                    NULL, /* SIM pin */
                                                     U_CELL_MODULE_TYPE_SARA_R5,
+                                                    NULL, /* SIM pin */
                                                     NULL, /* APN: accept default */
                                                     240, /* Connection timeout in seconds */
                                                     U_CFG_APP_CELL_UART,

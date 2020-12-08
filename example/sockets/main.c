@@ -97,8 +97,8 @@
 // chosen from the values in cell/api/u_cell_module_type.h
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                 NULL, /* SIM pin */
                                                  U_CFG_TEST_CELL_MODULE_TYPE,
+                                                 NULL, /* SIM pin */
                                                  NULL, /* APN: accept default */
                                                  240, /* Connection timeout in seconds */
                                                  U_CFG_APP_CELL_UART,

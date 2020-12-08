@@ -178,7 +178,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
     memset(buffer, 0, sizeof(buffer));
     U_PORT_TEST_ASSERT(uCellInfoGetImsi(cellHandle, buffer) >= 0);
     for (size_t x = 0; x < sizeof(buffer); x++) {
-        if (x < U_CELL_INFO_IMEI_SIZE) {
+        if (x < U_CELL_INFO_IMSI_SIZE) {
             U_PORT_TEST_ASSERT((buffer[x] >= '0') && (buffer[x] <= '9'));
         } else {
             U_PORT_TEST_ASSERT(buffer[x] == 0);

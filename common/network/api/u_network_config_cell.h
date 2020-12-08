@@ -44,11 +44,11 @@ typedef struct {
     uNetworkType_t type; /**< All uNetworkConfigurationXxx structures
                               must begin with this for error checking
                               purposes. */
-    const char *pApn; /**< The APN to use; if left as NULL
-                           a database look-up will be used. */
     int32_t moduleType; /**< The module type that is connected,
                              see uCellModuleType_t in u_cell.h. */
     const char *pPin; /**< The PIN of the SIM. */
+    const char *pApn; /**< The APN to use; if left as NULL
+                           a database look-up will be used. */
     int32_t timeoutSeconds; /**< Timeout that covers power-on and
                                  connect in seconds. */
     int32_t uart; /**< The UART HW block to use. */

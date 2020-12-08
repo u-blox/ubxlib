@@ -42,7 +42,8 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** The maximum size of a datagram and the maximum size of a
- * single TCP segment sent to the cellular module.
+ * single TCP segment sent to the cellular module (defined by the
+ * cellular module AT interface).
  */
 #define U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES 1024
 

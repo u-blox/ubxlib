@@ -47,9 +47,12 @@
 #endif
 
 #ifndef U_CELL_TEST_CFG_APN
-/** The APN to use during cellular testing.
+/** The APN to use during cellular testing:
+ * either pass this in as an environment variable
+ * or set the value below (without quotes) and
+ * uncomment the line
  */
-# define U_CELL_TEST_CFG_APN NULL
+//# define U_CELL_TEST_CFG_APN myapn
 #endif
 
 #ifndef U_CELL_TEST_CFG_EUTRAN_APN
@@ -62,15 +65,21 @@
 #endif
 
 #ifndef U_CELL_TEST_CFG_USERNAME
-/** The user name to use during cellular testing.
+/** The user name to use during cellular testing:
+ * either pass this in as an environment variable
+ * or set the value below (without quotes) and
+ * uncomment the line
  */
-# define U_CELL_TEST_CFG_USERNAME NULL
+//# define U_CELL_TEST_CFG_USERNAME myusername
 #endif
 
 #ifndef U_CELL_TEST_CFG_PASSWORD
-/** The password to use during cellular testing.
+/** The password to use during cellular testing:
+ * either pass this in as an environment variable
+ * or set the value below (without quotes) and
+ * uncomment the line
  */
-# define U_CELL_TEST_CFG_PASSWORD NULL
+//# define U_CELL_TEST_CFG_PASSWORD mypassword
 #endif
 
 #ifndef U_CELL_TEST_CFG_MNO_PROFILE

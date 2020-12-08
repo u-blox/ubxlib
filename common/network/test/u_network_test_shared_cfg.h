@@ -21,8 +21,8 @@
 
 /** @file
  * @brief Types and network test configuration information shared
- * between the testing of the network API and the testing of the
- * sockets API.
+ * between the testing of the network API, u-blox security API and
+ * the testing of the sockets API.
  */
 
 #ifdef __cplusplus

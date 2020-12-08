@@ -88,12 +88,15 @@ SRC_FILES += \
   ../../../../../../../cell/src/u_cell_info.c \
   ../../../../../../../cell/src/u_cell_net.c \
   ../../../../../../../cell/src/u_cell_sock.c \
+  ../../../../../../../cell/src/u_cell_sec.c \
+  ../../../../../../../cell/src/u_cell_sec_c2c.c \
   ../../../../../../../cell/src/u_cell_private.c \
   ../../../../../../../cell/test/u_cell_pwr_test.c \
   ../../../../../../../cell/test/u_cell_cfg_test.c \
   ../../../../../../../cell/test/u_cell_info_test.c\
   ../../../../../../../cell/test/u_cell_net_test.c \
   ../../../../../../../cell/test/u_cell_sock_test.c \
+  ../../../../../../../cell/test/u_cell_sec_c2c_test.c \
   ../../../../../../../cell/test/u_cell_test_private.c \
   ../../../../../../../common/network/src/u_network.c \
   ../../../../../../../common/network/src/u_network_private_ble.c \
@@ -103,6 +106,8 @@ SRC_FILES += \
   ../../../../../../../common/network/test/u_network_test_shared_cfg.c \
   ../../../../../../../common/sock/src/u_sock.c \
   ../../../../../../../common/sock/test/u_sock_test.c \
+  ../../../../../../../common/security/src/u_security.c \
+  ../../../../../../../common/security/test/u_security_test.c \
   ../../../../../../../common/at_client/src/u_at_client.c \
   ../../../../../../../common/at_client/test/u_at_client_test.c \
   ../../../../../../../common/at_client/test/u_at_client_test_data.c \
@@ -171,6 +176,7 @@ INC_FOLDERS += \
   ../../../../../../../common/network/api \
   ../../../../../../../common/network/src \
   ../../../../../../../common/network/test \
+  ../../../../../../../common/security/api \
   ../../../../../../../common/at_client/api \
   ../../../../../../../common/at_client/src \
   ../../../../../../../common/at_client/test \

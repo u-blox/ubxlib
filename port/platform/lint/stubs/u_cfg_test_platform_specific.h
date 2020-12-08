@@ -36,6 +36,9 @@
 #define U_CFG_TEST_OS_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 5)
 #define U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES (1024 * 5)
 
+#define U_CFG_SECURITY_DEVICE_INFORMATION blah
+#define U_CFG_SECURITY_DEVICE_SERIAL_NUMBER 01234567
+
 // Note: pins set to 0 rather than -1 in order to not
 // disable any code that is conditional on them existing
 #define U_CFG_TEST_PIN_A            0

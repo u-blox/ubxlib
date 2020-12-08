@@ -238,7 +238,7 @@ extern "C" {
  * management items.
  */
 #define U_AT_CLIENT_BUFFER_OVERHEAD_BYTES (U_AT_CLIENT_MARKER_SIZE * 2 + \
-                                           (sizeof(size_t) * 4))
+                                           (sizeof(size_t) * 5))
 
 /** A suggested AT client buffer length.  The limiting factor is
  * the longest parameter of type string that will ever appear in an
@@ -255,6 +255,10 @@ extern "C" {
  * strings of length 44 characters are sent and also
  * U_AT_CLIENT_BUFFER_OVERHEAD_BYTES of the buffer memory are
  * used for management which must be taken into account.
+ *
+ * Also note that different underlying network layers might
+ * require larger buffers (e.g. if framing or security features
+ * have to be accommodated).
  */
 #define U_AT_CLIENT_BUFFER_LENGTH_BYTES (U_AT_CLIENT_BUFFER_OVERHEAD_BYTES + 64)
 
@@ -1026,75 +1030,148 @@ int32_t uAtClientStreamGet(uAtClientHandle_t atHandle,
                            uAtClientStream_t *pStreamType);
 
 /** Add a function that will intercept the transmitted
- * data before it is presented to the stream.  The intercept
- * function is given the data buffer plus a pointer to
- * the length; it returns a new pointer, which may point
- * to entirely new data, and it may modify the length value.
- * This may be used, for instance, to add framing, encryption,
- * whatever to the data that ends up in the stream.  To indicate
- * that the transmitted data is at an end (e.g. an AT command
- * has been completely written) pCallback will be called
- * again with a NULL data pointer so that it can flush any
- * buffer it may be holding into the output.
+ * data before it is presented to the stream and may return
+ * a modified buffer or hold onto the data until a whole
+ * command has been assembled etc., allowing it to add
+ * framing, perform encryption, etc. of the data.
+ *
+ * The intercept function may do the following:
+ *
+ * - advance the data-pointer it is passed: this indicates
+ *   to the AT client that the intercept function has
+ *   "consumed" that amount of data,
+ * - modify the length it is passed: the AT client uses
+ *   this length to determine how much data it must send
+ *   to the stream when the intercept function returns,
+ * - as its return value, provide a data pointer that is
+ *   entirely different to that it was passed, let's call
+ *   this "pDataReturned",
+ * - modify the contents of the buffer it is passed without
+ *   limitation (up to the length it is given).
+ *
+ * On return from the intercept function, if length is
+ * greater than zero, the AT client will send that many
+ * bytes from pDataReturned onwards to the stream.
+ *
+ * Then, if the data-pointer indicates that the intercept
+ * function did not consume all of the data it was given,
+ * it will be called again (with updated values for the
+ * data-pointer and length) and the process above repeated
+ * until it does indicate that all of the data has been
+ * consumed.
+ *
+ * To indicate that the transmitted data from the
+ * AT client is at an end (e.g. an AT command has been
+ * completely written) pCallback will be called again
+ * with a NULL data pointer so that the intercept
+ * function can return any data it may still be holding.
+ *
  * This function should only be called when the AT client has
- * been locked (with  uAtClientLock()) to ensure thread safety.
+ * been locked (with uAtClientLock()) to ensure thread safety.
  *
  * @param atHandle     the handle of the AT client.
  * @param pCallback    the callback function that forms
  *                     the intercept where the first
  *                     parameter is the AT client handle,
  *                     the second parameter a pointer to
- *                     the data to be written, the second
- *                     parameter a pointer to the length
- *                     to be written and the fourth parameter
- *                     the pContext pointer that was passed
- *                     to this function.  Use NULL to
- *                     cancel a previous intercept.
+ *                     the pointer to the data to be written
+ *                     (may be NULL), the third parameter a
+ *                     pointer to the length (will never be
+ *                     NULL, will point to zero if the
+ *                     pointer to the data pointer is NULL)
+ *                     and the fourth parameter the pContext
+ *                     pointer that was passed to this function.
+ *                     Use NULL to cancel a previous intercept.
  * @param pContext     a context pointer which will be passed
  *                     to pCallback as its fourth parameter.
  *                     May be NULL.
  */
 void uAtClientStreamInterceptTx(uAtClientHandle_t atHandle,
                                 const char *(*pCallback) (uAtClientHandle_t,
-                                                          const char *,
+                                                          const char **,
                                                           size_t *,
                                                           void *),
                                 void *pContext);
 
 /** Add a function that will intercept the received
  * data from the stream before it is processed by the AT
- * client.  The intercept function is given a pointer to
- * the received data and a pointer to its length; it
- * returns a new pointer, which may be further forward
- * in the buffer than the pointer it received (though not
- * beyond the length it has been given), and it may reduce
- * the length value.  This may be used, for instance, to remove
- * framing or decrypt, whatever, the data that has come from
- * the stream.  If there is a receive timeout the intercept
- * function will be called with a NULL data pointer so
- * that it can reset itself in readiness for starting again.
+ * client.  The operations the receive intercept function
+ * can perform are *different* to those the transmit
+ * intercept function can perform in that the receive
+ * intercept function is operating "in place" on the buffer:
+ * it can only move the data pointer forward or reduce the
+ * length pointer, i.e. take away from the buffer, it
+ * can't go beyond the boundaries it is given or return
+ * a pointer to a completely different memory space.
+ *
+ * The intercept function may do the following:
+ *
+ * - advance the data-pointer it is passed; this indicates
+ *   to the AT client how much of the received data the
+ *   intercept function has consumed,
+ * - reduce the length passed to it; this is used by the
+ *   AT client to know how much received data there
+ *   is ready for it,
+ * - as its return value, return a pointer that is further
+ *   on in the received data buffer, up to the length it
+ *   was passed,
+ * - modify the contents of the buffer it is passed
+ *   without limitation (up to the length it was given).
+ *
+ * If the intercept function is unable to consume the
+ * buffer it is passed, e.g. if it is a partial frame
+ * and the intercept function needs to leave it there
+ * and try again when more data has arrived, it should
+ * return NULL and set the value at the length pointer
+ * to zero.
+ *
+ * The intercept function will be called repeatedly
+ * *until* it returns NULL.  If it has not been able
+ * to decode any data more will be requested from the
+ * input stream, and repeat until the normal AT timeout
+ * occurs.
+ *
+ * Otherwise, on return from the intercept function, the
+ * return value should point to valid data, length should
+ * point to the length of that data and the data-pointer
+ * that was passed in should be advanced to indicate how
+ * much of the buffer was consumed.  The AT client will
+ * then use that valid data and remember where in the
+ * received data stream the intercept function had got to.
+ * The intercept function may cause data in the receive
+ * buffer to be discarded by setting its return value to
+ * the data-pointer, setting the value at the length pointer
+ * to zero and advancing the data-pointer by the amount it
+ * wants to be discarded.
+ *
  * This function should only be called when the AT client
- * has been locked (with  uAtClientLock()) to ensure thread
+ * has been locked (with uAtClientLock()) to ensure thread
  * safety.
+ *
+ * This function will delete any data in the receive buffers
+ * before hooking-in the intercept function.
  *
  * @param atHandle     the handle of the AT client.
  * @param pCallback    the callback function that forms
  *                     the intercept where the first
  *                     parameter is the AT client handle,
  *                     the second parameter a pointer to
- *                     the received data, the second
- *                     parameter a pointer to the length
- *                     of the received data and the fourth
- *                     parameter the pContext pointer that
- *                     was passed to this function.  Use
- *                     NULL to cancel a previous intercept.
+ *                     the pointer to the received data
+ *                     (may be NULL), the third parameter
+ *                     a pointer to the length (will never
+ *                     be NULL, will point to zero if
+ *                     the received data pointer is NULL)
+ *                     and the fourth parameter the
+ *                     pContext pointer that was passed to
+ *                     this function.  Use NULL to cancel
+ *                     a previous intercept.
  * @param pContext     a context pointer which will be passed
  *                     to pCallback as its fourth parameter.
  *                     May be NULL.
  */
 void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
                                 char *(*pCallback) (uAtClientHandle_t,
-                                                    char *,
+                                                    char **,
                                                     size_t *,
                                                     void *),
                                 void *pContext);

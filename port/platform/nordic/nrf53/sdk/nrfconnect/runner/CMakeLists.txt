@@ -58,6 +58,11 @@ target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/sock/api ${UBXLIB_B
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/sock/src/u_sock.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/sock/test/u_sock_test.c)
 
+#security
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/security/api)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/security/src/u_security.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/security/test/u_security_test.c)
+
 #cell API
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/cell/api ${UBXLIB_BASE}/cell/src ${UBXLIB_BASE}/cell/test)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell.c)
@@ -66,6 +71,8 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_cfg.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_info.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_net.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sock.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sec.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sec_c2c.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_private.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_pwr_test.c)
@@ -73,6 +80,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_cfg_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_info_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_net_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sock_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sec_c2c_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_private.c)
 
 #short range

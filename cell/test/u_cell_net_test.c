@@ -222,18 +222,42 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     // Connect with a very short time-out to show that aborts work
     gStopTimeMs = uPortGetTickTimeMs() + 1000;
     U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL,
-                                       U_CELL_TEST_CFG_APN,
-                                       U_CELL_TEST_CFG_USERNAME,
-                                       U_CELL_TEST_CFG_PASSWORD,
+#ifdef U_CELL_TEST_CFG_APN
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                       NULL,
+#endif
                                        keepGoingCallback) < 0);
 
     // Now connect with a sensible timeout
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
     U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL,
-                                       U_CELL_TEST_CFG_APN,
-                                       U_CELL_TEST_CFG_USERNAME,
-                                       U_CELL_TEST_CFG_PASSWORD,
+#ifdef U_CELL_TEST_CFG_APN
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                       NULL,
+#endif
                                        keepGoingCallback) == 0);
 
     // Check that we're registered
@@ -325,9 +349,21 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     gStopTimeMs = uPortGetTickTimeMs() + 5000;
     uPortLog("U_CELL_NET_TEST: connecting again with same APN...\n");
     U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL,
-                                       U_CELL_TEST_CFG_APN,
-                                       U_CELL_TEST_CFG_USERNAME,
-                                       U_CELL_TEST_CFG_PASSWORD,
+#ifdef U_CELL_TEST_CFG_APN
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                       NULL,
+#endif
                                        keepGoingCallback) == 0);
 
     // Get the IP address to check that we're still there
@@ -342,8 +378,16 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
         uPortLog("U_CELL_NET_TEST: connecting with different (invalid) APN...\n");
         gStopTimeMs = uPortGetTickTimeMs() + 10000;
         U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL, "flibble",
-                                           U_CELL_TEST_CFG_USERNAME,
-                                           U_CELL_TEST_CFG_PASSWORD,
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                           U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                           NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                           U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                           NULL,
+#endif
                                            keepGoingCallback) < 0);
 
         // Get the IP address: should now have none since the above
@@ -483,9 +527,22 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     uPortLog("U_CELL_NET_TEST: activating context...\n");
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONTEXT_ACTIVATION_TIMEOUT_SECONDS * 1000);
-    U_PORT_TEST_ASSERT(uCellNetActivate(cellHandle, U_CELL_TEST_CFG_APN,
-                                        U_CELL_TEST_CFG_USERNAME,
-                                        U_CELL_TEST_CFG_PASSWORD,
+    U_PORT_TEST_ASSERT(uCellNetActivate(cellHandle,
+#ifdef U_CELL_TEST_CFG_APN
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                                        NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                        NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                        NULL,
+#endif
                                         keepGoingCallback) == 0);
 
     // Get the IP address
@@ -514,9 +571,22 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     uPortLog("U_CELL_NET_TEST: activating context...\n");
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONTEXT_ACTIVATION_TIMEOUT_SECONDS * 1000);
-    U_PORT_TEST_ASSERT(uCellNetActivate(cellHandle, U_CELL_TEST_CFG_APN,
-                                        U_CELL_TEST_CFG_USERNAME,
-                                        U_CELL_TEST_CFG_PASSWORD,
+    U_PORT_TEST_ASSERT(uCellNetActivate(cellHandle,
+#ifdef U_CELL_TEST_CFG_APN
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                                        NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                        NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                        NULL,
+#endif
                                         keepGoingCallback) == 0);
 
     // Get the IP address
@@ -529,9 +599,22 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     // the same APN
     uPortLog("U_CELL_NET_TEST: activating context again with same APN...\n");
     gStopTimeMs = uPortGetTickTimeMs() + 10000;
-    U_PORT_TEST_ASSERT(uCellNetActivate(cellHandle, U_CELL_TEST_CFG_APN,
-                                        U_CELL_TEST_CFG_USERNAME,
-                                        U_CELL_TEST_CFG_PASSWORD,
+    U_PORT_TEST_ASSERT(uCellNetActivate(cellHandle,
+#ifdef U_CELL_TEST_CFG_APN
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                                        NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                        NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                        NULL,
+#endif
                                         keepGoingCallback) == 0);
 
     // Get the IP address
@@ -548,8 +631,16 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
         gStopTimeMs = uPortGetTickTimeMs() +
                       (U_CELL_TEST_CFG_CONTEXT_ACTIVATION_TIMEOUT_SECONDS * 1000);
         U_PORT_TEST_ASSERT(uCellNetActivate(cellHandle, "flibble",
-                                            U_CELL_TEST_CFG_USERNAME,
-                                            U_CELL_TEST_CFG_PASSWORD,
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                            NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                            NULL,
+#endif
                                             keepGoingCallback) < 0);
         // Get the IP address.
         U_PORT_TEST_ASSERT(uCellNetGetIpAddressStr(cellHandle, buffer) < 0);
@@ -568,9 +659,21 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
         gStopTimeMs = uPortGetTickTimeMs() +
                       (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
         y = uCellNetConnect(cellHandle, mccMnc,
-                            U_CELL_TEST_CFG_APN,
-                            U_CELL_TEST_CFG_USERNAME,
-                            U_CELL_TEST_CFG_PASSWORD,
+#ifdef U_CELL_TEST_CFG_APN
+                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                            NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                            NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                            NULL,
+#endif
                             keepGoingCallback);
         if (y < 0) {
             // Give us something to search for in the log
@@ -624,9 +727,22 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     // Now activate a PDP context
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
-    U_PORT_TEST_ASSERT(uCellNetActivate(cellHandle, U_CELL_TEST_CFG_APN,
-                                        U_CELL_TEST_CFG_USERNAME,
-                                        U_CELL_TEST_CFG_PASSWORD,
+    U_PORT_TEST_ASSERT(uCellNetActivate(cellHandle,
+#ifdef U_CELL_TEST_CFG_APN
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                                        NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                        NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                        NULL,
+#endif
                                         keepGoingCallback) == 0);
 
     // Get the IP address

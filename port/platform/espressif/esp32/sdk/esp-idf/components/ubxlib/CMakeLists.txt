@@ -9,6 +9,7 @@ set(COMPONENT_ADD_INCLUDEDIRS
                    "../../../../../../../../common/error/api"
                    "../../../../../../../../common/sock/api"
                    "../../../../../../../../common/network/api"
+                   "../../../../../../../../common/security/api"
                    "../../../../../../../../common/at_client/api"
                    "../../../../../../../../common/short_range/api"
                    "../../../../../../../../common/short_range/src"
@@ -28,6 +29,8 @@ set(COMPONENT_SRCS
                    "../../../../../../../../cell/src/u_cell_info.c"
                    "../../../../../../../../cell/src/u_cell_net.c"
                    "../../../../../../../../cell/src/u_cell_sock.c"
+                   "../../../../../../../../cell/src/u_cell_sec.c"
+                   "../../../../../../../../cell/src/u_cell_sec_c2c.c"
                    "../../../../../../../../cell/src/u_cell_private.c"
 # The common network layer
                    "../../../../../../../../common/network/src/u_network.c"
@@ -36,6 +39,8 @@ set(COMPONENT_SRCS
                    "../../../../../../../../common/network/src/u_network_private_wifi.c"
 # The common sock layer
                    "../../../../../../../../common/sock/src/u_sock.c"
+# The common security layer
+                   "../../../../../../../../common/security/src/u_security.c"
 # The common AT client
                    "../../../../../../../../common/at_client/src/u_at_client.c"
 # The common short range layer
@@ -59,6 +64,8 @@ set(COMPONENT_PRIV_INCLUDEDIRS
                    "../../../../../../../../common/at_client/src"
 # The common network layer
                    "../../../../../../../../common/network/src"
+# The common security layer
+                   "../../../../../../../../common/security/src"
 # The porting layer
                    "../../../../src")
 

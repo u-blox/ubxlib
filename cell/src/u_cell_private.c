@@ -32,19 +32,24 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"    // memset()
 #include "ctype.h"     // isdigit()
 
 #include "u_error_common.h"
 
 #include "u_port.h"
 #include "u_port_os.h"     // Required by u_cell_private.h
+#include "u_port_crypto.h"
 
 #include "u_at_client.h"
+
+#include "u_security.h"
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
+#include "u_cell_sec_c2c.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -113,9 +118,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         5 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
         20 /* Cmd wait ms */, 5000 /* Resp max wait ms */, 0 /* radioOffCfun */, 1 /* Simultaneous RATs */,
         (1UL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)   |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)) /* features */
     }
 };
 
@@ -129,6 +135,12 @@ const size_t gUCellPrivateModuleListSize = sizeof(gUCellPrivateModuleList) /
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+/** For binary/hex conversion.
+ */
+static const char gHex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                            '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+                           };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -363,4 +375,84 @@ const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle)
 
     return pModule;
 }
+
+// Convert a buffer into the ASCII hex equivalent.
+size_t uCellPrivateBinToHex(const char *pBin, size_t binLength,
+                            char *pHex)
+{
+    for (size_t x = 0; x < binLength; x++) {
+        *pHex = gHex[((unsigned char) * pBin) >> 4];
+        pHex++;
+        *pHex = gHex[*pBin & 0x0f];
+        pHex++;
+        pBin++;
+    }
+
+    return binLength * 2;
+}
+
+// Convert a buffer of ASCII hex into the binary equivalent.
+size_t uCellPrivateHexToBin(const char *pHex, size_t hexLength,
+                            char *pBin)
+{
+    bool success = true;
+    size_t length;
+    char z[2];
+
+    for (length = 0; (length < hexLength / 2) && success; length++) {
+        z[0] = *pHex - '0';
+        pHex++;
+        z[1] = *pHex - '0';
+        pHex++;
+        for (size_t y = 0; (y < sizeof(z)) && success; y++) {
+            if (z[y] > 9) {
+                // Must be A to F or a to f
+                z[y] -= 'A' - '0';
+                z[y] += 10;
+            }
+            if (z[y] > 15) {
+                // Must be a to f
+                z[y] -= 'a' - 'A';
+            }
+            // Cast here to shut-up a warning under ESP-IDF
+            // which appears to have chars as unsigned and
+            // hence thinks the first condition is always true
+            success = ((signed char) z[y] >= 0) && (z[y] <= 15);
+        }
+        if (success) {
+            *pBin = (char) (((z[0] & 0x0f) << 4) | z[1]);
+            pBin++;
+        }
+    }
+
+    return length;
+}
+
+// Remove the chip to chip security context for the given instance.
+void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance)
+{
+    uCellSecC2cContext_t *pContext = (uCellSecC2cContext_t *) pInstance->pSecurityC2cContext;
+
+    if (pContext != NULL) {
+        if (pContext->pTx != NULL) {
+            uAtClientStreamInterceptTx(pInstance->atHandle,
+                                       NULL, NULL);
+            // For safety
+            memset(pContext->pTx, 0, sizeof(*(pContext->pTx)));
+            free(pContext->pTx);
+        }
+        if (pContext->pRx != NULL) {
+            uAtClientStreamInterceptRx(pInstance->atHandle,
+                                       NULL, NULL);
+            // For safety
+            memset(pContext->pRx, 0, sizeof(*(pContext->pRx)));
+            free(pContext->pRx);
+        }
+        // For safety
+        memset(pContext, 0, sizeof(*pContext));
+        free(pContext);
+        pInstance->pSecurityC2cContext = NULL;
+    }
+}
+
 // End of file

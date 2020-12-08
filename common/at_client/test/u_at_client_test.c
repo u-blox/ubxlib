@@ -686,8 +686,6 @@ static void atEchoServerCallback(int32_t uartHandle, uint32_t eventBitmask,
     size_t lengthToSend;
     const uAtClientTestResponseLine_t *pUrc = NULL;
 
-    (void) uartHandle;
-
     if (pParameters != NULL) {
         pUrc = *((const uAtClientTestResponseLine_t **) pParameters);
     }
@@ -754,36 +752,56 @@ static void atEchoServerCallback(int32_t uartHandle, uint32_t eventBitmask,
 //lint -e{818} Suppress 'pContext' could be declared as const:
 // need to follow function signature
 static const char *pInterceptTx(uAtClientHandle_t atHandle,
-                                const char *pData,
+                                const char **ppData,
                                 size_t *pLength,
                                 void *pContext)
 {
     U_PORT_TEST_ASSERT(atHandle != 0);
     U_PORT_TEST_ASSERT(pLength != NULL);
+    //lint -esym(613, pLength) Suppress possible use of null pointer
+    U_PORT_TEST_ASSERT((ppData != NULL) || (*pLength == 0));
     U_PORT_TEST_ASSERT(*((char *) pContext) == 'T');
 
-    // Remember the last pData we had so that we
-    // don't return NULL when the flush call
-    // (with a NULL pData) comes
-    if (pData != NULL) {
-        gpInterceptTxDataLast = pData;
-    } else {
-        pData = gpInterceptTxDataLast;
+    if (ppData != NULL) {
+        // Remember the last ppData we had so
+        // that we don't return NULL when the
+        // flush call (with a NULL ppData) comes.
+        // The return value will be what we got
+        // and move ppData on to indicate that we've
+        // processed all of the data
+        gpInterceptTxDataLast = *ppData;
+        *ppData += *pLength;
     }
 
-    return pData;
+    return gpInterceptTxDataLast;
 }
 
 // A receive intercept function.
 //lint -e{818} Suppress 'pContext' could be declared as const:
 // need to follow function signature
 static char *pInterceptRx(uAtClientHandle_t atHandle,
-                          char *pData, size_t *pLength,
+                          char **ppData, size_t *pLength,
                           void *pContext)
 {
+    char *pData = NULL;
+
     U_PORT_TEST_ASSERT(atHandle != 0);
     U_PORT_TEST_ASSERT(pLength != NULL);
+    //lint -esym(613, pLength) Suppress possible use of null pointer
+    U_PORT_TEST_ASSERT((ppData != NULL) || (*pLength == 0));
     U_PORT_TEST_ASSERT(*((char *) pContext) == 'R');
+
+    if (ppData != NULL) {
+        if (*pLength > 0) {
+            // Set the return value to what we were given
+            // and move ppData on to indicate that we've
+            // processed all of the received data
+            pData = *ppData;
+            *ppData += *pLength;
+        } else {
+            // Just return NULL to indicate we're done
+        }
+    }
 
     return pData;
 }

@@ -387,23 +387,26 @@ static int32_t uartWrite(const void *pData, size_t length)
 //lint -e{818} Suppress 'pContext' could be declared as const:
 // need to follow function signature
 static const char *pInterceptTx(uAtClientHandle_t atHandle,
-                                const char *pData,
+                                const char **ppData,
                                 size_t *pLength,
                                 void *pContext)
 {
     (void) pContext;
     (void) atHandle;
 
-    if (*pLength != 0 || pData == NULL) {
+    if ((*pLength != 0) || (ppData == NULL)) {
         if (*pLength + gEdmStream.atCommandCurrent > U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH) {
             // Command will not fit buffer, this makes all data drop until the next flush so that
             // we recover after that without sending garbage to the module.
             gEdmStream.atCommandCurrent = U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH;
-            if (pData == NULL) {
+            if (ppData == NULL) {
                 gEdmStream.atCommandCurrent = 0;
+            } else {
+                // Tell the caller we've consumed the lot
+                *ppData += *pLength;
             }
         } else {
-            if (pData == NULL) {
+            if (ppData == NULL) {
                 //All data in buffer, create and send EDM packet
                 char packet[U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH + U_SHORT_RANGE_EDM_REQUEST_OVERHEAD];
                 int32_t size = uShortRangeEdmRequest(gEdmStream.pAtCommandBuffer, gEdmStream.atCommandCurrent,
@@ -417,13 +420,16 @@ static const char *pInterceptTx(uAtClientHandle_t atHandle,
                 //Reset buffer
                 gEdmStream.atCommandCurrent = 0;
             } else {
-                memcpy(gEdmStream.pAtCommandBuffer + gEdmStream.atCommandCurrent, pData, *pLength);
+                memcpy(gEdmStream.pAtCommandBuffer + gEdmStream.atCommandCurrent, *ppData, *pLength);
                 gEdmStream.atCommandCurrent += (int32_t) * pLength;
+                // Tell the caller what we've consumed.
+                *ppData += *pLength;
             }
         }
     }
 
-    //All data is handled here, this make the AT client just drop it
+    // All data is handled here, this make the AT client know
+    // that there is nothing to send on to a UART or whatever
     *pLength = 0;
 
     return 0;

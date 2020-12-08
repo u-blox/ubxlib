@@ -133,7 +133,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_MNO_PROFILE,
     U_CELL_PRIVATE_FEATURE_CSCON,
     U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST,
-    U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE
+    U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE,
+    U_CELL_PRIVATE_FEATURE_SECURITY_C2C
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -242,6 +243,7 @@ typedef struct uCellPrivateInstance_t {
     void (*pConnectionStatusCallback) (bool, void *);
     void *pConnectionStatusCallbackParameter;
     uCellPrivateNet_t *pScanResults;    /**< Anchor for list of network scan results. */
+    void *pSecurityC2cContext;  /**< Hook for a chip to chip security context. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 
@@ -381,6 +383,36 @@ void uCellPrivateScanFree(uCellPrivateNet_t **ppScanResults);
 //lint -esym(759, pUCellPrivateGetModule) etc. since use of this function
 //lint -esym(765, pUCellPrivateGetModule) may be compiled-out in various ways
 const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle);
+
+/** Convert a buffer into the ASCII hex equivalent.
+ *
+ * @param pBin      a pointer to the binary buffer.
+ * @param binLength the number of bytes pointed to by pBin.
+ * @param pHex      a pointer to a buffer of length twice
+ *                  binLength bytes to store the ASCII hex version.
+ * @return          the number of bytes at pHex.
+ */
+size_t uCellPrivateBinToHex(const char *pBin, size_t binLength,
+                            char *pHex);
+
+/** Convert a buffer of ASCII hex into the binary equivalent.
+ * If it is not possible to convert character (e.g. because
+ * it is not valid ASCII hex) then conversion stops there.
+ *
+ * @param pHex      a pointer to the ASCII hex data.
+ * @param hexLength the number of bytes pointed to by pHex.
+ * @param pBin      a pointer to a buffer of length half hexLength
+ *                  bytes to store the binary version.
+ * @return          the number of bytes at pBin.
+ */
+size_t uCellPrivateHexToBin(const char *pHex, size_t hexLength,
+                            char *pBin);
+
+/** Remove the chip to chip security context for the given instance.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ */
+void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance);
 
 #ifdef __cplusplus
 }

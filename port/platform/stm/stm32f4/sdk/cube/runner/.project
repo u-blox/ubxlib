@@ -67,9 +67,19 @@
 			<locationURI>$%7BUBX_PATH%7D/common/sock/src/u_sock.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Common/Security/u_security.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/security/src/u_security.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/AtClient/u_at_client.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/src/u_at_client.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/u_runner.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/runner/u_runner.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range.c</name>
@@ -95,11 +105,6 @@
 			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_private.c</locationURI>
-		</link>
-		<link>
-			<name>Ubxlib/U-Blox/Common/u_runner.c</name>
-			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/port/platform/common/runner/u_runner.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Common/u_heap_check.c</name>
@@ -137,6 +142,16 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_sock.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Cell/u_cell_sec.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_sec.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Cell/u_cell_sec_c2c.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_sec_c2c.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_private.c</locationURI>
@@ -155,6 +170,21 @@
 			<name>Ubxlib/U-Blox/Test/Sock/u_sock_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/sock/test/u_sock_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/ShortRange/u_short_range_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/short_range/test/u_short_range_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/ShortRange/u_short_range_test_private.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/short_range/test/u_short_range_test_private.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Security/u_security_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/security/test/u_security_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test.c</name>
@@ -187,6 +217,11 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_sock_test.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Test/Cell/u_cell_sec_c2c_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_sec_c2c_test.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_test_private.c</locationURI>
@@ -200,16 +235,6 @@
 			<name>Ubxlib/U-Blox/Test/AtClient/u_at_client_test_data.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/test/u_at_client_test_data.c</locationURI>
-		</link>
-		<link>
-			<name>Ubxlib/U-Blox/Test/ShortRange/u_short_range_test.c</name>
-			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/common/short_range/test/u_short_range_test.c</locationURI>
-		</link>
-		<link>
-			<name>Ubxlib/U-Blox/Test/ShortRange/u_short_range_test_private.c</name>
-			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/common/short_range/test/u_short_range_test_private.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Port/u_port.c</name>
@@ -417,6 +442,26 @@
 			<locationURI>$%7BUBX_PATH%7D/common/network/api</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/Inc/U-Blox/common/short_range/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/short_range/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/short_range/src</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/short_range/src</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/short_range/test</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/short_range/test</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/security/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/security/api</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/Inc/U-Blox/common/network/src</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/network/src</locationURI>
@@ -446,22 +491,6 @@
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/api</locationURI>
 		</link>
-		<link>
-			<name>Ubxlib/Inc/U-Blox/common/short_range/api</name>
-			<type>2</type>
-			<locationURI>$%7BUBX_PATH%7D/common/short_range/api</locationURI>
-		</link>
-		<link>
-			<name>Ubxlib/Inc/U-Blox/common/short_range/src</name>
-			<type>2</type>
-			<locationURI>$%7BUBX_PATH%7D/common/short_range/src</locationURI>
-		</link>
-		<link>
-			<name>Ubxlib/Inc/U-Blox/common/short_range/test</name>
-			<type>2</type>
-			<locationURI>$%7BUBX_PATH%7D/common/short_range/test</locationURI>
-		</link>
-
 		<link>
 			<name>Drivers/Inc/CMSIS/Include</name>
 			<type>2</type>

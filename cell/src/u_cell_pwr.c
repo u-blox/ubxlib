@@ -267,6 +267,10 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
         uPortGpioSet(pInstance->pinPwrOn, 1);
     }
 
+    // Remove any security context as these disappear
+    // at power off
+    uCellPrivateC2cRemoveContext(pInstance);
+
     return errorCode;
 }
 
@@ -289,6 +293,9 @@ static void quickPowerOff(uCellPrivateInstance_t *pInstance,
         if (pInstance->pinEnablePower > 0) {
             uPortGpioSet(pInstance->pinEnablePower, 0);
         }
+        // Remove any security context as these disappear
+        // at power off
+        uCellPrivateC2cRemoveContext(pInstance);
     }
 }
 
@@ -420,7 +427,8 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                                     uAtClientFlush(pInstance->atHandle);
                                 }
                             } else {
-                                uPortLog("U_CELL_PWR: uPortGpioSet() for PWR_ON pin %d returned error code %d.\n",
+                                uPortLog("U_CELL_PWR: uPortGpioSet() for PWR_ON"
+                                         " pin %d returned error code %d.\n",
                                          pInstance->pinPwrOn, platformError);
                             }
                         }
@@ -442,7 +450,8 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                             }
                         }
                     } else {
-                        uPortLog("U_CELL_PWR: uPortGpioSet() for enable power pin %d returned error code%d.\n",
+                        uPortLog("U_CELL_PWR: uPortGpioSet() for enable power"
+                                 " pin %d returned error code%d.\n",
                                  pInstance->pinEnablePower, platformError);
                     }
                 }
@@ -453,7 +462,8 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                     quickPowerOff(pInstance, pKeepGoingCallback);
                 }
             } else {
-                uPortLog("U_CELL_PWR: a SIM PIN has been set but PIN entry is not supported I'm afraid.\n");
+                uPortLog("U_CELL_PWR: a SIM PIN has been set but PIN entry is"
+                         " not supported I'm afraid.\n");
             }
         }
 
@@ -507,6 +517,9 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
             if (trulyHard && (pInstance->pinEnablePower > 0)) {
                 uPortLog("U_CELL_PWR: powering off by pulling the power.\n");
                 uPortGpioSet(pInstance->pinEnablePower, 0);
+                // Remove any security context as these disappear
+                // at power off
+                uCellPrivateC2cRemoveContext(pInstance);
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             } else {
                 if (pInstance->pinPwrOn >= 0) {
@@ -524,6 +537,9 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
                     if (pInstance->pinEnablePower > 0) {
                         uPortGpioSet(pInstance->pinEnablePower, 0);
                     }
+                    // Remove any security context as these disappear
+                    // at power off
+                    uCellPrivateC2cRemoveContext(pInstance);
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
             }
@@ -596,6 +612,9 @@ int32_t uCellPwrReboot(int32_t cellHandle,
             uAtClientCommandStopReadResponse(atHandle);
             errorCode = uAtClientUnlock(atHandle);
             if (errorCode == 0) {
+                // Remove any security context as these disappear
+                // at reboot
+                uCellPrivateC2cRemoveContext(pInstance);
                 // We have rebooted
                 pInstance->rebootIsRequired = false;
                 // Wait for the module to boot

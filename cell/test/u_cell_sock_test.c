@@ -512,9 +512,21 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
     U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL,
-                                       U_CELL_TEST_CFG_APN,
-                                       U_CELL_TEST_CFG_USERNAME,
-                                       U_CELL_TEST_CFG_PASSWORD,
+#ifdef U_CELL_TEST_CFG_APN
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                       NULL,
+#endif
                                        keepGoingCallback) == 0);
 
     // Init cell sockets
@@ -767,9 +779,21 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
     U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL,
-                                       U_CELL_TEST_CFG_APN,
-                                       U_CELL_TEST_CFG_USERNAME,
-                                       U_CELL_TEST_CFG_PASSWORD,
+#ifdef U_CELL_TEST_CFG_APN
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_USERNAME
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+#else
+                                       NULL,
+#endif
+#ifdef U_CELL_TEST_CFG_PASSWORD
+                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+#else
+                                       NULL,
+#endif
                                        keepGoingCallback) == 0);
 
     // Init cell sockets
