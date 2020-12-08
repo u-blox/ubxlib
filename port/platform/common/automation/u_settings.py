@@ -22,6 +22,32 @@ else:
     print("u_settings: no settings at {}".format(__path))
 
 __defaultSettings = {}
+# u_connection.py
+__defaultSettings["CONNECTION_INSTANCE_10"] = \
+    {"serial_port":"COM10"}
+__defaultSettings["CONNECTION_INSTANCE_11"] = \
+    {"serial_port":"COM8"}
+__defaultSettings["CONNECTION_INSTANCE_12"] = \
+    {"serial_port":"COM9"}
+__defaultSettings["CONNECTION_INSTANCE_13"] = \
+    {"serial_port":"COM6", "debugger":"683253856"}
+__defaultSettings["CONNECTION_INSTANCE_14"] = \
+    {"serial_port":"COM24", "debugger":"066DFF535154887767042626"}
+__defaultSettings["CONNECTION_INSTANCE_15"] = \
+    {"serial_port":"COM5", "debugger":"066EFF515551678367072825"}
+__defaultSettings["CONNECTION_INSTANCE_16"] = \
+    {"serial_port":"COM7", "debugger":"683920969"}
+__defaultSettings["CONNECTION_INSTANCE_17"] = \
+    {"debugger":"50102100"}
+__defaultSettings["CONNECTION_INSTANCE_18"] = \
+    {"serial_port":"COM4", "debugger":"066FFF565053787567193329"}
+__defaultSettings["CONNECTION_INSTANCE_19"] = \
+    {"serial_port": "COM15", "debugger": "960115898"}
+__defaultSettings["CONNECTION_INSTANCE_20"] = \
+    {"serial_port": "COM22", "debugger": "960107696"}
+__defaultSettings["CONNECTION_INSTANCE_21"] = \
+    {"serial_port": "COM20", "debugger": "0672FF565053787567161452"}
+
 # u_data.py
 __defaultSettings["DATA_FILE"] = "DATABASE.md"
 __defaultSettings["CELLULAR_MODULE_TYPE_PREFIX"] = "U_CELL_MODULE_TYPE_"

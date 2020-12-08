@@ -4,10 +4,11 @@
 
 from time import sleep
 import u_utils
+import u_settings
+
 
 # The default guard time for waiting for a connection lock in seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = (60 * 30)
-
 CONNECTION_LIST = [None,      # Instance 0, Lint, no connection, no need for a lock
                    None,      # Instance 1, Doxygen, no connection, no need for a lock
                    None,      # Instance 2, AStyle checker, no connection, no need for a lock
@@ -19,34 +20,46 @@ CONNECTION_LIST = [None,      # Instance 0, Lint, no connection, no need for a l
                    None,      # Instance 8, reserved
                    None,      # Instance 9, reserved
                    # Instance 10, WHRE board
-                   {"lock": None, "serial_port": "COM10", "debugger": None},
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_10["serial_port"],
+                    "debugger": None},
                    # Instance 11, ESP32
-                   {"lock": None, "serial_port": "COM8", "debugger": None},
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_11["serial_port"],
+                    "debugger": None},
                    # Instance 12, ESP32, SARA-R5
-                   {"lock": None, "serial_port": "COM9", "debugger": None},
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_12["serial_port"],
+                    "debugger": None},
                    # Instance 13, NRF52, SARA-R5
-                   {"lock": None, "serial_port": "COM6", "debugger": "683253856",
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_13["serial_port"],
+                    "debugger": u_settings.CONNECTION_INSTANCE_13["debugger"],
                     "swo_port": u_utils.JLINK_SWO_PORT},
                    # Instance 14, C030-R412M (STM32F4), live network GPRS
-                   {"lock": None, "serial_port": "COM24", "debugger": "066DFF535154887767042626"},
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_14["serial_port"],
+                    "debugger": u_settings.CONNECTION_INSTANCE_14["debugger"]},
                    # Instance 15, STM32F4 Discovery, SARA-R412M-02B
-                   {"lock": None, "serial_port": "COM5", "debugger": "066EFF515551678367072825"},
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_15["serial_port"],
+                    "debugger": u_settings.CONNECTION_INSTANCE_15["debugger"]},
                    # Instance 16, NRF52, SARA-R410M-02B
-                   {"lock": None, "serial_port": "COM7", "debugger": "683920969",
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_16["serial_port"],
+                    "debugger": u_settings.CONNECTION_INSTANCE_16["debugger"],
                     "swo_port": u_utils.JLINK_SWO_PORT + 1},
                    # Instance 17, C208 with SARA-R412M-02B connected via Segger J-Link box
-                   {"lock": None, "serial_port": None, "debugger": "50102100",
+                   {"lock": None, "serial_port":None,
+                    "debugger": u_settings.CONNECTION_INSTANCE_17["debugger"],
                     "swo_port": u_utils.JLINK_SWO_PORT + 2},
                    # Instance 18, C030-U201 board (STM32F4), live network 3G
-                   {"lock": None, "serial_port": "COM4", "debugger": "066FFF565053787567193329"},
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_18["serial_port"],
+                    "debugger": u_settings.CONNECTION_INSTANCE_18["debugger"]},
                    # Instance 19, NRF53: the COM port is the lowest numbered of the three
-                   {"lock": None, "serial_port": "COM15", "debugger": "960115898",
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_19["serial_port"],
+                    "debugger": u_settings.CONNECTION_INSTANCE_19["debugger"],
                     "swo_port": u_utils.JLINK_SWO_PORT + 3},
                    # Instance 20, NRF53 with R5 EVK: the COM port is the middle of the three
-                   {"lock": None, "serial_port": "COM22", "debugger": "960107696",
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_20["serial_port"],
+                    "debugger": u_settings.CONNECTION_INSTANCE_20["debugger"],
                     "swo_port": u_utils.JLINK_SWO_PORT + 4},
                    # Instance 21, C030-R5 board (STM32F4), cat-M1
-                   {"lock": None, "serial_port": "COM20", "debugger": "0672FF565053787567161452"}]
+                   {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_21["serial_port"],
+                    "debugger": u_settings.CONNECTION_INSTANCE_21["debugger"]}]
 
 def init_locks(manager):
     '''Create locks'''

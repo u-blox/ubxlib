@@ -15,25 +15,25 @@ python u_run.py 0 -w c:\temp -u c:\projects\ubxlib_priv -d debug.log
 
 ...where `0` is the instance you want to run (in this case Lint), `c:\temp` is a temporary working directory (replace as appropriate), `c:\projects\ubxlib_priv` the location of the root of this repo (replace as appropriate) and `debug.log` a place to write the detailed trace information.
 
-If you are trying to run locally a test which talks to real hardware you will also need to edit the file `u_connection.py` to override the debugger serial number and/or COM port the scripts would use for that board on the automated test system.  Assuming you only have one board connected to your PC, locate the entry for the instance you plan to run in the top of that file; there set `serial_port` to the port the board appears as on your local machine and set `debugger` (if present) to `None`.  For instance, to run instance 16 locally you might open that file and change:
+If you are trying to run locally a test which talks to real hardware you will also need to edit the file `settings.json` file, which is stored in the `.ubx_automation` directory off the current user's home directory. Override the debugger serial number and/or COM port the scripts would use for that board on the automated test system. Assuming you only have one board connected to your PC, locate the entry for the instance you plan to run in the top of that file; there set `serial_port` to the port the board appears as on your local machine and set `debugger` (if present) to `None`.  For instance, to run instance 16 locally you might open that file and change:
 
 ```
-                   # Instance 16, NRF52
-                   {"lock": None, "serial_port": "COM7", "debugger": "683920969",
-                    "swo_port": u_utils.JLINK_SWO_PORT + 1},
+  "CONNECTION_INSTANCE_16": {
+    "serial_port": "COM7",
+    "debugger": "683920969"
+  }
 ```
 
 ...to:
 
 ```
-                   # Instance 16, NRF52
-                   {"lock": None, "serial_port": "COM3", "debugger": None,
-                    "swo_port": u_utils.JLINK_SWO_PORT + 1},
+  "CONNECTION_INSTANCE_16": {
+    "serial_port": "COM3",
+    "debugger": None
+  }
 ```
 
-Be **very careful** not to accidentally push your local change to this file back into the repo.
-
-NOTE: if you need to change a setting (e.g. the path to a tool) it is best to edit that setting in the `settings.json` file, which is stored in the `.ubx_automation` directory off the current user's home directory.  If you change it in the `u_settings.py` script file directly you **must** delete the `.ubx_automation` directory in order that the `u_settings.py` script re-writes the `settings.json` file with the new default values; and of course be very careful not to accidentally push your change to the `u_settings.py` script file back into the repo.
+By setting `debugger` to `None`, the script will simply pick the one and only connected board. Would there be multiple boards connected to the PC, one must specify corresponding serial number for debugger. 
 
 # Script Usage
 The main intended entry point into automation is the `u_pull_request.py` Python script.  You can run it with parameter `-h` to obtain usage information but basically the form is:
@@ -55,7 +55,7 @@ For each instance ID the `u_run.py` script, the thing that ultimately does the w
 
 `swo_decoder.py`: used by the STM2F4 tests to decode debug prints sent over SWO.
 
-`u_connection.py`: contains a record of how each item of HW is connected into the test system (COM port, debugger serial number, etc.) and functions to access this information.
+`u_connection.py`: contains a record of how each item of HW is connected into the test system (COM port, debugger serial number, etc. collected from the settings) and functions to access this information.
 
 `u_data.py`: functions to parse `DATABASE.md`.
 
