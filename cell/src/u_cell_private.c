@@ -121,7 +121,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)   |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)         |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)  |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) /* features */
     }
 };
 

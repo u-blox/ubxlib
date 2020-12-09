@@ -2826,4 +2826,146 @@ int32_t uCellNetGetApnStr(int32_t cellHandle,
     return errorCodeOrSize;
 }
 
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: DATA COUNTERS
+ * -------------------------------------------------------------- */
+
+// Get the current value of the transmit data counter.
+int32_t uCellNetGetDataCounterTx(int32_t cellHandle)
+{
+    int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    bool ours = false;
+    int32_t bytesSent = 0;
+    int32_t y = 0;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCodeOrCount = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+                errorCodeOrCount = (int32_t) U_CELL_ERROR_AT;
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UGCNTRD");
+                uAtClientCommandStop(atHandle);
+                for (size_t x = 0; (x < U_CELL_NET_MAX_NUM_CONTEXTS) &&
+                     (y >= 0) && !ours; x++) {
+                    uAtClientResponseStart(atHandle, "+UGCNTRD:");
+                    // Check if this is our context ID
+                    y = uAtClientReadInt(atHandle);
+                    if (y == U_CELL_NET_CONTEXT_ID) {
+                        ours = true;
+                        // If it is, the next byte is the sent
+                        // count for this session
+                        bytesSent = uAtClientReadInt(atHandle);
+                    }
+                }
+                uAtClientResponseStop(atHandle);
+                if ((uAtClientUnlock(atHandle) == 0) && ours &&
+                    (bytesSent >= 0)) {
+                    errorCodeOrCount = bytesSent;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrCount;
+}
+
+// Get the current value of the receive data counter.
+int32_t uCellNetGetDataCounterRx(int32_t cellHandle)
+{
+    int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    bool ours = false;
+    int32_t bytesReceived = 0;
+    int32_t y = 0;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCodeOrCount = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+                errorCodeOrCount = (int32_t) U_CELL_ERROR_AT;
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UGCNTRD");
+                uAtClientCommandStop(atHandle);
+                for (size_t x = 0; (x < U_CELL_NET_MAX_NUM_CONTEXTS) &&
+                     (y >= 0) && !ours; x++) {
+                    uAtClientResponseStart(atHandle, "+UGCNTRD:");
+                    // Check if this is our context ID
+                    y = uAtClientReadInt(atHandle);
+                    if (y == U_CELL_NET_CONTEXT_ID) {
+                        ours = true;
+                        // Skip the transmitted byte count
+                        uAtClientSkipParameters(atHandle, 1);
+                        // Get the received count for this session
+                        bytesReceived = uAtClientReadInt(atHandle);
+                    }
+                }
+                uAtClientResponseStop(atHandle);
+                if ((uAtClientUnlock(atHandle) == 0) && ours &&
+                    (bytesReceived >= 0)) {
+                    errorCodeOrCount = bytesReceived;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrCount;
+}
+
+// Reset the transmit and receive data counters.
+int32_t uCellNetResetDataCounters(int32_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UGCNTSET=");
+                uAtClientWriteInt(atHandle, U_CELL_NET_CONTEXT_ID);
+                uAtClientWriteInt(atHandle, 0);
+                uAtClientWriteInt(atHandle, 0);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
 // End of file

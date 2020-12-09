@@ -470,6 +470,7 @@ static void asyncClosedCallback(int32_t cellHandle, int32_t sockHandle)
 U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
 {
     int32_t cellHandle;
+    const uCellPrivateModule_t *pModule;
     uSockAddress_t echoServerAddressUdp;
     uSockAddress_t echoServerAddressTcp;
     uSockAddress_t address;
@@ -508,6 +509,12 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
+
     // Connect to the network
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
@@ -528,6 +535,20 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
                                        NULL,
 #endif
                                        keepGoingCallback) == 0);
+
+    // Get the current value of the data counters, if supported
+    y = uCellNetGetDataCounterTx(cellHandle);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+        U_PORT_TEST_ASSERT(y == 0);
+    } else {
+        U_PORT_TEST_ASSERT(y < 0);
+    }
+    y = uCellNetGetDataCounterRx(cellHandle);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+        U_PORT_TEST_ASSERT(y == 0);
+    } else {
+        U_PORT_TEST_ASSERT(y < 0);
+    }
 
     // Init cell sockets
     U_PORT_TEST_ASSERT(uCellSockInit() == 0);
@@ -733,6 +754,42 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
 
     // Deinit cell sockets
     uCellSockDeinit();
+
+    // Get the new value of the data counters, if supported
+    y = uCellNetGetDataCounterTx(cellHandle);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+        uPortLog("U_CELL_SOCK_TEST: %d byte(s) sent.\n", y);
+        U_PORT_TEST_ASSERT(y > 0);
+    } else {
+        U_PORT_TEST_ASSERT(y < 0);
+    }
+    y = uCellNetGetDataCounterRx(cellHandle);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+        uPortLog("U_CELL_SOCK_TEST: %d byte(s) received.\n", y);
+        U_PORT_TEST_ASSERT(y > 0);
+    } else {
+        U_PORT_TEST_ASSERT(y < 0);
+    }
+
+    // Reset the data counters and check that they were reset
+    y = uCellNetResetDataCounters(cellHandle);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+        U_PORT_TEST_ASSERT(y == 0);
+    } else {
+        U_PORT_TEST_ASSERT(y < 0);
+    }
+    y = uCellNetGetDataCounterTx(cellHandle);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+        U_PORT_TEST_ASSERT(y == 0);
+    } else {
+        U_PORT_TEST_ASSERT(y < 0);
+    }
+    y = uCellNetGetDataCounterRx(cellHandle);
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
+        U_PORT_TEST_ASSERT(y == 0);
+    } else {
+        U_PORT_TEST_ASSERT(y < 0);
+    }
 
     // Disconnect
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);

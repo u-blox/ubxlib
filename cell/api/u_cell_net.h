@@ -707,6 +707,40 @@ int32_t uCellNetGetDnsStr(int32_t cellHandle, bool v6,
  */
 int32_t uCellNetGetApnStr(int32_t cellHandle, char *pStr, size_t size);
 
+/* ----------------------------------------------------------------
+ * FUNCTIONS: DATA COUNTERS
+ * -------------------------------------------------------------- */
+
+/** Get the current value of the transmit data counter.  Only
+ * available when a connection is active.
+ *
+ * @param cellHandle     the handle of the cellular instance.
+ * @return               the number of data bytes transmitted, since
+ *                       the cellular connection was made, or negative
+ *                       error code.  The count resets to zero when
+ *                       the connection is dropped.
+ */
+int32_t uCellNetGetDataCounterTx(int32_t cellHandle);
+
+/** Get the current value of the receive data counter.  Only
+ * available when a connection is active.
+ *
+ * @param cellHandle     the handle of the cellular instance.
+ * @return               the number of data bytes received, since
+ *                       the cellular connection was made, or negative
+ *                       error code.  The count resets to zero when
+ *                       the connection is dropped.
+ */
+int32_t uCellNetGetDataCounterRx(int32_t cellHandle);
+
+/** Reset the transmit and receive data counters.  Only
+ * available when a connection is active.
+ *
+ * @param cellHandle     the handle of the cellular instance.
+ * @return               zero on success, else negative error code.
+ */
+int32_t uCellNetResetDataCounters(int32_t cellHandle);
+
 #ifdef __cplusplus
 }
 #endif
