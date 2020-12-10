@@ -855,15 +855,11 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
     }
 
     if (errorCode == 0) {
-        // Wait for registration to succeed,
-        // noting that we fall out of the loop if we get
-        // registration denied in the packet switched domain
+        // Wait for registration to succeed
         errorCode = (int32_t) U_CELL_ERROR_NOT_REGISTERED;
         regType = 0;
         while (keepGoing && keepGoingLocalCb(pInstance) &&
-               !uCellPrivateIsRegistered(pInstance) &&
-               (pInstance->networkStatus[U_CELL_NET_REG_DOMAIN_PS] !=
-                U_CELL_NET_STATUS_REGISTRATION_DENIED)) {
+               !uCellPrivateIsRegistered(pInstance)) {
             // Prod the modem anyway, we've nout much else to do
             // We use each of the AT+CxREG? query types,
             // one at a time.
