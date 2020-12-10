@@ -1,5 +1,8 @@
 # The APIs
 set(COMPONENT_ADD_INCLUDEDIRS 
+# The ble API
+                   "../../../../../../../../ble/api"
+                   "../../../../../../../../ble/src"
 # The generic configuration files
                    "../../../../../../../../cfg"
 # The cell API
@@ -22,6 +25,10 @@ set(COMPONENT_ADD_INCLUDEDIRS
 
 # The implementations of the APIs
 set(COMPONENT_SRCS 
+# The ble API
+                   "../../../../../../../../ble/src/u_ble.c"
+                   "../../../../../../../../ble/src/u_ble_cfg.c"
+                   "../../../../../../../../ble/src/u_ble_data.c"
 # The cell API
                    "../../../../../../../../cell/src/u_cell.c"
                    "../../../../../../../../cell/src/u_cell_pwr.c"
@@ -45,7 +52,6 @@ set(COMPONENT_SRCS
                    "../../../../../../../../common/at_client/src/u_at_client.c"
 # The common short range layer
                    "../../../../../../../../common/short_range/src/u_short_range.c"
-                   "../../../../../../../../common/short_range/src/u_short_range_at_commands.c"
                    "../../../../../../../../common/short_range/src/u_short_range_edm.c"
                    "../../../../../../../../common/short_range/src/u_short_range_edm_stream.c"
                    "../../../../../../../../common/short_range/src/u_short_range_private.c"

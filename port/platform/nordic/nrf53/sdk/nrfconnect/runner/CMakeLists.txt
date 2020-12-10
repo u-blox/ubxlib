@@ -83,10 +83,19 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sock_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sec_c2c_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_private.c)
 
+#ble API
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/ble/api ${UBXLIB_BASE}/ble/src ${UBXLIB_BASE}/ble/test)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_cfg.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_data.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_cfg_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_data_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_test_private.c)
+
 #short range
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/short_range/api ${UBXLIB_BASE}/common/short_range/src ${UBXLIB_BASE}/common/short_range/test)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/src/u_short_range.c)
-target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/src/u_short_range_at_commands.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/src/u_short_range_edm.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/src/u_short_range_edm_stream.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/src/u_short_range_private.c)

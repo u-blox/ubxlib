@@ -2,6 +2,9 @@
 # source code and map it to the unity framework used by
 # Espressif through the macros in u_port_test.h
 set(COMPONENT_SRCS            "../../../../../../../../../example/sockets/main.c"
+                              "../../../../../../../../../ble/test/u_ble_test.c"
+                              "../../../../../../../../../ble/test/u_ble_cfg_test.c"
+                              "../../../../../../../../../ble/test/u_ble_data_test.c"
                               "../../../../../../../../../cell/test/u_cell_test.c"
                               "../../../../../../../../../cell/test/u_cell_pwr_test.c"
                               "../../../../../../../../../cell/test/u_cell_cfg_test.c"
@@ -20,6 +23,9 @@ set(COMPONENT_SRCS            "../../../../../../../../../example/sockets/main.c
                               "../../../../../../../../../common/short_range/test/u_short_range_test_private.c"
                               "../../../../../../../../test/u_port_test.c")
 set(COMPONENT_ADD_INCLUDEDIRS "../../../../../app"
+                              "../../../../../../../../../ble/api"
+                              "../../../../../../../../../ble/src"
+                              "../../../../../../../../../ble/test"
                               "../../../../../../../../../cfg"
                               "../../../../../../../../../cell/api"
                               "../../../../../../../../../cell/src"

@@ -119,7 +119,7 @@
 /** UART hw block with a connected short range module
  */
 #ifndef U_CFG_APP_SHORT_RANGE_UART
-# define U_CFG_APP_SHORT_RANGE_UART        -1
+# define U_CFG_APP_SHORT_RANGE_UART       -1
 #endif
 
 /** Short range module role

@@ -82,6 +82,12 @@ SRC_FILES += \
   $(NRF5_PATH)/external/mbedtls/library/md_wrap.c \
   $(NRF5_PATH)/external/mbedtls/library/md5.c \
   $(NRF5_PATH)/external/mbedtls/library/aes.c \
+  ../../../../../../../ble/src/u_ble.c \
+  ../../../../../../../ble/src/u_ble_cfg.c \
+  ../../../../../../../ble/src/u_ble_data.c \
+  ../../../../../../../ble/test/u_ble_test.c \
+  ../../../../../../../ble/test/u_ble_cfg_test.c \
+  ../../../../../../../ble/test/u_ble_data_test.c\
   ../../../../../../../cell/src/u_cell.c \
   ../../../../../../../cell/src/u_cell_pwr.c \
   ../../../../../../../cell/src/u_cell_cfg.c \
@@ -112,7 +118,6 @@ SRC_FILES += \
   ../../../../../../../common/at_client/test/u_at_client_test.c \
   ../../../../../../../common/at_client/test/u_at_client_test_data.c \
   ../../../../../../../common/short_range/src/u_short_range.c \
-    ../../../../../../../common/short_range/src/u_short_range_at_commands.c \
   ../../../../../../../common/short_range/src/u_short_range_edm.c \
   ../../../../../../../common/short_range/src/u_short_range_edm_stream.c \
   ../../../../../../../common/short_range/src/u_short_range_private.c \
@@ -168,6 +173,9 @@ INC_FOLDERS += \
   $(NRF5_PATH)/external/segger_rtt \
   $(NRF5_PATH)/components/libraries/hardfault \
   $(NRF5_PATH)/external/mbedtls/include \
+  ../../../../../../../ble/api \
+  ../../../../../../../ble/src \
+  ../../../../../../../ble/test \
   ../../../../../../../cell/api \
   ../../../../../../../cell/src \
   ../../../../../../../cell/test \

@@ -151,9 +151,6 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
 
     if (pParameters->shortRangeHandle >= 0) {
         shortRangeHandle = pParameters->shortRangeHandle;
-        if (streamType == U_AT_CLIENT_STREAM_TYPE_EDM) {
-            uShortRangeSetEdm(shortRangeHandle);
-        }
         uPortLog("U_SHORT_RANGE_TEST_PRIVATE: Detecting...\n");
         uShortRangeModuleType_t module = uShortRangeDetectModule(shortRangeHandle);
 

@@ -253,6 +253,7 @@ void uShortRangeEdmStreamBtEventCallbackRemove(int32_t handle);
  * pFunction will be called asynchronously in its own task.
  *
  * @param handle           the handle of the stream instance.
+ * @param type             the type of connection.
  * @param pFunction        the function to call, cannot be
  *                         NULL.
  * @param pParam           a parameter which will be passed
@@ -276,6 +277,7 @@ void uShortRangeEdmStreamBtEventCallbackRemove(int32_t handle);
  *                         code.
  */
 int32_t uShortRangeEdmStreamDataEventCallbackSet(int32_t handle,
+                                                 int32_t type,
                                                  void (*pFunction)(int32_t, int32_t, int32_t,
                                                                    char *, void *),
                                                  void *pParam,

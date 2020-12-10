@@ -21,14 +21,14 @@
  */
 
 /** @file
- * @brief Implementation function calling AT commands for short range modules.
+ * @brief Implementation of the cfg API for ble.
  */
 
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc() and free()
+#include "stdlib.h"    // malloc(), free(), strol(), atoi(), strol(), strtof()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -36,59 +36,64 @@
 
 #include "u_error_common.h"
 
+#include "u_port_os.h"
+
 #include "u_at_client.h"
 
 #include "u_short_range.h"
-#include "u_short_range_at_commands.h"
+#include "u_short_range_private.h"
+#include "u_ble.h"
+#include "u_ble_cfg.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#define U_SHORT_RANGE_MAX_NUM_SERVERS 7
+#define U_BLE_CFG_SERVER_TYPE_SPS 6
+#define U_BLE_CFG_MAX_NUM_SERVERS 6
+#define U_BLE_CFG_STARTUP_MODE_EDM 2
 
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-typedef struct {
-    uShortRangeModuleType_t module;
-    const char *pStr;
-} uShortRangeStringToModule_t;
 
 /* ----------------------------------------------------------------
- * STATIC VARIABLES
+ * VARIABLES
  * -------------------------------------------------------------- */
-
-static const uShortRangeStringToModule_t stringToModule[] = {
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_B1, "NINA-B1"},
-    {U_SHORT_RANGE_MODULE_TYPE_ANNA_B1, "ANNA-B1"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_B3, "NINA-B3"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_B4, "NINA-B4"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_B2, "NINA-B2"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_W13, "NINA-W13"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_W15, "NINA-W15"},
-    {U_SHORT_RANGE_MODULE_TYPE_ODIN_W2, "ODIN-W2"},
-};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-static uShortRangeModuleType_t convert(const char *pStr)
+static int32_t getStartupMode(const uAtClientHandle_t atHandle)
 {
-    for (uint32_t i = 0;  i < sizeof (stringToModule) / sizeof (stringToModule[0]);  ++i) {
-        if (!strcmp (pStr, stringToModule[i].pStr)) {
-            return stringToModule[i].module;
-        }
-    }
-    return U_SHORT_RANGE_MODULE_TYPE_INVALID;
+    int32_t modeOrError;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UMSM?");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UMSM:");
+    modeOrError = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    uAtClientUnlock(atHandle);
+
+    return modeOrError;
 }
 
-/* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS
- * -------------------------------------------------------------- */
+static int32_t setStartupMode(const uAtClientHandle_t atHandle, int32_t mode)
+{
+    int32_t error;
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UMSM=");
+    uAtClientWriteInt(atHandle, mode);
+    uAtClientCommandStop(atHandle);
+    uAtClientCommandStopReadResponse(atHandle);
+    error = uAtClientUnlock(atHandle);
 
-int32_t getBleRole(const uAtClientHandle_t atHandle)
+    return error;
+}
+
+static int32_t getBleRole(const uAtClientHandle_t atHandle)
 {
     int32_t roleOrError;
 
@@ -103,7 +108,7 @@ int32_t getBleRole(const uAtClientHandle_t atHandle)
     return roleOrError;
 }
 
-int32_t setBleRole(const uAtClientHandle_t atHandle, int32_t role)
+static int32_t setBleRole(const uAtClientHandle_t atHandle, int32_t role)
 {
     int32_t error;
     uAtClientLock(atHandle);
@@ -116,23 +121,23 @@ int32_t setBleRole(const uAtClientHandle_t atHandle, int32_t role)
     return error;
 }
 
-int32_t getServers(const uAtClientHandle_t atHandle, uShortRangeServerType_t type)
+static int32_t getServer(const uAtClientHandle_t atHandle, int32_t type)
 {
     int32_t error = -1;
     int32_t id;
 
     uAtClientLock(atHandle);
-    // Short time out so we don't hand if number of set servers is less than max
+    // Short time out so we don't hang if number of set servers is less than max
     uAtClientTimeoutSet(atHandle, 50);
     uAtClientCommandStart(atHandle, "AT+UDSC");
     uAtClientCommandStop(atHandle);
 
     bool found = false;
-    for (size_t y = 0; (y < U_SHORT_RANGE_MAX_NUM_SERVERS) &&
+    for (size_t y = 0; (y < U_BLE_CFG_MAX_NUM_SERVERS) &&
          !found; y++) {
         uAtClientResponseStart(atHandle, "+UDSC:");
         id = uAtClientReadInt(atHandle);
-        if (uAtClientReadInt(atHandle) == (int32_t) type) {
+        if (uAtClientReadInt(atHandle) == type) {
             found = true;
             break;
         }
@@ -151,16 +156,14 @@ int32_t getServers(const uAtClientHandle_t atHandle, uShortRangeServerType_t typ
     return error;
 }
 
-
-
-int32_t setServer(const uAtClientHandle_t atHandle, uShortRangeServerType_t type)
+static int32_t setServer(const uAtClientHandle_t atHandle, uShortRangeServerType_t type)
 {
     int32_t error;
     int32_t id = -1;
     bool found = false;
 
     uAtClientLock(atHandle);
-    for (size_t y = 0; (y < U_SHORT_RANGE_MAX_NUM_SERVERS) &&
+    for (size_t y = 0; (y < U_BLE_CFG_MAX_NUM_SERVERS) &&
          !found; y++) {
         uAtClientCommandStart(atHandle, "AT+UDSC=");
         uAtClientWriteInt(atHandle, (int32_t) y);
@@ -189,9 +192,9 @@ int32_t setServer(const uAtClientHandle_t atHandle, uShortRangeServerType_t type
     return error;
 }
 
-int32_t restart(const uAtClientHandle_t atHandle, bool store)
+static int32_t restart(const uAtClientHandle_t atHandle, bool store)
 {
-    int32_t error = (int32_t) U_ERROR_COMMON_SUCCESS;;
+    int32_t error = (int32_t) U_ERROR_COMMON_SUCCESS;
 
     if (store) {
         uAtClientLock(atHandle);
@@ -207,50 +210,74 @@ int32_t restart(const uAtClientHandle_t atHandle, bool store)
         uAtClientCommandStop(atHandle);
         uAtClientCommandStopReadResponse(atHandle);
         error = (int32_t)uAtClientUnlock(atHandle);
+
+        if (error == (int32_t) U_ERROR_COMMON_SUCCESS) {
+            uPortTaskBlock(500);
+            uAtClientFlush(atHandle);
+        }
     }
 
     return error;
 }
 
-int32_t setEchoOff(const uAtClientHandle_t atHandle, uint8_t retries)
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+int32_t uBleCfgConfigure(int32_t bleHandle,
+                         const uBleCfg_t *pCfg)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
 
-    for (uint8_t i = 0; i < retries; i++) {
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "ATE0");
-        uAtClientCommandStopReadResponse(atHandle);
-        errorCode = uAtClientUnlock(atHandle);
+    if (gUShortRangePrivateMutex != NULL) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pCfg != NULL) {
 
-        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-            break;
+            U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
+
+            pInstance = pUShortRangePrivateGetInstance(bleHandle);
+            if (pInstance != NULL) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                bool restartNeeded = false;
+                atHandle = pInstance->atHandle;
+
+                int32_t role = getBleRole(atHandle);
+                if (role != (int32_t) pCfg->role) {
+                    errorCode = setBleRole(atHandle, (int32_t) pCfg->role);
+                    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        restartNeeded = true;
+                    }
+                }
+
+                if (pCfg->spsServer) {
+                    if (getServer(atHandle, U_BLE_CFG_SERVER_TYPE_SPS) < 0) {
+                        errorCode = setServer(atHandle, U_BLE_CFG_SERVER_TYPE_SPS);
+                        if (errorCode >= 0) {
+                            restartNeeded = true;
+                        }
+                    }
+                }
+
+                int32_t mode = getStartupMode(atHandle);
+                if (mode != U_BLE_CFG_STARTUP_MODE_EDM) {
+                    errorCode = setStartupMode(atHandle, U_BLE_CFG_STARTUP_MODE_EDM);
+                    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        restartNeeded = true;
+                    }
+                }
+
+
+                if (errorCode >= 0 && restartNeeded) {
+                    restart(atHandle, true);
+                }
+            }
+
+            U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
         }
     }
 
     return errorCode;
-}
-
-
-uShortRangeModuleType_t getModule(const uAtClientHandle_t atHandle)
-{
-    uShortRangeModuleType_t module = U_SHORT_RANGE_MODULE_TYPE_INVALID;
-
-    char buffer[20];
-    uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+GMM");
-    uAtClientCommandStop(atHandle);
-    uAtClientResponseStart(atHandle, NULL);
-    int32_t bytesRead = uAtClientReadString(atHandle, buffer,
-                                            sizeof(buffer), false);
-    uAtClientResponseStop(atHandle);
-    int32_t errorCode = uAtClientUnlock(atHandle);
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS &&
-        bytesRead >= 7) {
-        module = convert(buffer);
-    }
-
-    return module;
 }
 
 // End of file

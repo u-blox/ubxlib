@@ -48,13 +48,10 @@
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
-#include "u_short_range_at_commands.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-#define U_SHORT_RANGE_UUDPC_TYPE_BT 1
 
 #ifndef U_SHORT_RANGE_UART_READ_BUFFER
 # define U_SHORT_RANGE_UART_READ_BUFFER 1000
@@ -67,22 +64,9 @@
  * -------------------------------------------------------------- */
 
 typedef struct {
-    int32_t connHandle;
-    char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
-    void (*pCallback) (int32_t, char *, void *);
-    void *pCallbackParameter;
-} uShortRangeBtConnection_t;
-
-typedef struct {
-    uShortRangePrivateInstance_t *pInstance;
-    int32_t connHandle;
-    int32_t type;
-    char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
-    int32_t dataChannel;
-    int32_t mtu;
-    void (*pCallback) (int32_t, char *, int32_t, int32_t, int32_t, void *);
-    void *pCallbackParameter;
-} uShortRangeSpsConnection_t;
+    uShortRangeModuleType_t module;
+    const char *pStr;
+} uShortRangeStringToModule_t;
 
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
@@ -92,9 +76,38 @@ typedef struct {
  */
 static int32_t gNextInstanceHandle = 0;
 
+static const uShortRangeStringToModule_t stringToModule[] = {
+    {U_SHORT_RANGE_MODULE_TYPE_NINA_B1, "NINA-B1"},
+    {U_SHORT_RANGE_MODULE_TYPE_ANNA_B1, "ANNA-B1"},
+    {U_SHORT_RANGE_MODULE_TYPE_NINA_B3, "NINA-B3"},
+    {U_SHORT_RANGE_MODULE_TYPE_NINA_B4, "NINA-B4"},
+    {U_SHORT_RANGE_MODULE_TYPE_NINA_B2, "NINA-B2"},
+    {U_SHORT_RANGE_MODULE_TYPE_NINA_W13, "NINA-W13"},
+    {U_SHORT_RANGE_MODULE_TYPE_NINA_W15, "NINA-W15"},
+    {U_SHORT_RANGE_MODULE_TYPE_ODIN_W2, "ODIN-W2"},
+};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+// Find a connHandle, or use -1 for a free spot
+static int32_t findFreeConnection(const uShortRangePrivateInstance_t *pInstance, int32_t connHandle)
+{
+    int32_t i;
+
+    for (i = 0; i < U_SHORT_RANGE_MAX_CONNECTIONS; i++) {
+        if (pInstance->connections[i].connHandle == connHandle) {
+            break;
+        }
+    }
+
+    if (i == U_SHORT_RANGE_MAX_CONNECTIONS) {
+        i = -1;
+    }
+
+    return i;
+}
 
 // Find a short range instance in the list by AT handle.
 // gUShortRangePrivateMutex should be locked before this is called.
@@ -177,123 +190,6 @@ static void dataCallback(int32_t streamHandle, uint32_t eventBitmask,
     }
 }
 
-static void edmDataCallback(int32_t handle, int32_t channel, int32_t length,
-                            char *pData, void *pParameters)
-{
-    (void)handle;
-    uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pParameters;
-
-    if (pInstance != NULL && pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-        if (pInstance->pDataCallback) {
-            pInstance->pDataCallback(channel, length, pData, pInstance->pDataCallbackParameter);
-        }
-    }
-}
-
-static void connectionStatusCallback(uAtClientHandle_t atHandle,
-                                     void *pParameter)
-{
-    uShortRangeBtConnection_t *pStatus = (uShortRangeBtConnection_t *) pParameter;
-
-    (void) atHandle;
-
-    if (pStatus != NULL) {
-        if (pStatus->pCallback != NULL) {
-            pStatus->pCallback(pStatus->connHandle, (char *)pStatus->address,
-                               pStatus->pCallbackParameter);
-        }
-        free(pStatus);
-    }
-}
-
-static void spsEventCallback(uAtClientHandle_t atHandle,
-                             void *pParameter)
-{
-    uShortRangeSpsConnection_t *pStatus = (uShortRangeSpsConnection_t *) pParameter;
-
-    (void) atHandle;
-
-    if (pStatus != NULL) {
-        if (pStatus->pCallback != NULL) {
-            pStatus->pCallback(pStatus->connHandle, pStatus->address, pStatus->type,
-                               pStatus->dataChannel, pStatus->mtu, pStatus->pCallbackParameter);
-        }
-        if (pStatus->pInstance != NULL) {
-            pStatus->pInstance->pPendingSpsConnectionEvent = NULL;
-        }
-
-        free(pStatus);
-    }
-}
-
-//lint -e{818} suppress "address could be declared as pointing to const":
-// need to follow function signature
-static void btEdmConnectionCallback(int32_t streamHandle, uint32_t type,
-                                    uint32_t channel, bool ble, int32_t mtu,
-                                    char *address, void *pParam)
-{
-    (void) ble;
-    (void) streamHandle;
-    uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pParam;
-    // Type 0 == connected
-    if (pInstance != NULL && pInstance->streamType == U_AT_CLIENT_STREAM_TYPE_EDM &&
-        pInstance->atHandle != NULL) {
-        uShortRangeSpsConnection_t *pStatus = (uShortRangeSpsConnection_t *)
-                                              pInstance->pPendingSpsConnectionEvent;
-        bool send = false;
-
-        if (pStatus == NULL) {
-            //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-            pStatus = (uShortRangeSpsConnection_t *) malloc(sizeof(*pStatus));
-        } else {
-            send = true;
-        }
-
-        if (pStatus != NULL) {
-            pStatus->pInstance = pInstance;
-            memcpy(pStatus->address, address, U_SHORT_RANGE_BT_ADDRESS_SIZE);
-            pStatus->type = (int32_t) type;
-            pStatus->dataChannel = (int32_t) channel;
-            pStatus->mtu = mtu;
-            pStatus->pCallback = pInstance->pSpsConnectionCallback;
-            pStatus->pCallbackParameter = pInstance->pSpsConnectionCallbackParameter;
-        }
-        if (send) {
-            uAtClientCallback(pInstance->atHandle, spsEventCallback, pStatus);
-        } else {
-            pInstance->pPendingSpsConnectionEvent = (void *) pStatus;
-        }
-    }
-}
-
-//lint -esym(818, pParameter) Suppress pParameter could be const, need to
-// follow prototype
-static void UBTACLC_urc(uAtClientHandle_t atHandle,
-                        void *pParameter)
-{
-    const uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pParameter;
-    char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
-    int32_t connHandle;
-    uShortRangeBtConnection_t *pStatus;
-
-    connHandle = uAtClientReadInt(atHandle);
-    //type is not used but needs to be read out
-    (void)uAtClientReadInt(atHandle);
-    (void)uAtClientReadString(atHandle, address, U_SHORT_RANGE_BT_ADDRESS_SIZE, false);
-
-    if (pInstance->pConnectionStatusCallback != NULL) {
-        //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-        pStatus = (uShortRangeBtConnection_t *) malloc(sizeof(*pStatus));
-        if (pStatus != NULL) {
-            pStatus->connHandle = connHandle;
-            memcpy(pStatus->address, address, U_SHORT_RANGE_BT_ADDRESS_SIZE);
-            pStatus->pCallback = pInstance->pConnectionStatusCallback;
-            pStatus->pCallbackParameter = pInstance->pConnectionStatusCallbackParameter;
-        }
-        uAtClientCallback(atHandle, connectionStatusCallback, pStatus);
-    }
-}
-
 //+UUDPC:<peer_handle>,<type>,<profile>,<address>,<frame_size>
 //lint -esym(818, pParameter) Suppress pParameter could be const, need to
 // follow prototype
@@ -307,45 +203,26 @@ static void UUDPC_urc(uAtClientHandle_t atHandle,
     connHandle = uAtClientReadInt(atHandle);
     type = uAtClientReadInt(atHandle);
 
+    int32_t id = findFreeConnection(pInstance, -1);
+
+    if (id != -1) {
+        pInstance->connections[id].connHandle = connHandle;
+        pInstance->connections[id].type = type;
+    }
+
     if (type == (int32_t)U_SHORT_RANGE_UUDPC_TYPE_BT) {
         char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
         (void)uAtClientReadInt(atHandle);
         (void)uAtClientReadString(atHandle, address, U_SHORT_RANGE_BT_ADDRESS_SIZE, false);
-        int32_t mtu = uAtClientReadInt(atHandle);
-        bool send = false;
+        (void)uAtClientReadInt(atHandle);
 
-        if (pInstance->pSpsConnectionCallback != NULL) {
-            uShortRangeSpsConnection_t *pStatus = (uShortRangeSpsConnection_t *)
-                                                  pInstance->pPendingSpsConnectionEvent;
-
-            if (pStatus == NULL) {
-                //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-                pStatus = (uShortRangeSpsConnection_t *) malloc(sizeof(*pStatus));
-            } else {
-                send = true;
-            }
-            if (pStatus != NULL) {
-                pStatus->connHandle = connHandle;
-                // AT (this) event info: connHandle, type, profile, address, mtu
-                // EDM event info: type, profile, address, mtu, channel
-                // use connHandle from here, the rest from the EDM event
-                if (pInstance->streamType == U_AT_CLIENT_STREAM_TYPE_EDM) {
-                    pInstance->pPendingSpsConnectionEvent = (void *) pStatus;
-                } else {
-                    memcpy(pStatus->address, address, U_SHORT_RANGE_BT_ADDRESS_SIZE);
-                    pStatus->dataChannel = -1; // Only EDM
-                    pStatus->mtu = mtu;
-                    pStatus->type = 0; //Connected
-                    pStatus->pCallback = pInstance->pSpsConnectionCallback;
-                    pStatus->pCallbackParameter = pInstance->pSpsConnectionCallbackParameter;
-                    pStatus->pInstance = pInstance;
-                    send = true;
-                }
-                if (send) {
-                    uAtClientCallback(atHandle, spsEventCallback, pStatus);
-                }
-            }
+        if (pInstance->pBtConnectionStatusCallback != NULL) {
+            pInstance->pBtConnectionStatusCallback(connHandle, U_SHORT_RANGE_EVENT_CONNECTED,
+                                                   pInstance->pBtConnectionStatusCallbackParameter);
         }
+    } else if (type == U_SHORT_RANGE_UUDPC_TYPE_IPv4 ||
+               type == U_SHORT_RANGE_UUDPC_TYPE_IPv6) {
+
     }
 }
 
@@ -359,37 +236,21 @@ static void UUDPD_urc(uAtClientHandle_t atHandle,
 
     connHandle = uAtClientReadInt(atHandle);
 
-    bool send = false;
+    int32_t id = findFreeConnection(pInstance, connHandle);
 
-    if (pInstance->pSpsConnectionCallback != NULL) {
-        uShortRangeSpsConnection_t *pStatus = (uShortRangeSpsConnection_t *)
-                                              pInstance->pPendingSpsConnectionEvent;
+    if (id != -1) {
+        if (pInstance->connections[id].type == (int32_t)U_SHORT_RANGE_UUDPC_TYPE_BT) {
+            if (pInstance->pBtConnectionStatusCallback != NULL) {
+                pInstance->pBtConnectionStatusCallback(connHandle, U_SHORT_RANGE_EVENT_DISCONNECTED,
+                                                       pInstance->pBtConnectionStatusCallbackParameter);
+            }
+        } else if (pInstance->connections[id].type == U_SHORT_RANGE_UUDPC_TYPE_IPv4 ||
+                   pInstance->connections[id].type == U_SHORT_RANGE_UUDPC_TYPE_IPv6) {
 
-        if (pStatus == NULL) {
-            //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-            pStatus = (uShortRangeSpsConnection_t *) malloc(sizeof(*pStatus));
-        } else {
-            send = true;
         }
-        if (pStatus != NULL) {
-            pStatus->connHandle = connHandle;
-            // AT (this) event info: connHandle
-            // EDM event info: channel
-            if (pInstance->streamType == U_AT_CLIENT_STREAM_TYPE_EDM) {
-                pInstance->pPendingSpsConnectionEvent = (void *) pStatus;
-            } else {
-                pStatus->dataChannel = -1; // Only EDM
-                pStatus->mtu = -1;
-                pStatus->type = 1;
-                pStatus->pCallback = pInstance->pSpsConnectionCallback;
-                pStatus->pCallbackParameter = pInstance->pSpsConnectionCallbackParameter;
-                pStatus->pInstance = pInstance;
-                send = true;
-            }
-            if (send) {
-                uAtClientCallback(atHandle, spsEventCallback, pStatus);
-            }
-        }
+
+        pInstance->connections[id].connHandle = -1;
+        pInstance->connections[id].type = -1;
     }
 }
 
@@ -411,6 +272,56 @@ static void exitDataMode(const uShortRangePrivateInstance_t *pInstance)
     }
 
     uPortTaskBlock(1100);
+}
+
+static int32_t setEchoOff(const uAtClientHandle_t atHandle, uint8_t retries)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+
+    for (uint8_t i = 0; i < retries; i++) {
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "ATE0");
+        uAtClientCommandStopReadResponse(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+
+        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+            break;
+        }
+    }
+
+    return errorCode;
+}
+
+static uShortRangeModuleType_t convert(const char *pStr)
+{
+    for (uint32_t i = 0;  i < sizeof (stringToModule) / sizeof (stringToModule[0]);  ++i) {
+        if (!strcmp (pStr, stringToModule[i].pStr)) {
+            return stringToModule[i].module;
+        }
+    }
+    return U_SHORT_RANGE_MODULE_TYPE_INVALID;
+}
+
+static uShortRangeModuleType_t getModule(const uAtClientHandle_t atHandle)
+{
+    uShortRangeModuleType_t module = U_SHORT_RANGE_MODULE_TYPE_INVALID;
+
+    char buffer[20];
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+GMM");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, NULL);
+    int32_t bytesRead = uAtClientReadString(atHandle, buffer,
+                                            sizeof(buffer), false);
+    uAtClientResponseStop(atHandle);
+    int32_t errorCode = uAtClientUnlock(atHandle);
+
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS &&
+        bytesRead >= 7) {
+        module = convert(buffer);
+    }
+
+    return module;
 }
 
 /* ----------------------------------------------------------------
@@ -480,6 +391,11 @@ int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
                     gNextInstanceHandle = 0;
                 }
 
+                for (int32_t i = 0; i < U_SHORT_RANGE_MAX_CONNECTIONS; i++) {
+                    pInstance->connections[i].connHandle = -1;
+                    pInstance->connections[i].type = -1;
+                }
+
                 pInstance->atHandle = atHandle;
                 pInstance->mode = U_SHORT_RANGE_MODE_COMMAND;
                 pInstance->startTimeMs = 500;
@@ -487,6 +403,10 @@ int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
                 streamHandle = uAtClientStreamGet(atHandle, &streamType);
                 pInstance->streamHandle = streamHandle;
                 pInstance->streamType = streamType;
+
+                if (pInstance->streamType == U_AT_CLIENT_STREAM_TYPE_EDM) {
+                    pInstance->mode = U_SHORT_RANGE_MODE_EDM;
+                }
 
                 pInstance->pModule = &(gUShortRangePrivateModuleList[moduleType]);
                 pInstance->pNext = NULL;
@@ -528,62 +448,9 @@ void uShortRangeRemove(int32_t shortRangeHandle)
     }
 }
 
-int32_t uShortRangeConfigure(int32_t shortRangeHandle, const uShortRangeBleCfg_t *pShortRangeBleCfg)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uShortRangePrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-
-    if (gUShortRangePrivateMutex != NULL) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pShortRangeBleCfg != NULL) {
-
-            U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
-            pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
-            if (pInstance != NULL) {
-                errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
-                if (pInstance->mode == U_SHORT_RANGE_MODE_COMMAND ||
-                    pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    bool restartNeeded = false;
-                    atHandle = pInstance->atHandle;
-
-                    int32_t role = getBleRole(atHandle);
-                    if (role != (int32_t) pShortRangeBleCfg->role) {
-                        errorCode = setBleRole(atHandle, (int32_t) pShortRangeBleCfg->role);
-                        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                            restartNeeded = true;
-                        }
-                    }
-
-                    if (pShortRangeBleCfg->spsServer) {
-                        if (getServers(atHandle, U_SHORT_RANGE_SERVER_SPS) < 0) {
-                            errorCode = setServer(atHandle, U_SHORT_RANGE_SERVER_SPS);
-                            if (errorCode >= 0) {
-                                restartNeeded = true;
-                            }
-                        }
-                    }
-
-
-                    if (errorCode >= 0 && restartNeeded) {
-                        restart(atHandle, true);
-                    }
-                }
-
-            }
-
-            U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
-        }
-    }
-
-    return errorCode;
-}
-
-int32_t uShortRangeSetDataCallback(int32_t shortRangeHandle,
-                                   void (*pCallback) (int32_t, size_t, char *, void *),
-                                   void *pCallbackParameter)
+int32_t uShortRangeConnectionStatusCallback(int32_t shortRangeHandle, int32_t type,
+                                            void (*pCallback) (int32_t, int32_t, void *),
+                                            void *pCallbackParameter)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
@@ -594,14 +461,27 @@ int32_t uShortRangeSetDataCallback(int32_t shortRangeHandle,
 
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL && pCallback != NULL) {
-            pInstance->pDataCallback = pCallback;
-            pInstance->pDataCallbackParameter = pCallbackParameter;
-
-            if (pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-                uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle, edmDataCallback,
-                                                         pInstance, 1536, U_CFG_OS_PRIORITY_MAX - 5);
+        if (pInstance != NULL && pCallback != NULL &&
+            (type >= U_SHORT_RANGE_CONNECTTION_TYPE_BT &&
+             type <= U_SHORT_RANGE_CONNECTTION_TYPE_WIFI)) {
+            if (type == U_SHORT_RANGE_CONNECTTION_TYPE_BT) {
+                pInstance->pBtConnectionStatusCallback = pCallback;
+                pInstance->pBtConnectionStatusCallbackParameter = pCallbackParameter;
+            } else {
+                pInstance->pWifiConnectionStatusCallback = pCallback;
+                pInstance->pWifiConnectionStatusCallbackParameter = pCallbackParameter;
             }
+
+            // If one type is NULL we are first and need to register the urc checks.
+            if (pInstance->pBtConnectionStatusCallback == NULL ||
+                pInstance->pWifiConnectionStatusCallback == NULL) {
+                uAtClientSetUrcHandler(pInstance->atHandle, "+UUDPC:",
+                                       UUDPC_urc, pInstance);
+                uAtClientSetUrcHandler(pInstance->atHandle, "+UUDPD:",
+                                       UUDPD_urc, pInstance);
+            }
+
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
 
         U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
@@ -658,11 +538,15 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
             // trigger something in user code).
             if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS &&
                 pInstance->mode == U_SHORT_RANGE_MODE_COMMAND) {
-                const unsigned char atCommand[] = { 0xAA, 0x00, 0x0D, 0x00, 0x44, 0x41, 0x54,
-                                                    0x2B, 0x43, 0x50, 0x57, 0x52, 0x4F, 0x46,
-                                                    0x46, 0x0D, 0x55
-                                                  };
-                uPortUartWrite(pInstance->streamHandle, atCommand, sizeof(atCommand));
+                const unsigned char atCommandRestart[] = { 0xAA, 0x00, 0x0D, 0x00, 0x44, 0x41, 0x54,
+                                                           0x2B, 0x43, 0x50, 0x57, 0x52, 0x4F, 0x46,
+                                                           0x46, 0x0D, 0x55
+                                                         };
+                const unsigned char atCommandReset[] = { 0xAA, 0x00, 0x0E, 0x00, 0x44, 0x41, 0x54,
+                                                         0x2B, 0x55, 0x46, 0x41, 0x43, 0x54, 0x4F,
+                                                         0x52, 0x59, 0x0D, 0x55
+                                                       };
+                uPortUartWrite(pInstance->streamHandle, atCommandRestart, sizeof(atCommandRestart));
 
                 // Worst case restart time
                 uPortTaskBlock(500);
@@ -672,6 +556,18 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
                 if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
                     exitDataMode(pInstance);
                     errorCode = setEchoOff(pInstance->atHandle, 1);
+                }
+
+                // Last resort, module is in EDM with startup mode EDM. As the setting and what is expected
+                // are that off we just do a raw favtory reset of the module.
+                if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    uPortUartWrite(pInstance->streamHandle, atCommandReset, sizeof(atCommandReset));
+                    uPortTaskBlock(50);
+                    uPortUartWrite(pInstance->streamHandle, atCommandRestart, sizeof(atCommandRestart));
+
+                    // Worst case restart time
+                    uPortTaskBlock(500);
+                    errorCode = setEchoOff(pInstance->atHandle, 2);
                 }
             }
 
@@ -713,64 +609,6 @@ int32_t uShortRangeAttention(int32_t shortRangeHandle)
         U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
 
-    return errorCode;
-}
-
-int32_t uShortRangeCheckBleRole(int32_t shortRangeHandle, uShortRangeBleRole_t *pRole)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uShortRangePrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL && pRole != NULL) {
-            errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
-            if (pInstance->mode == U_SHORT_RANGE_MODE_COMMAND ||
-                pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-                int32_t response;
-                atHandle = pInstance->atHandle;
-                uPortLog("U_SHORT_RANGE: Sending AT+UBTLE?\n");
-
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UBTLE?");
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UBTLE:");
-                response = uAtClientReadInt(atHandle);
-                if (response >= 0) {
-                    *pRole = (uShortRangeBleRole_t)response;
-                }
-                uAtClientResponseStop(atHandle);
-
-                errorCode = uAtClientUnlock(atHandle);
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
-    }
-
-    return errorCode;
-}
-
-int32_t uShortRangeData(int32_t shortRangeHandle, int32_t channel,
-                        const char *pData, int32_t length)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uShortRangePrivateInstance_t *pInstance;
-
-    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
-    if (pInstance) {
-        errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
-        if (pInstance->mode == U_SHORT_RANGE_MODE_DATA) {
-            errorCode = uPortUartWrite(pInstance->streamHandle, pData, length);
-        } else if (pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-            errorCode = uShortRangeEdmStreamWrite(pInstance->streamHandle, channel, pData, length);
-        }
-    }
     return errorCode;
 }
 
@@ -860,7 +698,9 @@ int32_t uShortRangeCommandMode(int32_t shortRangeHandle, uAtClientHandle_t *pAtH
     return errorCode;
 }
 
-int32_t uShortRangeSetEdm(int32_t shortRangeHandle)
+// Get the handle of the AT client.
+int32_t uShortRangeAtClientHandleGet(int32_t shortRangeHandle,
+                                     uAtClientHandle_t *pAtHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
@@ -869,154 +709,11 @@ int32_t uShortRangeSetEdm(int32_t shortRangeHandle)
 
         U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
 
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL) {
+        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+        if ((pInstance != NULL) && (pAtHandle != NULL)) {
+            *pAtHandle = pInstance->atHandle;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            pInstance->mode = U_SHORT_RANGE_MODE_EDM;
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
-    }
-
-    return errorCode;
-}
-
-int32_t uShortRangeSpsConnectionStatusCallback(int32_t shortRangeHandle,
-                                               void (*pCallback) (int32_t, char *, int32_t, int32_t, int32_t, void *),
-                                               void *pCallbackParameter)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uShortRangePrivateInstance_t *pInstance;
-
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL) {
-            if (pCallback != NULL) {
-                pInstance->pSpsConnectionCallback = pCallback;
-                pInstance->pSpsConnectionCallbackParameter = pCallbackParameter;
-                uAtClientSetUrcHandler(pInstance->atHandle, "+UUDPC:",
-                                       UUDPC_urc, pInstance);
-                uAtClientSetUrcHandler(pInstance->atHandle, "+UUDPD:",
-                                       UUDPD_urc, pInstance);
-                if (pInstance->streamType == U_AT_CLIENT_STREAM_TYPE_EDM) {
-                    uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, btEdmConnectionCallback,
-                                                           pInstance, 1536, U_CFG_OS_PRIORITY_MAX - 5);
-                }
-
-            } else {
-                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUDPC:");
-                pInstance->pConnectionStatusCallback = NULL;
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
-    }
-
-    return errorCode;
-}
-
-int32_t uShortRangeBtConnectionStatusCallback(int32_t shortRangeHandle,
-                                              void (*pCallback) (int32_t, char *, void *),
-                                              void *pCallbackParameter)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uShortRangePrivateInstance_t *pInstance;
-
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL) {
-            if (pCallback != NULL) {
-                pInstance->pConnectionStatusCallback = pCallback;
-                pInstance->pConnectionStatusCallbackParameter = pCallbackParameter;
-                uAtClientSetUrcHandler(pInstance->atHandle, "+UUBTACLC:",
-                                       UBTACLC_urc, pInstance);
-            } else {
-                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLC:");
-                pInstance->pConnectionStatusCallback = NULL;
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
-    }
-
-    return errorCode;
-}
-
-int32_t uShortRangeConnectSps(int32_t shortRangeHandle, const char *pAddress)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uShortRangePrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL) {
-            errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
-            if (pInstance->mode == U_SHORT_RANGE_MODE_COMMAND ||
-                pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-                char url[20];
-                memset(url, 0, 20);
-                char start[] = "sps://";
-                memcpy(url, start, 6);
-                memcpy((url + 6), pAddress, 13);
-                atHandle = pInstance->atHandle;
-                uPortLog("U_SHORT_RANGE: Sending AT+UDCP\n");
-
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UDCP=");
-                uAtClientWriteString(atHandle, (char *)&url[0], false);
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UDCP:");
-                uAtClientReadInt(atHandle); // conn handle
-                uAtClientResponseStop(atHandle);
-                errorCode = uAtClientUnlock(atHandle);
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
-    }
-
-    return errorCode;
-}
-
-int32_t uShortRangeDisconnect(int32_t shortRangeHandle, int32_t connHandle)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uShortRangePrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL) {
-            errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
-            if (pInstance->mode == U_SHORT_RANGE_MODE_COMMAND ||
-                pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-                atHandle = pInstance->atHandle;
-                uPortLog("U_SHORT_RANGE: Sending disconnect\n");
-
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UDCPC=");
-                uAtClientWriteInt(atHandle, connHandle);
-                uAtClientCommandStopReadResponse(atHandle);
-                errorCode = uAtClientUnlock(atHandle);
-            }
         }
 
         U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);

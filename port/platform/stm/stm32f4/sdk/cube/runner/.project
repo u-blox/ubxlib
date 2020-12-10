@@ -87,11 +87,6 @@
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_at_commands.c</name>
-			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_at_commands.c</locationURI>
-		</link>
-		<link>
 			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_edm.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_edm.c</locationURI>
@@ -110,6 +105,21 @@
 			<name>Ubxlib/U-Blox/Common/u_heap_check.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/heap_check/u_heap_check.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Ble/u_ble.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Ble/u_ble_cfg.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_cfg.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Ble/u_ble_data.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_data.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell.c</name>
@@ -185,6 +195,26 @@
 			<name>Ubxlib/U-Blox/Test/Security/u_security_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/security/test/u_security_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Ble/u_ble_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/test/u_ble_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Ble/u_ble_cfg_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/test/u_ble_cfg_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Ble/u_ble_data_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/test/u_ble_data_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Ble/u_ble_test_private.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/test/u_ble_test_private.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test.c</name>
@@ -415,6 +445,21 @@
 			<name>Ubxlib/Inc/Third-Party/Unity</name>
 			<type>2</type>
 			<locationURI>$%7BUNITY_PATH%7D/src</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/ble/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/ble/src</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/src</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/ble/test</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/test</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/cfg</name>

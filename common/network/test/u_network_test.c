@@ -50,9 +50,7 @@
 #include "u_cell_test_cfg.h" // For the cellular test macros
 #endif
 
-#include "u_error_common.h"
-#include "u_at_client.h"
-#include "u_short_range.h"
+#include "u_ble_data.h"
 
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
@@ -98,7 +96,7 @@ static const char gTestData[] =  "_____0000:012345678901234567890123456789012345
                                  "01234567890123456789012345678901234567890123456789";
 //#endif
 
-static volatile int32_t gConnHandle = 0;
+static volatile int32_t gConnHandle = -1;
 static volatile int32_t gBytesReceived = 0;
 static volatile int32_t gErrors = 0;
 static volatile uint32_t gIndexInBlock = 0;
@@ -109,19 +107,10 @@ static volatile int32_t gBytesSent = 0;
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-static void shortRangeConnectBtConnectionDataCallback(int32_t connHandle,
-                                                      char *address, void *pParameters)
-{
-    (void) connHandle;
-    (void) address;
-    (void) pParameters;
-    uPortLog("U_NETWORK_TEST: Connected Bt handle %d\n", connHandle);
-}
-
 //lint -e{818} Suppress 'pData' could be declared as const:
 // need to follow function signature
-static void shortRangeConnectDataModeCallback(int32_t channel, size_t length,
-                                              char *pData, void *pParameters)
+static void dataCallback(int32_t channel, size_t length,
+                         char *pData, void *pParameters)
 {
     (void) channel;
     (void) pParameters;
@@ -141,30 +130,32 @@ static void shortRangeConnectDataModeCallback(int32_t channel, size_t length,
              gErrors);
 }
 
-static void shortRangeConnectSpsConnectionCallback(int32_t connHandle, char *address, int32_t type,
-                                                   int32_t channel, int32_t mtu, void *pParameters)
+static void connectionCallback(int32_t connHandle, char *address, int32_t type,
+                               int32_t channel, int32_t mtu, void *pParameters)
 {
     (void) address;
     (void) mtu;
     int32_t bytesToSend;
     int32_t *pHandle = (int32_t *)pParameters;
-    gConnHandle = connHandle;
 
     if (type == 0) {
+        gConnHandle = connHandle;
         while (gBytesSent < gTotalData) {
             // -1 to omit gTestData string terminator
             bytesToSend = sizeof(gTestData) - 1;
             if (bytesToSend > gTotalData - gBytesSent) {
                 bytesToSend = gTotalData - gBytesSent;
             }
-            uShortRangeData(*pHandle, channel, gTestData, bytesToSend);
+            uBleDataSend(*pHandle, channel, gTestData, bytesToSend);
 
             gBytesSent += bytesToSend;
             uPortLog("U_NETWORK: %d byte(s) sent.\n", gBytesSent);
         }
+    } else if (type == 1) {
+        gConnHandle = -1;
+        uPortLog("U_NETWORK: Disconnected connection handle %d.\n", connHandle);
     }
 }
-
 
 
 /* ----------------------------------------------------------------
@@ -273,15 +264,14 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
             } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
-                uShortRangeBtConnectionStatusCallback(gUNetworkTestCfg[x].handle,
-                                                      shortRangeConnectBtConnectionDataCallback, NULL);
-                uShortRangeSpsConnectionStatusCallback(gUNetworkTestCfg[x].handle,
-                                                       shortRangeConnectSpsConnectionCallback, &gUNetworkTestCfg[x].handle);
-                uShortRangeSetDataCallback(gUNetworkTestCfg[x].handle, shortRangeConnectDataModeCallback,
-                                           &gUNetworkTestCfg[x].handle);
+                uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
+                                                    connectionCallback,
+                                                    &gUNetworkTestCfg[x].handle);
+                uBleDataSetCallbackData(gUNetworkTestCfg[x].handle, dataCallback,
+                                        &gUNetworkTestCfg[x].handle);
 
-                U_PORT_TEST_ASSERT(uShortRangeConnectSps(gUNetworkTestCfg[x].handle,
-                                                         gRemoteSpsAddress) == 0);
+                U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                                                      gRemoteSpsAddress) == 0);
 
                 while (gBytesSent < gTotalData) {
                     uPortTaskBlock(100);
@@ -292,8 +282,13 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                 U_PORT_TEST_ASSERT(gTotalData == gBytesReceived);
                 U_PORT_TEST_ASSERT(gErrors == 0);
 
-                //Clean up
-                U_PORT_TEST_ASSERT(uShortRangeDisconnect(gUNetworkTestCfg[x].handle, gConnHandle) == 0);
+                // Disconnect
+                U_PORT_TEST_ASSERT(uBleDataDisconnect(gUNetworkTestCfg[x].handle, gConnHandle) == 0);
+                for (int32_t i = 0; (i < 40) && (gConnHandle != -1); i++) {
+                    uPortTaskBlock(100);
+                };
+
+                U_PORT_TEST_ASSERT(gConnHandle == -1);
             }
         }
     }

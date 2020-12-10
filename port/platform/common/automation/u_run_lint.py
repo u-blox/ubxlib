@@ -46,6 +46,9 @@ LINT_DIRS = [os.path.join("common","network","src"),
 
 # Include directories for ubxlib, off the ubxlib root.
 UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
+                       os.path.join("ble","api"),
+                       os.path.join("ble","src"),
+                       os.path.join("ble","test"),
                        os.path.join("cfg"),
                        os.path.join("common","network","api"),
                        os.path.join("common","network","src"),

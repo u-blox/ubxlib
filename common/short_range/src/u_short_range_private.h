@@ -32,6 +32,12 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#define U_SHORT_RANGE_UUDPC_TYPE_BT 1
+#define U_SHORT_RANGE_UUDPC_TYPE_IPv4 2
+#define U_SHORT_RANGE_UUDPC_TYPE_IPv6 3
+
+#define U_SHORT_RANGE_MAX_CONNECTIONS 9
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -70,8 +76,18 @@ typedef struct {
                                     normally immediate responses. */
 } uShortRangePrivateModule_t;
 
+typedef struct uShortRangePrivateConnection_t {
+    int32_t connHandle;
+    int32_t type;
+} uShortRangePrivateConnection_t;
+
 /** Definition of a ShortRange instance.
  */
+//lint -esym(768, uShortRangePrivateInstance_t::pSpsConnectionCallback) Suppress not reference, it is
+//lint -esym(768, uShortRangePrivateInstance_t::pSpsConnectionCallbackParameter) Suppress not reference, it is
+//lint -esym(768, uShortRangePrivateInstance_t::pPendingSpsConnectionEvent) Suppress not reference, it is
+//lint -esym(768, uShortRangePrivateInstance_t::pBtDataCallback) Suppress not reference, it is
+//lint -esym(768, uShortRangePrivateInstance_t::pBtDataCallbackParameter) Suppress not reference, it is
 typedef struct uShortRangePrivateInstance_t {
     int32_t handle; /**< The handle for this instance. */
     uShortRangeModes_t mode;
@@ -80,11 +96,16 @@ typedef struct uShortRangePrivateInstance_t {
     int32_t streamHandle; /**< Handle to the underlaying stream. */
     uAtClientStream_t streamType; /**< Stream type. */
     int64_t startTimeMs;     /**< Used while restarting. */
-    void (*pConnectionStatusCallback) (int32_t, char *, void *);
-    void *pConnectionStatusCallbackParameter;
+    uShortRangePrivateConnection_t connections[U_SHORT_RANGE_MAX_CONNECTIONS];
+    void (*pBtConnectionStatusCallback) (int32_t, int32_t, void *);
+    void *pBtConnectionStatusCallbackParameter;
+    void (*pWifiConnectionStatusCallback) (int32_t, int32_t, void *);
+    void *pWifiConnectionStatusCallbackParameter;
     void (*pSpsConnectionCallback) (int32_t, char *, int32_t, int32_t, int32_t, void *);
     void *pSpsConnectionCallbackParameter;
     void *pPendingSpsConnectionEvent;
+    void (*pBtDataCallback) (int32_t, size_t, char *, void *);
+    void *pBtDataCallbackParameter;
     void (*pDataCallback) (int32_t, size_t, char *, void *);
     void *pDataCallbackParameter;
     char *pBuffer;

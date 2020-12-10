@@ -43,6 +43,9 @@
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.option.includepaths.1434173334" name="Include paths (-I)" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.option.includepaths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Core}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/ble/api}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/ble/src}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/ble/test}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cfg}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/error/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/network/api}"/>
@@ -184,6 +187,9 @@
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.option.includepaths.708833921" name="Include paths (-I)" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.option.includepaths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Core}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/ble/api}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/ble/src}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/ble/test}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cfg}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/error/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/network/api}"/>

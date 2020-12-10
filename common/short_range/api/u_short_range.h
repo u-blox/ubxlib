@@ -49,6 +49,14 @@ extern "C" {
 # define U_SHORT_RANGE_UART_BAUD_RATE 115200
 #endif
 
+#define U_SHORT_RANGE_EVENT_CONNECTED    0
+#define U_SHORT_RANGE_EVENT_DISCONNECTED 1
+
+#define U_SHORT_RANGE_CONNECTTION_TYPE_BT   0
+#define U_SHORT_RANGE_CONNECTTION_TYPE_WIFI 0
+
+
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -88,22 +96,9 @@ typedef enum {
 } uShortRangeModuleType_t;
 
 typedef enum {
-    U_SHORT_RANGE_BLE_ROLE_DISABLED = 0, /**< BLE disabled. */
-    U_SHORT_RANGE_BLE_ROLE_CENTRAL, /**< Central only mode. */
-    U_SHORT_RANGE_BLE_ROLE_PERIPHERAL, /**< Peripheral only mode. */
-    U_SHORT_RANGE_BLE_ROLE_CENTRAL_AND_PERIPHERAL, /**< Simutanious central and peripheral mode. */
-} uShortRangeBleRole_t;
-
-typedef enum {
     U_SHORT_RANGE_SERVER_DISABLED = 0, /**< Disabled status. */
     U_SHORT_RANGE_SERVER_SPS = 6 /**< SPS server. */
 } uShortRangeServerType_t;
-
-typedef struct {
-    uShortRangeBleRole_t role;
-    bool spsServer;
-} uShortRangeBleCfg_t;
-
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -144,18 +139,6 @@ int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
  */
 void uShortRangeRemove(int32_t shortRangeHandle);
 
-/** Set a callback for incoming data.
-  *
- * @param shortRangeHandle   the handle of the short range instance.
- * @param pCallback          callback function.
- * @param pCallbackParameter parameter included with the callback.
- * @return                   zero on success or negative error code
- *                           on failure.
- */
-int32_t uShortRangeSetDataCallback(int32_t shortRangeHandle,
-                                   void (*pCallback) (int32_t, size_t, char *, void *),
-                                   void *pCallbackParameter);
-
 /** Detect the module connected to the handle. Will attempt to change the mode on
  * the module to communicate with it. No change to UART configuration is done,
  * so even if this fails, as last attempt to recover, it could work to  re-init
@@ -168,26 +151,6 @@ int32_t uShortRangeSetDataCallback(int32_t shortRangeHandle,
  */
 uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle);
 
-/** Send data
- * By design of the module, in command/data mode it will broacast on all connections
- * and in extended data mode (EDM) it only sends on the given channel. This is controlled
- * from ubx-lib with the choice of stream type provided to the at client (see uAtClientStream_t).
- * If u_network.h was used to set this up, EDM is used.
- *
- * If UART stream is used, uShortRangeDataMode() must be called before using this command.
- *
- * @param shortRangeHandle the handle of the short range instance.
- * @param channel          channel id. EDM only.
- * @param pData            pointer to the data.
- * @param length           length of data.
- * @return                 zero on success or negative error code
- *                         on failure.
- */
-int32_t uShortRangeData(int32_t shortRangeHandle,
-                        int32_t channel,
-                        const char *pData,
-                        int32_t length);
-
 /** Sends "AT" to the short range module on which it should repond with "OK"
  * but takes no action. This checks that the module is ready to respond to commands.
  *
@@ -196,28 +159,6 @@ int32_t uShortRangeData(int32_t shortRangeHandle,
  *                          on failure.
  */
 int32_t uShortRangeAttention(int32_t shortRangeHandle);
-
-/** Configure the short range module.
- * Function is blocking and might require a module re-boot, this can mean
- * up to 500ms before it returns.
- *
- * @param shortRangeHandle  the handle of the short range instance.
- * @param pShortRangeBleCfg pointer to the struct holding the configuration.
- * @return                  zero on success or negative error code
- *                          on failure.
- */
-int32_t uShortRangeConfigure(int32_t shortRangeHandle,
-                             const uShortRangeBleCfg_t *pShortRangeBleCfg);
-
-/** Checks ble role.
- *
- * @param shortRangeHandle the handle of the short range instance.
- * @param pRole            pointer to a variable that will get the role,
- *                         must not be NULL.
- * @return                 zero on success or negative error code
- *                         on failure.
- */
-int32_t uShortRangeCheckBleRole(int32_t shortRangeHandle, uShortRangeBleRole_t *pRole);
 
 /** Change to command mode by sending a escape sequence, can be used at
  * startup if uShortRangeAttention is unresponsive.
@@ -244,62 +185,29 @@ int32_t uShortRangeCommandMode(int32_t shortRangeHandle, uAtClientHandle_t *pAtH
  */
 int32_t uShortRangeDataMode(int32_t shortRangeHandle);
 
-/** Change to extended data mode
- * @note: A delay of 50 ms is required before start of data transmission
- *
- * @param shortRangeHandle  the handle of the short range instance.
- * @return                  zero on success or negative error code
- *                          on failure.
- */
-int32_t uShortRangeSetEdm(int32_t shortRangeHandle);
-
-/** Set a callback for bluetooth connection status.
- *
- * @param shortRangeHandle   the handle of the short range instance.
- * @param pCallback          callback function.
- * @param pCallbackParameter parameter included with the callback.
- * @return                   zero on success or negative error code
- *                           on failure.
- */
-int32_t uShortRangeBtConnectionStatusCallback(int32_t shortRangeHandle,
-                                              void (*pCallback) (int32_t, char *, void *),
-                                              void *pCallbackParameter);
-
-/** Set a callback for SPS connection status.
+/** Set a callback for connection status.
   *
  * @param shortRangeHandle   the handle of the short range instance.
+ * @param type               type of connection, bt or wifi.
  * @param pCallback          callback function.
  * @param pCallbackParameter parameter included with the callback.
  * @return                   zero on success or negative error code
  *                           on failure.
  */
-int32_t uShortRangeSpsConnectionStatusCallback(int32_t shortRangeHandle,
-                                               void (*pCallback) (int32_t, char *, int32_t, int32_t, int32_t, void *),
-                                               void *pCallbackParameter);
+int32_t uShortRangeConnectionStatusCallback(int32_t shortRangeHandle,
+                                            int32_t type,
+                                            void (*pCallback) (int32_t, int32_t, void *),
+                                            void *pCallbackParameter);
 
-
-/** Connect to a remote device
- *
- * @param shortRangeHandle the handle of the short range instance.
- * @param pAddress         address in 0012F398DD12p format
-
- * @return            zero on successful connection attempt. There is no
- *                    actual connection until the SPS callback reports
- *                    connected, else negative error code.
- */
-int32_t uShortRangeConnectSps(int32_t shortRangeHandle, const char *pAddress);
-
-
-/** Disconnect a connection
+/** Get the handle of the AT client used by the given
+ * short range instance.
  *
  * @param shortRangeHandle  the handle of the short range instance.
- * @param connHandle  the handle of the connection.
- * @return            zero on success or negative error code
- *                    on failure.
+ * @param pAtHandle         a place to put the AT client handle.
+ * @return                  zero on success else negative error code.
  */
-int32_t uShortRangeDisconnect(int32_t shortRangeHandle, int32_t connHandle);
-
-
+int32_t uShortRangeAtClientHandleGet(int32_t shortRangeHandle,
+                                     uAtClientHandle_t *pAtHandle);
 
 #ifdef __cplusplus
 }
