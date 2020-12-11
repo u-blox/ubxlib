@@ -539,13 +539,13 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     // Get the current value of the data counters, if supported
     y = uCellNetGetDataCounterTx(cellHandle);
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
-        U_PORT_TEST_ASSERT(y == 0);
+        U_PORT_TEST_ASSERT(y >= 0);
     } else {
         U_PORT_TEST_ASSERT(y < 0);
     }
     y = uCellNetGetDataCounterRx(cellHandle);
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
-        U_PORT_TEST_ASSERT(y == 0);
+        U_PORT_TEST_ASSERT(y >= 0);
     } else {
         U_PORT_TEST_ASSERT(y < 0);
     }
