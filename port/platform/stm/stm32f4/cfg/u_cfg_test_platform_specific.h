@@ -134,6 +134,11 @@
 # define U_CFG_TEST_PIN_UART_A_TXD   0x38 // UART3 TX, PD_8 or D1 on a C030 board
 #endif
 
+/** Macro to return the TXD pin for UART A: on some
+ * platforms this is not a simple define.
+ */
+#define U_CFG_TEST_PIN_UART_A_TXD_GET U_CFG_TEST_PIN_UART_A_TXD
+
 /** Rx pin for UART testing: should be connected either to the
  * Tx UART pin or to U_CFG_TEST_PIN_UART_B_TXD if that is
  * not -1.
@@ -141,6 +146,11 @@
 #ifndef U_CFG_TEST_PIN_UART_A_RXD
 # define U_CFG_TEST_PIN_UART_A_RXD   0x39 // UART3 RX, PD_9 or D0 on a C030 board
 #endif
+
+/** Macro to return the RXD pin for UART A: on some
+ * platforms this is not a simple define.
+ */
+#define U_CFG_TEST_PIN_UART_A_RXD_GET U_CFG_TEST_PIN_UART_A_RXD
 
 /** CTS pin for UART testing: should be connected either to the
  * RTS UART pin or to U_CFG_TEST_PIN_UART_B_RTS if that is

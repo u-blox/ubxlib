@@ -69,6 +69,13 @@ void uPortUartDeinit();
  * been opened on the given UART HW block this function returns
  * an error.
  *
+ * IMPORTANT: some platforms, specifically Zephyr, used on NRF53,
+ * do not permit UART pin choices to be made at run-time, only at
+ * compile time.  For such platforms the pins passed in here MUST
+ * be -1 (otherwise an error will be returned) and you MUST check
+ * the README.md for that platform to find out how the pins
+ * are chosen.
+ *
  * @param uart                   the UART HW block to use.
  * @param baudRate               the baud rate to use.
  * @param pReceiveBuffer         a receive buffer to use,
@@ -87,19 +94,27 @@ void uPortUartDeinit();
  *                               then this is the amount of
  *                               memory at pReceiveBuffer.
  * @param pinTx                  the transmit (output) pin,
- *                               a positive integer.
+ *                               a positive integer or -1 if the
+ *                               pin choice has already been
+ *                               determined at compile time.
  * @param pinRx                  the receive (input) pin,
- *                               a positive integer.
+ *                               a positive integer or -1 if the
+ *                               pin choice has already been
+ *                               determined at compile time.
  * @param pinCts                 the CTS (input) flow
  *                               control pin, asserted
  *                               by the modem when it is
  *                               ready to receive
- *                               data; use -1 for none.
+ *                               data; use -1 for none or if
+ *                               the pin choice has already been
+ *                               determined at compile time.
  * @param pinRts                 the RTS (output) flow
  *                               control pin, asserted
  *                               when we are ready to
  *                               receive data from the
- *                               modem; use -1 for none.
+ *                               modem; use -1 for none or if
+ *                               the pin choice has already been
+ *                               determined at compile time.
  * @return                       a UART handle else negative
  *                               error code.
  */

@@ -126,6 +126,11 @@
 # define U_CFG_TEST_PIN_UART_A_TXD   42 // AKA 1.10
 #endif
 
+/** Macro to return the TXD pin for UART A: on some
+ * platforms this is not a simple define.
+ */
+#define U_CFG_TEST_PIN_UART_A_TXD_GET U_CFG_TEST_PIN_UART_A_TXD
+
 /** Rx pin for UART testing: should be connected either to the
  * Tx UART pin or to U_CFG_TEST_PIN_UART_B_TXD if that is
  * connected.
@@ -133,6 +138,11 @@
 #ifndef U_CFG_TEST_PIN_UART_A_RXD
 # define U_CFG_TEST_PIN_UART_A_RXD   43 // AKA 1.11
 #endif
+
+/** Macro to return the RXD pin for UART A: on some
+ * platforms this is not a simple define.
+ */
+#define U_CFG_TEST_PIN_UART_A_RXD_GET U_CFG_TEST_PIN_UART_A_RXD
 
 /** CTS pin for UART testing: should be connected either to the
  * RTS UART pin or to U_CFG_TEST_PIN_UART_B_RTS if that is

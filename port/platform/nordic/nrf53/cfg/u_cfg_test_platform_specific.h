@@ -149,12 +149,44 @@
 # define U_CFG_TEST_PIN_UART_A_TXD   -1
 #endif
 
+/** Macro to return the TXD pin for UART A: note that dashes
+ * in the DTS node name must be converted to underscores.
+ * 0xffffffff is a magic value in nRF speak, mapping to
+ * NRF_UARTE_PSEL_DISCONNECTED.
+ */
+#if (U_CFG_TEST_UART_A < 0)
+# define U_CFG_TEST_PIN_UART_A_TXD_GET -1
+#else
+# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), tx_pin) &&    \
+     (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), tx_pin) < 0xffffffff)
+#  define U_CFG_TEST_PIN_UART_A_TXD_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), tx_pin)
+# else
+#  define U_CFG_TEST_PIN_UART_A_TXD_GET -1
+# endif
+#endif
+
 /** Rx pin for UART testing: should be connected either to the
  * Tx UART pin or to U_CFG_TEST_PIN_UART_B_TXD if that is
  * connected.
  */
 #ifndef U_CFG_TEST_PIN_UART_A_RXD
 # define U_CFG_TEST_PIN_UART_A_RXD   -1
+#endif
+
+/** Macro to return the RXD pin for UART A: note that dashes
+ * in the DTS node name must be converted to underscores.
+ * 0xffffffff is a magic value in nRF speak, mapping to
+ * NRF_UARTE_PSEL_DISCONNECTED.
+ */
+#if (U_CFG_TEST_UART_A < 0)
+# define U_CFG_TEST_PIN_UART_A_RXD_GET -1
+#else
+# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rx_pin) &&    \
+     (DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rx_pin) < 0xffffffff)
+#  define U_CFG_TEST_PIN_UART_A_RXD_GET DT_PROP(DT_NODELABEL(U_CFG_TEST_CAT(uart, U_CFG_TEST_UART_A)), rx_pin)
+# else
+#  define U_CFG_TEST_PIN_UART_A_RXD_GET -1
+# endif
 #endif
 
 /** CTS pin for UART testing: should be connected either to the

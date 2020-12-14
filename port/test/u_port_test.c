@@ -692,11 +692,20 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     eventCallbackData.callCount = 0;
     eventCallbackData.pReceive = gUartBuffer;
 
-    pinCts = U_CFG_TEST_PIN_UART_A_CTS_GET;
-    pinRts = U_CFG_TEST_PIN_UART_A_RTS_GET;
+    // Grab here the pins that would be passed to
+    // uPortUartOpen(), not the _GET versions.  On
+    // a platform where the pins are set at compile
+    // time these values will be -1, ignored.
+    pinCts = U_CFG_TEST_PIN_UART_A_CTS;
+    pinRts = U_CFG_TEST_PIN_UART_A_RTS;
 
+    // Print where the pins are actually connected, that's what
+    // the user needs to know.  On a platform which can set
+    // the pins at run-time the values will be the same
+    // as the pinCts and pinRts values.
     uPortLog("U_PORT_TEST: UART CTS is on pin %d and RTS on"
-             " pin %d", pinCts, pinRts);
+             " pin %d", U_CFG_TEST_PIN_UART_A_CTS_GET,
+             U_CFG_TEST_PIN_UART_A_RTS_GET);
     if (!flowControlOn) {
         uPortLog(" but we're going to ignore them for this"
                  " test.\n");
@@ -1609,14 +1618,26 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    // Run a UART test at 115,200
+#if ((U_CFG_TEST_PIN_UART_A_CTS < 0) && (U_CFG_TEST_PIN_UART_A_CTS_GET >=0)) || \
+    ((U_CFG_TEST_PIN_UART_A_RTS < 0) && (U_CFG_TEST_PIN_UART_A_RTS_GET >=0))
+    // If no CTS/RTS pin is set but the _GET macro returns an actual
+    // pin then that means that the platform we're running on cannot
+    // set the pins at run-time, only at compile-time; here we can only do
+    // whatever those pins have been fixed to do, so run the test with
+    // flow control only.
+    runUartTest(50000, 115200, true);
+#else
+    // Either the platform can set pins at run-time or it can't and the
+    // flow control pins are not connected so run UART test at 115,200
     // without flow control
     runUartTest(50000, 115200, false);
     if ((U_CFG_TEST_PIN_UART_A_CTS_GET >= 0) &&
         (U_CFG_TEST_PIN_UART_A_RTS_GET >= 0)) {
-        // ...and with flow control
+        // Must be on a platform where the pins can be set at run-time
+        // and the flow control pins are connected so test with flow control
         runUartTest(50000, 115200, true);
     }
+#endif
 
     uPortDeinit();
 

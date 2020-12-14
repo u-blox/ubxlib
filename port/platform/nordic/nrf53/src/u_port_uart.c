@@ -310,14 +310,14 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 {
     uErrorCode_t handleOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
 
-    // Not used: on this platform the pins used by a given
-    // UART are defined at compile-time in the Zephyr
-    // Device Tree, for which there is likely an overlay
-    // file in the project directory defining the pins.
-    (void) pinTx;
-    (void) pinRx;
-    (void) pinCts;
-    (void) pinRts;
+    // Note that the pins passed into this function must be set
+    // to -1 since the Zephyr platform used on NRF53 does not
+    // permit the pin assignments to be set at run-time, only at
+    // compile-time.  To obtain the real values for your peripheral
+    // pin assignments take a look at the macros U_CFG_TEST_PIN_UART_A_xxx_GET
+    // (e.g. U_CFG_TEST_PIN_UART_A_TXD_GET) in the file
+    // `u_cfg_test_plaform_specific.h` for this platform, which
+    // demonstrate a mechanism for doing this.
 
     if (gMutex != NULL) {
 
@@ -328,7 +328,8 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
             (uart < sizeof(gUartData) / sizeof(gUartData[0])) &&
             (gUartData[uart].pDevice != NULL) &&
             (pReceiveBuffer == NULL) &&
-            (gUartData[uart].pBuffer == NULL)) {
+            (gUartData[uart].pBuffer == NULL) &&
+            (pinTx < 0) && (pinRx < 0) && (pinCts < 0) && (pinRts < 0)) {
 
             gUartData[uart].pBuffer = k_malloc(U_PORT_UART_BUFFER_SIZE);
 

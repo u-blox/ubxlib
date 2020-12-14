@@ -13,7 +13,7 @@ From tool chain manager start Segger embedded studio (SES) using Open IDE button
 
 
 # SDK Usage
-
+- IMPORTANT: NRF53 uses Zephyr and with Zephyr pin choices for any HW peripheral managed by Zephyr (e.g. UART, I2C, SPI, etc.) are made at compile-time, NOT at run-time.  Look in the `.overlay` file of your build to find/set the pin allocations for these peripherals.  As a reminder, any associated pin assignments in the `cfg` header files for this platform are set to -1 and functions such as `uPortUartOpen()` which take pin assignments as parameters will return an error if passed anything other than -1 for a pin assignment.
 - Always load project from SES using file->Open nRF connect SDK project
 - Select CMakeLists.txt of the application you want to build.
 - Board file should be "{your_sdk_path}/zephyr/boards/arm/nrf5340pdk_nrf5340"
