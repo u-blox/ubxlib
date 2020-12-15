@@ -29,14 +29,17 @@
 #endif
 
 #include "stdlib.h"    // malloc() and free()
-#include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
 #include "u_error_common.h"
 
 #include "u_at_client.h"
+#include "u_short_range_module_type.h"
 #include "u_short_range.h"
+
+#include "u_ble_module_type.h"
+#include "u_ble.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -58,26 +61,26 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Initialise the cellular driver.
+// Initialise the ble driver.
 int32_t uBleInit()
 {
     return uShortRangeInit();
 }
 
-// Shut-down the cellular driver.
+// Shut-down the ble driver.
 void uBleDeinit()
 {
     uShortRangeDeinit();
 }
 
-// Add a cellular instance.
-int32_t uBleAdd(uShortRangeModuleType_t moduleType,
+// Add a ble instance.
+int32_t uBleAdd(uBleModuleType_t moduleType,
                 uAtClientHandle_t atHandle)
 {
-    return uShortRangeAdd(moduleType, atHandle);
+    return uShortRangeAdd((uShortRangeModuleType_t) moduleType, atHandle);
 }
 
-// Remove a cellular instance.
+// Remove a ble instance.
 void uBleRemove(int32_t bleHandle)
 {
     uShortRangeRemove(bleHandle);

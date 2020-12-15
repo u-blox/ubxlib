@@ -41,9 +41,12 @@
 #include "u_cfg_os_platform_specific.h"
 
 #include "u_at_client.h"
+#include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
+
+#include "u_ble_data.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -79,6 +82,7 @@ typedef struct {
 static void UUBTACLC_urc(uAtClientHandle_t atHandle,
                          void *pParameter)
 {
+    (void)pParameter;
     // We only need to read out to clean up for the at client, all data we need
     // will arrive in later events.
     char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
@@ -93,6 +97,7 @@ static void UUBTACLC_urc(uAtClientHandle_t atHandle,
 static void UUBTACLD_urc(uAtClientHandle_t atHandle,
                          void *pParameter)
 {
+    (void)pParameter;
     // We only need to read out to clean up for the at client, all data we need
     // will arrive in later events.
     (void)uAtClientReadInt(atHandle); // Connection handle
@@ -134,7 +139,7 @@ static void btEdmConnectionCallback(int32_t streamHandle, uint32_t type,
         bool send = false;
 
         if (pStatus == NULL) {
-            //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
+            //lint -esym(593, pStatus) Suppress pStatus not being free()ed here
             pStatus = (uBleDataSpsConnection_t *) malloc(sizeof(*pStatus));
         } else {
             send = true;
@@ -159,6 +164,7 @@ static void btEdmConnectionCallback(int32_t streamHandle, uint32_t type,
 
 static void atConnectionEvent(int32_t connHandle, int32_t type, void *pParameter)
 {
+    (void)type;
     uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pParameter;
     bool send = false;
 
@@ -230,7 +236,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
                 }
 
                 if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                    errorCode = uShortRangeConnectionStatusCallback(bleHandle, U_SHORT_RANGE_CONNECTTION_TYPE_BT,
+                    errorCode = uShortRangeConnectionStatusCallback(bleHandle, U_SHORT_RANGE_CONNECTION_TYPE_BT,
                                                                     atConnectionEvent, (void *) pInstance);
                 }
 
@@ -251,7 +257,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
             if (cleanUp) {
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLC:");
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLD:");
-                uShortRangeConnectionStatusCallback(bleHandle, U_SHORT_RANGE_CONNECTTION_TYPE_BT, NULL, NULL);
+                uShortRangeConnectionStatusCallback(bleHandle, U_SHORT_RANGE_CONNECTION_TYPE_BT, NULL, NULL);
                 uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, NULL, NULL, 0, 0);
                 pInstance->pSpsConnectionCallback = NULL;
                 pInstance->pSpsConnectionCallbackParameter = NULL;

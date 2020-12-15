@@ -26,6 +26,56 @@
  */
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A BLE/WIFI MODULE ON ESP32: MISC
+ * -------------------------------------------------------------- */
+
+/** UART HW block with a connected short range module.
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_UART
+# define U_CFG_APP_SHORT_RANGE_UART        2
+#endif
+
+/** Short range module role.
+ * Central: 1
+ * Peripheral: 2
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_ROLE
+# define U_CFG_APP_SHORT_RANGE_ROLE        2
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A BLE/WIFI MODULE ON ESP32: PINS
+ * -------------------------------------------------------------- */
+
+/** Tx pin for UART connected to short range module.  -1 should be
+ * used where there is no such connection.
+ */
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_TXD
+# define U_CFG_APP_PIN_SHORT_RANGE_TXD      27
+#endif
+
+/** Rx pin for UART connected to short range module.  -1 should be
+ * used where there is no such connection.
+ */
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_RXD
+# define U_CFG_APP_PIN_SHORT_RANGE_RXD      14
+#endif
+
+/** CTS pin for UART connected to short range module.  -1 should be
+ * used where there is no such connection.
+ */
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_CTS
+# define U_CFG_APP_PIN_SHORT_RANGE_CTS      -1
+#endif
+
+/** RTS pin for UART connected to short range module.  -1 should be
+ * used where there is no such connection.
+ */
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_RTS
+# define U_CFG_APP_PIN_SHORT_RANGE_RTS      -1
+#endif
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON ESP32: MISC
  * -------------------------------------------------------------- */
 
@@ -92,51 +142,6 @@
  */
 # define U_CFG_APP_PIN_CELL_RTS              -1
 #endif
-
-/** Short range module type, see uShortRangeModuleType_t
- */
-#ifndef U_CFG_APP_SHORT_RANGE_TYPE
-# define U_CFG_APP_SHORT_RANGE_TYPE            2
-#endif
-
-/** Tx pin for UART connected to short range module.
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_TXD
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_TXD   -1
-#endif
-
-/** Rx pin for UART connected to short range module..
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_RXD
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_RXD   -1
-#endif
-
-/** CTS pin for UART connected to short range module..
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_CTS
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_CTS   -1
-#endif
-
-/** RTS pin for UART connected to short range module..
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_RTS
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_RTS   -1
-#endif
-
-/** UART hw block with a connected short range module
- */
-#ifndef U_CFG_APP_SHORT_RANGE_UART
-# define U_CFG_APP_SHORT_RANGE_UART        -1
-#endif
-
-/** Short range module role
- * Central: 1
- * Peripheral: 2
- */
-#ifndef U_CFG_APP_SHORT_RANGE_ROLE
-# define U_CFG_APP_SHORT_RANGE_ROLE        2
-#endif
-
 
 #endif // _U_PORT_APP_PLATFORM_SPECIFIC_H_
 

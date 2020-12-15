@@ -69,15 +69,6 @@ typedef enum {
     U_BLE_ERROR_TEMPORARY_FAILURE = U_ERROR_BLE_MAX - 4  /**< -508 if U_ERROR_BASE is 0. */
 } uBleErrorCode_t;
 
-typedef enum {
-    U_BLE_MODULE_TYPE_NINA_B1 = U_SHORT_RANGE_MODULE_TYPE_NINA_B1, /**< Modules NINA-B1. BLE only*/
-    U_BLE_MODULE_TYPE_ANNA_B1 = U_SHORT_RANGE_MODULE_TYPE_ANNA_B1, /**< Modules ANNA-B1. BLE only */
-    U_BLE_MODULE_TYPE_NINA_B3 = U_SHORT_RANGE_MODULE_TYPE_NINA_B3, /**< Modules NINA-B3. BLE only */
-    U_BLE_MODULE_TYPE_NINA_B4 = U_SHORT_RANGE_MODULE_TYPE_NINA_B4, /**< Modules NINA-B4. BLE only */
-    U_BLE_MODULE_TYPE_NINA_B2 = U_SHORT_RANGE_MODULE_TYPE_NINA_B2, /**< Modules NINA-B2. BLE and Classic */
-    U_BLE_MODULE_TYPE_ODIN_W2 = U_SHORT_RANGE_MODULE_TYPE_ODIN_W2, /**< Modules NINA-B1. Wifi, BLE and Classic */
-} uBleModuleType_t;
-
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -87,12 +78,12 @@ typedef enum {
  *
  * @return zero on success or negative error code on failure.
  */
-int32_t uBleInit();
+int32_t uBleInit(void);
 
 /** Shut-down ble.  All instances will be removed internally
  * with calls to uBleRemove().
  */
-void uBleDeinit();
+void uBleDeinit(void);
 
 /** Add a ble instance.
  *

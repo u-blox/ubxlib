@@ -33,14 +33,12 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
-#include "u_error_common.h"
 #include "u_port_os.h"
 
 #include "u_at_client.h"
 
-#include "u_short_range.h"
+#include "u_short_range_module_type.h"
 #include "u_short_range_private.h"
-
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

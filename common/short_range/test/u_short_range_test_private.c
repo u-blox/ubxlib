@@ -35,10 +35,6 @@
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
-#include "u_cfg_test_platform_specific.h"
-#if ((C_CFG_TEST_SHORT_RANGE_REMOTE_SPS_CONNECT == 1) || (U_CFG_TEST_SHORT_RANGE_UART_MANUAL >= 0))
-#include "u_cfg_os_platform_specific.h"
-#endif
 
 #include "u_error_common.h"
 
@@ -49,6 +45,7 @@
 
 #include "u_at_client.h"
 
+#include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
@@ -92,16 +89,16 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
     // Initialise the porting layer
     if (uPortInit() == 0) {
         uPortLog("U_SHORT_RANGE_TEST_PRIVATE: opening UART %d...\n",
-                 1);
+                 U_CFG_APP_SHORT_RANGE_UART);
         // Open a UART with the standard parameters
-        pParameters->uartHandle = uPortUartOpen(U_CFG_TEST_SHORT_RANGE_UART,
-                                                U_CFG_TEST_BAUD_RATE,
+        pParameters->uartHandle = uPortUartOpen(U_CFG_APP_SHORT_RANGE_UART,
+                                                U_SHORT_RANGE_UART_BAUD_RATE,
                                                 NULL,
-                                                U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                                U_CFG_TEST_PIN_UART_B_TXD,
-                                                U_CFG_TEST_PIN_UART_B_RXD,
-                                                U_CFG_TEST_PIN_UART_B_CTS,
-                                                U_CFG_TEST_PIN_UART_B_RTS);
+                                                U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES,
+                                                U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                                U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                                U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                                U_CFG_APP_PIN_SHORT_RANGE_RTS);
     }
 
     if (pParameters->uartHandle >= 0) {
@@ -127,7 +124,7 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
         } else {
             if (uAtClientInit() == 0) {
                 uPortLog("U_SHORT_RANGE_TEST_PRIVATE: adding an AT client on UART %d...\n",
-                         1);
+                         pParameters->uartHandle);
                 pParameters->atClientHandle = uAtClientAdd(pParameters->uartHandle,
                                                            U_AT_CLIENT_STREAM_TYPE_UART,
                                                            NULL,

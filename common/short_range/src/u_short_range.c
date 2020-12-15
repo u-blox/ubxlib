@@ -45,6 +45,7 @@
 
 #include "u_at_client.h"
 
+#include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
@@ -295,7 +296,7 @@ static int32_t setEchoOff(const uAtClientHandle_t atHandle, uint8_t retries)
 static uShortRangeModuleType_t convert(const char *pStr)
 {
     for (uint32_t i = 0;  i < sizeof (stringToModule) / sizeof (stringToModule[0]);  ++i) {
-        if (!strcmp (pStr, stringToModule[i].pStr)) {
+        if (!strncmp (pStr, stringToModule[i].pStr, strlen(stringToModule[i].pStr))) {
             return stringToModule[i].module;
         }
     }
@@ -462,9 +463,9 @@ int32_t uShortRangeConnectionStatusCallback(int32_t shortRangeHandle, int32_t ty
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL && pCallback != NULL &&
-            (type >= U_SHORT_RANGE_CONNECTTION_TYPE_BT &&
-             type <= U_SHORT_RANGE_CONNECTTION_TYPE_WIFI)) {
-            if (type == U_SHORT_RANGE_CONNECTTION_TYPE_BT) {
+            (type >= U_SHORT_RANGE_CONNECTION_TYPE_BT &&
+             type <= U_SHORT_RANGE_CONNECTION_TYPE_WIFI)) {
+            if (type == U_SHORT_RANGE_CONNECTION_TYPE_BT) {
                 pInstance->pBtConnectionStatusCallback = pCallback;
                 pInstance->pBtConnectionStatusCallbackParameter = pCallbackParameter;
             } else {

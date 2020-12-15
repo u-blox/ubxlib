@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _U_CFG_APP_APP_PLATFORM_SPECIFIC_H_
-#define _U_CFG_APP_APP_PLATFORM_SPECIFIC_H_
+#ifndef _U_CFG_APP_PLATFORM_SPECIFIC_H_
+#define _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 /* Only bring in #includes specifically related to running applications. */
 
@@ -31,6 +31,8 @@
  * -------------------------------------------------------------- */
 
 #define U_CFG_APP_CELL_UART                 0
+#define U_CFG_APP_SHORT_RANGE_UART          0
+#define U_CFG_APP_SHORT_RANGE_ROLE          0
 // Note: pins set to 0 rather than -1 in order to not accidentally
 // disable any code that is conditional on them existing
 #define U_CFG_APP_PIN_CELL_ENABLE_POWER     0
@@ -40,14 +42,11 @@
 #define U_CFG_APP_PIN_CELL_RXD              0
 #define U_CFG_APP_PIN_CELL_CTS              0
 #define U_CFG_APP_PIN_CELL_RTS              0
-#define U_CFG_APP_SHORT_RANGE_TYPE          2
-#define U_CFG_APP_SHORT_RANGE_PIN_UART_TXD  0
-#define U_CFG_APP_SHORT_RANGE_PIN_UART_RXD  0
-#define U_CFG_APP_SHORT_RANGE_PIN_UART_CTS  0
-#define U_CFG_APP_SHORT_RANGE_PIN_UART_RTS  0
-#define U_CFG_APP_SHORT_RANGE_UART          0
-#define U_CFG_APP_SHORT_RANGE_ROLE          0
+#define U_CFG_APP_PIN_SHORT_RANGE_TXD       0
+#define U_CFG_APP_PIN_SHORT_RANGE_RXD       0
+#define U_CFG_APP_PIN_SHORT_RANGE_CTS       0
+#define U_CFG_APP_PIN_SHORT_RANGE_RTS       0
 
-#endif // _U_CFG_APP_APP_PLATFORM_SPECIFIC_H_
+#endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 // End of file

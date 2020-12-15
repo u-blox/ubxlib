@@ -39,16 +39,21 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
+#if defined U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 #include "u_port_os.h"
-#if (U_CFG_TEST_SHORT_RANGE_UART >= 0)
+#endif
+#if (U_CFG_TEST_UART_A >= 0) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE)
 #include "u_port_uart.h"
 #include "u_port_debug.h"
 #include "u_short_range_edm_stream.h"
 #endif
 #include "u_at_client.h"
 
+#include "u_short_range_module_type.h"
 #include "u_short_range.h"
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 #include "u_short_range_private.h"
+#endif
 #include "u_short_range_test_private.h"
 
 /* ----------------------------------------------------------------
@@ -93,21 +98,22 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeInitialisation")
     resetGlobals();
 }
 
-#if (U_CFG_TEST_SHORT_RANGE_UART >= 0)
-
+#if (U_CFG_TEST_UART_A >= 0)
 /** Add a ShortRange instance and remove it again using an uart stream.
+ * Note: no short range operations are actually carried out and
+ * hence this test can be run wherever any UART is defined.
  */
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddUart")
 {
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    gHandles.uartHandle = uPortUartOpen(U_CFG_TEST_SHORT_RANGE_UART,
+    gHandles.uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                         U_CFG_TEST_BAUD_RATE,
                                         NULL,
                                         U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                        U_CFG_TEST_PIN_UART_B_TXD,
-                                        U_CFG_TEST_PIN_UART_B_RXD,
-                                        U_CFG_TEST_PIN_UART_B_CTS,
-                                        U_CFG_TEST_PIN_UART_B_RTS);
+                                        U_CFG_TEST_PIN_UART_A_TXD,
+                                        U_CFG_TEST_PIN_UART_A_RXD,
+                                        U_CFG_TEST_PIN_UART_A_CTS,
+                                        U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(gHandles.uartHandle >= 0);
 
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
@@ -115,7 +121,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddUart")
     U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
 
     uPortLog("U_SHORT_RANGE_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_SHORT_RANGE_UART);
+             U_CFG_TEST_UART_A);
     gHandles.atClientHandle = uAtClientAdd(gHandles.uartHandle, U_AT_CLIENT_STREAM_TYPE_UART,
                                            NULL, U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle != NULL);
@@ -152,19 +158,21 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddUart")
 }
 
 /** Add a ShortRange instance and remove it again using an edm stream.
+ * Note: no short range operations are actually carried out and
+ * hence this test can be run wherever any UART is defined.
  */
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddEdm")
 {
     uPortDeinit();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    gHandles.uartHandle = uPortUartOpen(U_CFG_TEST_SHORT_RANGE_UART,
+    gHandles.uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                         U_CFG_TEST_BAUD_RATE,
                                         NULL,
                                         U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                        U_CFG_TEST_PIN_UART_B_TXD,
-                                        U_CFG_TEST_PIN_UART_B_RXD,
-                                        U_CFG_TEST_PIN_UART_B_CTS,
-                                        U_CFG_TEST_PIN_UART_B_RTS);
+                                        U_CFG_TEST_PIN_UART_A_TXD,
+                                        U_CFG_TEST_PIN_UART_A_RXD,
+                                        U_CFG_TEST_PIN_UART_A_CTS,
+                                        U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(gHandles.uartHandle >= 0);
 
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
@@ -216,8 +224,9 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddEdm")
     uPortDeinit();
     resetGlobals();
 }
+#endif
 
-#if (U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED >= 0)
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 
 /** Short range edm stream add and sent attention command.
  */
@@ -225,7 +234,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddAndDetect")
 {
     uPortDeinit();
     // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                       U_AT_CLIENT_STREAM_TYPE_EDM,
                                                       &gHandles) == 0);
     uShortRangeTestPrivatePostamble(&gHandles);
@@ -238,7 +247,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddAndDetect")
 {
     uPortDeinit();
     // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                       U_AT_CLIENT_STREAM_TYPE_UART,
                                                       &gHandles) == 0);
     uShortRangeTestPrivatePostamble(&gHandles);
@@ -251,7 +260,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeModeChange")
 {
     uPortDeinit();
     // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                       U_AT_CLIENT_STREAM_TYPE_UART,
                                                       &gHandles) == 0);
 
@@ -272,13 +281,13 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeRecover")
 {
     uPortDeinit();
     // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                       U_AT_CLIENT_STREAM_TYPE_EDM,
                                                       &gHandles) == 0);
     uShortRangeTestPrivatePostamble(&gHandles);
 
     // Module in EDM, start up in command mode
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                       U_AT_CLIENT_STREAM_TYPE_UART,
                                                       &gHandles) == 0);
 
@@ -288,13 +297,13 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeRecover")
     uShortRangeTestPrivatePostamble(&gHandles);
 
     // Module in data mode, start up in EDM mode
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                       U_AT_CLIENT_STREAM_TYPE_EDM,
                                                       &gHandles) == 0);
 
     uShortRangeTestPrivatePostamble(&gHandles);
 
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                       U_AT_CLIENT_STREAM_TYPE_UART,
                                                       &gHandles) == 0);
 
@@ -304,7 +313,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeRecover")
     uShortRangeTestPrivatePostamble(&gHandles);
 
     // Module in data mode, start up in command mode
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                       U_AT_CLIENT_STREAM_TYPE_EDM,
                                                       &gHandles) == 0);
 
@@ -312,7 +321,6 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeRecover")
     resetGlobals();
 }
 
-#endif
 #endif
 
 /** Clean-up to be run at the end of this round of tests, just

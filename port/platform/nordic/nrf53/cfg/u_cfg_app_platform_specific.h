@@ -23,9 +23,52 @@
 
 /** @file
  * @brief This header file contains configuration information for
- * an NRF5340 platform that is fed in at application level.  You should
+ * an NRF53 platform that is fed in at application level.  You should
  * override these values as necessary for your particular platform.
  */
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A BLE/WIFI MODULE ON NRF53: MISC
+ * -------------------------------------------------------------- */
+
+/** UART HW block with a connected short range module.
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_UART
+# define U_CFG_APP_SHORT_RANGE_UART       -1
+#endif
+
+/** Short range module role.
+ * Central: 1
+ * Peripheral: 2
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_ROLE
+# define U_CFG_APP_SHORT_RANGE_ROLE        2
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR NRF53: PINS FOR BLE/WIFI (SHORT_RANGE)
+ * -------------------------------------------------------------- */
+
+/* IMPORTANT: the UART pins given here are required for compilation
+ * but make NO DIFFERENCE WHATSOEVER to how the world works.  On this
+ * platform the Zephyr device tree dictates what pins are used
+ * by the UART.
+ */
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_TXD
+# define U_CFG_APP_PIN_SHORT_RANGE_TXD   -1
+#endif
+
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_RXD
+# define U_CFG_APP_PIN_SHORT_RANGE_RXD   -1
+#endif
+
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_CTS
+# define U_CFG_APP_PIN_SHORT_RANGE_CTS   -1
+#endif
+
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_RTS
+# define U_CFG_APP_PIN_SHORT_RANGE_RTS   -1
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON NRF53: MISC
@@ -35,7 +78,7 @@
 /** The UARTE HW block to use inside the NRF53 chip when
  * to communicate with a cellular module.
  */
-# define U_CFG_APP_CELL_UART                 -1
+# define U_CFG_APP_CELL_UART                  1
 #endif
 
 /* ----------------------------------------------------------------
@@ -84,50 +127,6 @@
 
 #ifndef U_CFG_APP_PIN_CELL_RTS
 # define U_CFG_APP_PIN_CELL_RTS               -1
-#endif
-
-/** Short range module type, see uShortRangeModuleType_t
- */
-#ifndef U_CFG_APP_SHORT_RANGE_TYPE
-# define U_CFG_APP_SHORT_RANGE_TYPE            2
-#endif
-
-/** Tx pin for UART connected to short range module.
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_TXD
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_TXD   -1
-#endif
-
-/** Rx pin for UART connected to short range module..
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_RXD
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_RXD   -1
-#endif
-
-/** CTS pin for UART connected to short range module..
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_CTS
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_CTS   -1
-#endif
-
-/** RTS pin for UART connected to short range module..
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_RTS
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_RTS   -1
-#endif
-
-/** UART hw block with a connected short range module
- */
-#ifndef U_CFG_APP_SHORT_RANGE_UART
-# define U_CFG_APP_SHORT_RANGE_UART       -1
-#endif
-
-/** Short range module role
- * Central: 1
- * Peripheral: 2
- */
-#ifndef U_CFG_APP_SHORT_RANGE_ROLE
-# define U_CFG_APP_SHORT_RANGE_ROLE        2
 #endif
 
 #endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_

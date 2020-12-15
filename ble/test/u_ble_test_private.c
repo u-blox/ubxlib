@@ -35,23 +35,21 @@
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
-#include "u_cfg_test_platform_specific.h"
 
 #include "u_error_common.h"
 
 #include "u_port.h"
 #include "u_port_debug.h"
-#include "u_port_os.h"
 #include "u_port_uart.h"
 
 #include "u_at_client.h"
 
+#include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
-#include "u_short_range_private.h"
 
+#include "u_ble_module_type.h"
 #include "u_ble.h"
-#include "u_ble_cfg.h"
 
 #include "u_ble_test_private.h"
 
@@ -91,16 +89,16 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
     // Initialise the porting layer
     if (uPortInit() == 0) {
         uPortLog("U_BLE_TEST_PRIVATE: opening UART %d...\n",
-                 1);
+                 U_CFG_APP_SHORT_RANGE_UART);
         // Open a UART with the standard parameters
-        pParameters->uartHandle = uPortUartOpen(U_CFG_TEST_SHORT_RANGE_UART,
-                                                U_CFG_TEST_BAUD_RATE,
+        pParameters->uartHandle = uPortUartOpen(U_CFG_APP_SHORT_RANGE_UART,
+                                                U_SHORT_RANGE_UART_BAUD_RATE,
                                                 NULL,
-                                                U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                                U_CFG_TEST_PIN_UART_B_TXD,
-                                                U_CFG_TEST_PIN_UART_B_RXD,
-                                                U_CFG_TEST_PIN_UART_B_CTS,
-                                                U_CFG_TEST_PIN_UART_B_RTS);
+                                                U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES,
+                                                U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                                U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                                U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                                U_CFG_APP_PIN_SHORT_RANGE_RTS);
     }
 
     if (pParameters->uartHandle >= 0) {
@@ -108,7 +106,7 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
             pParameters->edmStreamHandle = uShortRangeEdmStreamOpen(pParameters->uartHandle);
             if (pParameters->edmStreamHandle >= 0) {
                 if (uAtClientInit() == 0) {
-                    uPortLog("U_SHORT_RANGE_TEST_PRIVATE: adding an AT client on EDM...\n");
+                    uPortLog("U_BLE_TEST_PRIVATE: adding an AT client on EDM...\n");
                     pParameters->atClientHandle = uAtClientAdd(pParameters->edmStreamHandle,
                                                                U_AT_CLIENT_STREAM_TYPE_EDM,
                                                                NULL,
@@ -137,7 +135,7 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
 
     if (pParameters->bleHandle >= 0) {
         bleHandle = pParameters->bleHandle;
-        uPortLog("U_SHORT_RANGE_TEST_PRIVATE: Detecting...\n");
+        uPortLog("U_BLE_TEST_PRIVATE: Detecting...\n");
         uShortRangeModuleType_t module = uShortRangeDetectModule(bleHandle);
 
         if (module != U_SHORT_RANGE_MODULE_TYPE_INVALID) {
@@ -159,7 +157,7 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
     uPortLog("U_BLE_TEST_PRIVATE: deinitialising ble API...\n");
     uBleDeinit();
 
-    uPortLog("U_SHORT_RANGE_TEST_PRIVATE: removing AT client...\n");
+    uPortLog("U_BLE_TEST_PRIVATE: removing AT client...\n");
     uAtClientRemove(pParameters->atClientHandle);
     uAtClientDeinit();
 

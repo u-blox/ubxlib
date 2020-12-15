@@ -47,6 +47,10 @@
 #include "u_cell_test_cfg.h" // For the cellular test macros
 #endif
 
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+#include "u_short_range_module_type.h"
+#endif
+
 #include "u_network.h"
 #include "u_network_config_ble.h"
 #include "u_network_config_cell.h"
@@ -68,15 +72,15 @@
 
 /** The network configuration for BLE.
  */
-#if (U_CFG_APP_SHORT_RANGE_UART >= 0)
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 static const uNetworkConfigurationBle_t gConfigurationBle = {
     U_NETWORK_TYPE_BLE,
-    U_CFG_APP_SHORT_RANGE_TYPE,
+    U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
     U_CFG_APP_SHORT_RANGE_UART,
-    U_CFG_APP_SHORT_RANGE_PIN_UART_TXD,
-    U_CFG_APP_SHORT_RANGE_PIN_UART_RXD,
-    U_CFG_APP_SHORT_RANGE_PIN_UART_CTS,
-    U_CFG_APP_SHORT_RANGE_PIN_UART_RTS,
+    U_CFG_APP_PIN_SHORT_RANGE_TXD,
+    U_CFG_APP_PIN_SHORT_RANGE_RXD,
+    U_CFG_APP_PIN_SHORT_RANGE_CTS,
+    U_CFG_APP_PIN_SHORT_RANGE_RTS,
     U_CFG_APP_SHORT_RANGE_ROLE, // Peripheral
     true // Enable sps server
 };

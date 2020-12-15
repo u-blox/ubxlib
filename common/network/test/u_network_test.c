@@ -50,7 +50,9 @@
 #include "u_cell_test_cfg.h" // For the cellular test macros
 #endif
 
+#ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
 #include "u_ble_data.h"
+#endif
 
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
@@ -73,7 +75,14 @@
 /** An echo test string.
  */
 static const char gTestString[] = "Hello from u-blox.";
-static const char gRemoteSpsAddress[] = "0012F398DD12p";
+
+#ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
+/** The macro U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS should be set to the
+ * address of the BLE test peer WITHOUT quotation marks, e.g.
+ * U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS=2462ABB6CC42p.  If the macro is
+ * not defined then no network test of BLE will be run.
+ */
+static const char gRemoteSpsAddress[] = U_PORT_STRINGIFY_QUOTED(U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS);
 static const char gTestData[] =  "_____0000:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789"
                                  "_____0100:0123456789012345678901234567890123456789"
@@ -94,7 +103,6 @@ static const char gTestData[] =  "_____0000:012345678901234567890123456789012345
                                  "01234567890123456789012345678901234567890123456789"
                                  "_____0900:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789";
-//#endif
 
 static volatile int32_t gConnHandle = -1;
 static volatile int32_t gBytesReceived = 0;
@@ -102,11 +110,13 @@ static volatile int32_t gErrors = 0;
 static volatile uint32_t gIndexInBlock = 0;
 static const int32_t gTotalData = 4000;
 static volatile int32_t gBytesSent = 0;
+#endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+#ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
 //lint -e{818} Suppress 'pData' could be declared as const:
 // need to follow function signature
 static void dataCallback(int32_t channel, size_t length,
@@ -156,7 +166,7 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
         uPortLog("U_NETWORK: Disconnected connection handle %d.\n", connHandle);
     }
 }
-
+#endif
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -263,6 +273,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
 
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+#ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
             } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
                 uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
                                                     connectionCallback,
@@ -289,6 +300,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                 };
 
                 U_PORT_TEST_ASSERT(gConnHandle == -1);
+#endif
             }
         }
     }

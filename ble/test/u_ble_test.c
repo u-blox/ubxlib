@@ -47,11 +47,15 @@
 
 #include "u_at_client.h"
 
+#include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
+#include "u_ble_module_type.h"
 #include "u_ble.h"
 
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 #include "u_ble_test_private.h"
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -92,8 +96,11 @@ U_PORT_TEST_FUNCTION("[ble]", "bleInitialisation")
     uPortDeinit();
 }
 
-#if (U_CFG_TEST_SHORT_RANGE_UART >= 0)
+#if (U_CFG_TEST_UART_A >= 0)
 /** Add a ble instance and remove it again.
+ * Note: no ble operations are actually carried out and
+ * hence this test can be run wherever any UART is
+ * defined.
  */
 U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
 {
@@ -110,14 +117,14 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    gUartHandle = uPortUartOpen(U_CFG_TEST_SHORT_RANGE_UART,
+    gUartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                 U_CFG_TEST_BAUD_RATE,
                                 NULL,
                                 U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                U_CFG_TEST_PIN_UART_B_TXD,
-                                U_CFG_TEST_PIN_UART_B_RXD,
-                                U_CFG_TEST_PIN_UART_B_CTS,
-                                U_CFG_TEST_PIN_UART_B_RTS);
+                                U_CFG_TEST_PIN_UART_A_TXD,
+                                U_CFG_TEST_PIN_UART_A_RXD,
+                                U_CFG_TEST_PIN_UART_A_CTS,
+                                U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(gUartHandle >= 0);
 
     U_PORT_TEST_ASSERT(uShortRangeEdmStreamInit() == 0);
@@ -128,13 +135,13 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
     U_PORT_TEST_ASSERT(gEdmStreamHandle >= 0);
 
     uPortLog("U_BLE_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_SHORT_RANGE_UART);
+             U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gEdmStreamHandle, U_AT_CLIENT_STREAM_TYPE_EDM,
                                   NULL, U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
     uPortLog("U_BLE_TEST: adding a ble instance on that AT client...\n");
-    bleHandle = uBleAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B3, atClientHandle);
+    bleHandle = uBleAdd(U_BLE_MODULE_TYPE_NINA_B3, (void *)atClientHandle);
     U_PORT_TEST_ASSERT(bleHandle >= 0);
     U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
                                              &atClientHandleCheck) == 0);
@@ -142,7 +149,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
 
     uPortLog("U_BLE_TEST: adding another instance on the same AT client,"
              " should fail...\n");
-    U_PORT_TEST_ASSERT(uBleAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B3, atClientHandle));
+    U_PORT_TEST_ASSERT(uBleAdd(U_BLE_MODULE_TYPE_NINA_B3, atClientHandle));
 
     uPortLog("U_BLE_TEST: removing ble instance...\n");
     uBleRemove(bleHandle);
@@ -166,6 +173,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
 
     uShortRangeEdmStreamClose(gEdmStreamHandle);
     gEdmStreamHandle = -1;
+    uShortRangeEdmStreamDeinit();
 
     uPortUartClose(gUartHandle);
     gUartHandle = -1;
@@ -187,7 +195,8 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
     (void) heapUsed;
 #endif
 }
-#if (U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED >= 0)
+
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 
 static uBleTestPrivate_t gHandles;
 
@@ -196,7 +205,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleDetect")
     int32_t heapUsed;
     heapUsed = uPortGetHeapFree();
 
-    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_BLE_MODULE_TYPE_NINA_B3,
+    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                &gHandles) == 0);
 
     uBleTestPrivatePostamble(&gHandles);

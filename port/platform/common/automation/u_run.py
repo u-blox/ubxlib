@@ -114,6 +114,12 @@ def main(database, instance, filter_string, clean,
     if cellular_module_name:
         defines.append("U_CFG_TEST_CELL_MODULE_TYPE=" + cellular_module_name)
 
+    # If there is a short-range module on this instance, add its
+    # name to the defines list
+    short_range_module_name = u_data.get_short_range_module_for_instance(database, instance)
+    if short_range_module_name:
+        defines.append("U_CFG_TEST_SHORT_RANGE_MODULE_TYPE=" + short_range_module_name)
+
     # Also, when running testing it is best to run the
     # the "port" tests first as, if there's a problem with the
     # port, you want to notice it first.

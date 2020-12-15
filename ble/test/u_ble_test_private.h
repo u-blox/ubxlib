@@ -21,7 +21,7 @@
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
- * are common and private to cellular API testing.
+ * are common and private to ble API testing.
  */
 
 #ifdef __cplusplus

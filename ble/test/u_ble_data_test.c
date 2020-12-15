@@ -47,11 +47,13 @@
 
 #include "u_at_client.h"
 
-#include "u_short_range.h"
+#include "u_short_range_module_type.h"
 #include "u_short_range_edm_stream.h"
+#include "u_ble_module_type.h"
 #include "u_ble.h"
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 #include "u_ble_data.h"
-
+#endif
 #include "u_ble_test_private.h"
 
 /* ----------------------------------------------------------------
@@ -76,8 +78,7 @@ static uBleTestPrivate_t gHandles = { -1, -1, NULL, -1 };
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-#if ((U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED >= 0) && \
-     (U_CFG_TEST_SHORT_RANGE_UART >= 0))
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 
 //lint -e{818} Suppress 'pData' could be declared as const:
 // need to follow function signature
@@ -107,7 +108,7 @@ U_PORT_TEST_FUNCTION("[bleData]", "bleData")
     int32_t heapUsed;
     heapUsed = uPortGetHeapFree();
 
-    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_CONNECTED,
+    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                &gHandles) == 0);
 
 

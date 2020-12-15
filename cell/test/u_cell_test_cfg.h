@@ -21,7 +21,7 @@
 
 /** @file
  * @brief This header file defines configuration values for cellular
- & API testing.
+ * API testing.
  */
 
 /* ----------------------------------------------------------------

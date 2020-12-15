@@ -20,7 +20,7 @@
 /* No #includes allowed here */
 
 /** @file
- * @brief This header file defines the ShortRange APIs,
+ * @brief This header file defines the ShortRange APIs.
  */
 
 #ifdef __cplusplus
@@ -52,10 +52,8 @@ extern "C" {
 #define U_SHORT_RANGE_EVENT_CONNECTED    0
 #define U_SHORT_RANGE_EVENT_DISCONNECTED 1
 
-#define U_SHORT_RANGE_CONNECTTION_TYPE_BT   0
-#define U_SHORT_RANGE_CONNECTTION_TYPE_WIFI 0
-
-
+#define U_SHORT_RANGE_CONNECTION_TYPE_BT   0
+#define U_SHORT_RANGE_CONNECTION_TYPE_WIFI 0
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -73,27 +71,6 @@ typedef enum {
     U_SHORT_RANGE_ERROR_NOT_DETECTED = U_ERROR_SHORT_RANGE_MAX - 4, /**< -4100 if U_ERROR_BASE is 0. */
     U_SHORT_RANGE_ERROR_WRONG_TYPE = U_ERROR_SHORT_RANGE_MAX - 5, /**< -4101 if U_ERROR_BASE is 0. */
 } uShortRangeErrorCode_t;
-
-/** The possible types of short range module.
- * Note: if you add a new module type here, check the
- * U_SHORT_RANGE_PRIVATE_MODULE_xxx macros in u_short_range_private.h
- * to see if they need updating (amongst other things).
- * Note: order is important as these are used to index
- * into a statically defined array in u_short_range_cfg.c.
- */
-//lint -estring(788, uShortRangeModuleType_t::U_SHORT_RANGE_MODULE_TYPE_MAX_NUM) Suppress not used within defaulted switch
-typedef enum {
-    U_SHORT_RANGE_MODULE_TYPE_NINA_B1 = 0, /**< Modules NINA-B1. BLE only*/
-    U_SHORT_RANGE_MODULE_TYPE_ANNA_B1, /**< Modules ANNA-B1. BLE only */
-    U_SHORT_RANGE_MODULE_TYPE_NINA_B3, /**< Modules NINA-B3. BLE only */
-    U_SHORT_RANGE_MODULE_TYPE_NINA_B4, /**< Modules NINA-B4. BLE only */
-    U_SHORT_RANGE_MODULE_TYPE_NINA_B2, /**< Modules NINA-B2. BLE and Classic */
-    U_SHORT_RANGE_MODULE_TYPE_NINA_W13, /**< Modules NINA-W13. Wifi */
-    U_SHORT_RANGE_MODULE_TYPE_NINA_W15, /**< Modules NINA-W15. Wifi, BLE and Classic */
-    U_SHORT_RANGE_MODULE_TYPE_ODIN_W2, /**< Modules NINA-B1. Wifi, BLE and Classic */
-    U_SHORT_RANGE_MODULE_TYPE_MAX_NUM,
-    U_SHORT_RANGE_MODULE_TYPE_INVALID = U_SHORT_RANGE_MODULE_TYPE_MAX_NUM,
-} uShortRangeModuleType_t;
 
 typedef enum {
     U_SHORT_RANGE_SERVER_DISABLED = 0, /**< Disabled status. */

@@ -28,6 +28,65 @@
  */
 
 /* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A BLE/WIFI MODULE ON NRF52: MISC
+ * -------------------------------------------------------------- */
+
+/** UART HW block with a connected short range module.
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_UART
+# define U_CFG_APP_SHORT_RANGE_UART        -1
+#endif
+
+/** Short range module role.
+ * Central: 1
+ * Peripheral: 2
+ */
+#ifndef U_CFG_APP_SHORT_RANGE_ROLE
+# define U_CFG_APP_SHORT_RANGE_ROLE        2
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR NRF52: PINS FOR BLE/WIFI (SHORT_RANGE)
+ * -------------------------------------------------------------- */
+
+/* NRF52 uses a port numbering scheme with 32 GPIO lines
+ * on each port and two ports, so GPIO 0 you will see written as
+ * 0.00, GPIO 31 as 0.31, GPIO 32 as 1.00 and GPIO 48 as 1.15.
+ * Also, if you are using the NRF52 DK board a load of these
+ * have pre-assigned functions so you have to read the back of
+ * the PCB _very_ carefully to find any that are free.  In
+ * general, port 1 is freer than port 0, hence the choices below.
+ */
+
+/** Tx pin for UART connected to short range module.
+ * -1 is used where there is no such connection.
+ */
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_TXD
+# define U_CFG_APP_PIN_SHORT_RANGE_TXD   -1
+#endif
+
+/** Rx pin for UART connected to short range module.
+ * -1 is used where there is no such connection.
+ */
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_RXD
+# define U_CFG_APP_PIN_SHORT_RANGE_RXD   -1
+#endif
+
+/** CTS pin for UART connected to short range module.
+ * -1 is used where there is no such connection.
+ */
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_CTS
+# define U_CFG_APP_PIN_SHORT_RANGE_CTS   -1
+#endif
+
+/** RTS pin for UART connected to short range module.
+ * -1 is used where there is no such connection.
+ */
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_RTS
+# define U_CFG_APP_PIN_SHORT_RANGE_RTS   -1
+#endif
+
+/* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON NRF52: MISC
  * -------------------------------------------------------------- */
 
@@ -46,15 +105,6 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR NRF52: PINS FOR CELLULAR
  * -------------------------------------------------------------- */
-
-/* NRF52 uses a port numbering scheme with 32 GPIO lines
- * on each port and two ports, so GPIO 0 you will see written as
- * 0.00, GPIO 31 as 0.31, GPIO 32 as 1.00 and GPIO 48 as 1.15.
- * Also, if you are using the NRF52 DK board a load of these
- * have pre-assigned functions so you have to read the back of
- * the PCB _very_ carefully to find any that are free.  In
- * general, port 1 is freer than port 0, hence the choices below.
- */
 
 #ifndef U_CFG_APP_PIN_CELL_ENABLE_POWER
 /** The NRF52 GPIO output that enables power to the cellular
@@ -106,51 +156,6 @@
  * be used where there is no such connection.
  */
 # define U_CFG_APP_PIN_CELL_RTS               -1
-#endif
-
-/** Short range module type, see uShortRangeModuleType_t
- */
-
-#ifndef U_CFG_APP_SHORT_RANGE_TYPE
-# define U_CFG_APP_SHORT_RANGE_TYPE            2
-#endif
-
-/** Tx pin for UART connected to short range module.
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_TXD
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_TXD   -1
-#endif
-
-/** Rx pin for UART connected to short range module..
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_RXD
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_RXD   -1
-#endif
-
-/** CTS pin for UART connected to short range module..
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_CTS
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_CTS   -1
-#endif
-
-/** RTS pin for UART connected to short range module..
- */
-#ifndef U_CFG_APP_SHORT_RANGE_PIN_UART_RTS
-# define U_CFG_APP_SHORT_RANGE_PIN_UART_RTS   -1
-#endif
-
-/** UART hw block with a connected short range module
- */
-#ifndef U_CFG_APP_SHORT_RANGE_UART
-# define U_CFG_APP_SHORT_RANGE_UART        -1
-#endif
-
-/** Short range module role
- * Central: 1
- * Peripheral: 2
- */
-#ifndef U_CFG_APP_SHORT_RANGE_ROLE
-# define U_CFG_APP_SHORT_RANGE_ROLE        2
 #endif
 
 #endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_

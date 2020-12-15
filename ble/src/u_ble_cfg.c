@@ -32,7 +32,6 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // memset()
 
 #include "u_error_common.h"
 
@@ -40,9 +39,9 @@
 
 #include "u_at_client.h"
 
+#include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
-#include "u_ble.h"
 #include "u_ble_cfg.h"
 
 /* ----------------------------------------------------------------
@@ -252,7 +251,8 @@ int32_t uBleCfgConfigure(int32_t bleHandle,
 
                 if (pCfg->spsServer) {
                     if (getServer(atHandle, U_BLE_CFG_SERVER_TYPE_SPS) < 0) {
-                        errorCode = setServer(atHandle, U_BLE_CFG_SERVER_TYPE_SPS);
+                        errorCode = setServer(atHandle,
+                                              (uShortRangeServerType_t) U_BLE_CFG_SERVER_TYPE_SPS);
                         if (errorCode >= 0) {
                             restartNeeded = true;
                         }

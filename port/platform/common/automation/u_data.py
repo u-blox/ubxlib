@@ -34,8 +34,11 @@ PROMPT = "u_data: "
 # in Markdown format
 DATA_FILE = u_settings.DATA_FILE #DATABASE.md
 
-# The prefix to add to a cellular module to
+# The prefix to add to a cellular module
 CELLULAR_MODULE_TYPE_PREFIX = u_settings.CELLULAR_MODULE_TYPE_PREFIX
+
+# The prefix to add to a short range module
+SHORT_RANGE_MODULE_TYPE_PREFIX = u_settings.SHORT_RANGE_MODULE_TYPE_PREFIX
 
 def get(filename):
     '''Read the instance database from a table in a .md file'''
@@ -222,6 +225,22 @@ def get_cellular_module_for_instance(database, instance):
                     # SARA is assumed to be a cellular module
                     if module.startswith("SARA"):
                         module_name = CELLULAR_MODULE_TYPE_PREFIX + module
+                        break
+
+    return module_name
+
+def get_short_range_module_for_instance(database, instance):
+    '''Return the short-range module that is used in the given instance'''
+    module_name = None
+
+    for row in database:
+        if instance == row["instance"]:
+            if row["modules"]:
+                for module in row["modules"]:
+                    # NINA, ANNA and ODIN are assumed to be short-range modules
+                    if module.startswith("NINA") or module.startswith("ANNA") or \
+                       module.startswith("ODIN"):
+                        module_name = SHORT_RANGE_MODULE_TYPE_PREFIX + module
                         break
 
     return module_name

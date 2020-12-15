@@ -51,6 +51,7 @@ __defaultSettings["CONNECTION_INSTANCE_21"] = \
 # u_data.py
 __defaultSettings["DATA_FILE"] = "DATABASE.md"
 __defaultSettings["CELLULAR_MODULE_TYPE_PREFIX"] = "U_CELL_MODULE_TYPE_"
+__defaultSettings["SHORT_RANGE_MODULE_TYPE_PREFIX"] = "U_SHORT_RANGE_MODULE_TYPE_"
 # u_monitor.py
 # u_pull_request.py
 __defaultSettings["INSTANCE_DIR_PREFIX"] = "u_instance_"
