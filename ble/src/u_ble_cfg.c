@@ -225,16 +225,13 @@ static int32_t restart(const uAtClientHandle_t atHandle, bool store)
 int32_t uBleCfgConfigure(int32_t bleHandle,
                          const uBleCfg_t *pCfg)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uShortRangePrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
 
-    if (gUShortRangePrivateMutex != NULL) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pCfg != NULL) {
-
-            U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
+    if (pCfg != NULL) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+        if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
             pInstance = pUShortRangePrivateGetInstance(bleHandle);
             if (pInstance != NULL) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -272,8 +269,7 @@ int32_t uBleCfgConfigure(int32_t bleHandle,
                     restart(atHandle, true);
                 }
             }
-
-            U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
+            uShortRangeUnlock();
         }
     }
 

@@ -108,7 +108,7 @@ static volatile int32_t gConnHandle = -1;
 static volatile int32_t gBytesReceived = 0;
 static volatile int32_t gErrors = 0;
 static volatile uint32_t gIndexInBlock = 0;
-static const int32_t gTotalData = 4000;
+static const int32_t gTotalData = 400;
 static volatile int32_t gBytesSent = 0;
 #endif
 

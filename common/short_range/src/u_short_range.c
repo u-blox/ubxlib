@@ -363,6 +363,28 @@ void uShortRangeDeinit()
     }
 }
 
+int32_t uShortRangeLock()
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gUShortRangePrivateMutex != NULL) {
+        errorCode = uPortMutexLock(gUShortRangePrivateMutex);
+    }
+
+    return errorCode;
+}
+
+int32_t uShortRangeUnlock()
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gUShortRangePrivateMutex != NULL) {
+        errorCode = uPortMutexUnlock(gUShortRangePrivateMutex);
+    }
+
+    return errorCode;
+}
+
 int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
                        uAtClientHandle_t atHandle)
 {
@@ -370,9 +392,6 @@ int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
     uShortRangePrivateInstance_t *pInstance = NULL;
 
     if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
         // Check parameters
         handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (((size_t) moduleType < gUShortRangePrivateModuleListSize) &&
@@ -422,8 +441,6 @@ int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
                                        restarted, pInstance);
             }
         }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
 
     return handleOrErrorCode;
@@ -434,18 +451,12 @@ void uShortRangeRemove(int32_t shortRangeHandle)
     uShortRangePrivateInstance_t *pInstance;
 
     if (shortRangeHandle != -1 && gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         if (pInstance != NULL) {
             removeShortRangeInstance(pInstance);
             uAtClientRemoveUrcHandler(pInstance->atHandle, "+STARTUP");
             free(pInstance);
         }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
-
     }
 }
 
@@ -457,9 +468,6 @@ int32_t uShortRangeConnectionStatusCallback(int32_t shortRangeHandle, int32_t ty
     uShortRangePrivateInstance_t *pInstance;
 
     if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL && pCallback != NULL &&
@@ -484,8 +492,6 @@ int32_t uShortRangeConnectionStatusCallback(int32_t shortRangeHandle, int32_t ty
 
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
 
     return errorCode;
@@ -497,9 +503,6 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
     uShortRangeModuleType_t module = U_SHORT_RANGE_MODULE_TYPE_INVALID;
 
     if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         if (pInstance != NULL) {
             int32_t errorCode;
@@ -576,7 +579,6 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
                 module = getModule(pInstance->atHandle);
             }
         }
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
 
     return module;
@@ -588,9 +590,6 @@ int32_t uShortRangeAttention(int32_t shortRangeHandle)
     uShortRangePrivateInstance_t *pInstance;
 
     if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
@@ -606,8 +605,6 @@ int32_t uShortRangeAttention(int32_t shortRangeHandle)
                 errorCode = uAtClientUnlock(atHandle);
             }
         }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
 
     return errorCode;
@@ -620,9 +617,6 @@ int32_t uShortRangeDataMode(int32_t shortRangeHandle)
     uAtClientHandle_t atHandle;
 
     if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
@@ -652,8 +646,6 @@ int32_t uShortRangeDataMode(int32_t shortRangeHandle)
                 }
             }
         }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
 
     return errorCode;
@@ -666,9 +658,6 @@ int32_t uShortRangeCommandMode(int32_t shortRangeHandle, uAtClientHandle_t *pAtH
     uAtClientHandle_t atHandle;
 
     if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
@@ -692,8 +681,6 @@ int32_t uShortRangeCommandMode(int32_t shortRangeHandle, uAtClientHandle_t *pAtH
                 errorCode = uAtClientUnlock(atHandle);
             }
         }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
 
     return errorCode;
@@ -707,17 +694,12 @@ int32_t uShortRangeAtClientHandleGet(int32_t shortRangeHandle,
     uShortRangePrivateInstance_t *pInstance;
 
     if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
-
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         if ((pInstance != NULL) && (pAtHandle != NULL)) {
             *pAtHandle = pInstance->atHandle;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
-
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
     }
 
     return errorCode;

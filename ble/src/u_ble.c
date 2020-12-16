@@ -77,20 +77,42 @@ void uBleDeinit()
 int32_t uBleAdd(uBleModuleType_t moduleType,
                 uAtClientHandle_t atHandle)
 {
-    return uShortRangeAdd((uShortRangeModuleType_t) moduleType, atHandle);
+    int32_t errorCode;
+    errorCode = uShortRangeLock();
+
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        errorCode = uShortRangeAdd((uShortRangeModuleType_t) moduleType, atHandle);
+        uShortRangeUnlock();
+    }
+
+    return errorCode;
 }
 
 // Remove a ble instance.
 void uBleRemove(int32_t bleHandle)
 {
-    uShortRangeRemove(bleHandle);
+    int32_t errorCode;
+    errorCode = uShortRangeLock();
+
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        uShortRangeRemove(bleHandle);
+        uShortRangeUnlock();
+    }
 }
 
 // Get the handle of the AT client.
 int32_t uBleAtClientHandleGet(int32_t bleHandle,
                               uAtClientHandle_t *pAtHandle)
 {
-    return uShortRangeAtClientHandleGet(bleHandle, pAtHandle);
+    int32_t errorCode;
+    errorCode = uShortRangeLock();
+
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        errorCode = uShortRangeAtClientHandleGet(bleHandle, pAtHandle);
+        uShortRangeUnlock();
+    }
+
+    return errorCode;
 }
 
 // End of file

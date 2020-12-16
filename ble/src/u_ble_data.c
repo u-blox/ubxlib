@@ -207,7 +207,6 @@ static void dataCallback(int32_t handle, int32_t channel, int32_t length,
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-
 int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
                                             void (*pCallback) (int32_t, char *, int32_t, int32_t, int32_t, void *),
                                             void *pCallbackParameter)
@@ -215,9 +214,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
+    if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
         pInstance = pUShortRangePrivateGetInstance(bleHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -264,7 +261,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
             }
         }
 
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
+        uShortRangeUnlock();
     }
 
     return errorCode;
@@ -276,9 +273,7 @@ int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress)
     uShortRangePrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
 
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
+    if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
         pInstance = pUShortRangePrivateGetInstance(bleHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -305,7 +300,7 @@ int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress)
             }
         }
 
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
+        uShortRangeUnlock();
     }
 
     return errorCode;
@@ -316,9 +311,7 @@ int32_t uBleDataDisconnect(int32_t bleHandle, int32_t connHandle)
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
+    if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
         pInstance = pUShortRangePrivateGetInstance(bleHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -333,7 +326,7 @@ int32_t uBleDataDisconnect(int32_t bleHandle, int32_t connHandle)
             errorCode = uAtClientUnlock(atHandle);
         }
 
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
+        uShortRangeUnlock();
     }
 
     return errorCode;
@@ -344,9 +337,7 @@ int32_t uBleDataSend(int32_t bleHandle, int32_t channel, const char *pData, int3
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
+    if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
         pInstance = pUShortRangePrivateGetInstance(bleHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -354,7 +345,7 @@ int32_t uBleDataSend(int32_t bleHandle, int32_t channel, const char *pData, int3
             errorCode = uShortRangeEdmStreamWrite(pInstance->streamHandle, channel, pData, length);
         }
 
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
+        uShortRangeUnlock();
     }
 
     return errorCode;
@@ -367,9 +358,7 @@ int32_t uBleDataSetCallbackData(int32_t bleHandle,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
-    if (gUShortRangePrivateMutex != NULL) {
-
-        U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
+    if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
         pInstance = pUShortRangePrivateGetInstance(bleHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -389,7 +378,7 @@ int32_t uBleDataSetCallbackData(int32_t bleHandle,
             }
         }
 
-        U_PORT_MUTEX_UNLOCK(gUShortRangePrivateMutex);
+        uShortRangeUnlock();
     }
 
     return errorCode;

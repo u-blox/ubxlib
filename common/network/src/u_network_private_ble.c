@@ -251,7 +251,7 @@ int32_t uNetworkUpBle(int32_t handle,
         cfg.spsServer = pConfiguration->spsServer;
         errorCode = uBleCfgConfigure(pInstance->bleHandle, &cfg);
         if (errorCode >= 0) {
-            errorCode = pInstance->bleHandle;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
     }
 

@@ -93,6 +93,20 @@ int32_t uShortRangeInit();
  */
 void uShortRangeDeinit();
 
+/** Locks the short range mutex.
+ * MUST be called before any of the below functions are!
+ * Will wait for the mutex if already locked.
+ *
+ * @return zero on success or negative error code on failure.
+ */
+int32_t uShortRangeLock();
+
+/** Unlocks the short range mutex.
+ *
+ * @return zero on success or negative error code on failure.
+ */
+int32_t uShortRangeUnlock();
+
 /** Add a short range instance.
  *
  * @param moduleType       the short range module type.
