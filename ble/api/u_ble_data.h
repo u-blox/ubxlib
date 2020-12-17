@@ -42,6 +42,8 @@ extern "C" {
 
 
 /** Sets the callback for connections events
+ * When a connected callback arrives, it is advisable to have a 50 ms delay
+ * before data is sent on the connect.
  *
  * @param bleHandle          the handle of the ble instance.
  * @param pCallback          callback function. Use NULL to deregister the
@@ -86,6 +88,8 @@ int32_t uBleDataSetCallbackData(int32_t bleHandle,
 int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress);
 
 /** Disconnect the connection.
+ * If data has been sent, it is advisable to have a 50 ms delay
+ * before calling disconnect.
  *
  * @param bleHandle   the handle of the ble instance.
  * @param connHandle  the connection handle from the connected event.

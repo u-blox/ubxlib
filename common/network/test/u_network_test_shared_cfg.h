@@ -33,6 +33,10 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** Determine if the given network type supports sockets operations.
+ */
+#define U_NETWORK_TEST_TYPE_HAS_SOCK(type) ((type == U_NETWORK_TYPE_CELL) || (type == U_NETWORK_TYPE_WIFI))
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

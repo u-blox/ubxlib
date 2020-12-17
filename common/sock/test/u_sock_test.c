@@ -920,7 +920,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
+        if ((networkHandle >= 0) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 
@@ -1107,7 +1108,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
+        if ((networkHandle >= 0) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 
@@ -1327,7 +1329,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
+        if ((networkHandle >= 0) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 
@@ -1469,7 +1472,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
+        if ((networkHandle >= 0) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 
@@ -1603,7 +1607,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
+        if ((networkHandle >= 0) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 
@@ -1835,7 +1840,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
+        if ((networkHandle >= 0) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 
@@ -2018,7 +2024,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
+        if ((networkHandle >= 0) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 
@@ -2264,7 +2271,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
+        if ((networkHandle >= 0) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 

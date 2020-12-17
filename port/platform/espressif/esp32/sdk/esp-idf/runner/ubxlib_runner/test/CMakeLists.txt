@@ -5,6 +5,7 @@ set(COMPONENT_SRCS            "../../../../../../../../../example/sockets/main.c
                               "../../../../../../../../../ble/test/u_ble_test.c"
                               "../../../../../../../../../ble/test/u_ble_cfg_test.c"
                               "../../../../../../../../../ble/test/u_ble_data_test.c"
+                              "../../../../../../../../../ble/test/u_ble_test_private.c"
                               "../../../../../../../../../cell/test/u_cell_test.c"
                               "../../../../../../../../../cell/test/u_cell_pwr_test.c"
                               "../../../../../../../../../cell/test/u_cell_cfg_test.c"

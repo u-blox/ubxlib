@@ -39,6 +39,7 @@
 
 #include "u_error_common.h"
 
+#include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
@@ -162,7 +163,8 @@ static void restarted(const uAtClientHandle_t atHandle,
                       void *pParameter)
 {
     (void)atHandle;
-    (void)pParameter;
+    uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pParameter;
+    pInstance->ticksLastRestart = uPortGetTickTimeMs();
     uPortLog("U_SHORT_RANGE: module restart detected\n");
 }
 
@@ -280,9 +282,12 @@ static int32_t setEchoOff(const uAtClientHandle_t atHandle, uint8_t retries)
     int32_t errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
 
     for (uint8_t i = 0; i < retries; i++) {
+        uAtClientDeviceError_t deviceError;
         uAtClientLock(atHandle);
+        uAtClientTimeoutSet(atHandle, 2000);
         uAtClientCommandStart(atHandle, "ATE0");
         uAtClientCommandStopReadResponse(atHandle);
+        uAtClientDeviceErrorGet(atHandle, &deviceError);
         errorCode = uAtClientUnlock(atHandle);
 
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
@@ -439,6 +444,7 @@ int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
 
                 uAtClientSetUrcHandler(atHandle, "+STARTUP",
                                        restarted, pInstance);
+                pInstance->ticksLastRestart = 0;
             }
         }
     }
@@ -491,6 +497,22 @@ int32_t uShortRangeConnectionStatusCallback(int32_t shortRangeHandle, int32_t ty
             }
 
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        } else if (pInstance != NULL && pCallback == NULL &&
+                   (type >= U_SHORT_RANGE_CONNECTION_TYPE_BT &&
+                    type <= U_SHORT_RANGE_CONNECTION_TYPE_WIFI)) {
+            if (type == U_SHORT_RANGE_CONNECTION_TYPE_BT) {
+                pInstance->pBtConnectionStatusCallback = NULL;
+                pInstance->pBtConnectionStatusCallbackParameter = NULL;
+            } else {
+                pInstance->pWifiConnectionStatusCallback = NULL;
+                pInstance->pWifiConnectionStatusCallbackParameter = NULL;
+            }
+
+            if (pInstance->pBtConnectionStatusCallback == NULL &&
+                pInstance->pWifiConnectionStatusCallback == NULL) {
+                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUDPC:");
+                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUDPD:");
+            }
         }
     }
 
@@ -523,7 +545,7 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
                 const char atCommand[] = "\r\nATO2\r\n";
                 uShortRangeEdmStreamAtWrite(pInstance->streamHandle, atCommand, sizeof(atCommand));
                 uPortTaskBlock(60);
-                errorCode = setEchoOff(pInstance->atHandle, 1);
+                errorCode = setEchoOff(pInstance->atHandle, 2);
 
                 if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
                     exitDataMode(pInstance);
@@ -532,7 +554,7 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
                     uPortTaskBlock(60);
                 }
 
-                errorCode = setEchoOff(pInstance->atHandle, 1);
+                errorCode = setEchoOff(pInstance->atHandle, 2);
             }
 
             // We want to be in command mode but the module might be in EDM mode, the
@@ -552,14 +574,18 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
                                                        };
                 uPortUartWrite(pInstance->streamHandle, atCommandRestart, sizeof(atCommandRestart));
 
-                // Worst case restart time
-                uPortTaskBlock(500);
-                errorCode = setEchoOff(pInstance->atHandle, 1);
+                int64_t ticks = uPortGetTickTimeMs();
+
+                while ((ticks > pInstance->ticksLastRestart) &&
+                       (ticks + 2000 > uPortGetTickTimeMs())) {
+                    uPortTaskBlock(100);
+                }
+                errorCode = setEchoOff(pInstance->atHandle, 2);
 
                 // We want to be in command mode but the module might start up in data mode.
                 if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
                     exitDataMode(pInstance);
-                    errorCode = setEchoOff(pInstance->atHandle, 1);
+                    errorCode = setEchoOff(pInstance->atHandle, 2);
                 }
 
                 // Last resort, module is in EDM with startup mode EDM. As the setting and what is expected
@@ -569,8 +595,12 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
                     uPortTaskBlock(50);
                     uPortUartWrite(pInstance->streamHandle, atCommandRestart, sizeof(atCommandRestart));
 
-                    // Worst case restart time
-                    uPortTaskBlock(500);
+                    ticks = uPortGetTickTimeMs();
+
+                    while ((ticks > pInstance->ticksLastRestart) ||
+                           (ticks + 2000 > uPortGetTickTimeMs())) {
+                        uPortTaskBlock(100);
+                    }
                     errorCode = setEchoOff(pInstance->atHandle, 2);
                 }
             }

@@ -20,7 +20,11 @@
 /* No #includes allowed here */
 
 /** @file
- * @brief This header file defines the ShortRange APIs.
+ * @brief This header file defines the ShortRange APIs. These APIs are not
+ * intended to be called directly, they are called only via the ble/wifi
+ * APIs. The ShortRange APIs are NOT generally thread-safe: the ble/wifi
+ * APIs add thread safety by calling uShortRangeLock()/uShortRangeUnlock()
+ * where appropriate.
  */
 
 #ifdef __cplusplus

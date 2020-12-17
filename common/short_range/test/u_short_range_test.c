@@ -240,20 +240,6 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddAndDetect")
     uShortRangeTestPrivatePostamble(&gHandles);
 }
 
-
-/** Short range edm stream add and sent attention command.
- */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddAndDetect")
-{
-    uPortDeinit();
-    // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                      U_AT_CLIENT_STREAM_TYPE_UART,
-                                                      &gHandles) == 0);
-    uShortRangeTestPrivatePostamble(&gHandles);
-    resetGlobals();
-}
-
 /** Short range mode change.
  */
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeModeChange")

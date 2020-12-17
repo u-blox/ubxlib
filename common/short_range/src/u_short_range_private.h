@@ -96,6 +96,7 @@ typedef struct uShortRangePrivateInstance_t {
     int32_t streamHandle; /**< Handle to the underlaying stream. */
     uAtClientStream_t streamType; /**< Stream type. */
     int64_t startTimeMs;     /**< Used while restarting. */
+    int64_t ticksLastRestart;
     uShortRangePrivateConnection_t connections[U_SHORT_RANGE_MAX_CONNECTIONS];
     void (*pBtConnectionStatusCallback) (int32_t, int32_t, void *);
     void *pBtConnectionStatusCallbackParameter;

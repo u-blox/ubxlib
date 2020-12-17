@@ -51,14 +51,14 @@
  * used where there is no such connection.
  */
 #ifndef U_CFG_APP_PIN_SHORT_RANGE_TXD
-# define U_CFG_APP_PIN_SHORT_RANGE_TXD      27
+# define U_CFG_APP_PIN_SHORT_RANGE_TXD      17
 #endif
 
 /** Rx pin for UART connected to short range module.  -1 should be
  * used where there is no such connection.
  */
 #ifndef U_CFG_APP_PIN_SHORT_RANGE_RXD
-# define U_CFG_APP_PIN_SHORT_RANGE_RXD      14
+# define U_CFG_APP_PIN_SHORT_RANGE_RXD      16
 #endif
 
 /** CTS pin for UART connected to short range module.  -1 should be

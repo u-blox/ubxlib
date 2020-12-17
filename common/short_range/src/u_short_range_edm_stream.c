@@ -548,7 +548,22 @@ void uShortRangeEdmStreamClose(int32_t handle)
 
         if ((handle != -1) && (handle == gEdmStream.handle)) {
             gEdmStream.handle = -1;
+            if (gEdmStream.uartHandle >= 0) {
+                uPortUartEventCallbackRemove(gEdmStream.uartHandle);
+            }
             gEdmStream.uartHandle = -1;
+            if (gEdmStream.atEventQueueHandle >= 0) {
+                uPortEventQueueClose(gEdmStream.atEventQueueHandle);
+            }
+            gEdmStream.atEventQueueHandle = -1;
+            if (gEdmStream.btEventQueueHandle >= 0) {
+                uPortEventQueueClose(gEdmStream.btEventQueueHandle);
+            }
+            gEdmStream.btEventQueueHandle = -1;
+            if (gEdmStream.dataEventQueueHandle >= 0) {
+                uPortEventQueueClose(gEdmStream.dataEventQueueHandle);
+            }
+            gEdmStream.dataEventQueueHandle = -1;
             if (gEdmStream.atHandle != NULL) {
                 uAtClientStreamInterceptTx(gEdmStream.atHandle, NULL, NULL);
             }

@@ -116,22 +116,20 @@ static uNetwork_t *pAddInstance()
 static void removeInstance(const uNetwork_t *pNetwork)
 {
     uNetwork_t **ppThis = &gpNetworkListHead;
-    //lint -esym(438, pPrevious) Suppress last value not used
-    uNetwork_t *pPrevious = NULL;
+    uNetwork_t **ppPrevious = &gpNetworkListHead;
+    uNetwork_t *pTmp;
 
     // Find the entry in the list
     while ((*ppThis != NULL) && (*ppThis != pNetwork)) {
-        pPrevious = *ppThis;
+        ppPrevious = ppThis;
         ppThis = &((*ppThis)->pNext);
     }
 
     if (*ppThis != NULL) {
         // Unlink it from the list and free it
-        if (pPrevious != NULL) {
-            pPrevious = (*ppThis)->pNext;
-        }
+        pTmp = (*ppThis)->pNext;
         free(*ppThis);
-        *ppThis = NULL;
+        *ppPrevious = pTmp;
     }
 }
 

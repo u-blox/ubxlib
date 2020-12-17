@@ -36,8 +36,13 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memset(), strcmp()
+#include "ctype.h"     // isprint()
 
 #include "u_cfg_sw.h"
+//lint -efile(766, u_cfg_os_platform_specific.h)
+// Suppress header file not used: one of the defines
+// in it (U_CFG_OS_CLIB_LEAKS) is.
+#include "u_cfg_os_platform_specific.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
@@ -75,6 +80,12 @@
 /** An echo test string.
  */
 static const char gTestString[] = "Hello from u-blox.";
+
+//lint -esym(843, gSystemHeapLost) Suppress could be declared as const, which will be the
+// case if U_CFG_OS_CLIB_LEAKS is not defined.
+/** For tracking heap lost to memory  lost by the C library.
+ */
+static size_t gSystemHeapLost = 0;
 
 #ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
 /** The macro U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS should be set to the
@@ -117,13 +128,51 @@ static volatile int32_t gBytesSent = 0;
  * -------------------------------------------------------------- */
 
 #ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
+
+// Print out text.
+static void print(const char *pStr, size_t length)
+{
+    char c;
+
+    for (size_t x = 0; x < length; x++) {
+        c = *pStr++;
+        if (!isprint((int32_t) c)) {
+            // Print the hex
+            uPortLog("[%02x]", c);
+        } else {
+            // Print the ASCII character
+            uPortLog("%c", c);
+        }
+    }
+}
+
 //lint -e{818} Suppress 'pData' could be declared as const:
 // need to follow function signature
 static void dataCallback(int32_t channel, size_t length,
                          char *pData, void *pParameters)
 {
+#if U_CFG_OS_CLIB_LEAKS
+    int32_t heapClibLoss;
+#endif
+
     (void) channel;
     (void) pParameters;
+
+#if U_CFG_OS_CLIB_LEAKS
+    // Calling C library functions from new tasks will
+    // allocate additional memory which, depending
+    // on the OS/system, may not be recovered;
+    // take account of that here.
+    heapClibLoss = uPortGetHeapFree();
+#endif
+
+    uPortLog("U_NETWORK_TEST: received %d byte(s):\n", length);
+    print(pData, length);
+    uPortLog("\n");
+    uPortLog("U_NETWORK_TEST: expected:\n");
+    print(gTestData + gIndexInBlock, length);
+    uPortLog("\n");
+
     // Compare the data with the expected data
     for (uint32_t x = 0; (x < length); x++) {
         gBytesReceived++;
@@ -136,19 +185,39 @@ static void dataCallback(int32_t channel, size_t length,
             gErrors++;
         }
     }
-    uPortLog("U_NETWORK_TEST: Received %d of data, total %d, error %d\n", length, gBytesReceived,
+    uPortLog("U_NETWORK_TEST: received %d byte(s) of %d, error %d.\n", length, gBytesReceived,
              gErrors);
+
+#if U_CFG_OS_CLIB_LEAKS
+    // Take account of any heap lost through the
+    // library calls
+    gSystemHeapLost += (size_t) (unsigned) (heapClibLoss - uPortGetHeapFree());
+#endif
 }
 
 static void connectionCallback(int32_t connHandle, char *address, int32_t type,
                                int32_t channel, int32_t mtu, void *pParameters)
 {
+#if U_CFG_OS_CLIB_LEAKS
+    int32_t heapClibLoss;
+#endif
+
     (void) address;
     (void) mtu;
     int32_t bytesToSend;
     int32_t *pHandle = (int32_t *)pParameters;
 
+#if U_CFG_OS_CLIB_LEAKS
+    // Calling C library functions from new tasks will
+    // allocate additional memory which, depending
+    // on the OS/system, may not be recovered;
+    // take account of that here.
+    heapClibLoss = uPortGetHeapFree();
+#endif
+
     if (type == 0) {
+        // Wait a moment for the other end may not be immediately ready
+        uPortTaskBlock(100);
         gConnHandle = connHandle;
         while (gBytesSent < gTotalData) {
             // -1 to omit gTestData string terminator
@@ -159,12 +228,18 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
             uBleDataSend(*pHandle, channel, gTestData, bytesToSend);
 
             gBytesSent += bytesToSend;
-            uPortLog("U_NETWORK: %d byte(s) sent.\n", gBytesSent);
+            uPortLog("U_NETWORK_TEST: %d byte(s) sent.\n", gBytesSent);
         }
     } else if (type == 1) {
         gConnHandle = -1;
-        uPortLog("U_NETWORK: Disconnected connection handle %d.\n", connHandle);
+        uPortLog("U_NETWORK_TEST: disconnected connection handle %d.\n", connHandle);
     }
+
+#if U_CFG_OS_CLIB_LEAKS
+    // Take account of any heap lost through the
+    // library calls
+    gSystemHeapLost += (size_t) (unsigned) (heapClibLoss - uPortGetHeapFree());
+#endif
 }
 #endif
 
@@ -273,8 +348,10 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
 
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+
 #ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
             } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
+
                 uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
                                                     connectionCallback,
                                                     &gUNetworkTestCfg[x].handle);
@@ -299,12 +376,14 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                     uPortTaskBlock(100);
                 };
 
+                uBleDataSetCallbackData(gUNetworkTestCfg[x].handle, NULL, NULL);
+                uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle, NULL, NULL);
+
                 U_PORT_TEST_ASSERT(gConnHandle == -1);
 #endif
             }
         }
     }
-
 
     // Remove each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
@@ -318,14 +397,25 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
     uNetworkDeinit();
     uPortDeinit();
 
+#ifndef __XTENSA__
     // Check for memory leaks
+    // TODO: this if'ed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_NETWORK_TEST: 0 byte(s) of heap were lost to"
+    uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
              " the C library during this test and we have"
-             " leaked %d byte(s).\n", heapUsed);
+             " leaked %d byte(s).\n",
+             gSystemHeapLost, heapUsed - gSystemHeapLost);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= (int32_t) gSystemHeapLost));
+#else
+    (void) gSystemHeapLost;
+    (void) heapUsed;
+#endif
 }
 
 /** Clean-up to be run at the end of this round of tests, just
