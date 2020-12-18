@@ -118,6 +118,20 @@ void uBleRemove(int32_t bleHandle);
 int32_t uBleAtClientHandleGet(int32_t bleHandle,
                               uAtClientHandle_t *pAtHandle);
 
+/** Detect the module connected to the handle. Will attempt to change the mode on
+ * the module to communicate with it. No change to UART configuration is done,
+ * so even if this fails with U_BLE_MODULE_TYPE_INVALID, as last attempt to recover,
+ * it could work to re-init the UART on a different baud rate. This should recover
+ * that module if another rate than the default one has been used.
+ * If the response is U_BLE_MODULE_TYPE_UNSUPPORTED, the module repondes as expected but
+ * does not support ble.
+ *
+ * @param bleHandle   the handle of the ble instance.
+ * @return            Module on success, U_BLE_MODULE_TYPE_INVALID or U_BLE_MODULE_TYPE_UNSUPPORTED
+ *                    on failure.
+ */
+uBleModuleType_t uBleDetectModule(int32_t bleHandle);
+
 #ifdef __cplusplus
 }
 #endif

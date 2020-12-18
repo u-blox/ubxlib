@@ -57,6 +57,45 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+uBleModuleType_t shortRangeToBleModule(uShortRangeModuleType_t module)
+{
+    uBleModuleType_t bleModule = U_BLE_MODULE_TYPE_INVALID;
+
+    switch (module) {
+        case U_SHORT_RANGE_MODULE_TYPE_NINA_B1:
+            bleModule = U_BLE_MODULE_TYPE_NINA_B1;
+            break;
+        case U_SHORT_RANGE_MODULE_TYPE_ANNA_B1:
+            bleModule = U_BLE_MODULE_TYPE_ANNA_B1;
+            break;
+        case U_SHORT_RANGE_MODULE_TYPE_NINA_B3:
+            bleModule = U_BLE_MODULE_TYPE_NINA_B3;
+            break;
+        case U_SHORT_RANGE_MODULE_TYPE_NINA_B4:
+            bleModule = U_BLE_MODULE_TYPE_NINA_B4;
+            break;
+        case U_SHORT_RANGE_MODULE_TYPE_NINA_B2:
+            bleModule = U_BLE_MODULE_TYPE_NINA_B2;
+            break;
+        case U_SHORT_RANGE_MODULE_TYPE_NINA_W13:
+            bleModule = U_BLE_MODULE_TYPE_UNSUPPORTED;
+            break;
+        case U_SHORT_RANGE_MODULE_TYPE_NINA_W15:
+            bleModule = U_BLE_MODULE_TYPE_NINA_W15;
+            break;
+        case U_SHORT_RANGE_MODULE_TYPE_ODIN_W2:
+            bleModule = U_BLE_MODULE_TYPE_ODIN_W2;
+            break;
+        case U_SHORT_RANGE_MODULE_TYPE_INVALID:
+        default:
+            bleModule = U_BLE_MODULE_TYPE_INVALID;
+            break;
+    }
+
+    return bleModule;
+
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -115,4 +154,18 @@ int32_t uBleAtClientHandleGet(int32_t bleHandle,
     return errorCode;
 }
 
+uBleModuleType_t uBleDetectModule(int32_t bleHandle)
+{
+    int32_t errorCode;
+    uBleModuleType_t bleModule = U_BLE_MODULE_TYPE_INVALID;
+    errorCode = uShortRangeLock();
+
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        uShortRangeModuleType_t shortRangeModule = uShortRangeDetectModule(bleHandle);
+        bleModule = shortRangeToBleModule(shortRangeModule);
+        uShortRangeUnlock();
+    }
+
+    return bleModule;
+}
 // End of file

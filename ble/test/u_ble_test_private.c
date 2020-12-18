@@ -136,9 +136,9 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
     if (pParameters->bleHandle >= 0) {
         bleHandle = pParameters->bleHandle;
         uPortLog("U_BLE_TEST_PRIVATE: Detecting...\n");
-        uShortRangeModuleType_t module = uShortRangeDetectModule(bleHandle);
+        uBleModuleType_t module = uBleDetectModule(bleHandle);
 
-        if (module != U_SHORT_RANGE_MODULE_TYPE_INVALID) {
+        if (module != U_BLE_MODULE_TYPE_INVALID) {
             uPortLog("U_BLE_TEST_PRIVATE: Module: %d\n", module);
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }

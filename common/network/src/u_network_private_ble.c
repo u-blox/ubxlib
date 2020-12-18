@@ -186,11 +186,11 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
 
                     if (errorCode >= 0) {
                         pInstance->bleHandle = errorCode;
-                        uShortRangeModuleType_t module = uShortRangeDetectModule(pInstance->bleHandle);
+                        uBleModuleType_t module = uBleDetectModule(pInstance->bleHandle);
 
-                        if (module == U_SHORT_RANGE_MODULE_TYPE_INVALID) {
+                        if (module == U_BLE_MODULE_TYPE_INVALID) {
                             errorCode = (int32_t)  U_SHORT_RANGE_ERROR_NOT_DETECTED;
-                        } else if (module != (uShortRangeModuleType_t) pConfiguration->module) {
+                        } else if ((int32_t) module != pConfiguration->module) {
                             errorCode = (int32_t) U_SHORT_RANGE_ERROR_WRONG_TYPE;
                         }
                     }
