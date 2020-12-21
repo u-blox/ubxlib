@@ -22,10 +22,10 @@ The key APIs provided by this repo, and their relationships with each other, are
 - If you wish to bring up a network and don't care about the details, use the common [network](common/network) API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
 - If you wish to use a socket over that network, use the common [sock](common/sock) API.
 - If you wish to use u-blox security, use the common [security](common/security) API.
-- If you wish to take finer control of your [cellular](cell), BLE or Wifi connection, use the respective control API directly.
+- If you wish to take finer control of your [cellular](cell), [ble](ble) or Wifi connection, use the respective control API directly.
 - GNSS is used via the gnss API.
 - The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](common/short_range) API.
-- The [AT client](common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
+- The [at_client](common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
 - The ubx API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
 - The [port](port) API permits all of the above to run on different hosts.
 
@@ -44,9 +44,9 @@ The key APIs provided by this repo, and their relationships with each other, are
 | SARA-U2 series<br />SARA-R41x series<br />| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />|Yes|Yes|Yes|Yes|
 | SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[security](common/security "security API")|Yes|Yes|Yes|Yes|
 | SARA-R510M8S            | gnss|TBD|TBD|TBD|TBD|
-|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|ble<br />[network](common/network "network API")|Yes|Yes|N/A|N/A|
+|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](ble "ble API")<br />[network](common/network "network API")|Yes|Yes|N/A|N/A|
 |NINA-W13|wifi<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q1 2021|N/A|Q1 2021|Q1 2021|
-|NINA-W15|wifi<br />ble<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q1 2021|N/A|N/A|N/A|
+|NINA-W15|wifi<br />[ble](ble "ble API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q1 2021|N/A|N/A|N/A|
 |M8 series|gnss|TBD|TBD|TBD|TBD|
 
 # What Is Included
