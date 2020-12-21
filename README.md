@@ -3,7 +3,7 @@
 # Introduction to ubxlib
 This repository contains the C code support library for [u-blox](https://www.u-blox.com) modules with [Cellular](https://www.u-blox.com/en/cellular-modules) (2G/3G/4G), [Short-Range](https://www.u-blox.com/en/short-range-radio-chips-and-modules) (Bluetooth and WiFi) and [Positioning](https://www.u-blox.com/en/positioning-chips-and-modules) (GNSS) support. The library presents high level C APIs for use in customer applications (e.g. connect to a network, open a TCP socket, establish location, etc.) and implements these APIs on selected popular MCUs, also available inside u-blox modules.
 
-The goal of ubxlib is to deliver a single tested solution with examples which provides uniform easy-to-use APIs across several u-blox products. Releases of ubxlib are tested automatically for all configurations on multiple boards in a [test farm](https://github.com/u-blox/ubxlib_priv/blob/master/port/platform/common/automation/DATABASE.md).
+The goal of ubxlib is to deliver a single tested solution with examples which provides uniform easy-to-use APIs across several u-blox products. Releases of ubxlib are tested automatically for all configurations on multiple boards in a [test farm](https://github.com/u-blox/ubxlib/blob/master/port/platform/common/automation/DATABASE.md).
 
 The easiest way to quickly explore ubxlib is to acquire u-blox EVKs (Evaluation kits) or application boards containing u-blox modules, one with the role of ubxlib host and one with the role of ubxlib peripherial. Connect them together, configure the library code to reflect the way they are connected together and away you go.
 
@@ -19,15 +19,15 @@ The key APIs provided by this repo, and their relationships with each other, are
 
 ![APIs](./readme_images/apis.jpg)
 
-- If you wish to bring up a network and don't care about the details, use the common [network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network) API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
-- If you wish to use a socket over that network, use the common [sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock) API.
-- If you wish to use u-blox security, use the common [security](https://github.com/u-blox/ubxlib_priv/blob/master/common/security) API.
-- If you wish to take finer control of your [cellular](https://github.com/u-blox/ubxlib_priv/blob/master/cell), BLE or Wifi connection, use the respective control API directly.
+- If you wish to bring up a network and don't care about the details, use the common [network](https://github.com/u-blox/ubxlib/blob/master/common/network) API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
+- If you wish to use a socket over that network, use the common [sock](https://github.com/u-blox/ubxlib/blob/master/common/sock) API.
+- If you wish to use u-blox security, use the common [security](https://github.com/u-blox/ubxlib/blob/master/common/security) API.
+- If you wish to take finer control of your [cellular](https://github.com/u-blox/ubxlib/blob/master/cell), BLE or Wifi connection, use the respective control API directly.
 - GNSS is used via the gnss API.
-- The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](https://github.com/u-blox/ubxlib_priv/blob/master/common/short_range) API.
-- The [AT client](https://github.com/u-blox/ubxlib_priv/blob/master/common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
+- The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](https://github.com/u-blox/ubxlib/blob/master/common/short_range) API.
+- The [AT client](https://github.com/u-blox/ubxlib/blob/master/common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
 - The ubx API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
-- The [port](https://github.com/u-blox/ubxlib_priv/blob/master/port) API permits all of the above to run on different hosts.
+- The [port](https://github.com/u-blox/ubxlib/blob/master/port) API permits all of the above to run on different hosts.
 
 # Which APIs Are Supported On Which u-blox Modules?
 
@@ -41,12 +41,12 @@ The key APIs provided by this repo, and their relationships with each other, are
 |                         |              |**RTOS / SDK**||||
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS|Zephyr|
 | **ubxlib peripherals**   |**API**       |||||
-| SARA-U2 series<br />SARA-R41x series<br />| [cell](https://github.com/u-blox/ubxlib_priv/blob/master/cell "cell API")<br />[network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network "network API")<br />[sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock "sock API")<br />|Yes|Yes|Yes|Yes|
-| SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](https://github.com/u-blox/ubxlib_priv/blob/master/cell "cell API")<br />[network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network "network API")<br />[sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock "sock API")<br />[security](https://github.com/u-blox/ubxlib_priv/blob/master/common/security "security API")|Yes|Yes|Yes|Yes|
+| SARA-U2 series<br />SARA-R41x series<br />| [cell](https://github.com/u-blox/ubxlib/blob/master/cell "cell API")<br />[network](https://github.com/u-blox/ubxlib/blob/master/common/network "network API")<br />[sock](https://github.com/u-blox/ubxlib/blob/master/common/sock "sock API")<br />|Yes|Yes|Yes|Yes|
+| SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](https://github.com/u-blox/ubxlib/blob/master/cell "cell API")<br />[network](https://github.com/u-blox/ubxlib/blob/master/common/network "network API")<br />[sock](https://github.com/u-blox/ubxlib/blob/master/common/sock "sock API")<br />[security](https://github.com/u-blox/ubxlib/blob/master/common/security "security API")|Yes|Yes|Yes|Yes|
 | SARA-R510M8S            | gnss|TBD|TBD|TBD|TBD|
-|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|ble<br />[network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network "network API")|Yes|Yes|N/A|N/A|
-|NINA-W13|wifi<br />[network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network "network API")<br />[sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock "sock API")|Q1 2021|N/A|Q1 2021|Q1 2021|
-|NINA-W15|wifi<br />ble<br />[network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network "network API")<br />[sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock "sock API")|Q1 2021|N/A|N/A|N/A|
+|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|ble<br />[network](https://github.com/u-blox/ubxlib/blob/master/common/network "network API")|Yes|Yes|N/A|N/A|
+|NINA-W13|wifi<br />[network](https://github.com/u-blox/ubxlib/blob/master/common/network "network API")<br />[sock](https://github.com/u-blox/ubxlib/blob/master/common/sock "sock API")|Q1 2021|N/A|Q1 2021|Q1 2021|
+|NINA-W15|wifi<br />ble<br />[network](https://github.com/u-blox/ubxlib/blob/master/common/network "network API")<br />[sock](https://github.com/u-blox/ubxlib/blob/master/common/sock "sock API")|Q1 2021|N/A|N/A|N/A|
 |M8 series|gnss|TBD|TBD|TBD|TBD|
 
 # What Is Included
@@ -107,7 +107,7 @@ Configuration information for the examples and the tests can be found in the `cf
 
 |  Technology  | Example | Availability |
 |--------------|----------|--------------|
-| Cellular/Wifi | The [socket](https://github.com/u-blox/ubxlib_priv/blob/master/example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](https://github.com/u-blox/ubxlib_priv/blob/master/common/network "network API") and [sock](https://github.com/u-blox/ubxlib_priv/blob/master/common/sock "sock API") APIs.  | Q4 2020 / Q1 2021 |
+| Cellular/Wifi | The [socket](https://github.com/u-blox/ubxlib/blob/master/example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](https://github.com/u-blox/ubxlib/blob/master/common/network "network API") and [sock](https://github.com/u-blox/ubxlib/blob/master/common/sock "sock API") APIs.  | Q4 2020 / Q1 2021 |
 | Cellular     | End-to-end security | Q1 2021|
 | Cellular     | CellLocate | Q2 2021|
 | Bluetooth    | SPS (serial port service) | Q1 2021|
