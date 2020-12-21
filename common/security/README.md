@@ -4,7 +4,6 @@ This directory contains the API to the u-blox security features which provide un
 |  Module        | Seal  | End To End  | Chip to Chip  |
 | :-------------:| :---: | :---------: | :-----------: |
 | SARA-R5        |   Y   |      Y      |       Y       |
-| SARA-R412M-x3B |   Y   |      Y      |               |
 
 # Usage
 The `api` directory defines the security API.  The `test` directory contains tests for that API that can be run on any platform.
