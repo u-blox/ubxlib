@@ -648,7 +648,14 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     }
     uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over UDP.\n", y);
     U_PORT_TEST_ASSERT(y == sizeof(gAllChars));
-    U_PORT_TEST_ASSERT(gDataCallbackCalledUdp);
+    if (!gDataCallbackCalledUdp) {
+        uPortLog("U_CELL_SOCK_TEST: *** WARNING *** the data callback"
+                 " was not called during the test.  This can happen"
+                 " legimitately if all the reads from the module"
+                 " happened to coincide with data receptions and so"
+                 " the URC was not involved.  However if it happens"
+                 " too often something may be wrong.\n");
+    }
     U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
     U_PORT_TEST_ASSERT(memcmp(pBuffer, gAllChars, sizeof(gAllChars)) == 0);
     U_PORT_TEST_ASSERT(memcmp(&(address.ipAddress),
@@ -715,7 +722,14 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     }
     uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over TCP, received"
              " in %d receive call(s).\n", y, count);
-    U_PORT_TEST_ASSERT(gDataCallbackCalledTcp);
+    if (!gDataCallbackCalledTcp) {
+        uPortLog("U_CELL_SOCK_TEST: *** WARNING *** the data callback"
+                 " was not called during the test.  This can happen"
+                 " legimitately if all the reads from the module"
+                 " happened to coincide with data receptions and so"
+                 " the URC was not involved.  However if it happens"
+                 " too often something may be wrong.\n");
+    }
     U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
     // Compare the data
     U_PORT_TEST_ASSERT(memcmp(pBuffer, gAllChars,

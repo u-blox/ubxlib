@@ -361,12 +361,15 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                 U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
                                                       gRemoteSpsAddress) == 0);
 
-                while (gBytesSent < gTotalData) {
+                y = 100;
+                while ((gBytesSent < gTotalData) && (y > 0)) {
                     uPortTaskBlock(100);
+                    y--;
                 };
                 // All sent, give some time to finish receiving
                 uPortTaskBlock(2000);
 
+                U_PORT_TEST_ASSERT(gBytesSent == gTotalData);
                 U_PORT_TEST_ASSERT(gTotalData == gBytesReceived);
                 U_PORT_TEST_ASSERT(gErrors == 0);
 
