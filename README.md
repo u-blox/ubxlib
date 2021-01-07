@@ -83,7 +83,7 @@ In order for u-blox to support multiple platforms with this code there is also a
     +---clib
     +---platform               <-- look here for the supported MCU platforms
         +---<vendor> e.g. espressif
-        ¦   +---<sdk> e.g. esp32
+        ¦   +---<chipset> e.g. esp32
         ¦       +---app        <-- main() for this platform: runs all examples and tests
         ¦       +---cfg        <-- platform specific config (pins, OS things, chip HW blocks)
         ¦       +---src        <-- implementation of the port API for this platform
