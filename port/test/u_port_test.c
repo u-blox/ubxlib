@@ -879,6 +879,7 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     int32_t stackMinFreeBytes;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    char ubStr[] = "u-blox";
 #if U_CFG_OS_CLIB_LEAKS
     int32_t heapClibLoss;
 #endif
@@ -887,11 +888,13 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    // The first time rand() is called the C library may
-    // allocate memory, not something we can do anything
-    // about, so call it once here to move that number
-    // out of our sums.
+    // The first time rand() or strtok() is called the C
+    // library may allocate memory, not something we can
+    // do anything about, so call it once here to move that
+    // number out of our sums.
     rand();
+    strtok(ubStr, "-");
+    
     heapUsed = uPortGetHeapFree();
 
     // Note: deliberately do NO printf()s until we have
