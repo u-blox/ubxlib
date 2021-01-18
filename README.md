@@ -1,3 +1,5 @@
+IMPORTANT IMPORTANT IMPORTANT: at the end of January we will make changes to the platform directory structure, bringing the SDK up to the top level. A preview of what this might look like can be seen in the `preview_platform_restructure_do_not_use` branch.
+
 ![u-blox logo](./readme_images/ublox-logo.png)
 
 # Introduction to ubxlib

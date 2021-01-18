@@ -1,3 +1,5 @@
+IMPORTANT: the directory structure under platform remains subject to change as we add new platforms.  We aim to settle this structure as `ubxlib` approaches release 1.0.0, likely towards the end of 2021.
+
 # Introduction
 These directories provide the implementation of the porting layer on supported MCUs from various vendors.  The `common` directory contains anything that is common across platforms e.g. the `runner` code which allows any or all of the examples/tests to be run.
 
