@@ -6,3 +6,4 @@ Under each `sdk` directory you will find a `runner` build.  This builds and runs
 # Examples
 
 - `sockets` contains an example of how to bring up a network (cellular or Wifi) and use it make a UDP or TCP socket connection to a server on the public internet.
+- `security` contains examples of how to use the u-blox security features.

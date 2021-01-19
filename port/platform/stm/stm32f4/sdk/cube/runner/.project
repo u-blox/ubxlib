@@ -42,6 +42,11 @@
 			<locationURI>$%7BUBX_PATH%7D/example/sockets/main.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Example/Security/E2E/e2e_main.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/example/security/e2e/e2e_main.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/Network/u_network.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network.c</locationURI>

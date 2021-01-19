@@ -96,26 +96,26 @@
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
-const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                 U_CFG_TEST_CELL_MODULE_TYPE,
-                                                 NULL, /* SIM pin */
-                                                 NULL, /* APN: accept default */
-                                                 240, /* Connection timeout in seconds */
-                                                 U_CFG_APP_CELL_UART,
-                                                 U_CFG_APP_PIN_CELL_TXD,
-                                                 U_CFG_APP_PIN_CELL_RXD,
-                                                 U_CFG_APP_PIN_CELL_CTS,
-                                                 U_CFG_APP_PIN_CELL_RTS,
-                                                 U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                 U_CFG_APP_PIN_CELL_PWR_ON,
-                                                 U_CFG_APP_PIN_CELL_VINT
-                                                };
+static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
+                                                        U_CFG_TEST_CELL_MODULE_TYPE,
+                                                        NULL, /* SIM pin */
+                                                        NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
+                                                        240, /* Connection timeout in seconds */
+                                                        U_CFG_APP_CELL_UART,
+                                                        U_CFG_APP_PIN_CELL_TXD,
+                                                        U_CFG_APP_PIN_CELL_RXD,
+                                                        U_CFG_APP_PIN_CELL_CTS,
+                                                        U_CFG_APP_PIN_CELL_RTS,
+                                                        U_CFG_APP_PIN_CELL_ENABLE_POWER,
+                                                        U_CFG_APP_PIN_CELL_PWR_ON,
+                                                        U_CFG_APP_PIN_CELL_VINT
+                                                       };
 #else
-const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
 #endif
 
 // TODO: Wifi network configuration.
-const uNetworkConfigurationWifi_t gConfigWifi = {U_NETWORK_TYPE_NONE};
+// static const uNetworkConfigurationWifi_t gConfigWifi = {U_NETWORK_TYPE_NONE};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS

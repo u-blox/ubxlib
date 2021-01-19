@@ -894,7 +894,7 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // number out of our sums.
     rand();
     strtok(ubStr, "-");
-    
+
     heapUsed = uPortGetHeapFree();
 
     // Note: deliberately do NO printf()s until we have

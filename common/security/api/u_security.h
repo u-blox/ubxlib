@@ -244,7 +244,7 @@ int32_t uSecurityC2cClose(int32_t networkHandle);
  *                               device profile UID string is visible
  *                               once you have created a device profile
  *                               for your module; it will look something
- *                               like "AgbCtixjwqL-wV3VWpfPyz".
+ *                               like "AgbCtixjwqLjwV3VWpfPyz".
  * @param pDeviceSerialNumberStr the null-terminated device serial
  *                               number string; you may chose what this
  *                               is, noting that there may be an upper

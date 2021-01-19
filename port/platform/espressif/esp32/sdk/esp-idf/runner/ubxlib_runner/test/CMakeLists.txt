@@ -2,6 +2,7 @@
 # source code and map it to the unity framework used by
 # Espressif through the macros in u_port_test.h
 set(COMPONENT_SRCS            "../../../../../../../../../example/sockets/main.c"
+                              "../../../../../../../../../example/security/e2e/e2e_main.c"
                               "../../../../../../../../../ble/test/u_ble_test.c"
                               "../../../../../../../../../ble/test/u_ble_cfg_test.c"
                               "../../../../../../../../../ble/test/u_ble_data_test.c"

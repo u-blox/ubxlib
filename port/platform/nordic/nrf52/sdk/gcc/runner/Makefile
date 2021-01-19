@@ -76,12 +76,13 @@ SRC_FILES += \
   $(NRF5_PATH)/external/freertos/source/stream_buffer.c \
   $(NRF5_PATH)/external/freertos/source/tasks.c \
   $(NRF5_PATH)/external/freertos/source/timers.c \
-  ../../../../../../../example/sockets/main.c \
   $(NRF5_PATH)/external/mbedtls/library/sha256.c \
   $(NRF5_PATH)/external/mbedtls/library/md.c \
   $(NRF5_PATH)/external/mbedtls/library/md_wrap.c \
   $(NRF5_PATH)/external/mbedtls/library/md5.c \
   $(NRF5_PATH)/external/mbedtls/library/aes.c \
+  ../../../../../../../example/sockets/main.c \
+  ../../../../../../../example/security/e2e/e2e_main.c \
   ../../../../../../../ble/src/u_ble.c \
   ../../../../../../../ble/src/u_ble_cfg.c \
   ../../../../../../../ble/src/u_ble_data.c \
