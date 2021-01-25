@@ -2167,19 +2167,18 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                          gTestConfig.packetsReceived,
                          gTestConfig.bytesReceived);
 
-                if (gTestConfig.packetsReceived > 0) {
-                    // Check that we reassembled everything correctly
-                    // If the data is not complete then allow it
-                    // if the number of packets received is one or two
-                    // less than that sent, just to reduce the chances
-                    // of failure due to datagram loss across an RF link
-                    if (!checkAgainstSentData(gSendData,
-                                              gTestConfig.bytesToSend,
-                                              gTestConfig.pBuffer,
-                                              gTestConfig.bytesReceived)) {
-                        U_PORT_TEST_ASSERT((gTestConfig.packetsReceived == y - 1) ||
-                                           (gTestConfig.packetsReceived == y - 2));
-                    }
+                if (gTestConfig.packetsReceived == y) {
+                    // Check that we reassembled everything
+                    U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,
+                                                            gTestConfig.bytesToSend,
+                                                            gTestConfig.pBuffer,
+                                                            gTestConfig.bytesReceived));
+                } else {
+                    // Only print a warning if a packet went missing
+                    // as the chances of failure due to datagram
+                    // loss across an RF link is too high
+                    uPortLog("U_SOCK_TEST: *** WARNING *** %d UDP packet(s)"
+                             " were lost.", y - gTestConfig.packetsReceived);
                 }
 
                 // As a sanity check, make sure that
