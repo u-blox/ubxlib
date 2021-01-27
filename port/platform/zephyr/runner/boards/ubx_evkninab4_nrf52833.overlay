@@ -1,0 +1,11 @@
+&uart1 {
+    status = "okay";
+    current-speed = <115200>;
+    tx-pin = <32>;
+    rx-pin = <7>;
+/* For no flow control set rts-pin and cts-pin to 0xFFFFFFFF (NRF_UARTE_PSEL_DISCONNECTED) and remove the "hw-flow-control" line. */
+    rts-pin = <4>;
+    cts-pin = <30>;
+    hw-flow-control;
+ };
+ 

@@ -10,10 +10,10 @@ from signal import signal, SIGINT                   # For CTRL-C handling
 import threading # For locks
 import u_data # Gets and displays the instance database
 import u_connection # The connection to use for a given instance
-import u_run_esp32 # Build/run stuff on ESP32
-import u_run_nrf52 # Build/run stuff on NRF52
-import u_run_nrf53 # Build/run stuff on NRF53
-import u_run_stm32f4 # Build/run stuff on STM32F4
+import u_run_esp_idf # Build/run stuff on ESP-IDF (i.e. ESP32)
+import u_run_nrf5sdk # Build/run stuff on nRF5 (i.e. NRF52)
+import u_run_zephyr # Build/run stuff on Zephyr (i.e. NRF52/53)
+import u_run_stm32cube # Build/run stuff on STM's Cube IDE (i.e. STM32F4)
 import u_run_lint # Run Lint check
 import u_run_doxygen # Run a Doxygen check
 import u_run_astyle # Run AStyle check
@@ -132,42 +132,42 @@ def main(database, instance, filter_string, clean,
         if connection:
             # Run the type of build/test specified
             platform = u_data.get_platform_for_instance(database, instance)
-            # Get the SDK for the instance (only really needed by NRF52)
-            sdk = u_data.get_sdk_for_instance(database, instance)
             if platform:
                 # Since there will be many different platforms, add
                 # the description from the database to the report
                 description = u_data.get_description_for_instance(database,
                                                                   instance)
+                mcu = u_data.get_mcu_for_instance(database, instance)
+                toolchain = u_data.get_toolchain_for_instance(database, instance)
                 if description:
                     reporter.event(u_report.EVENT_TYPE_BUILD,
                                    u_report.EVENT_NAME,
                                    description)
-                if platform.lower() == "esp32":
-                    return_value = u_run_esp32.run(instance, sdk, connection,
-                                                   connection_lock, platform_lock,
-                                                   clean, defines, ubxlib_dir,
-                                                   working_dir, system_lock,
-                                                   printer, reporter,
-                                                   test_report_handle)
-                elif platform.lower() == "nrf52":
-                    return_value = u_run_nrf52.run(instance, sdk, connection,
-                                                   connection_lock, platform_lock,
-                                                   clean, defines, ubxlib_dir,
-                                                   working_dir, system_lock, printer,
-                                                   reporter, test_report_handle)
-                elif platform.lower() == "nrf53":
-                    return_value = u_run_nrf53.run(instance, sdk, connection,
-                                                   connection_lock, platform_lock,
-                                                   clean, defines, ubxlib_dir,
-                                                   working_dir, system_lock, printer,
-                                                   reporter, test_report_handle)
-                elif platform.lower() == "stm32f4":
-                    return_value = u_run_stm32f4.run(instance, sdk, connection,
+                if platform.lower() == "esp-idf":
+                    return_value = u_run_esp_idf.run(instance, mcu, toolchain, connection,
+                                                     connection_lock, platform_lock,
+                                                     clean, defines, ubxlib_dir,
+                                                     working_dir, system_lock,
+                                                     printer, reporter,
+                                                     test_report_handle)
+                elif platform.lower() == "nrf5sdk":
+                    return_value = u_run_nrf5sdk.run(instance, mcu, toolchain, connection,
                                                      connection_lock, platform_lock,
                                                      clean, defines, ubxlib_dir,
                                                      working_dir, system_lock, printer,
                                                      reporter, test_report_handle)
+                elif platform.lower() == "zephyr":
+                    return_value = u_run_zephyr.run(instance, mcu, toolchain, connection,
+                                                    connection_lock, platform_lock,
+                                                    clean, defines, ubxlib_dir,
+                                                    working_dir, system_lock, printer,
+                                                    reporter, test_report_handle)
+                elif platform.lower() == "stm32cube":
+                    return_value = u_run_stm32cube.run(instance, mcu, toolchain, connection,
+                                                       connection_lock, platform_lock,
+                                                       clean, defines, ubxlib_dir,
+                                                       working_dir, system_lock, printer,
+                                                       reporter, test_report_handle)
                 else:
                     printer.string("{}don't know how to handle platform \"{}\".".    \
                                    format(PROMPT, platform))

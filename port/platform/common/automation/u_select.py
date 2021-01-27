@@ -12,16 +12,15 @@ import u_data # Accesses the instance database
 #
 # The algorithm is as follows:
 #
-#            Changed                                   Action
+#            Changed                                     Action
 #
-# (a)    .md/.jpg etc. file                            ignore.
-# (b)     platform sdk file          run all instances supporting that platform, that SDK.
-# (c)    platform .c .h file         run all instances supporting that platform, one SDK.
-# (d) API/implementation *.c *.h file    run all instances supporting that API (according
+# (a)    .md/.jpg etc. file                              ignore.
+# (b)   platform-specific file             run all instances supporting that platform.
+# (c) API/implementation *.c *.h file    run all instances supporting that API (according
 #                                           to DATABASE.md); if just one then return
-#                                           a filter string for that one, else run all.
-# (e)       any .py file                      run Pylint to check for errors.
-# (f)          any                            run Doxygen to check for errors.
+#                                              a filter string for that one.
+# (d)     any .py file                       run Pylint to check for errors.
+# (e)         any                            run Doxygen to check for errors.
 
 # Prefix to put at the start of all prints
 PROMPT = "u_select: "
@@ -33,7 +32,7 @@ EXT_DISCARD = ["md", "txt", "jpg", "png", "gitignore"]
 EXT_CODE = ["c", "cpp", "h", "hpp"]
 
 # The instances to always run: Lint (with and without logging), Doxygen and AStyle
-INSTANCES_ALWAYS = [[0], [1], [2], [3]]
+INSTANCES_ALWAYS = [[0], [1], [2], [4]]
 
 def instances_string(instances):
     '''Return a string of the form "1.2.3, 0.1"'''
@@ -69,110 +68,139 @@ def discard(paths, extensions):
     return wanted
 
 # Perform check (b)
-def instance_sdk(database, paths, instances):
-    '''Modify an instance list based on SDKs in paths'''
+def instance_platform(database, paths, instances):
+    '''Modify an instance list based on a file being specific to a given platform'''
     instances_local = []
 
     for path in paths:
         del instances_local[:]
+        got_platform = False
+        platform = None
+        got_mcu = False
+        mcu = None
         parts = path.split("/")
         for idx, part in enumerate(parts):
-            if (part == "sdk") and (idx > 0) and (idx + 1 < len(parts)):
-                platform = parts[idx - 1]
-                sdk = parts[idx + 1]
-                instances_local.extend(u_data.                            \
-                   get_instances_for_platform_sdk(database, platform, sdk)[:])
-                if instances_local:
-                    print("{}file {} is in SDK {} ({}) implying"           \
-                          " instance(s) {}.".format(PROMPT, path, sdk,
-                          platform, instances_string(instances_local)))
-                    instances.extend(instances_local[:])
-                break
-
-# Perform check (c)
-def instance_platform(database, paths, extensions, instances):
-    '''Modify an instance list based on .c and .h files in platforms'''
-    instances_local = []
-
-    for path in paths:
-        include = False
-        for string in extensions:
-            if path.endswith(string):
-                include = True
-        if include:
-            del instances_local[:]
-            parts = path.split("/")
-            for idx, part in enumerate(parts):
-                if (part == "platform") and (idx + 2 < len(parts)):
-                    platform = parts[idx + 2]
-                    # These are the possible instances but may include
-                    # multiple SDKs.
-                    possibles = u_data.                                    \
-                                get_instances_for_platform(database, platform)
-                    #  Add just the first SDK for this platform to the list
-                    for possible in possibles:
-                        if (len(possible) == 1) or (possible[1] == 0):
-                            instances_local.append(possible[:])
-                    # We don't need more then one SDK for a .c or .h
-                    # file so check if the platform is already present in
-                    # instances for another SDK of this platform
-                    included = False
-                    for instance in instances:
-                        if platform.lower() == u_data.                     \
-                        get_platform_for_instance(database, instance).lower():
-                            included = True
-                            break
-                    if not included:
-                        # If it is not already included, include
-                        # the SDK 0 instances for this platform
-                        if instances_local:
-                            print("{}file {} is in platform {} implying"   \
-                                  " instance(s) {}.".format(PROMPT, path,
-                                  platform, instances_string(instances_local)))
-                            instances.extend(instances_local[:])
-                    else:
-                        print("{}file {} is in platform {}, an instance"    \
-                              " of which is already included.".
-                              format(PROMPT, path, platform))
-                    break
+            if part == "platform":
+                got_platform = True
+            else:
+                if got_platform and (platform is None):
+                    platform = part
+                else:
+                    if got_platform and (platform is not None):
+                        # Keep checking to see if the file is actually
+                        # MCU-specific
+                        if got_platform and (platform is not None) and (part == "mcu"):
+                            got_mcu = True
+                        else:
+                            if got_platform and (platform is not None) and got_mcu and (mcu is None):
+                                mcu = part
+                            else:
+                                if got_platform and (platform is not None) and got_mcu and \
+                                   (mcu is not None):
+                                    # We have an MCU-specific file
+                                    toolchains = u_data.                                             \
+                                      get_toolchains_for_platform_mcu(database, platform, mcu)
+                                    if (toolchains is None) or (idx + 1 == len(parts)):
+                                        # A file in the <mcu> directory or a sub-directory
+                                        # of a platform which doesn't support a choice of
+                                        # toolchains, so it can be added
+                                        instances_local.extend(u_data.                               \
+                                          get_instances_for_platform_mcu_toolchain(database, platform,
+                                                                                   mcu, None)[:])
+                                        if instances_local:
+                                            print("{}file {} is in platform/MCU {}/{} implying"     \
+                                                  " instance(s) {}.".format(PROMPT, path, platform,
+                                                  mcu, instances_string(instances_local)))
+                                            instances.extend(instances_local[:])
+                                        break
+                                    # The path might be in a sub-directory for a specific
+                                    # toolchain so check for that
+                                    for toolchain in toolchains:
+                                        if toolchain.lower() == part:
+                                            instances_local.extend(u_data.                 \
+                                               get_instances_for_platform_mcu_toolchain(database, \
+                                                                                        platform, \
+                                                                                        mcu,     \
+                                                                                        toolchain)[:])
+                                            if instances_local:
+                                                print("{}file {} is in platform/MCU/toolchain "
+                                                      " {}/{}/{} implying instance(s) {}.".           \
+                                                      format(PROMPT, path, platform, mcu, toolchain, \
+                                                      instances_string(instances_local)))
+                                                instances.extend(instances_local[:])
+                                            break
+                                    break
+        if got_platform and (platform is not None) and (mcu is None):
+            # Something under the platform directory with no MCU directory: since
+            # we can't be sure about the file extensions used by the various gubbins
+            # underneath a platform we have to assume that it is a
+            # significant change
+            instances_for_platform = u_data.                                  \
+               get_instances_for_platform_mcu_toolchain(database, platform, \
+                                                        None, None)[:]
+            if instances_for_platform:
+                print("{}file {} is in platform {} implying"        \
+                      " instance(s) {}.".format(PROMPT, path, platform,
+                      instances_string(instances_for_platform)))
+                instances.extend(instances_for_platform[:])
+            else:
+                # Doesn't even match a known platform: do the lot
+                print("{}file {} is not in a known platform,"     \
+                      " need to do the lot.".format(PROMPT, path))
+                instances.extend(u_data.get_instances_all(database)[:])
+            break
 
 # Perform check (d)
 def instance_api(database, paths, extensions, instances):
     '''Modify an instance list based on .c and .h files in APIs'''
     instances_local = []
     api_saved = None
-    more_than_one = False
+    run_everything = False
+    got_platform = False
+    got_api_src_or_test = False
 
     for path in paths:
         include = False
         for string in extensions:
             if path.endswith(string):
                 include = True
-        if include:
+        if include and not run_everything:
             del instances_local[:]
             parts = path.split("/")
             for idx, part in enumerate(parts):
                 # Check for an api, src or test directory
                 # but not one hanging off a platform
                 # directory
-                if (part in ("api", "src", "test")) and (idx > 0)       \
-                    and u_data.api_in_database(database, parts[idx - 1]):
-                    api = parts[idx - 1]
-                    instances_local.extend(u_data.get_instances_for_api(database, api)[:])
-                    if instances_local:
-                        print("{}file {} is in API \"{}\" implying"    \
-                              " instance(s) {}.".format(PROMPT, path,
-                              api, instances_string(instances_local)))
-                        instances.extend(instances_local[:])
-                    if api_saved and (api != api_saved):
-                        more_than_one = True
-                    api_saved = api
+                if part == "platform":
+                    got_platform = True
                     break
+                if (part in ("api", "src", "test")) and (idx > 0):
+                    got_api_src_or_test = True
+                    if u_data.api_in_database(database, parts[idx - 1]):
+                        api = parts[idx - 1]
+                        instances_local.extend(u_data.get_instances_for_api(database, api)[:])
+                        if instances_local:
+                            print("{}file {} is in API \"{}\" implying"    \
+                                  " instance(s) {}.".format(PROMPT, path,
+                                  api, instances_string(instances_local)))
+                            instances.extend(instances_local[:])
+                        if api_saved and (api != api_saved):
+                            run_everything = True
+                            break
+                        api_saved = api
+                        break
+            if not got_platform and not got_api_src_or_test:
+                # The .c/.h file is not in platform and not under an api/src/test
+                # directory, so can't filter
+                print("{}file {} is not under an API or platform,"    \
+                      " need to run the lot.".format(PROMPT, path))
+                run_everything = True
+                break
 
-    # If the change is in more than one API, don't
-    # return an API string
-    if more_than_one:
-        api_saved = None
+    # If the change is in more than one API, or is outside the
+    # API or platform, return an API string indicating everything
+    if run_everything:
+        api_saved = "*"
 
     return api_saved
 
@@ -192,21 +220,19 @@ def select(database, instances, paths):
     # First throw away any file paths known to be uninteresting
     interesting = discard(paths, EXT_DISCARD)
 
-    # Add the platforms that must be run because
-    # an interesting file is in an SDK directory of a
-    # platform
-    instance_sdk(database, interesting, instances_local)
-
-    # Add the platforms that must be run because
-    # a file with an "EXT_CODE" extension is in a
-    # [non-SDK] directory of a platform
-    instance_platform(database, interesting,
-                      EXT_CODE, instances_local)
+    # Add the instances that must be run because
+    # an interesting file is platform-specific
+    instance_platform(database, interesting, instances_local)
 
     # Add the instances that must be run because a file
     # path includes a file in an API that an instance uses
     filter_string = instance_api(database, interesting,
                                  EXT_CODE, instances_local)
+
+    # If the filter string is a wildcard, add everything
+    if filter_string == "*":
+        instances_local.extend(u_data.get_instances_all(database)[:])
+        filter_string = None
 
     # Check if PyLint needs to be run
     print("{}checking if pylint needs to be run...".format(PROMPT))

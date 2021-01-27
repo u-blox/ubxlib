@@ -1,0 +1,3 @@
+[submodule "port/platform/zephyr/custom_boards"]
+	path = port/platform/zephyr/custom_boards
+	url = https://github.com/u-blox/u-blox-sho-OpenCPU

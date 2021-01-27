@@ -218,8 +218,8 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
     manager = Manager()
     system_lock = manager.RLock()
 
-    # It is possible, on some platforms, for the SDKs
-    # to be a bit pants at running in multiple instances
+    # It is possible for some platforms to be a bit
+    # pants at running in multiple instances
     # hence here we create a lock per platform and pass it
     # into the instance for it to be able to manage
     # multiplicity if required
@@ -304,12 +304,12 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
                     process["platform_lock"] = platform_lock["lock"]
                     break
             # START: HACK HACK HACK HACK HACK
-            # NRF52 and NRF53 share tools but are, of course, distinct
-            # platforms.  They NEED to share a platform lock so here
-            # we attach NRF53 to NRF52's platform lock
-            if process["platform"].lower() == "nrf53":
+            # NRF5/NRF52 and Zephyr/NRF53 share tools but are, of course,
+            # distinct platforms.  They NEED to share a platform lock so here
+            # we attach NRF5 to Zephyr's platform lock
+            if process["platform"].lower() == "zephyr":
                 for platform_lock in platform_locks:
-                    if platform_lock["platform"].lower() == "nrf52":
+                    if platform_lock["platform"].lower() == "nrf5":
                         process["platform_lock"] = platform_lock["lock"]
                         break
             # END: HACK HACK HACK HACK HACK

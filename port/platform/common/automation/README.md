@@ -46,7 +46,7 @@ The text is intended to be that submitted with the pull request.  When `u_pull_r
 
 So, when submitting a pull request if a such a line of text is included with it then the u-blox Jenkins configuration will parse the text, find the `test:` line and conduct those tests on the pull request, returning the results to Github.
 
-Note: on the ESP32 platform, which comes with its own unit test implementation, the filter string must be the full name of a category, e.g. `port` or `example`, partial matches are not supported.
+Note: on the ESP-IDF platform, which comes with its own unit test implementation, the filter string must be the full name of a category, e.g. `port` or `example`, partial matches are not supported.
 
 If a line starting with `test:` is *not* included (the usual case) then the file list must be provided.  Again, when `u_pull_request.py` is called from Jenkins, `Jenkinsfile`, will grab the list of changed files from Github.  `u_pull_request.py` then calls the `u_select.py` script to determine what tests should be run on which instance IDs to verify that the pull request is good.  See the comments in `u_select.py` to determine how it does this.  It is worth noting that the list of tests/instances selected by `u_select.py` will always be the largest one: e.g. if a `.h` file in the `port` API of `ubxlib` has been changed then all the `port` tests on all instance IDs will be selected.  To narrow the tests/instances that are run, use the `test:` line to specify it yourself.  Note that though you can edit the pull request submission text unfortunately this does not retrigger testing, only pushing another commit to the pull request will do that.
 
@@ -89,17 +89,17 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 
 `u_run_doxygen.py`: run Doxygen to check that there are no documentation errors; called by `u_run.py`.
 
-`u_run_esp32.py`: build/download/run tests on the ESP32 platform; called by `u_run.py`.
+`u_run_esp_idf.py`: build/download/run tests for the Espressif ESP-IDF platform, e.g. for the ESP32 MCU; called by `u_run.py`.
 
 `u_run_lint.py`: run a Lint check; called by `u_run.py`.  NOTE: if you add a NEW DIRECTORY containing a PLATFORM INDEPENDENT `.c` or `.cpp` file anywhere in the `ubxlib` tree YOU MUST ALSO ADD it to the `LINT_DIRS` variable of this script.  All the Lint error/warning/information messages available for GCC are included with the exception of those suppressed by the `ubxlib.lnt` configuration file kept in the `port\platform\lint` directory.  To run Lint yourself you must install a GCC compiler and `flexelint`: read `u_run_lint.py` to determine how to go about using the tools.
 
-`u_run_nrf52.py`: build/download/run tests on the NRF52 platform; called by `u_run.py`.
+`u_run_nrf5sdk.py`: build/download/run tests on the Nordic nRF5 platform, e.g. for the NRF52 MCU; called by `u_run.py`.
 
-`u_run_nrf53.py`: build/download/run tests on the NRF53 platform; called by `u_run.py`.
+`u_run_zephyr.py`: build/download/run tests on the Zephyr platform, e.g. for the NRF53 MCU; called by `u_run.py`.
 
 `u_run_pylint.py`: run Pylint on all of these Python automation scripts; called by `u_run.py`.
 
-`u_run_stm32f4.py`: build/download/run tests on the STM2F4 platform; called by `u_run.py`.
+`u_run_stm32cube.py`: build/download/run tests on the ST Microelectronic's STM32Cube platform, e.g. for an STM32F4 MCU; called by `u_run.py`.
 
 `u_select.py`: see above.
 

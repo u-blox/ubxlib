@@ -1,0 +1,22 @@
+/* This configuration is specifically modified for the tests as run on a NRF52840 board wired in the u-blox test system. */
+/* For default settings, refer to the file of the same name in the boards/arm directory of Zephyr. */
+&uart0 {
+    status = "okay";
+    current-speed = <115200>;
+    tx-pin = <44>;
+    rx-pin = <43>;
+/* For no flow control set rts-pin and cts-pin to 0xFFFFFFFF (NRF_UARTE_PSEL_DISCONNECTED) and remove the "hw-flow-control" line. */
+    rts-pin = <0xFFFFFFFF>;
+    cts-pin = <0xFFFFFFFF>;
+/*    hw-flow-control; */
+};
+&uart1 {
+    status = "okay";
+    current-speed = <115200>;
+    tx-pin = <42>;
+    rx-pin = <45>;
+/* For no flow control set rts-pin and cts-pin to 0xFFFFFFFF (NRF_UARTE_PSEL_DISCONNECTED) and remove the "hw-flow-control" line. */
+    rts-pin = <0xFFFFFFFF>;
+    cts-pin = <0xFFFFFFFF>;
+/*    hw-flow-control; */
+};

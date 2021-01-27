@@ -39,6 +39,10 @@ node('TEST-gb-cmb-dt-022')
                 // Get the merged pull request into a cleaned directory
                 scmMap = checkout scm
 
+                // Recurse submodules
+                println "Recursing submodules..."
+                bat "git submodule update --init"
+
                 // For debug purposes, print out the entries in the scm
                 // map returned by checkout
                 println "checkout() returned: " + scmMap.each{entry -> "$entry.key = $entry.value"}

@@ -9,14 +9,15 @@ import u_settings
 # The instance data must be the only table in the file
 # and must be in Markdown format as follows:
 #
-# | instance | description | platform | sdk | module(s) | APIs supported | #defines |
+# | instance | description | MCU | platform | toolchain | module(s) | APIs supported | #defines |
 #
 # ... where:
 #
 # instance          is a set of integers x or x.y or x.y.z,
 # description       is a textual description,
-# platform          is the name of the platform, e.g. ESP32 or NRF52 or STM32F4,
-# sdk               is the name of an SDK for that platform, e.g. SES or GCC for NRF52,
+# MCU               is the name of the MCU, e.g. ESP32 or NRF52 or STM32F4,
+# platform          is the name of the platform, e.g. ESP-IDF or STM32Cube,
+# toolchain         is the name of a toolchain for that platform, e.g. SES or GCC for nRF5,
 # module(s)         are the modules connected to the MCU on that platform,
 #                   e.g. SARA-R412M-03B, NINA-B3, ZOE-M8; where there is more
 #                   than one spaces should be used as separators,
@@ -25,7 +26,7 @@ import u_settings
 # #defines          are the #defines to be applied for this instance, separated by
 #                   spaces, e.g. MY_FLAG U_CFG_APP_PIN_CELLULAR_ENABLE_POWER=-1
 #
-# The outer column separators may be omitted.
+# The outer column separators may be omitted, case is ignored.
 
 # Prefix to put at the start of all prints
 PROMPT = "u_data: "
@@ -79,22 +80,26 @@ def get(filename):
                         row["description"] = stripped
                         index += 1
                     elif index == 2:
+                        # MCU
+                        row["mcu"] = stripped
+                        index += 1
+                    elif index == 3:
                         # Platform
                         row["platform"] = stripped
                         index += 1
-                    elif index == 3:
-                        # SDK
-                        row["sdk"] = stripped
-                        index += 1
                     elif index == 4:
+                        # Toolchain
+                        row["toolchain"] = stripped
+                        index += 1
+                    elif index == 5:
                         # Modules
                         row["modules"] = stripped.split()
                         index += 1
-                    elif index == 5:
+                    elif index == 6:
                         # APIs
                         row["apis"] = stripped.split()
                         index += 1
-                    elif index == 6:
+                    elif index == 7:
                         # #defines
                         row["defines"] = stripped.split()
                         index += 1
@@ -118,16 +123,21 @@ def display(database):
         item = item.rjust(8)
         # Then description
         item += ": \"{}\"".format(row["description"])
+        # Then MCU
+        if row["mcu"] != "":
+            item += " {} MCU with".format(row["mcu"])
+        else:
+            item += " with"
         # Then platform
         if row["platform"] != "":
             item += " {} platform with".format(row["platform"])
         else:
             item += " with"
-        # Then SDK
-        if row["sdk"] != "":
-            item += " SDK \"{}\"".format(row["sdk"])
+        # Then toolchain
+        if row["toolchain"] != "":
+            item += " toolchain \"{}\"".format(row["toolchain"])
         else:
-            item += " no SDK,"
+            item += " default toolchain,"
         # Then modules
         if row["modules"]:
             item += " and"
@@ -161,26 +171,39 @@ def display(database):
             item += " with no required #defines"
         print("{}.".format(item))
 
-def get_instances_for_platform(database, platform):
-    '''Return a list of instances that support the given platform'''
+def get_instances_for_mcu(database, mcu):
+    '''Return a list of instances that support the given MCU'''
     instances = []
 
     for row in database:
-        if row["platform"].lower() == platform.lower():
+        if row["mcu"].lower() == mcu.lower():
             instances.append(row["instance"][:])
 
     return instances
 
-def get_instances_for_platform_sdk(database, platform, sdk):
-    '''Return a list of instances that support a platform/SDK combination'''
+def get_instances_for_platform_mcu_toolchain(database, platform, mcu, toolchain):
+    '''Return a list of instances that support a platform/MCU/toolchain combination'''
     instances = []
 
     for row in database:
         if (row["platform"].lower() == platform.lower()) and \
-           (row["sdk"].lower() == sdk.lower()):
+           (mcu is None or (row["mcu"].lower() == mcu.lower())) and \
+           (toolchain is None or (row["toolchain"].lower() == toolchain.lower())):
             instances.append(row["instance"][:])
 
     return instances
+
+def get_toolchains_for_platform_mcu(database, platform, mcu):
+    '''Return the toolchains for the given platform and MCU combination'''
+    toolchains = []
+
+    for row in database:
+        if (row["platform"].lower() == platform.lower()) and \
+           (mcu is None or (row["mcu"].lower() == mcu.lower())) and \
+           row["toolchain"] is not None:
+            toolchains.append(row["toolchain"])
+
+    return toolchains
 
 def get_instances_for_api(database, api):
     '''Return a list of instances that support the given API'''
@@ -211,6 +234,7 @@ def get_platform_for_instance(database, instance):
     for row in database:
         if instance == row["instance"]:
             platform = row["platform"]
+            break
 
     return platform
 
@@ -255,15 +279,27 @@ def get_defines_for_instance(database, instance):
 
     return defines
 
-def get_sdk_for_instance(database, instance):
-    '''Return the sdk for the given instance'''
-    sdk = None
+def get_toolchain_for_instance(database, instance):
+    '''Return the toolchain for the given instance'''
+    toolchain = None
 
     for row in database:
         if instance == row["instance"]:
-            sdk = row["sdk"]
+            toolchain = row["toolchain"]
+            break
 
-    return sdk
+    return toolchain
+
+def get_mcu_for_instance(database, instance):
+    '''Return the MCU for the given instance'''
+    mcu = None
+
+    for row in database:
+        if instance == row["instance"]:
+            mcu = row["mcu"]
+            break
+
+    return mcu
 
 def get_description_for_instance(database, instance):
     '''Return the description for the given instance'''

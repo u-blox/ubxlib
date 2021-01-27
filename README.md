@@ -1,4 +1,4 @@
-IMPORTANT IMPORTANT IMPORTANT: at the end of January we will make changes to the platform directory structure, bringing the SDK up to the top level. A preview of what this might look like can be seen in the `preview_platform_restructure_do_not_use` branch.
+IMPORTANT IMPORTANT IMPORTANT: in release 0.8.0 the structure of the `port/platform` directory has been changed.
 
 ![u-blox logo](./readme_images/ublox-logo.png)
 
@@ -79,18 +79,17 @@ In order for u-blox to support multiple platforms with this code there is also a
 +---cell                       <-- API for cellular (if you need more than network provides)
 +---wifi                       <-- API for Wifi (if you need more than network provides)
 +---ble                        <-- API for BLE
-+---port                       <-- port API: maps to MCU platforms, includes build metadata
++---port                       <-- port API: maps to SDKs and MCU platforms, includes build metadata
     +---api
     +---test
     +---clib
-    +---platform               <-- look here for the supported MCU platforms
-        +---<vendor> e.g. espressif
-        ¦   +---<chipset> e.g. esp32
-        ¦       +---app        <-- main() for this platform: runs all examples and tests
-        ¦       +---cfg        <-- platform specific config (pins, OS things, chip HW blocks)
-        ¦       +---src        <-- implementation of the port API for this platform
-        ¦       +---sdk        <-- the supported SDKs for this platform
-        ¦           ...
+    +---platform               <-- look here for the supported SDKs and MCU platforms
+        +---<platform>         <-- e.g. esp-idf
+        ¦   +---app            <-- main() for this platform: runs all examples and tests
+        ¦   +---src            <-- implementation of the port API for this platform
+        ¦   +---mcu            <-- configuration and build metadata for the MCUs supported on this platform
+        ¦       +---<mcu>      <-- e.g. esp32
+        ¦           +---cfg    <-- platform specific config (pins, OS things, MCU HW blocks)
         ¦           +---runner <-- a build which compiles and links all examples and tests
         +---lint               <-- Lint checking, used by the test automation
         +---common             <-- things common to all platforms, most notably...
@@ -99,11 +98,17 @@ In order for u-blox to support multiple platforms with this code there is also a
 ```
 
 # How To Use This Repo
-The native SDKs for each supported platform are used directly, unchanged, by this code.  To use this repo you must first choose your platform and the SDK for that platform.  For instance, you might choose the STM32F4 platform, which employs ST's STM32Cube IDE.  Instructions for how to install and use each SDK can be found in the `port/platform/<vendor>/<chipset>/<sdk>` directory; for the STM32F4 platform this would be `port/platform/stm/stm32f4/cube`.
+This repo uses Git submodules: make sure that once it has been cloned you do something like:
 
-Having chosen your platform and installed the tool chain, navigate to the directory below that to find the required build information.  For instance, you may find a `runner` directory, which is a generic build that compiles any or all of the examples and tests that can run on a given platform.  In that directory you will find detailed information on how to perform the build.
+`git submodule update --init --recursive`
 
-Configuration information for the examples and the tests can be found in the `cfg` directory of your chosen platform.  Depending on how you have connected your MCU to a u-blox module you may need to override this configuration, e.g. to change which MCU pin is connected to which pin of the u-blox module.  The `README.md` for your chosen SDK will tell you how to override conditional compilation flags in order to do this.
+...to obtain the submodules.
+
+The native SDKs for each supported platform are used directly, unchanged, by this code.  To use this repo you must first choose your MCU and associated platform.  For instance, you might choose an STM32F4 MCU, which is supported via ST's STM32Cube IDE.  Instructions for how to install and use each platform can be found in your chosen MCU sub-directory; for an STM32F4 MCU this would be `port/platform/stm32cube/mcu/stm32f4`.
+
+Having chosen your MCU and installed the platform tools, navigate to the directories below your chosen MCU directory to find the required build information.  For instance, you may find a `runner` directory, which is a generic build that compiles any or all of the examples and tests that can run on a given platform.  In that directory you will find detailed information on how to perform the build.
+
+Configuration information for the examples and the tests can be found in the `cfg` directory of your chosen MCU.  Depending on how you have connected your MCU to a u-blox module you may need to override this configuration, e.g. to change which MCU pin is connected to which pin of the u-blox module.  The `README.md` in the `runner` directory will tell you how to override conditional compilation flags in order to do this.
 
 # Examples How To Use ubxlib
 
@@ -121,7 +126,7 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 
 - The heap management code (`heap_useNewlib.c`), required because some of the platforms that use newlib and FreeRTOS don't provide the necessary memory management for them to play together, is copyright Dave Nadler.
 - The AT client code in `common/at_client` is derived from the Apache 2.0 licensed AT parser of mbed-os.
-- The `stm32f4` platform directory necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
+- The `stm32cube` platform directory necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
 - The `go` UDP echo server at `common/sock/test/echo_server/echo-server-udp.go` is based on that of AWS FreeRTOS.
 
 In all cases copyright, and our thanks, remain with the original authors.

@@ -6,7 +6,7 @@ import sys
 import json
 import os
 
-__path = os.path.expanduser("~/.ubx_automation/settings.json")
+__path = os.path.expanduser("~/.ubx_automation/settings_feature_platform_structure.json")
 __useDefaultSettings = True
 __storeSettings = True
 __settings = {}
@@ -57,7 +57,7 @@ __defaultSettings["STILL_RUNNING_REPORT_SECONDS"] = 30
 __defaultSettings["ASTYLE_CONFIG_FILE"] = "astyle.cfg"
 __defaultSettings["ASTYLE_FILE_EXTENSIONS"] = "*.c,*.cpp,*.h,*.hpp"
 __defaultSettings["ASTYLE_DIRS"] = ["cfg", "port", "common"]
-__defaultSettings["ASTYLE_EXCLUDE_DIRS"] = ["build", "_build", "Output", "Debug", "Release"]
+__defaultSettings["ASTYLE_EXCLUDE_DIRS"] = ["build", "_build", "Output", "Debug", "Release", "custom_boards"]
 # u_run_doxygen.py
 __defaultSettings["DOXYGEN_DOXYFILE"] = "Doxyfile"
 # u_run_esp32.py
@@ -72,77 +72,80 @@ __defaultSettings["ESP_IDF_LOCATION_NINA_W1"] =                                 
     {"url": "https://github.com/u-blox/esp-idf",
         "subdir": "esp-idf-u-blox",
         "branch": "master"}
-__defaultSettings["ESP_PROJECT_SUBDIR"] = "runner"
-__defaultSettings["ESP_TEST_COMPONENT"] = "ubxlib_runner"
-__defaultSettings["ESP_BUILD_SUBDIR"] = "build"
-__defaultSettings["ESP_INSTALL_GUARD_TIME_SECONDS"] = 60 * 60
-__defaultSettings["ESP_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
-__defaultSettings["ESP_DOWNLOAD_GUARD_TIME_SECONDS"] = 60 * 5
+__defaultSettings["ESP_IDF_PROJECT_SUBDIR"] = "runner"
+__defaultSettings["ESP_IDF_TEST_COMPONENT"] = "ubxlib_runner"
+__defaultSettings["ESP_IDF_BUILD_SUBDIR"] = "build"
+__defaultSettings["ESP_IDF_INSTALL_GUARD_TIME_SECONDS"] = 60 * 60
+__defaultSettings["ESP_IDF_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
+__defaultSettings["ESP_IDF_DOWNLOAD_GUARD_TIME_SECONDS"] = 60 * 5
 # u_run_lint.py
 __defaultSettings["LINT_PLATFORM_CONFIG_FILES"] = ["co-gcc.lnt", "ubxlib.lnt"]
 __defaultSettings["LINT_COMPILER_INCLUDE_DIRS"] =                                  \
     ["C:\\TDM-GCC-64\\x86_64-w64-mingw32\\include",
         "C:\\TDM-GCC-64\\lib\\gcc\\x86_64-w64-mingw32\\9.2.0\\include"]
-# u_run_nrf52.py
-__defaultSettings["NRF52_GNU_INSTALL_ROOT"] =                                      \
+# u_run_nrf5sdk.py
+__defaultSettings["NRF5SDK_GNU_INSTALL_ROOT"] =                                      \
     "C:/Program Files (x86)/GNU Tools ARM Embedded/9 2019-q4-major/bin/"
-__defaultSettings["NRF52_GNU_PREFIX"] = "arm-none-eabi"
-__defaultSettings["NRF52_GNU_VERSION"] = "9.2.1"
-__defaultSettings["NRF52_SES_PATH"] =                                              \
+__defaultSettings["NRF5SDK_GNU_PREFIX"] = "arm-none-eabi"
+__defaultSettings["NRF5SDK_GNU_VERSION"] = "9.2.1"
+__defaultSettings["NRF5SDK_SES_PATH"] =                                              \
     "C:\\Program Files\\Segger\\SEGGER Embedded Studio for ARM 4.52c\\bin"
-__defaultSettings["NRF52_SES_NAME"] = "embuild.exe"
-__defaultSettings["NRF52_SES_BUILD_CONFIGURATION"] = "Debug"
-__defaultSettings["NRF52_NRF5_PATH"] = "C:/nrf5"
-__defaultSettings["NRF52_RUN_JLINK"] = ["-Device", "NRF52840_XXAA", "-If", "SWD",
+__defaultSettings["NRF5SDK_SES_NAME"] = "embuild.exe"
+__defaultSettings["NRF5SDK_SES_BUILD_CONFIGURATION"] = "Debug"
+__defaultSettings["NRF5SDK_NRF5_PATH"] = "C:/nrf5"
+__defaultSettings["NRF5SDK_NRF52_RUN_JLINK"] = ["-Device", "NRF52840_XXAA", "-If", "SWD",
             "-Speed", "4000", "-Autoconnect", "1", "-ExitOnError", "1"]
-__defaultSettings["NRF52_RUNNER_DIR_GCC"] = "port/platform/nordic/nrf52/sdk/gcc/runner"
-__defaultSettings["NRF52_RUNNER_DIR_SES"] = "port/platform/nordic/nrf52/sdk/ses/runner"
-__defaultSettings["NRF52_PROJECT_NAME_SES"] = "u_pca10056"
-__defaultSettings["NRF52_BUILD_SUBDIR_PREFIX_GCC"] = "build_"
-__defaultSettings["NRF52_BUILD_SUBDIR_SES"] = "Output"
-__defaultSettings["NRF52_SES_MAX_NUM_DEFINES"] = 20
-__defaultSettings["NRF52_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
-# u_run_nrf53.py
-__defaultSettings["NRF53_NRFCONNECT_PATH"] = "C:\\nrfconnect\\v1.3.0"
-__defaultSettings["NRF53_ZEPHYR_ENV_CMD"] =                                        \
-    __defaultSettings["NRF53_NRFCONNECT_PATH"] + os.sep + "zephyr\\zephyr-env.cmd"
-__defaultSettings["NRF53_GIT_BASH_ENV_CMD"] =                                      \
-    __defaultSettings["NRF53_NRFCONNECT_PATH"] + os.sep + "toolchain\\cmd\\env.cmd"
-__defaultSettings["NRF53_RUN_JLINK"] = ["-Device", "nRF5340_xxAA_APP", "-If", "SWD",
-            "-Speed", "4000", "-Autoconnect", "1", "-ExitOnError", "1"]
-__defaultSettings["NRF53_RUNNER_DIR"] = "port\\platform\\nordic\\nrf53\\sdk\\nrfconnect\\runner"
-__defaultSettings["NRF53_BOARD_NAME"] = "nrf5340pdk_nrf5340_cpuapp"
-__defaultSettings["NRF53_BUILD_SUBDIR"] = "build"
-__defaultSettings["NRF53_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
+__defaultSettings["NRF5SDK_NRF52_RUNNER_DIR_GCC"] = "port/platform/nrf5sdk/mcu/nrf52/gcc/runner"
+__defaultSettings["NRF5SDK_NRF52_RUNNER_DIR_SES"] = "port/platform/nrf5sdk/mcu/nrf52/ses/runner"
+__defaultSettings["NRF5SDK_PROJECT_NAME_SES"] = "u_pca10056"
+__defaultSettings["NRF5SDK_BUILD_SUBDIR_PREFIX_GCC"] = "build_"
+__defaultSettings["NRF5SDK_BUILD_SUBDIR_SES"] = "Output"
+__defaultSettings["NRF5SDK_SES_MAX_NUM_DEFINES"] = 20
+__defaultSettings["NRF5SDK_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
+# u_run_zephyr.py
+__defaultSettings["ZEPHYR_NRFCONNECT_PATH"] = "C:\\nrfconnect\\v1.3.0"
+__defaultSettings["ZEPHYR_RUN_JLINK"] = ["-If", "SWD", "-Speed", "4000", "-Autoconnect",
+            "1", "-ExitOnError", "1"]
+__defaultSettings["ZEPHYR_ZEPHYR_ENV_CMD"] =                                        \
+    __defaultSettings["ZEPHYR_NRFCONNECT_PATH"] + os.sep + "zephyr\\zephyr-env.cmd"
+__defaultSettings["ZEPHYR_GIT_BASH_ENV_CMD"] =                                      \
+    __defaultSettings["ZEPHYR_NRFCONNECT_PATH"] + os.sep + "toolchain\\cmd\\env.cmd"
+__defaultSettings["ZEPHYR_DIR"] = "port\\platform\\zephyr"
+__defaultSettings["ZEPHYR_CUSTOM_BOARD_DIR"] =                                      \
+    __defaultSettings["ZEPHYR_DIR"] + os.sep + "custom_boards\\zephyr\\boards\\arm"
+__defaultSettings["ZEPHYR_CUSTOM_BOARD_ROOT"] =                                     \
+    __defaultSettings["ZEPHYR_DIR"] + os.sep + "custom_boards\\zephyr"
+__defaultSettings["ZEPHYR_BUILD_SUBDIR"] = "build"
+__defaultSettings["ZEPHYR_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run_pylint.py
-# u_run_stm32f4.py
-__defaultSettings["STM32_STM32CUBE_FW_PATH"] = "C:\\STM32Cube_FW_F4"
-__defaultSettings["STM32_STM32CUBE_IDE_PATH"] = "C:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE"
-__defaultSettings["STM32_STM32_PROGRAMMER_CLI_PATH"] =                      \
-    __defaultSettings["STM32_STM32CUBE_IDE_PATH"] + "\\plugins\\"                  \
-    + "com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer."              \
+# u_run_stm32cube.py
+__defaultSettings["STM32CUBE_STM32CUBE_FW_PATH"] = "C:\\STM32Cube_FW_F4"
+__defaultSettings["STM32CUBE_STM32CUBE_IDE_PATH"] = "C:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE"
+__defaultSettings["STM32CUBE_STM32_PROGRAMMER_CLI_PATH"] =                   \
+    __defaultSettings["STM32CUBE_STM32CUBE_IDE_PATH"] + "\\plugins\\"        \
+    + "com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer."               \
     + "win32_1.4.0.202007081208\\tools\\bin\\STM32_Programmer_CLI.exe"
-__defaultSettings["STM32_OPENOCD_PATH"] =                                          \
-    __defaultSettings["STM32_STM32CUBE_IDE_PATH"] + "\\plugins\\"                  \
-    + "com.st.stm32cube.ide.mcu.externaltools.openocd."                     \
+__defaultSettings["STM32CUBE_OPENOCD_PATH"] =                                \
+    __defaultSettings["STM32CUBE_STM32CUBE_IDE_PATH"] + "\\plugins\\"        \
+    + "com.st.stm32cube.ide.mcu.externaltools.openocd."                      \
     + "win32_1.4.0.202007081208\\tools\\bin\\openocd.exe"
-__defaultSettings["STM32_OPENOCD_SCRIPTS_PATH"] =                                  \
-    __defaultSettings["STM32_STM32CUBE_IDE_PATH"] + "\\plugins\\"                  \
-    + "com.st.stm32cube.ide.mcu.debug."                                     \
+__defaultSettings["STM32CUBE_OPENOCD_SCRIPTS_PATH"] =                        \
+    __defaultSettings["STM32CUBE_STM32CUBE_IDE_PATH"] + "\\plugins\\"        \
+    + "com.st.stm32cube.ide.mcu.debug."                                      \
     + "openocd_1.4.0.202007081208\\resources\\openocd\\st_scripts"
-__defaultSettings["STM32_OPENOCD_STLINK_INTERFACE_SCRIPT"] = "stlink.cfg"
-__defaultSettings["STM32_OPENOCD_STM32F4_TARGET_SCRIPT"] = "stm32f4x.cfg"
-__defaultSettings["STM32_STM32CUBE_IDE_WORKSPACE_SUBDIR"] = "workspace_1.4.0"
-__defaultSettings["STM32_SDK_DIR"] = "port\\platform\\stm\\stm32f4\\sdk\\cube"
-__defaultSettings["STM32_PROJECT_NAME"] = "runner"
-__defaultSettings["STM32_UPDATED_PROJECT_NAME_PREFIX"] = "test_only_"
-__defaultSettings["STM32_PROJECT_CONFIGURATION"] = "Debug"
-__defaultSettings["STM32_MAX_NUM_DEFINES"] = 20
-__defaultSettings["STM32_SYSTEM_CORE_CLOCK_HZ"] = 168000000
-__defaultSettings["STM32_SWO_CLOCK_HZ"] = 125000
-__defaultSettings["STM32_SWO_DATA_FILE"] = "swo.dat"
-__defaultSettings["STM32_SWO_DECODED_TEXT_FILE"] = "swo.txt"
-__defaultSettings["STM32_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
+__defaultSettings["STM32CUBE_OPENOCD_STLINK_INTERFACE_SCRIPT"] = "stlink.cfg"
+__defaultSettings["STM32CUBE_OPENOCD_STM32F4_TARGET_SCRIPT"] = "stm32f4x.cfg"
+__defaultSettings["STM32CUBE_IDE_WORKSPACE_SUBDIR"] = "workspace_1.4.0"
+__defaultSettings["STM32CUBE_SDK_DIR"] = "port\\platform\\stm32cube"
+__defaultSettings["STM32CUBE_PROJECT_NAME"] = "runner"
+__defaultSettings["STM32CUBE_UPDATED_PROJECT_NAME_PREFIX"] = "test_only_"
+__defaultSettings["STM32CUBE_PROJECT_CONFIGURATION"] = "Debug"
+__defaultSettings["STM32CUBE_MAX_NUM_DEFINES"] = 20
+__defaultSettings["STM32CUBE_SYSTEM_CORE_CLOCK_HZ"] = 168000000
+__defaultSettings["STM32CUBE_SWO_CLOCK_HZ"] = 125000
+__defaultSettings["STM32CUBE_SWO_DATA_FILE"] = "swo.dat"
+__defaultSettings["STM32CUBE_SWO_DECODED_TEXT_FILE"] = "swo.txt"
+__defaultSettings["STM32CUBE_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run.py
 __defaultSettings["BRANCH_DEFAULT"] = "origin/master"
 # u_utils.py

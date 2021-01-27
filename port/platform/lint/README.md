@@ -47,6 +47,5 @@ Note: you may put this repo in a different location but if you do so you will ne
 Actually running Lint on your code is done through the automation scripts, for which you will need Python (e.g. 3.4) installed; see the `README.md` file in `port/platform/common/automation` for how to do this.  Note also the bit in the **Maintenance** section below about what to do if you are *adding* new code that you want Linted.
 
 # Maintenance
-- If you add a new `port` API, add a stub for it in `u_port_lint_stubs.c`.
 - If you add a new #define to the `u_cfg_*.h` files in the `platform/<vendor>/<chipset>/cfg` directories, add it to the one in the `stubs` sub-directory here also; just a zero value will usually do.
 - If you add a new directory that contains PLATFORM INDEPENDENT `.c` or `.cpp` files anywhere in the `ubxlib` tree, add it to the `LINT_DIRS` variable of the `port/platform/common/automation/u_run_lint.py` script.
