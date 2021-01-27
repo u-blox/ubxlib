@@ -6,7 +6,7 @@ import sys
 import json
 import os
 
-__path = os.path.expanduser("~/.ubx_automation/settings_feature_platform_structure.json")
+__path = os.path.expanduser("~/.ubx_automation/settings.json")
 __useDefaultSettings = True
 __storeSettings = True
 __settings = {}
