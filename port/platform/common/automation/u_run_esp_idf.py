@@ -270,8 +270,8 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
     return return_code
 
 def run(instance, mcu, toolchain, connection, connection_lock,
-        platform_lock, clean, defines, ubxlib_dir, working_dir,
-        system_lock, printer, reporter, test_report_handle):
+        platform_lock, misc_locks, clean, defines, ubxlib_dir,
+        working_dir, printer, reporter, test_report_handle):
     '''Build/run on ESP-IDF'''
     return_value = -1
     instance_text = u_utils.get_instance_text(instance)
@@ -314,6 +314,9 @@ def run(instance, mcu, toolchain, connection, connection_lock,
         esp_idf_location = get_esp_idf_location(instance)
         esp_idf_dir = ESP_IDF_ROOT + os.sep + esp_idf_location["subdir"]
         if esp_idf_location:
+            system_lock = None
+            if "system_lock" in misc_locks:
+                system_lock = misc_locks["system_lock"]
             returned_env = install(esp_idf_location["url"], esp_idf_dir,
                                    esp_idf_location["branch"], system_lock,
                                    printer, prompt, reporter)

@@ -34,15 +34,25 @@
 #include "u_error_common.h"
 #include "u_port.h"
 #include "u_port_debug.h"
+#include "u_port_os.h"
 
 #include "u_runner.h"
 
 #include "assert.h"
 
 #include "zephyr.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+/** When running under automation the target is reset and then
+ * logging begins, hence a start-up delay is added in order not
+ * to miss any output while the logging tools start up.
+ */
+#ifndef U_CFG_STARTUP_DELAY_MILLISECONDS
+# define U_CFG_STARTUP_DELAY_MILLISECONDS 1000
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -52,16 +62,18 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// The task within which th examples and tests run.
+// The task within which the examples and tests run.
 static void appTask(void *pParam)
 {
     (void) pParam;
     uPortInit();
+
+    uPortTaskBlock(U_CFG_STARTUP_DELAY_MILLISECONDS);
+
     uPortLog("\n\nU_APP: application task started.\n");
 
     UNITY_BEGIN();

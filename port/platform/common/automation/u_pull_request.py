@@ -202,6 +202,7 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
     return_value = 0
     processes = []
     platform_locks = []
+    misc_locks = {}
     alive_count = 0
     report_thread = None
     report_queue = None
@@ -211,12 +212,30 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
     debug_file_path = None
     summary_report_handle = None
 
+    manager = Manager()
+
     # Create a lock to cover things that cross
     # platforms or that any process of u_run.main()
     # may need to perform outside of its working
     # directory
-    manager = Manager()
-    system_lock = manager.RLock()
+    misc_locks["system_lock"] = manager.RLock()
+
+    # Create a lock which can be used on Nordic
+    # platforms (nRF5 and Zephyer): performing a
+    # JLink download to a board while JLink RTT logging
+    # is active on any other board will often stop
+    # the RTT logging even though the sessions are
+    # aimed at debuggers with entirely different
+    # serial numbers.
+    misc_locks["jlink_lock"] = manager.RLock()
+
+    # Create a "lock" that can be used on STM32F4
+    # platforms to ensure that all downloads are
+    # completed before logging commences.  We
+    # can do this, rather than locking a tool for the
+    # whole time as we have to do with Nordic, because
+    # each STM32F4 board only runs a single instance
+    misc_locks["stm32f4_downloads_list"] = manager.list()
 
     # It is possible for some platforms to be a bit
     # pants at running in multiple instances
@@ -303,23 +322,13 @@ def run_instances(database, instances, filter_string, ubxlib_dir,
                 if process["platform"] == platform_lock["platform"]:
                     process["platform_lock"] = platform_lock["lock"]
                     break
-            # START: HACK HACK HACK HACK HACK
-            # NRF5/NRF52 and Zephyr/NRF53 share tools but are, of course,
-            # distinct platforms.  They NEED to share a platform lock so here
-            # we attach NRF5 to Zephyr's platform lock
-            if process["platform"].lower() == "zephyr":
-                for platform_lock in platform_locks:
-                    if platform_lock["platform"].lower() == "nrf5":
-                        process["platform_lock"] = platform_lock["lock"]
-                        break
-            # END: HACK HACK HACK HACK HACK
             process["handle"] = pool.apply_async(u_run.main,
                                                  (database, instance,
                                                   filter_string, True,
                                                   ubxlib_dir, this_working_dir,
                                                   process["connection_lock"],
-                                                  system_lock,
                                                   process["platform_lock"],
+                                                  misc_locks,
                                                   print_queue, report_queue,
                                                   summary_report_file_path,
                                                   test_report_file_path,

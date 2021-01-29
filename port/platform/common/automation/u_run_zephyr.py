@@ -174,21 +174,38 @@ def jlink_device(mcu):
 
     return jlink_device_name
 
-def download(connection, guard_time_seconds, build_dir,
-             env, printer, prompt):
+def download(connection, jlink_device_name, guard_time_seconds,
+             build_dir, env, printer, prompt):
     '''Download the given hex file'''
     call_list = []
+    tool_opt = "-Autoconnect 1 -ExitOnError 1 -NoGui 1"
 
     # Assemble the call list
+    # Note that we use JLink to do the download
+    # rather than the default of nrfjprog since there
+    # appears to be no way to prevent nrfjprog from
+    # resetting the target after the download when
+    # it is used under west (whereas when JLink is
+    # used this is the default)
     call_list.append("west")
     call_list.append("flash")
     call_list.append("--skip-rebuild")
     call_list.append("-d")
     call_list.append(build_dir)
+    call_list.append("--runner")
+    call_list.append("jlink")
     call_list.append("--erase")
+    # Just to be sure
+    call_list.append("--no-reset-after-load")
+    if jlink_device_name:
+        call_list.append("--device")
+        call_list.append(jlink_device_name)
+    # Add the options that have to go through "--tool-opt"
     if connection and "debugger" in connection and connection["debugger"]:
-        call_list.append("--snr")
-        call_list.append(connection["debugger"])
+        tool_opt += " -USB " + connection["debugger"]
+    if tool_opt:
+        call_list.append("--tool-opt")
+        call_list.append(tool_opt)
 
     # Print what we're gonna do
     tmp = ""
@@ -298,16 +315,15 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter):
     return build_dir
 
 def run(instance, mcu, toolchain, connection, connection_lock,
-        platform_lock, clean, defines, ubxlib_dir, working_dir,
-        system_lock, printer, reporter, test_report_handle):
+        platform_lock, misc_locks, clean, defines, ubxlib_dir,
+        working_dir, printer, reporter, test_report_handle):
     '''Build/run on Zephyr'''
     return_value = -1
     build_dir = None
     instance_text = u_utils.get_instance_text(instance)
 
-    # Don't need the system lock but do need to lock NRF5 (NRF52)/Zephyr (NRF53)
-    # as otherwise startup of RTT logging sometimes fails.
-    del system_lock
+    # Don't need the platform lock
+    del platform_lock
 
     # Only one toolchain for Zephyr
     del toolchain
@@ -358,48 +374,52 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                     build_dir = build(board, clean, ubxlib_dir, defines,
                                       returned_env, printer, prompt, reporter)
                     if build_dir:
-                        # Build succeeded, need to lock a connection to do the download
+                        # Build succeeded, need to lock some things to do the download
                         reporter.event(u_report.EVENT_TYPE_BUILD,
                                        u_report.EVENT_PASSED,
                                        "build took {:.0f} second(s)".format(time() -
                                                                             build_start_time))
-                        with u_connection.Lock(connection, connection_lock,
-                                               CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                               printer, prompt) as locked_connection:
-                            if locked_connection:
-                                # On NRF52 (NRF5)/Zephyr (NRF53/NRF52) doing a download
-                                # or starting RTT logging on more than one platform
-                                # at a time seems to cause problems, even though it
-                                # should be tied to the serial number of the given
-                                # debugger on that board, so lock the system for this.
-                                # Once we've got the Zephyr/NRF53/NRF52 download done and
-                                # RTT logging started it seems fine to let other
-                                # downloads/logging-starts happen.
-                                with u_utils.Lock(platform_lock, INSTALL_LOCK_WAIT_SECONDS,
-                                                  "system", printer,
-                                                  prompt) as locked_platform:
-                                    if locked_platform:
+                        # On NRF52 (NRF5)/Zephyr (NRF53/NRF52) doing a download
+                        # on more than one platform at a time or doing a download
+                        # while RTT logging is in progress seems to cause problems,
+                        # even though it should be tied to the serial number of the
+                        # given debugger on that board, so lock JLink for this.
+                        jlink_lock = None
+                        if "jlink_lock" in misc_locks:
+                            jlink_lock = misc_locks["jlink_lock"]
+                        with u_utils.Lock(jlink_lock, INSTALL_LOCK_WAIT_SECONDS,
+                                          "JLink", printer, prompt) as locked_jlink:
+                            if locked_jlink:
+                                with u_connection.Lock(connection, connection_lock,
+                                                       CONNECTION_LOCK_GUARD_TIME_SECONDS,
+                                                       printer, prompt) as locked_connection:
+                                    if locked_connection:
+                                        # Get the device name for JLink
+                                        jlink_device_name = jlink_device(mcu)
+                                        if not jlink_device_name:
+                                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                                           u_report.EVENT_WARNING,
+                                                           "MCU not found in JLink devices")
                                         # Do the download
                                         reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                        u_report.EVENT_START)
-                                        if download(connection, DOWNLOAD_GUARD_TIME_SECONDS,
+                                        if download(connection, jlink_device_name,
+                                                    DOWNLOAD_GUARD_TIME_SECONDS,
                                                     build_dir, returned_env, printer, prompt):
                                             reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                            u_report.EVENT_COMPLETE)
+                                            # Now the target can be reset
+                                            u_utils.reset_nrf_target(connection,
+                                                                     printer, prompt)
                                             reporter.event(u_report.EVENT_TYPE_TEST,
                                                            u_report.EVENT_START)
                                             if connection and "swo_port" in connection:
                                                 swo_port = connection["swo_port"]
 
                                             # With JLink started
-                                            jlink_device_name = jlink_device(mcu)
                                             if jlink_device_name:
                                                 RUN_JLINK.append("-Device")
                                                 RUN_JLINK.append(jlink_device(mcu))
-                                            else:
-                                                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                               u_report.EVENT_WARNING,
-                                                               "MCU not found in JLink devices")
                                             RUN_JLINK.append("-RTTTelnetPort")
                                             RUN_JLINK.append(str(swo_port))
                                             if connection and "debugger" in connection and \
@@ -414,9 +434,6 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                                     printer,
                                                                                     prompt)
                                                 if telnet_handle is not None:
-                                                    # Once we've got a Telnet session running
-                                                    # it is OK to release the platform lock again
-                                                    platform_lock.release()
                                                     # Monitor progress
                                                     return_value = u_monitor.    \
                                                                    main(telnet_handle,
@@ -450,11 +467,11 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                     else:
                                         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                        u_report.EVENT_FAILED,
-                                                       "unable to lock the platform")
+                                                       "unable to lock a connection")
                             else:
                                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                u_report.EVENT_FAILED,
-                                               "unable to lock a connection")
+                                               "unable to lock JLink")
                     else:
                         return_value = 1
                         reporter.event(u_report.EVENT_TYPE_BUILD,

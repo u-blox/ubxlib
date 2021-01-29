@@ -113,6 +113,9 @@ PLATFORM_LOCK_GUARD_TIME_SECONDS = u_utils.PLATFORM_LOCK_GUARD_TIME_SECONDS
 # The download guard time for this build in seconds
 DOWNLOAD_GUARD_TIME_SECONDS = u_utils.DOWNLOAD_GUARD_TIME_SECONDS
 
+# The time allowed for all STM32F4 downloads to complete
+DOWNLOADS_COMPLETE_GUARD_TIME_SECONDS = 3600
+
 # The guard time for running tests in seconds
 RUN_GUARD_TIME_SECONDS = u_utils.RUN_GUARD_TIME_SECONDS
 
@@ -453,8 +456,8 @@ def swo_decode_process(swo_data_file, swo_decoded_text_file):
 # .gitignore file, and build that instead of "runner".
 
 def run(instance, mcu, toolchain, connection, connection_lock,
-        platform_lock, clean, defines, ubxlib_dir, working_dir,
-        system_lock, printer, reporter, test_report_handle):
+        platform_lock, misc_locks, clean, defines, ubxlib_dir,
+        working_dir, printer, reporter, test_report_handle):
     '''Build/run on STM32Cube'''
     return_value = -1
     mcu_dir = ubxlib_dir + os.sep + SDK_DIR + os.sep + "mcu" + os.sep + mcu
@@ -466,9 +469,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     elf_path = None
     downloaded = False
     running = False
-
-    # Don't need the system lock (the platform lock is sufficient)
-    del system_lock
+    download_list = None
 
     # Only one toolchain for STM32Cube
     del toolchain
@@ -493,6 +494,16 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     if working_dir:
         text += ", working directory \"" + working_dir + "\""
     printer.string("{}{}.".format(prompt, text))
+
+    # On STM32F4 we can get USB errors if we try to do a download
+    # on one platform while another is performing SWO logging.
+    # Since each board only runs a single instance of stuff we
+    # can work around this be ensuring that all downloads are
+    # completed before SWO logging begins.
+    # Add us to the list of pending downloads
+    if misc_locks and ("stm32f4_downloads_list" in misc_locks):
+        download_list = misc_locks["stm32f4_downloads_list"]
+        download_list.append(instance_text)
 
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
@@ -582,13 +593,30 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                   connection["serial_port"] +
                                                                   ")", printer, prompt)
                                             sleep(5)
-                                    # Once the download has been done (or not) the platform lock
-                                    # can be released, after a little safety sleep
-                                    sleep(1)
-                                    platform_lock.release()
+                                    if platform_lock:
+                                        # Once the download has been done (or not) the platform lock
+                                        # can be released, after a little safety sleep
+                                        sleep(1)
+                                        platform_lock.release()
                                     if downloaded:
+                                        # Remove us from the list of pending downloads
+                                        if download_list:
+                                            download_list.remove(instance_text)
                                         reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                        u_report.EVENT_COMPLETE)
+                                        # Wait for all the other downloads to complete before
+                                        # starting SWO logging
+                                        u_utils.wait_for_completion(download_list,
+                                                                    "download",
+                                                                    DOWNLOADS_COMPLETE_GUARD_TIME_SECONDS,
+                                                                    printer, prompt)
+                                        # So that all STM32Cube instances don't start up at
+                                        # once, which can also cause problems, wait the
+                                        # instance-number number of seconds.
+                                        hold_off = instance[0]
+                                        if hold_off > 30:
+                                            hold_off = 30
+                                        sleep(hold_off)
                                         # Create and empty the SWO data file and decoded text file
                                         file_handle = open(SWO_DATA_FILE, "w").close()
                                         file_handle = open(SWO_DECODED_TEXT_FILE, "w").close()
@@ -676,5 +704,11 @@ def run(instance, mcu, toolchain, connection, connection_lock,
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                            u_report.EVENT_FAILED,
                            "there is a problem with the tools installation for STM32F4")
+
+    # Remove us from the list of pending downloads for safety
+    try:
+        misc_locks["stm32f4_downloads_list"].remove(instance_text)
+    except (AttributeError, ValueError, TypeError):
+        pass
 
     return return_value

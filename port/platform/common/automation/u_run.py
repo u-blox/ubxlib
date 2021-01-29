@@ -7,11 +7,10 @@ import argparse
 from multiprocessing import Process, freeze_support # Needed to make Windows behave
                                                     # when doing multiprocessing,
 from signal import signal, SIGINT                   # For CTRL-C handling
-import threading # For locks
 import u_data # Gets and displays the instance database
 import u_connection # The connection to use for a given instance
 import u_run_esp_idf # Build/run stuff on ESP-IDF (i.e. ESP32)
-import u_run_nrf5sdk # Build/run stuff on nRF5 (i.e. NRF52)
+import u_run_nrf5sdk # Build/run stuff on NRF5 (i.e. NRF52)
 import u_run_zephyr # Build/run stuff on Zephyr (i.e. NRF52/53)
 import u_run_stm32cube # Build/run stuff on STM's Cube IDE (i.e. STM32F4)
 import u_run_lint # Run Lint check
@@ -38,7 +37,7 @@ def signal_handler(sig, frame):
 
 def main(database, instance, filter_string, clean,
          ubxlib_dir, working_dir, connection_lock,
-         system_lock, platform_lock, print_queue,
+         platform_lock, misc_locks, print_queue,
          report_queue, summary_report_file_path,
          test_report_file_path, debug_file_path):
     '''Main as a function'''
@@ -146,28 +145,28 @@ def main(database, instance, filter_string, clean,
                 if platform.lower() == "esp-idf":
                     return_value = u_run_esp_idf.run(instance, mcu, toolchain, connection,
                                                      connection_lock, platform_lock,
-                                                     clean, defines, ubxlib_dir,
-                                                     working_dir, system_lock,
+                                                     misc_locks, clean, defines,
+                                                     ubxlib_dir, working_dir,
                                                      printer, reporter,
                                                      test_report_handle)
                 elif platform.lower() == "nrf5sdk":
                     return_value = u_run_nrf5sdk.run(instance, mcu, toolchain, connection,
                                                      connection_lock, platform_lock,
-                                                     clean, defines, ubxlib_dir,
-                                                     working_dir, system_lock, printer,
-                                                     reporter, test_report_handle)
+                                                     misc_locks, clean, defines, ubxlib_dir,
+                                                     working_dir, printer, reporter,
+                                                     test_report_handle)
                 elif platform.lower() == "zephyr":
                     return_value = u_run_zephyr.run(instance, mcu, toolchain, connection,
                                                     connection_lock, platform_lock,
-                                                    clean, defines, ubxlib_dir,
-                                                    working_dir, system_lock, printer,
-                                                    reporter, test_report_handle)
+                                                    misc_locks, clean, defines, ubxlib_dir,
+                                                    working_dir, printer, reporter,
+                                                    test_report_handle)
                 elif platform.lower() == "stm32cube":
                     return_value = u_run_stm32cube.run(instance, mcu, toolchain, connection,
                                                        connection_lock, platform_lock,
-                                                       clean, defines, ubxlib_dir,
-                                                       working_dir, system_lock, printer,
-                                                       reporter, test_report_handle)
+                                                       misc_locks, clean, defines, ubxlib_dir,
+                                                       working_dir, printer, reporter,
+                                                       test_report_handle)
                 else:
                     printer.string("{}don't know how to handle platform \"{}\".".    \
                                    format(PROMPT, platform))
@@ -295,22 +294,10 @@ if __name__ == "__main__":
                 # Get the instance database by parsing the data file
                 DATABASE = u_data.get(u_data.DATA_FILE)
 
-                # Create a lock to cover install processes
-                # that any thread of main() may need
-                # to perform
-                INSTALL_LOCK = threading.Lock()
-
-                # The platform lock is meaningless if
-                # called from here (since this will only
-                # be a single instance) but, just so that
-                # the code that is called doesn't complain
-                # about a None value, give it one
-                PLATFORM_LOCK = threading.Lock()
-
                 # Call main()
                 RETURN_VALUE = main(DATABASE, INSTANCE, ARGS.f, ARGS.c,
-                                    ARGS.u, ARGS.w, None, INSTALL_LOCK,
-                                    PLATFORM_LOCK, None, None, ARGS.s, ARGS.t, ARGS.d)
+                                    ARGS.u, ARGS.w, None, None, None,
+                                    None, None, ARGS.s, ARGS.t, ARGS.d)
         else:
             print("{}must supply an instance.".format(PROMPT))
             PARSER.print_help()

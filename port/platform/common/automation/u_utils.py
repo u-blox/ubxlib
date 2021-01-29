@@ -76,9 +76,7 @@ def subprocess_osify(cmd):
     ''' expects an array of strings being [command, param, ...] '''
     if platform.system() == "Linux":
         return [ ' '.join(cmd) ]
-    else:
-        return cmd
-
+    return cmd
 
 def get_actual_path(path):
     '''Given a drive number return real path if it is a subst'''
@@ -789,6 +787,8 @@ class Lock():
         self._prompt = prompt
         self._locked = False
     def __enter__(self):
+        if not self._lock:
+            return True
         # Wait on the lock
         if not self._locked:
             timeout_seconds = self._guard_time_seconds
@@ -820,7 +820,7 @@ class Lock():
         del _type
         del value
         del traceback
-        if self._locked:
+        if self._lock and self._locked:
             try:
                 self._lock.release()
                 self._locked = False
@@ -830,3 +830,58 @@ class Lock():
                 self._locked = False
                 self._printer.string("{}{} lock was already released.". \
                                      format(self._prompt, self._lock_type))
+
+def wait_for_completion(list, purpose, guard_time_seconds,
+                        printer, prompt):
+    '''Wait for a completion list to empty'''
+    completed = False
+    if len(list) > 0:
+        timeout_seconds = guard_time_seconds
+        printer.string("{}waiting up to {} second(s)"      \
+                       " for {} completion...".          \
+                       format(prompt, guard_time_seconds, purpose))
+        count = 0
+        while (len(list) > 0) and                          \
+          ((guard_time_seconds == 0) or (timeout_seconds > 0)):
+            sleep(1)
+            timeout_seconds -= 1
+            count += 1
+            if count == 30:
+                list_text = ""
+                for item in list:
+                    if list_text:
+                        list_text += ", "
+                    list_text += str(item)
+                printer.string("{}still waiting {} second(s)"   \
+                               " for {} to complete (waiting"   \
+                               " for {}).".                     \
+                               format(prompt, timeout_seconds,
+                                      purpose, list_text))
+                count = 0
+        if len(list) == 0:
+            completed = True
+            printer.string("{}{} completed.".format(prompt, purpose))
+    return completed
+    
+
+def reset_nrf_target(connection, printer, prompt):
+    '''Reset a Nordic NRFxxx target'''
+    call_list = []
+
+    printer.string("{}resetting target...".format(prompt))
+    # Assemble the call list
+    call_list.append("nrfjprog")
+    call_list.append("--reset")
+    if connection and "debugger" in connection and connection["debugger"]:
+        call_list.append("-s")
+        call_list.append(connection["debugger"])
+
+    # Print what we're gonna do
+    tmp = ""
+    for item in call_list:
+        tmp += " " + item
+    printer.string("{}in directory {} calling{}".         \
+                   format(prompt, os.getcwd(), tmp))
+
+    # Call it
+    return exe_run(call_list, 60, printer, prompt)
