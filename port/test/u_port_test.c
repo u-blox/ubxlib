@@ -737,7 +737,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
 
     uPortLog("U_PORT_TEST: testing UART loop-back, %d byte(s) at %d"
              " bits/s with flow control %s.\n", size, speed,
-             ((pinCts >= 0) && (pinRts >= 0)) ? "on" : "off");
+             flowControlOn ? "on" : "off");
 
     uPortLog("U_PORT_TEST: add a UART instance...\n");
     uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
