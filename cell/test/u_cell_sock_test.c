@@ -803,7 +803,10 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     }
     y = uCellNetGetDataCounterRx(cellHandle);
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
-        U_PORT_TEST_ASSERT(y == 0);
+        // Note that we don't check for zero here: the closure of sockets
+        // is not necessarily synchronous with closure indication at the AT
+        // interface and so sometimes 52 bytes will be logged here
+        U_PORT_TEST_ASSERT(y <= 52);
     } else {
         U_PORT_TEST_ASSERT(y < 0);
     }
