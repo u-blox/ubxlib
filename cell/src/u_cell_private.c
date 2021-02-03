@@ -292,6 +292,8 @@ int32_t uCellPrivateGetImsi(const uCellPrivateInstance_t *pInstance,
             (bytesRead == 15) &&
             uCellPrivateIsNumeric(pImsi, 15)) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        } else {
+            uPortTaskBlock(1000);
         }
     }
 
