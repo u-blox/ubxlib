@@ -8,7 +8,7 @@ https://devzone.nordicsemi.com/nordic/nordic-blog/b/blog/posts/development-with-
 
 However it expects you to be using Eclipse; the instructions that follow are modified to work wholly from the command-line (and, in this case, on Windows).
 
-First, install the latest version of GCC for ARM from here:
+First, install a version of GCC for ARM from here (the builds here have been tested with version `9 2019-q4-major`):
 
 https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads
 
