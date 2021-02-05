@@ -1980,7 +1980,18 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
             }
 
             U_PORT_TEST_ASSERT(allPacketsReceived);
-            U_PORT_TEST_ASSERT(dataCallbackCalled);
+            if (!dataCallbackCalled) {
+                // Only print a warning if the data callback wasn't
+                // called: in the cellular implementation the callback
+                // isn't called if the uSockReceiveFrom() or uSockRead()
+                // call is active when the data arrives (to avoid recursion)
+                // and this can, statistically, happen in this test since
+                // it calls uSockReceiveFrom() blindly without waiting for
+                // the data callback to be called.
+                uPortLog("U_SOCK_TEST: *** WARNING *** the data callback"
+                         " wasn't called; this might be legitimate but if"
+                         " it happens frequently it is worth checking.\n");
+            }
 
             // Check for memory leaks
             heapUsed -= uPortGetHeapFree();
