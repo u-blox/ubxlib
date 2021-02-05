@@ -8,7 +8,7 @@ https://devzone.nordicsemi.com/nordic/nordic-blog/b/blog/posts/development-with-
 
 However it expects you to be using Eclipse; the instructions that follow are modified to work wholly from the command-line (and, in this case, on Windows).
 
-First, install a version of GCC for ARM from here (the builds here have been tested with version `9 2019-q4-major`):
+First, install a version of GCC for ARM from here (the builds here have been tested with version `10 2020-q4-major`):
 
 https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads
 
@@ -36,8 +36,8 @@ ubxlib
 In the `components\toolchain\gcc` sub-directory of the nRF5 installation you will find two makefiles: if you are running on Linux or OS X you need to pay attention to the `.posix` one else pay attention to the `.windows` one.  Edit the appropriate `Makefile` to set the `GNU_INSTALL_ROOT` variable to the location of the `bin` directory of your GCC installation, e.g.:
 
 ```
-GNU_INSTALL_ROOT := C:/Program Files (x86)/GNU Tools ARM Embedded/9 2019-q4-major/bin/
-GNU_VERSION := 9.2.1
+GNU_INSTALL_ROOT := C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin/
+GNU_VERSION := 10.2.1
 GNU_PREFIX := arm-none-eabi
 ```
 

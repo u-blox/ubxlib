@@ -85,9 +85,9 @@ __defaultSettings["LINT_COMPILER_INCLUDE_DIRS"] =                               
         "C:\\TDM-GCC-64\\lib\\gcc\\x86_64-w64-mingw32\\9.2.0\\include"]
 # u_run_nrf5sdk.py
 __defaultSettings["NRF5SDK_GNU_INSTALL_ROOT"] =                                      \
-    "C:/Program Files (x86)/GNU Tools ARM Embedded/9 2019-q4-major/bin/"
+    "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin/"
 __defaultSettings["NRF5SDK_GNU_PREFIX"] = "arm-none-eabi"
-__defaultSettings["NRF5SDK_GNU_VERSION"] = "9.2.1"
+__defaultSettings["NRF5SDK_GNU_VERSION"] = "10.2.1"
 __defaultSettings["NRF5SDK_SES_PATH"] =                                              \
     "C:\\Program Files\\Segger\\SEGGER Embedded Studio for ARM 4.52c\\bin"
 __defaultSettings["NRF5SDK_SES_NAME"] = "embuild.exe"
