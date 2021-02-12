@@ -607,7 +607,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                         # Wait for all the other downloads to complete before
                                         # starting SWO logging
                                         u_utils.wait_for_completion(download_list,
-                                                                    "download",
+                                                                    "STM32F4 downloads",
                                                                     DOWNLOADS_COMPLETE_GUARD_TIME_SECONDS,
                                                                     printer, prompt)
                                         # So that all STM32Cube instances don't start up at

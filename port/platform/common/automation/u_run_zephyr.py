@@ -385,7 +385,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                         # even though it should be tied to the serial number of the
                         # given debugger on that board, so lock JLink for this.
                         jlink_lock = None
-                        if "jlink_lock" in misc_locks:
+                        if misc_locks and ("jlink_lock" in misc_locks):
                             jlink_lock = misc_locks["jlink_lock"]
                         with u_utils.Lock(jlink_lock, INSTALL_LOCK_WAIT_SECONDS,
                                           "JLink", printer, prompt) as locked_jlink:

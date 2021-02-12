@@ -862,7 +862,6 @@ def wait_for_completion(list, purpose, guard_time_seconds,
             completed = True
             printer.string("{}{} completed.".format(prompt, purpose))
     return completed
-    
 
 def reset_nrf_target(connection, printer, prompt):
     '''Reset a Nordic NRFxxx target'''

@@ -315,7 +315,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
         esp_idf_dir = ESP_IDF_ROOT + os.sep + esp_idf_location["subdir"]
         if esp_idf_location:
             system_lock = None
-            if "system_lock" in misc_locks:
+            if misc_locks and ("system_lock" in misc_locks):
                 system_lock = misc_locks["system_lock"]
             returned_env = install(esp_idf_location["url"], esp_idf_dir,
                                    esp_idf_location["branch"], system_lock,
