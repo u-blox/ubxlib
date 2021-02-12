@@ -1875,8 +1875,10 @@ void uAtClientTimeoutSet(uAtClientHandle_t atHandle, int32_t timeoutMs)
         // be in a lock.  In this case save the current
         // timeout before changing it so that we can put
         // it back once the stream mutex is unlocked
-        ((uAtClientInstance_t *) atHandle)->atTimeoutSavedMs =
-            ((uAtClientInstance_t *) atHandle)->atTimeoutMs;
+        if (((uAtClientInstance_t *) atHandle)->atTimeoutSavedMs < 0) {
+            ((uAtClientInstance_t *) atHandle)->atTimeoutSavedMs =
+                ((uAtClientInstance_t *) atHandle)->atTimeoutMs;
+        }
         ((uAtClientInstance_t *) atHandle)->atTimeoutMs = timeoutMs;
     }
 
