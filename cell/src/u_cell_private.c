@@ -181,7 +181,7 @@ void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters
 {
     pParameters->rssiDbm = 0;
     pParameters->rsrpDbm = 0;
-    pParameters->rsrqDb = 0;
+    pParameters->rsrqDb = 0x7FFFFFFF;
     pParameters->cellId = -1;
     pParameters->earfcn = -1;
 }

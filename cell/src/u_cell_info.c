@@ -78,7 +78,7 @@ static const int32_t gRssiConvertLte[] = {-118, -115, -113, -110, -108, -105, -1
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Convert RSRP in 36.133 format to dBm.
+// Convert RSRP in 3GPP TS 36.133 format to dBm.
 // Returns 0 if the number is not known.
 // 0: -141 dBm or less,
 // 1..96: from -140 dBm to -45 dBm with 1 dBm steps,
@@ -98,20 +98,20 @@ static int32_t rsrpToDbm(int32_t rsrp)
     return rsrpDbm;
 }
 
-// Convert RSRQ in 36.133 format to dB.
-// Returns 0 if the number is not known.
-// 0: less than -19.5 dB
-// 1..33: from -19.5 dB to -3.5 dB with 0.5 dB steps
-// 34: -3 dB or greater
+// Convert RSRQ in 3GPP TS 36.133 format to dB.
+// Returns 0x7FFFFFFF if the number is not known.
+// -30: less than -34 dB
+// -29..46: from -34 dB to 2.5 dB with 0.5 dB steps
+//          where 0 is -19.5 dB
 // 255: not known or not detectable.
 static int32_t rsrqToDb(int32_t rsrq)
 {
-    int32_t rsrqDb = 0;
+    int32_t rsrqDb = 0x7FFFFFFF;
 
-    if ((rsrq >= 0) && (rsrq <= 34)) {
-        rsrqDb = (rsrq - (34 + 6)) / 2;
-        if (rsrqDb < -19) {
-            rsrqDb = -19;
+    if ((rsrq >= -30) && (rsrq <= 46)) {
+        rsrqDb = (rsrq - 39) / 2;
+        if (rsrqDb < -34) {
+            rsrqDb = -34;
         }
     }
 
@@ -190,6 +190,8 @@ static int32_t getRadioParamsCsq(uAtClientHandle_t atHandle,
 static int32_t getRadioParamsUcged2(uAtClientHandle_t atHandle,
                                     uCellPrivateRadioParameters_t *pRadioParameters)
 {
+    int32_t x;
+
     // +UCGED: 2
     // <rat>,<svc>,<MCC>,<MNC>
     // <earfcn>,<Lband>,<ul_BW>,<dl_BW>,<tac>,<LcellId>,<PCID>,<mTmsi>,<mmeGrId>,<mmeCode>, <rsrp>,<rsrq>,<Lsinr>,<Lrrc>,<RI>,<CQI>,<avg_rsrp>,<totalPuschPwr>,<avgPucchPwr>,<drx>, <l2w>,<volte_mode>[,<meas_gap>,<tti_bundling>]
@@ -215,10 +217,17 @@ static int32_t getRadioParamsUcged2(uAtClientHandle_t atHandle,
     pRadioParameters->cellId = uAtClientReadInt(atHandle);
     // Skip <mTmsi>, <mmeGrId> and <mmeCode>
     uAtClientSkipParameters(atHandle, 3);
-    // RSRP is element 15, coded as specified in TS 36.133
+    // RSRP is element 11, coded as specified in TS 36.133
     pRadioParameters->rsrpDbm = rsrpToDbm(uAtClientReadInt(atHandle));
-    // RSRQ is element 16, coded as specified in TS 36.133
-    pRadioParameters->rsrqDb = rsrqToDb(uAtClientReadInt(atHandle));
+    // RSRQ is element 12, coded as specified in TS 36.133.
+    x = uAtClientReadInt(atHandle);
+    if (uAtClientErrorGet(atHandle) == 0) {
+        // Note that this can be a negative integer, hence
+        // we check for errors here so as not to mix up
+        // what might be a negative error code with a
+        // negative return value.
+        pRadioParameters->rsrqDb = rsrqToDb(x);
+    }
     uAtClientResponseStop(atHandle);
 
     return uAtClientUnlock(atHandle);
@@ -385,8 +394,9 @@ int32_t uCellInfoGetRsrpDbm(int32_t cellHandle)
 // Get the RSRQ.
 int32_t uCellInfoGetRsrqDb(int32_t cellHandle)
 {
-    // Zero is the error code here as negative values are valid
-    int32_t errorCodeOrValue = 0;
+    // 0x7FFFFFFF is the error code here as negative and small
+    // positive values are valid
+    int32_t errorCodeOrValue = 0x7FFFFFFF;
     uCellPrivateInstance_t *pInstance;
 
     if (gUCellPrivateMutex != NULL) {

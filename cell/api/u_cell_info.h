@@ -99,9 +99,11 @@ int32_t uCellInfoGetRsrpDbm(int32_t cellHandle);
  * cellular network.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @return            the RSRQ in dB, or zero if no RSRQ
+ * @return            the RSRQ in dB, or 0x7FFFFFFF if no RSRQ
  *                    measurement is currently available.
- *                    Note that RSRQ values are NEGATIVE.
+ *                    Note that RSRQ values are usually
+ *                    negative but small positive values are
+ *                    also possible.
  */
 int32_t uCellInfoGetRsrqDb(int32_t cellHandle);
 

@@ -236,7 +236,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
              " return errors)...\n");
     U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) == 0);
     U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
-    U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0);
+    U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
     U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle, &snrDb) != 0);
     U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
     U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
@@ -246,7 +246,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     U_PORT_TEST_ASSERT(uCellInfoRefreshRadioParameters(cellHandle) != 0);
     U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) == 0);
     U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
-    U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0);
+    U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
     U_PORT_TEST_ASSERT(uCellInfoGetSnrDb(cellHandle, &snrDb) != 0);
     U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
     U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
@@ -268,7 +268,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     if (U_CELL_PRIVATE_RAT_IS_EUTRAN(uCellNetGetActiveRat(cellHandle))) {
         // Only get these with AT+UCGED on EUTRAN
         U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) < 0);
-        U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) < 0);
+        U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) != 0x7FFFFFFF);
         U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) >= 0);
         U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) >= 0);
     }

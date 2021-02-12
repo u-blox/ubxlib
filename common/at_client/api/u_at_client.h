@@ -724,7 +724,11 @@ void uAtClientResponseStart(uAtClientHandle_t atHandle,
                             const char *pPrefix);
 
 /** Read an integer parameter from the received AT response.
- * Only positive integers are supported.
+ * Both negative and positive integers are supported however
+ * a negative return value is also used to indicate an error.
+ * If a negative integer is possible then a check for errors
+ * should be performed, e.g. by calling uAtClientErrorGet(),
+ * before the return value is considered valid.
  *
  * @param atHandle the handle of the AT client.
  * @return         the positive integer or negative error
