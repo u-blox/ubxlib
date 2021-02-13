@@ -599,17 +599,17 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                         sleep(1)
                                         platform_lock.release()
                                     if downloaded:
+                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                       u_report.EVENT_COMPLETE)
                                         # Remove us from the list of pending downloads
                                         if download_list:
                                             download_list.remove(instance_text)
-                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                       u_report.EVENT_COMPLETE)
-                                        # Wait for all the other downloads to complete before
-                                        # starting SWO logging
-                                        u_utils.wait_for_completion(download_list,
-                                                                    "STM32F4 downloads",
-                                                                    DOWNLOADS_COMPLETE_GUARD_TIME_SECONDS,
-                                                                    printer, prompt)
+                                            # Wait for all the other downloads to complete before
+                                            # starting SWO logging
+                                            u_utils.wait_for_completion(download_list,
+                                                                        "STM32F4 downloads",
+                                                                        DOWNLOADS_COMPLETE_GUARD_TIME_SECONDS,
+                                                                        printer, prompt)
                                         # So that all STM32Cube instances don't start up at
                                         # once, which can also cause problems, wait the
                                         # instance-number number of seconds.
