@@ -63,7 +63,8 @@
 static void appTask(void *pParam)
 {
     (void) pParam;
-#if (U_CFG_APP_PIN_C030_ENABLE_3V3 >= 0) || (U_CFG_APP_PIN_CELL_RESET >= 0)
+#if (U_CFG_APP_PIN_C030_ENABLE_3V3 >= 0) || (U_CFG_APP_PIN_CELL_RESET >= 0) || \
+    (U_CFG_APP_PIN_CELL_PWR_ON >= 0)
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
 #endif
 
@@ -77,6 +78,19 @@ static void appTask(void *pParam)
     uPortGpioConfig(&gpioConfig);
     uPortGpioSet(U_CFG_APP_PIN_C030_ENABLE_3V3, 1);
 #endif
+
+#if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+    // Make sure the PWR_ON pin is initially high
+    // BEFORE taking the module out of reset: this
+    // ensures that it powers on from reset which
+    // permits FW update on SARA-R5
+    uPortGpioSet(U_CFG_APP_PIN_CELL_PWR_ON, 1);
+    gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+    gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_NORMAL;
+    gpioConfig.pin = U_CFG_APP_PIN_CELL_PWR_ON;
+    uPortGpioConfig(&gpioConfig);
+#endif
+
 #if U_CFG_APP_PIN_CELL_RESET >= 0
     // Set reset high (i.e. not reset) if it is connected
     gpioConfig.pin = U_CFG_APP_PIN_CELL_RESET;

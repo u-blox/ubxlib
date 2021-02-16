@@ -7,3 +7,4 @@ For each MCU you will find a `runner` build.  This builds and runs all of these 
 
 - `sockets` contains an example of how to bring up a network (cellular or Wifi) and use it make a UDP or TCP socket connection to a server on the public internet.
 - `security` contains examples of how to use the u-blox security features.
+- `utilities/c030_module_fw_update` is not so much an example as a program that is required if you need to update the firmware of the cellular module on a C030-R5 or C030-R4xx board.
