@@ -41,7 +41,7 @@ The examples here demonstrate how to use the u-blox security features for:
   * local chip-to-chip (C2C) security [coming soon],
   * local data protection [coming soon].
 * E2E data protection:
-  * E2E symmetric KMS [coming soon],
+  * E2E symmetric KMS,
   * E2E data protection,
   * E2E data integrity,
 * access control:

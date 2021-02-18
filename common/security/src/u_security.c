@@ -310,6 +310,30 @@ int32_t uSecurityE2eEncrypt(int32_t networkHandle,
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: PRE-SHARED KEY GENERATION
+ * -------------------------------------------------------------- */
+
+// Generate a PSK and accompanying PSK ID.
+int32_t uSecurityPskGenerate(int32_t networkHandle,
+                             size_t pskSizeBytes, char *pPsk,
+                             char *pPskId)
+{
+    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((pPsk != NULL) && (pPskId != NULL) &&
+        ((pskSizeBytes == 16) || (pskSizeBytes == 32))) {
+        errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+        if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+            errorCodeOrSize = uCellSecPskGenerate(networkHandle,
+                                                  pskSizeBytes, pPsk,
+                                                  pPskId);
+        }
+    }
+
+    return errorCodeOrSize;
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 

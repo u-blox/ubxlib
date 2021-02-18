@@ -23,7 +23,7 @@
 /** @file
  * @brief Test for the u-blox security API: these should pass on all
  * platforms that include the appropriate communications hardware,
- * i.e. currently cellular SARA-R4 or SARA-R5.
+ * i.e. currently cellular SARA-R5.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -659,6 +659,125 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
                     //lint -e(668) Suppress possible NULL pointer, it is checked above
                     U_PORT_TEST_ASSERT(memcmp(pData, gAllChars, sizeof(gAllChars)) != 0);
                     free(pData);
+                } else {
+                    uPortLog("U_SECURITY_TEST: this device supports u-blox"
+                             " security but has not been security sealed,"
+                             " no testing of end to end encryption will be"
+                             " carried out.\n");
+                }
+            }
+
+            // Check for memory leaks
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SECURITY_TEST: we have leaked %d byte(s).\n",
+                     heapUsed);
+            // heapUsed < 0 for the Zephyr case where the heap can look
+            // like it increases (negative leak)
+            U_PORT_TEST_ASSERT(heapUsed <= 0);
+        }
+    }
+}
+
+/** Test PSK generation.
+ */
+U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
+{
+    int32_t networkHandle;
+    //lint -esym(838, z) Suppress not used, which will be true
+    // if logging is compiled out
+    int32_t z;
+    int32_t pskIdSize;
+    int32_t heapUsed;
+    char psk[U_SECURITY_PSK_MAX_LENGTH_BYTES];
+    char pskId[U_SECURITY_PSK_ID_MAX_LENGTH_BYTES];
+
+    // Do the standard preamble to make sure there is
+    // a network underneath us
+    stdPreamble();
+
+    // Repeat for all bearers
+    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+        networkHandle = gUNetworkTestCfg[x].handle;
+        if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
+            uPortLog("U_SECURITY_TEST: checking if u-blox security"
+                     " is supported by handle %d...\n", networkHandle);
+            if (uSecurityIsSupported(networkHandle)) {
+                uPortLog("U_SECURITY_TEST: security is supported.\n");
+                uPortLog("U_SECURITY_TEST: waiting for seal status...\n");
+                if (uSecurityIsSealed(networkHandle)) {
+                    uPortLog("U_SECURITY_TEST: device is sealed.\n");
+
+                    // Ask for a security heartbeat to be triggered:
+                    // this very likely won't be permitted since
+                    // it is quite severely rate limited (e.g. just once
+                    // in 24 hours) so we're really only checking that it
+                    // doesn't crash here
+                    z = uSecurityHeartbeatTrigger(networkHandle);
+                    uPortLog("U_SECURITY_TEST: uSecurityHeartbeatTrigger()"
+                             " returned %d.\n", z);
+                    uPortLog("U_SECURITY_TEST: testing PSK generation...\n");
+                    memset(psk, 0, sizeof(psk));
+                    memset(pskId, 0, sizeof(pskId));
+                    pskIdSize = uSecurityPskGenerate(networkHandle, 16,
+                                                     psk, pskId);
+                    U_PORT_TEST_ASSERT(pskIdSize > 0);
+                    U_PORT_TEST_ASSERT(pskIdSize < (int32_t) sizeof(pskId));
+                    // Check that the PSK ID isn't still all zeroes
+                    // expect beyond pskIdSize
+                    z = 0;
+                    for (size_t y = 0; y < sizeof(pskId); y++) {
+                        if ((int32_t) y < pskIdSize) {
+                            if (pskId[y] == 0) {
+                                z++;
+                            }
+                        } else {
+                            U_PORT_TEST_ASSERT(pskId[y] == 0);
+                        }
+                    }
+                    U_PORT_TEST_ASSERT(z < pskIdSize);
+                    // Check that the first 16 bytes of the PSK aren't still
+                    // all zero but that the remainder are
+                    z = 0;
+                    for (size_t y = 0; y < sizeof(psk); y++) {
+                        if (y < 16) {
+                            if (psk[y] == 0) {
+                                z++;
+                            }
+                        } else {
+                            U_PORT_TEST_ASSERT(psk[y] == 0);
+                        }
+                    }
+                    U_PORT_TEST_ASSERT(z < 16);
+                    memset(psk, 0, sizeof(psk));
+                    memset(pskId, 0, sizeof(pskId));
+                    pskIdSize = uSecurityPskGenerate(networkHandle, 32,
+                                                     psk, pskId);
+                    U_PORT_TEST_ASSERT(pskIdSize > 0);
+                    U_PORT_TEST_ASSERT(pskIdSize < (int32_t) sizeof(pskId));
+                    // Check that the PSK ID isn't still all zeroes
+                    // expect beyond pskIdSize
+                    z = 0;
+                    for (size_t y = 0; y < sizeof(pskId); y++) {
+                        if ((int32_t) y < pskIdSize) {
+                            if (pskId[y] == 0) {
+                                z++;
+                            }
+                        } else {
+                            U_PORT_TEST_ASSERT(pskId[y] == 0);
+                        }
+                    }
+                    U_PORT_TEST_ASSERT(z < pskIdSize);
+                    // Check that the PSK isn't still all zeroes
+                    z = 0;
+                    for (size_t y = 0; y < sizeof(psk); y++) {
+                        if (psk[y] == 0) {
+                            z++;
+                        }
+                    }
+                    U_PORT_TEST_ASSERT(z < (int32_t) sizeof(psk));
                 } else {
                     uPortLog("U_SECURITY_TEST: this device supports u-blox"
                              " security but has not been security sealed,"

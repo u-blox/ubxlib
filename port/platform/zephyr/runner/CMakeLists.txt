@@ -104,6 +104,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/test/u_short_range_
 # examples
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/sockets/main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/e2e/e2e_main.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/psk/psk_main.c)
 
 # unity
 target_compile_definitions(app PRIVATE UNITY_INCLUDE_CONFIG_H)

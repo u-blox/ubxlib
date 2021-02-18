@@ -83,6 +83,11 @@
 # error U_CELL_SEC_HEX_BUFFER_LENGTH_BYTES not the same size as the ASCII hex version of U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES.
 #endif
 
+// Check that U_SECURITY_PSK_MAX_LENGTH_BYTES is at least as big as U_SECURITY_PSK_ID_MAX_LENGTH_BYTES
+#if U_SECURITY_PSK_MAX_LENGTH_BYTES < U_SECURITY_PSK_ID_MAX_LENGTH_BYTES
+# error U_SECURITY_PSK_MAX_LENGTH_BYTES is smaller than U_SECURITY_PSK_ID_MAX_LENGTH_BYTES.
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -646,6 +651,73 @@ int32_t uCellSecE2eEncrypt(int32_t cellHandle,
                             errorCodeOrSize = uAtClientUnlock(atHandle);
                         }
                     }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrSize;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: PRE-SHARED KEY GENERATION
+ * -------------------------------------------------------------- */
+
+// Generate a PSK and accompanying PSK ID.
+int32_t uCellSecPskGenerate(int32_t cellHandle,
+                            size_t pskSizeBytes, char *pPsk,
+                            char *pPskId)
+{
+    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t sizeOutPsk;
+    int32_t sizeOutPskId;
+    char buffer[(U_SECURITY_PSK_MAX_LENGTH_BYTES * 2) + 1]; // * 2 for hex,  +1 for terminator
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pInstance != NULL) && (pPsk != NULL) && (pPskId != NULL) &&
+            ((pskSizeBytes == 16) || (pskSizeBytes == 32))) {
+            errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)) {
+                errorCodeOrSize = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+USECPSK=");
+                uAtClientWriteInt(atHandle, (int32_t) pskSizeBytes);
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+USECPSK:");
+                // Read the PSK ID
+                sizeOutPskId = uAtClientReadString(atHandle, buffer,
+                                                   sizeof(buffer),
+                                                   false);
+                if ((sizeOutPskId > 0) &&
+                    (sizeOutPskId <= U_SECURITY_PSK_ID_MAX_LENGTH_BYTES * 2)) {
+                    sizeOutPskId = (int32_t) uCellPrivateHexToBin(buffer,
+                                                                  sizeOutPskId,
+                                                                  pPskId);
+                }
+                // Read the PSK
+                sizeOutPsk = uAtClientReadString(atHandle, buffer,
+                                                 sizeof(buffer),
+                                                 false);
+                if (sizeOutPsk > 0) {
+                    sizeOutPsk = (int32_t) uCellPrivateHexToBin(buffer,
+                                                                sizeOutPsk,
+                                                                pPsk);
+                }
+                uAtClientResponseStop(atHandle);
+                if ((uAtClientUnlock(atHandle) == 0) &&
+                    (sizeOutPsk == pskSizeBytes)) {
+                    errorCodeOrSize = sizeOutPskId;
                 }
             }
         }

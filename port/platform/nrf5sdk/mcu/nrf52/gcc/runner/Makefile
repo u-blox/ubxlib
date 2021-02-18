@@ -83,6 +83,7 @@ SRC_FILES += \
   $(NRF5_PATH)/external/mbedtls/library/aes.c \
   ../../../../../../../example/sockets/main.c \
   ../../../../../../../example/security/e2e/e2e_main.c \
+  ../../../../../../../example/security/psk/psk_main.c \
   ../../../../../../../ble/src/u_ble.c \
   ../../../../../../../ble/src/u_ble_cfg.c \
   ../../../../../../../ble/src/u_ble_data.c \

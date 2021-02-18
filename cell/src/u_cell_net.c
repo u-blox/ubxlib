@@ -52,6 +52,7 @@
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
+#include "u_cell_info.h"
 #include "u_cell_apn_db.h"
 
 /* ----------------------------------------------------------------
@@ -553,6 +554,7 @@ static int32_t prepareConnect(uCellPrivateInstance_t *pInstance)
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t errorCode;
+    char imsi[U_CELL_INFO_IMSI_SIZE];
 
     uPortLog("U_CELL_NET: preparing to register/connect...\n");
 
@@ -582,6 +584,14 @@ static int32_t prepareConnect(uCellPrivateInstance_t *pInstance)
             uAtClientCommandStopReadResponse(atHandle);
             errorCode = uAtClientUnlock(atHandle);
         }
+    }
+
+    if (errorCode == 0) {
+        // We're not going to get anywhere unless a SIM
+        // is inserted and this might take a while to be
+        // read if we've just powered up so wait here for
+        // it to be ready
+        errorCode = uCellPrivateGetImsi(pInstance, imsi);
     }
 
     return errorCode;

@@ -279,6 +279,32 @@ int32_t uCellSecE2eEncrypt(int32_t cellHandle,
                            void *pDataOut, size_t dataSizeBytes);
 
 /* ----------------------------------------------------------------
+ * FUNCTIONS: PRE-SHARED KEY GENERATION
+ * -------------------------------------------------------------- */
+
+/** Generate a PSK and accompanying PSK ID.
+ *
+ * @param cellHandle     the handle of the instance to be used.
+ * @param pskSizeBytes   the size of PSK to be generated: can be
+ *                       16 bytes or 32 bytes.
+ * @param pPsk           a pointer to storage for 16 or 32 bytes
+ *                       of generated PSK, encoded as binary, e.g.
+ *                       [0x0a, 0x04, 0xf0... etc], *not* ASCII;
+ *                       cannot be NULL.
+ * @param pPskId         a pointer to storage for the PSK ID to go
+ *                       to go with the PSK, again encoded as binary,
+ *                       *not* ASCII; cannot be NULL, can be up to
+ *                       32 bytes in size.
+ * @return               the number of bytes copied into pPskId, i.e.
+ *                       the *PSK ID*, not the PSK (which will always
+ *                       be the number of bytes requested), or negative
+ *                       error code.
+ */
+int32_t uCellSecPskGenerate(int32_t cellHandle,
+                            size_t pskSizeBytes, char *pPsk,
+                            char *pPskId);
+
+/* ----------------------------------------------------------------
  * FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 
