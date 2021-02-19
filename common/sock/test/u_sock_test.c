@@ -2200,13 +2200,14 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                          " free at a minimum.\n", stackMinFreeBytes);
                 U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
 
-                // Close the event queue
-                U_PORT_TEST_ASSERT(uPortEventQueueClose(gTestConfig.eventQueueHandle) == 0);
-                gTestConfig.eventQueueHandle = -1;
 
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(gTestConfig.descriptor) == 0);
                 uSockCleanUp();
+
+                // Close the event queue
+                U_PORT_TEST_ASSERT(uPortEventQueueClose(gTestConfig.eventQueueHandle) == 0);
+                gTestConfig.eventQueueHandle = -1;
 
                 // Free memory
                 free(gTestConfig.pBuffer);
@@ -2450,9 +2451,6 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
                      " free at a minimum.\n", stackMinFreeBytes);
             U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
 
-            // Close the event queue
-            U_PORT_TEST_ASSERT(uPortEventQueueClose(gTestConfig.eventQueueHandle) == 0);
-            gTestConfig.eventQueueHandle = -1;
 
             // Close the socket
             U_PORT_TEST_ASSERT(!closedCallbackCalled);
@@ -2466,6 +2464,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
             }
             U_PORT_TEST_ASSERT(closedCallbackCalled);
             uSockCleanUp();
+
+            // Close the event queue
+            U_PORT_TEST_ASSERT(uPortEventQueueClose(gTestConfig.eventQueueHandle) == 0);
+            gTestConfig.eventQueueHandle = -1;
 
             // Free memory
             free(gTestConfig.pBuffer);
