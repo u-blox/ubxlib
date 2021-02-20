@@ -112,6 +112,8 @@ static bool moduleIsSealed(const uCellPrivateInstance_t *pInstance)
     // Sealed is when AT+USECDEVINFO
     // returns 1,1,1
     uAtClientLock(atHandle);
+    uAtClientTimeoutSet(atHandle,
+                        U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
     uAtClientCommandStart(atHandle, "AT+USECDEVINFO?");
     uAtClientCommandStop(atHandle);
     uAtClientResponseStart(atHandle, "+USECDEVINFO:");
@@ -177,6 +179,8 @@ bool uCellSecIsBootstrapped(int32_t cellHandle)
                 // returns 1,x,1
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+USECDEVINFO?");
                 uAtClientCommandStop(atHandle);
                 uAtClientResponseStart(atHandle, "+USECDEVINFO:");
@@ -246,6 +250,8 @@ int32_t uCellSecGetRootOfTrustUid(int32_t cellHandle,
                     for (size_t x = 3; (x > 0) && (errorCodeOrSize < 0); x--) {
                         atHandle = pInstance->atHandle;
                         uAtClientLock(atHandle);
+                        uAtClientTimeoutSet(atHandle,
+                                            U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                         uAtClientCommandStart(atHandle, "AT+USECROTUID");
                         uAtClientCommandStop(atHandle);
                         uAtClientResponseStart(atHandle, "+USECROTUID:");
@@ -302,6 +308,8 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+USECC2C=");
                 uAtClientWriteInt(atHandle, 0);
                 uCellPrivateBinToHex(pTESecret, sizeof(buffer) / 2,
@@ -388,6 +396,8 @@ int32_t uCellSecC2cOpen(int32_t cellHandle,
                 if (pInstance->pSecurityC2cContext == NULL) {
                     atHandle = pInstance->atHandle;
                     uAtClientLock(atHandle);
+                    uAtClientTimeoutSet(atHandle,
+                                        U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                     uAtClientCommandStart(atHandle, "AT+USECC2C=");
                     uAtClientWriteInt(atHandle, 1);
                     uCellPrivateBinToHex(pTESecret, sizeof(buffer) / 2,
@@ -472,6 +482,8 @@ int32_t uCellSecC2cClose(int32_t cellHandle)
                 if (pInstance->pSecurityC2cContext != NULL) {
                     atHandle = pInstance->atHandle;
                     uAtClientLock(atHandle);
+                    uAtClientTimeoutSet(atHandle,
+                                        U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                     uAtClientCommandStart(atHandle, "AT+USECC2C=");
                     uAtClientWriteInt(atHandle, 2);
                     uAtClientCommandStopReadResponse(atHandle);
@@ -522,8 +534,8 @@ int32_t uCellSecSealSet(int32_t cellHandle,
                                    U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)) {
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
-                // Can take a little while to respond
-                uAtClientTimeoutSet(atHandle, 30000);
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+USECDEVINFO=");
                 uAtClientWriteString(atHandle, pDeviceProfileUid, true);
                 uAtClientWriteString(atHandle, pDeviceSerialNumberStr, true);
@@ -606,6 +618,8 @@ int32_t uCellSecE2eEncrypt(int32_t cellHandle,
                     } else {
                         atHandle = pInstance->atHandle;
                         uAtClientLock(atHandle);
+                        uAtClientTimeoutSet(atHandle,
+                                            U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                         uAtClientCommandStart(atHandle, "AT+USECE2EDATAENC=");
                         uAtClientWriteInt(atHandle, (int32_t) dataSizeBytes);
                         uAtClientCommandStop(atHandle);
@@ -691,6 +705,8 @@ int32_t uCellSecPskGenerate(int32_t cellHandle,
                 errorCodeOrSize = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+USECPSK=");
                 uAtClientWriteInt(atHandle, (int32_t) pskSizeBytes);
                 uAtClientCommandStop(atHandle);
@@ -751,6 +767,8 @@ int32_t uCellSecHeartbeatTrigger(int32_t cellHandle)
                                    U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)) {
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+USECCONN");
                 uAtClientCommandStopReadResponse(atHandle);
                 errorCode = uAtClientUnlock(atHandle);

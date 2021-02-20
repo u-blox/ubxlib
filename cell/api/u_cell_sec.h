@@ -33,6 +33,16 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS
+/** Security transactions which may require a heartbeat
+ * to be completed can take, worst case, 150 seconds to
+ * complete.  If you wish you may set this to a smaller
+ * number (e.g. 10 seconds) and just retry the security
+ * transaction at application level on failure.
+ */
+# define U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS 150
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
