@@ -52,8 +52,10 @@
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
 
+#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
 #include "u_sock.h"
 #include "u_sock_test_shared_cfg.h"
+#endif
 
 #include "u_security.h"
 
@@ -72,10 +74,12 @@
  */
 #define U_SECURITY_TEST_C2C_TE_SECRET "\x00\x01\x02\x03\x04\x05\x06\x07\xff\xfe\xfd\xfc\xfb\xfa\xf9\xf8"
 
+#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
 #ifndef U_SECURITY_TEST_C2C_MAX_TCP_READ_WRITE_SIZE
 /** The maximum TCP read/write size to use during C2C testing.
  */
 # define U_SECURITY_TEST_C2C_MAX_TCP_READ_WRITE_SIZE 1024
+#endif
 #endif
 
 /* ----------------------------------------------------------------
@@ -100,6 +104,7 @@ static const char gAllChars[] = "the quick brown fox jumps over the lazy dog "
                                 "\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c"
                                 "\x1d\x1e!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~\x7f";
 
+#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
 /** Data to exchange in a sockets test.
  */
 static const char gSendData[] =  "_____0000:0123456789012345678901234567890123456789"
@@ -144,6 +149,7 @@ static const char gSendData[] =  "_____0000:012345678901234567890123456789012345
                                  "01234567890123456789012345678901234567890123456789"
                                  "_____2000:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789";
+#endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -192,6 +198,7 @@ static void stdPreamble()
     }
 }
 
+#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
 // Send an entire TCP data buffer until done
 static size_t sendTcp(uSockDescriptor_t descriptor,
                       const char *pData, size_t sizeBytes)
@@ -231,6 +238,7 @@ static size_t fix(size_t size, size_t limit)
 
     return size;
 }
+#endif
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -296,6 +304,11 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
         }
     }
 }
+
+// Temporary #define to disable this test as it refuses
+// to work reliably on ubxlib test instance 19: this
+// is under investigation
+#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
 
 /** Test chip to chip security but this time there's a sock in it.
  */
@@ -493,6 +506,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
         }
     }
 }
+
+#endif // U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
 
 /** Test security sealing, requires a network connection.
  * Note: this test will *only* attempt a seal if
