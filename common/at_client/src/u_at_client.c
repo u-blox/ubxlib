@@ -594,6 +594,26 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     char *pData;
     char *pDataIntercept;
 
+    // The receive buffer looks like this:
+    //
+    // +--------+-------------+-------------------------------+
+    // |  read  |    unread   |            buffered           |
+    // +--------+-------------+-------------------------------+
+    //      readIndex       length                       lengthBuffered
+    //
+    // Up to "length" is stuff that is AT command stuff or whatever
+    // received from the UART, readIndex is how far into that has
+    // been read off by the AT parsing code.  Normally "length" and
+    // "lengthBuffered" are the same, they only differ if there is
+    // an active intercept function, e.g. for C2C security; stuff
+    // between "length" and lengthBuffered has not yet been
+    // processed by the intercept function (e.g. it's just new or
+    // there's not enough of it to form some sort of frame structure
+    // that the intercept function needs).  The intercept function
+    // reads the stuff between "length" and lengthBuffered at which
+    // point it may make it available as normal stuff which this
+    // function then copies down into the unread part of "length".
+
     // Determine if we're in a callback or not
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
@@ -668,8 +688,8 @@ static bool bufferFill(uAtClientInstance_t *pClient,
             // length starts out as the amount of data that has not yet
             // been successfully processed by the intercept function
             length += readLength;
-            x = length;
         }
+        x = length;
 
         if ((pClient->pInterceptRx != NULL) && (length > 0)) {
             // There's an intercept function and either we've just
@@ -2344,6 +2364,20 @@ void uAtClientIgnoreStopTag(uAtClientHandle_t atHandle)
 
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
         setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
+    }
+
+    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+}
+
+// Switch stop tag detection back on.
+void uAtClientRestoreStopTag(uAtClientHandle_t atHandle)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_PORT_MUTEX_LOCK(pClient->mutex);
+
+    if (pClient->error == U_ERROR_COMMON_SUCCESS) {
+        setScope(pClient, U_AT_CLIENT_SCOPE_RESPONSE);
     }
 
     U_PORT_MUTEX_UNLOCK(pClient->mutex);

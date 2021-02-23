@@ -153,9 +153,13 @@ def pwar_readline(in_handle, connection_type, terminator=None):
         # the Telnet port has been closed here, allow it
         # to stop us entirely
         # Long time-out as we don't want partial lines
-        line = in_handle.read_until(terminator_bytes, 1).decode('ascii')
+        try:
+            line = in_handle.read_until(terminator_bytes, 1).decode('ascii')
+        except UnicodeDecodeError:
+            # Just ignore it.
+            pass
         if line != "":
-            # To make this work the same was as the
+            # To make this work the same way as the
             # serial and exe cases, need to remove the terminator
             # and remove any dangling \n left on the front
             line = line.rstrip(terminator)

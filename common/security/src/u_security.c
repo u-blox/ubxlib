@@ -105,6 +105,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"    // memcpy()
 
 #include "u_error_common.h"
 
@@ -178,13 +179,14 @@ int32_t uSecurityGetSerialNumber(int32_t networkHandle,
 int32_t uSecurityGetRootOfTrustUid(int32_t networkHandle,
                                    char *pRootOfTrustUid)
 {
-    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    char buffer[U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES];
 
-    if (pRootOfTrustUid != NULL) {
-        errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            errorCodeOrSize = uCellSecGetRootOfTrustUid(networkHandle,
-                                                        pRootOfTrustUid);
+    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+        errorCodeOrSize = uCellSecGetRootOfTrustUid(networkHandle,
+                                                    buffer);
+        if ((errorCodeOrSize > 0) && (pRootOfTrustUid != NULL)) {
+            memcpy(pRootOfTrustUid, buffer, sizeof(buffer));
         }
     }
 

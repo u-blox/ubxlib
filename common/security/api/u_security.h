@@ -124,8 +124,9 @@ int32_t uSecurityGetSerialNumber(int32_t networkHandle,
 
 /** Get the root of trust UID from the module.  This may be required
  * if the device is to be sealed using the u-blox security web
- * API.  The request may time-out if the module has only just booted,
- * in which case please try again.
+ * API.  If pRootOfTrustUid is NULL then this function provides a
+ * simple mechanism to check that the u-blox security services inside
+ * the module are ready for use (i.e. if it returns non-negative).
  *
  * @param networkHandle   the handle of the instance to
  *                        be used, e.g. as returned by
@@ -135,7 +136,7 @@ int32_t uSecurityGetSerialNumber(int32_t networkHandle,
  *                        where the root of trust UID will be placed,
  *                        encoded as binary, e.g.
  *                        [0x0a, 0x04, 0xf0, 0x08, 0x00, 0x3c, 0x96, 0x23],
- *                        *not* ASCII; cannot be NULL.
+ *                        *not* ASCII; may be NULL.
  * @return                the number of bytes copied into
  *                        pRootOfTrustUid or negative error code.
  */
@@ -200,6 +201,11 @@ int32_t uSecurityC2cPair(int32_t networkHandle,
  * off or rebooted.  If a chip to chip security session is
  * already open when this is called it will do nothing and
  * return success.
+ *
+ * Note: when using C2C over serial lines it is very important
+ * to ensure no data loss, otherwise whole blocks of encrypted
+ * data will be lost; always make sure HW flow control is enabled
+ * on your UART port.
  *
  * @param networkHandle  the handle of the instance to be used,
  *                       e.g. as returned by uNetworkAdd().

@@ -856,6 +856,16 @@ void uAtClientResponseStop(uAtClientHandle_t atHandle);
  */
 void uAtClientIgnoreStopTag(uAtClientHandle_t atHandle);
 
+/** Put the stop tag back again: use this after
+ * uAtClientIgnoreStopTag() has been called if you want
+ * to make sure that the AT client pauses to wait for
+ * the stop tag (e.g. `OK` or `ERROR`) before the end
+ * of your current AT command sequence.
+ *
+ * @param atHandle the handle of the AT client.
+ */
+void uAtClientRestoreStopTag(uAtClientHandle_t atHandle);
+
 /** Consume the given number of parameters from the
  * received AT response stream.
  *

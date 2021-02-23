@@ -429,7 +429,7 @@ int32_t uCellSecC2cOpen(int32_t cellHandle,
                                            sizeof(pContext->key));
                                     memcpy(pContext->hmacKey, pHMacKey,
                                            sizeof(pContext->hmacKey));
-                                    pContext->pTx->txInLimit = U_CELL_SEC_C2C_CHUNK_MAX_TX_LENGTH_BYTES;
+                                    pContext->pTx->txInLimit = U_CELL_SEC_C2C_USER_MAX_TX_LENGTH_BYTES;
                                     // If the pHmacTag has anything other than zero
                                     // in it this must be a V2 implementation
                                     for (size_t x = sizeof(pContext->hmacKey);
@@ -655,6 +655,9 @@ int32_t uCellSecE2eEncrypt(int32_t cellHandle,
                                     sizeOutBytes = (int32_t) dataSizeBytes;
                                 }
                             }
+                            // Make sure to wait for the top tag before
+                            // we finish
+                            uAtClientRestoreStopTag(atHandle);
                             uAtClientResponseStop(atHandle);
                             errorCodeOrSize = uAtClientUnlock(atHandle);
                             if (errorCodeOrSize == 0) {

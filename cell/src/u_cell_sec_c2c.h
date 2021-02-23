@@ -33,36 +33,31 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** The maximum transmit (i.e. to the module) chunk size for
- * chip to chip security: this is a hard limit of the C2C protocol.
- * Must be a multiple of 16 bytes for the security algorithms
- * to work. It is worth noting that the amount of user data
- * that can be fitted into a chunk is one less than the chunk length.
- * This is because the RFC 5652 padding scheme always adds at
- * least one byte to the input data.
+/** The maximum transmit (i.e. to the module) size for the user
+ * data in a chip to chip security chunk: this is a hard limit of
+ * the C2C protocol. Should be a multiple of 16 bytes for maximal
+ * efficiency.  It is worth noting that the amount of user data that
+ * can be fitted into a chunk is always one less than this because
+ * the RFC 5652 padding scheme always adds at least one byte to the
+ * input data.
  */
-#define U_CELL_SEC_C2C_CHUNK_MAX_TX_LENGTH_BYTES 256
+#define U_CELL_SEC_C2C_USER_MAX_TX_LENGTH_BYTES 256
 
-/** The maximum received (i.e. from the module) chunk size for
- * chip to chip security.  This is dictated by the largest portion
- * of TCP/UDP data we ever ask for from the module when running
- * sockets, i.e. U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES (see
- * u_cell_sock.h), plus the overhead for the "+USORD:" or "+USORF:"
- * that precedes it, the surrounding quote marks and the
- * line-ending. Must also be a multiple of 16 bytes for the
- * security algorithms to work.
- * If this is increased it will also be necessary to increase
- * the size of U_CELL_AT_BUFFER_LENGTH_BYTES in cell.h since
- * a whole chunk must be read-in before it can be decoded.
- * It is worth noting that the amount of user data that can be
- * fitted into a chunk is one less than the chunk length.
- * This is because the RFC 5652 padding scheme always adds at
- * least one byte to the input data.
+/** The maximum received (i.e. from the module) size for the
+ * user data in a chip to chip security chunk.  This is dictated by
+ * the largest portion of TCP/UDP data we ever ask for from the module
+ * when running sockets, i.e. U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES
+ * (see u_cell_sock.h), plus the overhead for the "+USORD:" or
+ * "+USORF:" that precedes it, the surrounding quote marks and the
+ * line-ending.  Should be a multiple of 16 bytes for maximal
+ * efficiency. If this is increased it will also be necessary to
+ * increase the size of U_CELL_AT_BUFFER_LENGTH_BYTES in cell.h
+ * since a whole chunk must be read-in before it can be decoded.
  */
-#define U_CELL_SEC_C2C_CHUNK_MAX_RX_LENGTH_BYTES (1024 + 16)
+#define U_CELL_SEC_C2C_USER_MAX_RX_LENGTH_BYTES (1024 + 16) // +16 for the AT-string overheads
 
 /** The chunk overhead for chip to chip security: start and
- * stop flags, 2 byte length and a 2 byte CRC.
+ * stop flags, 2-byte length and 2-byte CRC.
  */
 #define U_CELL_SEC_C2C_OVERHEAD_BYTES 6
 
@@ -70,10 +65,10 @@ extern "C" {
  */
 #define U_CELL_SEC_C2C_IV_LENGTH_BYTES 16
 
-/** The maximum length of padding that must be added to the
+/** The maximum length of padding that may be added to the
  * plain-text input for the encryption algorithm to work.
  */
-#define U_CELL_SEC_C2C_PAD_LENGTH_BYTES 16
+#define U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES 16
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -85,14 +80,14 @@ extern "C" {
  */
 typedef struct {
     // Leave room for a generated MAC on the end of the input text
-    char txIn[U_CELL_SEC_C2C_CHUNK_MAX_TX_LENGTH_BYTES +
-                                                       U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES];
+    char txIn[U_CELL_SEC_C2C_USER_MAX_TX_LENGTH_BYTES +
+                                                      U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES];
     size_t txInLength;
     size_t txInLimit;
-    char txOut[U_CELL_SEC_C2C_CHUNK_MAX_TX_LENGTH_BYTES +
-                                                        U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES +
-                                                        U_CELL_SEC_C2C_IV_LENGTH_BYTES +
-                                                        U_CELL_SEC_C2C_OVERHEAD_BYTES];
+    char txOut[U_CELL_SEC_C2C_USER_MAX_TX_LENGTH_BYTES +
+                                                       U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES +
+                                                       U_CELL_SEC_C2C_IV_LENGTH_BYTES +
+                                                       U_CELL_SEC_C2C_OVERHEAD_BYTES];
 } uCellSecC2cContextTx_t;
 
 /** Structure to hold context data for the chip to chip
@@ -105,8 +100,9 @@ typedef struct {
     // Times two to leave room for a generated MAC,
     // used during checking, on the end of the input
     // text
-    char rxOut[U_CELL_SEC_C2C_CHUNK_MAX_RX_LENGTH_BYTES +
-                                                        (U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES * 2)];
+    char rxOut[U_CELL_SEC_C2C_USER_MAX_RX_LENGTH_BYTES +
+                                                       U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES +
+                                                       (U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES * 2)];
     char *pRxOut;
 } uCellSecC2cContextRx_t;
 

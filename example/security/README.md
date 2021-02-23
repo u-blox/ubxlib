@@ -38,7 +38,7 @@ Please [contact us](mailto:thingstream-support@u-blox.com) to discuss your needs
 The examples here demonstrate how to use the u-blox security features for: 
 
 * design security:
-  * local chip-to-chip (C2C) security [coming soon],
+  * local chip-to-chip (C2C) security,
   * local data protection [coming soon].
 * E2E data protection:
   * E2E symmetric KMS,

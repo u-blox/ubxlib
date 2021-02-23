@@ -36,9 +36,10 @@ extern "C" {
 /** The recommended UART buffer length for the cellular driver,
  * large enough to run AT sockets using the IP stack on the
  * cellular module (where the maximum packet length is 1024 bytes)
- * without flow control.
+ * without flow control.  See U_CELL_AT_BUFFER_LENGTH_BYTES for
+ * where the overhead numbers come from (for the C2C case).
  */
-# define U_CELL_UART_BUFFER_LENGTH_BYTES 1024
+# define U_CELL_UART_BUFFER_LENGTH_BYTES (1024 + 16 + 16 + 16 + 16 + 16 + 6)
 #endif
 
 #ifndef U_CELL_AT_BUFFER_LENGTH_BYTES
@@ -48,16 +49,17 @@ extern "C" {
  * When chip to chip security is employed the size of each
  * secure frame adds a considerable overhead.  Maximum
  * chunk size is 1024 + 16 bytes (for an AT command,
- * see u_cell_sec_c2c.h) plus the length of a truncated MAC
- * (16 bytes) plus the length of the initial value (16 bytes)
- * plus the length of the HMAC SHA tag for the V2 scheme
- * (16 bytes) plus start/length/CRC/stop field totalling
- * 6 bytes. Then it is possible for there to be part of
- * one of these in the buffer being processed by the AT client
- * when another is meant to turn up so allow for at least two.
+ * see u_cell_sec_c2c.h) plus the maximum padding length of 16,
+ * bytes plus the length of a truncated MAC (16 bytes) plus the
+ * length of the initial value (16 bytes) plus the length of
+ * the HMAC SHA tag for the V2 scheme (16 bytes) plus
+ * start/length/CRC/stop field totalling 6 bytes. Then it is
+ * possible for there to be part of one of these in the buffer
+ * being processed by the AT client when another is meant to
+ * turn up so allow for at least two.
  */
 # define U_CELL_AT_BUFFER_LENGTH_BYTES (U_AT_CLIENT_BUFFER_OVERHEAD_BYTES + \
-                                        ((1024 + 16 + 16 + 16 + 16 + 6) * 2))
+                                        ((1024 + 16 + 16 + 16 + 16 + 16 + 6) * 2))
 #endif
 
 #ifndef U_CELL_UART_BAUD_RATE

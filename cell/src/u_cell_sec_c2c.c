@@ -45,7 +45,7 @@
 
 #include "u_cell_sec_c2c.h"
 
-// The compilation flag U_CELL_SEC_C2C_DEBUG
+// The compilation flag U_CELL_SEC_C2C_DETAILED_DEBUG
 // was used during early stage development
 // against real modems. It is FAR too heavy
 // weight to be used normally, and of course
@@ -81,8 +81,7 @@
 #endif
 
 // Check that U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES is at least as
-// big as a U_SECURITY_C2C_TE_SECRET_LENGTH_BYTES
-// is big enough to hold an IV also
+// big as U_SECURITY_C2C_TE_SECRET_LENGTH_BYTES
 #if U_SECURITY_C2C_TE_SECRET_LENGTH_BYTES > U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES
 # error U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES must be at least as big as U_SECURITY_C2C_TE_SECRET_LENGTH_BYTES since a TE secret is temporarily written to the space a truncated MAC would occupy during V2 encoding.
 #endif
@@ -300,7 +299,7 @@ static size_t encode(const uCellSecC2cContext_t *pContext)
 
     // Pad the input data as required
     pTx->txInLength = pad(pTx->txIn, pTx->txInLength, pTx->txInLimit,
-                          U_CELL_SEC_C2C_PAD_LENGTH_BYTES);
+                          U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES);
 
     // The frame looks like this:
     //  ---------------------------------------------
@@ -460,8 +459,12 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
     uCellSecC2cContextRx_t *pRx = pContext->pRx;
     size_t x = 0;
     size_t chunkLength;
+    size_t chunkLengthLimit;
     uint16_t y;
     char *pData = pRx->pRxIn;
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+    size_t z = 0;
+#endif
 
     // Look for an opening frame marker
     // The frame looks like this:
@@ -473,17 +476,46 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
     // CRC fields are little-endian.  Length is of the
     // body only.
 
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+    uPortLog("U_CELL_SEC_C2C_DECODE: buffer is %d byte(s) long.\n",
+             pRx->rxInLength);
+#endif
+
+    // We need to avoid acting on corrupt lengths (due to
+    // frame boundaries being mis-detected on loss of data)
+    // so work out what the maximum length is.
+    if (pContext->isV2) {
+        chunkLengthLimit = U_CELL_SEC_C2C_USER_MAX_RX_LENGTH_BYTES +
+                           U_CELL_SEC_C2C_IV_LENGTH_BYTES +
+                           U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES +
+                           U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES;
+    } else {
+        chunkLengthLimit = U_CELL_SEC_C2C_USER_MAX_RX_LENGTH_BYTES +
+                           U_CELL_SEC_C2C_IV_LENGTH_BYTES +
+                           U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES +
+                           U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES;
+    }
+
     while ((x < pRx->rxInLength) &&
            (*pData != (char) U_CELL_SEC_C2C_FRAME_MARKER)) {
         pData++;
         x++;
     }
 
-    if (*pData == (char) U_CELL_SEC_C2C_FRAME_MARKER) {
+    if ((*pData == (char) U_CELL_SEC_C2C_FRAME_MARKER) &&
+        ((pRx->rxInLength - x) > U_CELL_SEC_C2C_OVERHEAD_BYTES)) {
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
-        uPortLog("U_CELL_SEC_C2C_DECODE: found a frame marker.\n");
+        if (x > 0) {
+            uPortLog("U_CELL_SEC_C2C_DECODE: frame marker found after %d"
+                     " byte(s) were discarded:\n", x);
+            printBlock(pRx->pRxIn, x, true);
+        }
+        uPortLog("U_CELL_SEC_C2C_DECODE: found a frame marker and"
+                 " enough bytes following (%d) to potentially hold"
+                 " a frame.\n", pRx->rxInLength - x);
 #endif
-        // Found one, grab the length, little endian
+        // Have a frame marker and at least a non-zero length frame
+        // Grab the length, little endian
         pData++;
         // Cast in two stages to keep Lint happy
         chunkLength = ((size_t) (int32_t) * pData);
@@ -492,15 +524,33 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
         pData++;
 
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
-        uPortLog("U_CELL_SEC_C2C_DECODE: chunk is %d byte(s):\n", chunkLength);
-        printBlock(pData, chunkLength, true);
+        z = chunkLength + U_CELL_SEC_C2C_OVERHEAD_BYTES;
+        if (z > pRx->rxInLength - x) {
+            z = pRx->rxInLength - x;
+        }
+        uPortLog("U_CELL_SEC_C2C_DECODE: chunk is %d byte(s) (including"
+                 " %d bytes of overhead) of which we have %d byte(s):\n",
+                 chunkLength + U_CELL_SEC_C2C_OVERHEAD_BYTES,
+                 U_CELL_SEC_C2C_OVERHEAD_BYTES, z);
+        printBlock(pData - 3, z, true);
+        z = 0;
+        if ((pRx->rxInLength - x) > chunkLength + U_CELL_SEC_C2C_OVERHEAD_BYTES) {
+            z = (pRx->rxInLength - x) - (chunkLength + U_CELL_SEC_C2C_OVERHEAD_BYTES);
+            uPortLog("U_CELL_SEC_C2C_DECODE: first 16 bytes of %d byte(s)"
+                     " after chunk ends:\n", z);
+            if (z > 16) {
+                z = 16;
+            }
+            printBlock((pData - 3) + chunkLength + U_CELL_SEC_C2C_OVERHEAD_BYTES, z, true);
+        }
 #endif
         // pData now points to the start of the
-        // encrypted data.
+        // encrypted data, x is the number of bytes discarded
+        // before we reach the frame marker
         if ((chunkLength >= U_CELL_SEC_C2C_IV_LENGTH_BYTES +
              U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES) &&
-            (pRx->rxInLength - x >= chunkLength +
-             U_CELL_SEC_C2C_OVERHEAD_BYTES)) {
+            (pRx->rxInLength - x >= chunkLength + U_CELL_SEC_C2C_OVERHEAD_BYTES) &&
+            (chunkLength <= chunkLengthLimit)) {
             // Length is sane, now calculate the
             // CRC, which is over the chunk length
             // plus the length value itself
@@ -666,7 +716,8 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
                                 memcpy(pRx->pRxIn, pRx->rxOut, length);
                                 pRx->pRxOut = pRx->pRxIn;
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
-                                uPortLog("U_CELL_SEC_C2C_DECODE: decrypted data:\n");
+                                uPortLog("U_CELL_SEC_C2C_DECODE: %d byte(s) decrypted"
+                                         " data:\n", length);
                                 printBlock(pRx->rxOut, length, false);
                             } else {
                                 uPortLog("U_CELL_SEC_C2C_DECODE: MAC mismatch.\n");
@@ -681,6 +732,9 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
 #endif
             }
 
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+            z = 0;
+#endif
             // Look for the closing frame marker
             pData += chunkLength + 2; // +2 for the FCS bytes
             x = pRx->rxInLength - (pData - pRx->pRxIn);
@@ -688,27 +742,100 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
                    (*pData != (char) U_CELL_SEC_C2C_FRAME_MARKER)) {
                 pData++;
                 x++;
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+                z++;
+#endif
             }
-            if (*pData == (char) U_CELL_SEC_C2C_FRAME_MARKER) {
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+            uPortLog("U_CELL_SEC_C2C_DECODE: discarded %d byte(s)"
+                     " looking for a closing frame marker.\n", z);
+#endif
+            if ((x < pRx->rxInLength) &&
+                (*pData == (char) U_CELL_SEC_C2C_FRAME_MARKER)) {
                 pData++;
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+            } else {
+                uPortLog("U_CELL_SEC_C2C_DECODE: didn't find one though.\n");
+#endif
             }
             // Set the input length that is left
             pRx->rxInLength -= pData - pRx->pRxIn;
         } else {
-            // Don't have enough data to constitute a frame,
-            // set pData back to where it was
-            pData = pRx->pRxIn;
+            if (chunkLength > chunkLengthLimit) {
+                // Error recovery: the chunk length is bigger
+                // than it can be, potentially a mis-detected
+                // frame-start flag due to corrupt input data.
+                // Search forward for a potential new frame
+                // start flag and dump up to that.
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
-            uPortLog("U_CELL_SEC_C2C_DECODE: %d byte(s) is not [yet]"
-                     " enough to form a valid chunk.\n", chunkLength);
+                uPortLog("U_CELL_SEC_C2C_DECODE: chunk length %d is larger"
+                         " than the maximum %d byte(s).\n",
+                         chunkLength, chunkLengthLimit);
+                z = 0;
 #endif
+                x = pRx->rxInLength - (pData - pRx->pRxIn);
+                while ((x < pRx->rxInLength) &&
+                       (*pData != (char) U_CELL_SEC_C2C_FRAME_MARKER)) {
+                    pData++;
+                    x++;
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+                    z++;
+#endif
+                }
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+                uPortLog("U_CELL_SEC_C2C_DECODE: dumped %d byte(s)"
+                         " looking for a frame marker to move on to.\n", z);
+#endif
+                if ((x < pRx->rxInLength) &&
+                    (*pData == (char) U_CELL_SEC_C2C_FRAME_MARKER)) {
+                    // This could be a starting or an ending frame marker:
+                    // if there's nothing beyond it or the next byte is another
+                    // frame marker then it is very likely an ending one so
+                    // discard it
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+                    uPortLog("U_CELL_SEC_C2C_DECODE: found a frame marker.\n");
+#endif
+                    if ((x == pRx->rxInLength - 1) ||
+                        ((x < pRx->rxInLength - 1) &&
+                         (*(pData + 1) == (char) U_CELL_SEC_C2C_FRAME_MARKER))) {
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+                        uPortLog("U_CELL_SEC_C2C_DECODE: it was likley a closing"
+                                 " frame marker, moving beyond it..\n");
+#endif
+                        pData++;
+                    }
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+                } else {
+                    uPortLog("U_CELL_SEC_C2C_DECODE: didn't find one though.\n");
+#endif
+                }
+            } else {
+                // Don't have enough data to constitute a frame,
+                // set pData back to where it was
+                pData = pRx->pRxIn;
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+                uPortLog("U_CELL_SEC_C2C_DECODE: only have"
+                         " %d byte(s) in the buffer, not enough"
+                         " for all of our %d byte chunk (including"
+                         " overheads), another %d byte(s) still"
+                         " needed.\n",
+                         pRx->rxInLength - x,
+                         chunkLength + U_CELL_SEC_C2C_OVERHEAD_BYTES,
+                         chunkLength + U_CELL_SEC_C2C_OVERHEAD_BYTES - (pRx->rxInLength - x));
+#endif
+            }
         }
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
     } else {
-        uPortLog("U_CELL_SEC_C2C_DECODE: no frame found.\n");
+        uPortLog("U_CELL_SEC_C2C_DECODE: either no frame marker or"
+                 " not enough bytes to form a frame yet.\n");
 #endif
     }
 
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
+    uPortLog("U_CELL_SEC_C2C_DECODE: %d byte(s) consumed, %d byte(s) left.\n",
+             pData - pRx->pRxIn, pRx->rxInLength);
+#endif
     // Set pRxIn to wherever we've ended up
     pRx->pRxIn = pData;
 
@@ -741,7 +868,7 @@ const char *pUCellSecC2cInterceptTx(uAtClientHandle_t atHandle,
             // input buffer, taking into account how big our buffer
             // would become when padding is added.
             if (paddedLength(pTx->txInLength + length,
-                             U_CELL_SEC_C2C_PAD_LENGTH_BYTES) > pTx->txInLimit) {
+                             U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES) > pTx->txInLimit) {
                 // If the padding would take us over, the length
                 // we can fit in is the limit minus one byte,
                 // since padding always adds at least one byte to

@@ -250,10 +250,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecPsk")
         uPortLog("Unable to bring up the network!\n");
     }
 
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE(((size > 0) && (size < sizeof(pskId))) || !uSecurityIsSupported(networkHandle));
-#endif
 
     // Calling these will also deallocate the network handle
     uNetworkDeinit();

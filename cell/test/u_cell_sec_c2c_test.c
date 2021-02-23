@@ -83,7 +83,7 @@
 /** We only send back what we receive so the max length
  * is the max TX length.
  */
-#define U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES U_CELL_SEC_C2C_CHUNK_MAX_TX_LENGTH_BYTES
+#define U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES U_CELL_SEC_C2C_USER_MAX_TX_LENGTH_BYTES
 
 /* ----------------------------------------------------------------
  * TYPES

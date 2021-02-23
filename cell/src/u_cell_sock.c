@@ -1121,7 +1121,8 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
                     uAtClientCommandStart(atHandle, "AT+USORF=");
                     uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
                     // Number of bytes to read
-                    uAtClientWriteInt(atHandle, U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
+                    uAtClientWriteInt(atHandle,
+                                      U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
                     uAtClientCommandStop(atHandle);
                     uAtClientResponseStart(atHandle, "+USORF:");
                     // Skip the socket ID
@@ -1155,12 +1156,16 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
                                                dataSizeBytes, true);
                         }
                     }
+                    // Make sure to wait for the top tag before
+                    // we finish
+                    uAtClientRestoreStopTag(atHandle);
                     uAtClientResponseStop(atHandle);
                     // BEFORE unlocking, work out what's happened.
                     // This is to prevent a URC being processed that
                     // may indicate data left and over-write pendingBytes
                     // while we're also writing to it.
-                    if (uAtClientErrorGet(atHandle) == 0) {
+                    if ((uAtClientErrorGet(atHandle) == 0) &&
+                        (receivedSize >= 0)) {
                         // Must use what +USORF returns here as it may be less
                         // or more than we asked for and also may be
                         // more than pendingBytes, depending on how
@@ -1174,9 +1179,7 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
                         } else {
                             pSocket->pendingBytes -= receivedSize;
                         }
-                        if (receivedSize >= 0) {
-                            negErrnoLocalOrSize = receivedSize;
-                        }
+                        negErrnoLocalOrSize = receivedSize;
                     }
                     uAtClientUnlock(atHandle);
                 }
@@ -1376,12 +1379,16 @@ int32_t uCellSockRead(int32_t cellHandle,
                                                totalReceivedSize,
                                                thisActualReceiveSize, true);
                         }
+                        // Make sure we wait for the top tag before
+                        // going around again
+                        uAtClientRestoreStopTag(atHandle);
                         uAtClientResponseStop(atHandle);
                         // BEFORE unlocking, work out what's happened.
                         // This is to prevent a URC being processed that
                         // may indicate data left and over-write pendingBytes
                         // while we're also writing to it.
-                        if (uAtClientErrorGet(atHandle) == 0) {
+                        if ((uAtClientErrorGet(atHandle) == 0) &&
+                            (thisActualReceiveSize >= 0)) {
                             // Must use what +USORD returns here as it may be less
                             // or more than we asked for and also may be
                             // more than pendingBytes, depending on how
@@ -1395,10 +1402,8 @@ int32_t uCellSockRead(int32_t cellHandle,
                             } else {
                                 pSocket->pendingBytes -= thisActualReceiveSize;
                             }
-                            if (thisActualReceiveSize > 0) {
-                                totalReceivedSize += thisActualReceiveSize;
-                                dataSizeBytes -= thisActualReceiveSize;
-                            }
+                            totalReceivedSize += thisActualReceiveSize;
+                            dataSizeBytes -= thisActualReceiveSize;
                         } else {
                             negErrnoLocalOrSize = -U_SOCK_EIO;
                         }

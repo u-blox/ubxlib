@@ -30,7 +30,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdlib.h"    // malloc(), free()
+#include "stdlib.h"    // malloc(), free(), rand()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -52,7 +52,7 @@
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
 
-#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
+#ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
 #include "u_sock.h"
 #include "u_sock_test_shared_cfg.h"
 #endif
@@ -69,17 +69,12 @@
 # define U_SECURITY_TEST_SEAL_TIMEOUT_SECONDS (60 * 4)
 #endif
 
-/** The 16-byte TE secret to use during testing.  Must be a fixed
- * value as we have no way of remembering it on the MCU side during testing.
- */
-#define U_SECURITY_TEST_C2C_TE_SECRET "\x00\x01\x02\x03\x04\x05\x06\x07\xff\xfe\xfd\xfc\xfb\xfa\xf9\xf8"
-
-#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
-#ifndef U_SECURITY_TEST_C2C_MAX_TCP_READ_WRITE_SIZE
+#ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
+# ifndef U_SECURITY_TEST_C2C_MAX_TCP_READ_WRITE_SIZE
 /** The maximum TCP read/write size to use during C2C testing.
  */
-# define U_SECURITY_TEST_C2C_MAX_TCP_READ_WRITE_SIZE 1024
-#endif
+#  define U_SECURITY_TEST_C2C_MAX_TCP_READ_WRITE_SIZE 1024
+# endif
 #endif
 
 /* ----------------------------------------------------------------
@@ -104,7 +99,7 @@ static const char gAllChars[] = "the quick brown fox jumps over the lazy dog "
                                 "\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c"
                                 "\x1d\x1e!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~\x7f";
 
-#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
+#ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
 /** Data to exchange in a sockets test.
  */
 static const char gSendData[] =  "_____0000:0123456789012345678901234567890123456789"
@@ -198,7 +193,7 @@ static void stdPreamble()
     }
 }
 
-#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
+#ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
 // Send an entire TCP data buffer until done
 static size_t sendTcp(uSockDescriptor_t descriptor,
                       const char *pData, size_t sizeBytes)
@@ -218,6 +213,8 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
             sentSizeBytes += x;
             uPortLog("U_SECURITY_TEST: sent %d byte(s) of TCP data @%d ms.\n",
                      sentSizeBytes, (int32_t) uPortGetTickTimeMs());
+        } else {
+            uPortLog("U_SECURITY_TEST: send returned %d.\n", x);
         }
     }
 
@@ -238,11 +235,13 @@ static size_t fix(size_t size, size_t limit)
 
     return size;
 }
-#endif
+#endif // U_CFG_TEST_SECURITY_C2C_TE_SECRET
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
  * -------------------------------------------------------------- */
+
+#ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
 
 /** Test chip to chip security, basic test.
  */
@@ -252,6 +251,12 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
     int32_t heapUsed;
     char key[U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES];
     char hmac[U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES];
+
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
 
     // Do the standard preamble to make sure there is
     // a network underneath us
@@ -282,13 +287,13 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
                 U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
                 uPortLog("U_SECURITY_TEST: pairing...\n");
                 U_PORT_TEST_ASSERT(uSecurityC2cPair(networkHandle,
-                                                    U_SECURITY_TEST_C2C_TE_SECRET,
+                                                    U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                     key, hmac) == 0);
                 // Make sure it's still fine
                 U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
                 uPortLog("U_SECURITY_TEST: opening a secure session...\n");
                 U_PORT_TEST_ASSERT(uSecurityC2cOpen(networkHandle,
-                                                    U_SECURITY_TEST_C2C_TE_SECRET,
+                                                    U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                     key, hmac) == 0);
                 uPortLog("U_SECURITY_TEST: closing the session again...\n");
                 U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
@@ -305,16 +310,11 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
     }
 }
 
-// Temporary #define to disable this test as it refuses
-// to work reliably on ubxlib test instance 19: this
-// is under investigation
-#ifdef U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
-
 /** Test chip to chip security but this time there's a sock in it.
  */
 U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
 {
-    int32_t errorCode = -1;
+    int32_t errorCode;
     int32_t networkHandle;
     char key[U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES];
     char hmac[U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES];
@@ -356,13 +356,13 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
 
                 uPortLog("U_SECURITY_TEST: pairing...\n");
                 U_PORT_TEST_ASSERT(uSecurityC2cPair(networkHandle,
-                                                    U_SECURITY_TEST_C2C_TE_SECRET,
+                                                    U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                     key, hmac) == 0);
 
                 // Open a new secure session and perform a sockets operation
                 uPortLog("U_SECURITY_TEST: opening a secure session...\n");
                 U_PORT_TEST_ASSERT(uSecurityC2cOpen(networkHandle,
-                                                    U_SECURITY_TEST_C2C_TE_SECRET,
+                                                    U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                     key, hmac) == 0);
 
                 uPortLog("U_SECURITY_TEST: looking up echo server \"%s\"...\n",
@@ -398,6 +398,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
                          U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                          U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
                 // Connections can fail so allow this a few goes
+                errorCode = -1;
                 for (y = 2; (y > 0) && (errorCode < 0); y--) {
                     errorCode = uSockConnect(descriptor, &remoteAddress);
                 }
@@ -424,11 +425,11 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
                     }
                     y++;
                 }
-                U_PORT_TEST_ASSERT(offset >= sizeof(gSendData) - 1);
                 sizeBytes = offset;
                 uPortLog("U_SECURITY_TEST: %d byte(s) sent via TCP @%d ms,"
                          " now receiving...\n", sizeBytes,
                          (int32_t) uPortGetTickTimeMs());
+                U_PORT_TEST_ASSERT(sizeBytes >= sizeof(gSendData) - 1);
 
                 // ...and capture them all again afterwards
                 pDataReceived = (char *) malloc(sizeof(gSendData) - 1);
@@ -445,9 +446,10 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
                                           pDataReceived + offset,
                                           (sizeof(gSendData) - 1) - offset);
                     if (sizeBytes > 0) {
-                        uPortLog("U_SECURITY_TEST: received %d byte(s) on TCP socket.\n",
-                                 sizeBytes);
                         offset += sizeBytes;
+                        uPortLog("U_SECURITY_TEST: received %d byte(s) out of"
+                                 " %d on TCP socket.\n",
+                                 offset, sizeof(gSendData) - 1);
                     }
                 }
                 sizeBytes = offset;
@@ -507,7 +509,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
     }
 }
 
-#endif // U_CFG_ENABLE_SECURITY_C2C_SOCK_TEST
+#endif // U_CFG_TEST_SECURITY_C2C_TE_SECRET
 
 /** Test security sealing, requires a network connection.
  * Note: this test will *only* attempt a seal if
@@ -544,7 +546,9 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
                 uPortLog("U_SECURITY_TEST: module serial number is \"%s\".\n",
                          serialNumber);
 
-                // Get the root of trust UID
+                // Get the root of trust UID with NULL rotUid
+                U_PORT_TEST_ASSERT(uSecurityGetRootOfTrustUid(networkHandle, NULL) >= 0);
+                // Get the root of trust UID properly
                 U_PORT_TEST_ASSERT(uSecurityGetRootOfTrustUid(networkHandle,
                                                               rotUid) == sizeof(rotUid));
                 uPortLog("U_SECURITY_TEST: root of trust UID is 0x");

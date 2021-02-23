@@ -74,7 +74,6 @@
  * TYPES
  * -------------------------------------------------------------- */
 
-
 // Definition of a supported socket option.
 typedef struct {
     uint32_t excludeModulesBitmap;
