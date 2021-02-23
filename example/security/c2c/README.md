@@ -1,7 +1,7 @@
 # Introduction
 This example demonstrate how to use the chip to chip (C2C) protection u-blox security feature.  This feature allows the communication across the AT interface between the MCU and the module to be authenticated and encrypted, preventing snooping of hardware lines.  Since the process of pairing a module with an MCU for chip-to-chip security is a one-time-only irreversible process (except by special arrangement with u-blox) this example will only run if `U_CFG_TEST_SECURITY_C2C_TE_SECRET` (a 16 byte binary value that forms part of the pairing process) is defined.
 
-IMPORTANT: it is intended that the pairing process that enables chip to chip security is carried out in a secure environment, e.g. in your factory.  To ensure that is the case the module will ONLY allow chip to chip security pairing to be performed BEFORE the module has been security boot-strapped, something the module will do THE MOMENT it contacts the cellular network for the first time.  In other words, the sequence must be:
+IMPORTANT: it is intended that the pairing process that enables chip to chip security is carried out in a secure environment, e.g. in your factory.  To ensure that is the case the module will ONLY allow chip to chip security pairing to be performed BEFORE the module has been security boot-strapped, something the module will do THE MOMENT it contacts the network for the first time.  In other words, the sequence must be:
 
 1. Complete the C2C pairing process between your MCU and the module; your MCU must store the pairing keys that are used to switch C2C security on and off later as desired.
 2. Allow the module to contact the network for the first time: it will bootstrap with the u-blox security servers.
