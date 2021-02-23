@@ -8,7 +8,7 @@ This is not a "manager", it is not smart, it solely exists to allow data-plane-o
 # Usage
 The directories include the API and the C source files necessary to call into the underlying `cell`, `wifi` and `ble` APIs.  The `test` directory contains a small number of generic tests for the `network` API; for comprehensive tests of networking please refer to the test directory of the underlying APIs.
 
-A simple usage example, sending data over a TCP socket, is shown below.
+A simple usage example, sending data over a TCP socket, is shown below.  Note that, before calling `app_start()` the platform must be initialised (clocks started, heap available, RTOS running), in other words `app_task()` can be thought of as a task entry point.  If you open the `u_main.c` file in the `app` directory of your platform you will see how we do this, with `main()` calling a porting API `uPortPlatformStart()` to sort that all out; you could paste the example code into `app_start()` there (and add the inclusions) as a quick and dirty test (`runner` will build it).
 
 ```
 #include "stdio.h"
@@ -55,7 +55,10 @@ const uNetworkConfigurationCell_t gConfiguration = {U_NETWORK_TYPE_CELL,
 #define MY_SERVER_NAME "something.com"
 #define MY_SERVER_PORT 42
 
-int main() {
+// The entry point, main(): before this is called the system
+// clocks must have been started and the RTOS must be running;
+// we are in task space.
+int app_start() {
     int32_t networkHandle;
     int32_t sock;
     uSockAddress_t remoteAddress;
@@ -116,6 +119,6 @@ int main() {
     uNetworkDeinit();
     uPortDeinit();
 
-    return 0;
+    while(1);
 }
 ```

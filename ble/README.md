@@ -30,7 +30,7 @@ It is not in the scoop of this API to support the full range short range module 
 # Usage
 The `api` directory contains the files that define the BLE APIs, each API function documented in its header file.  In the `src` directory you will find the implementation of the APIs and in the `test` directory the tests for the APIs that can be run on any platform.
 
-A simple usage example is given below.
+A simple usage example is given below.  Note that, before calling `app_start()` the platform must be initialised (clocks started, heap available, RTOS running), in other words `app_task()` can be thought of as a task entry point.  If you open the `u_main.c` file in the `app` directory of your platform you will see how we do this, with `main()` calling a porting API `uPortPlatformStart()` to sort that all out; you could paste the example code into `app_start()` there (and add the inclusions) as a quick and dirty test (`runner` will build it).
 
 ```
 #include "stddef.h"
@@ -55,7 +55,10 @@ A simple usage example is given below.
 #include "u_ble_module_type.h"
 #include "u_ble.h"
 
-int main()
+// The entry point, main(): before this is called the system
+// clocks must have been started and the RTOS must be running;
+// we are in task space.
+int app_start() {
 {
     int32_t uartHandle = -1;
     int32_t edmStreamHandle = -1;
@@ -138,6 +141,6 @@ int main()
 
     uPortDeinit();
 
-    return 0;
+    while(1);
 }
 ```
