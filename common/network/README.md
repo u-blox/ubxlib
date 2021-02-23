@@ -55,7 +55,7 @@ const uNetworkConfigurationCell_t gConfiguration = {U_NETWORK_TYPE_CELL,
 #define MY_SERVER_NAME "something.com"
 #define MY_SERVER_PORT 42
 
-// The entry point, main(): before this is called the system
+// The entry point: before this is called the system
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
 int app_start() {

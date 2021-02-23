@@ -46,7 +46,7 @@ Throughout the `cell` API, in functions which can take more than a few seconds t
 #include "u_cell_net.h"
 #include "u_cell_pwr.h"
 
-// The entry point, main(): before this is called the system
+// The entry point: before this is called the system
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
 int app_start() {

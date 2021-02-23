@@ -55,7 +55,7 @@ A simple usage example is given below.  Note that, before calling `app_start()` 
 #include "u_ble_module_type.h"
 #include "u_ble.h"
 
-// The entry point, main(): before this is called the system
+// The entry point: before this is called the system
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
 int app_start() {
