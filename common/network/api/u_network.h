@@ -19,8 +19,33 @@
 
 /* No #includes allowed here */
 
-/* This header file defines the network API. These functions are
+/** @file
+ * @brief This header file defines the network API. These functions are
  * thread-safe.
+ *
+ * The functions here should be used in the following sequence; think
+ * of it as "ready, steady, go ... off".
+ *
+ * uNetworkInit():   call this at start of day in order to make this API
+ *                   available. READY.
+ * uNetworkAdd():    call this when you would like to begin using the
+ *                   network: when it returns the module is powered-up
+ *                   and ready for configuration. STEADY.
+ * uNetworkUp():     call this when you would like the network to connect;
+ *                   after this is called you can send and receive stuff
+ *                   over the network. GO.
+ * uNetworkDown():   disconnect and shut-down the network; once this has
+ *                   returned the module may enter a lower-power or
+ *                   powered-off state: you must call uNetworkUp() to
+ *                   talk with it again. OFF.
+ * uNetworkRemove(): call this to clear up any resources belonging to
+ *                   the network; once this is called uNetworkAdd()
+ *                   must be called once more to re-instantiate the
+ *                   network.
+ * uNetworkDeinit(): call this at end of day in order to clear up any
+ *                   resources owned by this API.  This internally calls
+ *                   uNetworkRemove() for any networks that haven't already
+ *                   been cleaned-up.
  */
 
 #ifdef __cplusplus
@@ -65,7 +90,9 @@ int32_t uNetworkInit();
  */
 void uNetworkDeinit();
 
-/** Add a network instance.
+/** Add a network instance. When this returns successfully
+ * the module is powered up and available for configuration but
+ * is not yet connected to anything.
  *
  * @param type             the type of network to create,
  *                         Wifi (in future BLE), cellular, etc.
@@ -101,25 +128,27 @@ int32_t uNetworkAdd(uNetworkType_t type,
 /** Remove a network instance.  It is up to the caller to ensure
  * that the network in question is disconnected and/or powered
  * down etc.; all this function does is remove the logical
- * instance.
+ * instance, clearing up resources.
  *
  * @param handle  the handle of the network instance to remove.
  * @return        zero on success else negative error code.
  */
 int32_t uNetworkRemove(int32_t handle);
 
-/** Bring up the given network instance. Any parameters
- * required for the process will have already been
- * provided in the uNetworkAdd() call.  If the network is
- * already up the implementation should return success
- * without doing anything.
+/** Bring up the given network instance, connecting it as defined
+ * in the configuration passed to uNetworkAdd().  If the network
+ * is already up the implementation should return success without
+ * doing anything.
  *
  * @param handle the handle of the instance to bring up.
  * @return       zero on success else negative error code.
  */
 int32_t uNetworkUp(int32_t handle);
 
-/** Take down the given network instance.
+/** Take down the given network instance, disconnecting
+ * it from any peer entity.  After this function returns
+ * uNetworkUp() must be called once more to ensure that the
+ * module is brought back to a responsive state.
  *
  * @param handle the handle of the instance to take down.
  * @return       zero on success else negative error code.

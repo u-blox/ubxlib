@@ -162,26 +162,27 @@ void uNetworkDeinitCell()
 // Add a cellular network instance.
 int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     uNetworkPrivateCellInstance_t *pInstance;
+    int32_t x;
 
     pInstance = pGetFree();
     if (pInstance != NULL) {
         // Open a UART with the recommended buffer length
         // and default baud rate.
-        errorCode = uPortUartOpen(pConfiguration->uart,
-                                  U_CELL_UART_BAUD_RATE, NULL,
-                                  U_CELL_UART_BUFFER_LENGTH_BYTES,
-                                  pConfiguration->pinTxd,
-                                  pConfiguration->pinRxd,
-                                  pConfiguration->pinCts,
-                                  pConfiguration->pinRts);
-        if (errorCode >= 0) {
-            pInstance->uart = errorCode;
+        errorCodeOrHandle = uPortUartOpen(pConfiguration->uart,
+                                          U_CELL_UART_BAUD_RATE, NULL,
+                                          U_CELL_UART_BUFFER_LENGTH_BYTES,
+                                          pConfiguration->pinTxd,
+                                          pConfiguration->pinRxd,
+                                          pConfiguration->pinCts,
+                                          pConfiguration->pinRts);
+        if (errorCodeOrHandle >= 0) {
+            pInstance->uart = errorCodeOrHandle;
 
             // Add an AT client on the UART with the recommended
             // default buffer size.
-            errorCode = (int32_t) U_CELL_ERROR_AT;
+            errorCodeOrHandle = (int32_t) U_CELL_ERROR_AT;
             pInstance->at = uAtClientAdd(pInstance->uart,
                                          U_AT_CLIENT_STREAM_TYPE_UART,
                                          NULL,
@@ -192,19 +193,30 @@ int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration)
                 uAtClientPrintAtSet(pInstance->at, true);
 
                 // Add a cell instance
-                errorCode = uCellAdd((uCellModuleType_t) pConfiguration->moduleType,
-                                     pInstance->at,
-                                     pConfiguration->pinEnablePower,
-                                     pConfiguration->pinPwrOn,
-                                     pConfiguration->pinVInt, false);
-                if (errorCode >= 0) {
-                    pInstance->cell = errorCode;
+                errorCodeOrHandle = uCellAdd((uCellModuleType_t) pConfiguration->moduleType,
+                                             pInstance->at,
+                                             pConfiguration->pinEnablePower,
+                                             pConfiguration->pinPwrOn,
+                                             pConfiguration->pinVInt, false);
+                if (errorCodeOrHandle >= 0) {
+                    pInstance->cell = errorCodeOrHandle;
+                    // Set the timeout
+                    pInstance->stopTimeMs = uPortGetTickTimeMs() +
+                                            (((int64_t) pConfiguration->timeoutSeconds) * 1000);
+                    // Power on
+                    x = uCellPwrOn(errorCodeOrHandle, pConfiguration->pPin,
+                                   keepGoingCallback);
+                    if (x != 0) {
+                        // If we failed to power on, clean up
+                        uNetworkRemoveCell(errorCodeOrHandle);
+                        errorCodeOrHandle = x;
+                    }
                 }
             }
         }
     }
 
-    return errorCode;
+    return errorCodeOrHandle;
 }
 
 // Remove a cellular network instance.
@@ -241,7 +253,7 @@ int32_t uNetworkUpCell(int32_t handle,
         // Set the timeout
         pInstance->stopTimeMs = uPortGetTickTimeMs() +
                                 (((int64_t) pConfiguration->timeoutSeconds) * 1000);
-        // Power on
+        // Power on, in case we weren't on before
         errorCode = uCellPwrOn(handle, pConfiguration->pPin,
                                keepGoingCallback);
         if (errorCode == 0) {
