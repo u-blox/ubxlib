@@ -267,7 +267,7 @@ static void exitDataMode(const uShortRangePrivateInstance_t *pInstance)
             uPortTaskBlock(1100);
             uShortRangeEdmStreamAtWrite(pInstance->streamHandle, escSeq, 3);
         }
-    } else if (pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
+    } else if (pInstance->mode == U_SHORT_RANGE_MODE_DATA) {
         if (uPortUartWrite(pInstance->streamHandle, escSeq, 3) != 3) {
             uPortTaskBlock(1100);
             uPortUartWrite(pInstance->streamHandle, escSeq, 3);
