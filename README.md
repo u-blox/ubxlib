@@ -39,16 +39,16 @@ The key APIs provided by this repo, and their relationships with each other, are
 |                         |              |**MCU**||||
 |                         |              |ST-Micro STM32|Espressif ESP32|Nordic nRF52|Nordic nRF53|
 |                         |              |**Toolchain**||||
-|                         |              |Cube|ESP-IDF|GCC<br />Segger ES (nRF5)|nRF Connect<br />for desktop|
+|                         |              |Cube|ESP-IDF|GCC<br />Segger ES (nRF5)<br />nRF Connect|nRF Connect|
 |                         |              |**RTOS / SDK**||||
-|                         |              |FreeRTOS|FreeRTOS|FreeRTOS|Zephyr|
+|                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|
 | **ubxlib peripherals**   |**API**       |||||
 | SARA-U2 series<br />SARA-R41x series<br />| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />|Yes|Yes|Yes|Yes|
 | SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[security](common/security "security API")|Yes|Yes|Yes|Yes|
 | SARA-R510M8S            | gnss|TBD|TBD|TBD|TBD|
 |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](ble "ble API")<br />[network](common/network "network API")|Yes|Yes|N/A|N/A|
-|NINA-W13|wifi<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q1 2021|N/A|Q1 2021|Q1 2021|
-|NINA-W15|wifi<br />[ble](ble "ble API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q1 2021|N/A|N/A|N/A|
+|NINA-W13|wifi<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q2 2021|N/A|Q2 2021|Q2 2021|
+|NINA-W15|wifi<br />[ble](ble "ble API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q2 2021|N/A|N/A|N/A|
 |M8 series|gnss|TBD|TBD|TBD|TBD|
 
 # What Is Included
@@ -116,10 +116,11 @@ Configuration information for the examples and the tests can be found in the `cf
 |--------------|----------|--------------|
 | Cellular/Wifi | The [socket](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q4 2020 / Q1 2021 |
 | Cellular     | End-to-end security | Q1 2021|
+| Cellular     | TLS secured sockets | Q2 2021|
 | Cellular     | CellLocate | Q2 2021|
 | Bluetooth    | SPS (serial port service) | Q1 2021|
-| WiFi         | tbd | Q1 2021|
-| GNSS         | tbd |TBD|
+| WiFi         | The [socket](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q2 2021|
+| GNSS         | TBD |TBD|
 
 # License
 The software in this repository is Apache 2.0 licensed and copyright u-blox with the following exceptions:
