@@ -60,6 +60,11 @@ __defaultSettings["ASTYLE_DIRS"] = ["cfg", "port", "common"]
 __defaultSettings["ASTYLE_EXCLUDE_DIRS"] = ["build", "_build", "Output", "Debug", "Release", "custom_boards"]
 # u_run_doxygen.py
 __defaultSettings["DOXYGEN_DOXYFILE"] = "Doxyfile"
+#u_run_static_size.py
+__defaultSettings["STATIC_SIZE_ARM_GNU_INSTALL_ROOT"] = "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin"
+__defaultSettings["STATIC_SIZE_C_FLAGS"] = "-Os -g0 -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16"
+__defaultSettings["STATIC_SIZE_LD_FLAGS"] = "-Os -g0 -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 --specs=nano.specs -lc -lnosys -lm"
+__defaultSettings["STATIC_SIZE_LD_FLAGS_SUB_DIR"] = "port/platform/static_size"
 # u_run_esp32.py
 __defaultSettings["ESP_IDF_ROOT"] = "c:\\esp32"
 __defaultSettings["ESP_IDF_TOOLS_PATH"] =                                          \

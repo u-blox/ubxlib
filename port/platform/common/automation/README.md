@@ -93,6 +93,8 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 
 `u_run_lint.py`: run a Lint check; called by `u_run.py`.  NOTE: if you add a NEW DIRECTORY containing a PLATFORM INDEPENDENT `.c` or `.cpp` file anywhere in the `ubxlib` tree YOU MUST ALSO ADD it to the `LINT_DIRS` variable of this script.  All the Lint error/warning/information messages available for GCC are included with the exception of those suppressed by the `ubxlib.lnt` configuration file kept in the `port\platform\lint` directory.  To run Lint yourself you must install a GCC compiler and `flexelint`: read `u_run_lint.py` to determine how to go about using the tools.
 
+`u_run_static_size.py`: run a static check of code/RAM size; called by `u_run.py`.
+
 `u_run_nrf5sdk.py`: build/download/run tests on the Nordic nRF5 platform, e.g. for the NRF52 MCU; called by `u_run.py`.
 
 `u_run_zephyr.py`: build/download/run tests on the Zephyr platform, e.g. for the NRF53 MCU; called by `u_run.py`.
@@ -112,3 +114,4 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 - If you add a new item in the range 0 to 9 (i.e. a checker with no platform), update `u_run.py` to include it.
 - If you add a new directory OFF THE ROOT of `ubxlib`, i.e. something like `ubxlib\blah`, add it to the `ASTYLE_DIRS` variable of the `u_run_astyle.py` script.
 - If you add a new directory that contains PLATFORM INDEPENDENT `.c` or `.cpp` files anywhere in the `ubxlib` tree, add it to the `LINT_DIRS` variable of the `u_run_lint.py` script.
+- If you add a new source file in platform-independent, non-test, non-example code make sure that the source file list (and if necessary the include file list) down in `port\platform\static_size` is updated to include it, or it will be missed out of the size estimate.

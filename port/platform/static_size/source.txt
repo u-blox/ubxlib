@@ -1,0 +1,32 @@
+# This file should contain the paths to all source files that are
+# required for ubxlib EXCEPT those related to a platform or to tests,
+# i.e. only core ubxlib functionality.
+# Paths are relative to the ubxlib root directory, forward-slashes must be used.
+
+ble/src/u_ble.c
+ble/src/u_ble_cfg.c
+ble/src/u_ble_data.c
+cell/src/u_cell.c
+cell/src/u_cell_pwr.c
+cell/src/u_cell_cfg.c
+cell/src/u_cell_info.c
+cell/src/u_cell_net.c
+cell/src/u_cell_sock.c
+cell/src/u_cell_sec.c
+cell/src/u_cell_sec_c2c.c
+cell/src/u_cell_private.c
+common/network/src/u_network.c
+common/network/src/u_network_private_ble.c
+common/network/src/u_network_private_cell.c
+common/network/src/u_network_private_wifi.c
+common/sock/src/u_sock.c
+common/security/src/u_security.c
+common/at_client/src/u_at_client.c
+common/short_range/src/u_short_range.c
+common/short_range/src/u_short_range_edm.c
+common/short_range/src/u_short_range_edm_stream.c
+common/short_range/src/u_short_range_private.c
+port/platform/common/event_queue/u_port_event_queue.c
+port/platform/static_size/stubs/u_port_stub.c
+port/platform/static_size/stubs/u_lib_stub.c
+port/platform/static_size/stubs/u_main_stub.c

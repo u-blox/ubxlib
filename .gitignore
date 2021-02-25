@@ -10,6 +10,7 @@
 /port/platform/stm32cube/mcu/stm32f4/runner/.settings
 /port/platform/stm32cube/mcu/stm32f4/runner/*.launch
 /port/platform/stm32cube/mcu/stm32f4/test_only_*
+/port/platform/static_size/build
 sdkconfig
 *.emSession
 *.pyc

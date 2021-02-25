@@ -3,7 +3,7 @@ IMPORTANT: the directory structure under platform remains subject to change as w
 # Introduction
 These directories provide the implementation of the porting layer on supported SDKs/MCUs from various vendors.  The `common` directory contains anything that is common across platforms e.g. the `runner` source code which allows any or all of the examples/tests to be run.
 
-Also provided is a `lint` "platform".  This includes stubs for the porting layer and dummy configuration files in order that all of the `ubxlib` platform independent code can be passed through Lint.
+Also provided are `lint` and `static_size` "platforms": both include stubs for the porting layer and dummy configuration files in order that all of the `ubxlib` platform independent code can be passed through Lint and measured for \[static\] flash/RAM size.
 
 # Supported MCUs
 The MCUs supported by the platforms are as follows:
