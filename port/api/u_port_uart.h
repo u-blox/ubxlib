@@ -67,7 +67,11 @@ void uPortUartDeinit();
 
 /** Open a UART instance.  If a UART instance has already
  * been opened on the given UART HW block this function returns
- * an error.
+ * an error.  Note that the pin numbers are those of the MCU:
+ * if you are using an MCU inside a u-blox module the IO pin
+ * numbering for the module is likely different to that from
+ * the MCU: check the data sheet for the module to determine
+ * the mapping.
  *
  * IMPORTANT: some platforms, specifically Zephyr, used on NRF53,
  * do not permit UART pin choices to be made at run-time, only at

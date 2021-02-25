@@ -1296,6 +1296,14 @@ int32_t uPortUartWrite(int32_t handle,
             // Do the blocking send
             while (sizeBytes > 0) {
                 LL_USART_TransmitData8(pReg, (uint8_t) * ((const char *) pBuffer));
+                // Hint when debugging: if your code stops dead here
+                // it is because the CTS line of this MCU's UART HW
+                // is floating high, stopping the UART from
+                // transmitting once its buffer is full: either
+                // the thing at the other end doesn't want data sent to
+                // it or the CTS pin when configuring this UART
+                // was wrong and it's not connected to the right
+                // thing.
                 while (!LL_USART_IsActiveFlag_TXE(pReg)) {}
                 (const char *) pBuffer++;
                 sizeBytes--;

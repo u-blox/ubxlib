@@ -501,6 +501,14 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
             data.pData = (void *)pBuffer;
             data.len = sizeBytes;
 
+            // Hint when debugging: if your code stops dead here
+            // it is because the CTS line of this MCU's UART HW
+            // is floating high, stopping the UART from
+            // transmitting once its buffer is full: either
+            // the thing at the other end doesn't want data sent to
+            // it or the CTS pin when configuring this UART
+            // was wrong and it's not connected to the right
+            // thing.
             k_fifo_put(&gUartData[handle].fifoTxData, &data);
             uart_irq_tx_enable(gUartData[handle].pDevice);
             // UART write is async to wait here to make this function syncronous

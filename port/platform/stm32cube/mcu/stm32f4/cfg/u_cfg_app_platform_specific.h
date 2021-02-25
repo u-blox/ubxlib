@@ -25,6 +25,10 @@
  * @brief This header file contains configuration information for
  * an STM32F4 platform that is fed in at application level.  You should
  * override these values as necessary for your particular platform.
+ * Note that the pin numbers used below should be those of the MCU: if you
+ * are using an MCU inside a u-blox module the IO pin numbering for
+ * the module is likely different to that from the MCU: check the data
+ * sheet for the module to determine the mapping.
  */
 
 /* ----------------------------------------------------------------

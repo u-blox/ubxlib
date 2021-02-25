@@ -108,6 +108,14 @@ static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
                                                         NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
                                                         240, /* Connection timeout in seconds */
                                                         U_CFG_APP_CELL_UART,
+                                                        /* Note that the pin numbers
+                                                           that follow are those of the MCU:
+                                                           if you are using an MCU inside
+                                                           a u-blox module the IO pin numbering
+                                                           for the module is likely different
+                                                           to that from the MCU: check the data
+                                                           sheet for the module to determine
+                                                           the mapping. */
                                                         U_CFG_APP_PIN_CELL_TXD,
                                                         U_CFG_APP_PIN_CELL_RXD,
                                                         U_CFG_APP_PIN_CELL_CTS,

@@ -38,7 +38,11 @@
  * irrespective of whether Wifi is used there.
  */
 
-/** The network configuration for Wifi.
+/** The network configuration for Wifi.  Note that any pin
+ * numbers are those of the MCU: if you are using an MCU inside
+ * a u-blox module the IO pin numbering for the module is likely
+ * different to that from the MCU: check the data sheet for the
+ * module to determine the mapping.
  */
 typedef struct {
     uNetworkType_t type; /**< All uNetworkConfigurationXxx structures

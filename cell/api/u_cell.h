@@ -108,7 +108,11 @@ int32_t uCellInit();
  */
 void uCellDeinit();
 
-/** Add a cellular instance.
+/** Add a cellular instance.  Note that the pin numbers
+ * are those of the MCU: if you are using an MCU inside
+ * a u-blox module the IO pin numbering for the module
+ * is likely different to that from the MCU: check the
+ * data sheet for the module to determine the mapping.
  *
  * @param moduleType       the cellular module type.
  * @param atHandle         the handle of the AT client to use.  This must

@@ -79,7 +79,12 @@ typedef enum {
  * U_PORT_GPIO_CONFIG_DEFAULT also.
  */
 typedef struct {
-    int32_t pin;  //!< a positive integer.
+    int32_t pin;  /**< a positive integer; note that the pin number is
+                       that of the MCU: if you are using an MCU inside
+                       a u-blox module the IO pin numbering for the
+                       module is likely different to that from the MCU,
+                       check the data sheet for the module to determine
+                       the mapping. */
     uPortGpioDirection_t direction;
     uPortGpioPullMode_t pullMode;
     uPortGpioDriveMode_t driveMode;
@@ -106,7 +111,11 @@ typedef struct {
  */
 int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig);
 
-/** Set the state of a GPIO pin.
+/** Set the state of a GPIO pin.  Note that the pin number is
+ * that of the MCU: if you are using an MCU inside a u-blox
+ * module the IO pin numbering for the module is likely different
+ * to that from the MCU: check the data sheet for the module to
+ * determine the mapping.
  *
  * @param pin   the pin to set, a positive integer.
  * @param level the level to set, 0 for low or non-zero for high.
@@ -114,7 +123,11 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig);
  */
 int32_t uPortGpioSet(int32_t pin, int32_t level);
 
-/** Get the state of a GPIO pin.
+/** Get the state of a GPIO pin.  Note that the pin number is
+ * that of the MCU: if you are using an MCU inside a u-blox
+ * module the IO pin numbering for the module is likely different
+ * to that from the MCU: check the data sheet for the module to
+ * determine the mapping.
  *
  * @param pin   the pin to get the state of, a positive integer.
  * @return      on success the level (0 or 1) else negative error
