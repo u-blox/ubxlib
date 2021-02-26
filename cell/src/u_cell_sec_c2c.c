@@ -37,6 +37,9 @@
 #include "string.h"    // memcpy(), memcmp()
 #include "stdlib.h"    // rand()
 
+#include "u_cfg_sw.h"
+
+#include "u_port_debug.h"
 #include "u_port_crypto.h"
 
 #include "u_at_client.h"
@@ -45,16 +48,12 @@
 
 #include "u_cell_sec_c2c.h"
 
-// The compilation flag U_CELL_SEC_C2C_DETAILED_DEBUG
-// was used during early stage development
-// against real modems. It is FAR too heavy
-// weight to be used normally, and of course
-// shouldn't be necessary, but it is retained
-// here in anticipation of that corner case
-// appearing...
+// Note: the compilation flag U_CELL_SEC_C2C_DETAILED_DEBUG
+// was used during early stage development against real
+// modems. It is FAR too heavyweight to be used normally,
+// and of course shouldn't be necessary, but it is retained
+// here in anticipation of that corner case appearing...
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
-#include "u_cfg_sw.h"
-#include "u_port_debug.h"
 #if U_CFG_ENABLE_LOGGING
 #include "ctype.h"
 #include "u_port_os.h"
@@ -719,17 +718,15 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
                                 uPortLog("U_CELL_SEC_C2C_DECODE: %d byte(s) decrypted"
                                          " data:\n", length);
                                 printBlock(pRx->rxOut, length, false);
+#endif
                             } else {
                                 uPortLog("U_CELL_SEC_C2C_DECODE: MAC mismatch.\n");
-#endif
                             }
                         }
                     }
                 }
-#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
             } else {
-                uPortLog("U_CELL_SEC_C2C_DECODE: FCS mismatch.\n");
-#endif
+                uPortLog("U_CELL_SEC_C2C_DECODE: corrupt frame, FCS mismatch.\n");
             }
 
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
@@ -767,10 +764,11 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
                 // frame-start flag due to corrupt input data.
                 // Search forward for a potential new frame
                 // start flag and dump up to that.
-#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
-                uPortLog("U_CELL_SEC_C2C_DECODE: chunk length %d is larger"
-                         " than the maximum %d byte(s).\n",
+                uPortLog("U_CELL_SEC_C2C_DECODE: corrupt frame,"
+                         " chunk length %d is larger than the"
+                         " maximum %d byte(s).\n",
                          chunkLength, chunkLengthLimit);
+#ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
                 z = 0;
 #endif
                 x = pRx->rxInLength - (pData - pRx->pRxIn);
