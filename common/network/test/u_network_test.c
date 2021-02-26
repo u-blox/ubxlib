@@ -116,11 +116,11 @@ static const char gTestData[] =  "_____0000:012345678901234567890123456789012345
                                  "01234567890123456789012345678901234567890123456789";
 
 static volatile int32_t gConnHandle = -1;
-static volatile int32_t gBytesReceived = 0;
+static volatile int32_t gBytesReceived;
 static volatile int32_t gErrors = 0;
-static volatile uint32_t gIndexInBlock = 0;
+static volatile uint32_t gIndexInBlock;
 static const int32_t gTotalData = 400;
-static volatile int32_t gBytesSent = 0;
+static volatile int32_t gBytesSent;
 #endif
 
 /* ----------------------------------------------------------------
@@ -354,6 +354,10 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
 
 #ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
                 } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
+
+                    gBytesSent = 0;
+                    gBytesReceived = 0;
+                    gIndexInBlock = 0;
 
                     uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
                                                         connectionCallback,
