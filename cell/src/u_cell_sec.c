@@ -59,6 +59,19 @@
  */
 #define U_CELL_SEC_HEX_BUFFER_LENGTH_BYTES 32
 
+#ifndef U_CELL_SEC_USECDEVINFO_RETRY
+/** Number of times to retry AT+USECDEVINFO? since a module may
+ * not respond if it's freshly booted.
+ */
+# define U_CELL_SEC_USECDEVINFO_RETRY 3
+#endif
+
+#ifndef U_CELL_SEC_USECDEVINFO_DELAY_SECONDS
+/** Wait between retries of AT+USECDEVINFO?.
+ */
+# define U_CELL_SEC_USECDEVINFO_DELAY_SECONDS 5
+#endif
+
 // Check that U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES is big enough
 // to hold the IMEI as a string
 #if U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES < (U_CELL_INFO_IMEI_SIZE + 1)
@@ -106,25 +119,32 @@ static bool moduleIsSealed(const uCellPrivateInstance_t *pInstance)
     bool isSealed = false;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t moduleIsRegistered;
-    int32_t deviceIsActivated;
     int32_t deviceIsRegistered;
+    int32_t deviceIsActivated = -1;
 
-    // Sealed is when AT+USECDEVINFO
-    // returns 1,1,1
-    uAtClientLock(atHandle);
-    uAtClientTimeoutSet(atHandle,
-                        U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
-    uAtClientCommandStart(atHandle, "AT+USECDEVINFO?");
-    uAtClientCommandStop(atHandle);
-    uAtClientResponseStart(atHandle, "+USECDEVINFO:");
-    moduleIsRegistered = uAtClientReadInt(atHandle);
-    deviceIsRegistered = uAtClientReadInt(atHandle);
-    deviceIsActivated = uAtClientReadInt(atHandle);
-    uAtClientResponseStop(atHandle);
-    if (uAtClientUnlock(atHandle) == 0) {
-        isSealed = (moduleIsRegistered == 1) &&
-                   (deviceIsRegistered == 1) &&
-                   (deviceIsActivated == 1);
+    // Try this a few times in case we've just booted
+    for (size_t x = 0; (x < U_CELL_SEC_USECDEVINFO_RETRY) &&
+         (deviceIsActivated < 0); x++) {
+        // Sealed is when AT+USECDEVINFO
+        // returns 1,1,1
+        uAtClientLock(atHandle);
+        uAtClientTimeoutSet(atHandle,
+                            U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
+        uAtClientCommandStart(atHandle, "AT+USECDEVINFO?");
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+USECDEVINFO:");
+        moduleIsRegistered = uAtClientReadInt(atHandle);
+        deviceIsRegistered = uAtClientReadInt(atHandle);
+        deviceIsActivated = uAtClientReadInt(atHandle);
+        uAtClientResponseStop(atHandle);
+        if (uAtClientUnlock(atHandle) == 0) {
+            isSealed = (moduleIsRegistered == 1) &&
+                       (deviceIsRegistered == 1) &&
+                       (deviceIsActivated == 1);
+        } else {
+            // Wait between tries
+            uPortTaskBlock(U_CELL_SEC_USECDEVINFO_DELAY_SECONDS);
+        }
     }
 
     return isSealed;
@@ -165,7 +185,7 @@ bool uCellSecIsBootstrapped(int32_t cellHandle)
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
     int32_t moduleIsRegistered;
-    int32_t deviceIsActivated;
+    int32_t deviceIsActivated = -1;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -178,21 +198,28 @@ bool uCellSecIsBootstrapped(int32_t cellHandle)
                 // Bootstrapped is when AT+USECDEVINFO
                 // returns 1,x,1
                 atHandle = pInstance->atHandle;
-                uAtClientLock(atHandle);
-                uAtClientTimeoutSet(atHandle,
-                                    U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
-                uAtClientCommandStart(atHandle, "AT+USECDEVINFO?");
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+USECDEVINFO:");
-                moduleIsRegistered = uAtClientReadInt(atHandle);
-                // Skip device registration field, that's only
-                // relevant to sealing
-                uAtClientSkipParameters(atHandle, 1);
-                deviceIsActivated = uAtClientReadInt(atHandle);
-                uAtClientResponseStop(atHandle);
-                if (uAtClientUnlock(atHandle) == 0) {
-                    isBootstrapped = (moduleIsRegistered == 1) &&
-                                     (deviceIsActivated == 1);
+                // Try this a few times in case we've just booted
+                for (size_t x = 0; (x < U_CELL_SEC_USECDEVINFO_RETRY) &&
+                     (deviceIsActivated < 0); x++) {
+                    uAtClientLock(atHandle);
+                    uAtClientTimeoutSet(atHandle,
+                                        U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
+                    uAtClientCommandStart(atHandle, "AT+USECDEVINFO?");
+                    uAtClientCommandStop(atHandle);
+                    uAtClientResponseStart(atHandle, "+USECDEVINFO:");
+                    moduleIsRegistered = uAtClientReadInt(atHandle);
+                    // Skip device registration field, that's only
+                    // relevant to sealing
+                    uAtClientSkipParameters(atHandle, 1);
+                    deviceIsActivated = uAtClientReadInt(atHandle);
+                    uAtClientResponseStop(atHandle);
+                    if (uAtClientUnlock(atHandle) == 0) {
+                        isBootstrapped = (moduleIsRegistered == 1) &&
+                                         (deviceIsActivated == 1);
+                    } else {
+                        // Wait between tries
+                        uPortTaskBlock(U_CELL_SEC_USECDEVINFO_DELAY_SECONDS);
+                    }
                 }
             }
         }
