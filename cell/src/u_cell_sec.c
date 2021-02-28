@@ -143,7 +143,7 @@ static bool moduleIsSealed(const uCellPrivateInstance_t *pInstance)
                        (deviceIsActivated == 1);
         } else {
             // Wait between tries
-            uPortTaskBlock(U_CELL_SEC_USECDEVINFO_DELAY_SECONDS);
+            uPortTaskBlock(U_CELL_SEC_USECDEVINFO_DELAY_SECONDS * 1000);
         }
     }
 
@@ -218,7 +218,7 @@ bool uCellSecIsBootstrapped(int32_t cellHandle)
                                          (deviceIsActivated == 1);
                     } else {
                         // Wait between tries
-                        uPortTaskBlock(U_CELL_SEC_USECDEVINFO_DELAY_SECONDS);
+                        uPortTaskBlock(U_CELL_SEC_USECDEVINFO_DELAY_SECONDS * 1000);
                     }
                 }
             }
