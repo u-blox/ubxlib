@@ -797,7 +797,7 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
                         ((x < pRx->rxInLength - 1) &&
                          (*(pData + 1) == (char) U_CELL_SEC_C2C_FRAME_MARKER))) {
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
-                        uPortLog("U_CELL_SEC_C2C_DECODE: it was likley a closing"
+                        uPortLog("U_CELL_SEC_C2C_DECODE: it was likely a closing"
                                  " frame marker, moving beyond it..\n");
 #endif
                         pData++;
