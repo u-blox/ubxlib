@@ -762,7 +762,7 @@ int32_t uCellSecPskGenerate(int32_t cellHandle,
                 }
                 uAtClientResponseStop(atHandle);
                 if ((uAtClientUnlock(atHandle) == 0) &&
-                    (sizeOutPsk == pskSizeBytes)) {
+                    (sizeOutPsk == (int32_t) pskSizeBytes)) {
                     errorCodeOrSize = sizeOutPskId;
                 }
             }

@@ -186,6 +186,8 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
     if (fromUrc) {
         printAllowed = false;
     }
+#else
+    (void) fromUrc;
 #endif
 
     switch (status) {

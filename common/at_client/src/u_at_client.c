@@ -1077,7 +1077,7 @@ static int32_t readString(uAtClientInstance_t *pClient,
                 (c == *(pStopTag->pTagDef->pString + matchPos))) {
                 // It could be a stop tag
                 matchPos++;
-                if (matchPos == pStopTag->pTagDef->length) {
+                if (matchPos == (int32_t) pStopTag->pTagDef->length) {
                     pStopTag->found = true;
                     // Remove tag from string if it was matched
                     lengthRead -= (int32_t) pStopTag->pTagDef->length - 1;
@@ -1116,7 +1116,7 @@ static int32_t readString(uAtClientInstance_t *pClient,
             } else if ((pStopTag->pTagDef->length > 0) &&
                        (c == *(pStopTag->pTagDef->pString + matchPos))) {
                 matchPos++;
-                if (matchPos == pStopTag->pTagDef->length) {
+                if (matchPos == (int32_t) pStopTag->pTagDef->length) {
                     pStopTag->found = true;
                 }
             }
@@ -2284,7 +2284,7 @@ int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
                 (c == *(pStopTag->pTagDef->pString + matchPos))) {
                 // It could be a stop tag
                 matchPos++;
-                if (matchPos == pStopTag->pTagDef->length) {
+                if (matchPos == (int32_t) pStopTag->pTagDef->length) {
                     pStopTag->found = true;
                     // Remove tag from string if it was matched
                     lengthRead -= (int32_t) pStopTag->pTagDef->length - 1;
@@ -2318,7 +2318,7 @@ int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
             } else if ((pStopTag->pTagDef->length > 0) &&
                        (c == *(pStopTag->pTagDef->pString + matchPos))) {
                 matchPos++;
-                if (matchPos == pStopTag->pTagDef->length) {
+                if (matchPos == (int32_t) pStopTag->pTagDef->length) {
                     pStopTag->found = true;
                 }
             }

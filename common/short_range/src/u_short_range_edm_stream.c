@@ -294,7 +294,7 @@ static void fillBuffer(void)
             if (sizeOrError > 0) {
                 //parse if ok
                 read += sizeOrError;
-                if (length == read) {
+                if (length == (int32_t) read) {
                     //Full packet process
                     gEdmStream.uartBufferAvailable = false;
                     int res = uShortRangeEdmParse(gEdmStream.pUartBuffer, read, &evt, &length, &consumed);
