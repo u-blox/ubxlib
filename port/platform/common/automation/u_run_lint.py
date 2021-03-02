@@ -159,19 +159,40 @@ def create_lint_config(lint_platform_path, defines, printer, prompt):
     # Call it
     return u_utils.exe_run(call_list, None, printer, prompt)
 
-def get_file_list(ubxlib_dir, lint_dirs):
+def get_file_list(ubxlib_dir, lint_dirs, use_stubs):
     '''Get the list of files to be Linted'''
     file_list = []
+    stub_file_list = []
 
     # Lint is really bad at recursing, you can't give it
     # a directory, a list of file extensions and have it
-    # do the work.  Hence we do the heavy lifting here
+    # do the work.  Hence we do the heavy lifting here.
     for directory in lint_dirs:
         files = os.listdir(ubxlib_dir + os.sep + directory)
         for item in files:
             if item.endswith(".c") or item.endswith(".cpp"):
-                file_list.append(ubxlib_dir + os.sep +
-                                 directory + os.sep + item)
+                if item.endswith("_stub.c") or item.endswith("_stub.cpp"):
+                    stub_file_list.append(ubxlib_dir + os.sep +
+                                          directory + os.sep + item)
+                else:
+                    file_list.append(ubxlib_dir + os.sep +
+                                     directory + os.sep + item)
+
+    if use_stubs:
+        # If we're using stubs then remove all the "non-stubs"
+        # file versions from the list
+        for stub_file in stub_file_list:
+            if stub_file.endswith("_stub.c"):
+                non_stub_file = stub_file.rstrip("_stub.c") + ".c"
+            else:
+                if stub_file.endswith("_stub.cpp"):
+                    non_stub_file = stub_file.rstrip("_stub.cpp") + ".cpp"
+            for idx, item in enumerate(file_list):
+                if item == non_stub_file:
+                    file_list.pop(idx)
+                    break
+        # ...and add the stub versions instead
+        file_list.extend(stub_file_list)
 
     return file_list
 
@@ -205,8 +226,16 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
                 if create_lint_config(ubxlib_dir + os.sep +
                                       LINT_PLATFORM_PATH,
                                       defines, printer, prompt):
+                    # Determine if "U_CFG_LINT_USE_STUBS" is in the list of
+                    # compiler options
+                    use_stubs = False
+                    for item in defines:
+                        if item == "U_CFG_LINT_USE_STUBS":
+                            use_stubs = True
+                            break
                     # Get the file list
-                    file_list = get_file_list(ubxlib_dir, LINT_DIRS)
+                    file_list = get_file_list(ubxlib_dir, LINT_DIRS,
+                                              use_stubs)
 
                     # Assemble the call list
                     call_list.append("flexelint")

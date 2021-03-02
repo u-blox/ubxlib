@@ -258,6 +258,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
     char buffer[32];
     int32_t y;
     int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -300,15 +302,29 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                     uPortLog("U_NETWORK_TEST: looking up echo server \"%s\"...\n",
                              U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
                     // Look up the address of the server we use for UDP echo
+                    // The first call to a sockets API needs to
+                    // initialise the underlying sockets layer; take
+                    // account of that initialisation heap cost here.
+                    heapSockInitLoss = uPortGetHeapFree();
+                    // Look up the address of the server we use for UDP echo
                     U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                           U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
                                                           &(address.ipAddress)) == 0);
+                    heapSockInitLoss -= uPortGetHeapFree();
+
                     // Add the port number we will use
                     address.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
                     // Create a UDP socket
+                    // Creating a socket may use heap in the underlying
+                    // network layer which will be reclaimed when the
+                    // network layer is closed but we don't do that here
+                    // to save time so need to allow for it in the heap loss
+                    // calculation
+                    heapXxxSockInitLoss += uPortGetHeapFree();
                     descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
                                              U_SOCK_PROTOCOL_UDP);
+                    heapXxxSockInitLoss -= uPortGetHeapFree();
 
                     // Send and wait for the UDP echo data, trying a few
                     // times to reduce the chance of internet loss getting
@@ -416,15 +432,21 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
     // accounted for.
     heapUsed -= uPortGetHeapFree();
     uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
+             " the C library during this test, %d byte(s) were"
+             " lost to sockets initialisation and we have"
              " leaked %d byte(s).\n",
-             gSystemHeapLost, heapUsed - gSystemHeapLost);
+             gSystemHeapLost, heapSockInitLoss + heapXxxSockInitLoss,
+             heapUsed - (gSystemHeapLost + heapSockInitLoss + heapXxxSockInitLoss));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
-                       (heapUsed <= (int32_t) gSystemHeapLost));
+                       (heapUsed <= (int32_t) (gSystemHeapLost +
+                                               heapSockInitLoss +
+                                               heapXxxSockInitLoss)));
 #else
     (void) gSystemHeapLost;
+    (void) heapSockInitLoss;
+    (void) heapXxxSockInitLoss;
     (void) heapUsed;
 #endif
 }

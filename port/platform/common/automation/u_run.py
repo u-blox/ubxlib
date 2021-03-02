@@ -188,11 +188,11 @@ def main(database, instance, filter_string, clean,
                 return_value = u_run_pylint.run(instance, ubxlib_dir, working_dir,
                                                 printer, reporter)
             elif instance[0] == 4:
-                return_value = u_run_lint.run(instance, defines, ubxlib_dir,
-                                              working_dir, printer, reporter)
-            elif instance[0] == 5:
                 return_value = u_run_static_size.run(instance, defines, ubxlib_dir,
                                                      working_dir, printer, reporter)
+            elif instance[0] == 5:
+                printer.string("{}reserved, nothing to do.".format(PROMPT))
+                return_value = 0
             elif instance[0] == 6:
                 printer.string("{}reserved, nothing to do.".format(PROMPT))
                 return_value = 0

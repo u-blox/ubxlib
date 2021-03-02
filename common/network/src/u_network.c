@@ -169,11 +169,11 @@ int32_t uNetworkInit()
             // Call the init functions in the
             // underlying network layers
             errorCode = uNetworkInitBle();
-            if (errorCode == 0) {
+            if (errorCode == 0 || errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
                 errorCode = uNetworkInitCell();
-                if (errorCode == 0) {
+                if (errorCode == 0 || errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
                     errorCode = uNetworkInitWifi();
-                    if (errorCode != 0) {
+                    if (!(errorCode == 0 ||  errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
                         uNetworkDeinitCell();
                         uNetworkDeinitBle();
                     }
@@ -186,11 +186,15 @@ int32_t uNetworkInit()
             // If the any of the underlying
             // layers fail then free our
             // mutex again and mark it as NULL
-            if (errorCode != 0) {
+            if (!(errorCode == 0 ||  errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
                 uPortMutexDelete(gMutex);
                 gMutex = NULL;
             }
         }
+    }
+
+    if (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
+        errorCode = 0;
     }
 
     return errorCode;
