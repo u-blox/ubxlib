@@ -117,6 +117,8 @@ INTERESTING = [[r"abort()", reboot_callback],
                [r"Guru Meditation Error", reboot_callback],
                # This one for NRF52 aborts
                [r"<error> hardfault", reboot_callback],
+               # This one for Zephyr aborts
+               [r">>> ZEPHYR FATAL ERROR", reboot_callback],
                # Match, for example "BLAH: Running getSetMnoProfile..." capturing the "getSetMnoProfile" part
                [r"(?:^.*Running) +([^\.]+(?=\.))...$", run_callback],
                # Match, for example "C:/temp/file.c:890:connectedThings:PASS" capturing the "connectThings" part

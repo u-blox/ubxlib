@@ -26,6 +26,7 @@
 #include "stdbool.h"
 #include "assert.h"
 #include "stdlib.h"
+#include "string.h"    // memset
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -43,6 +44,9 @@
 #define portMAX_DELAY K_FOREVER
 #endif
 
+#ifndef U_PORT_STACK_GUARD_SIZE
+#define U_PORT_STACK_GUARD_SIZE 50
+#endif
 static uint8_t __aligned(U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE)
 exe_chunk_0[U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE];
 // make this ram part executable
@@ -53,14 +57,94 @@ K_MEM_PARTITION_DEFINE(chunk0_reloc, exe_chunk_0, sizeof(exe_chunk_0),
  * TYPES
  * -------------------------------------------------------------- */
 
+typedef struct {
+    struct k_thread *pThread;
+    k_thread_stack_t *pStack;
+    size_t stackSize;
+    bool isAllocated;
+} uPortOsThreadInstance_t;
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
-
+/** Array to keep track of the thread instances.
+ */
+static uPortOsThreadInstance_t gThreadInstances[U_CFG_OS_MAX_THREADS];
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
+{
+    uPortOsThreadInstance_t *threadPtr = NULL;
+    int32_t i = 0;
+    for (i = 0; i < U_CFG_OS_MAX_THREADS; i++) {
+        if (!gThreadInstances[i].isAllocated) {
+            threadPtr = &gThreadInstances[i];
+            //Free if previously used instance
+            if (threadPtr->stackSize > 0) {
+                k_free(threadPtr->pThread);
+                k_free(threadPtr->pStack);
+            }
+            threadPtr->pThread = (struct k_thread *)k_malloc(sizeof(struct k_thread));
+            threadPtr->pStack = (k_thread_stack_t *)k_malloc(stackSizeBytes + U_PORT_STACK_GUARD_SIZE);
+            memset(threadPtr->pThread, 0, sizeof(struct k_thread));
+            memset(threadPtr->pStack, 0, stackSizeBytes + U_PORT_STACK_GUARD_SIZE);
+            threadPtr->stackSize = stackSizeBytes;
+            threadPtr->isAllocated = true;
+            break;
+        }
+    }
+    if (threadPtr == NULL) {
+        uPortLogF("No more threads available in thread pool, please increase U_CFG_OS_MAX_THREADS\n");
+    } else if (threadPtr->pThread == NULL || threadPtr->pStack == NULL) {
+        uPortLogF("Unable to allocate memory for thread with stack size %d\n", stackSizeBytes);
+        k_free(threadPtr->pThread);
+        k_free(threadPtr->pStack);
+        threadPtr = NULL;
+    }
+    return threadPtr;
+}
 
+static void freeThreadInstance(struct k_thread *threadPtr)
+{
+    int32_t i = 0;
+    for (i = 0; i < U_CFG_OS_MAX_THREADS; i++) {
+        if (threadPtr == gThreadInstances[i].pThread ) {
+            gThreadInstances[i].isAllocated = false;
+            break;
+        }
+    }
+}
+
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: BUT ONES THAT SHOULD BE CALLED INTERNALLY ONLY
+ * -------------------------------------------------------------- */
+
+// Initialise thread pool.
+void uPortOsPrivateInit()
+{
+    int32_t i = 0;
+    for (i = 0; i < U_CFG_OS_MAX_THREADS; i++) {
+        gThreadInstances[i].pThread = NULL;
+        gThreadInstances[i].pStack = NULL;
+        gThreadInstances[i].stackSize = 0;
+        gThreadInstances[i].isAllocated = false;
+    }
+}
+void uPortOsPrivateDeinit()
+{
+    int32_t i = 0;
+    for (i = 0; i < U_CFG_OS_MAX_THREADS; i++) {
+        if (gThreadInstances[i].stackSize > 0) {
+            k_free(gThreadInstances[i].pThread);
+            gThreadInstances[i].pThread = NULL;
+            k_free(gThreadInstances[i].pStack);
+            gThreadInstances[i].pStack = NULL;
+            gThreadInstances[i].stackSize = 0;
+            gThreadInstances[i].isAllocated = false;
+        }
+    }
+}
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TASKS
  * -------------------------------------------------------------- */
@@ -74,24 +158,27 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
                         uPortTaskHandle_t *pTaskHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    uPortOsThreadInstance_t *newThread =  NULL;
 
     if ((pFunction != NULL) && (pTaskHandle != NULL) &&
         (priority >= U_CFG_OS_PRIORITY_MIN) &&
         (priority <= U_CFG_OS_PRIORITY_MAX)) {
 
-        k_thread_stack_t *stack = (k_thread_stack_t * )k_malloc(stackSizeBytes);
-        struct k_thread *t_data = (struct k_thread *)k_malloc(sizeof(struct k_thread));
+        newThread =  getNewThreadInstance(stackSizeBytes);
         errorCode = U_ERROR_COMMON_NO_MEMORY;
-        if (t_data != NULL && stack != NULL) {
+        if (newThread != NULL) {
             *pTaskHandle = (uPortTaskHandle_t) k_thread_create(
-                               t_data,
-                               stack,
-                               stackSizeBytes,
+                               newThread->pThread,
+                               newThread->pStack,
+                               newThread->stackSize,
                                (k_thread_entry_t)pFunction,
                                pParameter, NULL, NULL,
                                K_PRIO_COOP(priority), 0, K_NO_WAIT);
 
             if (*pTaskHandle != NULL) {
+                if (pName != NULL) {
+                    k_thread_name_set((k_tid_t)*pTaskHandle, pName);
+                }
                 errorCode = U_ERROR_COMMON_SUCCESS;
             }
         }
@@ -109,10 +196,8 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
     // Can only delete oneself in freeRTOS so we keep that behaviour
     if (taskHandle == NULL) {
         thread = k_current_get();
-
+        freeThreadInstance((struct k_thread *)thread);
         k_thread_abort(thread);
-        k_free((k_thread_stack_t *)((struct k_thread *) thread)->stack_info.start); //free the stack
-        k_free((struct k_thread *) thread); //free the thread
         errorCode = U_ERROR_COMMON_SUCCESS;
     }
     return (int32_t)errorCode;

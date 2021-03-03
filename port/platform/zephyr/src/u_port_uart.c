@@ -70,7 +70,7 @@
 /** Structure of the things we need to keep track of per UART.
  */
 typedef struct {
-    struct device *pDevice;
+    const struct device *pDevice;
     struct uart_config config;
     int32_t eventQueueHandle;
     uint32_t eventFilter;
@@ -169,7 +169,7 @@ static void rxTimer(struct k_timer *timer_id)
     }
 }
 
-static void uartCb(struct device *uart)
+static void uartCb(const struct device *uart, void *user_data)
 {
     uint8_t i;
 
@@ -258,7 +258,7 @@ int32_t uPortUartInit()
     if (gMutex == NULL) {
         errorCode = uPortMutexCreate(&gMutex);
         for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
-            struct device *dev = NULL;
+            const struct device *dev = NULL;
             switch (x) {
                 case 0:
                     dev = device_get_binding("UART_0");
@@ -361,8 +361,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                 // default values (8N1).
                 gUartData[uart].config.baudrate = baudRate;
                 uart_configure(gUartData[uart].pDevice, &gUartData[uart].config);
-
-                uart_irq_callback_set(gUartData[uart].pDevice, uartCb);
+                uart_irq_callback_user_data_set(gUartData[uart].pDevice, uartCb, NULL);
                 uart_irq_rx_enable(gUartData[uart].pDevice);
 
                 handleOrErrorCode = uart;

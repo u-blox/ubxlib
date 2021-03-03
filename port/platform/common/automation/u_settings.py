@@ -6,7 +6,7 @@ import sys
 import json
 import os
 
-__path = os.path.expanduser("~/.ubx_automation/settings.json")
+__path = os.path.expanduser("~/.ubx_automation/settings_nrfconn_update.json")
 __useDefaultSettings = True
 __storeSettings = True
 __settings = {}
@@ -108,7 +108,7 @@ __defaultSettings["NRF5SDK_BUILD_SUBDIR_SES"] = "Output"
 __defaultSettings["NRF5SDK_SES_MAX_NUM_DEFINES"] = 20
 __defaultSettings["NRF5SDK_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run_zephyr.py
-__defaultSettings["ZEPHYR_NRFCONNECT_PATH"] = "C:\\nrfconnect\\v1.3.0"
+__defaultSettings["ZEPHYR_NRFCONNECT_PATH"] = "C:\\nrfconnect\\v1.4.2"
 __defaultSettings["ZEPHYR_RUN_JLINK"] = ["-If", "SWD", "-Speed", "4000", "-Autoconnect",
             "1", "-ExitOnError", "1"]
 __defaultSettings["ZEPHYR_ZEPHYR_ENV_CMD"] =                                        \

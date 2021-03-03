@@ -70,6 +70,13 @@
 # define U_CFG_OS_APP_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 1)
 #endif
 
+#ifndef U_CFG_OS_MAX_THREADS
+/**  Max number of threads to be used by ubxlib.
+ * Can be tweaked if memory usage should be optimized
+ */
+#define U_CFG_OS_MAX_THREADS 10
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR NRF5340: SIZES OF EXECUTABLE CHUNKS OF RAM
  * -------------------------------------------------------------- */

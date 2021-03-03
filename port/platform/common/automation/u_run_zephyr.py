@@ -14,7 +14,7 @@ import u_settings
 PROMPT = "u_run_zephyr_"
 
 # Expected location of nRFConnect installation
-NRFCONNECT_PATH = u_settings.ZEPHYR_NRFCONNECT_PATH # e.g. "C:\\nrfconnect\\v1.3.0"
+NRFCONNECT_PATH = u_settings.ZEPHYR_NRFCONNECT_PATH # e.g. "C:\\nrfconnect\\v1.4.2"
 
 # The list of things to execute jlink.exe
 RUN_JLINK = [u_utils.JLINK_PATH] + u_settings.ZEPHYR_RUN_JLINK #
@@ -74,7 +74,7 @@ TOOLS_LIST = [{"which_string": "west",
                        " administrator privileges and then typing:"  \
                        " \"pip install west\" followed by something" \
                        " like: \"pip install -r C:\\nrfconnect"      \
-                       "\\v1.3.0\\zephyr\\scripts\\requirements.txt\".",
+                       "\\v1.4.2\\zephyr\\scripts\\requirements.txt\".",
                "version_switch": "--version"},
               {"which_string": "nrfjprog.exe",
                "hint": "couldn't find the nRFConnect SDK at NRFCONNECT_PATH,"  \

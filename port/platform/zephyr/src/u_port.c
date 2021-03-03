@@ -35,6 +35,7 @@
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
+#include "u_port_private.h"
 
 #include "zephyr.h"
 
@@ -83,6 +84,9 @@ int32_t uPortInit()
     if (errorCode == U_ERROR_COMMON_SUCCESS) {
         errorCode = uPortEventQueuePrivateInit();
     }
+    if (errorCode == U_ERROR_COMMON_SUCCESS) {
+        uPortOsPrivateInit();
+    }
     return errorCode;
 }
 
@@ -91,6 +95,7 @@ void uPortDeinit()
 {
     uPortUartDeinit();
     uPortEventQueuePrivateDeinit();
+    uPortOsPrivateDeinit();
 }
 
 // Get the current tick converted to a time in milliseconds.

@@ -4,7 +4,7 @@ This is an application showing some simple use of the ubxlib library example, `l
 
 To build and flash from the current folder for an Nordic nRF5340 board:
 ```
-$ west build -p auto -b nrf5340pdk_nrf5340_cpuapp
+$ west build -p auto -b nrf5340dk_nrf5340_cpuapp
 $ west flash
 ```
 

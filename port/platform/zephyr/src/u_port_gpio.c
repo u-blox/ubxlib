@@ -50,9 +50,9 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-static struct device *getGpioDevice(uint32_t pin)
+static const struct device *getGpioDevice(uint32_t pin)
 {
-    struct device *pDev;
+    const struct device *pDev;
     // common practice in device trees that one gpio port holds 32 pins
     char dtDeviceNodeLabel[7];
     strcpy(dtDeviceNodeLabel, "GPIO_x");
@@ -77,7 +77,7 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     bool badConfig = false;
-    struct device *pPort;
+    const struct device *pPort;
     gpio_flags_t flags = 0;
     int zerr;
 
@@ -163,7 +163,7 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
 // Set the state of a GPIO.
 int32_t uPortGpioSet(int32_t pin, int32_t level)
 {
-    struct device *pPort;
+    const struct device *pPort;
     int zerr;
 
     pPort = getGpioDevice(pin);
@@ -182,7 +182,7 @@ int32_t uPortGpioSet(int32_t pin, int32_t level)
 // Get the state of a GPIO.
 int32_t uPortGpioGet(int32_t pin)
 {
-    struct device *pPort;
+    const struct device *pPort;
     int zerr;
     gpio_port_value_t val;
 
