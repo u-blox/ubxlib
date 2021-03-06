@@ -24,6 +24,9 @@
  * @brief Tests for the cellular power API: these should pass on all
  * platforms that have a cellular module connected to them.  They
  * are only compiled if U_CFG_TEST_CELL_MODULE_TYPE is defined.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
@@ -276,6 +279,10 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
  * -------------------------------------------------------------- */
 
 /** Test all the power functions apart from reboot.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 {

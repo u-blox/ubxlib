@@ -29,6 +29,7 @@ target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/mbedtls/u_port_crypto.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/event_queue/u_port_event_queue.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/port/test/u_port_test.c)
+target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/test/u_preamble_test.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/runner/u_runner.c)
 
 #at-client
@@ -80,6 +81,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_info_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_net_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sock_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sec_c2c_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_preamble.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_private.c)
 
 #ble API

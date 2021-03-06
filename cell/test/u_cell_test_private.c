@@ -51,6 +51,7 @@
 #include "u_cell_private.h" // So that we can get at some innards
 #include "u_cell_pwr.h"
 #include "u_cell_cfg.h"
+#include "u_cell_info.h"
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
@@ -188,6 +189,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
     uint64_t bandMask1;
     uint64_t bandMask2;
     bool rebootRequired = false;
+    char imsi[U_CELL_INFO_IMSI_SIZE];
 
     // Set some defaults
     pParameters->uartHandle = -1;
@@ -243,113 +245,118 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
             uPortLog("U_CELL_TEST_PRIVATE: powering on...\n");
             errorCode = uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN, NULL);
             if (errorCode == 0) {
-                errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
-                pModule = pUCellPrivateGetModule(cellHandle);
-                if (pModule != NULL) {
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    if (U_CELL_PRIVATE_HAS(pModule,
-                                           U_CELL_PRIVATE_FEATURE_MNO_PROFILE)) {
-                        // Ensure that the MNO profile, where supported, is set
-                        // to the one we want
-                        mnoProfile = uCellCfgGetMnoProfile(cellHandle);
-                        if ((mnoProfile >= 0) &&
-                            (mnoProfile != U_CELL_TEST_CFG_MNO_PROFILE)) {
-                            errorCode = uCellCfgSetMnoProfile(cellHandle,
-                                                              U_CELL_TEST_CFG_MNO_PROFILE);
-                            // SARA-R412M-02B modules with SW version M0.10.0 fresh out of
-                            // the box are set to MNO profile 0 which stops any configuration
-                            // being performed (setting the RAT won't work, for instance) so
-                            // re-boot immediately here just in case
-                            if (errorCode == 0) {
-                                errorCode = uCellPwrReboot(cellHandle, NULL);
-                            }
-                        }
-                    }
-                    if (errorCode == 0) {
-                        errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
-                        // Ensure that the sole RAT set is the one
-                        // we want for testing this module
-                        for (size_t x = 0; x < pModule->maxNumSimultaneousRats; x++) {
-                            rat = uCellCfgGetRat(cellHandle, (int32_t) x);
-                            if (rat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) {
-                                if (x == 0) {
-                                    primaryRat = rat;
-                                    // This is the *only* RAT we want: is it
-                                    // set the way we want it?
-#ifdef U_CELL_NET_TEST_RAT
-                                    if (primaryRat != U_CELL_NET_TEST_RAT) {
-                                        primaryRat = U_CELL_NET_TEST_RAT;
-                                        setRat = true;
-                                    }
-#else
-                                    for (size_t y = 0; !setRat &&
-                                         (y < sizeof(gNetworkOrder) / sizeof(gNetworkOrder[0])) &&
-                                         (primaryRat != gNetworkOrder[y]); y++) {
-                                        if ((pModule->supportedRatsBitmap & (1U << (int32_t) gNetworkOrder[y])) &&
-                                            (primaryRat != gNetworkOrder[y])) {
-                                            primaryRat = gNetworkOrder[y];
-                                            setRat = true;
-                                        }
-                                    }
-#endif
-                                } else {
-                                    if (!setRat) {
-                                        // We haven't already decided to set a sole RAT,
-                                        // make sure that there are no alternative RATs
-                                        if (rat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) {
-                                            // If more than a single RAT is set then we
-                                            // must set the sole RAT to get rid of them
-                                            setRat = true;
-                                        }
-                                    }
+                // Give the module time to read its SIM before we continue
+                // or it might refuse to answer some commands (e.g. AT+URAT?)
+                errorCode = uCellInfoGetImsi(cellHandle, imsi);
+                if (errorCode == 0) {
+                    errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+                    pModule = pUCellPrivateGetModule(cellHandle);
+                    if (pModule != NULL) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        if (U_CELL_PRIVATE_HAS(pModule,
+                                               U_CELL_PRIVATE_FEATURE_MNO_PROFILE)) {
+                            // Ensure that the MNO profile, where supported, is set
+                            // to the one we want
+                            mnoProfile = uCellCfgGetMnoProfile(cellHandle);
+                            if ((mnoProfile >= 0) &&
+                                (mnoProfile != U_CELL_TEST_CFG_MNO_PROFILE)) {
+                                errorCode = uCellCfgSetMnoProfile(cellHandle,
+                                                                  U_CELL_TEST_CFG_MNO_PROFILE);
+                                // SARA-R412M-02B modules with SW version M0.10.0 fresh out of
+                                // the box are set to MNO profile 0 which stops any configuration
+                                // being performed (setting the RAT won't work, for instance) so
+                                // re-boot immediately here just in case
+                                if (errorCode == 0) {
+                                    errorCode = uCellPwrReboot(cellHandle, NULL);
                                 }
-                            } else {
-                                // No point in looping if uCellCfgGetRat()
-                                // has returned nothing
-                                break;
                             }
                         }
-                        if (setRat && (primaryRat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED)) {
-                            errorCode = uCellCfgSetRat(cellHandle, primaryRat);
-                            rebootRequired = true;
-                        } else {
-                            // If we haven't set or read a sole RAT then
-                            // the module doesn't support it, just carry on
-                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                        }
-                    }
-
-                    // If we're on cat-M1 or NB1, set the band-mask
-                    // correctly for the Nutaq network box we use for testing
-                    if ((errorCode == 0) &&
-                        ((primaryRat == U_CELL_NET_RAT_CATM1) ||
-                         (primaryRat == U_CELL_NET_RAT_NB1))) {
-                        errorCode = uCellCfgGetBandMask(cellHandle, primaryRat,
-                                                        &bandMask1, &bandMask2);
                         if (errorCode == 0) {
-                            // bandMaskx must be exactly U_CELL_TEST_CFG_BANDMASKx
-                            //lint -e{774, 587} Suppress always evaluates to True
-                            if ((bandMask1 != U_CELL_TEST_CFG_BANDMASK1) ||
-                                (bandMask2 != U_CELL_TEST_CFG_BANDMASK2)) {
-                                // Set the band masks
-                                errorCode = uCellCfgSetBandMask(cellHandle, primaryRat,
-                                                                U_CELL_TEST_CFG_BANDMASK1,
-                                                                U_CELL_TEST_CFG_BANDMASK2);
+                            errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+                            // Ensure that the sole RAT set is the one
+                            // we want for testing this module
+                            for (size_t x = 0; x < pModule->maxNumSimultaneousRats; x++) {
+                                rat = uCellCfgGetRat(cellHandle, (int32_t) x);
+                                if (rat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) {
+                                    if (x == 0) {
+                                        primaryRat = rat;
+                                        // This is the *only* RAT we want: is it
+                                        // set the way we want it?
+#ifdef U_CELL_NET_TEST_RAT
+                                        if (primaryRat != U_CELL_NET_TEST_RAT) {
+                                            primaryRat = U_CELL_NET_TEST_RAT;
+                                            setRat = true;
+                                        }
+#else
+                                        for (size_t y = 0; !setRat &&
+                                             (y < sizeof(gNetworkOrder) / sizeof(gNetworkOrder[0])) &&
+                                             (primaryRat != gNetworkOrder[y]); y++) {
+                                            if ((pModule->supportedRatsBitmap & (1U << (int32_t) gNetworkOrder[y])) &&
+                                                (primaryRat != gNetworkOrder[y])) {
+                                                primaryRat = gNetworkOrder[y];
+                                                setRat = true;
+                                            }
+                                        }
+#endif
+                                    } else {
+                                        if (!setRat) {
+                                            // We haven't already decided to set a sole RAT,
+                                            // make sure that there are no alternative RATs
+                                            if (rat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) {
+                                                // If more than a single RAT is set then we
+                                                // must set the sole RAT to get rid of them
+                                                setRat = true;
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // No point in looping if uCellCfgGetRat()
+                                    // has returned nothing
+                                    break;
+                                }
+                            }
+                            if (setRat && (primaryRat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED)) {
+                                errorCode = uCellCfgSetRat(cellHandle, primaryRat);
                                 rebootRequired = true;
+                            } else {
+                                // If we haven't set or read a sole RAT then
+                                // the module doesn't support it, just carry on
+                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                             }
                         }
-                        if (errorCode == 0) {
-                            // On LTE, if the APN is wrong we will be
-                            // denied service, so set the AT+CGDCONT
-                            // entry correctly
-                            contextSet(cellHandle, U_CELL_NET_CONTEXT_ID,
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_EUTRAN_APN));
-                        }
-                    }
 
-                    // Re-boot if we've made a change
-                    if ((errorCode == 0) && rebootRequired) {
-                        errorCode = uCellPwrReboot(cellHandle, NULL);
+                        // If we're on cat-M1 or NB1, set the band-mask
+                        // correctly for the Nutaq network box we use for testing
+                        if ((errorCode == 0) &&
+                            ((primaryRat == U_CELL_NET_RAT_CATM1) ||
+                             (primaryRat == U_CELL_NET_RAT_NB1))) {
+                            errorCode = uCellCfgGetBandMask(cellHandle, primaryRat,
+                                                            &bandMask1, &bandMask2);
+                            if (errorCode == 0) {
+                                // bandMaskx must be exactly U_CELL_TEST_CFG_BANDMASKx
+                                //lint -e{774, 587} Suppress always evaluates to True
+                                if ((bandMask1 != U_CELL_TEST_CFG_BANDMASK1) ||
+                                    (bandMask2 != U_CELL_TEST_CFG_BANDMASK2)) {
+                                    // Set the band masks
+                                    errorCode = uCellCfgSetBandMask(cellHandle, primaryRat,
+                                                                    U_CELL_TEST_CFG_BANDMASK1,
+                                                                    U_CELL_TEST_CFG_BANDMASK2);
+                                    rebootRequired = true;
+                                }
+                            }
+                            if (errorCode == 0) {
+                                // On LTE, if the APN is wrong we will be
+                                // denied service, so set the AT+CGDCONT
+                                // entry correctly
+                                contextSet(cellHandle, U_CELL_NET_CONTEXT_ID,
+                                           U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_EUTRAN_APN));
+                            }
+                        }
+
+                        // Re-boot if we've made a change
+                        if ((errorCode == 0) && rebootRequired) {
+                            errorCode = uCellPwrReboot(cellHandle, NULL);
+                        }
                     }
                 }
 

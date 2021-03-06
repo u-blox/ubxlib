@@ -27,6 +27,9 @@
  * configuration information, i.e. cellular or BLE/Wifi for short range).
  * These tests use the network API and the test configuration information
  * from the network API to provide the communication path.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -764,6 +767,10 @@ static void osCleanup()
 /** Test conversion of address strings into structs and
  * back again.  This test is purely local, no network
  * connection is required.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
 {

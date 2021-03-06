@@ -83,6 +83,10 @@ static int32_t gEdmStreamHandle = -1;
  * -------------------------------------------------------------- */
 
 /** Basic test: initialise and then de-initialise ble.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[ble]", "bleInitialisation")
 {

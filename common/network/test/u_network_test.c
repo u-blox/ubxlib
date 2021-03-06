@@ -26,6 +26,9 @@
  * one of cellular or short range.  These tests use the sockets API to
  * prove that communication is possible over the network that has
  * been brought into existence.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -185,8 +188,8 @@ static void dataCallback(int32_t channel, size_t length,
             gErrors++;
         }
     }
-    uPortLog("U_NETWORK_TEST: received %d byte(s) of %d, error %d.\n", length, gBytesReceived,
-             gErrors);
+    uPortLog("U_NETWORK_TEST: received %d byte(s) of %d, error %d.\n",
+             length, gBytesReceived, gErrors);
 
 #if U_CFG_OS_CLIB_LEAKS
     // Take account of any heap lost through the
@@ -205,7 +208,7 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
     (void) address;
     (void) mtu;
     int32_t bytesToSend;
-    int32_t *pHandle = (int32_t *)pParameters;
+    int32_t *pHandle = (int32_t *) pParameters;
 
 #if U_CFG_OS_CLIB_LEAKS
     // Calling C library functions from new tasks will
@@ -248,6 +251,10 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
  * -------------------------------------------------------------- */
 
 /** Test everything; there isn't much.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[network]", "networkTest")
 {
@@ -259,7 +266,6 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
     int32_t y;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
-    int32_t heapXxxSockInitLoss = 0;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -305,7 +311,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                     // The first call to a sockets API needs to
                     // initialise the underlying sockets layer; take
                     // account of that initialisation heap cost here.
-                    heapSockInitLoss = uPortGetHeapFree();
+                    heapSockInitLoss += uPortGetHeapFree();
                     // Look up the address of the server we use for UDP echo
                     U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
                                                           U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
@@ -316,15 +322,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                     address.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
                     // Create a UDP socket
-                    // Creating a socket may use heap in the underlying
-                    // network layer which will be reclaimed when the
-                    // network layer is closed but we don't do that here
-                    // to save time so need to allow for it in the heap loss
-                    // calculation
-                    heapXxxSockInitLoss += uPortGetHeapFree();
                     descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
                                              U_SOCK_PROTOCOL_UDP);
-                    heapXxxSockInitLoss -= uPortGetHeapFree();
 
                     // Send and wait for the UDP echo data, trying a few
                     // times to reduce the chance of internet loss getting
@@ -367,6 +366,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
 
                     // Close the socket
                     U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+
+                    // Clean up to ensure no memory leaks
+                    uSockCleanUp();
 
 #ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
                 } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
@@ -426,7 +428,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
 
 #ifndef __XTENSA__
     // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
+    // TODO: this if'defed out for ESP32 (xtensa compiler) at
     // the moment as there is an issue with ESP32 hanging
     // on to memory in the UART drivers that can't easily be
     // accounted for.
@@ -435,18 +437,16 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
              " the C library during this test, %d byte(s) were"
              " lost to sockets initialisation and we have"
              " leaked %d byte(s).\n",
-             gSystemHeapLost, heapSockInitLoss + heapXxxSockInitLoss,
-             heapUsed - (gSystemHeapLost + heapSockInitLoss + heapXxxSockInitLoss));
+             gSystemHeapLost, heapSockInitLoss,
+             heapUsed - (gSystemHeapLost + heapSockInitLoss ));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= (int32_t) (gSystemHeapLost +
-                                               heapSockInitLoss +
-                                               heapXxxSockInitLoss)));
+                                               heapSockInitLoss)));
 #else
     (void) gSystemHeapLost;
     (void) heapSockInitLoss;
-    (void) heapXxxSockInitLoss;
     (void) heapUsed;
 #endif
 }

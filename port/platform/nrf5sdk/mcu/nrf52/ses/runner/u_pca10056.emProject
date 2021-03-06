@@ -115,6 +115,8 @@
       <file file_name="../../../../../../../cell/test/u_cell_net_test.c" />
       <file file_name="../../../../../../../cell/test/u_cell_sock_test.c" />
       <file file_name="../../../../../../../cell/test/u_cell_sec_c2c_test.c" />
+      <file file_name="../../../../../../../cell/test/u_cell_test_preamble.c" />
+      <file file_name="../../../../../../../cell/test/u_cell_test_preamble.h" />
       <file file_name="../../../../../../../cell/test/u_cell_test_private.c" />
       <file file_name="../../../../../../../cell/test/u_cell_test_private.h" />
       <file file_name="../../../../../common/event_queue/u_port_event_queue.c" />
@@ -126,6 +128,7 @@
       <file file_name="../../../../../common/mbedtls/u_port_crypto.c" />
       <file file_name="../../../../src/u_port_private.c" />
       <file file_name="../../../../../../test/u_port_test.c" />
+      <file file_name="../../../../../common/test/u_preamble_test.c" />
       <file file_name="../../../../../common/runner/u_runner.c" />
       <file file_name="../../../../../../../cfg/u_cfg_sw.h" />
       <file file_name="../../../../../../../common/error/api/u_error_common.h" />

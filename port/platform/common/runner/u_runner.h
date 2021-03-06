@@ -152,8 +152,11 @@ void uRunnerPrintAll(const char *pPrefix);
 void uRunnerRunNamed(const char *pName,
                      const char *pPrefix);
 
-/** Run all of the functions whose names begin
- * with the given filter string.
+/** Run all of the functions whose names begin with the
+ * given filter string.
+ * NOTE: in addition, if U_RUNNER_PREAMBLE_STR is defined,
+ * then functions beginning with that string will also
+ * be run.
  *
  * @param pFilter  the filter string; if NULL then all
  *                 functions are run.

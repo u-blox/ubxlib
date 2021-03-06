@@ -24,6 +24,9 @@
  * @brief Test for the u-blox security API: these should pass on all
  * platforms that include the appropriate communications hardware,
  * i.e. currently cellular SARA-R5.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -244,6 +247,10 @@ static size_t fix(size_t size, size_t limit)
 #ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
 
 /** Test chip to chip security, basic test.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
 {

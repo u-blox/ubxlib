@@ -49,9 +49,10 @@ __defaultSettings["DATA_FILE"] = "DATABASE.md"
 __defaultSettings["CELLULAR_MODULE_TYPE_PREFIX"] = "U_CELL_MODULE_TYPE_"
 __defaultSettings["SHORT_RANGE_MODULE_TYPE_PREFIX"] = "U_SHORT_RANGE_MODULE_TYPE_"
 # u_monitor.py
-# u_pull_request.py
+# u_run_branch.py
 __defaultSettings["INSTANCE_DIR_PREFIX"] = "u_instance_"
 __defaultSettings["STILL_RUNNING_REPORT_SECONDS"] = 30
+__defaultSettings["RUN_EVERYTHING"] = False
 # u_report.py
 # u_run_astyle.py
 __defaultSettings["ASTYLE_CONFIG_FILE"] = "astyle.cfg"

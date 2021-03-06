@@ -272,6 +272,11 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_sec_c2c_test.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test_preamble.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_test_preamble.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_test_private.c</locationURI>
@@ -330,6 +335,11 @@
 			<name>Ubxlib/U-Blox/Test/Port/u_port_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/port/test/u_port_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Preamble/u_preamble_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/test/u_preamble_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Third-Party/unity.c</name>

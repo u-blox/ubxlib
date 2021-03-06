@@ -24,6 +24,9 @@
  * @brief Tests for the internal cellular chip to chip security API.
  * These should pass on all platforms.  No cellular module is
  * required to run this set of tests, all testing is back to back.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -983,6 +986,10 @@ static void urcHandler(uAtClientHandle_t atClientHandle, void *pParameters)
  * -------------------------------------------------------------- */
 
 /** Test the transmit and receive intercept functions standalone.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cIntercept")
 {

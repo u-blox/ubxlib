@@ -24,6 +24,9 @@
  * @brief Tests for the cellular "general" API: these should pass on all
  * platforms where one or preferably two UARTs are available.  No
  * cellular module is actually used in this set of tests.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -79,6 +82,10 @@ static int32_t gUartBHandle = -1;
  * -------------------------------------------------------------- */
 
 /** Basic test: initialise and then de-initialise cellular.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[cell]", "cellInitialisation")
 {

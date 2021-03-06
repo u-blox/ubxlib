@@ -44,4 +44,4 @@ Notes:
 - The cellular tests take quite a long time to run and so where there are two SDKs on a single platform usually only one of them will run the cellular tests to keep the execution time down.
 
 # Maintenance
-- When adding a new API make sure that it is present in at least one of the entries above, otherwise it will NOT be detected and tested at all on a Pull Request.
+- When adding a new API make sure that it is present in at least one of the entries above, otherwise it may NOT be detected and tested at all on a branch that is not `master` (where a smaller, focused set of tests are carried out).

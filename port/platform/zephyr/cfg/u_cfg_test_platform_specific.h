@@ -43,6 +43,20 @@
 
 /** Macro to wrap the definition of a test function and
  * map it to our Unity port.
+ *
+ * IMPORTANT: in order for the test automation test filtering
+ * to work correctly the group and name strings *must* follow
+ * these rules:
+ *
+ * - the group string must begin with the API directory
+ *   name converted to camel case, enclosed in square braces.
+ *   So for instance if the API being tested was "short_range"
+ *   (e.g. common/short_range/api) then the group name
+ *   could be "[shortRange]" or "[shortRangeSubset1]".
+ * - the name string must begin with the group string without
+ *   the square braces; so in the example above it could
+ *   for example be "shortRangeParticularTest" or
+ *   "shortRangeSubset1ParticularTest" respectively.
  */
 #define U_PORT_TEST_FUNCTION(name, group) U_PORT_UNITY_TEST_FUNCTION(name,  \
                                                                      group)

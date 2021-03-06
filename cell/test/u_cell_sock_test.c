@@ -24,6 +24,9 @@
  * @brief Tests for the cellular sockets API: these should pass on all
  * platforms that have a cellular module connected to them.  They
  * are only compiled if U_CFG_TEST_CELL_MODULE_TYPE is defined.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
@@ -465,6 +468,10 @@ static void asyncClosedCallback(int32_t cellHandle, int32_t sockHandle)
  * that they can be run independently of the the u_sock and u_network
  * APIs.  More comprehensive testing of this API is carred out
  * via the tests under the u_sock API.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
 {

@@ -50,8 +50,8 @@
  * logging begins, hence a start-up delay is added in order not
  * to miss any output while the logging tools start up.
  */
-#ifndef U_CFG_STARTUP_DELAY_MILLISECONDS
-# define U_CFG_STARTUP_DELAY_MILLISECONDS 1000
+#ifndef U_CFG_STARTUP_DELAY_SECONDS
+# define U_CFG_STARTUP_DELAY_SECONDS 10
 #endif
 
 /* ----------------------------------------------------------------
@@ -72,7 +72,7 @@ static void appTask(void *pParam)
     (void) pParam;
     uPortInit();
 
-    uPortTaskBlock(U_CFG_STARTUP_DELAY_MILLISECONDS);
+    uPortTaskBlock(U_CFG_STARTUP_DELAY_SECONDS * 1000);
 
     uPortLog("\n\nU_APP: application task started.\n");
 

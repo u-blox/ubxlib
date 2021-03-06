@@ -24,6 +24,9 @@
  * @brief Tests for the cellular info API: these should pass on all
  * platforms that have a cellular module connected to them.  They
  * are only compiled if U_CFG_TEST_CELL_MODULE_TYPE is defined.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
@@ -102,6 +105,10 @@ static bool keepGoingCallback()
  * -------------------------------------------------------------- */
 
 /** Test all the info functions that read static data.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
 {

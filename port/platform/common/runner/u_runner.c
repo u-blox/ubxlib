@@ -43,20 +43,36 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-// The prefix string which should always be sorted to the
-// top of the function list.  Note that there should be NO QUOTES
-// around the string: this is because when a definition for this
-// is passed in from outside some tools, e.g. Make, don't like
-// the quotes and so quotes are added later.
+/** The prefix string which should always be sorted to the top of
+ * the function list: usually this will be the examples which should
+ * be obvious to the user.  Note that there should be NO QUOTES around
+ * the string: this is because when a definition for this is passd
+ * in from outside some tools, e.g. Make, don't like the quotes and
+ * so quotes are added later.
+ */
 #ifndef U_RUNNER_TOP_STR
 # define U_RUNNER_TOP_STR example
+#endif
+
+/** The prefix string which should form a preamble: this is
+ * often necessary when running a suite of tests, to put
+ * ensure that everything is in a good state before things
+ * and to workaround issues such as memory leaks in the platform
+ * itself which we can do nothing about.  Note that there should
+ * be NO QUOTES around the string: this is because when a
+ * definition for this is passed in from outside some tools,
+ * e.g. Make, don't like the quotes and so quotes are added later.
+ */
+#ifndef U_RUNNER_PREAMBLE_STR
+# define U_RUNNER_PREAMBLE_STR preamble
 #endif
 
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
-// Linked list anchor.
+/** Linked list anchor.
+ */
 static uRunnerFunctionDescription_t *gpFunctionList = NULL;
 
 /* ----------------------------------------------------------------
@@ -89,8 +105,8 @@ static void runFunction(const uRunnerFunctionDescription_t *pFunction,
 // Comparison function for list sort, returning
 // true if 2 is higher than 1. See
 // sortFunctionList() for the intended sort order.
-static bool compare(const uRunnerFunctionDescription_t *pFunction1,
-                    const uRunnerFunctionDescription_t *pFunction2)
+static bool compareFunctionFileGroupName(const uRunnerFunctionDescription_t *pFunction1,
+                                         const uRunnerFunctionDescription_t *pFunction2)
 {
     int32_t x;
 
@@ -106,6 +122,25 @@ static bool compare(const uRunnerFunctionDescription_t *pFunction1,
     }
 
     return (x > 0);
+}
+
+// Compare two functions on the basis of file and name with the given
+// name on a "starts with" basis, returning true if they should be
+// swapped (i.e. 2 is more like the given name than 1 and hence 2
+// should be higher up the list).
+static bool compareFunctionFileName(const uRunnerFunctionDescription_t *pFunction1,
+                                    const uRunnerFunctionDescription_t *pFunction2,
+                                    const char *pName)
+{
+    bool swap = false;
+
+    if (strcmp(pFunction1->pFile, pFunction2->pFile) != 0) {
+        // File are different, check the name
+        swap = (strstr(pFunction1->pName, pName) != pFunction1->pName) &&
+               (strstr(pFunction2->pName, pName) == pFunction2->pName);
+    }
+
+    return swap;
 }
 
 // Swap an entry with its next entry.
@@ -125,10 +160,12 @@ static void swap(uRunnerFunctionDescription_t **ppFunction)
 
 // Sort the function list.  The sort order is as follows:
 //
-// 1.  Puts any function beginning with pTopStr at the top.
-// 2.  Functions within the same file are not sorted.
-// 3.  Otherwise sorts alphabetically by group and then name.
+// 1.  Puts any function beginning with pPreambleStr at the top.
+// 2.  Then puts anything beginning with pTopStr next.
+// 3.  Functions within the same file are not sorted.
+// 4.  Otherwise sorts alphabetically by group and then name.
 static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
+                             const char *pPreambleStr,
                              const char *pTopStr)
 {
     uRunnerFunctionDescription_t **ppFunction = ppFunctionList;
@@ -137,7 +174,8 @@ static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
     while ((*ppFunction != NULL) && ((*ppFunction)->pNext != NULL)) {
         // Compare the current entry with the next
         // to see if they need to be swapped
-        if (compare(*ppFunction, (*ppFunction)->pNext)) {
+        if (compareFunctionFileGroupName(*ppFunction,
+                                         (*ppFunction)->pNext)) {
             // Yup, swap 'em.
             swap(ppFunction);
             // Start again
@@ -154,8 +192,25 @@ static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
     while ((*ppFunction != NULL) && ((*ppFunction)->pNext != NULL)) {
         // If the next entry begins with pTopStr and this
         // one doesn't, swap them
-        if ((strstr((*ppFunction)->pName, pTopStr) != (*ppFunction)->pName) &&
-            (strstr((*ppFunction)->pNext->pName, pTopStr) == (*ppFunction)->pNext->pName)) {
+        if (compareFunctionFileName(*ppFunction, (*ppFunction)->pNext,
+                                    pTopStr)) {
+            // Yup, swap 'em.
+            swap(ppFunction);
+            // Start again
+            ppFunction = ppFunctionList;
+        } else {
+            // Just move on
+            ppFunction = &((*ppFunction)->pNext);
+        }
+    }
+
+    // Then bring everything that begins with pPreambleStr
+    // up to the top
+    ppFunction = ppFunctionList;
+    while ((*ppFunction != NULL) && ((*ppFunction)->pNext != NULL)) {
+        // If the next entry begins with pPreambleStr and this
+        // one doesn't, swap them
+        if (compareFunctionFileName(*ppFunction, (*ppFunction)->pNext, pPreambleStr)) {
             // Yup, swap 'em.
             swap(ppFunction);
             // Start again
@@ -181,8 +236,11 @@ void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription)
     }
     *ppFunction = pDescription;
 
-    // Re-sort the function list
-    sortFunctionList(&gpFunctionList, U_PORT_STRINGIFY_QUOTED(U_RUNNER_TOP_STR));
+    // Re-sort the function list with U_RUNNER_PREAMBLE_STR at the top,
+    // then U_RUNNER_TOP_STR
+    sortFunctionList(&gpFunctionList,
+                     U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR),
+                     U_PORT_STRINGIFY_QUOTED(U_RUNNER_TOP_STR));
 }
 
 // Print out the function names and groups
@@ -229,7 +287,12 @@ void uRunnerRunFiltered(const char *pFilter,
 
     while (pFunction != NULL) {
         if ((pFilter == NULL) ||
-            (strstr(pFunction->pName, pFilter) == pFunction->pName)) {
+            (strstr(pFunction->pName, pFilter) == pFunction->pName)
+#ifdef U_RUNNER_PREAMBLE_STR
+            || (strstr(pFunction->pName,
+                       U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR)) == pFunction->pName)
+#endif
+           ) {
             runFunction(pFunction, pPrefix);
         }
         pFunction = pFunction->pNext;

@@ -22,6 +22,9 @@
 
 /** @file
  * @brief Test for the port API: these should pass on all platforms.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -435,8 +438,7 @@ static void osTestTask(void *pParameters)
     U_PORT_TEST_ASSERT(strcmp((const char *) pParameters, gTaskParameter) == 0);
 
 #if U_CFG_OS_CLIB_LEAKS
-    // Take account of any heap lost through the first
-    // printf()
+    // Take account of any heap lost through the first printf()
     gSystemHeapLost += (size_t) (unsigned) (heapClibLoss - uPortGetHeapFree());
 #endif
 
@@ -839,6 +841,10 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
  * -------------------------------------------------------------- */
 
 /** Basic test: initialise and then deinitialise the porting layer.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[port]", "portInitialisation")
 {
@@ -864,11 +870,7 @@ U_PORT_TEST_FUNCTION("[port]", "portInitialisation")
  *
  * It is best if this check is run first in any automated
  * test run to avoid random crashes resulting from a
- * re-entrancy failure appearing elsewhere.  To do this the
- * define U_RUNNER_TOP_STR should be set to "port".
- * This is done by the u-blox test automation scripts.
- * Also, any heap checking that is available in the system
- * should be switched on.
+ * re-entrancy failure appearing elsewhere.
  */
 U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
 {
@@ -879,7 +881,6 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     int32_t stackMinFreeBytes;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
-    char ubStr[] = "u-blox";
 #if U_CFG_OS_CLIB_LEAKS
     int32_t heapClibLoss;
 #endif
@@ -888,12 +889,6 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // port so deinitialise it here to obtain the
     // correct initial heap size
     uPortDeinit();
-    // The first time rand() or strtok() is called the C
-    // library may allocate memory, not something we can
-    // do anything about, so call it once here to move that
-    // number out of our sums.
-    rand();
-    strtok(ubStr, "-");
 
     heapUsed = uPortGetHeapFree();
 
@@ -1672,13 +1667,6 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
     // correct initial heap size
     uPortDeinit();
 
-    // On some platforms (e.g. ESP32) the crypto libraries
-    // allocate a semaphore when they are first called
-    // which is never deleted.  To avoid that getting in their
-    // way of our heap loss calculation, make a call to one
-    // of the crypto functions here.
-    uPortCryptoSha256(gSha256Input, sizeof(gSha256Input) - 1,
-                      buffer);
     memset(buffer, 0, sizeof(buffer));
 
     heapUsed = uPortGetHeapFree();

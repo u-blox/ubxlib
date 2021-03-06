@@ -23,6 +23,9 @@
 /** @file
  * @brief Tests for the short range "general" API: these should pass on all
  * platforms where one or preferably two UARTs are available.
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the U_PORT_TEST_FUNCTION()
+ * macro.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -86,6 +89,10 @@ static void resetGlobals()
  * -------------------------------------------------------------- */
 
 /** Basic test: initialize and then de-initialize short range.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
  */
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeInitialisation")
 {

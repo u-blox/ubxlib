@@ -106,6 +106,7 @@ SRC_FILES += \
   ../../../../../../../cell/test/u_cell_net_test.c \
   ../../../../../../../cell/test/u_cell_sock_test.c \
   ../../../../../../../cell/test/u_cell_sec_c2c_test.c \
+  ../../../../../../../cell/test/u_cell_test_preamble.c \
   ../../../../../../../cell/test/u_cell_test_private.c \
   ../../../../../../../common/network/src/u_network.c \
   ../../../../../../../common/network/src/u_network_private_ble.c \
@@ -136,6 +137,7 @@ SRC_FILES += \
   ../../../../../common/event_queue/u_port_event_queue.c \
   ../../../../src/heap_useNewlib.c \
   ../../../../../../test/u_port_test.c \
+  ../../../../../common/test/u_preamble_test.c \
   ../../../../app/u_main.c \
   ../../../../../common/runner/u_runner.c \
   ../../../../../common/heap_check/u_heap_check.c \

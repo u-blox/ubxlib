@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''Decide what ubxlib testing to do based on a Github pull request.'''
+'''Decide what ubxlib testing to do on a branch.'''
 
 import sys # for exit()
 import argparse
@@ -17,11 +17,11 @@ import u_report # reporting
 import u_utils  # utils
 import u_settings
 
-# Decide what to do with a pull request based on the
-# message that came with the pull request and the
-# list of files that have been changed.
+# Decide what to do with a commit based on the message
+# that came as a Git note with the commit and the
+# list of files that have been changed from master.
 #
-# Looks for a single line anywhere in the pull request
+# Looks for a single line anywhere in the Git note
 # text beginning with "test: ".  This must be followed
 # by "x.y.z a.b.c m.n.o" (i.e. instance IDs space separated)
 # and then an optional "blah" filter string, or just "*"
@@ -42,7 +42,7 @@ import u_settings
 # Anything else is ignored.
 
 # Prefix to put at the start of all prints
-PROMPT = "u_pull_request: "
+PROMPT = "u_run_branch: "
 
 # Prefix for the individual instance working directory
 # Starts with a "u" in order that it gets sorted after
@@ -52,6 +52,9 @@ INSTANCE_DIR_PREFIX = u_settings.INSTANCE_DIR_PREFIX #"u_instance_"
 
 # The number of seconds at which to report what's still running
 STILL_RUNNING_REPORT_SECONDS = u_settings.STILL_RUNNING_REPORT_SECONDS #30
+
+# Ignore instance/filter, run the lot: a safety switch
+RUN_EVERYTHING = u_settings.RUN_EVERYTHING #False
 
 # These two wrapper classes stolen from:
 # https://stackoverflow.com/questions/6974695/python-process-pool-non-daemonic
@@ -79,7 +82,7 @@ class NoDaemonPool(multiprocessing.pool.Pool):
         return proc
 
 def parse_message(message, instances):
-    '''Find stuff in a pull request message'''
+    '''Find stuff in a Git note'''
     instances_all = False
     instances_local = []
     filter_string_local = None
@@ -112,7 +115,8 @@ def parse_message(message, instances):
                         # leave the loop and try again.
                         instances_local = []
                         filter_string_local = None
-                        print("{}...badly formed test directive, ignoring.".format(PROMPT))
+                        print("{}...extraneous characters after test directive, ignoring.". \
+                              format(PROMPT))
                         break
                     if part[0].isdigit():
                         # If this part begins with a digit it could
@@ -172,7 +176,7 @@ def parse_message(message, instances):
                             else:
                                 found += "." + str(item)
                     if filter_string_local:
-                        found += " and filter \"" + filter_string_local
+                        found += " and filter \"" + filter_string_local + "\""
                     print("{}{}.".format(PROMPT, found))
                     break
                 print("{}no test directive found".format(PROMPT))
@@ -427,8 +431,8 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(description="A script to"      \
                                      " run examples/tests on an"    \
                                      " instance of ubxlib hardware" \
-                                     " based on a Github pull"      \
-                                     " request.")
+                                     " based on a Git branch from"  \
+                                     " master.")
     PARSER.add_argument("-s", help="a summary report should be"      \
                         " written to the given file, e.g."           \
                         " -s summary.txt; any existing file will be" \
@@ -452,28 +456,35 @@ if __name__ == "__main__":
                         " to use.")
     PARSER.add_argument("-c", action='store_true', help="clean"     \
                         " all working directories first.")
-    PARSER.add_argument("message", help="the text from the pull"    \
-                        " request submission message.")
+    PARSER.add_argument("message", help="the text from a Git note"  \
+                        " attached to the commit.")
     PARSER.add_argument("file", nargs='*', help="the file path(s)"  \
-                        " changed in the pull request.")
+                        " changed.")
     ARGS = PARSER.parse_args()
 
     # Get the instance DATABASE by parsing the data file
     DATABASE = u_data.get(u_data.DATA_FILE)
 
-    # Parse the message
-    FILTER_STRING = parse_message(ARGS.message, INSTANCES)
-
-    if INSTANCES:
-        # If there is a user instance, do what we're told
-        if INSTANCES[0][0] == "*":
-            print("{}running everything at user request.".format(PROMPT))
-            del INSTANCES[:]
-            INSTANCES = u_data.get_instances_all(DATABASE)
+    if RUN_EVERYTHING:
+        # Safety switch has been thrown, run the lot
+        print("{}settings \"RUN_EVERYTHING\" is True.".format(PROMPT))
+        INSTANCES = u_data.get_instances_all(DATABASE)
     else:
-        # No instance specified by the user, decide what to run
-        FILTER_STRING = u_select.select(DATABASE, INSTANCES, \
-                                        ARGS.file)
+        # Parse the message
+        FILTER_STRING = parse_message(ARGS.message, INSTANCES)
+        if INSTANCES:
+            # If there is a user instance, do what we're told
+            if INSTANCES[0][0] == "*":
+                print("{}running everything ".format(PROMPT), end="")
+                if FILTER_STRING:
+                    print("on API \"{}\" ".format(FILTER_STRING), end="")
+                print("at user request.")
+                del INSTANCES[:]
+                INSTANCES = u_data.get_instances_all(DATABASE)
+        else:
+            # No instance specified by the user, decide what to run
+            FILTER_STRING = u_select.select(DATABASE, INSTANCES, \
+                                            ARGS.file)
 
     # Run them thar' instances
     RETURN_VALUE = run_instances(DATABASE, INSTANCES,

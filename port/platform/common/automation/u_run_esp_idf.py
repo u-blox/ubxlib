@@ -275,7 +275,6 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     '''Build/run on ESP-IDF'''
     return_value = -1
     instance_text = u_utils.get_instance_text(instance)
-    filter_string = "*\r\n"
 
     # No issues with running in parallel on ESP-IDF
     del platform_lock
@@ -360,22 +359,22 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                 # Search the defines list to see if it includes a
                                 # "U_CFG_APP_FILTER=blah" item.  On ESP32 the tests
                                 # that are run are not selected at compile time,
-                                # they are selected by sending the "blah" string
-                                # over the COM port where it must match a "module name",
-                                # a thing in [square brackets] which our naming convention
-                                # dictates will be an API name (e.g. "port") or "example".
+                                # so we can't do this filtering, just print a warning
+                                # that the filter is being ignored.
                                 for define in defines:
                                     tmp = u_utils.FILTER_MACRO_NAME + "="
                                     if define.startswith(tmp):
                                         filter_string = define[len(tmp):]
                                         reporter.event(u_report.EVENT_TYPE_TEST,
                                                        u_report.EVENT_INFORMATION,
-                                                       "only running module \"" +
-                                                       filter_string + "\"")
-                                        printer.string("{} will use filter [{}].".   \
+                                                       "filter string \"" +
+                                                       filter_string + "\" ignored")
+                                        printer.string("{} filter string \"{}\""         \
+                                                       " was specified but ESP-IDF uses" \
+                                                       " its own test wrapper which"     \
+                                                       " does not support filtering"     \
+                                                       " hence it will be ignored.".     \
                                                        format(prompt, filter_string))
-                                        # Add the top and tail it needs for sending
-                                        filter_string = "[" + filter_string + "]\r\n"
                                         break
                                 # Open the COM port to get debug output
                                 serial_handle = u_utils.open_serial(connection["serial_port"],
@@ -388,7 +387,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                   RUN_INACTIVITY_TIME_SECONDS,
                                                                   instance, printer, reporter,
                                                                   test_report_handle,
-                                                                  send_string=filter_string)
+                                                                  send_string="*\r\n")
                                     serial_handle.close()
                                 else:
                                     reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,

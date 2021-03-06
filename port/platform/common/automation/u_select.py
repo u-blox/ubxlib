@@ -84,6 +84,9 @@ def instance_platform(database, paths, instances):
                 got_platform = True
             else:
                 if got_platform and (platform is None):
+                    if platform == "common":
+                        # Not a platform, common code
+                        break
                     platform = part
                 else:
                     if got_platform and (platform is not None):
@@ -131,23 +134,29 @@ def instance_platform(database, paths, instances):
                                             break
                                     break
         if got_platform and (platform is not None) and (mcu is None):
-            # Something under the platform directory with no MCU directory: since
-            # we can't be sure about the file extensions used by the various gubbins
-            # underneath a platform we have to assume that it is a
-            # significant change
-            instances_for_platform = u_data.                                  \
-               get_instances_for_platform_mcu_toolchain(database, platform, \
-                                                        None, None)[:]
-            if instances_for_platform:
-                print("{}file {} is in platform {} implying"        \
-                      " instance(s) {}.".format(PROMPT, path, platform,
-                      instances_string(instances_for_platform)))
-                instances.extend(instances_for_platform[:])
-            else:
-                # Doesn't even match a known platform: do the lot
-                print("{}file {} is not in a known platform,"     \
-                      " need to do the lot.".format(PROMPT, path))
+            if platform == "common":
+                # Common code, best run the lot
+                print("{}file {} is in common code need to do the lot."     \
+                      .format(PROMPT, path))
                 instances.extend(u_data.get_instances_all(database)[:])
+            else:
+                # Something under the platform directory with no MCU directory: since
+                # we can't be sure about the file extensions used by the various gubbins
+                # underneath a platform we have to assume that it is a
+                # significant change
+                instances_for_platform = u_data.                                  \
+                   get_instances_for_platform_mcu_toolchain(database, platform, \
+                                                            None, None)[:]
+                if instances_for_platform:
+                    print("{}file {} is in platform {} implying"        \
+                          " instance(s) {}.".format(PROMPT, path, platform,
+                          instances_string(instances_for_platform)))
+                    instances.extend(instances_for_platform[:])
+                else:
+                    # Doesn't even match a known platform: do the lot
+                    print("{}file {} is not in a known platform,"     \
+                          " need to do the lot.".format(PROMPT, path))
+                    instances.extend(u_data.get_instances_all(database)[:])
             break
 
 # Perform check (d)
@@ -186,9 +195,21 @@ def instance_api(database, paths, extensions, instances):
                             instances.extend(instances_local[:])
                         if api_saved and (api != api_saved):
                             run_everything = True
+                            print("{}files are in more than one API so,"    \
+                                  " can't filter, need to run the lot.".     \
+                                  format(PROMPT))
                             break
                         api_saved = api
                         break
+                    # The .c/.h file is in an api/src/test directory
+                    # that isn't included in the database for filtering
+                    # so have to run the lot
+                    run_everything = True
+                    print("{}file {} is under API {} but this is not,"    \
+                          " in the database so can't filter,"             \
+                          " need to run the lot.".     \
+                          format(PROMPT, path, parts[idx - 1]))
+                    break
             if not got_platform and not got_api_src_or_test:
                 # The .c/.h file is not in platform and not under an api/src/test
                 # directory, so can't filter
@@ -203,6 +224,26 @@ def instance_api(database, paths, extensions, instances):
         api_saved = "*"
 
     return api_saved
+
+# Convert blah_blah to blahBlah
+def snake_to_camel(snake):
+    '''Convert a snake-case string to a camel-case string'''
+    camel = snake
+
+    if snake:
+        camel = ""
+        upper = False
+        for character in snake:
+            if character != "_":
+                if upper:
+                    camel += character.upper()
+                    upper = False
+                else:
+                    camel += character
+            else:
+                upper = True
+
+    return camel
 
 # Perform all checks, update instances and return a filter
 def select(database, instances, paths):
@@ -228,6 +269,10 @@ def select(database, instances, paths):
     # path includes a file in an API that an instance uses
     filter_string = instance_api(database, interesting,
                                  EXT_CODE, instances_local)
+
+    # The filter string will use snake case but the test names
+    # are camel case so convert it
+    filter_string = snake_to_camel(filter_string)
 
     # If the filter string is a wildcard, add everything
     if filter_string == "*":
