@@ -12,10 +12,10 @@ The best approach to looking for failures is to search for " \*\*\* ", i.e. a sp
 You may need to run the automated tests locally, e.g. when sifting through Lint issues or checking for Doxygen issues, or simply running tests on a locally-connected board in the same way as they would run on the automated test system.  To do this, assuming you have the required tools installed (the scripts will often tell you if a tool is not found and give a hint as to where to find it), the simplest way to do this is to `CD` to this directory and run, for instance:
 
 ```
-python u_run.py 0 -w c:\temp -u c:\projects\ubxlib_priv -d debug.log
+python u_run.py 0.0 -w c:\temp -u c:\projects\ubxlib_priv -d debug.log
 ```
 
-...where `0` is the instance you want to run (in this case Lint), `c:\temp` is a temporary working directory (replace as appropriate), `c:\projects\ubxlib_priv` the location of the root of this repo (replace as appropriate) and `debug.log` a place to write the detailed trace information.
+...where `0.0` is the instance you want to run (in this case Lint), `c:\temp` is a temporary working directory (replace as appropriate), `c:\projects\ubxlib_priv` the location of the root of this repo (replace as appropriate) and `debug.log` a place to write the detailed trace information.
 
 If you are trying to run locally a test which talks to real hardware you will also need to edit the file `settings.json` file, which is stored in the `.ubx_automation` directory off the current user's home directory. Override the debugger serial number and/or COM port the scripts would use for that board on the automated test system. Assuming you only have one board connected to your PC, locate the entry for the instance you plan to run in the top of that file; there set `serial_port` to the port the board appears as on your local machine and set `debugger` (if present) to `None`.  For instance, to run instance 16 locally you might open that file and change:
 
