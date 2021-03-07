@@ -25,8 +25,9 @@ import u_data # Accesses the instance database
 # Prefix to put at the start of all prints
 PROMPT = "u_select: "
 
-# A list of file extensions to throw away
-EXT_DISCARD = ["md", "txt", "jpg", "png", "gitignore"]
+# A list of file extensions to throw away (note that .txt
+# is not included since "CMakeLists.txt" is an important file)
+EXT_DISCARD = ["md", "jpg", "png", "gitignore"]
 
 # A list of file extensions to keep for code files
 EXT_CODE = ["c", "cpp", "h", "hpp"]
