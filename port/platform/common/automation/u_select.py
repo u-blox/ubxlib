@@ -25,9 +25,12 @@ import u_data # Accesses the instance database
 # Prefix to put at the start of all prints
 PROMPT = "u_select: "
 
-# A list of file extensions to throw away (note that .txt
-# is not included since "CMakeLists.txt" is an important file)
-EXT_DISCARD = ["md", "jpg", "png", "gitignore"]
+# A list of file extensions to throw away
+EXT_DISCARD = ["md", "txt", "jpg", "png", "gitignore"]
+
+# A list of file names that should never be discarded,
+# despite their extensions
+NEVER_DISCARD = ["DATABASE.md", "CMakeLists.txt"]
 
 # A list of file extensions to keep for code files
 EXT_CODE = ["c", "cpp", "h", "hpp"]
@@ -52,15 +55,20 @@ def instances_string(instances):
 
 
 # Perform check (a)
-def discard(paths, extensions):
-    '''Remove paths with the given extension'''
+def discard(paths, extensions, exceptions):
+    '''Remove paths with the given extensions unless excepted'''
     wanted = []
 
     for path in paths:
         include = True
         stripped = path.strip()
         for string in extensions:
-            if stripped.endswith(string):
+            excepted = False
+            for string2 in exceptions:
+                if stripped.endswith(string2):
+                    excepted = True
+                    break
+            if not excepted and stripped.endswith(string):
                 print("{}ignoring file {}".format(PROMPT, path))
                 include = False
         if include:
@@ -260,7 +268,7 @@ def select(database, instances, paths):
         print("{}file {}: {}".format(PROMPT, idx + 1, path))
 
     # First throw away any file paths known to be uninteresting
-    interesting = discard(paths, EXT_DISCARD)
+    interesting = discard(paths, EXT_DISCARD, NEVER_DISCARD)
 
     # Add the instances that must be run because
     # an interesting file is platform-specific
