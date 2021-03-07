@@ -30,7 +30,7 @@ EXT_DISCARD = ["md", "txt", "jpg", "png", "gitignore"]
 
 # A list of file names that should never be discarded,
 # despite their extensions
-NEVER_DISCARD = ["DATABASE.md", "CMakeLists.txt"]
+NEVER_DISCARD = ["DATABASE.md", "CMakeLists.txt", "source.txt", "include.txt"]
 
 # A list of file extensions to keep for code files
 EXT_CODE = ["c", "cpp", "h", "hpp"]
