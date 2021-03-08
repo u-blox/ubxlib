@@ -432,6 +432,12 @@ static void stdPreamble()
         }
     }
 
+    // It is possible for socket closure in an
+    // underlying layer to have failed in a previous
+    // test, leaving sockets hanging, so just in case,
+    // clear them up here
+    uSockDeinit();
+
     // Bring up each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         if (gUNetworkTestCfg[x].handle >= 0) {
@@ -2196,7 +2202,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                     // as the chances of failure due to datagram
                     // loss across an RF link is too high
                     uPortLog("U_SOCK_TEST: *** WARNING *** %d UDP packet(s)"
-                             " were lost.", y - gTestConfig.packetsReceived);
+                             " were lost.\n", y - gTestConfig.packetsReceived);
                 }
 
                 // As a sanity check, make sure that

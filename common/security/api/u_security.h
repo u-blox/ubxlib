@@ -20,7 +20,8 @@
 /* No #includes allowed here */
 
 /** @file
- * @brief This header file defines the u-blox security API.
+ * @brief This header file defines the u-blox security API; these
+ * functions are thead-safe.
  */
 
 #ifdef __cplusplus
@@ -339,6 +340,11 @@ int32_t uSecurityE2eEncrypt(int32_t networkHandle,
  * -------------------------------------------------------------- */
 
 /** Generate a PSK and accompanying PSK ID.
+ * Note: if you simply wish the module to generate the PSK and
+ * PSK ID for a TLS session, you should instead set
+ * pskGeneratedByRoT to true in the security settings structure;
+ * there is no need to generate the PSK and PSK ID here and pass
+ * them into the security settings structure.
  *
  * @param networkHandle   the handle of the instance to
  *                        be used, e.g. as returned by

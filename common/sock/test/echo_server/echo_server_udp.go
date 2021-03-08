@@ -93,7 +93,7 @@ func logSetup() {
 	if e != nil {
 		log.Fatal("Failed to open log file.")
 	}
-	defer echoLogFile.Close()
+	//defer echoLogFile.Close()
 
 	multi := io.MultiWriter(echoLogFile, os.Stdout)
 	log.SetOutput(multi)

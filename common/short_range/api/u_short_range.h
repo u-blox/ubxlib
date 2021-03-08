@@ -37,12 +37,14 @@ extern "C" {
 
 #ifndef U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES
 /** The buffer length required in the AT client by the ShortRange driver.
+ * TODO: correct size.
  */
-# define U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES U_AT_CLIENT_BUFFER_LENGTH_BYTES
+# define U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES 4000
 #endif
 
 #ifndef U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES
-/** Corresponds to the large posible short range EDM packet
+/** Large enough for the largest possible EDM packet.
+ * TODO: this needs revisiting, shouldn't have to be this big.
  */
 # define U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES 4000
 #endif

@@ -82,6 +82,8 @@ SRC_FILES += \
   $(NRF5_PATH)/external/mbedtls/library/md5.c \
   $(NRF5_PATH)/external/mbedtls/library/aes.c \
   ../../../../../../../example/sockets/main.c \
+  ../../../../../../../example/sockets/main_tls.c \
+  ../../../../../../../example/sockets/credentials_tls.c \
   ../../../../../../../example/security/e2e/e2e_main.c \
   ../../../../../../../example/security/psk/psk_main.c \
   ../../../../../../../example/security/c2c/c2c_main.c \
@@ -99,6 +101,7 @@ SRC_FILES += \
   ../../../../../../../cell/src/u_cell_sock.c \
   ../../../../../../../cell/src/u_cell_sec.c \
   ../../../../../../../cell/src/u_cell_sec_c2c.c \
+  ../../../../../../../cell/src/u_cell_sec_tls.c \
   ../../../../../../../cell/src/u_cell_private.c \
   ../../../../../../../cell/test/u_cell_pwr_test.c \
   ../../../../../../../cell/test/u_cell_cfg_test.c \
@@ -106,6 +109,7 @@ SRC_FILES += \
   ../../../../../../../cell/test/u_cell_net_test.c \
   ../../../../../../../cell/test/u_cell_sock_test.c \
   ../../../../../../../cell/test/u_cell_sec_c2c_test.c \
+  ../../../../../../../cell/test/u_cell_sec_tls_test.c \
   ../../../../../../../cell/test/u_cell_test_preamble.c \
   ../../../../../../../cell/test/u_cell_test_private.c \
   ../../../../../../../common/network/src/u_network.c \
@@ -117,13 +121,19 @@ SRC_FILES += \
   ../../../../../../../common/sock/src/u_sock.c \
   ../../../../../../../common/sock/test/u_sock_test.c \
   ../../../../../../../common/security/src/u_security.c \
+  ../../../../../../../common/security/src/u_security_tls.c \
+  ../../../../../../../common/security/src/u_security_credential.c \
   ../../../../../../../common/security/test/u_security_test.c \
+  ../../../../../../../common/security/test/u_security_tls_test.c \
+  ../../../../../../../common/security/test/u_security_credential_test.c \
+  ../../../../../../../common/security/test/u_security_credential_test_data.c \
   ../../../../../../../common/at_client/src/u_at_client.c \
   ../../../../../../../common/at_client/test/u_at_client_test.c \
   ../../../../../../../common/at_client/test/u_at_client_test_data.c \
   ../../../../../../../common/short_range/src/u_short_range.c \
   ../../../../../../../common/short_range/src/u_short_range_edm.c \
   ../../../../../../../common/short_range/src/u_short_range_edm_stream.c \
+  ../../../../../../../common/short_range/src/u_short_range_sec_tls.c \
   ../../../../../../../common/short_range/src/u_short_range_private.c \
   ../../../../../../../common/short_range/test/u_short_range_test.c \
   ../../../../../../../common/short_range/test/u_short_range_test_private.c \
@@ -191,6 +201,7 @@ INC_FOLDERS += \
   ../../../../../../../common/network/src \
   ../../../../../../../common/network/test \
   ../../../../../../../common/security/api \
+  ../../../../../../../common/security/test \
   ../../../../../../../common/at_client/api \
   ../../../../../../../common/at_client/src \
   ../../../../../../../common/at_client/test \

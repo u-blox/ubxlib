@@ -253,6 +253,21 @@ int32_t uCellSockOptionGet(int32_t cellHandle,
                            void *pOptionValue,
                            size_t *pOptionValueLength);
 
+/** Apply a security profile to a socket.  The security
+ * profile should have been configured as required (see
+ * the uCellSecTls API) and this should be called before
+ * uCellSockConnect() or uCellSockSendTo() is called.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param sockHandle  the handle of the socket.
+ * @param profileId   the security profile ID to use.
+ * @return            zero on success else negated value
+ *                    of U_SOCK_Exxx from u_sock_errno.h.
+ */
+int32_t uCellSockSecure(int32_t cellHandle,
+                        int32_t sockHandle,
+                        int32_t profileId);
+
 /* ----------------------------------------------------------------
  * FUNCTIONS: UDP ONLY
  * -------------------------------------------------------------- */

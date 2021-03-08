@@ -99,26 +99,12 @@ static size_t gSystemHeapLost = 0;
 static const char gRemoteSpsAddress[] = U_PORT_STRINGIFY_QUOTED(U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS);
 static const char gTestData[] =  "_____0000:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789"
-                                 "_____0100:0123456789012345678901234567890123456789"
+                                 "_____0001:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789"
-                                 "_____0200:0123456789012345678901234567890123456789"
+                                 "_____0002:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789"
-                                 "_____0300:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0400:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0500:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0600:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0700:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0800:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0900:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789";
-
-static volatile int32_t gConnHandle = -1;
+                                 "_____0003:0123456789012345678901234567890123456789";
+static volatile int32_t gConnHandle;
 static volatile int32_t gBytesReceived;
 static volatile int32_t gErrors = 0;
 static volatile uint32_t gIndexInBlock;
@@ -288,6 +274,12 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
         }
     }
 
+    // It is possible for socket closure in an
+    // underlying layer to have failed in a previous
+    // test, leaving sockets hanging, so just in case,
+    // clear them up here
+    uSockDeinit();
+
     // Do this twice to prove that we can go from down
     // back to up again
     for (size_t a = 0; a < 2; a++) {
@@ -373,6 +365,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
 #ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
                 } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
 
+                    gConnHandle = -1;
                     gBytesSent = 0;
                     gBytesReceived = 0;
                     gIndexInBlock = 0;
@@ -383,8 +376,19 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                     uBleDataSetCallbackData(gUNetworkTestCfg[x].handle, dataCallback,
                                             &gUNetworkTestCfg[x].handle);
 
-                    U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
-                                                          gRemoteSpsAddress) == 0);
+                    // Connections can fail so try this a few timees
+                    for (size_t z = 0; (z < 3) && (gBytesSent == 0); z++) {
+                        U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                                                              gRemoteSpsAddress) == 0);
+                        for (int32_t i = 0; (i < 40) && (gConnHandle == -1); i++) {
+                            uPortTaskBlock(100);
+                        };
+                        if (gConnHandle == -1) {
+                            uPortLog("U_NETWORK_TEST: *** WARNING *** BLE connection"
+                                     " attempt %d failed, will retry.\n", z + 1);
+                        }
+                    }
+                    U_PORT_TEST_ASSERT(gConnHandle != -1);
 
                     y = 100;
                     while ((gBytesSent < gTotalData) && (y > 0)) {

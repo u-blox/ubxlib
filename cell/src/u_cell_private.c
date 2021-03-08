@@ -101,7 +101,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE) |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) /* features */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -110,19 +111,22 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)             |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                   |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) /* features */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         5 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
         20 /* Cmd wait ms */, 5000 /* Resp max wait ms */, 0 /* radioOffCfun */, 1 /* Simultaneous RATs */,
         (1UL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)   |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)  |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)             |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                   |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)           |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)            |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)           |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) /* features */
     }
 };
 

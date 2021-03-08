@@ -34,9 +34,9 @@
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
+#include "u_at_client.h"
 #include "u_short_range_edm_stream.h"
 #include "u_short_range_edm.h"
-#include "u_at_client.h"
 
 #include "string.h" // For memcpy()
 
@@ -53,7 +53,8 @@
 
 #define U_SHORT_RANGE_EDM_STREAM_BUFFER_SIZE        0x1001
 #define U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH  200
-#define U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH 200
+// TODO: is this value correc?
+#define U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH 500
 #define U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS    9
 
 /* ----------------------------------------------------------------
@@ -395,6 +396,33 @@ static int32_t uartWrite(const void *pData, size_t length)
                           pData, length);
 }
 
+// Do an EDM send.  Returns the amount written, including
+// EDM packet overhead.
+static int32_t edmSend(const uShortRangeEdmStreamInstance_t *pEdmStream)
+{
+    char *pPacket;
+    size_t written = 0;
+    int32_t sizeOrError = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+
+    pPacket = (char *) malloc(U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH +
+                              U_SHORT_RANGE_EDM_REQUEST_OVERHEAD);
+    if (pPacket != NULL) {
+        sizeOrError = uShortRangeEdmRequest(pEdmStream->pAtCommandBuffer,
+                                            pEdmStream->atCommandCurrent,
+                                            pPacket);
+        if (sizeOrError > 0) {
+            while (written < (uint32_t) sizeOrError) {
+                written += uartWrite((void *) (pPacket + written),
+                                     (uint32_t) sizeOrError - written);
+            }
+        }
+    }
+
+    free(pPacket);
+
+    return sizeOrError;
+}
+
 // A transmit intercept function.
 //lint -e{818} Suppress 'pContext' could be declared as const:
 // need to follow function signature
@@ -403,44 +431,44 @@ static const char *pInterceptTx(uAtClientHandle_t atHandle,
                                 size_t *pLength,
                                 void *pContext)
 {
+    int32_t x = 0;
+
     (void) pContext;
     (void) atHandle;
 
     if ((*pLength != 0) || (ppData == NULL)) {
-        if (*pLength + gEdmStream.atCommandCurrent > U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH) {
-            // Command will not fit buffer, this makes all data drop until the next flush so that
-            // we recover after that without sending garbage to the module.
-            gEdmStream.atCommandCurrent = U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH;
-            if (ppData == NULL) {
-                gEdmStream.atCommandCurrent = 0;
-            } else {
-                // Tell the caller we've consumed the lot
-                *ppData += *pLength;
-            }
+        if (ppData == NULL) {
+            // We're being flushed, create and send EDM packet
+            edmSend(&gEdmStream);
+            // Reset buffer
+            gEdmStream.atCommandCurrent = 0;
         } else {
-            if (ppData == NULL) {
-                //All data in buffer, create and send EDM packet
-                char packet[U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH + U_SHORT_RANGE_EDM_REQUEST_OVERHEAD];
-                int32_t size = uShortRangeEdmRequest(gEdmStream.pAtCommandBuffer, gEdmStream.atCommandCurrent,
-                                                     (char *)&packet[0]);
-                if (size > 0) {
-                    size_t written = 0;
-                    while (written < (uint32_t)size) {
-                        written += uartWrite((void *)(&packet[0] + written), (uint32_t)size - written);
-                    }
+            // Send any whole buffer's worths we have
+            while ((*pLength + gEdmStream.atCommandCurrent > U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH) &&
+                   (x >= 0)) {
+                x = U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH - gEdmStream.atCommandCurrent;
+                memcpy(gEdmStream.pAtCommandBuffer + gEdmStream.atCommandCurrent, *ppData, x);
+                *pLength -= x;
+                *ppData += x;
+                gEdmStream.atCommandCurrent = U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH;
+                // Send a chunk
+                x = edmSend(&gEdmStream);
+                if (x < 0) {
+                    // Error recovery: tell the caller we've consumed the lot
+                    *ppData += *pLength;
+                    *pLength = 0;
                 }
-                //Reset buffer
                 gEdmStream.atCommandCurrent = 0;
-            } else {
-                memcpy(gEdmStream.pAtCommandBuffer + gEdmStream.atCommandCurrent, *ppData, *pLength);
-                gEdmStream.atCommandCurrent += (int32_t) * pLength;
-                // Tell the caller what we've consumed.
-                *ppData += *pLength;
             }
+            // Copy in any partial buffer, will be sent when we are flushed
+            memcpy(gEdmStream.pAtCommandBuffer + gEdmStream.atCommandCurrent, *ppData, *pLength);
+            gEdmStream.atCommandCurrent += (int32_t) * pLength;
+            // Tell the caller what we've consumed.
+            *ppData += *pLength;
         }
     }
 
-    // All data is handled here, this make the AT client know
+    // All data is handled here, this makes the AT client know
     // that there is nothing to send on to a UART or whatever
     *pLength = 0;
 
@@ -812,10 +840,10 @@ int32_t uShortRangeEdmStreamAtRead(int32_t handle, void *pBuffer,
                 if (sizeBytes < (uint32_t)sizeOrErrorCode) {
                     sizeOrErrorCode = (int32_t)sizeBytes;
                 }
-                memcpy(pBuffer, gEdmStream.pAtResponseBuffer, gEdmStream.atResponseLength);
+                memcpy(pBuffer, gEdmStream.pAtResponseBuffer + gEdmStream.atResponseRead, sizeOrErrorCode);
                 gEdmStream.atResponseRead += sizeOrErrorCode;
 
-                if (gEdmStream.atResponseRead == gEdmStream.atResponseLength) {
+                if (gEdmStream.atResponseRead >= gEdmStream.atResponseLength) {
                     gEdmStream.atResponseLength = 0;
                     gEdmStream.atResponseRead = 0;
                 }

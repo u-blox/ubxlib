@@ -14,6 +14,7 @@ cell/src/u_cell_net.c
 cell/src/u_cell_sock.c
 cell/src/u_cell_sec.c
 cell/src/u_cell_sec_c2c.c
+cell/src/u_cell_sec_tls.c
 cell/src/u_cell_private.c
 common/network/src/u_network.c
 common/network/src/u_network_private_ble.c
@@ -21,8 +22,11 @@ common/network/src/u_network_private_cell.c
 common/network/src/u_network_private_wifi.c
 common/sock/src/u_sock.c
 common/security/src/u_security.c
+common/security/src/u_security_credential.c
+common/security/src/u_security_tls.c
 common/at_client/src/u_at_client.c
 common/short_range/src/u_short_range.c
+common/short_range/src/u_short_range_sec_tls.c
 common/short_range/src/u_short_range_edm.c
 common/short_range/src/u_short_range_edm_stream.c
 common/short_range/src/u_short_range_private.c

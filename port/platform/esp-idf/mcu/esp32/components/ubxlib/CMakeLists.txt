@@ -39,6 +39,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../cell/src/u_cell_sock.c"
                    "../../../../../../../cell/src/u_cell_sec.c"
                    "../../../../../../../cell/src/u_cell_sec_c2c.c"
+                   "../../../../../../../cell/src/u_cell_sec_tls.c"
                    "../../../../../../../cell/src/u_cell_private.c"
 # The common network layer
                    "../../../../../../../common/network/src/u_network.c"
@@ -49,12 +50,15 @@ set(COMPONENT_SRCS
                    "../../../../../../../common/sock/src/u_sock.c"
 # The common security layer
                    "../../../../../../../common/security/src/u_security.c"
+                   "../../../../../../../common/security/src/u_security_tls.c"
+                   "../../../../../../../common/security/src/u_security_credential.c"
 # The common AT client
                    "../../../../../../../common/at_client/src/u_at_client.c"
 # The common short range layer
                    "../../../../../../../common/short_range/src/u_short_range.c"
                    "../../../../../../../common/short_range/src/u_short_range_edm.c"
                    "../../../../../../../common/short_range/src/u_short_range_edm_stream.c"
+                   "../../../../../../../common/short_range/src/u_short_range_sec_tls.c"
                    "../../../../../../../common/short_range/src/u_short_range_private.c"
 # The porting layer
                    "../../../../../common/mbedtls/u_port_crypto.c"

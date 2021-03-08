@@ -1,5 +1,3 @@
-IMPORTANT IMPORTANT IMPORTANT: in release 0.8.0 the structure of the `port/platform` directory has been changed.
-
 ![u-blox logo](./readme_images/ublox-logo.png)
 
 # Introduction to ubxlib
@@ -23,7 +21,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 
 - If you wish to bring up a network and don't care about the details, use the common [network](common/network) API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
 - If you wish to use a socket over that network, use the common [sock](common/sock) API.
-- If you wish to use u-blox security, use the common [security](common/security) API.
+- If you wish to use security, use the common [security](common/security) API.
 - If you wish to take finer control of your [cellular](cell), [ble](ble) or Wifi connection, use the respective control API directly.
 - GNSS is used via the gnss API.
 - The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](common/short_range) API.
@@ -115,12 +113,14 @@ Configuration information for the examples and the tests can be found in the `cf
 
 |  Technology  | Example | Availability |
 |--------------|----------|--------------|
-| Cellular/Wifi | The [socket](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q4 2020 / Q1 2021 |
-| Cellular     | End-to-end security | Q1 2021|
-| Cellular     | TLS secured sockets | Q2 2021|
+| Cellular     | The [sockets](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q4 2020 / Q1 2021 |
+| Cellular     | The [end-to-end security](example/security/e2e "E2E Example") example using the [security](common/security "security API") API. | Q1 2021|
+| Cellular     | The [PSK generation](example/security/psk "PSK Example") example using the [security](common/security "security API") API. | Q1 2021|
+| Cellular     | The [chip-to-chip security](example/security/c2c "C2C Example") example using the [security](common/security "security API") API. | Q1 2021|
+| Cellular     | A [TLS-secured version](example/sockets "TLS sockets Example") of the sockets example. | Q2 2021|
 | Cellular     | CellLocate | Q2 2021|
 | Bluetooth    | SPS (serial port service) | Q1 2021|
-| WiFi         | The [socket](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q2 2021|
+| WiFi         | The [sockets](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q2 2021|
 | GNSS         | TBD |TBD|
 
 # License
@@ -129,6 +129,6 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 - The heap management code (`heap_useNewlib.c`), required because some of the platforms that use newlib and FreeRTOS don't provide the necessary memory management for them to play together, is copyright Dave Nadler.
 - The AT client code in `common/at_client` is derived from the Apache 2.0 licensed AT parser of mbed-os.
 - The `stm32cube` platform directory necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
-- The `go` UDP echo server at `common/sock/test/echo_server/echo-server-udp.go` is based on that of AWS FreeRTOS.
+- The `go` echo servers in `common/sock/test/echo_server` are based on those used in testing of AWS FreeRTOS.
 
 In all cases copyright, and our thanks, remain with the original authors.

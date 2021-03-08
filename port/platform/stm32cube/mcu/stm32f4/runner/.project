@@ -42,6 +42,16 @@
 			<locationURI>$%7BUBX_PATH%7D/example/sockets/main.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Example/Sockets/main_tls.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/example/sockets/main_tls.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Example/Sockets/credentials_tls.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/example/sockets/credentials_tls.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Example/Security/E2E/e2e_main.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/example/security/e2e/e2e_main.c</locationURI>
@@ -92,6 +102,16 @@
 			<locationURI>$%7BUBX_PATH%7D/common/security/src/u_security.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Common/Security/u_security_tls.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/security/src/u_security_tls.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/Security/u_security_credential.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/security/src/u_security_credential.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/AtClient/u_at_client.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/src/u_at_client.c</locationURI>
@@ -115,6 +135,11 @@
 			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_edm_stream.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_edm_stream.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_sec_tls.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_sec_tls.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range_private.c</name>
@@ -182,6 +207,11 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_sec_c2c.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Cell/u_cell_sec_tls.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_sec_tls.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_private.c</locationURI>
@@ -215,6 +245,21 @@
 			<name>Ubxlib/U-Blox/Test/Security/u_security_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/security/test/u_security_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Security/u_security_tls_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/security/test/u_security_tls_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Security/u_security_credential_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/security/test/u_security_credential_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Security/u_security_credential_test_data.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/security/test/u_security_credential_test_data.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Ble/u_ble_test.c</name>
@@ -270,6 +315,12 @@
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_sec_c2c_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_sec_c2c_test.c</locationURI>
+		</link>
+		<link>
+
+			<name>Ubxlib/U-Blox/Test/Cell/u_cell_sec_tls_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_sec_tls_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test_preamble.c</name>
@@ -535,6 +586,11 @@
 			<name>Ubxlib/Inc/U-Blox/common/security/api</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/security/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/security/test</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/security/test</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/common/network/src</name>

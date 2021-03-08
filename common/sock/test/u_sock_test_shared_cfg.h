@@ -64,6 +64,24 @@
 # define U_SOCK_TEST_ECHO_TCP_SERVER_PORT  5055
 #endif
 
+#ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME
+/** Echo server to use for secure (TLS) TCP sockets testing as a domain name.
+ */
+# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME  "ubxlib.it-sgn.u-blox.com"
+#endif
+
+#ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS
+/** Echo server to use for secure (TLS) TCP sockets testing as an IP address.
+ */
+# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS  "185.215.195.132"
+#endif
+
+#ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT
+/** Port number on the echo server to use for secure (TLS) TCP testing.
+ */
+# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT  5060
+#endif
+
 #ifndef U_SOCK_TEST_LOCAL_PORT
 /** Local port number, used when testing binding.
  */

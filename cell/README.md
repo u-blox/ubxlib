@@ -8,13 +8,15 @@ The cellular APIs are split into the following groups:
 - `pwr`: powering up and down the cellular module.
 - `net`: attaching to the cellular network.
 - `info`: obtaining information about the cellular module.
+- `sec`: u-blox security features.
+- `sec_tls`: TLS security features.
 - `sock`: sockets, for exchanging data (but see the `common/sock` component for the best way to do this).
 
 The module types supported by this implementation are listed in `api/u_cell_module_type.h`.
 
-HOWEVER, this is the detailed API; if all you would like to do is bring up a bearer as simply as possible and then get on with exchanging data, please consider using the `common/network` API, along with the `common/sock` API.  You may still dip down into this API from the network level as the handles used at the network level are the ones generated here.
+HOWEVER, this is the detailed API; if all you would like to do is bring up a bearer as simply as possible and then get on with exchanging data, please consider using the `common/network` API, along with the `common/sock` API and the `common/security` API.  You may still dip down into this API from the network level as the handles used at the network level are the ones generated here.
 
-This API relies upon the `at-client` common component to send commands to and parse responses received from a cellular module.
+This API relies upon the `at_client` common component to send commands to and parse responses received from a cellular module.
 
 # Usage
 The `api` directory contains the files that define the cellular APIs, each API function documented in its header file.  In the `src` directory you will find the implementation of the APIs and in the `test` directory the tests for the APIs that can be run on any platform.

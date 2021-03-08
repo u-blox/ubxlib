@@ -30,17 +30,18 @@
  * APIs for the functions listed below, where "Xxx" could be Cell
  * or Wifi (and in future BLE).  The format of the calls to these
  * functions are deliberately left loose to accommodate variations
- * in implementation* but the forms below are the simplest ones to
+ * in implementation but the forms below are the simplest ones to
  * integrate with.
  *
  * In all cases the value of networkHandle will be taken from the
  * appropriate range in u_network_handle.h and will have been brought
  * up before any socket operation is conducted.
  *
- * All of the required types are defined in u_sock.h.
+ * All of the required types are defined in u_sock.h and, if security
+ * is required, u_security_tls.h.
  *
- * In all cases an error from cell/wifi must be indicated by a
- * returning a negative error value taken from the errno's listed in
+ * In all cases an error from cell/wifi must be indicated by returning
+ * a negative error value taken from the errno's listed in
  * u_sock_errno.h: for instance -U_SOCK_EPERM or -U_SOCK_EAGAIN -11.
  * This implementation then negates these values and writes them
  * to errno as is usual for a BSD sockets API before returning
@@ -325,8 +326,11 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
-#include "u_sock_errno.h"
 #include "u_sock.h"
+#include "u_sock_security.h"
+#include "u_sock_errno.h"
+
+#include "u_cell_sec_tls.h"
 #include "u_cell_sock.h"
 // Commented out until there is a wifi sockets
 // implementation
@@ -383,13 +387,14 @@ typedef struct {
     uSockProtocol_t protocol;
     int32_t networkHandle;
     int32_t sockHandle; /**< This is the socket handle
-                            that is returned by the
-                            underlying socket layer and
-                            is NOTHING TO DO with the socket
-                            descriptor. */
+                             that is returned by the
+                             underlying socket layer and
+                             is NOTHING TO DO with the socket
+                             descriptor. */
     uSockState_t state;
     uSockAddress_t remoteAddress;
     int64_t receiveTimeoutMs;
+    uSecurityTlsContext_t *pSecurityContext;
     void (*pDataCallback) (void *);
     void *pDataCallbackParameter;
     void (*pClosedCallback) (void *);
@@ -616,6 +621,7 @@ static uSockContainer_t *pSockContainerCreate(uSockDescriptor_t descriptor,
         pContainer->socket.state = U_SOCK_STATE_CREATED;
         pContainer->socket.blocking = true;
         pContainer->socket.receiveTimeoutMs = U_SOCK_DEFAULT_RECEIVE_TIMEOUT_MS;
+        pContainer->socket.pSecurityContext = NULL;
         pContainer->socket.pDataCallback = NULL;
         pContainer->socket.pDataCallbackParameter = NULL;
         pContainer->socket.pClosedCallback = NULL;
@@ -693,6 +699,10 @@ static void closedCallback(int32_t networkHandle,
             pContainer->socket.pClosedCallback(pContainer->socket.pClosedCallbackParameter);
             pContainer->socket.pClosedCallback = NULL;
         }
+        // We can now finally release any security
+        // context
+        uSecurityTlsRemove(pContainer->socket.pSecurityContext);
+        pContainer->socket.pSecurityContext = NULL;
         U_PORT_MUTEX_UNLOCK(gMutexCallbacks);
     }
 }
@@ -1273,11 +1283,9 @@ int32_t uSockConnect(uSockDescriptor_t descriptor,
                     } else {
                         // Set errno
                         errnoLocal = -errorCode;
-                        uPortLog("U_SOCK: underlying socket layer"
-                                 " returned errno %d when trying to"
-                                 " connect to address \"%.*s\" on socket"
-                                 " with descriptor %d, network handle"
-                                 " %d, socket handle %d.\n", errnoLocal,
+                        uPortLog("U_SOCK: underlying layer errno %d on"
+                                 " address \"%.*s\", descriptor/"
+                                 "/network/socket %d/%d/%d.\n", errnoLocal,
                                  addressToString(pRemoteAddress, true,
                                                  buffer, sizeof(buffer)),
                                  buffer, descriptor, networkHandle,
@@ -1783,6 +1791,71 @@ int32_t uSockOptionGet(uSockDescriptor_t descriptor,
                                  option, level, descriptor, networkHandle,
                                  sockHandle, errnoLocal);
                     }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutexContainer);
+    }
+
+    if (errnoLocal != U_SOCK_ENONE) {
+        // Write the errno
+        errno = errnoLocal;
+        errorCode = (int32_t) U_ERROR_COMMON_BSD_ERROR;
+    }
+
+    return errorCode;
+}
+
+// Add security to the given socket.
+int32_t uSockSecurity(uSockDescriptor_t descriptor,
+                      const uSecurityTlsSettings_t *pSettings)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    int32_t errnoLocal;
+    uSockContainer_t *pContainer = NULL;
+    int32_t networkHandle;
+    int32_t sockHandle;
+
+    errnoLocal = init();
+    if (errnoLocal == U_SOCK_ENONE) {
+
+        U_PORT_MUTEX_LOCK(gMutexContainer);
+
+        // Find the container
+        errnoLocal = U_SOCK_EBADF;
+        pContainer = pContainerFindByDescriptor(descriptor);
+        if (pContainer != NULL) {
+            errnoLocal = U_SOCK_ENONE;
+            // Talk to the common security layer
+            networkHandle = pContainer->socket.networkHandle;
+            sockHandle = pContainer->socket.sockHandle;
+            pContainer->socket.pSecurityContext = pUSecurityTlsAdd(networkHandle,
+                                                                   pSettings);
+            if (pContainer->socket.pSecurityContext == NULL) {
+                errnoLocal = U_SOCK_ENOMEM;
+            } else if (pContainer->socket.pSecurityContext->errorCode != 0) {
+                errorCode = pContainer->socket.pSecurityContext->errorCode;
+                uSecurityTlsRemove(pContainer->socket.pSecurityContext);
+                switch (errorCode) {
+                    case U_ERROR_COMMON_INVALID_PARAMETER:
+                        errnoLocal = U_SOCK_EINVAL;
+                        break;
+                    case U_ERROR_COMMON_NO_MEMORY:
+                        errnoLocal = U_SOCK_ENOMEM;
+                        break;
+                    default:
+                        errnoLocal = U_SOCK_EOPNOTSUPP;
+                        break;
+                }
+            } else {
+                // We're good
+                if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+                    // In the cellular case the security
+                    // profile has to be applied before connect
+                    errnoLocal = -uCellSockSecure(networkHandle,
+                                                  sockHandle,
+                                                  ((uCellSecTlsContext_t *) (pContainer->socket.pSecurityContext->pNetworkSpecific))->profileId);
                 }
             }
         }

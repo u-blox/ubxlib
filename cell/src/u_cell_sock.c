@@ -966,6 +966,44 @@ int32_t uCellSockOptionGet(int32_t cellHandle,
     return -errnoLocal;
 }
 
+// Apply a security profile to a socket.
+int32_t uCellSockSecure(int32_t cellHandle,
+                        int32_t sockHandle,
+                        int32_t profileId)
+{
+    int32_t negErrnoLocal = -U_SOCK_EINVAL;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    uCellSockSocket_t *pSocket;
+
+    // Find the instance
+    pInstance = pUCellPrivateGetInstance(cellHandle);
+    if (pInstance != NULL) {
+        atHandle = pInstance->atHandle;
+        // Find the entry
+        if (sockHandle >= 0) {
+            pSocket = pFindBySockHandle(sockHandle);
+            if (pSocket != NULL) {
+                // Apply the profile in the cellular module
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+USOSEC=");
+                // Write module socket handle
+                uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
+                // Enable security
+                uAtClientWriteInt(atHandle, 1);
+                // Write the profile ID
+                uAtClientWriteInt(atHandle, profileId);
+                uAtClientCommandStopReadResponse(atHandle);
+                if (uAtClientUnlock(atHandle) == 0) {
+                    negErrnoLocal = U_SOCK_ENONE;
+                }
+            }
+        }
+    }
+
+    return negErrnoLocal;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: UDP ONLY
  * -------------------------------------------------------------- */

@@ -3,6 +3,6 @@
     "logging": false,
     "secure-connection": false,
     "server-port": "5055",
-    "server-certificate-location": "./certs/server.pem",
-    "server-key-location": "./certs/server.key"
+    "server-certificate-location": "./certs/server_cert.pem",
+    "server-key-location": "./certs/server_key.pem"
 }
