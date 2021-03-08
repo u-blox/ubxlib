@@ -21,10 +21,14 @@
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
-#include "u_port_debug.h"
 
-#include "stdio.h"
 #include "stdarg.h"
+#include "stdio.h"    // vprintf()
+
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
+#include "u_port_debug.h"
 
 #include "sys/printk.h"
 
@@ -57,7 +61,6 @@ void uPortLogF(const char *pFormat, ...)
     va_start(args, pFormat);
 
     vprintf(pFormat, args);
-
 
     va_end(args);
 }

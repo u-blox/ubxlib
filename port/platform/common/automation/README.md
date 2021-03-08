@@ -93,6 +93,8 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 
 `u_run_static_size.py`: run a static check of code/RAM size; called by `u_run.py`.
 
+`u_run_no_floating_point.py`: run a static size check without floating point support, checking that no floating point has crept in; called by `u_run.py`.
+
 `u_run_nrf5sdk.py`: build/download/run tests on the Nordic nRF5 platform, e.g. for the NRF52 MCU; called by `u_run.py`.
 
 `u_run_zephyr.py`: build/download/run tests on the Zephyr platform, e.g. for the NRF53 MCU; called by `u_run.py`.

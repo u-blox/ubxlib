@@ -22,6 +22,16 @@
  * platform.
  */
 
+#ifdef U_CFG_DISABLE_FLOATING_POINT
+/** If floating point is not required, switch to the integer
+ * versions of the stdio library functions.
+ */
+#define snprintf sniprintf
+#define printf iprintf
+#define vprintf viprintf
+#define sscanf siscanf
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

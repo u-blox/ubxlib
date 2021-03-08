@@ -48,3 +48,13 @@
  * be if logging is switched off.
  */
 -esym(766, u_cfg_sw.h)
+
+/* Additional library functions that can be ignored.
+ */
+-esym(515, iprintf, sniprintf, siscanf)
+-esym(516, iprintf, sniprintf, siscanf)
+-esym(526, iprintf, sniprintf, siscanf)
+-esym(628, iprintf, sniprintf, siscanf)
+-esym(718, iprintf, sniprintf, siscanf)
+-esym(746, iprintf, sniprintf, siscanf)
+-esym(1055, iprintf, sniprintf, siscanf)

@@ -130,10 +130,10 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
         // Configure the system clock
         systemClockConfig();
 
-        // TODO: if I put a printf() here then all is fine.
+        // TODO: if I put an iprintf() here then all is fine.
         // If I don't then any attempt to print later
         // results in a hard fault.  Need to find out why.
-        printf("\n\nU_APP: starting RTOS...\n");
+        iprintf("\n\nU_APP: starting RTOS...\n");
 
         // Create the task, noting that the stack
         // size is in words not bytes

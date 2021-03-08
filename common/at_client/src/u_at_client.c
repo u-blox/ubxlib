@@ -35,22 +35,23 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memcpy(), strcmp(), strcspn(), strspm()
+#include "stdio.h"     // snprintf()
 #include "ctype.h"     // isprint()
-#include "math.h"      // pow()
 #include "assert.h"
-#include "stdio.h"     // For snprintf()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
 
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue.h"
-#include "u_port_clib_platform_specific.h"
 #include "u_short_range_edm_stream.h"
 
 #include "u_at_client.h"
@@ -1451,21 +1452,9 @@ static void unlockNoDataCheck(uAtClientInstance_t *pClient)
 static uint64_t stringToUint64(const char *pBuffer)
 {
     uint64_t uint64 = 0;
-    int32_t length;
-    const char *pNumerals = "0123456789";
-    uint64_t multiplier;
 
-    // Skip things that aren't numerals
-    pBuffer += strcspn(pBuffer, pNumerals);
-    // Determine the length of the numerals part
-    //lint -e{712} Suppress loss of precision
-    // (strspn() returns an int64_t with the compiler we use for Linting)
-    length = strspn(pBuffer, pNumerals);
-    while (length > 0) {
-        multiplier = (uint64_t) pow(10, (length - 1));
-        uint64 += (*pBuffer - '0') * multiplier;
-        length--;
-        pBuffer++;
+    while (*pBuffer >= '0' && *pBuffer <= '9') {
+        uint64 = (uint64 * 10) + (*pBuffer++ - '0');
     }
 
     return uint64;
@@ -1480,6 +1469,7 @@ static int32_t uint64ToString(char *pBuffer, size_t length,
 {
     int32_t sizeOrError = -1;
     uint64_t x;
+
     // Max value of a uint64_t is
     // 18,446,744,073,709,551,616,
     // so maximum divisor is

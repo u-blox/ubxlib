@@ -18,6 +18,7 @@ import u_run_doxygen # Run a Doxygen check
 import u_run_astyle # Run AStyle check
 import u_run_pylint # Run a Pylint check
 import u_run_static_size # Run static sizing check
+import u_run_no_floating_point # Run no floating point check
 import u_report # reporting
 import u_utils
 import u_settings
@@ -191,8 +192,8 @@ def main(database, instance, filter_string, clean,
                 return_value = u_run_static_size.run(instance, defines, ubxlib_dir,
                                                      working_dir, printer, reporter)
             elif instance[0] == 5:
-                printer.string("{}reserved, nothing to do.".format(PROMPT))
-                return_value = 0
+                return_value = u_run_no_floating_point.run(instance, defines, ubxlib_dir,
+                                                           working_dir, printer, reporter)
             elif instance[0] == 6:
                 printer.string("{}reserved, nothing to do.".format(PROMPT))
                 return_value = 0

@@ -25,10 +25,16 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "stdio.h"     // snprintf()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_hw_platform_specific.h"
+
 #include "u_error_common.h"
+
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -46,7 +52,6 @@
 
 #include "string.h" // for memcpy()
 #include "stdlib.h" // for malloc()/free()
-#include "stdio.h" // for snprintf()
 
 /* The code here was written using the really useful information
  * here:

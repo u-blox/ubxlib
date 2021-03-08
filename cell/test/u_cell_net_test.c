@@ -35,11 +35,11 @@
 #  include "u_cfg_override.h" // For a customer's configuration override
 # endif
 
-#include "stdio.h"     // snprintf().
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memset()
+#include "stdio.h"     // snprintf()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -48,6 +48,9 @@
 
 #include "u_error_common.h"
 
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"   // Required by u_cell_private.h

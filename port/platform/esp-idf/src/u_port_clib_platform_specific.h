@@ -22,6 +22,21 @@
  * platform.
  */
 
+#ifdef U_CFG_DISABLE_FLOATING_POINT
+/** If floating point is not required, switch to the integer
+ * versions of the stdio library functions.
+ * Note: with floating point disabled the ubxlib code will not
+ * be able to log floating point values (i.e. %f or %d types)
+ * and will not use maths functions (e.g. pow(), log10()).
+ * Any ubxlib APIs that rely on floating point functionality
+ * will return an error.
+ */
+#define snprintf sniprintf
+#define printf iprintf
+#define vprintf viprintf
+#define sscanf siscanf
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

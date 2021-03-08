@@ -29,11 +29,11 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_port_clib_platform_specific.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
-#include "u_port_clib_platform_specific.h"
 
 #include "assert.h"
 #include "string.h"

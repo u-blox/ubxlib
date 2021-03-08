@@ -21,10 +21,14 @@
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
-#include "u_port_debug.h"
 
-#include "stdio.h"
 #include "stdarg.h"
+#include "stdio.h"         // vprintf()
+
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
+#include "u_port_debug.h"
 
 #include "stm32f437xx.h" // For ITM_SendChar()
 

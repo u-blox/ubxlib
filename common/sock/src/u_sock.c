@@ -315,13 +315,16 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // strlen(), strchr(), strtol()
-#include "stdio.h"     // snprintf(), sscanf()
+#include "stdio.h"     // snprintf()
 #include "sys/time.h"  // struct timeval
 
 #include "u_cfg_sw.h"
 
 #include "u_error_common.h"
 
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"

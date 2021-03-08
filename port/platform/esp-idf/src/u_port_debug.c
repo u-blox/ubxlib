@@ -22,8 +22,12 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdio.h" // For vprintf()
+#include "stdio.h"  // vprintf()
 #include "stdarg.h" // For va_x()
+
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

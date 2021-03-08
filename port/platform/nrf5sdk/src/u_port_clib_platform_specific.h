@@ -30,6 +30,10 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifdef U_CFG_DISABLE_FLOATING_POINT
+# warning the versions of C library used with this platform do not support integer-only versions of the stdio functions (i.e. sniprintf(), iprintf(), viprintf() and siscanf()).
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

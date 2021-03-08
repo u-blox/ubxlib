@@ -30,20 +30,23 @@
 
 #include "errno.h"
 #include "limits.h"    // INT_MAX
-#include "stdlib.h"    // malloc(), free(), strol(), atoi(), strol(), strtof()
+#include "stdlib.h"    // malloc(), free(), strol(), atoi(), strol()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"    // strlen()
+#ifndef U_CFG_DISABLE_FLOATING_POINT
 #include "math.h"      // pow(), log10()
+#endif
 #include "time.h"      // mktime(), struct tm
 
 #include "u_cfg_sw.h"
 
 #include "u_error_common.h"
 
+#include "u_port_clib_platform_specific.h" // strtok_r()
 #include "u_port_debug.h"
 #include "u_port_os.h"
-#include "u_port_clib_platform_specific.h" // Required for strtok_r()
 
 #include "u_at_client.h"
 
@@ -233,12 +236,33 @@ static int32_t getRadioParamsUcged2(uAtClientHandle_t atHandle,
     return uAtClientUnlock(atHandle);
 }
 
+// Turn a string such as "-104.20", i.e. a signed
+// decimal floating point number, into an int32_t.
+static int32_t strToInt32(const char *pString)
+{
+    char *pEnd = NULL;
+    int32_t value;
+
+    value = strtol(pString, &pEnd, 10);
+    if (pEnd == pString) {
+        value = 0;
+    } else if ((pEnd != NULL) && (strlen(pEnd) > 1) && (*pEnd == '.') &&
+               (*(pEnd + 1) >= '5') && (*(pEnd + 1) <= '9')) {
+        if (value >= 0) {
+            value++;
+        } else {
+            value--;
+        }
+    }
+
+    return value;
+}
+
 // Fill in the radio parameters the AT+UCGED=5 way
 static int32_t getRadioParamsUcged5(uAtClientHandle_t atHandle,
                                     uCellPrivateRadioParameters_t *pRadioParameters)
 {
     char buffer[16];
-    double rsrx;
 
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+UCGED?");
@@ -247,26 +271,15 @@ static int32_t getRadioParamsUcged5(uAtClientHandle_t atHandle,
     pRadioParameters->cellId = uAtClientReadInt(atHandle);
     pRadioParameters->earfcn = uAtClientReadInt(atHandle);
     if (uAtClientReadString(atHandle, buffer, sizeof(buffer), false) > 0) {
-        rsrx = strtof(buffer, NULL);
-        if (rsrx >= 0) {
-            pRadioParameters->rsrpDbm = (int32_t) (rsrx + 0.5);
-        } else {
-            pRadioParameters->rsrpDbm = (int32_t) (rsrx - 0.5);
-        }
+        pRadioParameters->rsrpDbm = strToInt32(buffer);
     }
     uAtClientResponseStart(atHandle, "+RSRQ:");
     // Skip past cell ID and EARFCN since they will be the same
     uAtClientSkipParameters(atHandle, 2);
     if (uAtClientReadString(atHandle, buffer, sizeof(buffer), false) > 0) {
-        rsrx = strtof(buffer, NULL);
-        if (rsrx >= 0) {
-            pRadioParameters->rsrqDb = (int32_t) (rsrx + 0.5);
-        } else {
-            pRadioParameters->rsrqDb = (int32_t) (rsrx - 0.5);
-        }
+        pRadioParameters->rsrqDb = strToInt32(buffer);
     }
     uAtClientResponseStop(atHandle);
-
     return uAtClientUnlock(atHandle);
 }
 
@@ -439,13 +452,17 @@ int32_t uCellInfoGetRxQual(int32_t cellHandle)
 // Get the SNR.
 int32_t uCellInfoGetSnrDb(int32_t cellHandle, int32_t *pSnrDb)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+#ifndef U_CFG_DISABLE_FLOATING_POINT
     uCellPrivateInstance_t *pInstance;
     uCellPrivateRadioParameters_t *pRadioParameters;
     double rssi;
     double rsrp;
     double snrDb;
 
+    //lint -e(838) Suppress previous value unused, which
+    // will happen if U_CFG_DISABLE_FLOATING_POINT is not defined
+    errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     if (gUCellPrivateMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
@@ -478,6 +495,10 @@ int32_t uCellInfoGetSnrDb(int32_t cellHandle, int32_t *pSnrDb)
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
+#else
+    (void) cellHandle;
+    (void) pSnrDb;
+#endif // U_CFG_DISABLE_FLOATING_POINT
 
     return errorCode;
 }

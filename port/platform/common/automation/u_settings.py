@@ -6,7 +6,7 @@ import sys
 import json
 import os
 
-__path = os.path.expanduser("~/.ubx_automation/settings.json")
+__path = os.path.expanduser("~/.ubx_automation/settings_no_float.json")
 __useDefaultSettings = True
 __storeSettings = True
 __settings = {}
@@ -63,8 +63,12 @@ __defaultSettings["ASTYLE_EXCLUDE_DIRS"] = ["build", "_build", "Output", "Debug"
 __defaultSettings["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py
 __defaultSettings["STATIC_SIZE_ARM_GNU_INSTALL_ROOT"] = "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin"
+__defaultSettings["STATIC_SIZE_MAP_FILE_NAME"] = "static_size.map"
 __defaultSettings["STATIC_SIZE_C_FLAGS"] = "-Os -g0 -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16"
-__defaultSettings["STATIC_SIZE_LD_FLAGS"] = "-Os -g0 -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 --specs=nano.specs -lc -lnosys -lm"
+__defaultSettings["STATIC_SIZE_LD_FLAGS"] = "-Os -g0 -Wl,-Map=" + __defaultSettings["STATIC_SIZE_MAP_FILE_NAME"] + " -Wl,--cref -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 --specs=nano.specs -lc -lnosys -lm"
+__defaultSettings["STATIC_SIZE_NO_FLOAT_MAP_FILE_NAME"] = "static_size_no_float.map"
+__defaultSettings["STATIC_SIZE_NO_FLOAT_C_FLAGS"] = "-Os -g0 -mcpu=cortex-m4+nofp"
+__defaultSettings["STATIC_SIZE_NO_FLOAT_LD_FLAGS"] = "-Os -g0 -Wl,-Map=" + __defaultSettings["STATIC_SIZE_NO_FLOAT_MAP_FILE_NAME"] + " -Wl,--cref -mcpu=cortex-m4+nofp --specs=nano.specs -lc -lnosys"
 __defaultSettings["STATIC_SIZE_LD_FLAGS_SUB_DIR"] = "port/platform/static_size"
 # u_run_esp32.py
 __defaultSettings["ESP_IDF_ROOT"] = "c:\\esp32"

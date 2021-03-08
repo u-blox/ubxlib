@@ -34,15 +34,18 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdio.h"     // snprintf()
 #include "stdlib.h"    // rand()
 #include "string.h"    // strtok() and strcmp()
+#include "stdio.h"     // snprintf()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -50,7 +53,6 @@
 #include "u_port_uart.h"
 #include "u_port_crypto.h"
 #include "u_port_event_queue.h"
-#include "u_port_clib_platform_specific.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

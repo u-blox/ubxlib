@@ -34,29 +34,44 @@ int _getpid()
 }
 char *_sbrk(int incr)
 {
+    (void) incr;
+    return NULL;
 }
 int _read(int fildes, void *buf, size_t nbyte)
 {
+    (void) fildes;
+    (void) buf;
+    (void) nbyte;
     return 0;
 }
 int _write(int fildes, const void *buf, size_t nbyte)
 {
+    (void) fildes;
+    (void) buf;
+    (void) nbyte;
     return 0;
 }
 int _lseek(int fildes, int offset, int whence)
 {
+    (void) fildes;
+    (void) offset;
+    (void) whence;
     return 0;
 }
 int _isatty(int fildes)
 {
+    (void) fildes;
     return 0;
 }
 int _fstat(int fildes, void *st)
 {
+    (void) fildes;
+    (void) st;
     return 0;
 }
 int _close(int fildes)
 {
+    (void) fildes;
     return 0;
 }
 // End of file

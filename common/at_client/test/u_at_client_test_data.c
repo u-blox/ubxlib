@@ -31,8 +31,8 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "stdio.h"     // snprintf()
 #include "string.h"    // strlen(), memcmp()
+#include "stdio.h"     // snprintf()
 #include "ctype.h"     // isprint()
 
 #include "u_cfg_sw.h"
@@ -42,6 +42,9 @@
 
 #include "u_error_common.h"
 
+#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+                                              before the other port files if
+                                              any print or scan function is used. */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
