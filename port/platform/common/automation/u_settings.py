@@ -17,9 +17,11 @@ if os.path.isfile(__path):
             __settings = json.load(f)
         __useDefaultSettings = False
     except:
-        print("u_settings: WARNING: settings file {} seems corrupt".format(__path))
+        print("u_settings: ************************** WARNING ***************************")
+        print("u_settings: settings file \"{}\" corrupt.".format(__path))
+        print("u_settings: ************************** WARNING ***************************")
 else:
-    print("u_settings: no settings at {}".format(__path))
+    print("u_settings: no settings at \"{}\" using defaults".format(__path))
 
 __defaultSettings = {}
 # u_connection.py
@@ -176,7 +178,7 @@ __defaultSettings["FILTER_MACRO_NAME"] = "U_CFG_APP_FILTER"
 __defaultSettings["EXE_RUN_QUEUE_WAIT_SECONDS"] = 1
 
 if __useDefaultSettings:
-    print("u_settings: using default settings")
+    print("u_settings: using default settings.")
     __settings = __defaultSettings
 else:
     for setKey in __settings:
@@ -192,7 +194,7 @@ for __key in __settings:
     setattr(__current_module, __key, __settings[__key])
 
 if __storeSettings:
-    print("u_settings: creating settings file {}".format(__path))
+    print("u_settings: creating settings file \"{}\".".format(__path))
     if not os.path.isdir(os.path.expanduser("~/.ubx_automation")):
         os.makedirs(os.path.expanduser("~/.ubx_automation"))
     with open(__path, 'w') as out:
