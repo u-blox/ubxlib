@@ -80,7 +80,7 @@ static int64_t gStopTimeMS;
 
 /** Handles.
  */
-static uCellTestPrivate_t gHandles = {-1};
+static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
 
 /** A variable to track errors in the callbacks.
  */
