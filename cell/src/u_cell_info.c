@@ -35,9 +35,6 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // strlen()
-#ifndef U_CFG_DISABLE_FLOATING_POINT
-#include "math.h"      // pow(), log10()
-#endif
 #include "time.h"      // mktime(), struct tm
 
 #include "u_cfg_sw.h"
@@ -450,19 +447,64 @@ int32_t uCellInfoGetRxQual(int32_t cellHandle)
 }
 
 // Get the SNR.
+// The fixed-pointed calculation below was created and confirmed
+// by @mazgch with the following test code:
+//
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <math.h>
+// #include <time.h>
+//
+// int snrOld(int rssiDbm, int rsrpDbm) {
+//     double rssi = pow(10.0, ((double) rssiDbm) / 10);
+//     double rsrp = pow(10.0, ((double) rsrpDbm) / 10);
+//     double snrDb = 10 * log10(rsrp / (rssi - rsrp));
+//     return (int) round(snrDb);
+// }
+//
+//  // Calculate the SNR from DBm values of Received Signal Strength Indicator (RSSI)
+//  //   @note rssiDbm should be greather than rsrpDbm otherwise this function fails and returns -2147483648
+//  //   @param rssiDbm Received Signal Strength Indicator (RSSI) in dBm
+//  //   @param rsrpDbm Reference Signal Received Power (RSRP) in dBm
+//  //   @returns the calculated SNR rounded to nearest integer
+//
+// int snrNew(int rssiDbm, int rsrpDbm) {
+//     const char snrLut[] = {6, 2, 0, -2, -3, -5, -6, -7, -8, -10};
+//     int ix = rssiDbm - rsrpDbm - 1;
+//     return  (ix < 0) ? -2147483648 :
+//             (ix < sizeof(snrLut)) ? snrLut[ix] : (- ix - 1);
+// }
+//
+// int main()
+// {
+//     srand (time(NULL));
+//     int from = -10;
+//     int to = -130;
+//
+//     // test a random number from the range above
+//     int32_t rssiDbm = to + rand() % (from    - to);
+//     int32_t rsrpDbm = to + rand() % (rssiDbm - to);
+//     int snr = snrOld(rssiDbm, rsrpDbm);
+//     printf("%d %d -> %i = %i", rssiDbm, rsrpDbm, snrOld(rssiDbm, rsrpDbm), snrNew(rssiDbm, rsrpDbm));
+//
+//     // test the full range and make sure all the return values of the two functions are the same
+//     for (int i = from; i >= to; i --) {
+//         for (int r = from; r >= to; r --) {
+//             int s = snrOld(i, r);
+//             int x = snrNew(i, r);
+//             if (x != s)
+//                 printf("ERROR rssiDbm %i rsrpDbm %i oldSnr %i newSnr %i\n", i, r, s, x);
+//         }
+//     }
+//
+//     return 0;
+// }
 int32_t uCellInfoGetSnrDb(int32_t cellHandle, int32_t *pSnrDb)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-#ifndef U_CFG_DISABLE_FLOATING_POINT
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
     uCellPrivateRadioParameters_t *pRadioParameters;
-    double rssi;
-    double rsrp;
-    double snrDb;
 
-    //lint -e(838) Suppress previous value unused, which
-    // will happen if U_CFG_DISABLE_FLOATING_POINT is not defined
-    errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     if (gUCellPrivateMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
@@ -474,31 +516,21 @@ int32_t uCellInfoGetSnrDb(int32_t cellHandle, int32_t *pSnrDb)
             errorCode = (int32_t) U_CELL_ERROR_VALUE_OUT_OF_RANGE;
             // SNR = RSRP / (RSSI - RSRP).
             if ((pRadioParameters->rssiDbm != 0) &&
-                (pRadioParameters->rssiDbm == pRadioParameters->rsrpDbm)) {
+                (pRadioParameters->rssiDbm <= pRadioParameters->rsrpDbm)) {
                 *pSnrDb = INT_MAX;
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            } else if ((pRadioParameters->rssiDbm != 0) &&
-                       (pRadioParameters->rsrpDbm != 0)) {
-                // First convert from dBm
-                errno = 0;
-                rssi = pow(10.0, ((double) pRadioParameters->rssiDbm) / 10);
-                rsrp = pow(10.0, ((double) pRadioParameters->rsrpDbm) / 10);
-                if (errno == 0) {
-                    snrDb = 10 * log10(rsrp / (rssi - rsrp));
-                    if (errno == 0) {
-                        *pSnrDb = (int32_t) snrDb;
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    }
+            } else if ((pRadioParameters->rssiDbm != 0) && (pRadioParameters->rsrpDbm != 0)) {
+                int32_t ix = pRadioParameters->rssiDbm - (pRadioParameters->rsrpDbm + 1);
+                if (ix >= 0) {
+                    const char snrLut[] = {6, 2, 0, -2, -3, -5, -6, -7, -8, -10};
+                    *pSnrDb = (ix < (int32_t) sizeof(snrLut)) ? snrLut[ix] : (- ix - 1);
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
             }
         }
 
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
-#else
-    (void) cellHandle;
-    (void) pSnrDb;
-#endif // U_CFG_DISABLE_FLOATING_POINT
 
     return errorCode;
 }
