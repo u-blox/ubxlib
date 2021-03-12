@@ -75,6 +75,15 @@
 # define U_CELL_SOCK_DNS_SHOULD_RETRY_MS 2000
 #endif
 
+#ifndef U_CELL_SOCK_SECURE_DELAY_MILLISECONDS
+/** I have seen secure socket operations fail if the
+ * secured socket is used too quickly after security
+ * has been applied, so wait this long before returning
+ * after a security profile has been applied.
+ */
+#define U_CELL_SOCK_SECURE_DELAY_MILLISECONDS 250
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -996,6 +1005,7 @@ int32_t uCellSockSecure(int32_t cellHandle,
                 uAtClientCommandStopReadResponse(atHandle);
                 if (uAtClientUnlock(atHandle) == 0) {
                     negErrnoLocal = U_SOCK_ENONE;
+                    uPortTaskBlock(U_CELL_SOCK_SECURE_DELAY_MILLISECONDS);
                 }
             }
         }
