@@ -3,7 +3,7 @@
     current-speed = <115200>;
     tx-pin = <42>;
     rx-pin = <43>;
-/* For no flow control set rts-pin and cts-pin to 0xFFFFFFFF (NRF_UARTE_PSEL_DISCONNECTED) and remove the "hw-flow-control" line. */
+/* For no flow control set "/delete-property/ rts-pin;" and corresponding for cts. Remove "hw-flow-control" line. */
     rts-pin = <44>;
     cts-pin = <45>;
     hw-flow-control;
