@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of the port UART API for the NRF53 platform.
+ * @brief Implementation of the port UART API for the Zephyr platform.
  */
 
 #ifdef U_CFG_OVERRIDE

@@ -385,8 +385,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                   u_monitor.CONNECTION_SERIAL,
                                                                   RUN_GUARD_TIME_SECONDS,
                                                                   RUN_INACTIVITY_TIME_SECONDS,
-                                                                  instance, printer, reporter,
-                                                                  test_report_handle,
+                                                                  "\r", instance, printer,
+                                                                  reporter, test_report_handle,
                                                                   send_string="*\r\n")
                                     serial_handle.close()
                                 else:

@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of the port OS API for the NRF52 platform.
+ * @brief Implementation of the port OS API for the Zephyr platform.
  */
 
 #ifdef U_CFG_OVERRIDE

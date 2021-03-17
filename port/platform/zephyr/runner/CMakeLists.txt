@@ -130,3 +130,15 @@ if (DEFINED ENV{U_FLAGS})
     target_compile_options(app PRIVATE ${U_FLAGS})
     message("ubxlib: added ${U_FLAGS} due to environment variable U_FLAGS.")
 endif()
+
+# Add ubxlib port files only required if newlib is not in use
+get_target_property(tmp app COMPILE_OPTIONS)
+if ("-DU_CFG_ZEPHYR_USE_NEWLIB" IN_LIST tmp)
+    # Nothing to do, the user has chosen to use newlib
+    message("ubxlib: using newlib")
+else()
+    target_sources(app PRIVATE ${UBXLIB_BASE}/port/clib/u_port_clib_isblank.c)
+    target_sources(app PRIVATE ${UBXLIB_BASE}/port/clib/u_port_clib_mktime.c)
+    target_sources(app PRIVATE ${UBXLIB_BASE}/port/clib/u_port_setjmp.S)
+    target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_clib.c)
+endif()

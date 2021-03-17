@@ -41,14 +41,15 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "sys/time.h"  // timeval
-#include "string.h"    // strncpy(), strcmp(), memcpy(), memset()
+#include "sys/time.h"      // struct timeval in most cases
+#include "string.h"        // strncpy(), strcmp(), memcpy(), memset()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 #include "u_cfg_os_platform_specific.h"
 
+#include "u_port_clib_platform_specific.h" /* struct timeval in some cases. */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"

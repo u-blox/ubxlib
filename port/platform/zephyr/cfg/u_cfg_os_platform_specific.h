@@ -21,11 +21,11 @@
 
 /** @file
  * @brief This header file contains OS configuration information for
- * an NRF5340 PDK board.
+ * the Zephyr platform.
  */
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR NRF5340: HEAP
+ * COMPILE-TIME MACROS FOR ZEPHYR: HEAP
  * -------------------------------------------------------------- */
 
 /** Not stricty speaking part of the OS but there's nowhere better
@@ -37,7 +37,7 @@
 #define U_CFG_OS_CLIB_LEAKS 0
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR NRF5340: OS GENERIC
+ * COMPILE-TIME MACROS FOR ZEPHYR: OS GENERIC
  * -------------------------------------------------------------- */
 
 #ifndef U_CFG_OS_PRIORITY_MIN
@@ -78,7 +78,7 @@
 #endif
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR NRF5340: SIZES OF EXECUTABLE CHUNKS OF RAM
+ * COMPILE-TIME MACROS FOR ZEPHYR: SIZES OF EXECUTABLE CHUNKS OF RAM
  * -------------------------------------------------------------- */
 
 /**  Defined here as an example, used in nRF53 lib_common tests

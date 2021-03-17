@@ -41,7 +41,7 @@
 
 #include "u_error_common.h"
 
-#include "u_port_clib_platform_specific.h" // strtok_r()
+#include "u_port_clib_platform_specific.h" // strtok_r() and, in some cases, isblank() and mktime()
 #include "u_port_debug.h"
 #include "u_port_os.h"
 

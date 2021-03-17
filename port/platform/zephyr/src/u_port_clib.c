@@ -15,26 +15,24 @@
  */
 
 /** @file
- * @brief Implementation of the port debug API for the Zephyr platform.
+ * @brief bits of C library that the minimal Zephyr C library
+ * doesn't provide and which we didn't think were worth adding to the
+ * collection over in the clib directory.
  */
 
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stdarg.h"
-#include "stdio.h"    // vprintf()
-
-#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
-                                              before the other port files if
-                                              any print or scan function is used. */
-#include "u_port_debug.h"
-
-#include "sys/printk.h"
+#include "random/rand32.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+#ifndef RAND_MAX
+#define RAND_MAX 0x7fffffff
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -44,7 +42,6 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -53,16 +50,15 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// printf()-style logging.
-void uPortLogF(const char *pFormat, ...)
+// The minimal C library provided with Zephyr has a rand() function
+// but doesn't call it that.  This just maps one to t'other.
+int rand()
 {
-    va_list args;
+    uint32_t answer;
 
-    va_start(args, pFormat);
+    while ((answer = sys_rand32_get()) > RAND_MAX) {}
 
-    vprintf(pFormat, args);
-
-    va_end(args);
+    return (int) answer;
 }
 
 // End of file

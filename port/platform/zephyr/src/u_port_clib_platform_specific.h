@@ -22,16 +22,24 @@
  * platform.
  */
 
+#ifdef U_CFG_ZEPHYR_USE_NEWLIB
 /** Floating point is not required by ubxlib so switch to
  * the integer versions of the stdio library functions.
  * Note: ubxlib code will not log floating point values
  * (i.e. %f or %d types) and will not use maths functions
  * (e.g. pow(), log10()) or, of course, double or float types.
+ * If we're not using newlib there's no need to worry as the
+ * built-in Zephyr C library doesn't support floating point
+ * in any case.
  */
 #define snprintf sniprintf
 #define printf iprintf
 #define vprintf viprintf
 #define sscanf siscanf
+#else
+#endif
+
+#include "time.h"           // For struct tm
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,11 +58,20 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** strtok().
- * Note: strtok_r is actually present in the C library but the GCC
- * Makefile inside NRF5 selects C99 which does not pull the prototype
- * for strtok_r into string.h.  Hence the need for this.
  */
 char *strtok_r(char *pStr, const char *pDelimiters, char **ppSave);
+
+/** rand().
+ */
+int rand();
+
+/** isBlank().
+ */
+int isblank(int character);
+
+/** mktime().
+ */
+time_t mktime(struct tm *pTm);
 
 #ifdef __cplusplus
 }

@@ -18,7 +18,7 @@
 #define _U_PORT_PRIVATE_H_
 
 /** @file
- * @brief Stuff private to the NRF53 porting layer.
+ * @brief Stuff private to the Zephyr porting layer.
  */
 
 #ifdef __cplusplus
