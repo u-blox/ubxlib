@@ -42,6 +42,8 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#define MS_TO_TICKS(delayMs)  (( configTICK_RATE_HZ * delayMs + 500 ) / 1000)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -316,6 +318,110 @@ int32_t uPortMutexUnlock(const uPortMutexHandle_t mutexHandle)
     if (mutexHandle != NULL) {
         xSemaphoreGive((SemaphoreHandle_t) mutexHandle);
         errorCode = U_ERROR_COMMON_SUCCESS;
+    }
+
+    return (int32_t) errorCode;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: SEMAPHORES
+ * -------------------------------------------------------------- */
+
+// Create a semaphore.
+int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
+                             uint32_t initialCount,
+                             uint32_t limit)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((pSemaphoreHandle != NULL) && (limit != 0) && (initialCount <= limit)) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        // Actually create the semaphore
+        *pSemaphoreHandle = (uPortSemaphoreHandle_t) xSemaphoreCreateCounting(limit, initialCount);
+        if (*pSemaphoreHandle != NULL) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Destroy a semaphore.
+int32_t uPortSemaphoreDelete(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (semaphoreHandle != NULL) {
+        vSemaphoreDelete((SemaphoreHandle_t) semaphoreHandle);
+        errorCode = U_ERROR_COMMON_SUCCESS;
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Take the given semaphore.
+int32_t uPortSemaphoreTake(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (semaphoreHandle != NULL) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        if (xSemaphoreTake((SemaphoreHandle_t) semaphoreHandle,
+                           (portTickType) portMAX_DELAY) == pdTRUE) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Try to take the given semaphore.
+int32_t uPortSemaphoreTryTake(const uPortSemaphoreHandle_t semaphoreHandle,
+                              int32_t delayMs)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (semaphoreHandle != NULL) {
+        errorCode = U_ERROR_COMMON_TIMEOUT;
+        if (xSemaphoreTake((SemaphoreHandle_t) semaphoreHandle,
+                           MS_TO_TICKS(delayMs)) == pdTRUE) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Give the semaphore.
+int32_t uPortSemaphoreGive(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (semaphoreHandle != NULL) {
+        xSemaphoreGive((SemaphoreHandle_t) semaphoreHandle);
+        errorCode = U_ERROR_COMMON_SUCCESS;
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Give the semaphore from interrupt.
+int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    BaseType_t yield = false;
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (semaphoreHandle != NULL) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        if (xSemaphoreGiveFromISR((uPortSemaphoreHandle_t) semaphoreHandle,
+                                  &yield) == pdTRUE) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    // Required for correct FreeRTOS operation
+    if (yield) {
+        taskYIELD();
     }
 
     return (int32_t) errorCode;

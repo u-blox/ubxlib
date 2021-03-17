@@ -430,6 +430,97 @@ int32_t uPortMutexUnlock(const uPortMutexHandle_t mutexHandle)
     return (int32_t) errorCode;
 }
 
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: SEMAPHORES
+ * -------------------------------------------------------------- */
+
+// Create a semaphore
+int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
+                             uint32_t initialCount,
+                             uint32_t limit)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((pSemaphoreHandle != NULL) && (limit != 0) && (initialCount <= limit)) {
+        errorCode = U_ERROR_COMMON_NO_MEMORY;
+        // Actually create the semaphore
+        *pSemaphoreHandle = (uPortSemaphoreHandle_t) k_malloc(sizeof(struct k_sem));
+        if (*pSemaphoreHandle != NULL) {
+            errorCode = U_ERROR_COMMON_PLATFORM;
+            if (0 == k_sem_init((struct k_sem *)*pSemaphoreHandle, initialCount, limit)) {
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            }
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Destroy a semaphore
+int32_t uPortSemaphoreDelete(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (semaphoreHandle != NULL) {
+        k_free((struct k_sem *) semaphoreHandle);
+        errorCode = U_ERROR_COMMON_SUCCESS;
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Take a semaphore
+int32_t uPortSemaphoreTake(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    struct k_sem *ksemaphore = (struct k_sem *) semaphoreHandle;
+
+    if (semaphoreHandle != NULL) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        if (k_sem_take(ksemaphore, (k_timeout_t ) portMAX_DELAY) == 0) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Try to take a semaphore
+int32_t uPortSemaphoreTryTake(const uPortSemaphoreHandle_t semaphoreHandle,
+                              int32_t delayMs)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    struct k_sem *ksemaphore = (struct k_sem *) semaphoreHandle;
+
+    if (ksemaphore != NULL) {
+        errorCode = U_ERROR_COMMON_TIMEOUT;
+        if (k_sem_take(ksemaphore, K_MSEC(delayMs)) == 0) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Give a semaphore
+int32_t uPortSemaphoreGive(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (semaphoreHandle != NULL) {
+        k_sem_give((struct k_sem *) semaphoreHandle);
+        errorCode = U_ERROR_COMMON_SUCCESS;
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Give a semaphore from interrupt
+int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    return uPortSemaphoreGive(semaphoreHandle);
+}
+
 // Simple implementation of making a chunk of RAM executable in Zephyr
 void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
                                   size_t *pSize,
