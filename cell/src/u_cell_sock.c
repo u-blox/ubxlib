@@ -172,12 +172,14 @@ static uCellSockSocket_t *pFindBySockHandleModule(const uAtClientHandle_t atHand
     return pSock;
 }
 
-// Do AT+USOERR, for debug purposes.
-static void doUsoerr(uAtClientHandle_t atHandle)
+// Do AT+USOER, for debug purposes.
+static void doUsoer(uAtClientHandle_t atHandle)
 {
     uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+USOERR");
-    uAtClientCommandStopReadResponse(atHandle);
+    uAtClientCommandStart(atHandle, "AT+USOER");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+USOER:");
+    uAtClientResponseStop(atHandle);
     uAtClientUnlock(atHandle);
 }
 
@@ -397,7 +399,7 @@ static int32_t setOptionInt(const uCellSockSocket_t *pSocket,
             // Got an AT interace error, see
             // what the module's socket error
             // number has to say for debug purposes
-            doUsoerr(atHandle);
+            doUsoer(atHandle);
         }
     }
 
@@ -442,7 +444,7 @@ static int32_t getOptionInt(const uCellSockSocket_t *pSocket,
                     // Got an AT interace error, see
                     // what the module's socket error
                     // number has to say for debug purposes
-                    doUsoerr(atHandle);
+                    doUsoer(atHandle);
                 }
             }
         } else {
@@ -486,7 +488,7 @@ static int32_t setOptionLinger(const uCellSockSocket_t *pSocket,
             // Got an AT interace error, see
             // what the module's socket error
             // number has to say for debug purposes
-            doUsoerr(atHandle);
+            doUsoer(atHandle);
         }
     }
 
@@ -540,7 +542,7 @@ static int32_t getOptionLinger(const uCellSockSocket_t *pSocket,
                     // Got an AT interace error, see
                     // what the module's socket error
                     // number has to say for debug purposes
-                    doUsoerr(atHandle);
+                    doUsoer(atHandle);
                 }
             }
         } else {
@@ -662,7 +664,7 @@ int32_t uCellSockCreate(int32_t cellHandle,
                 sockFree(pSocket->sockHandle);
                 // See what the module's socket error
                 // number has to say for debug purposes
-                doUsoerr(atHandle);
+                doUsoer(atHandle);
             }
         }
     }
@@ -723,7 +725,7 @@ int32_t uCellSockConnect(int32_t cellHandle,
                         // Got an AT interace error, see
                         // what the module's socket error
                         // number has to say for debug purposes
-                        doUsoerr(atHandle);
+                        doUsoer(atHandle);
                         uPortTaskBlock(1000);
                     }
                 }
@@ -804,7 +806,7 @@ int32_t uCellSockClose(int32_t cellHandle,
                     // Got an AT interace error, see
                     // what the module's socket error
                     // number has to say for debug purposes
-                    doUsoerr(atHandle);
+                    doUsoer(atHandle);
                 }
             }
         }
@@ -1051,7 +1053,7 @@ int32_t uCellSockSecure(int32_t cellHandle,
                     // Got an AT interace error, see
                     // what the module's socket error
                     // number has to say for debug purposes
-                    doUsoerr(atHandle);
+                    doUsoer(atHandle);
                 }
             }
         }
@@ -1365,7 +1367,7 @@ int32_t uCellSockWrite(int32_t cellHandle,
                             // Got an AT interace error, see
                             // what the module's socket error
                             // number has to say for debug purposes
-                            doUsoerr(atHandle);
+                            doUsoer(atHandle);
                         }
                     } else {
                         negErrnoLocalOrSize = -U_SOCK_EIO;
@@ -1674,7 +1676,7 @@ int32_t uCellSockGetHostByName(int32_t cellHandle,
                 // Got an AT interace error, see
                 // what the module's socket error
                 // number has to say for debug purposes
-                doUsoerr(atHandle);
+                doUsoer(atHandle);
                 uPortTaskBlock(U_CELL_SOCK_DNS_SHOULD_RETRY_MS / 2);
             }
         }
