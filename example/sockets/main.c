@@ -42,9 +42,6 @@
 #include "u_cfg_sw.h"
 #include "u_port_debug.h"
 
-// Required for a retry delay
-#include "u_port_os.h"
-
 // For default values for U_CFG_APP_xxx
 #include "u_cfg_app_platform_specific.h"
 
@@ -192,8 +189,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
 {
     int32_t networkHandle;
     int32_t sock;
-    int32_t x;
-    bool connected;
+    int32_t x = 0;
     uSockAddress_t address;
     const char message[] = "The quick brown fox jumps over the lazy dog.";
     size_t txSize = sizeof(message);
@@ -237,20 +233,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
                            U_SOCK_PROTOCOL_TCP);
 
         // Make a TCP connection to the server using
-        // the socket. During our test campaigns, with
-        // many boards running at once, this can fail
-        // due to collisions, so try a few times with
-        // a little delay
-        for (x = 3; !(connected = (uSockConnect(sock, &address) >= 0)) &&
-             (x > 0); x--) {
-            uPortTaskBlock(5000);
-        }
-
-        if (connected) {
+        // the socket
+        if (uSockConnect(sock, &address) == 0) {
             // Send the data over the socket
             // and print the echo that comes back
             uPortLog("Sending data...\n");
-            x = 0;
             while ((x >= 0) && (txSize > 0)) {
                 x = uSockWrite(sock, message, txSize);
                 if (x > 0) {
