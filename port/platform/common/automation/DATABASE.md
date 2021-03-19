@@ -38,7 +38,7 @@ Note: the Zephyr platform requires board-level definitions rather than just MCU-
 
 Notes:
 - Don't change existing instance IDs without checking the rest of the automation system for scripts which "know" about their numbers (e.g. the `esp32` ones do).
-- The "APIs available" column indicates which APIs are available to *test* on a given instance: other APIs may be available on that instance but the ones listed in that column are the ones that are intended to be tested on that instance (since in some cases specific board capabilites/wiring are required).
+- The "APIs available" column indicates which APIs are available to *test* on a given instance; any APIs available on an instance will usually be tested but the `u_select.py` automation script (see [README.md](README.md#script-usage)) can use the APIs in this column when chosing a reduced set of APIs to test.
 - The #defines listed are *overrides* on the default values that are defined in the code or additional to those defined in the code; they are not a complete list.
 - The instances on which `at_client` is available to test use the same wiring as the other boards but allocate UARTs to pins differently: two UARTs are used for back-to-back testing, no flow control, and the CTS/RTS pins that are back-to-back connected for `port` UART testing are instead allocated to the second UART; on these instances the `port` UART test will be skipped.
 - The cellular tests take quite a long time to run and so where there are two SDKs on a single platform usually only one of them will run the cellular tests to keep the execution time down.
