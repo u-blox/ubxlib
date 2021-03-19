@@ -648,7 +648,7 @@ int32_t uCellInfoGetImsi(int32_t cellHandle,
         if ((pInstance != NULL) && (pImsi != NULL)) {
             errorCode = uCellPrivateGetImsi(pInstance, pImsi);
             if (errorCode == 0) {
-                uPortLog("U_CELL_INFO: IMSI is %*s.\n",
+                uPortLog("U_CELL_INFO: IMSI is %.*s.\n",
                          U_CELL_INFO_IMSI_SIZE, pImsi);
             } else {
                 uPortLog("U_CELL_INFO: unable to read IMSI.\n");
