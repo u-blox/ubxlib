@@ -22,15 +22,17 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "u_short_range_edm.h"
 
-#define U_SHORT_RANGE_EDM_SIZE_HEAD               1
-#define U_SHORT_RANGE_EDM_SIZE_TAIL               1
-#define U_SHORT_RANGE_EDM_SIZE_LENGTH             2
-#define U_SHORT_RANGE_EDM_HEAD                    0xAA
-#define U_SHORT_RANGE_EDM_TAIL                    0x55
-#define U_SHORT_RANGE_EDM_LENGTH_FILTER           0x0F
+//lint -e818 skip all "could be declared as const" warnings
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS
+ * -------------------------------------------------------------- */
+#define U_SHORT_RANGE_EDM_HEAD                    ((char)0xAA)
+#define U_SHORT_RANGE_EDM_TAIL                    ((char)0x55)
 
 #define U_SHORT_RANGE_EDM_TYPE_CONNECT_EVENT      0x11
 #define U_SHORT_RANGE_EDM_TYPE_DISCONNECT_EVENT   0x21
@@ -46,43 +48,45 @@
 #define U_SHORT_RANGE_EDM_CONNECTION_TYPE_IPv4    0x02
 #define U_SHORT_RANGE_EDM_CONNECTION_TYPE_IPv6    0x03
 
-static uShortRangeEdmEventType_t findEventType(char evt, char connectionType)
-{
-    uShortRangeEdmEventType_t type;
+#define U_SHORT_RANGE_EDM_SHORT_BUFFER_LENGTH     256
 
-    switch (evt) {
-        case U_SHORT_RANGE_EDM_TYPE_CONNECT_EVENT:
-            if (connectionType == U_SHORT_RANGE_EDM_CONNECTION_TYPE_BT) {
-                type = U_SHORT_RANGE_EDM_EVENT_CONNECT_BT;
-            } else if (connectionType == U_SHORT_RANGE_EDM_CONNECTION_TYPE_IPv4) {
-                type = U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv4;
-            } else if (connectionType == U_SHORT_RANGE_EDM_CONNECTION_TYPE_IPv6) {
-                type = U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv6;
-            } else {
-                type = U_SHORT_RANGE_EDM_EVENT_INVALID;
-            }
-            break;
-        case U_SHORT_RANGE_EDM_TYPE_DISCONNECT_EVENT:
-            type = U_SHORT_RANGE_EDM_EVENT_DISCONNECT;
-            break;
-        case U_SHORT_RANGE_EDM_TYPE_DATA_EVENT:
-            type = U_SHORT_RANGE_EDM_EVENT_DATA;
-            break;
-        case U_SHORT_RANGE_EDM_TYPE_AT_RESPONSE:
-        case U_SHORT_RANGE_EDM_TYPE_AT_EVENT:
-            type = U_SHORT_RANGE_EDM_EVENT_AT;
-            break;
-        case U_SHORT_RANGE_EDM_TYPE_START_EVENT:
-            type = U_SHORT_RANGE_EDM_EVENT_STARTUP;
-            break;
-        default:
-            type = U_SHORT_RANGE_EDM_EVENT_INVALID;
-            break;
-    }
+/* ----------------------------------------------------------------
+ * TYPES
+ * -------------------------------------------------------------- */
+typedef enum {
+    EDM_PARSER_STATE_PARSE_START_BYTE,
+    EDM_PARSER_STATE_PARSE_PAYLOAD_LENGTH,
+    EDM_PARSER_STATE_ACCUMULATE_PAYLOAD,
+    EDM_PARSER_STATE_PARSE_TAIL_BYTE,
+    EDM_PARSER_STATE_WAIT_FOR_EVENT_PROCESSING
+} edmParserState_t;
 
-    return type;
-}
+/* ----------------------------------------------------------------
+ * STATIC PROTOTYPES
+ * -------------------------------------------------------------- */
+static uShortRangeEdmBtProfile_t getBtProfile(char value);
+static uShortRangeEdmIpProtocol_t getIpProtocol(char value);
+static uShortRangeEdmEvent_t *allocateEdmEvent(void);
+static uShortRangeEdmEvent_t *parseConnectBtEvent(char *buffer, uint16_t payloadLength);
+static uShortRangeEdmEvent_t *parseConnectIpv4Event(char *buffer, uint16_t payloadLength);
+static uShortRangeEdmEvent_t *parseConnectIpv6Event(char *buffer, uint16_t payloadLength);
+static uShortRangeEdmEvent_t *parseConnectEvent(char *buffer, uint16_t payloadLength);
+static uShortRangeEdmEvent_t *parseDisconnectEvent(char *buffer, uint16_t payloadLength);
+static uShortRangeEdmEvent_t *parseDataEvent(char *buffer, uint16_t payloadLength);
+static uShortRangeEdmEvent_t *parseAtResponseOrEvent(char *buffer, uint16_t payloadLength);
+static uShortRangeEdmEvent_t *parseEdmPayload(char *buffer, uint16_t payloadLength);
+static void resetPayload(void);
 
+/* ----------------------------------------------------------------
+ * STATIC VARIABLES
+ * -------------------------------------------------------------- */
+static edmParserState_t gEdmParserState = EDM_PARSER_STATE_PARSE_START_BYTE;
+static char gShortPayloadBuffer[U_SHORT_RANGE_EDM_SHORT_BUFFER_LENGTH];
+static char *gpPayload = gShortPayloadBuffer;
+
+/* ----------------------------------------------------------------
+ * STATIC FUNCTIONS
+ * -------------------------------------------------------------- */
 static uShortRangeEdmBtProfile_t getBtProfile(char value)
 {
     uShortRangeEdmBtProfile_t profile;
@@ -124,132 +128,293 @@ static uShortRangeEdmIpProtocol_t getIpProtocol(char value)
     return protocol;
 }
 
-int32_t uShortRangeEdmParse(char *pInData, size_t size, uShortRangeEdmEvent_t *pEventData,
-                            int32_t *pExpectedSize, size_t *pConsumed)
+static uShortRangeEdmEvent_t *allocateEdmEvent(void)
 {
-    int32_t error = U_SHORT_RANGE_EDM_OK;
-    uint32_t length;
-    uint32_t used;
-    char *packetHead = pInData;
+    static uShortRangeEdmEvent_t gEdmEvent;
 
-    *pExpectedSize = -1;
+    return &gEdmEvent;
+}
 
-    if (packetHead == NULL || size == 0) {
-        *pConsumed = 0;
-        return U_SHORT_RANGE_EDM_ERROR_PARAM;
+static uShortRangeEdmEvent_t *parseConnectBtEvent(char *buffer, uint16_t payloadLength)
+{
+    uShortRangeEdmEvent_t *pEvent = NULL;
+    uShortRangeEdmBtProfile_t profile = getBtProfile(buffer[2]);
+
+    if ((payloadLength == 11) && (profile != U_SHORT_RANGE_EDM_BT_PROFILE_INVALID)) {
+        pEvent = allocateEdmEvent();
+        pEvent->type = U_SHORT_RANGE_EDM_EVENT_CONNECT_BT;
+        pEvent->params.btConnectEvent.profile = profile;
+        pEvent->params.btConnectEvent.channel = buffer[0];
+        memcpy(pEvent->params.btConnectEvent.address, &buffer[3], U_SHORT_RANGE_EDM_BT_ADDRESS_LENGTH);
+        pEvent->params.btConnectEvent.framesize = ((uint16_t)(uint8_t)buffer[9] << 8) |
+                                                  (uint16_t)( uint8_t)buffer[10];
     }
 
-    for (used = 0; used < size; used++) {
-        if (*(packetHead + used) == (char)U_SHORT_RANGE_EDM_HEAD) {
-            packetHead += used;
-            break;
+    return pEvent;
+}
+
+static uShortRangeEdmEvent_t *parseConnectIpv4Event(char *buffer, uint16_t payloadLength)
+{
+    uShortRangeEdmEvent_t *pEvent = NULL;
+    uShortRangeEdmIpProtocol_t protocol = getIpProtocol(buffer[2]);
+
+    if ((payloadLength == 15) && (protocol != U_SHORT_RANGE_EDM_IP_PROTOCOL_INVALID)) {
+        pEvent = allocateEdmEvent();
+        pEvent->type = U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv4;
+        pEvent->params.ipv4ConnectEvent.channel = buffer[0];
+        pEvent->params.ipv4ConnectEvent.protocol = protocol;
+        memcpy(pEvent->params.ipv4ConnectEvent.remoteAddress, &buffer[3],
+               U_SHORT_RANGE_EDM_IPv4_ADDRESS_LENGTH);
+        pEvent->params.ipv4ConnectEvent.remotePort = ((uint16_t)(uint8_t)buffer[7] << 8) |
+                                                     (uint16_t)(uint8_t)buffer[8];
+        memcpy(pEvent->params.ipv4ConnectEvent.localAddress, &buffer[9],
+               U_SHORT_RANGE_EDM_IPv4_ADDRESS_LENGTH);
+        pEvent->params.ipv4ConnectEvent.localPort = ((uint16_t)(uint8_t)buffer[13]) |
+                                                    (uint16_t)(uint8_t)buffer[14];
+    }
+
+    return pEvent;
+}
+
+static uShortRangeEdmEvent_t *parseConnectIpv6Event(char *buffer, uint16_t payloadLength)
+{
+    uShortRangeEdmEvent_t *pEvent = NULL;
+    uShortRangeEdmIpProtocol_t protocol = getIpProtocol(buffer[2]);
+
+    if ((payloadLength == 39) && (protocol != U_SHORT_RANGE_EDM_IP_PROTOCOL_INVALID)) {
+        pEvent = allocateEdmEvent();
+        pEvent->type = U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv6;
+        pEvent->params.ipv6ConnectEvent.channel = buffer[0];
+        pEvent->params.ipv6ConnectEvent.protocol = protocol;
+        memcpy(pEvent->params.ipv6ConnectEvent.remoteAddress, &buffer[3],
+               U_SHORT_RANGE_EDM_IPv6_ADDRESS_LENGTH);
+        pEvent->params.ipv6ConnectEvent.remotePort = ((uint16_t)(uint8_t)buffer[19] << 8) |
+                                                     (uint16_t)(uint8_t)buffer[20];
+        memcpy(pEvent->params.ipv6ConnectEvent.localAddress, &buffer[21],
+               U_SHORT_RANGE_EDM_IPv6_ADDRESS_LENGTH);
+        pEvent->params.ipv6ConnectEvent.localPort = ((uint16_t)(uint8_t)buffer[37] << 8) |
+                                                    (uint16_t)(uint8_t)buffer[38];
+    }
+
+    return pEvent;
+}
+
+static uShortRangeEdmEvent_t *parseConnectEvent(char *buffer, uint16_t payloadLength)
+{
+    uShortRangeEdmEvent_t *pEvent = NULL;
+
+    if (payloadLength > 2) {
+        uint8_t type = (uint8_t)buffer[1];
+
+        switch (type) {
+
+            case U_SHORT_RANGE_EDM_CONNECTION_TYPE_BT:
+                pEvent = parseConnectBtEvent(buffer, payloadLength);
+                break;
+
+            case U_SHORT_RANGE_EDM_CONNECTION_TYPE_IPv4:
+                pEvent = parseConnectIpv4Event(buffer, payloadLength);
+                break;
+
+            case U_SHORT_RANGE_EDM_CONNECTION_TYPE_IPv6:
+                pEvent = parseConnectIpv6Event(buffer, payloadLength);
+                break;
+
+            default:
+                break;
         }
     }
 
-    if (used == size) {
-        *pConsumed = used;
-        return U_SHORT_RANGE_EDM_ERROR_INVALID;
+    return pEvent;
+}
+
+static uShortRangeEdmEvent_t *parseDisconnectEvent(char *buffer, uint16_t payloadLength)
+{
+    uShortRangeEdmEvent_t *pEvent = NULL;
+
+    if (payloadLength == 1) {
+        pEvent = allocateEdmEvent();
+        pEvent->type = U_SHORT_RANGE_EDM_EVENT_DISCONNECT;
+        pEvent->params.disconnectEvent.channel = (uint8_t)buffer[0];
     }
 
-    if ((uint32_t)size < used + 2) {
-        *pConsumed = used;
-        return U_SHORT_RANGE_EDM_ERROR_INCOMPLETE;
+    return pEvent;
+}
+
+static uShortRangeEdmEvent_t *parseDataEvent(char *buffer, uint16_t payloadLength)
+{
+    uShortRangeEdmEvent_t *pEvent = NULL;
+
+    if (payloadLength > 1) {
+        pEvent = allocateEdmEvent();
+        pEvent->type = U_SHORT_RANGE_EDM_EVENT_DATA;
+        pEvent->params.dataEvent.channel = (uint8_t)buffer[0];
+        pEvent->params.dataEvent.pData = &buffer[1];
+        pEvent->params.dataEvent.length = payloadLength - 1;
     }
 
-    length = ((*(packetHead + 1) & U_SHORT_RANGE_EDM_LENGTH_FILTER) << 8) + (*(packetHead + 2) & 0xFF);
+    return pEvent;
+}
 
-    if (((uint32_t)size - used) < (U_SHORT_RANGE_EDM_SIZE_HEAD + U_SHORT_RANGE_EDM_SIZE_LENGTH + length
-                                   +
-                                   U_SHORT_RANGE_EDM_SIZE_TAIL)) {
-        *pExpectedSize = (int32_t)length;
-        *pConsumed = used;
-        return U_SHORT_RANGE_EDM_ERROR_INCOMPLETE;
-    }
+static uShortRangeEdmEvent_t *parseAtResponseOrEvent(char *buffer, uint16_t payloadLength)
+{
+    uShortRangeEdmEvent_t *pEvent = allocateEdmEvent();
+    pEvent->type = U_SHORT_RANGE_EDM_EVENT_AT;
+    pEvent->params.atEvent.pData = buffer;
+    pEvent->params.atEvent.length = payloadLength;
+    return pEvent;
+}
 
-    if (*(packetHead + length + U_SHORT_RANGE_EDM_SIZE_HEAD + U_SHORT_RANGE_EDM_SIZE_LENGTH) !=
-        (char)U_SHORT_RANGE_EDM_TAIL) {
-        *pConsumed = (size_t)used + U_SHORT_RANGE_EDM_SIZE_HEAD + U_SHORT_RANGE_EDM_SIZE_LENGTH +
-                     (size_t)length +
-                     U_SHORT_RANGE_EDM_SIZE_TAIL;
-        return U_SHORT_RANGE_EDM_ERROR_SIZE;
-    }
+static uShortRangeEdmEvent_t *parseEdmPayload(char *buffer, uint16_t payloadLength)
+{
+    uShortRangeEdmEvent_t *pEvent = NULL;
+    uint16_t idAndType = ((uint16_t)(uint8_t)buffer[0] << 8) | (uint16_t)(uint8_t)buffer[1];
+    char *pSubPayload = buffer + 2;
+    uint16_t subPayloadLength = payloadLength - 2;
 
-    pEventData->type = findEventType(*(packetHead + 4), *(packetHead + 6));
+    switch (idAndType) {
+        case U_SHORT_RANGE_EDM_TYPE_CONNECT_EVENT:
+            pEvent = parseConnectEvent(pSubPayload, subPayloadLength);
+            break;
 
-    switch (pEventData->type) {
-        case U_SHORT_RANGE_EDM_EVENT_CONNECT_BT: {
-            uShortRangeEdmBtProfile_t profile = getBtProfile(*(packetHead + 7));
-            if (profile == U_SHORT_RANGE_EDM_BT_PROFILE_INVALID) {
-                error = U_SHORT_RANGE_EDM_ERROR_CORRUPTED;
-                pEventData->type = U_SHORT_RANGE_EDM_EVENT_INVALID;
-            } else {
-                pEventData->params.btConnectEvent.profile = profile;
-                pEventData->params.btConnectEvent.channel = (*(packetHead + 5) & 0xFF);
-                pEventData->params.btConnectEvent.framesize = ((*(packetHead + 14) & 0xFF) << 8) +
-                                                              (*(packetHead + 15) & 0xFF);
-                memcpy(&pEventData->params.btConnectEvent.address[0], packetHead + 8,
-                       U_SHORT_RANGE_EDM_BT_ADDRESS_LENGTH);
+        case U_SHORT_RANGE_EDM_TYPE_DISCONNECT_EVENT:
+            pEvent = parseDisconnectEvent(pSubPayload, subPayloadLength);
+            break;
+
+        case U_SHORT_RANGE_EDM_TYPE_DATA_EVENT:
+            pEvent = parseDataEvent(pSubPayload, subPayloadLength);
+            break;
+
+        case U_SHORT_RANGE_EDM_TYPE_AT_RESPONSE:
+        case U_SHORT_RANGE_EDM_TYPE_AT_EVENT:
+            pEvent = parseAtResponseOrEvent(pSubPayload, subPayloadLength);
+            break;
+
+        case U_SHORT_RANGE_EDM_TYPE_START_EVENT:
+            if (subPayloadLength == 0) {
+                pEvent = allocateEdmEvent();
+                pEvent->type = U_SHORT_RANGE_EDM_EVENT_STARTUP;
             }
-            used += 17;
             break;
-        }
-        case U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv4:
-            pEventData->params.ipv4ConnectEvent.channel = (*(packetHead + 5) & 0xFF);
-            pEventData->params.ipv4ConnectEvent.protocol = getIpProtocol(*(packetHead + 7));
-            memcpy(&pEventData->params.ipv4ConnectEvent.remoteAddress[0], packetHead + 8,
-                   U_SHORT_RANGE_EDM_IPv4_ADDRESS_LENGTH);
-            pEventData->params.ipv4ConnectEvent.remotePort = ((*(packetHead + 12) & 0xFF) << 8) +
-                                                             (*(packetHead + 13) & 0xFF);
-            memcpy(&pEventData->params.ipv4ConnectEvent.localAddress[0], packetHead + 14,
-                   U_SHORT_RANGE_EDM_IPv4_ADDRESS_LENGTH);
-            pEventData->params.ipv4ConnectEvent.localPort = ((*(packetHead + 18) & 0xFF) << 8) + (*
-                                                                                                  (packetHead + 19) & 0xFF);
-            used += 21;
+
+        //lint -e825
+        case U_SHORT_RANGE_EDM_TYPE_DATA_COMMAND:
+        case U_SHORT_RANGE_EDM_TYPE_AT_REQUEST:
+            pEvent = NULL;
             break;
-        case U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv6:
-            pEventData->params.ipv6ConnectEvent.channel = (*(packetHead + 5) & 0xFF);
-            pEventData->params.ipv6ConnectEvent.protocol = getIpProtocol(*(packetHead + 7));
-            memcpy(&pEventData->params.ipv6ConnectEvent.remoteAddress[0], packetHead + 8,
-                   U_SHORT_RANGE_EDM_IPv6_ADDRESS_LENGTH);
-            pEventData->params.ipv6ConnectEvent.remotePort = ((*(packetHead + 24) & 0xFF) << 8) + (*
-                                                                                                   (packetHead + 25) & 0xFF);
-            memcpy(&pEventData->params.ipv6ConnectEvent.localAddress[0], packetHead + 26,
-                   U_SHORT_RANGE_EDM_IPv6_ADDRESS_LENGTH);
-            pEventData->params.ipv6ConnectEvent.localPort = ((*(packetHead + 42) & 0xFF) << 8) + (*
-                                                                                                  (packetHead + 43) & 0xFF);
-            used += 45;
-            break;
-        case U_SHORT_RANGE_EDM_EVENT_DISCONNECT:
-            pEventData->params.disconnectEvent.channel = (*(packetHead + 5) & 0xFF);
-            used += 7;
-            break;
-        case U_SHORT_RANGE_EDM_EVENT_DATA:
-            pEventData->params.dataEvent.channel = *(packetHead + 5);
-            pEventData->params.dataEvent.pData = packetHead + 6;
-            length = ((*(packetHead + 1) & U_SHORT_RANGE_EDM_LENGTH_FILTER) << 8) + *(packetHead + 2);
-            pEventData->params.dataEvent.length = (uint16_t)(length - 3);
-            used += length + 4;
-            break;
-        case U_SHORT_RANGE_EDM_EVENT_AT:
-            pEventData->params.atEvent.pData = packetHead + 5;
-            length = ((*(packetHead + 1) & U_SHORT_RANGE_EDM_LENGTH_FILTER) << 8) + *(packetHead + 2);
-            pEventData->params.atEvent.length = (uint16_t)(length - 2);
-            used += length + 4;
-            break;
-        case U_SHORT_RANGE_EDM_EVENT_STARTUP:
-            used += 6;
-            break;
-        case U_SHORT_RANGE_EDM_EVENT_INVALID:
+
         default:
-            used += U_SHORT_RANGE_EDM_SIZE_HEAD + U_SHORT_RANGE_EDM_SIZE_LENGTH + length +
-                    U_SHORT_RANGE_EDM_SIZE_TAIL;
-            error = U_SHORT_RANGE_EDM_ERROR_CORRUPTED;
+            pEvent = NULL;
             break;
     }
 
-    *pConsumed = used;
+    return pEvent;
+}
 
-    return error;
+static void resetPayload(void)
+{
+    if (gpPayload != gShortPayloadBuffer) {
+        free(gpPayload);
+        gpPayload = gShortPayloadBuffer;
+    }
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+bool uShortRangeEdmParserReady(void)
+{
+    return (gEdmParserState != EDM_PARSER_STATE_WAIT_FOR_EVENT_PROCESSING);
+}
+
+void uShortRangeEdmResetParser(void)
+{
+    resetPayload();
+    gEdmParserState = EDM_PARSER_STATE_PARSE_START_BYTE;
+}
+
+uShortRangeEdmEvent_t *uShortRangeEdmParse(char c)
+{
+    uShortRangeEdmEvent_t *pResultEvent = NULL;
+    edmParserState_t newState = gEdmParserState;
+    static uint32_t byteIndex;
+    static uint16_t payloadLength;
+
+    switch (gEdmParserState) {
+
+        case EDM_PARSER_STATE_PARSE_START_BYTE:
+            if (c == U_SHORT_RANGE_EDM_HEAD) {
+                newState = EDM_PARSER_STATE_PARSE_PAYLOAD_LENGTH;
+                byteIndex = 0;
+            }
+            break;
+
+        case EDM_PARSER_STATE_PARSE_PAYLOAD_LENGTH:
+            if (byteIndex == 0) {
+                payloadLength = (uint16_t)(uint8_t)c << 8;
+                byteIndex++;
+            } else {
+                payloadLength |= (uint16_t)(uint8_t)c;
+                if (payloadLength < 2) {
+                    // Something is wrong, start over
+                    newState = EDM_PARSER_STATE_PARSE_START_BYTE;
+                } else {
+                    newState = EDM_PARSER_STATE_ACCUMULATE_PAYLOAD;
+                    byteIndex = 0;
+                    if (payloadLength > U_SHORT_RANGE_EDM_SHORT_BUFFER_LENGTH) {
+                        // Payload is too large to fit in the normal short buffer
+                        // malloc a larger buffer and free it later when the event
+                        // has been processed
+                        if (payloadLength <= U_SHORT_RANGE_EDM_MAX_SIZE) {
+                            gpPayload = (char *)malloc(payloadLength);
+                        } else {
+                            gpPayload = NULL;
+                        }
+                        if (gpPayload == NULL) {
+                            // We could not allocate a buffer
+                            // Reset parser
+                            gpPayload = gShortPayloadBuffer;
+                            newState = EDM_PARSER_STATE_PARSE_START_BYTE;
+                        }
+                    } else {
+                        gpPayload = gShortPayloadBuffer;
+                    }
+                }
+            }
+            break;
+
+        case EDM_PARSER_STATE_ACCUMULATE_PAYLOAD:
+            gpPayload[byteIndex++] = c;
+            if (byteIndex == payloadLength) {
+                newState = EDM_PARSER_STATE_PARSE_TAIL_BYTE;
+            }
+            break;
+
+        case EDM_PARSER_STATE_PARSE_TAIL_BYTE:
+            if (c == U_SHORT_RANGE_EDM_TAIL) {
+                pResultEvent = parseEdmPayload(gpPayload, payloadLength);
+            }
+            if (pResultEvent == NULL) {
+                // No event was generated
+                // Reset parser
+                resetPayload();
+                newState = EDM_PARSER_STATE_PARSE_START_BYTE;
+            } else {
+                newState = EDM_PARSER_STATE_WAIT_FOR_EVENT_PROCESSING;
+            }
+            break;
+
+        case EDM_PARSER_STATE_WAIT_FOR_EVENT_PROCESSING:
+            // Parser will stay in this state until parser is reset.
+            // This to avoid the parser overwriting data in an unprocessed event
+            // Any user of the parser thus have to reset the parser when it has
+            // processed a generated event, to make it ready for parsing
+            break;
+    }
+
+    gEdmParserState = newState;
+
+    return pResultEvent;
 }
 
 int32_t uShortRangeEdmZeroCopyHeadData(uint8_t channel, uint32_t size, char *pHead)
@@ -260,7 +425,7 @@ int32_t uShortRangeEdmZeroCopyHeadData(uint8_t channel, uint32_t size, char *pHe
 
     uint32_t edmSize = size + 3;
 
-    *pHead = (char)U_SHORT_RANGE_EDM_HEAD;
+    *pHead = U_SHORT_RANGE_EDM_HEAD;
     *(pHead + 1) = (char)(edmSize >> 8);
     *(pHead + 2) = (char)(edmSize & 0xFF);
     *(pHead + 3) = 0x00;
@@ -286,30 +451,17 @@ int32_t uShortRangeEdmData(uint8_t channel, const char *pData, int32_t size, cha
     return U_SHORT_RANGE_EDM_OK;
 }
 
-int32_t uShortRangeEdmZeroCopyHeadRequest(uint32_t size, char *pHead)
-{
-    if (pHead == NULL || size > U_SHORT_RANGE_EDM_MAX_SIZE) {
-        return U_SHORT_RANGE_EDM_ERROR_PARAM;
-    }
-
-    uint32_t edmSize = size + 2;
-
-    *pHead = (char)U_SHORT_RANGE_EDM_HEAD;
-    *(pHead + 1) = (char)(edmSize >> 8);
-    *(pHead + 2) = (char)(edmSize & 0xFF);
-    *(pHead + 3) = 0x00;
-    *(pHead + 4) = (char)U_SHORT_RANGE_EDM_TYPE_AT_REQUEST;
-
-    return 5;
-}
-
 int32_t uShortRangeEdmRequest(const char *pAt, int32_t size, char *pPacket)
 {
     if (pPacket == NULL || pAt == NULL || size > U_SHORT_RANGE_EDM_MAX_SIZE) {
         return U_SHORT_RANGE_EDM_ERROR;
     }
 
-    uShortRangeEdmZeroCopyHeadRequest(size, pPacket);
+    *pPacket = U_SHORT_RANGE_EDM_HEAD;
+    *(pPacket + 1) = (char)(((uint32_t)size + 2) >> 8);
+    *(pPacket + 2) = (char)((size + 2) & 0xFF);
+    *(pPacket + 3) = 0x00;
+    *(pPacket + 4) = (char)U_SHORT_RANGE_EDM_TYPE_AT_REQUEST;
     memcpy((pPacket + 5), pAt, size);
     *(pPacket + size + 5) = U_SHORT_RANGE_EDM_TAIL;
 

@@ -32,19 +32,19 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 #ifndef U_EDM_STREAM_TASK_STACK_SIZE_BYTES
-# define U_EDM_STREAM_TASK_STACK_SIZE_BYTES  1536
+#define U_EDM_STREAM_TASK_STACK_SIZE_BYTES  1536
 #endif
 
 #ifndef U_EDM_STREAM_AT_EVENT_QUEUE_SIZE
-# define U_EDM_STREAM_AT_EVENT_QUEUE_SIZE 1
+#define U_EDM_STREAM_AT_EVENT_QUEUE_SIZE 1
 #endif
 
 #ifndef U_EDM_STREAM_BT_EVENT_QUEUE_SIZE
-# define U_EDM_STREAM_BT_EVENT_QUEUE_SIZE 1
+#define U_EDM_STREAM_BT_EVENT_QUEUE_SIZE 1
 #endif
 
 #ifndef U_EDM_STREAM_DATA_EVENT_QUEUE_SIZE
-# define U_EDM_STREAM_DATA_EVENT_QUEUE_SIZE 1
+#define U_EDM_STREAM_DATA_EVENT_QUEUE_SIZE 1
 #endif
 
 
@@ -237,7 +237,7 @@ void uShortRangeEdmStreamWifiEventCallbackRemove(int32_t handle);
  */
 int32_t uShortRangeEdmStreamBtEventCallbackSet(int32_t handle,
                                                void (*pFunction)(int32_t, uint32_t, uint32_t,
-                                                                 bool, int32_t, char *, void *),
+                                                                 bool, int32_t, uint8_t *, void *),
                                                void *pParam,
                                                size_t stackSizeBytes,
                                                int32_t priority);
