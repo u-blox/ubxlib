@@ -14,17 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _U_CFG_HW_PLATFORM_SPECIFIC_H_
-#define _U_CFG_HW_PLATFORM_SPECIFIC_H_
-
-/* No #includes allowed here */
-
 /** @file
- * @brief This header file contains hardware configuration information for
- * the Zephyr platform that is built into this porting code.  You may
- * override these values as necessary.
+ * @brief Zephyr's minimal library offers malloc() and the like but
+ * doesn't have a malloc.h file.  Adding this one allows us to compile
+ * code.
  */
-
-#endif // _U_CFG_HW_PLATFORM_SPECIFIC_H_
-
-// End of file

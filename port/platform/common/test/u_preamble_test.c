@@ -36,13 +36,14 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "stdlib.h"    // rand()
-#include "string.h"    // strtok() and strcmp()
+#include "time.h"      // mktime()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
+#include "u_port_clib_platform_specific.h" /* In some cases mktime() and rand() */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -95,7 +96,6 @@ static char const gSha256Input[] =
  */
 U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
 {
-    char ubStr[] = "u-blox";
 #if U_CFG_ENABLE_LOGGING
     int32_t heapPlatformLoss;
 #endif
@@ -103,6 +103,7 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     int32_t handle;
 #endif
     char buffer[64];
+    struct tm tmStruct = {0,  0, 0,  1, 0,  70,  0, 0, 0};
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -122,11 +123,13 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     heapPlatformLoss = uPortGetHeapFree();
 #endif
 
+    uPortInit();
+
     // Call the things that allocate memory
     uPortLog("U_PREAMBLE_TEST: calling platform APIs that"
              " might allocate memory when first called...\n");
     rand();
-    strtok(ubStr, "-");
+    mktime(&tmStruct);
 
 #if (U_CFG_TEST_UART_A >= 0)
     handle = uPortUartOpen(U_CFG_TEST_UART_A, 115200,
@@ -153,6 +156,8 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
     // which is never deleted.
     uPortCryptoSha256(gSha256Input, sizeof(gSha256Input) - 1,
                       buffer);
+
+    uPortDeinit();
 
 #if U_CFG_ENABLE_LOGGING
     heapPlatformLoss -= uPortGetHeapFree();

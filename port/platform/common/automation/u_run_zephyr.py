@@ -434,13 +434,16 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                                     printer,
                                                                                     prompt)
                                                 if telnet_handle is not None:
-                                                    # Monitor progress
+                                                    # Monitor progress:
+                                                    # Note that the minimal C library used
+                                                    # by Zephyr emits "\n" as a line terminator
+                                                    # rather than "\r\n"
                                                     return_value = u_monitor.    \
                                                                    main(telnet_handle,
                                                                         u_monitor.CONNECTION_TELNET,
                                                                         RUN_GUARD_TIME_SECONDS,
                                                                         RUN_INACTIVITY_TIME_SECONDS,
-                                                                        instance, printer,
+                                                                        "\n", instance, printer,
                                                                         reporter,
                                                                         test_report_handle)
                                                     telnet_handle.close()

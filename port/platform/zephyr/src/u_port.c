@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of generic porting functions for the NRF52 platform.
+ * @brief Implementation of generic porting functions for the Zephyr platform.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -112,18 +112,25 @@ int32_t uPortGetHeapMinFree()
 }
 
 // Get the current free heap.
-// IMPORTANT: this ISN'T actually the free heap, it is
-// simply the heap which newlib has asked for from
-// which is the real source of heap sbrk(). However,
-// on Zephyr there is no access to the status of sbrk()
-// so this will have to do, just note that as heap
-// reduces it may suddenly jump up again when newlib asks
-// for more room
 int32_t uPortGetHeapFree()
 {
+    int32_t heapFreeOrError = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+#ifdef U_CFG_ZEPHYR_USE_NEWLIB
+    // IMPORTANT: this ISN'T actually the free heap, it is
+    // simply the heap which newlib has asked for from
+    // which is the real source of heap sbrk(). However,
+    // on Zephyr there is no access to the status of sbrk()
+    // so this will have to do, just note that as heap
+    // reduces it may suddenly jump up again when newlib asks
+    // for more room
+    // Note: there's currently no way to do this
+    // with the built-in Zephyr malloc()ator
     struct mallinfo mallInfo = mallinfo();
 
-    return (int32_t) mallInfo.fordblks;
+    heapFreeOrError = (int32_t) mallInfo.fordblks;
+#endif
+
+    return heapFreeOrError;
 }
 
 // End of file

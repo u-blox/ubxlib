@@ -308,21 +308,22 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "limits.h"    // For UCHAR_MAX, USHRT_MAX, INT_MAX
+#include "limits.h"        // For UCHAR_MAX, USHRT_MAX, INT_MAX
 #include "errno.h"
-#include "stdlib.h"    // malloc() and free()
-#include "stddef.h"    // NULL, size_t etc.
-#include "stdint.h"    // int32_t etc.
+#include "stdlib.h"        // malloc() and free()
+#include "stddef.h"        // NULL, size_t etc.
+#include "stdint.h"        // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // strlen(), strchr(), strtol()
-#include "stdio.h"     // snprintf()
-#include "sys/time.h"  // struct timeval
+#include "string.h"        // strlen(), strchr(), strtol()
+#include "stdio.h"         // snprintf()
+#include "sys/time.h"      // mktime() and struct timeval in most cases
 
 #include "u_cfg_sw.h"
 
 #include "u_error_common.h"
 
-#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+#include "u_port_clib_platform_specific.h" /* struct timeval in some cases and
+                                              integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"

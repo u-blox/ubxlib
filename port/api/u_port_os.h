@@ -52,6 +52,10 @@ extern "C" {
  */
 typedef void *uPortMutexHandle_t;
 
+/** Semaphore handle.
+ */
+typedef void *uPortSemaphoreHandle_t;
+
 /** Queue handle.
  */
 typedef void *uPortQueueHandle_t;
@@ -263,6 +267,62 @@ int32_t uPortMutexTryLock(const uPortMutexHandle_t mutexHandle,
  * @return              zero on success else negative error code.
  */
 int32_t uPortMutexUnlock(const uPortMutexHandle_t mutexHandle);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: SEMAPHORES
+ * -------------------------------------------------------------- */
+
+/** Create a semaphore.
+ *
+ * @param pSemaphoreHandle a place to put the semaphore handle.
+ * @param initialCount     initial semaphore count
+ * @param limit            maximum permitted semaphore count
+ * @return                 zero on success else negative error code
+ */
+int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
+                             uint32_t initialCount,
+                             uint32_t limit);
+
+/** Destroy a semaphore.
+ *
+ * @param semaphoreHandle the handle of the semaphore.
+ * @return                zero on success else negative error code.
+ */
+int32_t uPortSemaphoreDelete(const uPortSemaphoreHandle_t semaphoreHandle);
+
+/** Take the given semaphore, waiting until it is available if
+ * it is already taken.
+ *
+ * @param semaphoreHandle  the handle of the semaphore.
+ * @return                 zero on success else negative error code.
+ */
+int32_t uPortSemaphoreTake(const uPortSemaphoreHandle_t semaphoreHandle);
+
+/** Try to take the given semaphore, waiting up to delayMs
+ * if it is currently taken.
+ *
+ * @param semaphoreHandle  the handle of the semaphore.
+ * @param delayMs          the maximum time to wait in milliseconds.
+ * @return                 zero on success else negative error code.
+ */
+int32_t uPortSemaphoreTryTake(const uPortSemaphoreHandle_t semaphoreHandle,
+                              int32_t delayMs);
+
+/** Give a semaphore, unless the semaphore is already at its maximum permitted
+ *  count.
+ *
+ * @param semaphoreHandle  the handle of the semaphore.
+ * @return                 zero on success else negative error code.
+ */
+int32_t uPortSemaphoreGive(const uPortSemaphoreHandle_t semaphoreHandle);
+
+/** Give a semaphore from interrupt, unless the semaphore is already at its
+ *  maximum permitted count.
+ *
+ * @param semaphoreHandle  the handle of the semaphore.
+ * @return                 zero on success else negative error code.
+ */
+int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: ACQUIRING EXECUTABLE MEMORY

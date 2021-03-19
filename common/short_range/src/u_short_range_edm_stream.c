@@ -43,15 +43,6 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-#ifndef U_SHORT_RANGE_EDM_STREAM_UART_RETRIES
-#define U_SHORT_RANGE_EDM_STREAM_UART_RETRIES       1
-#endif
-#ifndef U_SHORT_RANGE_EDM_STREAM_UART_RETRY_TIMEOUT
-#define U_SHORT_RANGE_EDM_STREAM_UART_RETRY_TIMEOUT 1
-#endif
-
-#define U_SHORT_RANGE_EDM_STREAM_BUFFER_SIZE        0x1001
 #define U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH  200
 // TODO: is this value correc?
 #define U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH 500
@@ -60,12 +51,6 @@
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-
-typedef enum {
-    U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_HEADER,
-    U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_LENGTH,
-    U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_REST
-} uShortRangeEdmStreamParseState_t;
 
 typedef enum {
     U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT,
@@ -107,7 +92,7 @@ typedef struct uEdmStreamInstance_t {
     int32_t dataEventQueueHandle;
     void (*pAtCallback)(int32_t, uint32_t, void *);
     void *pAtCallbackParam;
-    void (*pBtEventCallback)(int32_t, uint32_t, uint32_t, bool, int32_t, char *, void *);
+    void (*pBtEventCallback)(int32_t, uint32_t, uint32_t, bool, int32_t, uint8_t *, void *);
     void *pBtEventCallbackParam;
     //void (*pWifiEventCallback)(int32_t, uint32_t, void *);
     //void *pWifiEventCallbackParam;
@@ -115,8 +100,6 @@ typedef struct uEdmStreamInstance_t {
     void *pBtDataCallbackParam;
     void (*pWifiDataCallback)(int32_t, int32_t, int32_t, char *, void *);
     void *pWifiDataCallbackParam;
-    bool uartBufferAvailable;
-    char *pUartBuffer;
     char *pAtCommandBuffer;
     int32_t atCommandCurrent;
     char *pAtResponseBuffer;
@@ -135,7 +118,6 @@ static uShortRangeEdmStreamInstance_t gEdmStream;
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-static void fillBuffer(void);
 static void flushUart(int32_t uartHandle);
 
 // Find connection from channel, use -1 to get the first free slot
@@ -153,6 +135,14 @@ static uShortRangeEdmStreamConnections_t *findConnection(int32_t channel)
     return pConnection;
 }
 
+static void processedEvent(void)
+{
+    uShortRangeEdmResetParser();
+    // Trigger an event from the uart to get parsing going again
+    uPortUartEventSend(gEdmStream.uartHandle,
+                       U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+}
+
 // Event handler, calls the user's event callback.
 static void atEventHandler(void *pParam, size_t paramLength)
 {
@@ -164,6 +154,8 @@ static void atEventHandler(void *pParam, size_t paramLength)
                                U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
                                gEdmStream.pAtCallbackParam);
     }
+    // This event is not fully processed until uShortRangeEdmStreamAtRead has been called
+    // and all event data been read out
 }
 
 static void btEventHandler(void *pParam, size_t paramLength)
@@ -175,14 +167,11 @@ static void btEventHandler(void *pParam, size_t paramLength)
     if (pBtEvent != NULL) {
         if (gEdmStream.pBtEventCallback != NULL) {
             gEdmStream.pBtEventCallback(gEdmStream.handle, (uint32_t) pBtEvent->type, pBtEvent->channel,
-                                        pBtEvent->ble, (int32_t) pBtEvent->frameSize, (char *)&pBtEvent->address[0],
+                                        pBtEvent->ble, (int32_t) pBtEvent->frameSize, pBtEvent->address,
                                         gEdmStream.pBtEventCallbackParam);
         }
     }
-
-    gEdmStream.uartBufferAvailable = true;
-    uPortUartEventSend(gEdmStream.uartHandle,
-                       U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+    processedEvent();
 }
 
 static void dataEventHandler(void *pParam, size_t paramLength)
@@ -191,26 +180,138 @@ static void dataEventHandler(void *pParam, size_t paramLength)
 
     (void) paramLength;
 
-    if (pDataEvent != NULL) {
-        uShortRangeEdmStreamConnections_t *pConnection = findConnection(pDataEvent->channel);
 
-        if (pConnection != NULL && pConnection->type == U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT) {
-            if (gEdmStream.pBtDataCallback != NULL) {
-                gEdmStream.pBtDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
-                                           pDataEvent->pData, gEdmStream.pBtDataCallbackParam);
-            }
-        } else if (pConnection != NULL &&
-                   pConnection->type == U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_WIFI) {
-            if (gEdmStream.pWifiDataCallback != NULL) {
-                gEdmStream.pWifiDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
-                                             pDataEvent->pData, gEdmStream.pWifiDataCallbackParam);
+    if (pDataEvent != NULL) {
+        uShortRangeEdmStreamConnections_t *pConnection;
+
+        U_PORT_MUTEX_LOCK(gMutex);
+        pConnection = findConnection(pDataEvent->channel);
+
+        if (pConnection != NULL) {
+            switch (pConnection->type) {
+
+                case U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT:
+                    if (gEdmStream.pBtDataCallback != NULL) {
+                        gEdmStream.pBtDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
+                                                   pDataEvent->pData, gEdmStream.pBtDataCallbackParam);
+                    }
+                    break;
+
+                case U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_WIFI:
+                    if (gEdmStream.pWifiDataCallback != NULL) {
+                        gEdmStream.pWifiDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
+                                                     pDataEvent->pData, gEdmStream.pWifiDataCallbackParam);
+                    }
+                    break;
+
+                case U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID:
+                default:
+                    break;
             }
         }
-    }
 
-    gEdmStream.uartBufferAvailable = true;
-    uPortUartEventSend(gEdmStream.uartHandle,
-                       U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+        processedEvent();
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+}
+
+static void processEdmAtEvent(uShortRangeEdmEvent_t *pEvent)
+{
+    gEdmStream.atResponseLength = pEvent->params.atEvent.length;
+    gEdmStream.atResponseRead = 0;
+    memcpy(gEdmStream.pAtResponseBuffer, pEvent->params.atEvent.pData, gEdmStream.atResponseLength);
+
+    uPortEventQueueSend(gEdmStream.atEventQueueHandle,
+                        &gEdmStream.handle, sizeof(int32_t));
+}
+
+static void processEdmConnectBtEvent(uShortRangeEdmEvent_t *pEvent)
+{
+    uShortRangeEdmStreamConnections_t *pConnection =
+        findConnection(pEvent->params.btConnectEvent.channel);
+
+    if (pConnection == NULL) {
+        pConnection = findConnection(-1);
+    }
+    if (pConnection != NULL) {
+        uShortRangeEdmStreamBtEvent_t event;
+        pConnection->channel = pEvent->params.btConnectEvent.channel;
+        pConnection->type = U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT;
+        pConnection->frameSize = pEvent->params.btConnectEvent.framesize;
+
+        event.type = U_SHORT_RANGE_EDM_STREAM_CONNECTED;
+        event.ble = (pEvent->params.btConnectEvent.profile == U_SHORT_RANGE_EDM_BT_PROFILE_SPS);
+        event.channel = pEvent->params.btConnectEvent.channel;
+        memcpy(event.address, pEvent->params.btConnectEvent.address, U_SHORT_RANGE_EDM_BT_ADDRESS_LENGTH);
+        event.frameSize = pEvent->params.btConnectEvent.framesize;
+
+        uPortEventQueueSend(gEdmStream.btEventQueueHandle,
+                            &event, sizeof(uShortRangeEdmStreamBtEvent_t));
+    }
+}
+
+static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
+{
+    int32_t channel = (int32_t)pEvent->params.disconnectEvent.channel;
+    uShortRangeEdmStreamConnections_t *pConnection = findConnection(channel);
+
+    if (pConnection != NULL && pConnection->type == U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT) {
+        uShortRangeEdmStreamBtEvent_t event;
+
+        pConnection->channel = -1;
+        pConnection->type = U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID;
+        pConnection->frameSize = -1;
+        event.type = U_SHORT_RANGE_EDM_STREAM_DISCONNECTED;
+        event.channel = channel;
+
+        uPortEventQueueSend(gEdmStream.btEventQueueHandle,
+                            &event, sizeof(uShortRangeEdmStreamBtEvent_t));
+    }
+}
+
+static void processEdmDataEvent(uShortRangeEdmEvent_t *pEvent)
+{
+    uShortRangeEdmStreamDataEvent_t event;
+    event.channel = pEvent->params.dataEvent.channel;
+    event.pData = pEvent->params.dataEvent.pData;
+    event.length = pEvent->params.dataEvent.length;
+
+    uPortEventQueueSend(gEdmStream.dataEventQueueHandle,
+                        &event, sizeof(uShortRangeEdmStreamDataEvent_t));
+}
+
+static void processEdmEvent(uShortRangeEdmEvent_t *pEvent)
+{
+    switch (pEvent->type) {
+
+        case U_SHORT_RANGE_EDM_EVENT_AT:
+            processEdmAtEvent(pEvent);
+            break;
+
+        case U_SHORT_RANGE_EDM_EVENT_CONNECT_BT:
+            processEdmConnectBtEvent(pEvent);
+            break;
+
+        case U_SHORT_RANGE_EDM_EVENT_DISCONNECT:
+            processEdmDisconnectEvent(pEvent);
+            break;
+
+        case U_SHORT_RANGE_EDM_EVENT_DATA:
+            processEdmDataEvent(pEvent);
+            break;
+
+        case U_SHORT_RANGE_EDM_EVENT_STARTUP:
+            processedEvent();
+            break;
+
+        case U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv4:
+        case U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv6:
+        case U_SHORT_RANGE_EDM_EVENT_INVALID:
+            break;
+
+        default:
+            break;
+    }
 }
 
 static void uartCallback(int32_t uartHandle, uint32_t eventBitmask,
@@ -219,164 +320,50 @@ static void uartCallback(int32_t uartHandle, uint32_t eventBitmask,
     (void)pParameters;
     if (gEdmStream.uartHandle == uartHandle &&
         eventBitmask == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) {
-        if (gEdmStream.uartBufferAvailable) {
-            fillBuffer();
-        }
-    }
-}
+        bool uartEmpty = false;
+        // We don't want to read one character at the time from the uart driver since that will be
+        // quite an overhead when pumping a lot of data. Instead we read into a buffer
+        // and then comsume characters from that. But we might not consume all read characters
+        // before an EDM-event is generated by the parser which makes the parser unavailable
+        // and we have to leave this callback. When the parser later is available this
+        // uart-event will be placed on the queue again so that we come back here.
+        // We thus need a static buffer, and if there are unparsed characters left in it we move
+        // them to the beginning of the buffer befor leaving (instead of using a ring buffer).
+        U_PORT_MUTEX_LOCK(gMutex);
+        while (!uartEmpty && uShortRangeEdmParserReady()) {
+            // Loop until we couldn't read any more characters from uart
+            // or EDM parser is unavailable
+            static char buffer[128];
+            static size_t charsInBuffer = 0;
+            size_t consumed = 0;
 
-//gEdmStream.uartBufferMutex must be locked before calling this function
-static void fillBuffer(void)
-{
-    int32_t sizeOrError = -1;
-    size_t read = 0;
-    int32_t length = 0;
-    uShortRangeEdmStreamParseState_t state = U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_HEADER;
-
-    do {
-        uShortRangeEdmEvent_t evt;
-        size_t consumed;
-        if (state == U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_HEADER) {
-            sizeOrError = uPortUartRead(gEdmStream.uartHandle,
-                                        gEdmStream.pUartBuffer,
-                                        1);
-            if (sizeOrError > 0) {
-                int32_t dummy;
-                int32_t res = uShortRangeEdmParse(gEdmStream.pUartBuffer, 1, &evt, &dummy, &consumed);
-                if (res == U_SHORT_RANGE_EDM_ERROR_INCOMPLETE) {
-                    read = 1;
-                    state = U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_LENGTH;
+            // Check if there are any existing characters in the buffer and parse them
+            while (uShortRangeEdmParserReady() && (consumed < charsInBuffer)) {
+                //lint -esym(727, buffer)
+                uShortRangeEdmEvent_t *pEvent = uShortRangeEdmParse(buffer[consumed++]);
+                if (pEvent != NULL) {
+                    processEdmEvent(pEvent);
                 }
-            } else {
-                gEdmStream.uartBufferAvailable = true;
             }
-        } else if (state == U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_LENGTH) {
-            sizeOrError = uPortUartRead(gEdmStream.uartHandle,
-                                        gEdmStream.pUartBuffer + read,
-                                        2);
-            if (sizeOrError == 1) {
-                read++;
-            } else if ((sizeOrError == 1 && read == 2) || sizeOrError == 2) {
-                int32_t res = uShortRangeEdmParse(gEdmStream.pUartBuffer, 3, &evt, &length, &consumed);
-                if (res == U_SHORT_RANGE_EDM_ERROR_INCOMPLETE && length != -1) {
-                    //Add for header and tail
-                    length += 4;
-                    if (length > U_SHORT_RANGE_EDM_STREAM_BUFFER_SIZE) {
-                        //Packet is to large, discard by setting base state
-                        read = 0;
-                        state = U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_HEADER;
-                    } else {
-                        read = 3;
-                        state = U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_REST;
-                    }
-                }
-            } else {
-                gEdmStream.uartBufferAvailable = true;
+            // Move unparsed data to beginning of buffer
+            if ((consumed > 0) && (charsInBuffer - consumed) > 0) {
+                memmove(buffer, buffer + consumed, charsInBuffer - consumed);
             }
-        } else if (state == U_SHORT_RANGE_EDM_STREAM_PARSE_STATE_REST) {
-            int8_t retryCounter = 0;
-            //We can only handle a full EDM packet and the module will always try to send
-            //a full packet, so if there are not enough data retry after a short delay to
-            //make sure this is not due to a slow UART.
-            //If this still fails, returning from this function at least recover so that
-            //the next EDM packet are handle correctly.
-            do {
-                sizeOrError = uPortUartRead(gEdmStream.uartHandle,
-                                            gEdmStream.pUartBuffer + read,
-                                            length - read);
+            charsInBuffer -= consumed;
 
+            // Read as much as possible from uart into rest of buffer
+            if (charsInBuffer < sizeof buffer) {
+                int32_t sizeOrError = uPortUartRead(gEdmStream.uartHandle, buffer + charsInBuffer,
+                                                    sizeof buffer - charsInBuffer);
                 if (sizeOrError > 0) {
-                    break;
-                }
-                uPortTaskBlock(U_SHORT_RANGE_EDM_STREAM_UART_RETRY_TIMEOUT);
-                retryCounter++;
-            } while (retryCounter <= U_SHORT_RANGE_EDM_STREAM_UART_RETRIES);
-
-            if (sizeOrError > 0) {
-                //parse if ok
-                read += sizeOrError;
-                if (length == (int32_t) read) {
-                    //Full packet process
-                    gEdmStream.uartBufferAvailable = false;
-                    int res = uShortRangeEdmParse(gEdmStream.pUartBuffer, read, &evt, &length, &consumed);
-                    if (res != U_SHORT_RANGE_EDM_OK) {
-                        gEdmStream.uartBufferAvailable = true;
-                        sizeOrError = 0;
-                    } else {
-                        if (evt.type == U_SHORT_RANGE_EDM_EVENT_AT) {
-                            gEdmStream.atResponseLength = evt.params.atEvent.length;
-                            gEdmStream.atResponseRead = 0;
-                            memcpy(gEdmStream.pAtResponseBuffer, evt.params.atEvent.pData, gEdmStream.atResponseLength);
-
-                            uPortEventQueueSendIrq(gEdmStream.atEventQueueHandle,
-                                                   &gEdmStream.handle, sizeof(int32_t));
-
-                            sizeOrError = 0;
-                        } else if (evt.type == U_SHORT_RANGE_EDM_EVENT_CONNECT_BT) {
-                            uShortRangeEdmStreamConnections_t *pConnection = findConnection(evt.params.btConnectEvent.channel);
-                            if (pConnection == NULL) {
-                                pConnection = findConnection(-1);
-                            }
-                            if (pConnection != NULL) {
-                                uShortRangeEdmStreamBtEvent_t event;
-                                pConnection->channel = evt.params.btConnectEvent.channel;
-                                pConnection->type = U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT;
-                                pConnection->frameSize = evt.params.btConnectEvent.framesize;
-
-                                event.type = U_SHORT_RANGE_EDM_STREAM_CONNECTED;
-                                event.ble = (evt.params.btConnectEvent.profile == U_SHORT_RANGE_EDM_BT_PROFILE_SPS);
-                                event.channel = evt.params.btConnectEvent.channel;
-                                memcpy(event.address, evt.params.btConnectEvent.address, U_SHORT_RANGE_EDM_BT_ADDRESS_LENGTH);
-                                event.frameSize = evt.params.btConnectEvent.framesize;
-
-                                uPortEventQueueSendIrq(gEdmStream.btEventQueueHandle,
-                                                       &event, sizeof(uShortRangeEdmStreamBtEvent_t));
-
-                                sizeOrError = 0;
-                            }
-                        } else if (evt.type == U_SHORT_RANGE_EDM_EVENT_DISCONNECT) {
-                            int32_t channel = (int32_t)evt.params.disconnectEvent.channel;
-                            uShortRangeEdmStreamConnections_t *pConnection = findConnection(channel);
-
-                            if (pConnection != NULL && pConnection->type == U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT) {
-                                uShortRangeEdmStreamBtEvent_t event;
-
-                                pConnection->channel = -1;
-                                pConnection->type = U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID;
-                                pConnection->frameSize = -1;
-                                event.type = U_SHORT_RANGE_EDM_STREAM_DISCONNECTED;
-                                event.channel = channel;
-
-                                uPortEventQueueSendIrq(gEdmStream.btEventQueueHandle,
-                                                       &event, sizeof(uShortRangeEdmStreamBtEvent_t));
-                            } else if (pConnection != NULL &&
-                                       pConnection->type == U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_WIFI) {
-                                gEdmStream.uartBufferAvailable = true;
-                            } else {
-                                gEdmStream.uartBufferAvailable = true;
-                            }
-
-                            sizeOrError = 0;
-                        } else if (evt.type == U_SHORT_RANGE_EDM_EVENT_DATA) {
-                            uShortRangeEdmStreamDataEvent_t event;
-                            event.channel = evt.params.dataEvent.channel;
-                            event.pData = evt.params.dataEvent.pData;
-                            event.length = evt.params.dataEvent.length;
-
-                            uPortEventQueueSendIrq(gEdmStream.dataEventQueueHandle,
-                                                   &event, sizeof(uShortRangeEdmStreamDataEvent_t));
-
-                            sizeOrError = 0;
-                        } else if (evt.type == U_SHORT_RANGE_EDM_EVENT_STARTUP) {
-                            gEdmStream.uartBufferAvailable = true;
-                        } else {
-                            gEdmStream.uartBufferAvailable = true;
-                        }
-                    }
+                    charsInBuffer += sizeOrError;
+                } else {
+                    uartEmpty = true;
                 }
             }
         }
-    } while ((sizeOrError > 0) && (read <= U_SHORT_RANGE_EDM_STREAM_BUFFER_SIZE));
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
 }
 
 static void flushUart(int32_t uartHandle)
@@ -416,9 +403,8 @@ static int32_t edmSend(const uShortRangeEdmStreamInstance_t *pEdmStream)
                                      (uint32_t) sizeOrError - written);
             }
         }
+        free(pPacket);
     }
-
-    free(pPacket);
 
     return sizeOrError;
 }
@@ -488,11 +474,15 @@ int32_t uShortRangeEdmStreamInit()
         gEdmStream.handle = -1;
     }
 
+    uShortRangeEdmResetParser();
+
     return (int32_t) errorCodeOrHandle;
 }
 
 void uShortRangeEdmStreamDeinit()
 {
+    uShortRangeEdmResetParser();
+
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
@@ -512,8 +502,7 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle)
         U_PORT_MUTEX_LOCK(gMutex);
         handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
-        if (uartHandle >= 0 && gEdmStream.handle == -1
-            && gEdmStream.pUartBuffer == NULL) {
+        if (uartHandle >= 0 && gEdmStream.handle == -1) {
 
             int32_t errorCode = uPortUartEventCallbackSet(uartHandle,
                                                           U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
@@ -522,13 +511,11 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle)
                                                           U_EDM_STREAM_TASK_PRIORITY);
 
             if (errorCode == 0) {
-                gEdmStream.pUartBuffer = (char *)malloc(U_SHORT_RANGE_EDM_STREAM_BUFFER_SIZE);
-                memset(gEdmStream.pUartBuffer, 0, U_SHORT_RANGE_EDM_STREAM_BUFFER_SIZE);
                 gEdmStream.pAtCommandBuffer = (char *)malloc(U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH);
                 memset(gEdmStream.pAtCommandBuffer, 0, U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH);
                 gEdmStream.pAtResponseBuffer = (char *)malloc(U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH);
                 memset(gEdmStream.pAtResponseBuffer, 0, U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH);
-                if (gEdmStream.pUartBuffer == NULL || gEdmStream.pAtCommandBuffer == NULL ||
+                if (gEdmStream.pAtCommandBuffer == NULL ||
                     gEdmStream.pAtResponseBuffer == NULL) {
                     handleOrErrorCode = U_ERROR_COMMON_NO_MEMORY;
                     uPortUartEventCallbackRemove(uartHandle);
@@ -548,7 +535,6 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle)
                     gEdmStream.pWifiDataCallback = NULL;
                     gEdmStream.pWifiDataCallbackParam = NULL;
                     gEdmStream.atCommandCurrent = 0;
-                    gEdmStream.uartBufferAvailable = true;
 
                     for (uint32_t i = 0; i < U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS; i++) {
                         gEdmStream.connections[i].channel = -1;
@@ -561,7 +547,7 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle)
                 }
             }
         }
-
+        uShortRangeEdmResetParser();
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
@@ -604,8 +590,6 @@ void uShortRangeEdmStreamClose(int32_t handle)
             gEdmStream.pBtDataCallbackParam = NULL;
             gEdmStream.pWifiDataCallback = NULL;
             gEdmStream.pWifiDataCallbackParam = NULL;
-            free(gEdmStream.pUartBuffer);
-            gEdmStream.pUartBuffer = NULL;
             free(gEdmStream.pAtCommandBuffer);
             gEdmStream.pAtCommandBuffer = NULL;
             free(gEdmStream.pAtResponseBuffer);
@@ -617,6 +601,7 @@ void uShortRangeEdmStreamClose(int32_t handle)
             }
         }
 
+        uShortRangeEdmResetParser();
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
 }
@@ -664,7 +649,7 @@ int32_t uShortRangeEdmStreamAtCallbackSet(int32_t handle,
 //lint -esym(593, pParam) Suppress pParam not being freed here
 int32_t uShortRangeEdmStreamBtEventCallbackSet(int32_t handle,
                                                void (*pFunction)(int32_t, uint32_t, uint32_t,
-                                                                 bool, int32_t, char *, void *),
+                                                                 bool, int32_t, uint8_t *, void *),
                                                void *pParam,
                                                size_t stackSizeBytes,
                                                int32_t priority)
@@ -846,10 +831,8 @@ int32_t uShortRangeEdmStreamAtRead(int32_t handle, void *pBuffer,
                 if (gEdmStream.atResponseRead >= gEdmStream.atResponseLength) {
                     gEdmStream.atResponseLength = 0;
                     gEdmStream.atResponseRead = 0;
+                    processedEvent();
                 }
-                gEdmStream.uartBufferAvailable = true;
-                uPortUartEventSend(gEdmStream.uartHandle,
-                                   U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
             }
         }
 

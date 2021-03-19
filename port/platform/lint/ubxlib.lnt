@@ -58,3 +58,8 @@
 -esym(718, iprintf, sniprintf, siscanf)
 -esym(746, iprintf, sniprintf, siscanf)
 -esym(1055, iprintf, sniprintf, siscanf)
+
+/* Stop Lint complaining about the definition of mktime()
+ * in the compiler's own C library include tree.
+ */
+-esym(839, mktime)

@@ -97,7 +97,7 @@ static int64_t gStopTimeMs;
 
 /** Generic handles.
  */
-static uCellTestPrivate_t gHandles = {-1};
+static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
 
 /** UDP socket handle.
  */

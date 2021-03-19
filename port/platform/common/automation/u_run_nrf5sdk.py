@@ -447,7 +447,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                     u_monitor.CONNECTION_TELNET,
                                                                     RUN_GUARD_TIME_SECONDS,
                                                                     RUN_INACTIVITY_TIME_SECONDS,
-                                                                    instance, printer, reporter,
+                                                                    "\r", instance, printer, reporter,
                                                                     test_report_handle)
                                                 telnet_handle.close()
                                             else:

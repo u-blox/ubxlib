@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Implementation of the port GPIO API for the NRF52 platform.
+ * @brief Implementation of the port GPIO API for the Zephyr platform.
  */
 
 #ifdef U_CFG_OVERRIDE

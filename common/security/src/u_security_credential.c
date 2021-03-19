@@ -44,6 +44,7 @@
 
 #include "u_error_common.h"
 
+#include "u_port_clib_platform_specific.h" /* Needed for isblank() and mktime() in some cases. */
 #include "u_port.h"
 #include "u_port_os.h"
 

@@ -23,8 +23,9 @@
 
 /** @file
  * @brief This header file contains configuration information for
- * an NRF53 platform that is fed in at application level.  You should
- * override these values as necessary for your particular platform.
+ * a Zephyr platform that is fed in at application level.  It assumes
+ * an nRF5x MCU, e.g. nRF52840 or nRF5340. You should override these
+ * values as necessary for your particular platform.
  * Note that the pin numbers used below should be those of the MCU: if you
  * are using an MCU inside a u-blox module the IO pin numbering for
  * the module is likely different to that from the MCU: check the data
@@ -32,7 +33,7 @@
  */
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR A BLE/WIFI MODULE ON NRF53: MISC
+ * COMPILE-TIME MACROS FOR A BLE/WIFI MODULE ON ZEPHYR/NRF5x: MISC
  * -------------------------------------------------------------- */
 
 /** UART HW block with a connected short range module.
@@ -50,7 +51,7 @@
 #endif
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR NRF53: PINS FOR BLE/WIFI (SHORT_RANGE)
+ * COMPILE-TIME MACROS FOR ZEPHYR/NRF5x: PINS FOR BLE/WIFI (SHORT_RANGE)
  * -------------------------------------------------------------- */
 
 /* IMPORTANT: the UART pins given here are required for compilation
@@ -75,36 +76,36 @@
 #endif
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON NRF53: MISC
+ * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON ZEPHYR/NRF5x: MISC
  * -------------------------------------------------------------- */
 
 #ifndef U_CFG_APP_CELL_UART
-/** The UARTE HW block to use inside the NRF53 chip when
+/** The UARTE HW block to use inside the NRF5x chip when
  * to communicate with a cellular module.
  */
 # define U_CFG_APP_CELL_UART                  1
 #endif
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR NRF53: PINS FOR CELLULAR
+ * COMPILE-TIME MACROS FOR ZEPHYR/NRF5x: PINS FOR CELLULAR
  * -------------------------------------------------------------- */
 
 #ifndef U_CFG_APP_PIN_CELL_ENABLE_POWER
-/** The NRF53 GPIO output that enables power to the cellular
+/** The NRF5x GPIO output that enables power to the cellular
  * module. -1 is used where there is no such connection.
  */
 # define U_CFG_APP_PIN_CELL_ENABLE_POWER     -1
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_PWR_ON
-/** The NRF53 GPIO output that that is connected to the PWR_ON
+/** The NRF5x GPIO output that that is connected to the PWR_ON
  * pin of the cellular module.
  */
 # define U_CFG_APP_PIN_CELL_PWR_ON            33 // AKA 1.01
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_VINT
-/** The NRF53 GPIO input that is connected to the VInt pin of
+/** The NRF5x GPIO input that is connected to the VInt pin of
  * the cellular module.
  * -1 is used where there is no such connection.
  */

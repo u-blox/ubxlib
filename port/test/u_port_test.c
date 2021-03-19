@@ -35,17 +35,20 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "stdlib.h"    // rand()
-#include "string.h"    // strtok() and strcmp()
+#include "string.h"    // strlen() and strcmp()
 #include "stdio.h"     // snprintf()
+#include "time.h"      // time_t and struct tm
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
-#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
+#include "u_port_clib_platform_specific.h" /* strtok_r() and mktime() and
+                                              integer stdio, must be included
                                               before the other port files if
-                                              any print or scan function is used. */
+                                              any print or scan function
+                                              is used. */
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -53,6 +56,11 @@
 #include "u_port_uart.h"
 #include "u_port_crypto.h"
 #include "u_port_event_queue.h"
+#include "u_error_common.h"
+
+#ifdef CONFIG_IRQ_OFFLOAD
+#include <irq_offload.h> // To test semaphore from ISR in zephyr
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -68,7 +76,7 @@
 
 /** The guard time for the OS test.
  */
-#define U_PORT_TEST_OS_GUARD_DURATION_MS 2800
+#define U_PORT_TEST_OS_GUARD_DURATION_MS 7000
 
 /** The task block duration to use in testing the
  * time for which a block lasts.  This needs to
@@ -123,12 +131,22 @@ typedef struct {
 
 #endif
 
+/** Struct for mktime() testing.
+ */
+typedef struct {
+    struct tm timeStruct;
+    time_t time;
+} mktimeTestData_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
 
 // OS test mutex handle.
 static uPortMutexHandle_t gMutexHandle = NULL;
+
+// OS test semaphore handle.
+static uPortSemaphoreHandle_t gSemaphoreHandle = NULL;
 
 // OS test queue handle for data.
 static uPortQueueHandle_t gQueueHandleData = NULL;
@@ -201,6 +219,26 @@ static char gUartBuffer[(U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 2) +
                                                                   (U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 4)];
 
 #endif // (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
+
+/** Data for mktime testing.
+ */
+static mktimeTestData_t gMktimeTestData[] = {
+    {{0,  0, 0,  1, 0,  70,  0, 0, 0}, 0},
+    {{1,  0, 0,  1, 0,  70,  0, 0, 0}, 1},
+    {{1,  1, 0,  1, 0,  70,  0, 0, 0}, 61},
+    {{1,  1, 1,  1, 0,  70,  0, 0, 0}, 3661},
+    {{1,  1, 1,  1, 1,  70,  0, 0, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  0, 0, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  1, 0, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  1, 1, 0}, 2682061},
+    {{1,  1, 1,  1, 1,  70,  1, 1, 1}, 2682061},
+    {{61, 0, 0,  1, 0,  70,  0, 0, 0}, 61},
+    {{0, 59, 0,  1, 0,  70,  0, 0, 0}, 3540},
+    {{0,  0, 23, 1, 0,  70,  0, 0, 0}, 82800},
+    {{0,  0, 0, 31, 0,  70,  0, 0, 0}, 2592000},
+    {{0,  0, 0,  0, 12, 70,  0, 0, 0}, 31449600},
+    {{0,  0, 0,  0, 12, 137, 0, 0, 0}, 2145830400LL}
+};
 
 /** SHA256 test vector, input, RC4.55 from:
  * https://www.dlitz.net/crypto/shad256-test-vectors/
@@ -280,11 +318,9 @@ static void osReentTask(void *pParameter)
     int32_t *pTmp;
     int32_t returnCode = 0;
     char *pStr;
+    char *pSaved;
     char str[6];
     char buffer[32];
-    uint32_t a = 0;
-    int32_t b = 0;
-    char c = '0';
     int32_t checkInt = ((U_PORT_TEST_OS_MALLOC_FILL) & ~0xFF) | index;
     int32_t mallocSizeInts = 1 + (rand() % (U_PORT_TEST_OS_MALLOC_SIZE_INTS - 1));
 
@@ -310,12 +346,12 @@ static void osReentTask(void *pParameter)
         // fiddle with it
         strncpy(str, "a,b,c", sizeof(str));
 
-        // Do a strtok()
-        strtok(str, ",");
+        // Do a strtok_r()
+        strtok_r(str, ",", &pSaved);
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
-        strtok(NULL, ",");
+        strtok_r(NULL, ",", &pSaved);
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
-        pStr = strtok(NULL, ",");
+        pStr = strtok_r(NULL, ",", &pSaved);
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
 
         // Do an snprintf() with parameters, which should
@@ -330,18 +366,36 @@ static void osReentTask(void *pParameter)
         uPortLog("U_PORT_TEST_OS_REENT_TASK_%d: %d \"%s\".\n", index, index, buffer);
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
 
-        // Do an sscanf() of the parameters in the buffer
-        // we wrote earlier
-        if (sscanf(buffer, "%u %d %c", (unsigned int *) &a, (int *) &b, &c) == 3) {
-            uPortTaskBlock(U_CFG_OS_YIELD_MS);
-            if (a != 4294967295UL) {
+        // Check what ended up in the buffer we wrote earlier
+        pStr = strtok_r(buffer, " ", &pSaved);
+        if (pStr != NULL) {
+            // First should be "4294967295"
+            if (strcmp(pStr, "4294967295") == 0) {
+                // Next should be the index
+                pStr = strtok_r(NULL, " ", &pSaved);
+                if (pStr != NULL) {
+                    if (strtol(pStr, NULL, 10) == index) {
+                        // And finally, the single character 'c'
+                        pStr = strtok_r(NULL, " ", &pSaved);
+                        if (pStr != NULL) {
+                            if (strlen(pStr) == 1) {
+                                if (*pStr != 'c') {
+                                    returnCode = -8;
+                                }
+                            } else {
+                                returnCode = -7;
+                            }
+                        } else {
+                            returnCode = -6;
+                        }
+                    } else {
+                        returnCode = -5;
+                    }
+                } else {
+                    returnCode = -4;
+                }
+            } else {
                 returnCode = -3;
-            }
-            if (b != index) {
-                returnCode = -4;
-            }
-            if (c != 'c') {
-                returnCode = -5;
             }
         } else {
             returnCode = -2;
@@ -353,7 +407,7 @@ static void osReentTask(void *pParameter)
         for (int32_t x = 0; (returnCode == 0) &&
              (x < mallocSizeInts); x++) {
             if (*pTmp != checkInt) {
-                returnCode = -6;
+                returnCode = -9;
             }
             pTmp++;
         }
@@ -380,12 +434,12 @@ static void osReentTask(void *pParameter)
                 for (int32_t y = 0; (returnCode == 0) &&
                      (y < mallocSizeInts); y++) {
                     if (*pTmp != checkInt) {
-                        returnCode = -8;
+                        returnCode = -10;
                     }
                     pTmp++;
                 }
             } else {
-                returnCode = -7;
+                returnCode = -11;
             }
             free(pMem);
         }
@@ -886,6 +940,16 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
 #if U_CFG_OS_CLIB_LEAKS
     int32_t heapClibLoss;
 #endif
+    struct tm tmStruct = {0,  0, 0,  1, 0,  70,  0, 0, 0};
+
+    // On ESP-IDF mktime grabs memory when it first runs.
+    // This should be sorted by the preamble test running
+    // but on ESP-IDF we use the ESP-IDF unit test
+    // environment which doesn't allow us to guarantee that
+    // the preamble runs first; might have to change that
+    // but for the moment do this here to get it out of our
+    // sums.
+    mktime(&tmStruct);
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -1131,6 +1195,174 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
+
+static void osTestTaskSemaphoreGive(void *pParameters)
+{
+    (void) pParameters;
+
+    uPortTaskBlock(500);
+    U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) == 0);
+    uPortTaskDelete(NULL);
+}
+
+static void osTestTaskSemaphoreGiveFromIsr(const void *pParameters)
+{
+    (void) pParameters;
+
+    U_PORT_TEST_ASSERT(uPortSemaphoreGiveIrq(gSemaphoreHandle) == 0);
+}
+
+U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
+{
+    int32_t errorCode;
+    int64_t startTimeTestMs;
+    int64_t startTimeMs;
+    int64_t timeNowMs;
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    startTimeTestMs = uPortGetTickTimeMs();
+    uPortLog("U_PORT_TEST: tick time now is %d.\n", (int32_t) startTimeTestMs);
+
+    uPortLog("U_PORT_TEST: Initialize a semaphore with invalid max limit\n");
+    U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0,
+                                            0) == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
+
+    uPortLog("U_PORT_TEST: Initialize a semaphore with invalid count\n");
+    U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 2,
+                                            1) == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
+
+    uPortLog("U_PORT_TEST: Verify that the semaphore waits and timeouts with TryTake\n");
+    U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 1) == 0);
+    U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
+    startTimeMs = uPortGetTickTimeMs();
+    U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle,
+                                             500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
+    int64_t diffMs = uPortGetTickTimeMs() - startTimeMs;
+    uPortLog("U_PORT_TEST: diffMs %d \n", (int32_t)diffMs);
+    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
+
+    uPortLog("U_PORT_TEST: Verify that the semaphore waits with Take and is taken\n");
+    uPortLog("             by this thread after given by second thread.\n");
+    U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 1) == 0);
+    U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
+    errorCode = uPortTaskCreate(osTestTaskSemaphoreGive, "osTestTaskSemaphoreGive",
+                                U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES,
+                                (void *) gTaskParameter,
+                                U_CFG_TEST_OS_TASK_PRIORITY,
+                                &gTaskHandle);
+
+    U_PORT_TEST_ASSERT(errorCode == 0);
+    U_PORT_TEST_ASSERT(gTaskHandle != NULL);
+    startTimeMs = uPortGetTickTimeMs();
+    U_PORT_TEST_ASSERT(uPortSemaphoreTake(gSemaphoreHandle) == 0);
+    diffMs = uPortGetTickTimeMs() - startTimeMs;
+    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
+
+    uPortLog("U_PORT_TEST: Verify that the semaphore waits with TryTake and is taken\n");
+    uPortLog("             by this thread after given by second thread.\n");
+    U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 1) == 0);
+    U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
+    errorCode = uPortTaskCreate(osTestTaskSemaphoreGive, "osTestTaskSemaphoreGive",
+                                U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES,
+                                (void *) gTaskParameter,
+                                U_CFG_TEST_OS_TASK_PRIORITY,
+                                &gTaskHandle);
+
+    U_PORT_TEST_ASSERT(errorCode == 0);
+    U_PORT_TEST_ASSERT(gTaskHandle != NULL);
+    startTimeMs = uPortGetTickTimeMs();
+    U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+    diffMs = uPortGetTickTimeMs() - startTimeMs;
+    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
+
+    uPortLog("U_PORT_TEST: Verify that +2 as initialCount works for TryTake\n");
+    U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 2, 3) == 0);
+    U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
+    startTimeMs = uPortGetTickTimeMs();
+    U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+    diffMs = uPortGetTickTimeMs() - startTimeMs;
+    U_PORT_TEST_ASSERT(diffMs < 250);
+    U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+    diffMs = uPortGetTickTimeMs() - startTimeMs;
+    U_PORT_TEST_ASSERT(diffMs < 250);
+    U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle,
+                                             500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
+    diffMs = uPortGetTickTimeMs() - startTimeMs;
+    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
+
+    uPortLog("U_PORT_TEST: Verify that +2 as limit works for TryTake\n");
+    U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 2) == 0);
+    U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
+    U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) == 0); // Internal count is 1
+    U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) == 0); // Internal count is 2
+    U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) ==
+                       0); // Internal count shall not be increased
+    U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) ==
+                       0); // Internal count shall not be increased
+
+    startTimeMs = uPortGetTickTimeMs();
+    U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+    diffMs = uPortGetTickTimeMs() - startTimeMs;
+    U_PORT_TEST_ASSERT(diffMs < 250);
+    U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+    diffMs = uPortGetTickTimeMs() - startTimeMs;
+    U_PORT_TEST_ASSERT(diffMs < 250);
+    U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle,
+                                             500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
+    diffMs = uPortGetTickTimeMs() - startTimeMs;
+    U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+    U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
+
+    uPortLog("U_PORT_TEST: Verify that the semaphore waits with Take and is taken\n");
+    uPortLog("             by this thread after given from ISR.\n");
+    U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 1) == 0);
+    U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
+
+#ifdef CONFIG_IRQ_OFFLOAD // Only really tested for zephyr for now
+    irq_offload(osTestTaskSemaphoreGiveFromIsr, NULL);
+#else
+    osTestTaskSemaphoreGiveFromIsr(NULL);
+#endif
+
+    startTimeMs = uPortGetTickTimeMs();
+    U_PORT_TEST_ASSERT(uPortSemaphoreTake(gSemaphoreHandle) == 0);
+    diffMs = uPortGetTickTimeMs() - startTimeMs;
+    U_PORT_TEST_ASSERT(diffMs < 250);
+    U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
+
+    timeNowMs = uPortGetTickTimeMs() - startTimeTestMs;
+    uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"
+             " the test took %d ms.\n", (int32_t) timeNowMs);
+    U_PORT_TEST_ASSERT((timeNowMs > 0) &&
+                       (timeNowMs < U_PORT_TEST_OS_GUARD_DURATION_MS));
+
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+}
+
 
 #if (U_CFG_TEST_UART_A >= 0)
 /** Some ports, e.g. the Nordic one, use the tick time somewhat
@@ -1456,6 +1688,38 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
     U_PORT_TEST_ASSERT(strtok_r(NULL, "d", &pSave) == NULL);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
+
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test: mktime since we have our own implementation on
+ * some platforms.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portMktime")
+{
+    int32_t heapUsed;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    uPortLog("U_PORT_TEST: testing mktime...\n");
+
+    for (size_t x = 0; x < sizeof(gMktimeTestData) /
+         sizeof(gMktimeTestData[0]); x++) {
+        U_PORT_TEST_ASSERT(mktime(&gMktimeTestData[x].timeStruct) ==
+                           gMktimeTestData[x].time);
+    }
 
     uPortDeinit();
 

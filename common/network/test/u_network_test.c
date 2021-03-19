@@ -103,12 +103,25 @@ static const char gTestData[] =  "_____0000:012345678901234567890123456789012345
                                  "01234567890123456789012345678901234567890123456789"
                                  "_____0002:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789"
-                                 "_____0003:0123456789012345678901234567890123456789";
+                                 "_____0003:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0004:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0005:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0006:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0007:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0008:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "_____0009:0123456789012345678901234567890123456789"
+                                 "01234567890123456789012345678901234567890123456789";
 static volatile int32_t gConnHandle;
 static volatile int32_t gBytesReceived;
 static volatile int32_t gErrors = 0;
 static volatile uint32_t gIndexInBlock;
-static const int32_t gTotalData = 400;
+static const int32_t gTotalData = sizeof gTestData - 1;
 static volatile int32_t gBytesSent;
 #endif
 
@@ -140,6 +153,7 @@ static void print(const char *pStr, size_t length)
 static void dataCallback(int32_t channel, size_t length,
                          char *pData, void *pParameters)
 {
+    bool hadErrors = false;
 #if U_CFG_OS_CLIB_LEAKS
     int32_t heapClibLoss;
 #endif
@@ -155,13 +169,6 @@ static void dataCallback(int32_t channel, size_t length,
     heapClibLoss = uPortGetHeapFree();
 #endif
 
-    uPortLog("U_NETWORK_TEST: received %d byte(s):\n", length);
-    print(pData, length);
-    uPortLog("\n");
-    uPortLog("U_NETWORK_TEST: expected:\n");
-    print(gTestData + gIndexInBlock, length);
-    uPortLog("\n");
-
     // Compare the data with the expected data
     for (uint32_t x = 0; (x < length); x++) {
         gBytesReceived++;
@@ -171,8 +178,17 @@ static void dataCallback(int32_t channel, size_t length,
                 gIndexInBlock = 0;
             }
         } else {
+            hadErrors = true;
             gErrors++;
         }
+    }
+    if (hadErrors) {
+        uPortLog("U_NETWORK_TEST: received %d byte(s):\n", length);
+        print(pData, length);
+        uPortLog("\n");
+        uPortLog("U_NETWORK_TEST: expected:\n");
+        print(gTestData + gIndexInBlock, length);
+        uPortLog("\n");
     }
     uPortLog("U_NETWORK_TEST: received %d byte(s) of %d, error %d.\n",
              length, gBytesReceived, gErrors);
@@ -193,7 +209,6 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
 
     (void) address;
     (void) mtu;
-    int32_t bytesToSend;
     int32_t *pHandle = (int32_t *) pParameters;
 
 #if U_CFG_OS_CLIB_LEAKS
@@ -205,20 +220,26 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
 #endif
 
     if (type == 0) {
+        int32_t testDataOffset = 0;
         // Wait a moment for the other end may not be immediately ready
-        uPortTaskBlock(100);
         gConnHandle = connHandle;
-        while (gBytesSent < gTotalData) {
-            // -1 to omit gTestData string terminator
-            bytesToSend = sizeof(gTestData) - 1;
-            if (bytesToSend > gTotalData - gBytesSent) {
-                bytesToSend = gTotalData - gBytesSent;
+        uPortLog("U_NETWORK_TEST: connected connection handle %d.\n", connHandle);
+        uPortTaskBlock(100);
+        while (gBytesSent < gTotalData * 2) {
+            int32_t bytesToSend = 20;
+            if (bytesToSend > gTotalData - testDataOffset) {
+                bytesToSend = gTotalData - testDataOffset;
             }
-            uBleDataSend(*pHandle, channel, gTestData, bytesToSend);
+            uBleDataSend(*pHandle, channel, gTestData + testDataOffset, bytesToSend);
+            uPortTaskBlock(U_CFG_OS_YIELD_MS);
 
+            testDataOffset += bytesToSend;
+            if (testDataOffset >= gTotalData) {
+                testDataOffset -= gTotalData;
+            }
             gBytesSent += bytesToSend;
-            uPortLog("U_NETWORK_TEST: %d byte(s) sent.\n", gBytesSent);
         }
+        uPortLog("U_NETWORK_TEST: %d byte(s) sent.\n", gBytesSent);
     } else if (type == 1) {
         gConnHandle = -1;
         uPortLog("U_NETWORK_TEST: disconnected connection handle %d.\n", connHandle);
@@ -377,7 +398,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                                             &gUNetworkTestCfg[x].handle);
 
                     // Connections can fail so try this a few timees
-                    for (size_t z = 0; (z < 3) && (gBytesSent == 0); z++) {
+                    for (size_t z = 0; (z < 3) && (gConnHandle == -1) ; z++) {
                         U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
                                                               gRemoteSpsAddress) == 0);
                         for (int32_t i = 0; (i < 40) && (gConnHandle == -1); i++) {
@@ -388,6 +409,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                                      " attempt %d failed, will retry.\n", z + 1);
                         }
                     }
+
                     U_PORT_TEST_ASSERT(gConnHandle != -1);
 
                     y = 100;
@@ -398,8 +420,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                     // All sent, give some time to finish receiving
                     uPortTaskBlock(2000);
 
-                    U_PORT_TEST_ASSERT(gBytesSent == gTotalData);
-                    U_PORT_TEST_ASSERT(gTotalData == gBytesReceived);
+                    U_PORT_TEST_ASSERT(gBytesSent == gTotalData * 2);
+                    U_PORT_TEST_ASSERT(gTotalData * 2 == gBytesReceived);
                     U_PORT_TEST_ASSERT(gErrors == 0);
 
                     // Disconnect

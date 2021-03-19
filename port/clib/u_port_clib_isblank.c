@@ -15,22 +15,12 @@
  */
 
 /** @file
- * @brief Implementation of the port debug API for the Zephyr platform.
+ * @brief Implementation of isblank().
  */
 
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
-
-#include "stdarg.h"
-#include "stdio.h"    // vprintf()
-
-#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
-                                              before the other port files if
-                                              any print or scan function is used. */
-#include "u_port_debug.h"
-
-#include "sys/printk.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -44,7 +34,6 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -53,16 +42,14 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// printf()-style logging.
-void uPortLogF(const char *pFormat, ...)
+// Return non-zero if character is blank.
+//lint -esym(1065, isblank) Suppress complaints about this conflicting
+// with the C definition in the TDD compiler we use for Linting.
+int isblank(int character)
 {
-    va_list args;
-
-    va_start(args, pFormat);
-
-    vprintf(pFormat, args);
-
-    va_end(args);
+    // From here http://www.cplusplus.com/reference/cctype/
+    // we check for tab (0x09) or space (0x20)
+    return (character == 0x09) || (character == 0x20);
 }
 
 // End of file

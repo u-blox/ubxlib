@@ -269,7 +269,8 @@ def esp32_send_first(send_string, in_handle, connection_type, printer, prompt):
 # Watch the output from the items being run
 # looking for INTERESTING things.
 def watch_items(in_handle, connection_type, results, guard_time_seconds,
-                inactivity_time_seconds, printer, reporter, prompt):
+                inactivity_time_seconds, terminator, printer,
+                reporter, prompt):
     '''Watch output'''
     return_value = -1
     start_time = time()
@@ -283,7 +284,7 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
     read_queue = queue.Queue()
     readline_thread = threading.Thread(target=readline_and_queue,
                                        args=(results, read_queue, in_handle,
-                                             connection_type, "\r"))
+                                             connection_type, terminator))
     readline_thread.start()
 
     try:
@@ -321,8 +322,8 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
     return return_value
 
 def main(connection_handle, connection_type, guard_time_seconds,
-         inactivity_time_seconds, instance, printer, reporter,
-         test_report_handle, send_string=None):
+         inactivity_time_seconds, terminator, instance, printer,
+         reporter, test_report_handle, send_string=None):
     '''Main as a function'''
     # Dictionary in which results are stored
     results = {"finished": False,
@@ -345,7 +346,7 @@ def main(connection_handle, connection_type, guard_time_seconds,
         results["overall_start_time"] = time()
         return_value = watch_items(connection_handle, connection_type, results,
                                    guard_time_seconds, inactivity_time_seconds,
-                                   printer, reporter, prompt)
+                                   terminator, printer, reporter, prompt)
 
     # Write the report
     if test_report_handle and instance:
@@ -450,8 +451,8 @@ if __name__ == "__main__":
             if SUCCESS:
                 # Run things
                 RETURN_VALUE = main(CONNECTION_HANDLE, CONNECTION_TYPE, ARGS.t,
-                                    ARGS.i, None, PRINTER, None, TEST_REPORT_HANDLE,
-                                    send_string=ARGS.s)
+                                    ARGS.i, "\r", None, PRINTER, None,
+                                    TEST_REPORT_HANDLE, send_string=ARGS.s)
 
             # Tidy up
             if TEST_REPORT_HANDLE:

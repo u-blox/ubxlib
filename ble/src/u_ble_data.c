@@ -127,7 +127,7 @@ static void spsEventCallback(uAtClientHandle_t atHandle,
 // need to follow function signature
 static void btEdmConnectionCallback(int32_t streamHandle, uint32_t type,
                                     uint32_t channel, bool ble, int32_t mtu,
-                                    char *address, void *pParam)
+                                    uint8_t *address, void *pParam)
 {
     (void) ble;
     (void) streamHandle;

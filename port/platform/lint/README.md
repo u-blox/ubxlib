@@ -24,9 +24,11 @@ The Make files provided with Flexelint require a few other tools which you may n
 
 https://sourceforge.net/projects/unxutils/
 
-Also required is a version of Make, which must be on the path.  A version of Make is included in the above `unxutils` package BUT there are problems with it and so we use the version obtained from here (and hence this must be on the path before `unxutils`):
+Also required is a version of Make, which must be on the path.  A version of Make is included in the above `unxutils` package BUT there are problems with it [it silently objects to certain characters that you might have on your path] and so we use the `GnuWin32` version obtained from here (and hence this must be on the path before `unxutils`):
 
 http://gnuwin32.sourceforge.net/packages/make.htm
+
+IMPORTANT: please bring in ONLY `make.exe` from this package, since there are other utilities in `GnuWin32` with the same name and which behave subtly differently to the `unxutils` versions...
 
 In order that Lint can be run on the test code, you will also need a copy of Unity, the unit test framework, which can be Git cloned from here:
 

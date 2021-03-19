@@ -32,6 +32,12 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** Default values for uCellTestPrivate_t.
+ */
+//lint -esym(755, U_CELL_TEST_PRIVATE_DEFAULTS) Suppress not referenced,
+// which it might not be if U_CFG_TEST_CELL_MODULE_TYPE is not defined.
+#define U_CELL_TEST_PRIVATE_DEFAULTS {-1, NULL, -1}
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

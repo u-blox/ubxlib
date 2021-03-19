@@ -130,10 +130,6 @@ int32_t uCellInfoGetRxQual(int32_t cellHandle);
  * same a maximal integer value will be returned.
  * SNR may not be available unless the module has successfully
  * registered with the cellular network.
- * If this code is compiled with U_CFG_DISABLE_FLOATING_POINT
- * then this function will always return
- * U_ERROR_COMMON_NOT_SUPPORTED since it requires pow() and
- * log10() from the maths library to work.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pSnrDb      a place to put the SNR measurement.  Must

@@ -75,6 +75,15 @@
 # define U_CELL_SOCK_DNS_SHOULD_RETRY_MS 2000
 #endif
 
+#ifndef U_CELL_SOCK_SECURE_DELAY_MILLISECONDS
+/** I have seen secure socket operations fail if the
+ * secured socket is used too quickly after security
+ * has been applied, so wait this long before returning
+ * after a security profile has been applied.
+ */
+#define U_CELL_SOCK_SECURE_DELAY_MILLISECONDS 250
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -161,6 +170,17 @@ static uCellSockSocket_t *pFindBySockHandleModule(const uAtClientHandle_t atHand
     }
 
     return pSock;
+}
+
+// Do AT+USOER, for debug purposes.
+static void doUsoer(uAtClientHandle_t atHandle)
+{
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+USOER");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+USOER:");
+    uAtClientResponseStop(atHandle);
+    uAtClientUnlock(atHandle);
 }
 
 // Create a socket entry in the list.
@@ -375,6 +395,11 @@ static int32_t setOptionInt(const uCellSockSocket_t *pSocket,
         if (uAtClientUnlock(atHandle) == 0) {
             // All good
             errnoLocal = U_SOCK_ENONE;
+        } else {
+            // Got an AT interace error, see
+            // what the module's socket error
+            // number has to say for debug purposes
+            doUsoer(atHandle);
         }
     }
 
@@ -415,6 +440,11 @@ static int32_t getOptionInt(const uCellSockSocket_t *pSocket,
                     errnoLocal = U_SOCK_ENONE;
                     *((int32_t *) pOptionValue)  = x;
                     *pOptionValueLength = sizeof(int32_t);
+                } else {
+                    // Got an AT interace error, see
+                    // what the module's socket error
+                    // number has to say for debug purposes
+                    doUsoer(atHandle);
                 }
             }
         } else {
@@ -454,6 +484,11 @@ static int32_t setOptionLinger(const uCellSockSocket_t *pSocket,
         if (uAtClientUnlock(atHandle) == 0) {
             // All good
             errnoLocal = U_SOCK_ENONE;
+        } else {
+            // Got an AT interace error, see
+            // what the module's socket error
+            // number has to say for debug purposes
+            doUsoer(atHandle);
         }
     }
 
@@ -503,6 +538,11 @@ static int32_t getOptionLinger(const uCellSockSocket_t *pSocket,
                         ((uSockLinger_t *) pOptionValue)->lingerSeconds = y;
                         *pOptionValueLength = sizeof(uSockLinger_t);
                     }
+                } else {
+                    // Got an AT interace error, see
+                    // what the module's socket error
+                    // number has to say for debug purposes
+                    doUsoer(atHandle);
                 }
             }
         } else {
@@ -622,6 +662,9 @@ int32_t uCellSockCreate(int32_t cellHandle,
             } else {
                 // Free the socket again
                 sockFree(pSocket->sockHandle);
+                // See what the module's socket error
+                // number has to say for debug purposes
+                doUsoer(atHandle);
             }
         }
     }
@@ -679,6 +722,10 @@ int32_t uCellSockConnect(int32_t cellHandle,
                         errnoLocal = U_SOCK_ENONE;
                     }
                     if (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR) {
+                        // Got an AT interace error, see
+                        // what the module's socket error
+                        // number has to say for debug purposes
+                        doUsoer(atHandle);
                         uPortTaskBlock(1000);
                     }
                 }
@@ -755,6 +802,11 @@ int32_t uCellSockClose(int32_t cellHandle,
                         uAtClientCallback(atHandle, closedCallback,
                                           (void *) sockHandle);
                     }
+                } else {
+                    // Got an AT interace error, see
+                    // what the module's socket error
+                    // number has to say for debug purposes
+                    doUsoer(atHandle);
                 }
             }
         }
@@ -996,6 +1048,12 @@ int32_t uCellSockSecure(int32_t cellHandle,
                 uAtClientCommandStopReadResponse(atHandle);
                 if (uAtClientUnlock(atHandle) == 0) {
                     negErrnoLocal = U_SOCK_ENONE;
+                    uPortTaskBlock(U_CELL_SOCK_SECURE_DELAY_MILLISECONDS);
+                } else {
+                    // Got an AT interace error, see
+                    // what the module's socket error
+                    // number has to say for debug purposes
+                    doUsoer(atHandle);
                 }
             }
         }
@@ -1306,6 +1364,10 @@ int32_t uCellSockWrite(int32_t cellHandle,
                             }
                         } else {
                             negErrnoLocalOrSize = -U_SOCK_EIO;
+                            // Got an AT interace error, see
+                            // what the module's socket error
+                            // number has to say for debug purposes
+                            doUsoer(atHandle);
                         }
                     } else {
                         negErrnoLocalOrSize = -U_SOCK_EIO;
@@ -1611,6 +1673,10 @@ int32_t uCellSockGetHostByName(int32_t cellHandle,
             uAtClientResponseStop(atHandle);
             atError = uAtClientUnlock(atHandle);
             if (atError < 0) {
+                // Got an AT interace error, see
+                // what the module's socket error
+                // number has to say for debug purposes
+                doUsoer(atHandle);
                 uPortTaskBlock(U_CELL_SOCK_DNS_SHOULD_RETRY_MS / 2);
             }
         }
