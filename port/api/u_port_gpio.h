@@ -76,7 +76,8 @@ typedef enum {
 
 /** GPIO configuration structure.
  * If you update this, don't forget to update
- * U_PORT_GPIO_CONFIG_DEFAULT also.
+ * U_PORT_GPIO_CONFIG_DEFAULT and
+ * U_PORT_GPIO_SET_DEFAULT also.
  */
 typedef struct {
     int32_t pin;  /**< a positive integer; note that the pin number is
@@ -98,6 +99,16 @@ typedef struct {
                                    U_PORT_GPIO_PULL_MODE_NONE,          \
                                    U_PORT_GPIO_DRIVE_MODE_NORMAL,       \
                                    U_PORT_GPIO_DRIVE_CAPABILITY_STRONG}
+
+/** Compilers won't generally allow myConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+ * to be done anywhere other than where myConfig is declared.  This macro
+ * provides a method to do that.
+ */
+#define U_PORT_GPIO_SET_DEFAULT(pConfig) (pConfig)->pin = -1;                                              \
+                                         (pConfig)->direction = U_PORT_GPIO_DIRECTION_NONE;                \
+                                         (pConfig)->pullMode = U_PORT_GPIO_PULL_MODE_NONE;                 \
+                                         (pConfig)->driveMode = U_PORT_GPIO_DRIVE_MODE_NORMAL;             \
+                                         (pConfig)->driveCapability = U_PORT_GPIO_DRIVE_CAPABILITY_STRONG
 
 /* ----------------------------------------------------------------
  * FUNCTIONS

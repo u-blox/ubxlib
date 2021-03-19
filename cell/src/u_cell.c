@@ -172,7 +172,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
     int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     int32_t platformError = 0;
     uCellPrivateInstance_t *pInstance = NULL;
-    uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+    uPortGpioConfig_t gpioConfig;
     int32_t enablePowerAtStart;
 
     if (gUCellPrivateMutex != NULL) {
@@ -237,7 +237,6 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 }
                 // Sort PWR_ON pin if there is one
                 if (pinPwrOn >= 0) {
-                    gpioConfig.pin = pinPwrOn;
                     if (!leavePowerAlone) {
                         // Set PWR_ON high so that we can pull it low
                         platformError = uPortGpioSet(pinPwrOn, 1);
@@ -246,6 +245,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                         // PWR_ON open drain so that we can pull it low and then let it
                         // float afterwards since it is pulled-up by the cellular module
                         // TODO: the u-blox C030-R412M board requires a pull-up here.
+                        U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
+                        gpioConfig.pin = pinPwrOn;
                         gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_PULL_UP;
                         gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN;
                         gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
@@ -263,9 +264,9 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 }
                 // Sort the enable power pin, if there is one
                 if ((platformError == 0) && (pinEnablePower >= 0)) {
+                    U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
                     gpioConfig.pin = pinEnablePower;
                     gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_NONE;
-                    gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_NORMAL;
                     // Input/output so we can read it as well
                     gpioConfig.direction = U_PORT_GPIO_DIRECTION_INPUT_OUTPUT;
                     platformError = uPortGpioConfig(&gpioConfig);
@@ -290,6 +291,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 // Finally, sort the VINT pin if there is one
                 if ((platformError == 0) && (pinVInt >= 0)) {
                     // Set pin that monitors VINT as input
+                    U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
                     gpioConfig.pin = pinVInt;
                     gpioConfig.direction = U_PORT_GPIO_DIRECTION_INPUT;
                     platformError = uPortGpioConfig(&gpioConfig);
