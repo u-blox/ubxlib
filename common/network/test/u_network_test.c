@@ -45,7 +45,7 @@
 //lint -efile(766, u_cfg_os_platform_specific.h)
 // Suppress header file not used: one of the defines
 // in it (U_CFG_OS_CLIB_LEAKS) is.
-#include "u_cfg_os_platform_specific.h"
+#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
