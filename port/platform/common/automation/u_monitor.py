@@ -313,7 +313,7 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
             printer.string("{}inactivity timer ({} second(s))"   \
                            " expired.".format(prompt, inactivity_time_seconds))
         else:
-            return_value = results["items_failed"]
+            return_value = results["items_failed"] + results["reboots"]
     except (serial.SerialException, EOFError) as ex:
         printer.string("{}{} while accessing port {}: {}.".
                        format(prompt, type(ex).__name__,
