@@ -27,7 +27,7 @@ node('TEST-gb-cmb-dt-022')
     // run while in the "scripted pipeline" world
     try {
         // All the stages go here
-        timeout(time: 60, unit: 'MINUTES') {
+        timeout(time: 75, unit: 'MINUTES') {
             stage("Info") {
                 environment = bat(script: "@echo off & set", returnStdout: true).trim()
                 println "Environment variables are: \n" + environment
