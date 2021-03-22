@@ -15,6 +15,7 @@ Clone it to the same directory level as `ubxlib`, i.e.:
 ```
 ..
 .
+STM32Cube_FW_F4
 Unity
 ubxlib
 ```
