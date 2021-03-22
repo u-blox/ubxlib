@@ -228,7 +228,7 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(int32_t networkHandle,
                                                                 pSettings->pskId.pBin, pSettings->pskId.size,
                                                                 pSettings->pskGeneratedByRoT);
                         }
-                        if ((errorCode == 0) && ((int32_t) pSettings->certificateCheck > 0)) {
+                        if (errorCode == 0) {
                             // Set the certificate checking
                             errorCode = uCellSecTlsCertificateCheckSet((uCellSecTlsContext_t *) pNetworkSpecific,
                                                                        (uCellSecTlsCertficateCheck_t) pSettings->certificateCheck,

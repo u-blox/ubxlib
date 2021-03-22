@@ -278,6 +278,9 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
     size_t rxSize = 0;
     uSecurityTlsSettings_t settings = U_SECURITY_TLS_SETTINGS_DEFAULT;
 
+    // Add certificate checking to the security settings
+    settings.certificateCheck = U_SECURITY_TLS_CERTIFICATE_CHECK_ROOT_CA;
+
     // Initialise the APIs we will need
     uPortInit();
     uNetworkInit();
