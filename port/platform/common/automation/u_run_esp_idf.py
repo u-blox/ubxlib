@@ -98,7 +98,7 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
     count = 0
 
     # Acquire the install lock as this is a global operation
-    if u_utils.install_lock_acquire(system_lock, printer, prompt):
+    if system_lock is None or u_utils.install_lock_acquire(system_lock, printer, prompt):
         # Fetch the repo
         if u_utils.fetch_repo(esp_idf_url, esp_idf_dir,
                               esp_idf_branch, printer, prompt):
@@ -149,7 +149,8 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                            u_report.EVENT_FAILED,
                            "unable to fetch " + esp_idf_url)
-        u_utils.install_lock_release(system_lock, printer, prompt)
+        if system_lock is not None:
+            u_utils.install_lock_release(system_lock, printer, prompt)
     else:
         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                        u_report.EVENT_FAILED,
