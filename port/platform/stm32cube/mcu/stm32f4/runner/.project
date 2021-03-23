@@ -67,6 +67,11 @@
 			<locationURI>$%7BUBX_PATH%7D/example/security/c2c/c2c_main.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Example/Cell/LTECfg/lte_cfg_main.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/example/cell/lte_cfg/lte_cfg_main.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Example/Utilities/C030ModuleFwUpdate/c030_module_fw_update_main.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/example/utilities/c030_module_fw_update/c030_module_fw_update_main.c</locationURI>

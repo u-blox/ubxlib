@@ -118,6 +118,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/example/sockets/credentials_tls.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/e2e/e2e_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/psk/psk_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/c2c/c2c_main.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/example/cell/lte_cfg/lte_cfg_main.c)
 
 # unity
 target_compile_definitions(app PRIVATE UNITY_INCLUDE_CONFIG_H)

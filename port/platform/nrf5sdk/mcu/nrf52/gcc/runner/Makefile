@@ -87,6 +87,7 @@ SRC_FILES += \
   ../../../../../../../example/security/e2e/e2e_main.c \
   ../../../../../../../example/security/psk/psk_main.c \
   ../../../../../../../example/security/c2c/c2c_main.c \
+  ../../../../../../../example/cell/lte_cfg/lte_cfg_main.c \
   ../../../../../../../ble/src/u_ble.c \
   ../../../../../../../ble/src/u_ble_cfg.c \
   ../../../../../../../ble/src/u_ble_data.c \

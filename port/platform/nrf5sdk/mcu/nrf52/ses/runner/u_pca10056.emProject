@@ -44,6 +44,7 @@
       <file file_name="../../../../../../../example/security/e2e/e2e_main.c" />
       <file file_name="../../../../../../../example/security/psk/psk_main.c" />
       <file file_name="../../../../../../../example/security/c2c/c2c_main.c" />
+      <file file_name="../../../../../../../example/cell/lte_cfg/lte_cfg_main.c" />
       <file file_name="../../../../../../../common/network/api/u_network_handle.h" />
       <file file_name="../../../../../../../common/network/api/u_network.h" />
       <file file_name="../../../../../../../common/network/api/u_network_config_ble.h" />
