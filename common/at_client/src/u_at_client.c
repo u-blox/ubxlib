@@ -157,6 +157,37 @@
 # error U_AT_CLIENT_CALLBACK_TASK_PRIORITY must be less than U_AT_CLIENT_URC_TASK_PRIORITY
 #endif
 
+#ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
+/** Macros for detailed debugging of buffering behaviour.
+ * This one for use inside the bufferFill() function.
+ */
+# define LOG_BUFFER_FILL(place) logDebug(pClient, place,            \
+                                         (int32_t) eventIsCallback, \
+                                         pData, pDataIntercept,     \
+                                         (int32_t) length,          \
+                                         (int32_t) x, (int32_t) y,  \
+                                         (int32_t) z, readLength)
+
+/** Macros for detailed debugging of buffering behaviour.
+ * This one for use in general.
+ */
+# define LOG(place) logDebug(pClient, place,                        \
+                             -1, NULL, NULL, -1, -1, -1, -1, -1)
+
+/** Macros for detailed debugging of buffering behaviour.
+ * This one for use in general, with a condition.
+ */
+# define LOG_IF(cond, place) if (cond) {                               \
+                                 logDebug(pClient, place,              \
+                                          -1, NULL, NULL, -1, -1, -1,  \
+                                         -1, -1);                     \
+                             }
+#else
+# define LOG_BUFFER_FILL(place)
+# define LOG(place)
+# define LOG_IF(cond, place)
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -281,6 +312,34 @@ typedef struct uAtClientInstance_t {
     struct uAtClientInstance_t *pNext;
 } uAtClientInstance_t;
 
+#ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
+/** Structure used for detailed debugging of the AT client
+ * buffering behaviour, used in particular to debug the
+ * intercept functions.
+ * This struct should only contain multiples of int32_t,
+ * no gaps as we memcmp() it.
+ */
+typedef struct {
+    int32_t timeMs; /**< Must be first to fall outside our memcmp(). */
+    size_t place; /**< Must be second to fall outside our memcmp(). */
+    const uAtClientInstance_t *pClient;
+    int32_t inUrc; /**< 1 for yes, 0 for no, -1 for don't know. */
+    const char *pDataBufferStart; /**< from uAtClientReceiveBuffer_t. */
+    size_t dataBufferSize; /**< from uAtClientReceiveBuffer_t. */
+    size_t dataBufferLength; /**< from uAtClientReceiveBuffer_t. */
+    size_t dataBufferLengthBuffered; /**< from uAtClientReceiveBuffer_t. */
+    size_t dataBufferReadIndex; /**< from uAtClientReceiveBuffer_t. */
+    const char *pData;  /**< from bufferFill(). */
+    const char *pDataIntercept;  /**< from bufferFill(). */
+    int32_t length;  /**< from bufferFill(). */
+    int32_t x;  /**< from bufferFill(). */
+    int32_t y;  /**< from bufferFill(). */
+    int32_t z;  /**< from bufferFill(). */
+    int32_t readLength;  /**< from bufferFill(). */
+} uAtClientDetailedDebug_t;
+
+#endif
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -314,9 +373,101 @@ static const uAtClientTagDef_t gNoStopTag = {"", 0};
  */
 static int32_t gEventQueueHandle;
 
+#ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
+/** Array for detailed debugging.
+ */
+static uAtClientDetailedDebug_t gDebug[1000];
+
+/** Current position in gDebug.
+ */
+static size_t gDebugIndex = 0;
+
+/** Whether detailed logging is on or not.
+ */
+static bool gDebugOn = false;
+#endif
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+#ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
+// Log the detailed debug.
+static void logDebug(const uAtClientInstance_t *pClient,
+                     int32_t place, int32_t inUrc, const char *pData,
+                     const char *pDataIntercept, int32_t length,
+                     int32_t x, int32_t y, int32_t z,
+                     int32_t readLength)
+{
+    uAtClientDetailedDebug_t *pDebug;
+
+    if (gDebugOn && (gDebugIndex < sizeof(gDebug) / sizeof(gDebug[0]))) {
+        pDebug = &(gDebug[gDebugIndex]);
+
+        pDebug->timeMs = (int32_t) uPortGetTickTimeMs();
+        pDebug->place = place;
+        pDebug->pClient = pClient;
+        pDebug->inUrc = inUrc;
+
+        pDebug->pDataBufferStart = U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer);
+        pDebug->dataBufferSize = pClient->pReceiveBuffer->dataBufferSize;
+        pDebug->dataBufferLength = pClient->pReceiveBuffer->length;
+        pDebug->dataBufferLengthBuffered = pClient->pReceiveBuffer->lengthBuffered;
+        pDebug->dataBufferReadIndex = pClient->pReceiveBuffer->readIndex;
+
+        pDebug->pData = pData;
+        pDebug->pDataIntercept = pDataIntercept;
+        pDebug->length = length;
+        pDebug->x = x;
+        pDebug->y = y;
+        pDebug->z = z;
+        pDebug->readLength = readLength;
+
+        // Only keep it if it is different
+        // bar the initial 32-bit timestamp
+        // and 32-biit "place"
+        if ((gDebugIndex == 0) ||
+            (memcmp(((int32_t *) pDebug) + 2, ((int32_t *) & (gDebug[gDebugIndex - 1])) + 2,
+                    sizeof(*pDebug) - (sizeof(int32_t) * 2)) != 0)) {
+            gDebugIndex++;
+        }
+    }
+}
+
+// Print out the detailed debug log.
+static void printLogDebug(const uAtClientDetailedDebug_t *pDebug,
+                          size_t number)
+{
+    char c;
+
+    for (size_t x = 0; x < number; x++) {
+        uPortLog("U_AT_CLIENT_%d-%d: %4d %3d",
+                 pDebug->pClient->streamType,
+                 pDebug->pClient->streamHandle,
+                 x, pDebug->place);
+        c = ' ';
+        if (pDebug->inUrc == 0) {
+            c = 'U';
+        } else if (pDebug->inUrc < 0) {
+            c = '?';
+        }
+        uPortLog(" %c @ %8d:", c, pDebug->timeMs);
+        uPortLog(" buffer 0x%08x (%d)  ri %d  l %d lb %d, ",
+                 (int) pDebug->pDataBufferStart,
+                 pDebug->dataBufferSize,
+                 pDebug->dataBufferReadIndex,
+                 pDebug->dataBufferLength,
+                 pDebug->dataBufferLengthBuffered);
+        uPortLog(" pD 0x%08x pDI 0x%08x l %d x %d y %d z %d rl %d.\n",
+                 (int) pDebug->pData,
+                 (int) pDebug->pDataIntercept,
+                 pDebug->length,
+                 pDebug->x, pDebug->y, pDebug->z,
+                 pDebug->readLength);
+        pDebug++;
+    }
+}
+#endif
 
 // Find an AT client instance in the list by stream handle.
 // gMutex should be locked before this is called.
@@ -541,6 +692,7 @@ static void bufferReset(const uAtClientInstance_t *pClient,
 {
     uAtClientReceiveBuffer_t *pBuffer = pClient->pReceiveBuffer;
 
+    LOG_IF(totalReset, 200);
     // If there is no receive intercept function then
     // the buffered data can be reset also
     if (totalReset || (pClient->pInterceptRx == NULL)) {
@@ -548,11 +700,23 @@ static void bufferReset(const uAtClientInstance_t *pClient,
     }
 
     if (pBuffer->lengthBuffered > 0) {
+        LOG_IF(!totalReset, 201);
+        if (pBuffer->length > pBuffer->lengthBuffered) {
+            // This should never occur, but if it did
+            // it would not be good so best be safe.
+            if (pClient->debugOn) {
+                uPortLog("U_AT_CLIENT_%d-%d: *** WARNING ***"
+                         " lengthBuffered (%d) > length (%d).\n",
+                         pBuffer->lengthBuffered, pBuffer->length);
+            }
+            pBuffer->length = pBuffer->lengthBuffered;
+        }
         // If there is stuff buffered, which will be beyond
         // length, need to move that down when we reset
         memmove(((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t),
                 ((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t) + pBuffer->length,
                 pBuffer->lengthBuffered - pBuffer->length);
+        assert(U_AT_CLIENT_GUARD_CHECK(pBuffer));
         pBuffer->lengthBuffered -= pBuffer->length;
     }
     pBuffer->readIndex = 0;
@@ -565,16 +729,30 @@ static void bufferRewind(const uAtClientInstance_t *pClient)
 {
     uAtClientReceiveBuffer_t *pBuffer = pClient->pReceiveBuffer;
 
+    LOG(100);
     if ((pBuffer->readIndex > 0) &&
         (pBuffer->length >= pBuffer->readIndex)) {
+        if (pBuffer->lengthBuffered < pBuffer->readIndex) {
+            // This should never occur, but if it did
+            // it would not be good so best be safe.
+            if (pClient->debugOn) {
+                uPortLog("U_AT_CLIENT_%d-%d: *** WARNING ***"
+                         " lengthBuffered (%d) < readIndex (%d).\n",
+                         pBuffer->lengthBuffered, pBuffer->readIndex);
+            }
+            pBuffer->lengthBuffered = pBuffer->readIndex;
+        }
         pBuffer->length -= pBuffer->readIndex;
         pBuffer->lengthBuffered -= pBuffer->readIndex;
+        LOG(101);
         // Move what has not been read to the
         // beginning of the buffer
         memmove(((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t),
                 ((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t) + pBuffer->readIndex,
                 pBuffer->lengthBuffered);
+        assert(U_AT_CLIENT_GUARD_CHECK(pBuffer));
         pBuffer->readIndex = 0;
+        LOG(102);
     }
 }
 
@@ -588,12 +766,42 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     int32_t atTimeoutMs = -1;
     int32_t readLength = 0;
     size_t x = 0;
-    size_t y;
-    size_t z;
-    size_t length = pReceiveBuffer->lengthBuffered - pReceiveBuffer->length;
+    size_t y = 0;
+    size_t z = 0;
+    size_t length;
     bool eventIsCallback = false;
-    char *pData;
-    char *pDataIntercept;
+    char *pData = NULL;
+    //lint -esym(838, pDataIntercept) Suppress initial value not used: it
+    // is if detailed debugging is on
+    char *pDataIntercept = NULL;
+
+    // Determine if we're in a callback or not
+    switch (pClient->streamType) {
+        case U_AT_CLIENT_STREAM_TYPE_UART:
+            eventIsCallback = uPortUartEventIsCallback(pClient->streamHandle);
+            break;
+        case U_AT_CLIENT_STREAM_TYPE_EDM:
+            eventIsCallback = uShortRangeEdmStreamAtEventIsCallback(pClient->streamHandle);
+            break;
+        default:
+            break;
+    }
+
+    if (pReceiveBuffer->lengthBuffered < pReceiveBuffer->length) {
+        // This should never occur, but if it did
+        // it would not be good so best be safe.
+        if (pClient->debugOn) {
+            // Let the world know, even if we're in a callback,
+            // as this is important.
+            uPortLog("U_AT_CLIENT_%d-%d: *** WARNING ***"
+                     " lengthBuffered (%d) < length (%d).\n",
+                     pReceiveBuffer->lengthBuffered,
+                     pReceiveBuffer->length);
+        }
+        pReceiveBuffer->lengthBuffered = pReceiveBuffer->length;
+    }
+
+    length = pReceiveBuffer->lengthBuffered - pReceiveBuffer->length;
 
     // The receive buffer looks like this:
     //
@@ -615,17 +823,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     // point it may make it available as normal stuff which this
     // function then copies down into the unread part of "length".
 
-    // Determine if we're in a callback or not
-    switch (pClient->streamType) {
-        case U_AT_CLIENT_STREAM_TYPE_UART:
-            eventIsCallback = uPortUartEventIsCallback(pClient->streamHandle);
-            break;
-        case U_AT_CLIENT_STREAM_TYPE_EDM:
-            eventIsCallback = uShortRangeEdmStreamAtEventIsCallback(pClient->streamHandle);
-            break;
-        default:
-            break;
-    }
+    LOG_BUFFER_FILL(1);
 
     // If we're blocking, set the timeout value.
     if (blocking) {
@@ -652,6 +850,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
 #if U_CFG_OS_CLIB_LEAKS
         }
 #endif
+        LOG_BUFFER_FILL(2);
         bufferReset(pClient, true);
     }
 
@@ -659,6 +858,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     // if there is one
     pDataIntercept = U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                      pReceiveBuffer->length;
+    LOG_BUFFER_FILL(3);
     // Do the read
     do {
         switch (pClient->streamType) {
@@ -679,6 +879,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
             default:
                 break;
         }
+        LOG_BUFFER_FILL(4);
 
         if (readLength > 0) {
             // lengthBuffered is advanced by the amount we have
@@ -691,6 +892,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
             length += readLength;
         }
         x = length;
+        LOG_BUFFER_FILL(5);
 
         if ((pClient->pInterceptRx != NULL) && (length > 0)) {
             // There's an intercept function and either we've just
@@ -702,11 +904,14 @@ static bool bufferFill(uAtClientInstance_t *pClient,
             // Run around the loop until the intercept function has
             // nothing more to give
             do {
+                LOG_BUFFER_FILL(6);
                 pData = pClient->pInterceptRx((uAtClientHandle_t) pClient,
                                               &pDataIntercept, &length,
                                               pClient->pInterceptRxContext);
                 // length is now the length of the data that has been PROCESSED
                 // by the intercept function and is ready to be AT-parsed.
+                LOG_BUFFER_FILL(7);
+                assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
 
                 // Safety check
                 if (length > x) {
@@ -714,6 +919,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
                 }
 
                 if (pData != NULL) {
+                    LOG_BUFFER_FILL(8);
                     // length is the amount of usable data but it may
                     // be somewhere further on in the buffer (as
                     // pointed to by pData) so copy everything down in
@@ -744,6 +950,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
                     memmove(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                             pReceiveBuffer->length + readLength,
                             pData, length);
+                    assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
 
                     // We now have:
                     //
@@ -762,18 +969,30 @@ static bool bufferFill(uAtClientInstance_t *pClient,
                     // from pDataIntercept up to lengthBuffered, down to join
                     // the end of "length".
                     // y is how much stuff there is to move.
+                    if (pDataIntercept > (U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                          pReceiveBuffer->lengthBuffered)) {
+                        // This should never occur, but if it did
+                        // it would not be good so best be safe.
+                        // No print here as it would likely overload
+                        // things as we're in a loop
+                        pDataIntercept = U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                         pReceiveBuffer->lengthBuffered;
+                    }
                     y = (U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                          pReceiveBuffer->lengthBuffered) - pDataIntercept;
+                    LOG_BUFFER_FILL(9);
                     // Move it
                     memmove(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                             pReceiveBuffer->length + readLength + length,
                             pDataIntercept, y);
+                    assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
                     // Lastly, we need to adjust the things that were at or
                     // beyond pDataIntercept to take account of the move.
                     // z is how far things were moved
                     z = pDataIntercept -
                         ((U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                           pReceiveBuffer->length + readLength + length));
+                    LOG_BUFFER_FILL(10);
                     // Adjust pDataIntercept down by z.
                     pDataIntercept -= z;
                     // lengthBuffered is reduced by z
@@ -786,14 +1005,18 @@ static bool bufferFill(uAtClientInstance_t *pClient,
                     // run around the loop
                     x = y;
                     length = y;
+                    LOG_BUFFER_FILL(11);
                 } else {
+                    LOG_BUFFER_FILL(12);
                     // The intercept function needs more data,
                     // put length back to where it was and ask for more
                     length = x;
                 }
+                LOG_BUFFER_FILL(13);
             } while (pData != NULL);
         }
 
+        LOG_BUFFER_FILL(14);
         // Block for a little while in case the data coming
         // in is stuttering; we want a good load or we'll just
         // be looping on partially obtained strings to no useful
@@ -802,6 +1025,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     } while ((readLength == 0) &&
              (pollTimeRemaining(atTimeoutMs, pClient->lockTimeMs) > 0));
 
+    LOG_BUFFER_FILL(15);
     if (readLength > 0) {
 #if U_CFG_OS_CLIB_LEAKS
         // If the C library leaks then don't print
@@ -815,6 +1039,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         }
 #endif
         pReceiveBuffer->length += readLength;
+        LOG_BUFFER_FILL(16);
     }
 
     assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
@@ -1625,6 +1850,34 @@ static void eventQueueCallback(void *pParameters, size_t paramLength)
 }
 
 /* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: DETAILED DEBUG ONLY
+ * These functions are for detailed debug only, purely for internal
+ * development purposes and therefore not exposed in the header file.
+ * -------------------------------------------------------------- */
+
+#ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
+// Switch detailed debug on.
+void uAtClientDetailedDebugOn()
+{
+    gDebugOn = true;
+}
+
+// Switch detailed debug off.
+void uAtClientDetailedDebugOff()
+{
+    gDebugOn = false;
+}
+
+// Print the detailed debug (done anyway on AT client deinit).
+void uAtClientDetailedDebugPrint()
+{
+    // Print out the detailed debug log.
+    printLogDebug(gDebug, gDebugIndex);
+    gDebugIndex = 0;
+}
+#endif
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: INITIALISATION AND CONFIGURATION
  * -------------------------------------------------------------- */
 
@@ -1674,6 +1927,12 @@ void uAtClientDeinit()
         U_PORT_MUTEX_UNLOCK(gMutex);
         uPortMutexDelete(gMutex);
         gMutex = NULL;
+
+#ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
+        // Print out the detailed debug log.
+        printLogDebug(gDebug, gDebugIndex);
+        gDebugIndex = 0;
+#endif
     }
 }
 
@@ -1710,7 +1969,40 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                     if (uPortMutexCreate(&(pClient->mutex)) == 0) {
                         // Create the client's stream mutex
                         if (uPortMutexCreate(&(pClient->streamMutex)) == 0) {
-                            // Finally, add an event handler for characters
+                            // Set all the initial values before we set
+                            // the event handlers which might call us
+                            pClient->streamHandle = streamHandle;
+                            pClient->streamType = streamType;
+                            pClient->debugOn = false;
+                            pClient->printAtOn = false;
+                            pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
+                            pClient->atTimeoutSavedMs = -1;
+                            pClient->numConsecutiveAtTimeouts = 0;
+                            pClient->pConsecutiveTimeoutsCallback = NULL;
+                            pClient->delimiter = U_AT_CLIENT_DEFAULT_DELIMITER;
+                            pClient->delayMs = U_AT_CLIENT_DEFAULT_DELAY_MS;
+                            clearError(pClient);
+                            // This will also set stopTag
+                            setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
+                            pClient->pUrcList = NULL;
+                            pClient->lastResponseStopMs = 0;
+                            pClient->lockTimeMs = 0;
+                            pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
+                            pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
+                            pClient->delimiterRequired = false;
+                            pClient->pInterceptTx = NULL;
+                            pClient->pInterceptRx = NULL;
+                            pClient->pNext = NULL;
+                            // Set up the buffer and its protection markers
+                            pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
+                                                                      U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
+                            bufferReset(pClient, true);
+                            memcpy(pClient->pReceiveBuffer->mk0, U_AT_CLIENT_MARKER,
+                                   U_AT_CLIENT_MARKER_SIZE);
+                            memcpy(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
+                                   pClient->pReceiveBuffer->dataBufferSize,
+                                   U_AT_CLIENT_MARKER, U_AT_CLIENT_MARKER_SIZE);
+                            // Now add an event handler for characters
                             // received on the stream
                             switch (streamType) {
                                 case U_AT_CLIENT_STREAM_TYPE_UART:
@@ -1730,39 +2022,6 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                     break;
                             }
                             if (errorCode == 0) {
-                                // Got all "failable" things, now
-                                // set all the initial values
-                                pClient->streamHandle = streamHandle;
-                                pClient->streamType = streamType;
-                                pClient->debugOn = false;
-                                pClient->printAtOn = false;
-                                pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
-                                pClient->atTimeoutSavedMs = -1;
-                                pClient->numConsecutiveAtTimeouts = 0;
-                                pClient->pConsecutiveTimeoutsCallback = NULL;
-                                pClient->delimiter = U_AT_CLIENT_DEFAULT_DELIMITER;
-                                pClient->delayMs = U_AT_CLIENT_DEFAULT_DELAY_MS;
-                                clearError(pClient);
-                                // This will also set stopTag
-                                setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
-                                pClient->pUrcList = NULL;
-                                pClient->lastResponseStopMs = 0;
-                                pClient->lockTimeMs = 0;
-                                pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
-                                pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
-                                pClient->delimiterRequired = false;
-                                pClient->pInterceptTx = NULL;
-                                pClient->pInterceptRx = NULL;
-                                pClient->pNext = NULL;
-                                // Finally set up the buffer and its protection markers
-                                pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
-                                                                          U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
-                                bufferReset(pClient, true);
-                                memcpy(pClient->pReceiveBuffer->mk0, U_AT_CLIENT_MARKER,
-                                       U_AT_CLIENT_MARKER_SIZE);
-                                memcpy(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
-                                       pClient->pReceiveBuffer->dataBufferSize,
-                                       U_AT_CLIENT_MARKER, U_AT_CLIENT_MARKER_SIZE);
                                 // Add the instance to the list
                                 addAtClientInstance(pClient);
                             } else {

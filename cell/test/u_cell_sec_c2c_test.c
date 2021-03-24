@@ -88,6 +88,25 @@
  */
 #define U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES U_CELL_SEC_C2C_USER_MAX_TX_LENGTH_BYTES
 
+/** Guard contents.
+ */
+#define U_CELL_SEC_C2C_GUARD "deadarea"
+
+/** Length of guard contents.
+ */
+#define U_CELL_SEC_C2C_GUARD_LENGTH_BYTES 8
+
+/** Check a buffer for underrun.
+ */
+#define U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(x)                                                   \
+    U_PORT_TEST_ASSERT(memcmp(x, U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES) == 0)
+
+/** Check a buffer for overrun.
+ */
+#define U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(x)                                                   \
+    U_PORT_TEST_ASSERT(memcmp(x + sizeof(x) - U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,                \
+                              U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES) == 0)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -235,11 +254,13 @@ static uCellSecC2cTest_t gTestData[] = {
 
 /** A buffer for transmitted data.
  */
-static char gBufferA[U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES * 5];
+static char gBufferA[(U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES * 5) +
+                                                                 (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2)];
 
 /** A buffer for received data.
  */
-static char gBufferB[U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES * 5];
+static char gBufferB[(U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES * 5) +
+                                                                 (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2)];
 
 /** Handle for the AT client UART stream.
  */
@@ -253,7 +274,8 @@ static int32_t gUartBHandle = -1;
 
 /** A buffer for received URC data.
  */
-static char gBufferC[U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES * 5];
+static char gBufferC[(U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES * 5) +
+                                                                 (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2)];
 
 /** For tracking heap lost to memory  lost by the C library.
  */
@@ -467,6 +489,22 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Initialise the guard areas on the buffers.
+static void initGuards()
+{
+    memcpy(gBufferA, U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
+    memcpy(gBufferA + sizeof(gBufferA) - U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+           U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
+    memcpy(gBufferB, U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
+    memcpy(gBufferB + sizeof(gBufferB) - U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+           U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B >= 0)
+    memcpy(gBufferC, U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
+    memcpy(gBufferC + sizeof(gBufferC) - U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+           U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
+#endif
+}
+
 // Print out text.
 static void print(const char *pStr, size_t length)
 {
@@ -517,17 +555,17 @@ static void printBlock(const char *pStr, size_t length,
     int32_t y;
 
     while (x > 0) {
-        uPortLog("U_CELL_SEC_C2C_TEST_%d: \"", index);
+        uPortLog("U_CELL_SEC_C2C_TEST_%d: ", index);
         y = x;
-        if (y > 32) {
-            y = 32;
+        if (y > 16) {
+            y = 16;
         }
         if (isBinary) {
             printHex(pStr, y);
         } else {
             print(pStr, y);
         }
-        uPortLog("\"\n");
+        uPortLog("\n");
         // Don't overwhelm the poor debug output,
         // there there
         uPortTaskBlock(100);
@@ -552,31 +590,47 @@ static void checkEncrypted(size_t testIndex,
 {
     char *pData;
     char *pDecrypted;
-    size_t length = 0;
+    size_t length;
     size_t previousLength = 0;
+    const char *pTmp = pEncrypted;
+    size_t x;
 
-    // Make sure that testIndex us used to keep
+    // Make sure that testIndex is used to keep
     // compilers happy if logging is compiled out
     (void) testIndex;
 
-    uPortLog("U_CELL_SEC_C2C_TEST_%d: encrypted chunk %d, %d byte(s) \"",
+    uPortLog("U_CELL_SEC_C2C_TEST_%d: encrypted chunk %d, %d byte(s):\n",
              testIndex + 1, chunkIndex + 1, encryptedLength);
-    if (pEncrypted != NULL) {
-        printHex(pEncrypted, encryptedLength);
+    if (pTmp != NULL) {
+        length = encryptedLength;
+        while (length > 0) {
+            uPortLog("U_CELL_SEC_C2C_TEST_%d: ", testIndex + 1);
+            x = length;
+            if (x > 16) {
+                x = 16;
+            }
+            printHex(pTmp, x);
+            uPortLog("\n");
+            // Don't overwhelm the poor debug output,
+            // there there
+            uPortTaskBlock(100);
+            length -= x;
+            pTmp += x;
+        }
     } else {
         uPortLog("[NULL]");
     }
-    uPortLog("\".\n");
     U_PORT_TEST_ASSERT(encryptedLength == pTestData->encryptedLength[chunkIndex]);
 
-    for (size_t x = 0; x < chunkIndex; x++) {
+    for (x = 0; x < chunkIndex; x++) {
         previousLength += pTestData->clearLength[x];
     }
 
     if (pEncrypted != NULL) {
         // Decrypt the data block to check if the contents were correct
-        memcpy(gBufferB + previousLength, pEncrypted, encryptedLength);
-        pData = gBufferB + previousLength;
+        memcpy(gBufferB + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + previousLength,
+               pEncrypted, encryptedLength);
+        pData = gBufferB + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + previousLength;
         length = encryptedLength;
         pDecrypted = pUCellSecC2cInterceptRx(0, &pData, &length,
                                              &gContext);
@@ -590,7 +644,8 @@ static void checkEncrypted(size_t testIndex,
         }
         uPortLog("\".\n");
 
-        U_PORT_TEST_ASSERT(pData == gBufferB + previousLength + encryptedLength);
+        U_PORT_TEST_ASSERT(pData == gBufferB + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES +
+                           previousLength + encryptedLength);
         U_PORT_TEST_ASSERT(length == pTestData->clearLength[chunkIndex]);
         if (pDecrypted != NULL) {
             U_PORT_TEST_ASSERT(memcmp(pDecrypted, pTestData->pClear + previousLength,
@@ -699,16 +754,27 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
     int32_t heapUsed;
 #endif
 
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferC);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferC);
+
     if ((pTestAt != NULL) &&
         (eventBitmask & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
         sizeOrError = 0;
         // Loop until no characters left to receive
         while ((uPortUartGetReceiveSize(uartHandle) > 0) && (sizeOrError >= 0)) {
-            sizeOrError = uPortUartRead(uartHandle, gBufferA + length,
-                                        sizeof(gBufferA) - length);
+            sizeOrError = uPortUartRead(uartHandle, gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + length,
+                                        (sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2)) - length);
+
+            U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+            U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+
             if (sizeOrError > 0) {
                 length += sizeOrError;
-                if (length >= sizeof(gBufferA)) {
+                if (length >= sizeof(gBufferA) + (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2)) {
                     length = 0;
                     sizeOrError = -1;
                 }
@@ -728,7 +794,8 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
 #endif
             uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server received, %d byte(s):\n",
                      gAtTestCount + 1, length);
-            printBlock(gBufferA, length, true, gAtTestCount + 1);
+            printBlock(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, length,
+                       true, gAtTestCount + 1);
 
 #if U_CFG_OS_CLIB_LEAKS
             // Take account of any heap lost through the first
@@ -739,7 +806,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
             // Decrypt the received chunk or chunks in place
             // by calling pUCellSecC2cInterceptRx with
             // the server context.
-            pData = gBufferA;
+            pData = gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES;
             x = length;
             interceptLength = length;
             sizeOrError = 0;
@@ -747,9 +814,16 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                 pDecrypted = pUCellSecC2cInterceptRx(0, &pData,
                                                      &interceptLength,
                                                      &gAtServerContext);
+
+                U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+                U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+                U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+                U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+
                 if (pDecrypted != NULL) {
                     // Our intercept function always returns a pointer
-                    // to the start of the buffer, to pData, so just need
+                    // to the start of the buffer (gBufferA +
+                    // U_CELL_SEC_C2C_GUARD_LENGTH_BYTES), to pData, so just need
                     // to shuffle everything down so that the next pData
                     // we provide to the intercept function will be
                     // contiguous with the already decrypted data.
@@ -763,16 +837,20 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     //    |    sizeOrError   | interceptLength |                       |
                     //    +------------------+-----------------+-------+---------------+
                     // gBufferA         pDecrypted                   pData
-                    //                                                 |------ Y ------|
+                    // + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES             |------ Y ------|
                     //                                         |-- Z --|
                     // y is the amount of data to move
-                    y = gBufferA + sizeOrError + x - pData;
+                    y = gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + sizeOrError + x - pData;
                     // Grow size
                     sizeOrError += (int32_t) interceptLength;
                     // Do the move
-                    memmove(gBufferA + sizeOrError, pData, y);
+                    memmove(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + sizeOrError, pData, y);
+
+                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+
                     // z is the distance it was moved
-                    z = pData - (gBufferA + sizeOrError);
+                    z = pData - (gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + sizeOrError);
                     // Shift pData down to match
                     pData -= z;
                     // Reduce the amount of data left to process
@@ -790,16 +868,19 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
             if (sizeOrError > 0) {
                 uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server decrypted %d byte(s):\n",
                          gAtTestCount + 1, sizeOrError);
-                printBlock(gBufferA, sizeOrError, false, gAtTestCount + 1);
+                printBlock(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, sizeOrError,
+                           false, gAtTestCount + 1);
 
                 x = strlen(pTestAt->pCommandPrefix);
                 if (sizeOrError == x + pTestAt->commandBodyLength +
                     U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES) {
-                    if (memcmp(gBufferA, pTestAt->pCommandPrefix, x) == 0) {
-                        if (memcmp(gBufferA + x, pTestAt->pCommandBody,
+                    if (memcmp(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                               pTestAt->pCommandPrefix, x) == 0) {
+                        if (memcmp(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x, pTestAt->pCommandBody,
                                    pTestAt->commandBodyLength) == 0) {
                             // Should be the correct command delimiter on the end
-                            if (memcmp(gBufferA + x + pTestAt->commandBodyLength,
+                            if (memcmp(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x +
+                                       pTestAt->commandBodyLength,
                                        U_AT_CLIENT_COMMAND_DELIMITER,
                                        U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES) != 0) {
                                 uPortLog("U_CELL_SEC_C2C_TEST_%d: expected command"
@@ -807,7 +888,8 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                                 printHex(U_AT_CLIENT_COMMAND_DELIMITER,
                                          U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES);
                                 uPortLog("\" but received \"");
-                                printHex(gBufferA + x + pTestAt->commandBodyLength,
+                                printHex(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES +
+                                         x + pTestAt->commandBodyLength,
                                          U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES);
                                 uPortLog("\".\n");
                                 sizeOrError = -400;
@@ -822,9 +904,11 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                             }
                             uPortLog("\"\n but received \"");
                             if (pTestAt->isBinary) {
-                                printHex(gBufferA + x, sizeOrError - x);
+                                printHex(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x,
+                                         sizeOrError - x);
                             } else {
-                                print(gBufferA + x, sizeOrError - x);
+                                print(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x,
+                                      sizeOrError - x);
                             }
                             uPortLog("\".\n");
                             sizeOrError = -300;
@@ -834,7 +918,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                                  " command prefix \"", gAtTestCount + 1);
                         print(pTestAt->pCommandPrefix, x);
                         uPortLog("\"\n but received \"");
-                        print(gBufferA, x);
+                        print(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, x);
                         uPortLog("\".\n");
                         sizeOrError = -200;
                     }
@@ -847,18 +931,30 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     sizeOrError = -100;
                 }
 
+                U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+                U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+                U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+                U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+
                 // If there is one, assemble and encrypt a URC
                 if ((pTestAt->pUrcPrefix != NULL) && (sizeOrError >= 0)) {
                     uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server inserting"
                              " URC \"%s %s\".\n", gAtTestCount + 1,
                              pTestAt->pUrcPrefix, pTestAt->pUrcBody);
-                    strcpy(gBufferA, pTestAt->pUrcPrefix);
-                    strcat(gBufferA, pTestAt->pUrcBody);
-                    strcat(gBufferA, "\r\n");
+                    strcpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                           pTestAt->pUrcPrefix);
+                    strcat(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                           pTestAt->pUrcBody);
+                    strcat(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, "\r\n");
                     sizeOrError = atServerEncryptAndSendThing(uartHandle,
-                                                              gBufferA,
-                                                              strlen(gBufferA),
+                                                              gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                                              strlen(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES),
                                                               pTestAt->chunkLengthMax);
+
+                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
                 }
 
                 if (sizeOrError >= 0) {
@@ -882,21 +978,29 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                         uPortLog("U_CELL_SEC_C2C_TEST_%d: [nothing]\n", gAtTestCount + 1);
                     }
                     uPortLog("U_CELL_SEC_C2C_TEST_%d: ...and then \"OK\".\n", gAtTestCount + 1);
-                    gBufferA[0] = 0;
+                    *(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES) = 0;
                     if (pTestAt->pResponsePrefix != NULL) {
-                        strcpy(gBufferA, pTestAt->pResponsePrefix);
+                        strcpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                               pTestAt->pResponsePrefix);
                     }
-                    x = strlen(gBufferA);
+                    x = strlen(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
                     if (pTestAt->pResponseBody != NULL) {
-                        memcpy(gBufferA + x, pTestAt->pResponseBody,
-                               pTestAt->responseBodyLength);
+                        memcpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x,
+                               pTestAt->pResponseBody, pTestAt->responseBodyLength);
                         x += pTestAt->responseBodyLength;
                     }
-                    memcpy(gBufferA + x, "\r\nOK\r\n", 6);
+                    memcpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x,
+                           "\r\nOK\r\n", 6);
                     x += 6;
                     sizeOrError = atServerEncryptAndSendThing(uartHandle,
-                                                              gBufferA, x,
-                                                              pTestAt->chunkLengthMax);
+                                                              gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                                              x, pTestAt->chunkLengthMax);
+                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferC);
+                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferC);
                 }
             }
         }
@@ -917,9 +1021,18 @@ static void urcHandler(uAtClientHandle_t atClientHandle, void *pParameters)
     int32_t heapUsed;
 #endif
 
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferC);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferC);
+
     // Read the single string parameter
-    sizeOrError = uAtClientReadString(atClientHandle, gBufferC,
-                                      sizeof(gBufferC), false);
+    sizeOrError = uAtClientReadString(atClientHandle,
+                                      gBufferC + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                      sizeof(gBufferC) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2),
+                                      false);
     if (pTestAt != NULL) {
         if (pTestAt->pUrcBody != NULL) {
             x = strlen(pTestAt->pUrcBody);
@@ -933,7 +1046,7 @@ static void urcHandler(uAtClientHandle_t atClientHandle, void *pParameters)
 #endif
         uPortLog("U_CELL_SEC_C2C_TEST_%d: AT client received URC \"%s ",
                  gAtTestCount + 1, pTestAt->pUrcPrefix);
-        print(gBufferC, x);
+        print(gBufferC + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, x);
         uPortLog("\".\n");
 #if U_CFG_OS_CLIB_LEAKS
         // Take account of any heap lost through the first
@@ -941,7 +1054,7 @@ static void urcHandler(uAtClientHandle_t atClientHandle, void *pParameters)
         gSystemHeapLost += (size_t) (unsigned) (heapUsed - uPortGetHeapFree());
 #endif
         if (sizeOrError == x) {
-            if (memcmp(gBufferC, pTestAt->pUrcBody, x) != 0) {
+            if (memcmp(gBufferC + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, pTestAt->pUrcBody, x) != 0) {
                 uPortLog("U_CELL_SEC_C2C_TEST_%d: AT client expected"
                          " URC body \"", gAtTestCount + 1);
                 print(pTestAt->pUrcBody, x);
@@ -965,7 +1078,7 @@ static void urcHandler(uAtClientHandle_t atClientHandle, void *pParameters)
 #endif
         uPortLog("U_CELL_SEC_C2C_TEST_%d: AT client received"
                  " URC fragment \"", gAtTestCount + 1);
-        print(gBufferC, sizeOrError);
+        print(gBufferC + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, sizeOrError);
         uPortLog("\" when there wasn't meant to be one.\n");
 #if U_CFG_OS_CLIB_LEAKS
         // Take account of any heap lost through the first
@@ -974,6 +1087,13 @@ static void urcHandler(uAtClientHandle_t atClientHandle, void *pParameters)
 #endif
         sizeOrError = -600;
     }
+
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferC);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferC);
 
     gUrcCount++;
     gUrcErrorOrSize = sizeOrError;
@@ -1002,6 +1122,13 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cIntercept")
     size_t numChunks;
     int32_t heapUsed;
 
+    // Initialise the guard areas at either end of the buffers
+    initGuards();
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
@@ -1013,7 +1140,7 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cIntercept")
     // which is never deleted.  To avoid that getting in their
     // way of our heap loss calculation, make a call to one
     // of the crypto functions here.
-    uPortCryptoSha256(NULL, 0, gBufferA);
+    uPortCryptoSha256(NULL, 0, gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
 
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
@@ -1049,8 +1176,9 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cIntercept")
         gContext.pTx->txInLength = 0;
         gContext.pTx->txInLimit = pTestData->chunkLengthMax;
 
-        memcpy(gBufferA, pTestData->pClear, totalLength);
-        pData = gBufferA;
+        memcpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+               pTestData->pClear, totalLength);
+        pData = gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES;
         numChunks = 0;
         pDataStart = pData;
 
@@ -1066,7 +1194,12 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cIntercept")
                 checkEncrypted(x, numChunks, pOut, outLength, pTestData);
                 numChunks++;
             }
-        } while (pData < gBufferA + totalLength);
+        } while (pData < gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + totalLength);
+
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
 
         // Flush the transmit intercept by calling it again with NULL
         outLength = 0;
@@ -1079,8 +1212,13 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cIntercept")
         U_PORT_TEST_ASSERT(numChunks == pTestData->numChunks);
         // When done, the RX buffer should contain the complete
         // clear message
-        U_PORT_TEST_ASSERT(memcmp(gBufferB, pTestData->pClear,
-                                  totalLength) == 0);
+        U_PORT_TEST_ASSERT(memcmp(gBufferB + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                  pTestData->pClear, totalLength) == 0);
+
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
     }
 
     uPortDeinit();
@@ -1126,6 +1264,15 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
+    // Initialise the guard areas at either end of the buffers
+    initGuards();
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferC);
+    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferC);
+
     gContext.pTx = &gContextTx;
     gContext.pRx = &gContextRx;
 
@@ -1140,7 +1287,7 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
     // which is never deleted.  To avoid that getting in their
     // way of our heap loss calculation, make a call to one
     // of the crypto functions here.
-    uPortCryptoSha256(NULL, 0, gBufferA);
+    uPortCryptoSha256(NULL, 0, gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
 
     heapUsed = uPortGetHeapFree();
 
@@ -1273,6 +1420,13 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
                    pTestAt->commandBodyLength,
                    pTestAt->isBinary, x + 1);
 
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferC);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferC);
+
         uAtClientLock(atClientHandle);
 
         // We do a LOT of debug prints in the AT server task which responds
@@ -1301,14 +1455,24 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
         uAtClientResponseStart(atClientHandle, pTestAt->pResponsePrefix);
         if (pTestAt->isBinary) {
             // Standalone bytes
-            sizeOrError = uAtClientReadBytes(atClientHandle, gBufferB,
-                                             sizeof(gBufferB), true);
+            sizeOrError = uAtClientReadBytes(atClientHandle,
+                                             gBufferB + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                             sizeof(gBufferB) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2),
+                                             true);
         } else {
             // Quoted string
-            sizeOrError = uAtClientReadString(atClientHandle, gBufferB,
-                                              sizeof(gBufferB), false);
+            sizeOrError = uAtClientReadString(atClientHandle, gBufferB + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                              sizeof(gBufferB) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2),
+                                              false);
         }
         uAtClientResponseStop(atClientHandle);
+
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferC);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferC);
 
         // Wait a moment before printing so that any URCs get to
         // be printed without us trampling over them
@@ -1322,7 +1486,7 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
                 uPortLog("U_CELL_SEC_C2C_TEST_%d: \"%s\" and then...\n",
                          x + 1, pTestAt->pResponsePrefix);
             }
-            printBlock(gBufferB, sizeOrError,
+            printBlock(gBufferB + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, sizeOrError,
                        pTestAt->isBinary, x + 1);
         } else {
             uPortLog("U_CELL_SEC_C2C_TEST_%d:  [nothing]\n", x + 1);
@@ -1332,7 +1496,8 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
 
         U_PORT_TEST_ASSERT(sizeOrError == pTestAt->responseBodyLength);
         if (sizeOrError > 0) {
-            U_PORT_TEST_ASSERT(memcmp(gBufferB, pTestAt->pResponseBody,
+            U_PORT_TEST_ASSERT(memcmp(gBufferB + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                      pTestAt->pResponseBody,
                                       pTestAt->responseBodyLength) == 0);
         }
 
@@ -1340,6 +1505,14 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
         U_PORT_TEST_ASSERT(gUrcErrorOrSize >= 0);
         U_PORT_TEST_ASSERT(urcCount == gUrcCount);
         uPortLog("U_CELL_SEC_C2C_TEST_%d: ...and then \"OK\"\n", x + 1);
+
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+        U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferC);
+        U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferC);
+
         gAtTestCount++;
         // Wait between iterations to avoid the debug
         // streams overunning

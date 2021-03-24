@@ -42,6 +42,7 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
+#include "u_cfg_os_platform_specific.h" // For U_CFG_OS_CLIB_LEAKS.
 
 #include "u_port.h"
 #include "u_port_debug.h"
@@ -56,8 +57,14 @@
 #include "u_network_test_shared_cfg.h"
 
 #ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
+#include "u_port_event_queue.h"
 #include "u_sock.h"
 #include "u_sock_test_shared_cfg.h"
+# ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
+extern void uAtClientDetailedDebugOn();
+extern void uAtClientDetailedDebugOff();
+extern void uAtClientDetailedDebugPrint();
+# endif
 #endif
 
 #include "u_security.h"
@@ -73,11 +80,58 @@
 #endif
 
 #ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
+
+#ifndef U_SECURITY_TEST_TASK_STACK_SIZE_BYTES
+/** The stack size to use for the test task created during
+ * async sockets testing with C2C.
+ */
+# define U_SECURITY_TEST_TASK_STACK_SIZE_BYTES 2048
+#endif
+
+#ifndef U_SECURITY_TEST_TASK_PRIORITY
+/** The priority to use for the test task created during
+ * async sockets testing with C2C.  If an AT client is running
+ * make sure that this is lower priority than its URC handler.
+ */
+# define U_SECURITY_TEST_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 5)
+#endif
+
+#ifndef U_SECURITY_TEST_RECEIVE_QUEUE_LENGTH
+/** The queue length, used for asynchronous tests.
+ */
+# define U_SECURITY_TEST_RECEIVE_QUEUE_LENGTH 10
+#endif
+
 # ifndef U_SECURITY_TEST_C2C_MAX_TCP_READ_WRITE_SIZE
 /** The maximum TCP read/write size to use during C2C testing.
  */
 #  define U_SECURITY_TEST_C2C_MAX_TCP_READ_WRITE_SIZE 1024
 # endif
+
+# ifndef U_SECURITY_TEST_C2C_SMALL_CHUNK_SIZE
+/** The small packet size to send when what we're actually
+ * trying to test is the URC behaviour of C2C.
+ */
+#  define U_SECURITY_TEST_C2C_SMALL_CHUNK_SIZE 50
+# endif
+
+# ifndef U_SECURITY_TEST_C2C_SMALL_CHUNK_TOTAL_SIZE
+/** The total amount of data to send during the small
+ * chunks test.
+ */
+#  define U_SECURITY_TEST_C2C_SMALL_CHUNK_TOTAL_SIZE 250
+# endif
+
+# ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
+#  define LOG_ON uAtClientDetailedDebugOn()
+#  define LOG_OFF uAtClientDetailedDebugOff()
+#  define LOG_PRINT uAtClientDetailedDebugPrint()
+# else
+#  define LOG_ON
+#  define LOG_OFF
+#  define LOG_PRINT
+# endif
+
 #endif
 
 /* ----------------------------------------------------------------
@@ -124,29 +178,20 @@ static const char gSendData[] =  "_____0000:012345678901234567890123456789012345
                                  "_____0800:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789"
                                  "_____0900:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1000:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1100:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1200:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1300:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1400:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1500:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1600:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1700:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1800:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____1900:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____2000:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789";
+
+/** Descriptor for asynchronous data reception.
+ */
+uSockDescriptor_t gDescriptor;
+
+/** Handle for the event queue used during asynchronous data testing.
+ */
+int32_t gEventQueueHandle = -1;
+
+/** Pointer to buffer for asynchronous data reception.
+ */
+char *gpBuffer = NULL;
+
 #endif
 
 /* ----------------------------------------------------------------
@@ -238,6 +283,51 @@ static size_t fix(size_t size, size_t limit)
 
     return size;
 }
+
+// Event task triggered by the arrival of data.
+static void rxAsyncEventTask(void *pParameter, size_t parameterLength)
+{
+    int32_t thisSizeReceived;
+    int32_t totalSizeReceived = 0;
+    // The parameter that arrives here is a pointer to the
+    // payload which is itself a pointer to sizeBytesReceive,
+    // hence the need to double dereference here.
+    int32_t *pSizeBytes = *((int32_t **) pParameter);
+
+    (void) parameterLength;
+
+    if (gpBuffer != NULL) {
+        // Read from the socket until there's nothing left to read
+        //lint -e{776} Suppress possible truncation of addition
+        do {
+            thisSizeReceived = uSockRead(gDescriptor, gpBuffer + totalSizeReceived,
+                                         U_SECURITY_TEST_C2C_SMALL_CHUNK_SIZE - totalSizeReceived);
+            if (thisSizeReceived > 0) {
+                totalSizeReceived += thisSizeReceived;
+            }
+        } while ((thisSizeReceived > 0) && (totalSizeReceived < U_SECURITY_TEST_C2C_SMALL_CHUNK_SIZE));
+        *pSizeBytes += totalSizeReceived;
+    }
+}
+
+// Callback to send to event queue triggered by
+// data arriving.
+//lint -e{818} Suppress could be const, need to follow
+// function signature
+static void sendToEventQueue(void *pParameter)
+{
+    U_PORT_TEST_ASSERT(gEventQueueHandle >= 0);
+
+    // Forward the pointer to rxAsyncEventTask().
+    // Note: uPortEventQueueSend() expects to
+    // receive a pointer to a payload, so here
+    // we give it the address of pParameter,
+    // so that it will send on a copy
+    // of the pointer that is pParameter.
+    uPortEventQueueSend(gEventQueueHandle,
+                        &pParameter, sizeof(size_t *));
+}
+
 #endif // U_CFG_TEST_SECURITY_C2C_TE_SECRET
 
 /* ----------------------------------------------------------------
@@ -293,6 +383,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
                 // Test that closing a session that is not open is fine
                 U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
                 uPortLog("U_SECURITY_TEST: pairing...\n");
+                LOG_ON;
                 U_PORT_TEST_ASSERT(uSecurityC2cPair(networkHandle,
                                                     U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                     key, hmac) == 0);
@@ -304,6 +395,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
                                                     key, hmac) == 0);
                 uPortLog("U_SECURITY_TEST: closing the session again...\n");
                 U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
+                LOG_OFF;
+                LOG_PRINT;
             }
 
             // Check for memory leaks
@@ -368,6 +461,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
 
                 // Open a new secure session and perform a sockets operation
                 uPortLog("U_SECURITY_TEST: opening a secure session...\n");
+                LOG_ON;
                 U_PORT_TEST_ASSERT(uSecurityC2cOpen(networkHandle,
                                                     U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                     key, hmac) == 0);
@@ -411,8 +505,10 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
                 }
                 U_PORT_TEST_ASSERT(errorCode == 0);
 
-                uPortLog("U_SECURITY_TEST: sending/receiving data over a"
-                         " TCP socket...\n");
+                uPortLog("U_SECURITY_TEST: sending/receiving %d bytes"
+                         " of data over a  TCP socket with data reception"
+                         " into the same task...\n",
+                         sizeof(gSendData) - 1);
 
                 // Throw random sized TCP segments up...
                 offset = 0;
@@ -485,10 +581,256 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
 
                 uPortLog("U_SECURITY_TEST: closing the session again...\n");
                 U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
+                LOG_OFF;
+                LOG_PRINT;
             }
 
 #ifndef __XTENSA__
             // Check for memory leaks
+            // This if'ed out for ESP32 (xtensa compiler) as
+            // the way it's heap work means that if blocks are
+            // freed in a different order to they were allocated and
+            // any one of those blocks remains allocated (which sockets
+            // will do here as we allocate two mutexes when they are first
+            // used) then the amount of heap remaining is not possible
+            // to calculate with any degree of confidence (a four byte
+            // variant due to block length tracking in their
+            // implementation).
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SECURITY_TEST: during this part of the test %d"
+                     " byte(s) were lost to sockets initialisation;"
+                     " we have leaked %d byte(s).\n",
+                     heapSockInitLoss + heapXxxSockInitLoss,
+                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+            // heapUsed < 0 for the Zephyr case where the heap can look
+            // like it increases (negative leak)
+            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+#else
+            (void) heapUsed;
+            (void) heapSockInitLoss;
+            (void) heapXxxSockInitLoss;
+#endif
+        }
+    }
+}
+
+/** Test chip to chip security but this time with asynchronous
+ * data reception in order to test URCs are properly handled.
+ */
+U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
+{
+    int32_t errorCode;
+    int32_t networkHandle;
+    char key[U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES];
+    char hmac[U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES];
+    uSockAddress_t remoteAddress;
+    size_t sizeBytesSend;
+    size_t sizeBytesReceive = 0;
+    size_t offset;
+    int32_t y;
+    int64_t startTimeMs;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
+
+    // Do the standard preamble to make sure there is
+    // a network underneath us
+    stdPreamble();
+
+    // Repeat for all bearers
+    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+        networkHandle = gUNetworkTestCfg[x].handle;
+        if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
+            uPortLog("U_SECURITY_TEST: checking if u-blox security"
+                     " is supported by handle %d...\n", networkHandle);
+            if (uSecurityIsSupported(networkHandle)) {
+                uPortLog("U_SECURITY_TEST: security is supported.\n");
+                // Note: don't check sealed status here, C2C key pairing
+                // is intended to be performed by a customer only BEFORE
+                // bootstrapping or sealing is completed, in a sanitized
+                // environment where the returned values can be stored
+                // in the MCU.
+                // On the u-blox test farm we enable the feature
+                // LocalC2CKeyPairing via the u-blox security services REST
+                // API for all our modules so that we can complete the
+                // pairing process even after sealing.
+
+                uPortLog("U_SECURITY_TEST: pairing...\n");
+                U_PORT_TEST_ASSERT(uSecurityC2cPair(networkHandle,
+                                                    U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
+                                                    key, hmac) == 0);
+
+                // Open a new secure session and perform a sockets operation
+                uPortLog("U_SECURITY_TEST: opening a secure session...\n");
+                LOG_ON;
+                U_PORT_TEST_ASSERT(uSecurityC2cOpen(networkHandle,
+                                                    U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
+                                                    key, hmac) == 0);
+
+                uPortLog("U_SECURITY_TEST: looking up echo server \"%s\"...\n",
+                         U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
+
+                // Look up the address of the server we use for TCP echo
+                // The first call to a sockets API needs to
+                // initialise the underlying sockets layer; take
+                // account of that initialisation heap cost here.
+                heapSockInitLoss = uPortGetHeapFree();
+                U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
+                                                      U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                                                      &(remoteAddress.ipAddress)) == 0);
+                heapSockInitLoss -= uPortGetHeapFree();
+
+                // Add the port number we will use
+                remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
+
+                // Create a TCP socket
+                // Creating a socket may use heap in the underlying
+                // network layer which will be reclaimed when the
+                // network layer is closed but we don't do that here
+                // to save time so need to allow for it in the heap loss
+                // calculation
+                heapXxxSockInitLoss += uPortGetHeapFree();
+                gDescriptor = uSockCreate(networkHandle, U_SOCK_TYPE_STREAM,
+                                          U_SOCK_PROTOCOL_TCP);
+                heapXxxSockInitLoss -= uPortGetHeapFree();
+                U_PORT_TEST_ASSERT(gDescriptor >= 0);
+
+                // Connect the socket
+                uPortLog("U_SECURITY_TEST: connect socket to \"%s:%d\"...\n",
+                         U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                         U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+                // Connections can fail so allow this a few goes
+                errorCode = -1;
+                for (y = 2; (y > 0) && (errorCode < 0); y--) {
+                    errorCode = uSockConnect(gDescriptor, &remoteAddress);
+                }
+                U_PORT_TEST_ASSERT(errorCode == 0);
+
+                // Create the event queue with, at the end of it,
+                // a task that will handle the received TCP packets.
+                // The thing it gets sent on the event queue is a pointer
+                // to sizeBytesReceive
+                gEventQueueHandle = uPortEventQueueOpen(rxAsyncEventTask,
+                                                        "testTaskRxData",
+                                                        //lint -e(866) Suppress unusual
+                                                        // use of & in sizeof()
+                                                        sizeof(&sizeBytesReceive),
+                                                        U_SECURITY_TEST_TASK_STACK_SIZE_BYTES,
+                                                        U_SECURITY_TEST_TASK_PRIORITY,
+                                                        U_SECURITY_TEST_RECEIVE_QUEUE_LENGTH);
+                U_PORT_TEST_ASSERT(gEventQueueHandle >= 0);
+
+                // Ask the sockets API for a pointer to sizeBytesReceive
+                // to be sent to our trampoline function,
+                // sendToEventQueue(), whenever UDP data arrives.
+                // sendToEventQueue() will then forward the
+                // pointer to the event queue and hence to
+                // rxAsyncEventTask()
+                uSockRegisterCallbackData(gDescriptor,
+                                          sendToEventQueue,
+                                          &sizeBytesReceive);
+
+                // Set the port to be non-blocking; we will pick up
+                // the TCP data that we have been called-back to
+                // say has arrived and then if we ask again we want
+                // to know that there is nothing more to receive
+                // without hanging about so that we can leave the
+                // event handler quickly.
+                uSockBlockingSet(gDescriptor, false);
+
+                uPortLog("U_SECURITY_TEST: sending/receiving data over a"
+                         " TCP socket with data reception into another"
+                         " task...\n");
+
+                // Throw small TCP segments up and wait
+                // for them to come back...
+                gpBuffer = (char *) malloc(U_SECURITY_TEST_C2C_SMALL_CHUNK_SIZE);
+                U_PORT_TEST_ASSERT(gpBuffer != NULL);
+                offset = 0;
+                y = 0;
+                startTimeMs = uPortGetTickTimeMs();
+                while ((offset < U_SECURITY_TEST_C2C_SMALL_CHUNK_TOTAL_SIZE) &&
+                       (uPortGetTickTimeMs() - startTimeMs < 120000)) {
+                    sizeBytesSend = U_SECURITY_TEST_C2C_SMALL_CHUNK_SIZE;
+                    if (offset + sizeBytesSend > sizeof(gSendData) - 1) {
+                        sizeBytesSend = (sizeof(gSendData) - 1) - offset;
+                    }
+                    sizeBytesReceive = 0;
+                    if (sendTcp(gDescriptor, gSendData + offset,
+                                sizeBytesSend) == sizeBytesSend) {
+                        uPortLog("U_SECURITY_TEST: %d byte(s) sent via TCP @%d ms,"
+                                 " now receiving...\n", sizeBytesSend,
+                                 (int32_t) uPortGetTickTimeMs());
+                        // Give the data time to come back
+                        for (size_t z = 20; (z > 0) &&
+                             (sizeBytesReceive < sizeBytesSend); z--) {
+                            uPortTaskBlock(1000);
+                        }
+                        if (sizeBytesReceive < sizeBytesSend) {
+                            uPortLog("U_SECURITY_TEST: after sending a total"
+                                     " of %d byte(s), receiving failed.\n",
+                                     sizeBytesSend + offset);
+                            //lint -e(506, 774) Suppress constant Boolean always
+                            // evaluates to false
+                            U_PORT_TEST_ASSERT(false);
+                        }
+                        // Check it
+                        //lint -e(668) Suppress possible use of NULL pointer
+                        // for gpBuffer
+                        if (memcmp(gpBuffer, gSendData + offset, sizeBytesReceive) != 0) {
+                            uPortLog("U_SECURITY_TEST: expected received data contents"
+                                     " not what was expected.\n");
+                            uPortLog("U_SECURITY_TEST: expected \"%*s\", received"
+                                     " \"%*s\".\n",
+                                     sizeBytesSend, gSendData + offset,
+                                     sizeBytesReceive, gpBuffer);
+                            //lint -e(506, 774) Suppress constant Boolean always
+                            // evaluates to false
+                            U_PORT_TEST_ASSERT(false);
+                        }
+                        offset += sizeBytesSend;
+                    }
+                    y++;
+                }
+
+                sizeBytesSend = offset;
+                if (sizeBytesSend < U_SECURITY_TEST_C2C_SMALL_CHUNK_TOTAL_SIZE) {
+                    uPortLog("U_SECURITY_TEST: only %d byte(s) sent after %d ms.\n",
+                             sizeBytesSend,
+                             (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                    //lint -e(506, 774) Suppress constant Boolean always evaluates to false
+                    U_PORT_TEST_ASSERT(false);
+                }
+
+                // As a sanity check, make sure that
+                // U_SECURITY_TEST_TASK_STACK_SIZE_BYTES
+                // was big enough
+                y = uPortEventQueueStackMinFree(gEventQueueHandle);
+                uPortLog("U_SOCK_TEST: event queue task had %d byte(s)"
+                         " free at a minimum.\n", y);
+                U_PORT_TEST_ASSERT(y > 0);
+
+                // Close the socket
+                U_PORT_TEST_ASSERT(uSockClose(gDescriptor) == 0);
+                uSockCleanUp();
+
+                // Close the event queue
+                U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueHandle) == 0);
+                gEventQueueHandle = -1;
+
+                free(gpBuffer);
+
+                uPortLog("U_SECURITY_TEST: closing the session again...\n");
+                U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
+                LOG_OFF;
+                LOG_PRINT;
+            }
+
+#if !defined(__XTENSA__) && !U_CFG_OS_CLIB_LEAKS
+            // Check for memory leaks, if the platform isn't leaky
             // This if'ed out for ESP32 (xtensa compiler) as
             // the way it's heap work means that if blocks are
             // freed in a different order to they were allocated and
@@ -830,6 +1172,13 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
 U_PORT_TEST_FUNCTION("[security]", "securityCleanUp")
 {
     int32_t y;
+
+#ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
+    if (gEventQueueHandle >= 0) {
+        uPortEventQueueClose(gEventQueueHandle);
+        gEventQueueHandle = -1;
+    }
+#endif
 
     // The network test configuration is shared
     // between the network, sockets and security tests
