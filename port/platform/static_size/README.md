@@ -33,4 +33,5 @@ python static_size.py -p "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2
 ```
 
 # Maintenance
-- When adding a new platform-independent, non-test, non-example source file update `source.txt` and, if necessary, `include.txt` with the relevant source files and headers, ignoring any related only to tests or examples or to  platform code.  If new stuff is added to the `port` API or to the `cfg` files for all platforms, you may need to add new stubs for those things also.
+- When adding a new platform-independent, non-test, non-example source file update `source.txt` and, if necessary, `include.txt` with the relevant source files and headers, ignoring any related only to tests or examples or to  platform code.
+- If new stuff is added to the `port` API or to the `cfg` files for all platforms, you may need to add new stubs for those things also.
