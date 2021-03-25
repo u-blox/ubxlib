@@ -38,6 +38,9 @@ NRF5SDK_PATH = u_settings.NRF5SDK_NRF5_PATH # e.g. "C:/nrf5"
 # The list of things to execute jlink.exe
 RUN_JLINK = [u_utils.JLINK_PATH] + u_settings.NRF5SDK_NRF52_RUN_JLINK #
 
+# JLink needs to be treated with kid gloves concerning shutting it down
+JLINK_EXIT_DELAY_SECONDS = u_settings.JLINK_EXIT_DELAY_SECONDS # e.g. 10
+
 # The directory where the runner build for GCC can be found
 RUNNER_DIR_GCC = u_settings.NRF5SDK_NRF52_RUNNER_DIR_GCC # e.g. "port/platform/nrf5sdk/mcu/nrf52/gcc/runner"
 
@@ -459,7 +462,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                             # need to send it "exit\n" over stdin
                                             # for it to exit cleanly
                                             process_jlink.stdin.write("exit\n".encode())
-                                            sleep(5)
+                                            sleep(JLINK_EXIT_DELAY_SECONDS)
                                         if return_value == 0:
                                             reporter.event(u_report.EVENT_TYPE_TEST,
                                                            u_report.EVENT_COMPLETE)

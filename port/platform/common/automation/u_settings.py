@@ -165,6 +165,7 @@ __defaultSettings["INSTALL_LOCK_WAIT_SECONDS"] = 60*60
 __defaultSettings["UNITY_URL"] = "https://github.com/ThrowTheSwitch/Unity"
 __defaultSettings["UNITY_SUBDIR"] = "Unity"
 __defaultSettings["DEVCON_PATH"] = "devcon"
+__defaultSettings["JLINK_EXIT_DELAY_SECONDS"] = 10
 __defaultSettings["JLINK_PATH"] = "jlink.exe"
 __defaultSettings["JLINK_SWO_PORT"] = 19021
 __defaultSettings["STLINK_GDB_PORT"] = 61200

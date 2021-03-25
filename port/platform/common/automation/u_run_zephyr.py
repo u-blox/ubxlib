@@ -22,6 +22,9 @@ RUN_JLINK = [u_utils.JLINK_PATH] + u_settings.ZEPHYR_RUN_JLINK #
 # List of device types we support as known to JLink
 JLINK_DEVICE = ["nRF52833_XXAA", "nRF52840_XXAA", "nRF5340_XXAA_APP"]
 
+# JLink needs to be treated with kid gloves concerning shutting it down
+JLINK_EXIT_DELAY_SECONDS = u_settings.JLINK_EXIT_DELAY_SECONDS # e.g. 10
+
 # The path to the Zephyr batch file that sets up its
 # environment variables
 ZEPHYR_ENV_CMD = u_settings.ZEPHYR_ZEPHYR_ENV_CMD # e.g. NRFCONNECT_PATH + os.sep + "zephyr\\zephyr-env.cmd"
@@ -456,7 +459,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                 # need to send it "exit\n" over stdin
                                                 # for it to exit cleanly
                                                 process_jlink.stdin.write("exit\n".encode())
-                                                sleep(5)
+                                                sleep(JLINK_EXIT_DELAY_SECONDS)
                                             if return_value == 0:
                                                 reporter.event(u_report.EVENT_TYPE_TEST,
                                                                u_report.EVENT_COMPLETE)
