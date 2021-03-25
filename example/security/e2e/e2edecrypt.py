@@ -1,11 +1,10 @@
 from collections import namedtuple
 from base64 import b64decode
-from Cryptodome.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
 import binascii
 import json
-import requests
 import sys
+import requests
+from Cryptodome.Cipher import AES
 
 
 ####################################################################################################

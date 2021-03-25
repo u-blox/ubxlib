@@ -16,7 +16,7 @@ if os.path.isfile(__path):
         with open(__path) as f:
             __settings = json.load(f)
         __useDefaultSettings = False
-    except:
+    except Exception:
         print("u_settings: ************************** WARNING ***************************")
         print("u_settings: settings file \"{}\" corrupt.".format(__path))
         print("u_settings: ************************** WARNING ***************************")

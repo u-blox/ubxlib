@@ -68,7 +68,6 @@ def event_as_string(event):
         if "tests_ignored" in event and (event["tests_ignored"] is not None):
             if need_comma:
                 string += ", "
-                need_comma = False
             string += "{} ignored".format(event["tests_ignored"])
 
     return string

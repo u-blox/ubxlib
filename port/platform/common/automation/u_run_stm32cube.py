@@ -468,7 +468,6 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     workspace_subdir = STM32CUBE_IDE_WORKSPACE_SUBDIR + "_" + str(os.getpid())
     elf_path = None
     downloaded = False
-    running = False
     download_list = None
 
     # Only one toolchain for STM32Cube
@@ -630,35 +629,28 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                               args=(SWO_DATA_FILE,
                                                                     SWO_DECODED_TEXT_FILE))
                                             process.start()
-                                            # Two bites at the cherry again
-                                            retries = 2
-                                            while not running and (retries > 0):
-                                                # Now start Open OCD to reset the target
-                                                # and capture SWO output
-                                                sleep(1)
-                                                with u_utils.ExeRun(open_ocd(OPENOCD_COMMANDS,
-                                                                             connection),
-                                                                    printer, prompt):
-                                                    running = True
-                                                    # Open the SWO decoded text file for
-                                                    # reading, binary to prevent the line
-                                                    # endings being munged.
-                                                    file_handle = open(SWO_DECODED_TEXT_FILE,
-                                                                       "rb")
-                                                    # Monitor progress based on the decoded
-                                                    # SWO text
-                                                    return_value = u_monitor.          \
-                                                                   main(file_handle,
-                                                                        u_monitor.CONNECTION_PIPE,
-                                                                        RUN_GUARD_TIME_SECONDS,
-                                                                        RUN_INACTIVITY_TIME_SECONDS,
-                                                                        "\r", instance, printer,
-                                                                        reporter,
-                                                                        test_report_handle)
-                                                    file_handle.close()
-                                                retries -= 1
-                                                if not running:
-                                                    sleep(5)
+                                            # Now start Open OCD to reset the target
+                                            # and capture SWO output
+                                            sleep(1)
+                                            with u_utils.ExeRun(open_ocd(OPENOCD_COMMANDS,
+                                                                         connection),
+                                                                printer, prompt):
+                                                # Open the SWO decoded text file for
+                                                # reading, binary to prevent the line
+                                                # endings being munged.
+                                                file_handle = open(SWO_DECODED_TEXT_FILE,
+                                                                   "rb")
+                                                # Monitor progress based on the decoded
+                                                # SWO text
+                                                return_value = u_monitor.          \
+                                                               main(file_handle,
+                                                                    u_monitor.CONNECTION_PIPE,
+                                                                    RUN_GUARD_TIME_SECONDS,
+                                                                    RUN_INACTIVITY_TIME_SECONDS,
+                                                                    "\r", instance, printer,
+                                                                    reporter,
+                                                                    test_report_handle)
+                                                file_handle.close()
                                             process.terminate()
                                         except KeyboardInterrupt:
                                             # Tidy up process on SIGINT

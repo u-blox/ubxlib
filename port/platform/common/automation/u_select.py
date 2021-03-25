@@ -308,9 +308,9 @@ def select(database, instances, paths):
     dedup.sort()
     instances.extend(dedup[:])
 
-    print("{}final instance list: {}".format(PROMPT, instances_string(dedup), end=""))
+    print("{}final instance list: {}".format(PROMPT, instances_string(dedup)), end="")
     if filter_string:
-        print("with filter \"{}\".".format(filter_string, end=""))
+        print("with filter \"{}\".".format(filter_string), end="")
     print()
 
     return filter_string
