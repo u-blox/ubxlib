@@ -1065,6 +1065,9 @@ static int32_t defineContext(const uCellPrivateInstance_t *pInstance,
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+CGDCONT=");
     uAtClientWriteInt(atHandle, contextId);
+    // Note that "IP" equates to IPV4 but it in no
+    // way limits what the network will actually give
+    // us back
     uAtClientWriteString(atHandle, "IP", true);
     if (pApn != NULL) {
         uAtClientWriteString(atHandle, pApn, true);
@@ -1214,6 +1217,15 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
                 uAtClientSetUrcHandler(atHandle, "+UUPSDA:", UUPSDA_urc,
                                        &uupsdaUrcResult);
                 uAtClientLock(atHandle);
+                // The IP type used here must be the same as
+                // that used by AT+CGDCONT, hence set it to IP
+                // to be sure as some versions of SARA-R5 software
+                // have the default as IPV4V6.
+                uAtClientCommandStart(atHandle, "AT+UPSD=");
+                uAtClientWriteInt(atHandle, profileId);
+                uAtClientWriteInt(atHandle, 0);
+                uAtClientWriteInt(atHandle, 0);
+                uAtClientCommandStopReadResponse(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UPSD=");
                 uAtClientWriteInt(atHandle, profileId);
                 uAtClientWriteInt(atHandle, 100);
@@ -1231,11 +1243,11 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
                          y--) {
                         uPortTaskBlock(1000);
                     }
+                    if (uupsdaUrcResult == 0) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
                 }
                 uAtClientRemoveUrcHandler(atHandle, "+UUPSDA:");
-                if (uupsdaUrcResult == 0) {
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                }
             }
         } else {
             uPortTaskBlock(2000);
