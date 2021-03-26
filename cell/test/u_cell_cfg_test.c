@@ -155,6 +155,13 @@ static void testBandMask(int32_t cellHandle,
                  (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
         U_PORT_TEST_ASSERT(bandMask1 == U_CELL_TEST_CFG_ALT_BANDMASK1);
         U_PORT_TEST_ASSERT(bandMask2 == U_CELL_TEST_CFG_ALT_BANDMASK2);
+
+        uPortLog("U_CELL_CFG_TEST: putting original band masks back...\n");
+        U_PORT_TEST_ASSERT(uCellCfgSetBandMask(cellHandle, rat,
+                                               originalBandMask1,
+                                               originalBandMask2) == 0);
+        // Re-boot for the change to take effect
+        U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
     } else {
         U_PORT_TEST_ASSERT(errorCode != 0);
     }

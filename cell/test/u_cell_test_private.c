@@ -334,9 +334,13 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                                                             &bandMask1, &bandMask2);
                             if (errorCode == 0) {
                                 // bandMaskx must be exactly U_CELL_TEST_CFG_BANDMASKx
-                                //lint -e{774, 587} Suppress always evaluates to True
-                                if ((bandMask1 != U_CELL_TEST_CFG_BANDMASK1) ||
-                                    (bandMask2 != U_CELL_TEST_CFG_BANDMASK2)) {
+                                // unless they are both set to zero (an invalid value
+                                // which we interpret as "leave alone")
+                                //lint -e{774, 587, 845} Suppress always evaluates to True
+                                if (((U_CELL_TEST_CFG_BANDMASK1 != 0) ||
+                                     (U_CELL_TEST_CFG_BANDMASK2 != 0)) &&
+                                    ((bandMask1 != U_CELL_TEST_CFG_BANDMASK1) ||
+                                     (bandMask2 != U_CELL_TEST_CFG_BANDMASK2))) {
                                     // Set the band masks
                                     errorCode = uCellCfgSetBandMask(cellHandle, primaryRat,
                                                                     U_CELL_TEST_CFG_BANDMASK1,

@@ -126,6 +126,12 @@ def main(database, instance, filter_string, clean,
     # port, you want to notice it first.
     defines.append("U_RUNNER_TOP_STR=port")
 
+    # And finally, when running tests on cellular LTE modules,
+    # so SARA-R4 or SARA-R5, we need to set the RF band we
+    # are running in to NOT include the public network,
+    # since otherwise we modules can sometimes wander off onto it.
+    defines.append("U_CELL_TEST_CFG_BANDMASK1=0x000010ULL")
+
     # With a reporter
     with u_report.ReportToQueue(report_queue, instance,
                                 summary_report_handle,

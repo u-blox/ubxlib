@@ -83,18 +83,23 @@
 #endif
 
 #ifndef U_CELL_TEST_CFG_MNO_PROFILE
-/** The MNO profile to use during testing: Europe (100),
- * which is good for the default band mask below.
+/** The MNO profile to use during testing:
+ * Europe (100).  Would use global (90) but SARA-R4
+ * doesn't support it.
  */
-#define U_CELL_TEST_CFG_MNO_PROFILE 100
+# define U_CELL_TEST_CFG_MNO_PROFILE 100
 #endif
 
 #ifndef U_CELL_TEST_CFG_BANDMASK1
-/** The bandmask 1 to use during testing. 0x000010 is
- * band 5; must be different from
+/** Set this to 0 and the bandmask will not be touched
+ * by the test code for normal operation.  When running
+ * on the test system it needs to be set to 0x000010
+ * (band 5) so that we find the Nutaq test box and not the
+ * live network however it is the u_run.py automation
+ * script that does this implicitly; must be different from
  * U_CELL_TEST_CFG_ALT_BANDMASK1.
  */
-# define U_CELL_TEST_CFG_BANDMASK1   0x000010ULL
+# define U_CELL_TEST_CFG_BANDMASK1   0ULL
 #endif
 
 #ifndef U_CELL_TEST_CFG_BANDMASK2

@@ -77,7 +77,8 @@
 #ifndef MY_MNO_PROFILE
 // Replace U_CELL_TEST_CFG_MNO_PROFILE with the MNO profile number
 // you require: consult the u-blox AT command manual for your module
-// to find out the possible values; 100, for example, is "Europe".
+// to find out the possible values; 100, for example, is "Europe",
+// 90 is "global".
 # define MY_MNO_PROFILE U_CELL_TEST_CFG_MNO_PROFILE
 #endif
 
@@ -86,8 +87,8 @@
 // first (see the definition of uCellNetRat_t in cell/api/u_cell_net.h
 // for the possibilities); for SARA-U201 you might chose
 // U_CELL_NET_RAT_UTRAN or U_CELL_NET_RAT_GSM_GPRS_EGPRS, for
-// SARA-R41x you might chose U_CELL_NET_RAT_CATM1, for 
-// for SARA-R412M you might chose U_CELL_NET_RAT_CATM1 or 
+// SARA-R41x you might chose U_CELL_NET_RAT_CATM1, for
+// for SARA-R412M you might chose U_CELL_NET_RAT_CATM1 or
 // U_CELL_NET_RAT_GSM_GPRS_EGPRS and for SARA-R5 you might
 // chose U_CELL_NET_RAT_CATM1.
 // If your module supports more than one RAT at the same time
@@ -107,11 +108,14 @@
 
 // Set the values of MY_xxx_BANDMASKx to your chosen band masks
 // for the Cat M1 and NB1 RATs; see cell/api/u_cell_cfg.h for some
-// examples.  This is definitely the ADVANCED class: a module will
-// reject band combinations it does not support but if you make a
+// examples.  This is definitely the ADVANCED class: not all
+// modules support all bands and a module will reject a band mask
+// if one bit in one bit-position is not supported.  If you make a
 // band selection that does not include a band that the network
 // broadcasts at your location you will never obtain coverage,
 // so take care.
+// When in doubt, set an MNO profile and rely on that to configure
+// the bands that your modules _does_ support.
 #ifndef MY_CATM1_BANDMASK1
 # define MY_CATM1_BANDMASK1 U_CELL_CFG_BAND_MASK_1_NORTH_AMERICA_CATM1_DEFAULT
 #endif
@@ -270,11 +274,13 @@ static void readAndSetBand(int32_t networkHandle, uCellNetRat_t rat,
                      (uint32_t) (bandMask1 >> 32), (uint32_t) (bandMask1));
             if (uCellCfgSetBandMask(networkHandle, rat,
                                     bandMask1, bandMask2) != 0) {
-                uPortLog("### Unable to set band mask for RAT %s.", gpRatStr[rat]);
+                uPortLog("### Unable to change band mask for RAT %s, it is"
+                         " likely your module does not support one of those"
+                         " bands.\n", gpRatStr[rat]);
             }
         }
     } else {
-        uPortLog("### Unable to read band mask for RAT %s.", gpRatStr[rat]);
+        uPortLog("### Unable to read band mask for RAT %s.\n", gpRatStr[rat]);
     }
 }
 
@@ -343,7 +349,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
         if (rat[x] >= 0) {
             uPortLog("### RAT[%d] is %s.\n", x, gpRatStr[rat[x]]);
             // The effect of this code is to set MY_RAT0
-            // if it is specified and then to set MY_RAT1 and 
+            // if it is specified and then to set MY_RAT1 and
             // MY_RAT2 in all cases; hence if MY_RAT1 and MY_RAT2 are
             // left at U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED they will be
             // removed, leaving just MY_RAT0 as the sole RAT.
