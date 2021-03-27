@@ -73,7 +73,21 @@
  * during configuration.
  */
 static const char *const gpConfigCommand[] = {"ATE0",      // Echo off
-                                              "AT+CMEE=2", // Extended errors on
+#ifdef U_CFG_CELL_ENABLE_NUMERIC_ERROR
+// With this compilation flag defined numeric errors will be
+// returned and so uAtClientDeviceErrorGet() will be able
+// to return a non-zero value for deviceError.code.
+// IMPORTANT: this switch is simply for customer convenience,
+// no ubxlib code should set it or depend on the value
+// of deviceError.code.
+                                              "AT+CMEE=1", // Extended errors on, numeric format
+#else
+// The normal case: errors are reported by the module as
+// verbose text, most useful when debugging normally with
+// AT interface prints shown, uAtClientPrintAtSet() set
+// to true.
+                                              "AT+CMEE=2", // Extended errors on, verbose/text format
+#endif
                                               "ATI9",      // Firmware version
                                               "AT&C1",     // DCD circuit (109) changes with the carrier
                                               "AT&D0"      // Ignore changes to DTR
