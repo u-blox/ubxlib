@@ -38,7 +38,7 @@ Some mobile network operators are very specific about how a module should be con
 
 It is important to note that *setting* an MNO profile will cause the module to change many things: bands, registration modes, etc, potentially all the things below.  Hence it is always a good idea to set the MNO profile first, before setting anything else; then you are making small delta-changes from a known base.
 
-It is also worth nothing that MNO profile 0 is a special "none" profile; a freshly delivered module might turn out to be in MNO profile 0.  If so, it must be set to a non-zero MNO profile before it will operate.
+It is also worth noting that MNO profile 0 is a special "none" profile; a freshly delivered module might turn out to be in MNO profile 0.  If so, it must be set to a non-zero MNO profile before it will operate.
 
 ## APN
 The APN associates you with an IP network and the organisation that takes your money for the privilege: organisations such as Vodafone or Virgin or Thingstream.  Where the organisation is a 3GPP cellular network operator (e.g. Vodafone) and you have normal IP network requirements (i.e. a connection to the public internet) the APN field can be set to `NULL` and things will sort themselves out.
