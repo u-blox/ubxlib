@@ -146,11 +146,13 @@ typedef struct {
                        a string or binary bytes. */
     const char *pCommandBody;
     size_t commandBodyLength;
+    int32_t commandWaitTimeSeconds; /** How long the server should wait to receive the command. */
     const char *pUrcPrefix; /** Set to NULL if there is no URC. */
     const char *pUrcBody;  /** Can only be a string. */
     const char *pResponsePrefix;
     const char *pResponseBody;
     size_t responseBodyLength;
+    int32_t responseWaitTimeSeconds; /** How long the client should wait to receive the response. */
 } uCellSecC2cTestAt_t;
 
 #endif
@@ -285,6 +287,20 @@ static size_t gSystemHeapLost = 0;
  */
 static size_t gAtTestCount = 0;
 
+/** For the server to track how much it has received
+ * and not yet decrypted.
+ */
+static size_t gAtServerLengthBuffered = 0;
+
+/** For the server to track how much it has decrypted.
+ */
+static size_t gAtServerLengthDecrypted = 0;
+
+/** For the server to track how long it has been waiting
+ * for stuff to arrive.
+ */
+static int32_t gAtServerWaitTimeMs = 0;
+
 /** Flag an error on the server side of the AT interface.
  */
 static int32_t gAtServerErrorOrSize = 0;
@@ -319,65 +335,65 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
     {/* 1: command with string parameter and OK response, no URC */
         false /* V1 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
         U_CELL_SEC_C2C_TEST_TE_SECRET, U_CELL_SEC_C2C_TEST_KEY, NULL,
-        "AT+BLAH0=", false, "thing-thing", 11, /* Command with string parameter */
+        "AT+BLAH0=", false, "thing-thing", 11, 1, /* Command with string parameter */
         NULL, NULL, /* No URC */
-        NULL, NULL, 0 /* No prefix or response body */
+        NULL, NULL, 0, 1 /* No prefix or response body */
     },
     {/* 2: command with string parameter and information response, no URC */
         false /* V1 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
         U_CELL_SEC_C2C_TEST_TE_SECRET, U_CELL_SEC_C2C_TEST_KEY, NULL,
-        "AT+BLAH1=", false, "thing thang", 11, /* Command with string parameter */
+        "AT+BLAH1=", false, "thing thang", 11, 1, /* Command with string parameter */
         NULL, NULL, /* No URC */
-        "+BLAH1:", "thong", 5 /* Information response prefix and body  */
+        "+BLAH1:", "thong", 5, 2 /* Information response prefix and body  */
     },
     {/* 3: command with string parameter, URC inserted then OK response */
         false /* V1 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
         U_CELL_SEC_C2C_TEST_TE_SECRET, U_CELL_SEC_C2C_TEST_KEY, NULL,
-        "AT+BLAH2=", false, "whotsit", 7, /* Command with string parameter */
+        "AT+BLAH2=", false, "whotsit", 7, 1, /* Command with string parameter */
         "+UBOO:", "bang", /* URC inserted */
-        NULL, NULL, 0 /* No prefix or response body */
+        NULL, NULL, 0, 1 /* No prefix or response body */
     },
     {/* 4: command with string parameter, URC inserted then information response */
         false /* V1 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
         U_CELL_SEC_C2C_TEST_TE_SECRET, U_CELL_SEC_C2C_TEST_KEY, NULL,
-        "AT+BLAH3=", false, "questionable", 12, /* Command with string parameter */
+        "AT+BLAH3=", false, "questionable", 12, 1, /* Command with string parameter */
         "+UPAF:", "boomer", /* URC inserted */
-        "+BLAH3:", "not at all", 10 /* Information response prefix and body  */
+        "+BLAH3:", "not at all", 10, 2 /* Information response prefix and body  */
     },
     {/* 5: as (1) but with binary parameter and response */
         false /* V1 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
         U_CELL_SEC_C2C_TEST_TE_SECRET, U_CELL_SEC_C2C_TEST_KEY, NULL,
-        "AT+BLING0=", true, "\x00\x01\x02\x04\xff\xfe\xfd\xfc", 8, /* Command with binary parameter */
+        "AT+BLING0=", true, "\x00\x01\x02\x04\xff\xfe\xfd\xfc", 8, 1, /* Command with binary parameter */
         NULL, NULL, /* No URC */
-        NULL, NULL, 0 /* No prefix or response body */
+        NULL, NULL, 0, 1 /* No prefix or response body */
     },
     {/* 6: as (2) but with binary parameter and response */
         false /* V1 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
         U_CELL_SEC_C2C_TEST_TE_SECRET, U_CELL_SEC_C2C_TEST_KEY, NULL,
-        "AT+BLING1=", true, "\xff\xfe\xfd\xfc\x03\x02\x01\x00", 8, /* Command with binary parameter */
+        "AT+BLING1=", true, "\xff\xfe\xfd\xfc\x03\x02\x01\x00", 8, 1, /* Command with binary parameter */
         NULL, NULL, /* No URC */
-        "+BLAH1:", "\x00", 1 /* Information response prefix and body  */
+        "+BLAH1:", "\x00", 1, 2 /* Information response prefix and body  */
     },
     {/* 7: as (3) but with binary parameter and response */
         false /* V1 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
         U_CELL_SEC_C2C_TEST_TE_SECRET, U_CELL_SEC_C2C_TEST_KEY, NULL,
-        "AT+BLING2=", true, "\xaa\x55", 2, /* Command with binary parameter */
+        "AT+BLING2=", true, "\xaa\x55", 2, 1, /* Command with binary parameter */
         "+UBLIM:", "blam", /* URC inserted */
-        NULL, NULL, 0 /* No prefix or response body */
+        NULL, NULL, 0, 1 /* No prefix or response body */
     },
     {/* 8: as (4) but with binary parameter and response */
         false /* V1 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
         U_CELL_SEC_C2C_TEST_TE_SECRET, U_CELL_SEC_C2C_TEST_KEY, NULL,
-        "AT+BLING3=", true, "\x55\xaa", 2, /* Command with binary parameter */
+        "AT+BLING3=", true, "\x55\xaa", 2, 1, /* Command with binary parameter */
         "+UPIF:", "blammer 1", /* URC inserted */
-        "+BLING3:", "\x00\xff\x00\xff", 4 /* Information response prefix and body  */
+        "+BLING3:", "\x00\xff\x00\xff", 4, 2 /* Information response prefix and body  */
     },
     {/* 9: as (8) but with V2 scheme */
         true /* V2 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
         U_CELL_SEC_C2C_TEST_TE_SECRET, U_CELL_SEC_C2C_TEST_KEY, U_CELL_SEC_C2C_TEST_HMAC_TAG,
-        "AT+BLING3=", true, "\x55\xaa", 2, /* Command with binary parameter */
+        "AT+BLING3=", true, "\x55\xaa", 2, 1, /* Command with binary parameter */
         "+UPIF:", "blammer 2", /* URC inserted */
-        "+BLING3:", "\x00\xff\x00\xff", 4 /* Information response prefix and body */
+        "+BLING3:", "\x00\xff\x00\xff", 4, 2 /* Information response prefix and body */
     },
     {   /* 10: as (8) but with command and response of the maximum amount */
         /* of user data that can be fitted into a chunk (which is one less */
@@ -393,7 +409,7 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
         "_____0001:0123456789012345678901234567890123456789"
         "_____0002:0123456789012345678901234567890123456789"
         "_____0003:0123456789012345678901234567890123456789"
-        "_____0004:01234567890123456789012345678", 239,
+        "_____0004:01234567890123456789012345678", 239, 5,
         /* (total becomes 255 with \r command delimiter) */
         "+UPUF:", "little URC 1", /* URC inserted */
         "+VERYLONG_V1:", /* Information response prefix 13 bytes */
@@ -401,7 +417,7 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
         "_____0001:0123456789012345678901234567890123456789"
         "_____0002:0123456789012345678901234567890123456789"
         "_____0003:0123456789012345678901234567890123456789"
-        "_____0004:012345678901234567890123456789", 240
+        "_____0004:012345678901234567890123456789", 240, 5
         /* (total becomes 255 with \r\n response delimiter) */
     },
     {/* 11: as (10) but with V2 scheme */
@@ -412,7 +428,7 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
         "_____0001:0123456789012345678901234567890123456789"
         "_____0002:0123456789012345678901234567890123456789"
         "_____0003:0123456789012345678901234567890123456789"
-        "_____0004:01234567890123456789012345678", 239,
+        "_____0004:01234567890123456789012345678", 239, 5,
         /* (total becomes 255 with \r command delimiter) */
         "+UPUF:", "little URC 2", /* URC inserted */
         "+VERYLONG_V2:", /* Information response prefix 13 bytes */
@@ -420,7 +436,7 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
         "_____0001:0123456789012345678901234567890123456789"
         "_____0002:0123456789012345678901234567890123456789"
         "_____0003:0123456789012345678901234567890123456789"
-        "_____0004:012345678901234567890123456789", 240
+        "_____0004:012345678901234567890123456789", 240, 5
         /* (total becomes 255 with \r\n response delimiter) */
     },
     {/* 12: a real biggee */
@@ -437,7 +453,7 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
         "_____0007:0123456789012345678901234567890123456789"
         "_____0008:0123456789012345678901234567890123456789"
         "_____0009:0123456789012345678901234567890123456789",
-        500,
+        500, 15,
         "+UPUF:", "little URC 3", /* URC inserted */
         "+ALSOAREALLYLONGONE:", /* Information response prefix */
         "_____0000:0123456789012345678901234567890123456789"
@@ -450,7 +466,7 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
         "_____0007:0123456789012345678901234567890123456789"
         "_____0008:0123456789012345678901234567890123456789"
         "_____0009:0123456789012345678901234567890123456789",
-        500
+        500, 15
     },
     {/* 13: as (12) but with V2 scheme */
         true /* V2 */, U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES,
@@ -466,7 +482,7 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
         "_____0007:0123456789012345678901234567890123456789"
         "_____0008:0123456789012345678901234567890123456789"
         "_____0009:0123456789012345678901234567890123456789",
-        500,
+        500, 15,
         "+UPUF:", "little URC 4", /* URC inserted */
         "+ALSOANOTHERREALLYLONGONE:", /* Information response prefix */
         "_____0000:0123456789012345678901234567890123456789"
@@ -479,7 +495,7 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
         "_____0007:0123456789012345678901234567890123456789"
         "_____0008:0123456789012345678901234567890123456789"
         "_____0009:0123456789012345678901234567890123456789",
-        500
+        500, 15
     }
 };
 
@@ -557,8 +573,8 @@ static void printBlock(const char *pStr, size_t length,
     while (x > 0) {
         uPortLog("U_CELL_SEC_C2C_TEST_%d: ", index);
         y = x;
-        if (y > 16) {
-            y = 16;
+        if (y > 32) {
+            y = 32;
         }
         if (isBinary) {
             printHex(pStr, y);
@@ -742,14 +758,17 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                              void *pParameters)
 {
     size_t x;
+//lint -esym(438, y) Suppress last value not used, which will
+// be the case if logging is off
     size_t y;
     size_t z;
-    int32_t sizeOrError = -1;
+    int32_t sizeOrError = 0;
     const uCellSecC2cTestAt_t *pTestAt = *((uCellSecC2cTestAt_t **) pParameters);
-    size_t length = 0;
     size_t interceptLength = 0;
     char *pData;
+    char *pTmp;
     char *pDecrypted;
+    bool allReceived = false;
 #if U_CFG_OS_CLIB_LEAKS
     int32_t heapUsed;
 #endif
@@ -763,28 +782,36 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
 
     if ((pTestAt != NULL) &&
         (eventBitmask & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
-        sizeOrError = 0;
-        // Loop until no characters left to receive
-        while ((uPortUartGetReceiveSize(uartHandle) > 0) && (sizeOrError >= 0)) {
-            sizeOrError = uPortUartRead(uartHandle, gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + length,
-                                        (sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2)) - length);
+        // Loop until there are no characters left to receive,
+        // filling up gBufferA
+        while ((sizeOrError >= 0) &&
+               (gAtServerWaitTimeMs < pTestAt->commandWaitTimeSeconds * 1000) &&
+               (uPortUartGetReceiveSize(uartHandle) > 0)) {
+            sizeOrError = uPortUartRead(uartHandle,
+                                        gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES +
+                                        gAtServerLengthDecrypted + gAtServerLengthBuffered,
+                                        (sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2)) -
+                                        (gAtServerLengthDecrypted + gAtServerLengthBuffered));
 
             U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
             U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
 
             if (sizeOrError > 0) {
-                length += sizeOrError;
-                if (length >= sizeof(gBufferA) + (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2)) {
-                    length = 0;
+                gAtServerLengthBuffered += sizeOrError;
+                if (gAtServerLengthDecrypted + gAtServerLengthBuffered >
+                    sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2)) {
+                    uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server receive overflow.\n",
+                             gAtTestCount + 1);
                     sizeOrError = -1;
                 }
             }
-            // Wait long enough for everything to have been received
-            // and for any prints in the sending task to be printed
-            uPortTaskBlock(1000);
+
+            // Rest a while
+            uPortTaskBlock(100);
+            gAtServerWaitTimeMs += 100;
         }
 
-        if (sizeOrError > 0) {
+        if ((sizeOrError > 0) && (gAtServerLengthBuffered > 0)) {
 #if U_CFG_OS_CLIB_LEAKS
             // Calling printf() from a new task causes newlib
             // to allocate additional memory which, depending
@@ -792,9 +819,10 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
             // take account of that here.
             heapUsed = uPortGetHeapFree();
 #endif
-            uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server received, %d byte(s):\n",
-                     gAtTestCount + 1, length);
-            printBlock(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, length,
+            uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server has %d byte(s) to decrypt:\n",
+                     gAtTestCount + 1, sizeOrError);
+            printBlock(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES +
+                       gAtServerLengthDecrypted, gAtServerLengthBuffered,
                        true, gAtTestCount + 1);
 
 #if U_CFG_OS_CLIB_LEAKS
@@ -803,12 +831,13 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
             gSystemHeapLost += (size_t) (unsigned) (heapUsed - uPortGetHeapFree());
 #endif
 
-            // Decrypt the received chunk or chunks in place
+            // Try to decrypt the received chunk or chunks in place
             // by calling pUCellSecC2cInterceptRx with
             // the server context.
-            pData = gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES;
-            x = length;
-            interceptLength = length;
+            pData = gBufferA + gAtServerLengthDecrypted + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES;
+            pTmp = pData;
+            x = gAtServerLengthBuffered;
+            interceptLength = gAtServerLengthBuffered;
             sizeOrError = 0;
             while ((x > 0) && (sizeOrError >= 0)) {
                 pDecrypted = pUCellSecC2cInterceptRx(0, &pData,
@@ -821,36 +850,42 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                 U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
 
                 if (pDecrypted != NULL) {
-                    // Our intercept function always returns a pointer
-                    // to the start of the buffer (gBufferA +
-                    // U_CELL_SEC_C2C_GUARD_LENGTH_BYTES), to pData, so just need
+                    uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server decrypted %d byte(s):\n",
+                             gAtTestCount + 1, interceptLength);
+                    printBlock(pDecrypted, interceptLength, false, gAtTestCount + 1);
+                    // Out intercept function returns a pointer to the
+                    // start of the decrypted data in the buffer, i.e.
+                    // to the value of pData when it was called, so just need
                     // to shuffle everything down so that the next pData
                     // we provide to the intercept function will be
                     // contiguous with the already decrypted data.
                     // The buffer is as below where "sizeOrError"
-                    // is the previously decrypted data, "interceptLength"
-                    // the newly decrypted data and "pData" is where
-                    // we've got to in the buffer.
+                    // is the decrypted data from a previous loop,
+                    // "interceptLength" the decrypted data from this loop
+                    // and "pData" is where we've got to in the buffer.
                     //
                     //                       |-------------------- X ------------------|
                     //    +------------------+-----------------+-----------------------+
                     //    |    sizeOrError   | interceptLength |                       |
                     //    +------------------+-----------------+-------+---------------+
-                    // gBufferA         pDecrypted                   pData
-                    // + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES             |------ Y ------|
-                    //                                         |-- Z --|
+                    //   pTmp           pDecrypted                   pData
+                    //    =                                            |------ Y ------|
+                    // gBufferA +                              |-- Z --|
+                    // U_CELL_SEC_C2C_GUARD_LENGTH_BYTES +
+                    // gAtServerLengthDecrypted
+                    //
                     // y is the amount of data to move
-                    y = gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + sizeOrError + x - pData;
+                    y = pTmp + sizeOrError + x - pData;
                     // Grow size
                     sizeOrError += (int32_t) interceptLength;
                     // Do the move
-                    memmove(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + sizeOrError, pData, y);
+                    memmove(pTmp + sizeOrError, pData, y);
 
                     U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
                     U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
 
                     // z is the distance it was moved
-                    z = pData - (gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + sizeOrError);
+                    z = pData - (pTmp + sizeOrError);
                     // Shift pData down to match
                     pData -= z;
                     // Reduce the amount of data left to process
@@ -858,86 +893,89 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     // The length passed to the intercept function
                     // becomes what we moved
                     interceptLength = y;
-                } else {
-                    uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server could only"
-                             " decrypt %d byte(s).\n", sizeOrError);
-                    sizeOrError = -500;
                 }
             }
+            gAtServerLengthBuffered = x;
+            gAtServerLengthDecrypted += sizeOrError;
 
-            if (sizeOrError > 0) {
-                uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server decrypted %d byte(s):\n",
-                         gAtTestCount + 1, sizeOrError);
-                printBlock(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, sizeOrError,
-                           false, gAtTestCount + 1);
+            U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+            U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+            U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+            U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
 
-                x = strlen(pTestAt->pCommandPrefix);
-                if (sizeOrError == x + pTestAt->commandBodyLength +
-                    U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES) {
-                    if (memcmp(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
-                               pTestAt->pCommandPrefix, x) == 0) {
-                        if (memcmp(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x, pTestAt->pCommandBody,
-                                   pTestAt->commandBodyLength) == 0) {
-                            // Should be the correct command delimiter on the end
-                            if (memcmp(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x +
-                                       pTestAt->commandBodyLength,
-                                       U_AT_CLIENT_COMMAND_DELIMITER,
-                                       U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES) != 0) {
-                                uPortLog("U_CELL_SEC_C2C_TEST_%d: expected command"
-                                         " delimiter \"");
-                                printHex(U_AT_CLIENT_COMMAND_DELIMITER,
-                                         U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES);
-                                uPortLog("\" but received \"");
-                                printHex(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES +
-                                         x + pTestAt->commandBodyLength,
-                                         U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES);
-                                uPortLog("\".\n");
-                                sizeOrError = -400;
-                            }
+            x = strlen(pTestAt->pCommandPrefix);
+            if ((sizeOrError >= 0) &&
+                (gAtServerLengthDecrypted == x + pTestAt->commandBodyLength +
+                 U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES)) {
+                // We've got the lot, check it
+                if (memcmp(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                           pTestAt->pCommandPrefix, x) == 0) {
+                    if (memcmp(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x, pTestAt->pCommandBody,
+                               pTestAt->commandBodyLength) == 0) {
+                        // Should be the correct command delimiter on the end
+                        if (memcmp(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x +
+                                   pTestAt->commandBodyLength,
+                                   U_AT_CLIENT_COMMAND_DELIMITER,
+                                   U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES) == 0) {
+                            // All good
+                            uPortLog("U_CELL_SEC_C2C_TEST_%d: command received is as expected.\n",
+                                     gAtTestCount + 1);
+                            allReceived = true;
                         } else {
-                            uPortLog("U_CELL_SEC_C2C_TEST_%d: expected"
-                                     " command body \"", gAtTestCount + 1);
-                            if (pTestAt->isBinary) {
-                                printHex(pTestAt->pCommandBody, pTestAt->commandBodyLength);
-                            } else {
-                                print(pTestAt->pCommandBody, pTestAt->commandBodyLength);
-                            }
-                            uPortLog("\"\n but received \"");
-                            if (pTestAt->isBinary) {
-                                printHex(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x,
-                                         sizeOrError - x);
-                            } else {
-                                print(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x,
-                                      sizeOrError - x);
-                            }
+                            uPortLog("U_CELL_SEC_C2C_TEST_%d: expected command"
+                                     " delimiter \"");
+                            printHex(U_AT_CLIENT_COMMAND_DELIMITER,
+                                     U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES);
+                            uPortLog("\" but received \"");
+                            printHex(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES +
+                                     x + pTestAt->commandBodyLength,
+                                     U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES);
                             uPortLog("\".\n");
-                            sizeOrError = -300;
+                            sizeOrError = -400;
                         }
                     } else {
                         uPortLog("U_CELL_SEC_C2C_TEST_%d: expected"
-                                 " command prefix \"", gAtTestCount + 1);
-                        print(pTestAt->pCommandPrefix, x);
+                                 " command body \"", gAtTestCount + 1);
+                        if (pTestAt->isBinary) {
+                            printHex(pTestAt->pCommandBody, pTestAt->commandBodyLength);
+                        } else {
+                            print(pTestAt->pCommandBody, pTestAt->commandBodyLength);
+                        }
                         uPortLog("\"\n but received \"");
-                        print(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, x);
+                        if (pTestAt->isBinary) {
+                            printHex(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x,
+                                     sizeOrError - x);
+                        } else {
+                            print(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x,
+                                  sizeOrError - x);
+                        }
                         uPortLog("\".\n");
-                        sizeOrError = -200;
+                        sizeOrError = -300;
                     }
                 } else {
                     uPortLog("U_CELL_SEC_C2C_TEST_%d: expected"
-                             " command to be of total length %d"
-                             " (including terminator) but was %d.\n",
-                             gAtTestCount + 1, x + pTestAt->commandBodyLength + 1,
-                             length);
-                    sizeOrError = -100;
+                             " command prefix \"", gAtTestCount + 1);
+                    print(pTestAt->pCommandPrefix, x);
+                    uPortLog("\"\n but received \"");
+                    print(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, x);
+                    uPortLog("\".\n");
+                    sizeOrError = -200;
                 }
+            } else {
+                if (sizeOrError >= 0) {
+                    uPortLog("U_CELL_SEC_C2C_TEST_%d: decrypted %d byte(s)"
+                             " so far, expecting command length %d byte(s)"
+                             " (including terminator).\n",
+                             gAtTestCount + 1, gAtServerLengthDecrypted,
+                             x + pTestAt->commandBodyLength +
+                             U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES);
+                }
+            }
 
-                U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
-                U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
-                U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
-                U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
-
+            if (allReceived) {
                 // If there is one, assemble and encrypt a URC
-                if ((pTestAt->pUrcPrefix != NULL) && (sizeOrError >= 0)) {
+                sizeOrError = 0;
+                if (pTestAt->pUrcPrefix != NULL) {
                     uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server inserting"
                              " URC \"%s %s\".\n", gAtTestCount + 1,
                              pTestAt->pUrcPrefix, pTestAt->pUrcBody);
@@ -946,11 +984,13 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     strcat(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
                            pTestAt->pUrcBody);
                     strcat(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, "\r\n");
+                    y = uPortGetTickTimeMs();
                     sizeOrError = atServerEncryptAndSendThing(uartHandle,
                                                               gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
                                                               strlen(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES),
                                                               pTestAt->chunkLengthMax);
-
+                    uPortLog("U_CELL_SEC_C2C_TEST_%d: ...took %d ms.\n",
+                             gAtTestCount + 1, uPortGetTickTimeMs() - y);
                     U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
                     U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
                     U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
@@ -992,9 +1032,12 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     memcpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + x,
                            "\r\nOK\r\n", 6);
                     x += 6;
+                    y = uPortGetTickTimeMs();
                     sizeOrError = atServerEncryptAndSendThing(uartHandle,
                                                               gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
                                                               x, pTestAt->chunkLengthMax);
+                    uPortLog("U_CELL_SEC_C2C_TEST_%d: ...took %d ms.\n",
+                             gAtTestCount + 1, uPortGetTickTimeMs() - y);
                     U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
                     U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
                     U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
@@ -1002,8 +1045,34 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferC);
                     U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferC);
                 }
+            } else {
+                // Check for timeout
+                if (gAtServerWaitTimeMs > pTestAt->commandWaitTimeSeconds * 1000) {
+                    uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server timed-out after %d second(s)"
+                             " with %d byte(s) decrypted.\n",
+                             gAtTestCount + 1, gAtServerWaitTimeMs / 1000, gAtServerLengthDecrypted);
+                    if (gAtServerLengthBuffered > 0) {
+                        uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server buffer undecrypted buffer"
+                                 " contained %d byte(s):\n", gAtTestCount + 1,
+                                 gAtServerLengthBuffered);
+                        printBlock(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES + gAtServerLengthDecrypted,
+                                   gAtServerLengthBuffered, true, gAtTestCount + 1);
+                    } else {
+                        uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server buffer had no undecrypted data.\n",
+                                 gAtTestCount + 1);
+                    }
+                    sizeOrError = -100;
+                }
             }
         }
+    }
+
+    if ((sizeOrError < 0) || allReceived) {
+        // If there was an error or we've finished, reset
+        // these so that we can start again
+        gAtServerLengthBuffered = 0;
+        gAtServerLengthDecrypted = 0;
+        gAtServerWaitTimeMs = 0;
     }
 
     gAtServerErrorOrSize = sizeOrError;
@@ -1263,6 +1332,7 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
     int32_t stackMinFreeBytes;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t y;
 
     // Initialise the guard areas at either end of the buffers
     initGuards();
@@ -1331,7 +1401,7 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
     uPortLog("U_CELL_SEC_C2C_TEST: make sure these pins are"
              " cross-connected.\n");
 
-    // Set up an AT server event handler on UART 1, running
+    // Set up an AT server event handler on UART B, running
     // at URC priority for convenience
     // This event handler receives our encrypted chunks, decrypts
     // them and sends back an encrypted response for us to decrypt.
@@ -1431,26 +1501,35 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
 
         // We do a LOT of debug prints in the AT server task which responds
         // to this and we have to take our time with them so as not to
-        // overload the debug stream on some platforms so give it plenty
-        // of time to respond.
-        uAtClientTimeoutSet(atClientHandle, 20000);
+        // overload the debug stream on some platforms so give this plenty
+        // time: enough time for the command to get there and be printed
+        // out, and the response to be printed out and then received and
+        // printed out
+        y = 20000 + (pTestAt->commandWaitTimeSeconds * 1000 * 2) +
+            (pTestAt->responseWaitTimeSeconds * 1000 * 3);
+        uPortLog("U_CELL_SEC_C2C_TEST_%d: AT timeout set to %d ms.\n",
+                 x + 1, y);
+        uAtClientTimeoutSet(atClientHandle, y);
+        y = (int32_t) uPortGetTickTimeMs();
         uAtClientCommandStart(atClientHandle, pTestAt->pCommandPrefix);
         if (pTestAt->isBinary) {
             // Binary bytes
-            uAtClientWriteBytes(atClientHandle, pTestAt->pCommandBody,
-                                pTestAt->commandBodyLength, false);
+            U_PORT_TEST_ASSERT(uAtClientWriteBytes(atClientHandle, pTestAt->pCommandBody,
+                                                   pTestAt->commandBodyLength, false) ==
+                               pTestAt->commandBodyLength);
         } else {
             // String without quotes
             uAtClientWriteString(atClientHandle, pTestAt->pCommandBody, false);
         }
         uAtClientCommandStop(atClientHandle);
 
-        uPortLog("U_CELL_SEC_C2C_TEST_%d: AT client waiting for response",
-                 x + 1);
+        uPortLog("U_CELL_SEC_C2C_TEST_%d: AT client send took %d ms, waiting for response",
+                 x + 1, ((int32_t) uPortGetTickTimeMs()) - y);
         if (pTestAt->pResponsePrefix != NULL) {
             uPortLog(" \"%s\"", pTestAt->pResponsePrefix);
         }
         uPortLog("...\n");
+        y = (int32_t) uPortGetTickTimeMs();
 
         uAtClientResponseStart(atClientHandle, pTestAt->pResponsePrefix);
         if (pTestAt->isBinary) {
@@ -1477,8 +1556,8 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
         // Wait a moment before printing so that any URCs get to
         // be printed without us trampling over them
         uPortTaskBlock(1000);
-        uPortLog("U_CELL_SEC_C2C_TEST_%d: AT client read result is %d.\n",
-                 x + 1, sizeOrError);
+        uPortLog("U_CELL_SEC_C2C_TEST_%d: AT client read result (after %d ms wait) is %d.\n",
+                 x + 1, ((int32_t) uPortGetTickTimeMs()) - y, sizeOrError);
         U_PORT_TEST_ASSERT(sizeOrError >= 0);
         uPortLog("U_CELL_SEC_C2C_TEST_%d: AT client received response:\n", x + 1);
         if (sizeOrError > 0) {
