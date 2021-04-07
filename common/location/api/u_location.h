@@ -124,23 +124,33 @@ typedef struct {
  * attempt can be in.
  */
 typedef enum {
-    U_LOCATION_STATUS_UNKNOWN,
-    U_LOCATION_STATUS_CELLULAR_SCAN_START,
-    U_LOCATION_STATUS_CELLULAR_SCAN_END,
-    U_LOCATION_STATUS_REQUESTING_DATA_FROM_SERVER,
-    U_LOCATION_STATUS_RECEIVING_DATA_FROM_SERVER,
-    U_LOCATION_STATUS_SENDING_FEEDBACK_TO_SERVER,
-    U_LOCATION_STATUS_WRONG_URL,
-    U_LOCATION_STATUS_HTTP_ERROR,
-    U_LOCATION_STATUS_CREATE_SOCKET_ERROR,
-    U_LOCATION_STATUS_WRITE_TO_SOCKET_ERROR,
-    U_LOCATION_STATUS_READ_FROM_SOCKET_ERROR,
-    U_LOCATION_STATUS_CONNECTION_OR_DNS_ERROR,
-    U_LOCATION_STATUS_BAD_AUTHENTICATION_TOKEN,
-    U_LOCATION_STATUS_GENERIC_ERROR,
-    U_LOCATION_STATUS_USER_TERMINATED,
-    U_LOCATION_STATUS_NO_DATA_FROM_SERVER,
-    U_LOCATION_STATUS_UNKNOWN_COMMS_ERROR,
+    U_LOCATION_STATUS_UNKNOWN = 0,
+    U_LOCATION_STATUS_CELLULAR_SCAN_START = 1,
+    U_LOCATION_STATUS_CELLULAR_SCAN_END = 2,
+    U_LOCATION_STATUS_REQUESTING_DATA_FROM_SERVER = 3,
+    U_LOCATION_STATUS_RECEIVING_DATA_FROM_SERVER = 4,
+    U_LOCATION_STATUS_SENDING_FEEDBACK_TO_SERVER = 5,
+    U_LOCATION_STATUS_FATAL_ERROR_HERE_AND_BEYOND = 6, /**<! values from here on are
+                                                             usually indications of
+                                                             failure but see comment
+                                                             against
+                                                             U_LOCATION_STATUS_READ_FROM_SOCKET_ERROR
+                                                             below. */
+    U_LOCATION_STATUS_WRONG_URL = 6,
+    U_LOCATION_STATUS_HTTP_ERROR = 7,
+    U_LOCATION_STATUS_CREATE_SOCKET_ERROR = 8,
+    U_LOCATION_STATUS_CLOSE_SOCKET_ERROR = 9,
+    U_LOCATION_STATUS_WRITE_TO_SOCKET_ERROR = 10,
+    U_LOCATION_STATUS_READ_FROM_SOCKET_ERROR = 11,     /**<! this error is returned by Cell Locate
+                                                             when it has been unable to read from
+                                                             an attached GNSS chip, which may of
+                                                             course be absent. */
+    U_LOCATION_STATUS_CONNECTION_OR_DNS_ERROR = 12,
+    U_LOCATION_STATUS_BAD_AUTHENTICATION_TOKEN = 13,
+    U_LOCATION_STATUS_GENERIC_ERROR = 14,
+    U_LOCATION_STATUS_USER_TERMINATED = 15,
+    U_LOCATION_STATUS_NO_DATA_FROM_SERVER = 16,
+    U_LOCATION_STATUS_UNKNOWN_COMMS_ERROR = 17,
     U_LOCATION_STATUS_MAX_NUM
 } uLocationStatus_t;
 

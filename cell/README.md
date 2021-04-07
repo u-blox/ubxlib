@@ -12,7 +12,7 @@ The cellular APIs are split into the following groups:
 - `sec_tls`: TLS security features.
 - `sock`: sockets, for exchanging data (but see the `common/sock` component for the best way to do this).
 - `mqtt`: MQTT client (but see the `common/mqtt_client` component for the best way to do this).
-- `loc`: getting a location fix using the Cell Locate service; if you have a GNSS chip attached via a cellular module, please use the `gnss` API instead.
+- `loc`: getting a location fix using the Cell Locate service; for this you will need an authentication token from the [Location Services section](https://portal.thingstream.io/app/location-services) of your [Thingstream portal](https://portal.thingstream.io/app/dashboard). If you have a GNSS chip attached via a cellular module and want to control it directly from your MCU, please use the `gnss` API instead.
 
 The module types supported by this implementation are listed in `api/u_cell_module_type.h`.
 

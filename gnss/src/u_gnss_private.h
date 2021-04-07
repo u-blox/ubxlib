@@ -106,7 +106,7 @@ typedef struct uGnssPrivateInstance_t {
     uGnssTransportHandle_t transportHandle; /**< the handle of the transport to use. */
     int32_t timeoutMs; /**< the timeout for responses from the GNSS chip in milliseconds. */
     bool printUbxMessages; /**< whether debug printing of ubx messages is on or off. */
-    int32_t pinGnssEnablePower; /**<tThe pin of the MCU that enables power to the GNSS module. */
+    int32_t pinGnssEnablePower; /**<the pin of the MCU that enables power to the GNSS module. */
     int32_t atModulePinPwr; /**< the pin of the AT module that enables power to the GNSS chip (only relevant for transport type AT). */
     int32_t atModulePinDataReady; /**< the pin of the AT module that is connected to the Data Ready pin of the GNSS chip (only relevant for transport type AT). */
     int32_t portNumber; /**< the internal port number of the GNSS device that we are connected on. */

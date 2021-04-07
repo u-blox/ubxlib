@@ -119,6 +119,36 @@ static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_NONE};
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Convert a lat/long into a whole number and a bit-after-the-decimal-point
+// that can be printed by a version of printf() that does not support
+// floating point operations, returning the prefix (either "+" or "-").
+// The result should be printed with printf() format specifiers
+// %c%d.%07d, e.g. something like:
+//
+// int32_t whole;
+// int32_t fraction;
+//
+// printf("%c%d.%07d/%c%d.%07d", latLongToBits(latitudeX1e7, &whole, &fraction),
+//                               whole, fraction,
+//                               latLongToBits(longitudeX1e7, &whole, &fraction),
+//                               whole, fraction);
+static char latLongToBits(int32_t thingX1e7,
+                          int32_t *pWhole,
+                          int32_t *pFraction)
+{
+    char prefix = '+';
+
+    // Deal with the sign
+    if (thingX1e7 < 0) {
+        thingX1e7 = -thingX1e7;
+        prefix = '-';
+    }
+    *pWhole = thingX1e7 / 10000000;
+    *pFraction = thingX1e7 % 10000000;
+
+    return prefix;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: THE EXAMPLE
  * -------------------------------------------------------------- */
@@ -130,9 +160,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 {
     int32_t networkHandle;
     uLocation_t location;
-
     // Set an out of range value so that we can test it later
     location.tickTimeMs = -1;
+    int32_t whole;
+    int32_t fraction;
 
     // Initialise the APIs we will need
     uPortInit();
@@ -153,9 +184,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
         // Get location
         if (uLocationGet(networkHandle, U_LOCATION_TYPE_GNSS,
                          NULL, NULL, &location, NULL) == 0) {
-            uPortLog("I am here: https://maps.google.com/?q=%3.7f,%3.7f\n",
-                     (double) location.latitudeX1e7 / 10000000,
-                     (double) location.longitudeX1e7 / 10000000);
+            uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d/%c%d.%07d\n",
+                     latLongToBits(location.latitudeX1e7, &whole, &fraction),
+                     whole, fraction,
+                     latLongToBits(location.longitudeX1e7, &whole, &fraction),
+                     whole, fraction);
         } else {
             uPortLog("Unable to get a location fix!\n");
         }

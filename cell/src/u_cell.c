@@ -171,6 +171,8 @@ void uCellDeinit()
             uCellPrivateScanFree(&(pInstance->pScanResults));
             // Free any chip to chip security context
             uCellPrivateC2cRemoveContext(pInstance);
+            // Free any location context and associated URC
+            uCellPrivateLocRemoveContext(pInstance);
             free(pInstance);
         }
 
@@ -230,6 +232,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
                 pInstance->pSecurityC2cContext = NULL;
                 pInstance->pMqttContext = NULL;
+                pInstance->pLocContext = NULL;
                 pInstance->pNext = NULL;
 
                 // Now set up the pins
@@ -364,6 +367,8 @@ void uCellRemove(int32_t cellHandle)
             uCellPrivateScanFree(&(pInstance->pScanResults));
             // Free any chip to chip security context
             uCellPrivateC2cRemoveContext(pInstance);
+            // Free any location context and associated URC
+            uCellPrivateLocRemoveContext(pInstance);
             free(pInstance);
         }
 

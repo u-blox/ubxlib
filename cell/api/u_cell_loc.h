@@ -21,9 +21,20 @@
 
 /** @file
  * @brief This header file defines the API into the Cell Locate
- * service.  These functions are thread-safe with the proviso that
- * a cellular instance should not be accessed before it has been added
- * or after it has been removed.
+ * service.  These functions are thread-safe with the following
+ * exceptions:
+ *
+ * - uCellLocCleanUp() should not be called while location
+ *   establishment is running.
+ * - a cellular instance should not be deinitialised while location
+ *   establishment is running.
+ *
+ * To use the Cell Locate service you will need to obtain an
+ * authentication token from the Location Services
+ * section of your Thingstream portal
+ * (https://portal.thingstream.io/app/location-services) and
+ * call uCellLocSetServer() to supply that authentication
+ * token to the cellular module.
  */
 
 #ifdef __cplusplus
@@ -34,128 +45,164 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_CELL_LOC_TIMEOUT_SECONDS
+/** The timeout for location establishment in seconds.
+ */
+# define U_CELL_LOC_TIMEOUT_SECONDS 240
+#endif
+
+#ifndef U_CELL_LOC_DESIRED_ACCURACY_DEFAULT_MILLIMETRES
+/** The default desired location accuracy in metres.
+ */
+# define U_CELL_LOC_DESIRED_ACCURACY_DEFAULT_MILLIMETRES (10 * 1000)
+#endif
+
+#ifndef U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS
+/** The default desired location fix time-out in seconds.
+ */
+# define U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS 60
+#endif
+
+#ifndef U_CELL_LOC_GNSS_ENABLE_DEFAULT
+/** The default as to whether GNSS is enabled or not.
+ */
+# define U_CELL_LOC_GNSS_ENABLE_DEFAULT true
+#endif
+
+#ifndef U_CELL_LOC_BUFFER_LENGTH_BYTES
+/** The length of buffer to use for a Wifi tag string.
+ * The maximum AT command-line length is usually 1024
+ * characters so the biggest buffer that can be sent is
+ * "AT+ULOCEXT=\r\n" characters less than that.
+ */
+# define U_CELL_LOC_BUFFER_LENGTH_BYTES 1011
+#endif
+
+#ifndef U_CELL_LOC_GNSS_POWER_UP_TIME_MILLISECONDS
+/** How long to wait for a GNSS chip to be available after it is
+ * powered up.  If you change this and you also use the GNSS
+ * API then you might want to change the value of
+ * U_GNSS_POWER_UP_TIME_MILLISECONDS also.
+ */
+# define U_CELL_LOC_GNSS_POWER_UP_TIME_MILLISECONDS 2000
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
-/** The possible Wifi authentication mechanisms.
- */
-typedef enum {
-    U_CELL_LOC_WIFI_WIFI_AUTH_NONE = 0,
-    U_CELL_LOC_WIFI_WIFI_AUTH_WEP = 0x01,
-    U_CELL_LOC_WIFI_WIFI_AUTH_PSK = 0x02,
-    U_CELL_LOC_WIFI_WIFI_AUTH_EAP = 0x04,
-    U_CELL_LOC_WIFI_WIFI_AUTH_WPA = 0x08,
-    U_CELL_LOC_WIFI_WIFI_AUTH_WPA2 = 0x10
-} uCellLocWifiAuth_t;
+/* ----------------------------------------------------------------
+ * FUNCTIONS: MISC
+ * -------------------------------------------------------------- */
 
-/** The possible Wifi cipher mechanisms.
+/** Using this API will allocate memory for a context, which will
+ * be cleaned up when uCellDeinit() is called.  If you want to
+ * free that memory before uCellDeinit() is called then call this
+ * function.
+ *
+ * @param cellHandle  the handle of the cellular instance.
  */
-typedef enum {
-    U_CELL_LOC_WIFI_CIPHER_NONE = 0,
-    U_CELL_LOC_WIFI_CIPHER_WEP64 = 0x01,
-    U_CELL_LOC_WIFI_CIPHER_WEP128 = 0x02,
-    U_CELL_LOC_WIFI_CIPHER_TKIP = 0x04,
-    U_CELL_LOC_WIFI_CIPHER_AES_CCMP = 0x08
-} uCellLocWifiCipher_t;
-
-/** Structure to hold the information on a single Wifi
- * access point.
- */
-typedef struct {
-    char ssid[33];      //!< the SSID of the access point as a NULL
-    //! terminated string.
-    uint8_t bssid[6];   //!< MAC address of the access point (binary
-    //! values, not characters/text).
-    int32_t rssiDbm;    //!< the RSSI of the access point in dBm.
-    int32_t channel;    //!< the Wifi channel used by the network.
-    bool isAdhoc;       //!< true if this is an adhoc AP, else false.
-    uint8_t authBitmap; //!< bitmap of the supported authentication
-    //! types, see uCellLocWifiAuth_t.
-    uint8_t unicastCipherBitmap; //!< bitmap of the supported unicast
-    //! ciphers, see uCellLocWifiCipher_t.
-    uint8_t groupCipherBitmap;   //!< bitmap of the supported group
-    //! ciphers see uCellLocWifiCipher_t.
-} uCellLocWifiAp_t;
+void uCellLocCleanUp(int32_t cellHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: CONFIGURATION
  * -------------------------------------------------------------- */
+
+/** Set the desired location accuracy.  If this is not called
+ * then the default U_CELL_LOC_DESIRED_ACCURACY_DEFAULT_MILLIMETRES
+ * is used.
+ *
+ * @param cellHandle          the handle of the cellular instance.
+ * @param accuracyMillimetres the desired accuracy in millimetres.
+ */
+void uCellLocSetDesiredAccuracy(int32_t cellHandle,
+                                int32_t accuracyMillimetres);
 
 /** Get the desired location accuracy.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            the desired accuracy in millimetres.
  */
-int32_t uCellLocDesiredAccuracyGet(int32_t cellHandle);
+int32_t uCellLocGetDesiredAccuracy(int32_t cellHandle);
 
-/** Set the desired location accuracy.
+/** Set the desired location fix time-out.  If this is not called
+ * then the default U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS
+ * is used.
  *
- * @param cellHandle          the handle of the cellular instance.
- * @param accuracyMillimetres the desired accuracy in millimetres.
+ * @param cellHandle        the handle of the cellular instance.
+ * @param fixTimeoutSeconds the desired fix timeout in seconds.
  */
-void uCellLocDesiredAccuracySet(int32_t cellHandle,
-                                int32_t accuracyMillimetres);
+void uCellLocSetDesiredFixTimeout(int32_t cellHandle,
+                                  int32_t fixTimeoutSeconds);
 
 /** Get the desired location fix time-out.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            the desrired timeout in seconds.
  */
-int32_t uCellLocDesiredFixTimeoutGet(int32_t cellHandle);
+int32_t uCellLocGetDesiredFixTimeout(int32_t cellHandle);
 
-/** Set the desired location fix time-out.
+/** Set whether a GNSS chip attached to the cellular module
+ * should be used in the location fix or not.  If this is not
+ * called then the default U_CELL_LOC_GNSS_ENABLE_DEFAULT
+ * is used.
  *
- * @param cellHandle        the handle of the cellular instance.
- * @param fixTimeoutSeconds the desired fix timeout in seconds.
+ * @param cellHandle  the handle of the cellular instance.
+ * @param onNotOff    true if GNSS should be used, else false.
  */
-void uCellLocDesiredFixTimeoutSet(int32_t cellHandle,
-                                  int32_t fixTimeoutSeconds);
+void uCellLocSetGnssEnable(int32_t cellHandle, bool onNotOff);
 
 /** Get whether GNSS is employed in the location fix or not.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            true if GNSS is used else false.
  */
-bool uCellLocGnssEnableGet(int32_t cellHandle);
-
-/** Set whether a GNSS chip attached to the cellular module
- * should be used in the location fix or not.
- *
- * @param cellHandle  the handle of the cellular instance.
- * @param onNotOff    true if GNSS should be used, else false.
- */
-void uCellLocGnssEnableSet(int32_t cellHandle, bool onNotOff);
+bool uCellLocGetGnssEnable(int32_t cellHandle);
 
 /** Set the cellular module pin which enables power to the
  * GNSS chip.  This is the pin number of the cellular module so,
  * for instance, GPIO2 is cellular module pin 23 and hence 23 would
- * be used here.  If no power-enable functionality is required
- * then specify -1 (which is the default).
+ * be used here.  If this function is not called then no
+ * power-enable functionality is assumed.
  * Note that this function is distinct and separate from the
  * uGnssSetAtPinPwr() over in the GNSS API: if you are
  * using that API then you should call that function.
+ * The cellular module must be powered-on for this to work.
+ * If the cellular module is powered off this setting will be
+ * forgotten.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pin         the pin to use.
+ * @return            zero on success or negative error code.
  */
-void uCellLocPinGnssPwrSet(int32_t cellHandle, int32_t pin);
+int32_t uCellLocSetPinGnssPwr(int32_t cellHandle, int32_t pin);
 
 /** Set the cellular module pin which is connected to the Data
  * Ready pin of the GNSS chip.  This is the pin number of the
  * cellular module so, for instance, GPIO3 is cellular module
- * pin 24 and hence 24 would be used here.  If no Data Ready
- * signalling is required then specify -1 (which is the default).
+ * pin 24 and hence 24 would be used here.  If this function
+ * is not called then no Data Ready functionality is assumed.
  * Note that this function is distinct and separate from the
  * uGnssSetAtPinDataReady() over in the GNSS API: if you are
  * using that API then you should call that function.
+ * The cellular module must be powered-on for this to work.
+ * If the cellular module is powered off this setting will be
+ * forgotten.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pin         the pin to use.
+ * @return            zero on success or negative error code.
  */
-void uCellLocPinGnssDataReadySet(int32_t cellHandle, int32_t pin);
+int32_t uCellLocSetPinGnssDataReady(int32_t cellHandle, int32_t pin);
 
-/** Configure the Cell Locate server parameters.
+/** Configure the Cell Locate server parameters, in particular
+ * authentication token that is required to use the Cell Locate
+ * service.  This may be obtained from the Location Services
+ * section of your Thingstream portal
+ * (https://portal.thingstream.io/app/location-services).
+ * The cellular module must be powered-on for this to work.
+ * If the cellular module is powered off this setting will be
+ * forgotten.
  *
  * @param cellHandle              the handle of the cellular instance.
  * @param pAuthenticationTokenStr a pointer to the null-terminated
@@ -173,13 +220,17 @@ void uCellLocPinGnssDataReadySet(int32_t cellHandle, int32_t pin);
  *                                "celllive2.services.u-blox.com".
  *                                May be NULL, in which case the default
  *                                is used.
+ * @return                        zero on success or negative error code.
  */
-void uCellLocServerCfg(int32_t cellHandle,
-                       const char *pAuthenticationTokenStr,
-                       const char *pPrimaryServerStr,
-                       const char *pSecondaryServerStr);
+int32_t uCellLocSetServer(int32_t cellHandle,
+                          const char *pAuthenticationTokenStr,
+                          const char *pPrimaryServerStr,
+                          const char *pSecondaryServerStr);
 
-/** Check whether a GNSS chip is present or not.
+/** Check whether a GNSS chip is present or not.  Note that this may
+ * fail if the cellular module controls power to the GNSS chip and
+ * the correct cellular module GPIO pin for that has not been set
+ * (by calling uCellLocSetPinGnssPwr()).
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            true if a GNSS chip is present, else false.
@@ -198,29 +249,17 @@ bool uCellLocGnssInsideCell(int32_t cellHandle);
  * FUNCTIONS: LOCATION ESTABLISHMENT
  * -------------------------------------------------------------- */
 
-/** Add information on a Wifi access point which may be used to
- * improve the location fix when uCellLocGet() is called.
- *
- * @param cellHandle  the handle of the cellular instance.
- * @param pInfo       a pointer to the Wifi access point information,
- *                    which will be copied into this API and
- *                    hence may be destroyed when this function
- *                    returns; cannot be NULL.
- * @return            zero on success or negative error code on
- *                    failure.
- */
-int32_t uCellLocWifiAddAp(int32_t cellHandle,
-                          const uCellLocWifiAp_t *pInfo);
-
-/** Delete any Wifi access point information which was previously
- * in use.
- *
- * @param cellHandle  the handle of the cellular instance.
- */
-void uCellLocWifiClearAllAps(int32_t cellHandle);
-
 /** Get the current location, returning on success or if
- * pKeepGoingCallback returns false.
+ * pKeepGoingCallback returns false.  This will ONLY work if
+ * the cellular module is currently registered on a network
+ * (e.g. as a result of uCellNetConnect() or uCellNetRegister()
+ * being called).  Location establishment attempts may
+ * be rate-limited; if this is the case U_CELL_ERROR_CELL_LOCATE
+ * will be returned and it is worth waiting before trying again.
+ * IMPORTANT: if Cell Locate is unable to establish a location
+ * it may still return a valid time and a location of all zeros
+ * but with a very large radius (e.g. 200 km), hence it is always
+ * wise to check the radius.
  *
  * @param cellHandle                  the handle of the cellular instance.
  * @param pLatitudeX1e7               a place to put latitude (in ten
@@ -230,24 +269,25 @@ void uCellLocWifiClearAllAps(int32_t cellHandle);
  * @param pAltitudeMillimetres        a place to put the altitude (in
  *                                    millimetres); may be NULL.
  * @param pRadiusMillimetres          a place to put the radius of position
- *                                    (in millimetres); may be NULL.  If the
- *                                    radius is unknown -1 will be returned.
+ *                                    (in millimetres); may be NULL.  Radius may
+ *                                    be absent even when a location is
+ *                                    established; should this be the case this
+ *                                    variable will point to INT_MIN.
  * @param pSpeedMillimetresPerSecond  a place to put the speed (in
  *                                    millimetres per second); may be
- *                                    NULL.  If the speed is unknown
- *                                    -1 will be returned.
+ *                                    NULL.  This field is only populated if
+ *                                    there is a GNSS chip attached to the cellular
+ *                                    module which is used in the Cell Locate
+ *                                    location establishment process, otherwise
+  *                                   zero will be returned.
  * @param pSvs                        a place to store the number of
  *                                    space vehicles used in the
- *                                    solution; may be NULL. If the
- *                                    number of space vehicles is
- *                                    unknown or irrelevant -1 will
- *                                    be returned.
+ *                                    solution; may be NULL. This field is only
+ *                                    populated if there is a GNSS chip attached
+ *                                    to the cellular module which is used in the
+ *                                    Cell Locate location establishment process,
+ *                                    otherwise zero will be returned.
  * @param pTimeUtc                    a place to put the UTC time; may be NULL.
- *                                    If the time is unknown -1 will be
- *                                    returned. Note that this is the time of
- *                                    the fix and, by the time the fix is
- *                                    returned, it may not represent the
- *                                    *current* time.
  * @param pKeepGoingCallback          a callback function that governs how
  *                                    long a location establishment may continue
  *                                    for. This function is called once a second
@@ -260,30 +300,40 @@ void uCellLocWifiClearAllAps(int32_t cellHandle);
  *                                    that may be running.  The single int32_t
  *                                    parameter is the cell handle. May be NULL,
  *                                    in which case the location establishment
- *                                    attempt will eventually time out on failure.
+ *                                    attempt will time-out after
+ *                                    U_CELL_LOC_TIMEOUT_SECONDS seconds.
  * @return                            zero on success or negative error code on
  *                                    failure.
  */
 int32_t uCellLocGet(int32_t cellHandle,
                     int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                     int32_t *pAltitudeMillimetres, int32_t *pRadiusMillimetres,
-                    int32_t *pSpeedMillimetresPerSecond, int32_t pSvs,
-                    int64_t *pTimeUtc,
+                    int32_t *pSpeedMillimetresPerSecond,
+                    int32_t *pSvs, int64_t *pTimeUtc,
                     bool (*pKeepGoingCallback) (int32_t));
 
-/** Get the current location, non-blocking version.
+/** Get the current location, non-blocking version.  This will ONLY
+ * work if the cellular module is currently registered on a network
+ * (e.g. as a result of uCellNetConnect() or uCellNetRegister() being
+ * called). The location establishment attempt will time-out after
+ * U_CELL_LOC_TIMEOUT_SECONDS.  Location establishment attempts may
+ * be rate-limited; if this is the case U_CELL_ERROR_CELL_LOCATE
+ * will be returned and it is worth waiting before trying again.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pCallback   a callback that will be called when a fix has been
- *                    obtained.  The first parameter to the callback is
- *                    the cellular handle, the remaining parameters are
- *                    as described in uCellLocGet() except that they are
- *                    not pointers.
+ *                    obtained.  The position fix is only valid
+ *                    if the second int32_t, errorCode, is zero.
+ *                    The first parameter to the callback is the
+ *                    cellular handle, the parameters after errorCode
+ *                    are as described in uCellLocGet() except that
+ *                    they are not pointers.
  * @return            zero on success or negative error code on
  *                    failure.
  */
 int32_t uCellLocGetStart(int32_t cellHandle,
                          void (*pCallback) (int32_t cellHandle,
+                                            int32_t errorCode,
                                             int32_t latitudeX1e7,
                                             int32_t longitudeX1e7,
                                             int32_t altitudeMillimetres,
@@ -299,11 +349,16 @@ int32_t uCellLocGetStart(int32_t cellHandle,
  *                    from uLocationStatus_t (see common
  *                    location API), else negative error code.
  */
-int32_t uCellLocStatusGet(int32_t cellHandle);
+int32_t uCellLocGetStatus(int32_t cellHandle);
 
 /** Cancel a uCellLocGetStart(); after calling this function the
  * callback passed to uCellLocGetStart() will not be called until
- * another uCellLocGetStart() is begun.
+ * another uCellLocGetStart() is begun.  Note that this causes the
+ * code here to stop waiting for any answer coming back from the
+ * cellular module but the module may still send such an answer and,
+ * since there is no reference count in it, if uCellLocGetStart() is
+ * called again quickly it may pick up the first answer (and then
+ * the subsequent answer one will be ignored, etc.).
  *
  * @param cellHandle  the handle of the cellular instance.
  */

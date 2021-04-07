@@ -215,7 +215,7 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
                                              pConfiguration->gnssAtPinPwr);
                             // Do it for the Cell Locate API as well in case the
                             // user wants to use that
-                            uCellLocPinGnssPwrSet(pConfiguration->networkHandleAt,
+                            uCellLocSetPinGnssPwr(pConfiguration->networkHandleAt,
                                                   pConfiguration->gnssAtPinPwr);
                         }
                         if (pConfiguration->gnssAtPinDataReady >= 0) {
@@ -223,7 +223,7 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
                                                    pConfiguration->gnssAtPinDataReady);
                             // Do it for the Cell Locate API as well in case the
                             // user wants to use that
-                            uCellLocPinGnssDataReadySet(pConfiguration->networkHandleAt,
+                            uCellLocSetPinGnssDataReady(pConfiguration->networkHandleAt,
                                                         pConfiguration->gnssAtPinDataReady);
                         }
                     }

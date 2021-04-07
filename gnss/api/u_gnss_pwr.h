@@ -34,7 +34,9 @@ extern "C" {
 
 #ifndef U_GNSS_POWER_UP_TIME_MILLISECONDS
 /** How long to wait for a GNSS chip to be available after it is
- * powered up.
+ * powered up.  If you change this and you also use the cell locate
+ * API then you might want to change the value of
+ * U_CELL_LOCATE_GNSS_POWER_UP_TIME_MILLISECONDS also.
  */
 # define U_GNSS_POWER_UP_TIME_MILLISECONDS 2000
 #endif
