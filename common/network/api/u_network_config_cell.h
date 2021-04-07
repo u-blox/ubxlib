@@ -49,7 +49,7 @@ typedef struct {
                               must begin with this for error checking
                               purposes. */
     int32_t moduleType; /**< The module type that is connected,
-                             see uCellModuleType_t in u_cell.h. */
+                             see uCellModuleType_t in u_cell_module_type.h. */
     const char *pPin; /**< The PIN of the SIM. */
     const char *pApn; /**< The APN to use; if left as NULL
                            a database look-up will be used. */

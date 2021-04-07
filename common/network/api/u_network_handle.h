@@ -21,7 +21,7 @@
 
 /** @file
  *@brief This header file defines the network handle ranges
- * for ubxlib between sho and cellular and Wifi so that
+ * for ubxlib between sho, cellular, Wifi and GNSS so that
  * the same network handle can be used across ubxlib without fear
  * of collision.
  */
@@ -56,11 +56,16 @@
 #define U_NETWORK_HANDLE_IS_WIFI(handle) ((handle) >= (int32_t) U_NETWORK_HANDLE_WIFI_MIN && \
                                           (handle) <= (int32_t) U_NETWORK_HANDLE_WIFI_MAX)
 
+/** Determine if the network handle is a GNSS one.
+ */
+#define U_NETWORK_HANDLE_IS_GNSS(handle) ((handle) >= (int32_t) U_NETWORK_HANDLE_GNSS_MIN && \
+                                          (handle) <= (int32_t) U_NETWORK_HANDLE_GNSS_MAX)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
-/** Network handle ranges for BLE, cell and Wifi.
+/** Network handle ranges for BLE, cell, Wifi and GNSS.
  * IMPORTANT: though this is defined as an enumeration it
  * is a requirement that any handle returned to or accepted
  * from the user is cast to an anonymous int32_t type.
@@ -74,7 +79,9 @@ typedef enum {
     U_NETWORK_HANDLE_CELL_MIN = U_NETWORK_HANDLE_BASE + 256,
     U_NETWORK_HANDLE_CELL_MAX = U_NETWORK_HANDLE_BASE + 511,
     U_NETWORK_HANDLE_WIFI_MIN = U_NETWORK_HANDLE_BASE + 512,
-    U_NETWORK_HANDLE_WIFI_MAX = U_NETWORK_HANDLE_BASE + 1024
+    U_NETWORK_HANDLE_WIFI_MAX = U_NETWORK_HANDLE_BASE + 1024,
+    U_NETWORK_HANDLE_GNSS_MIN = U_NETWORK_HANDLE_BASE + 1025,
+    U_NETWORK_HANDLE_GNSS_MAX = U_NETWORK_HANDLE_BASE + 2048
 } uNetworkHandle_t;
 
 #endif // _U_NETWORK_HANDLE_H_

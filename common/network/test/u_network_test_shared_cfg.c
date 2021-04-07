@@ -51,10 +51,15 @@
 #include "u_short_range_module_type.h"
 #endif
 
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+#include "u_gnss_types.h"
+#endif
+
 #include "u_network.h"
 #include "u_network_config_ble.h"
 #include "u_network_config_cell.h"
 #include "u_network_config_wifi.h"
+#include "u_network_config_gnss.h"
 
 #include "u_network_test_shared_cfg.h"
 
@@ -124,13 +129,32 @@ static const uNetworkConfigurationWifi_t gConfigurationWifi = {
     U_NETWORK_TYPE_NONE /* TODO: replace this with Wifi config info. */
 };
 
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+/** The network configuration for GNSS.
+ */
+static const uNetworkConfigurationGnss_t gConfigurationGnss = {
+    U_NETWORK_TYPE_GNSS,
+    U_CFG_TEST_GNSS_MODULE_TYPE,
+    U_GNSS_TRANSPORT_NMEA_UART,
+    U_CFG_APP_GNSS_UART,
+    U_CFG_APP_PIN_GNSS_TXD,
+    U_CFG_APP_PIN_GNSS_RXD,
+    U_CFG_APP_PIN_GNSS_CTS,
+    U_CFG_APP_PIN_GNSS_RTS,
+    U_CFG_APP_PIN_GNSS_EN
+};
+#else
+static const uNetworkConfigurationGnss_t gConfigurationGnss = {U_NETWORK_TYPE_NONE};
+#endif
+
 /** All of the information for the underlying network
  * types as an array.
  */
 uNetworkTestCfg_t gUNetworkTestCfg[] = {
     {-1, U_NETWORK_TYPE_BLE, (const void *) &gConfigurationBle},
     {-1, U_NETWORK_TYPE_CELL, (const void *) &gConfigurationCell},
-    {-1, U_NETWORK_TYPE_WIFI, (const void *) &gConfigurationWifi}
+    {-1, U_NETWORK_TYPE_WIFI, (const void *) &gConfigurationWifi},
+    {-1, U_NETWORK_TYPE_GNSS, (const void *) &gConfigurationGnss}
 };
 
 /** Number of items in the gNetwork array, has to be
@@ -151,6 +175,7 @@ const char *gpUNetworkTestTypeName[] = {"none",     // U_NETWORK_TYPE_NONE
                                         "BLE",      // U_NETWORK_TYPE_BLE
                                         "cellular", // U_NETWORK_TYPE_CELL
                                         "Wifi"      // U_NETWORK_TYPE_WIFI
+                                        "GNSS"      // U_NETWORK_TYPE_GNSS
                                        };
 #endif
 

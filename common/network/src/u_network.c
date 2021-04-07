@@ -42,9 +42,11 @@
 #include "u_network_config_ble.h"
 #include "u_network_config_cell.h"
 #include "u_network_config_wifi.h"
+#include "u_network_config_gnss.h"
 #include "u_network_private_ble.h"
 #include "u_network_private_cell.h"
 #include "u_network_private_wifi.h"
+#include "u_network_private_gnss.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -146,6 +148,8 @@ static int32_t remove(int32_t handle)
         errorCode = uNetworkRemoveCell(handle);
     } else if (U_NETWORK_HANDLE_IS_WIFI(handle)) {
         errorCode = uNetworkRemoveWifi(handle);
+    } else if (U_NETWORK_HANDLE_IS_GNSS(handle)) {
+        errorCode = uNetworkRemoveGnss(handle);
     }
 
     return errorCode;
@@ -169,11 +173,18 @@ int32_t uNetworkInit()
             // Call the init functions in the
             // underlying network layers
             errorCode = uNetworkInitBle();
-            if (errorCode == 0 || errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
+            if ((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
                 errorCode = uNetworkInitCell();
-                if (errorCode == 0 || errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
+                if ((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
                     errorCode = uNetworkInitWifi();
-                    if (!(errorCode == 0 ||  errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
+                    if ((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
+                        errorCode = uNetworkInitGnss();
+                        if (!((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED))) {
+                            uNetworkDeinitWifi();
+                            uNetworkDeinitCell();
+                            uNetworkDeinitBle();
+                        }
+                    } else {
                         uNetworkDeinitCell();
                         uNetworkDeinitBle();
                     }
@@ -222,6 +233,7 @@ void uNetworkDeinit()
         uNetworkDeinitBle();
         uNetworkDeinitCell();
         uNetworkDeinitWifi();
+        uNetworkDeinitGnss();
 
         U_PORT_MUTEX_UNLOCK(gMutex);
         uPortMutexDelete(gMutex);
@@ -266,6 +278,13 @@ int32_t uNetworkAdd(uNetworkType_t type,
                         // that it is for Wifi
                         if (*((const uNetworkType_t *) pConfiguration) == U_NETWORK_TYPE_WIFI) {
                             errorCodeOrHandle = uNetworkAddWifi((const uNetworkConfigurationWifi_t *) pConfiguration);
+                        }
+                        break;
+                    case U_NETWORK_TYPE_GNSS:
+                        // First parameter in the config must indicate
+                        // that it is for GNSS
+                        if (*((const uNetworkType_t *) pConfiguration) == U_NETWORK_TYPE_GNSS) {
+                            errorCodeOrHandle = uNetworkAddGnss((const uNetworkConfigurationGnss_t *) pConfiguration);
                         }
                         break;
                     default:
@@ -339,6 +358,9 @@ int32_t uNetworkUp(int32_t handle)
             } else if (U_NETWORK_HANDLE_IS_WIFI(handle)) {
                 errorCode = uNetworkUpWifi(handle,
                                            (const uNetworkConfigurationWifi_t *) pConfiguration);
+            } else if (U_NETWORK_HANDLE_IS_GNSS(handle)) {
+                errorCode = uNetworkUpGnss(handle,
+                                           (const uNetworkConfigurationGnss_t *) pConfiguration);
             }
         }
 
@@ -373,6 +395,9 @@ int32_t uNetworkDown(int32_t handle)
             } else if (U_NETWORK_HANDLE_IS_WIFI(handle)) {
                 errorCode = uNetworkDownWifi(handle,
                                              (const uNetworkConfigurationWifi_t *) pConfiguration);
+            } else if (U_NETWORK_HANDLE_IS_GNSS(handle)) {
+                errorCode = uNetworkDownGnss(handle,
+                                             (const uNetworkConfigurationGnss_t *) pConfiguration);
             }
         }
 

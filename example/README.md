@@ -7,6 +7,7 @@ For each MCU you will find a `runner` build.  This builds and runs all of these 
 
 - `sockets` contains examples of how to bring up a network (cellular or Wifi) and use it make a UDP or TCP socket connection to a server on the public internet.
 - `security` contains examples of how to use the u-blox security features.
+- `location` contains examples of how to get a location fix.
 - `mqtt_client` contains an example of how to use the MQTT client API to contact an MQTT broker on the public internet.
 - `cell` contains examples specific to u-blox cellular modules (e.g. SARA-U201, SARA-R4 or SARA-R5).
 - `utilities/c030_module_fw_update` is not so much an example as a program that is required if you need to update the firmware of the cellular module on a C030-R5 or C030-R4xx board.

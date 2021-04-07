@@ -72,6 +72,21 @@
 			<locationURI>$%7BUBX_PATH%7D/example/mqtt_client/mqtt_main.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Example/Location/main_loc_gnss.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/example/location/main_loc_gnss.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Example/Location/main_loc_gnss_cell.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/example/location/main_loc_gnss_cell.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Example/Location/main_loc_cloud_cell.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/example/location/main_loc_cloud_cell.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Example/Cell/LTECfg/lte_cfg_main.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/example/cell/lte_cfg/lte_cfg_main.c</locationURI>
@@ -107,6 +122,11 @@
 			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_wifi.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Common/Network/u_network_private_gnss.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_gnss.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/Sock/u_sock.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/sock/src/u_sock.c</locationURI>
@@ -132,9 +152,20 @@
 			<locationURI>$%7BUBX_PATH%7D/common/mqtt_client/src/u_mqtt_client.c</locationURI>
 		</link>
 		<link>
+
+			<name>Ubxlib/U-Blox/Common/Location/u_location.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/location/src/u_location.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/AtClient/u_at_client.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/src/u_at_client.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/ubx/u_ubx.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/ubx/src/u_ubx.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Common/u_runner.c</name>
@@ -277,9 +308,44 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_file.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Cell/u_cell_loc.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_loc.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_private.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/GNSS/u_gnss.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/GNSS/u_gnss_pwr.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_pwr.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/GNSS/u_gnss_cfg.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_cfg.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/GNSS/u_gnssi_info.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_info.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/GNSS/u_gnss_pos.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_pos.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/GNSS/u_gnss_private.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_private.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Network/u_network_test.c</name>
@@ -330,6 +396,12 @@
 			<name>Ubxlib/U-Blox/Test/MQTT_Client/u_mqtt_client_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/mqtt_client/test/u_mqtt_client_test.c</locationURI>
+		</link>
+		<link>
+
+			<name>Ubxlib/U-Blox/Test/Location/u_location_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/location/test/u_location_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Ble/u_ble_test.c</name>
@@ -402,6 +474,12 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_file_test.c</locationURI>
 		</link>
 		<link>
+
+			<name>Ubxlib/U-Blox/Test/Cell/u_cell_loc_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_loc_test.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test_preamble.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_test_preamble.c</locationURI>
@@ -412,6 +490,26 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_test_private.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_cfg_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_cfg_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_info_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_info_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_pos_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_pos_test.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Test/AtClient/u_at_client_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/test/u_at_client_test.c</locationURI>
@@ -420,6 +518,11 @@
 			<name>Ubxlib/U-Blox/Test/AtClient/u_at_client_test_data.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/test/u_at_client_test_data.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/ubx/u_ubx_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/ubx/test/u_ubx_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Port/u_port.c</name>
@@ -652,6 +755,11 @@
 			<locationURI>$%7BUBX_PATH%7D/common/network/api</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/Inc/U-Blox/common/location/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/location/api</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/Inc/U-Blox/common/short_range/api</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/api</locationURI>
@@ -712,9 +820,29 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/test</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/Inc/U-Blox/gnss/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/gnss/src</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/src</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/gnss/test</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/test</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/Inc/U-Blox/common/at_client/api</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/ubx/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/ubx/api</locationURI>
 		</link>
 		<link>
 			<name>Drivers/Inc/CMSIS/Include</name>

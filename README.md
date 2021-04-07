@@ -1,9 +1,9 @@
-![u-blox logo](./readme_images/ublox-logo.png)
+![u-blox logo](/readme_images/ublox-logo.png)
 
 # Introduction to ubxlib
 This repository contains the C code support library for [u-blox](https://www.u-blox.com) modules with [Cellular](https://www.u-blox.com/en/cellular-modules) (2G/3G/4G), [Short-Range](https://www.u-blox.com/en/short-range-radio-chips-and-modules) (Bluetooth and WiFi) and [Positioning](https://www.u-blox.com/en/positioning-chips-and-modules) (GNSS) support. The library presents high level C APIs for use in customer applications (e.g. connect to a network, open a TCP socket, establish location, etc.) and implements these APIs on selected popular MCUs, also available inside u-blox modules.
 
-The goal of ubxlib is to deliver a single tested solution with examples which provides uniform easy-to-use APIs across several u-blox products. Releases of ubxlib are tested automatically for all configurations on multiple boards in a [test farm](port/platform/common/automation/DATABASE.md).
+The goal of ubxlib is to deliver a single tested solution with examples which provides uniform easy-to-use APIs across several u-blox products. Releases of ubxlib are tested automatically for all configurations on multiple boards in a [test farm](/port/platform/common/automation/DATABASE.md).
 
 The easiest way to quickly explore ubxlib is to acquire u-blox EVKs (Evaluation kits) or application boards containing u-blox modules, one with the role of ubxlib host and one with the role of ubxlib peripherial. Connect them together, configure the library code to reflect the way they are connected together and away you go.
 
@@ -11,19 +11,20 @@ u-blox EVKs or application boards can be found [here](https://www.u-blox.com/en/
 
 Example configuration (many other combinations can be achieved, see table with ubxlib hosts and peripherials below) with EVK-NINA-B301 (Bluetooth 5.0) and EVK-R4 (SARA-R4 with 2G/3G/4G), ubxlib host sets up a TCP connection:
 
-![EVK setup](./readme_images/EVK_NINA_R4.png)
+![EVK setup](/readme_images/EVK_NINA_R4.png)
 
 # APIs
 
 The key APIs provided by this repo, and their relationships with each other, are shown in the picture below.
 
-![APIs](./readme_images/apis.jpg)
+![APIs](/readme_images/apis.jpg)
 
 - If you wish to bring up a network and don't care about the details, use the common [network](common/network) API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
 - If you wish to use a socket over that network, use the common [sock](common/sock) API.
 - If you wish to use security, use the common [security](common/security) API.
 - If you wish to contact an MQTT broker over that network, use the common [mqtt_client](common/mqtt_client) API.
-- If you wish to take finer control of your [cellular](cell), [ble](ble) or Wifi connection, use the respective control API directly.
+- If you wish to get a location fix use the common [location](/common/location) API.
+- If you wish to take finer control of your [cellular](cell), [ble](ble), Wifi or [gnss](/gnss), use the respective control API directly.
 - GNSS is used via the gnss API.
 - The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](common/short_range) API.
 - The [at_client](common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
@@ -42,16 +43,18 @@ The key APIs provided by this repo, and their relationships with each other, are
 |                         |              |**RTOS / SDK**||||
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|
 | **ubxlib peripherals**   |**API**       |||||
-| SARA-U2 series<br />SARA-R4x series<br />| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[tls&nbsp;security](common/security "security API")<br>|Yes|Yes|Yes|Yes|
-| SARA-R4x series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[security](common/security "security API")<br>[mqtt_client](common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
-| SARA-R510M8S            | gnss|TBD|TBD|TBD|TBD|
+|SARA-U2 series<br />SARA-R4x series<br />| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[tls&nbsp;security](common/security "security API")<br>|Yes|Yes|Yes|Yes|
+|SARA-R4x series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[security](common/security "security API")<br>[mqtt_client](common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
+|SARA-R510M8S            | [gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
 |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](ble "ble API")<br />[network](common/network "network API")|Yes|Yes|N/A|N/A|
 |NINA-W13|wifi<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q2 2021|N/A|Q2 2021|Q2 2021|
 |NINA-W15|wifi<br />[ble](ble "ble API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q2 2021|N/A|N/A|N/A|
-|M8 series|gnss|TBD|TBD|TBD|TBD|
+|M8 series|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
+
+\* Through the u-blox Cell Locate service.
 
 # What Is Included
-The APIs for each type of u-blox module can be found in the relevant directory (e.g `cell` for cellular modules and `ble`/`wifi` for BLE/Wifi modules).  The `common` directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the network API and the sockets API.  All APIs are documented in the API header files.
+The APIs for each type of u-blox module can be found in the relevant directory (e.g. `cell` for cellular modules and `ble`/`wifi` for BLE/Wifi modules).  The `common` directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the network API and the sockets API.  All APIs are documented in the API header files.
 
 Examples demonstrating the use of the APIs can be found in the `example` directory.
 
@@ -72,14 +75,17 @@ In order for u-blox to support multiple platforms with this code there is also a
 ¦   +---sock                   <-- the sockets API for cell, Wifi (and in the future BLE)
 ¦   +---security               <-- common API for u-blox security and TLS security/credential storage
 ¦   +---mqtt_client            <-- common MQTT client API for cell (and in the future Wifi)
+¦   +---location               <-- common location API, can use GNSS, Cell Locate, Wifi/BLE stations, etc.
 ¦   +---short_range            <-- internal API used by the BLE and Wifi APIs (see below)
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wifi APIs
+¦   +---ubx                    <-- internal API used by the GNSS API
 ¦   +---error                  <-- u_error_common.h: error codes common across APIs
 ¦   +---utils                  <-- contains common utilities
 ¦   ...
 +---cell                       <-- API for cellular (if you need more than network provides)
 +---wifi                       <-- API for Wifi (if you need more than network provides)
 +---ble                        <-- API for BLE
++---gnss                       <-- API for GNSS
 +---port                       <-- port API: maps to SDKs and MCU platforms, includes build metadata
     +---api
     +---test
@@ -93,7 +99,7 @@ In order for u-blox to support multiple platforms with this code there is also a
         ¦           +---cfg    <-- platform specific config (pins, OS things, MCU HW blocks)
         ¦           +---runner <-- a build which compiles and links all examples and tests
         +---lint               <-- Lint checking, used by the test automation
-        +---static_size        <-- A build that measures RAM/flash usage
+        +---static_size        <-- a build that measures RAM/flash usage
         +---common             <-- things common to all platforms, most notably...
             +---automation     <-- the internal Python automation scripts that test everything
             ...
@@ -122,10 +128,10 @@ Configuration information for the examples and the tests can be found in the `cf
 | Cellular     | The [chip-to-chip security](example/security/c2c "C2C example") example using the [security](common/security "security API") API. | Q1 2021|
 | Cellular     | A [TLS-secured version](example/sockets "TLS sockets example") of the sockets example. | Q2 2021|
 | Cellular     | An [MQTT client](example/mqtt_client "MQTT example") using the [MQTT client](common/mqtt_client "MQTT client API") API.| Q2 2021|
-| Cellular     | CellLocate | Q2 2021|
-| Bluetooth    | SPS (serial port service) | Q1 2021|
-| WiFi         | The [sockets](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q2 2021|
-| GNSS         | TBD |TBD|
+| Cellular     | Cell Locate [cloud location](/example/location "cell locate example") example. | Q2 2021|
+| Bluetooth    | SPS (serial port service). | Q1 2021|
+| WiFi         | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  | Q2 2021|
+| GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.| Q3 2021|
 
 # Feature request and roadmap
 New features can be requested and up-voted [here](https://github.com/u-blox/ubxlib/issues/12). The comments of this issue also contains an outlook about features of upcoming releases. Also it is the right place to discuss features and their priority.

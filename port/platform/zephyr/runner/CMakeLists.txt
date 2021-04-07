@@ -44,6 +44,11 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/src/u_at_client.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test_data.c)
 
+#ubx
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/ubx/api)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/ubx/src/u_ubx.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/ubx/test/u_ubx_test.c)
+
 #lib-common
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/lib_common/api ${UBXLIB_BASE}/common/lib_common/test)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/lib_common/src/u_lib_handler.c)
@@ -57,8 +62,14 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_b
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_ble_intmod.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_cell.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/test/u_network_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/test/u_network_test_shared_cfg.c)
+
+#location
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/location/api ${UBXLIB_BASE}/common/location/test)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/location/src/u_location.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/location/test/u_location_test.c)
 
 #sock
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/sock/api ${UBXLIB_BASE}/common/sock/test)
@@ -93,6 +104,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sec_c2c.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sec_tls.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_mqtt.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_file.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_loc.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_private.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_pwr_test.c)
@@ -104,8 +116,23 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sec_c2c_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sec_tls_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_mqtt_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_file_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_loc_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_preamble.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_private.c)
+
+#GNSS API
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/gnss/api ${UBXLIB_BASE}/gnss/src ${UBXLIB_BASE}/gnss/test)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/src/u_gnss.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/src/u_gnss_pwr.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/src/u_gnss_cfg.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/src/u_gnss_info.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/src/u_gnss_pos.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/src/u_gnss_private.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/test/u_gnss_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/test/u_gnss_cfg_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/test/u_gnss_info_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/test/u_gnss_pos_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/gnss/test/u_gnss_test_private.c)
 
 #ble API
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/ble/api ${UBXLIB_BASE}/ble/src ${UBXLIB_BASE}/ble/test)
@@ -145,6 +172,9 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/e2e/e2e_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/psk/psk_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/c2c/c2c_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/mqtt_client/mqtt_main.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/example/location/main_loc_gnss.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/example/location/main_loc_gnss_cell.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/example/location/main_loc_cloud_cell.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/cell/lte_cfg/lte_cfg_main.c)
 
 # unity

@@ -88,6 +88,9 @@ SRC_FILES += \
   $(UBXLIB_PATH)/example/security/psk/psk_main.c \
   $(UBXLIB_PATH)/example/security/c2c/c2c_main.c \
   $(UBXLIB_PATH)/example/mqtt_client/mqtt_main.c \
+  $(UBXLIB_PATH)/example/location/main_loc_gnss.c \
+  $(UBXLIB_PATH)/example/location/main_loc_gnss_cell.c \
+  $(UBXLIB_PATH)/example/location/main_loc_cloud_cell.c \
   $(UBXLIB_PATH)/example/cell/lte_cfg/lte_cfg_main.c \
   $(UBXLIB_PATH)/ble/src/u_ble_extmod.c \
   $(UBXLIB_PATH)/ble/src/u_ble_intmod.c \
@@ -120,13 +123,26 @@ SRC_FILES += \
   $(UBXLIB_PATH)/cell/test/u_cell_sec_tls_test.c \
   $(UBXLIB_PATH)/cell/test/u_cell_mqtt_test.c \
   $(UBXLIB_PATH)/cell/test/u_cell_file_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_loc_test.c \
   $(UBXLIB_PATH)/cell/test/u_cell_test_preamble.c \
   $(UBXLIB_PATH)/cell/test/u_cell_test_private.c \
+  $(UBXLIB_PATH)/gnss/src/u_gnss.c \
+  $(UBXLIB_PATH)/gnss/src/u_gnss_pwr.c \
+  $(UBXLIB_PATH)/gnss/src/u_gnss_cfg.c \
+  $(UBXLIB_PATH)/gnss/src/u_gnss_info.c \
+  $(UBXLIB_PATH)/gnss/src/u_gnss_pos.c \
+  $(UBXLIB_PATH)/gnss/src/u_gnss_private.c \
+  $(UBXLIB_PATH)/gnss/test/u_gnss_test.c \
+  $(UBXLIB_PATH)/gnss/test/u_gnss_cfg_test.c \
+  $(UBXLIB_PATH)/gnss/test/u_gnss_info_test.c \
+  $(UBXLIB_PATH)/gnss/test/u_gnss_pos_test.c \
+  $(UBXLIB_PATH)/gnss/test/u_gnss_test_private.c \
   $(UBXLIB_PATH)/common/network/src/u_network.c \
   $(UBXLIB_PATH)/common/network/src/u_network_private_ble_extmod.c \
   $(UBXLIB_PATH)/common/network/src/u_network_private_ble_intmod.c \
   $(UBXLIB_PATH)/common/network/src/u_network_private_cell.c \
   $(UBXLIB_PATH)/common/network/src/u_network_private_wifi.c \
+  $(UBXLIB_PATH)/common/network/src/u_network_private_gnss.c \
   $(UBXLIB_PATH)/common/network/test/u_network_test.c \
   $(UBXLIB_PATH)/common/network/test/u_network_test_shared_cfg.c \
   $(UBXLIB_PATH)/common/sock/src/u_sock.c \
@@ -138,9 +154,13 @@ SRC_FILES += \
   $(UBXLIB_PATH)/common/security/test/u_security_tls_test.c \
   $(UBXLIB_PATH)/common/security/test/u_security_credential_test.c \
   $(UBXLIB_PATH)/common/security/test/u_security_credential_test_data.c \
+  $(UBXLIB_PATH)/common/location/src/u_location.c \
+  $(UBXLIB_PATH)/common/location/test/u_location_test.c \
   $(UBXLIB_PATH)/common/at_client/src/u_at_client.c \
   $(UBXLIB_PATH)/common/at_client/test/u_at_client_test.c \
   $(UBXLIB_PATH)/common/at_client/test/u_at_client_test_data.c \
+  $(UBXLIB_PATH)/common/ubx/src/u_ubx.c \
+  $(UBXLIB_PATH)/common/ubx/test/u_ubx_test.c \
   $(UBXLIB_PATH)/common/short_range/src/u_short_range.c \
   $(UBXLIB_PATH)/common/short_range/src/u_short_range_edm.c \
   $(UBXLIB_PATH)/common/short_range/src/u_short_range_edm_stream.c \
@@ -213,6 +233,9 @@ INC_FOLDERS += \
   $(UBXLIB_PATH)/cell/api \
   $(UBXLIB_PATH)/cell/src \
   $(UBXLIB_PATH)/cell/test \
+  $(UBXLIB_PATH)/gnss/api \
+  $(UBXLIB_PATH)/gnss/src \
+  $(UBXLIB_PATH)/gnss/test \
   $(UBXLIB_PATH)/common/sock/api \
   $(UBXLIB_PATH)/common/sock/test \
   $(UBXLIB_PATH)/common/network/api \
@@ -220,9 +243,12 @@ INC_FOLDERS += \
   $(UBXLIB_PATH)/common/network/test \
   $(UBXLIB_PATH)/common/security/api \
   $(UBXLIB_PATH)/common/security/test \
+  $(UBXLIB_PATH)/common/location/api \
+  $(UBXLIB_PATH)/common/location/test \
   $(UBXLIB_PATH)/common/at_client/api \
   $(UBXLIB_PATH)/common/at_client/src \
   $(UBXLIB_PATH)/common/at_client/test \
+  $(UBXLIB_PATH)/common/ubx/api \
   $(UBXLIB_PATH)/common/error/api \
   $(UBXLIB_PATH)/common/short_range/api \
   $(UBXLIB_PATH)/common/short_range/src \

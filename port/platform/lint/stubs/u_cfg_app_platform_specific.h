@@ -32,6 +32,7 @@
 
 #define U_CFG_APP_CELL_UART                 0
 #define U_CFG_APP_SHORT_RANGE_UART          0
+#define U_CFG_APP_GNSS_UART                 0
 #define U_CFG_APP_SHORT_RANGE_ROLE          0
 // Note: pins set to 0 rather than -1 in order to not accidentally
 // disable any code that is conditional on them existing
@@ -46,6 +47,11 @@
 #define U_CFG_APP_PIN_SHORT_RANGE_RXD       0
 #define U_CFG_APP_PIN_SHORT_RANGE_CTS       0
 #define U_CFG_APP_PIN_SHORT_RANGE_RTS       0
+#define U_CFG_APP_PIN_GNSS_EN               0
+#define U_CFG_APP_PIN_GNSS_TXD              0
+#define U_CFG_APP_PIN_GNSS_RXD              0
+#define U_CFG_APP_PIN_GNSS_CTS              0
+#define U_CFG_APP_PIN_GNSS_RTS              0
 
 #endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_
 

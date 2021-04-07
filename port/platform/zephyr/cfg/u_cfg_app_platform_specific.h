@@ -134,6 +134,50 @@
 # define U_CFG_APP_PIN_CELL_RTS               -1
 #endif
 
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A GNSS MODULE ON ZEPHYR/NRF5x: MISC
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_APP_GNSS_UART
+/** The UARTE HW block to use inside the NRF5x chip when
+ * to communicate with a GNSS module.
+ */
+# define U_CFG_APP_GNSS_UART                  1
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR ZEPHYR/NRF5x: PINS FOR GNSS
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_APP_PIN_GNSS_EN
+/** The NRF5x GPIO output that that is connected to the GNSSEN
+ * pin of the GNSS module.
+ */
+# define U_CFG_APP_PIN_GNSS_EN                -1
+#endif
+
+/* IMPORTANT: the UART pins given here are required for compilation
+ * but make NO DIFFERENCE WHATSOEVER to how the world works.  On this
+ * platform the Zephyr device tree dictates what pins are used
+ * by the UART.
+ */
+
+#ifndef U_CFG_APP_PIN_GNSS_TXD
+# define U_CFG_APP_PIN_GNSS_TXD               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_RXD
+# define U_CFG_APP_PIN_GNSS_RXD               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_CTS
+# define U_CFG_APP_PIN_GNSS_CTS               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_RTS
+# define U_CFG_APP_PIN_GNSS_RTS               -1
+#endif
+
 #endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 // End of file

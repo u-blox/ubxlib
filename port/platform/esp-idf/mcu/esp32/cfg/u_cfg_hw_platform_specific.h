@@ -38,6 +38,15 @@
 # define U_CFG_HW_CELLULAR_RTS_THRESHOLD         100
 #endif
 
+#ifndef U_CFG_HW_GNSS_RTS_THRESHOLD
+/** The buffer threshold at which RTS is de-asserted, indicating the
+ * GNSS module should stop sending data to us.  Must be defined
+ * if U_CFG_APP_PIN_GNSS_RTS is not -1.
+ * Must be less than UART_FIFO_LEN, which is by default 128.
+ */
+# define U_CFG_HW_GNSS_RTS_THRESHOLD         100
+#endif
+
 #endif // _U_CFG_HW_PLATFORM_SPECIFIC_H_
 
 // End of file

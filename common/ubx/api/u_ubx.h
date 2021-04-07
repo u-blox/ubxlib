@@ -1,0 +1,152 @@
+/*
+ * Copyright 2020 u-blox Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef _U_UBX_H_
+#define _U_UBX_H_
+
+/* No #includes allowed here */
+
+/** @file
+ * @brief This header file defines the ubx API, intended to perform
+ * u-blox ubx format message encode/decode when communicating with a
+ * u-blox GNSS module.
+ */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS
+ * -------------------------------------------------------------- */
+
+/** The overhead of the ubx protocol (header consisting of 0xB5,
+ * 0x62, class, ID, two bytes of length and, at the end, two bytes
+ * of CRC). Must be added to the encoded message length to obtain
+ * the required encode buffer size.
+ */
+#define U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES 8
+
+/* ----------------------------------------------------------------
+ * TYPES
+ * -------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
+/** Encode a ubx format message.
+ *
+ * @param messageClass            the ubx message class.
+ * @param messageId               the ubx message ID.
+ * @param pMessageBody            the message body to be encoded,
+ *                                may be NULL if the message has no
+ *                                body.
+ * @param messageBodyLengthBytes  the length of the message body,
+ *                                must non-zero if pMessage is not
+ *                                NULL.
+ * @param pBuffer                 a buffer in which the encoded
+ *                                message is to be stored; at least
+ *                                messageLengthBytes +
+ *                                U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES
+ *                                must be allowed.
+ * @return                        on success the number of bytes written
+ *                                to pBuffer, else negative error code.
+ */
+int32_t uUbxEncode(int32_t messageClass, int32_t messageId,
+                   const char *pMessageBody, size_t messageBodyLengthBytes,
+                   char *pBuffer);
+
+/** Decode a ubx format message.  Call this function with a buffer
+ * and it will return the first valid ubx format message it finds
+ * in the buffer. ppBufferOut will be set to the first position in
+ * the buffer after any message is found, or will point one byte
+ * beyond the end of the buffer if no message or a partial message
+ * is found.  Hence a good pattern for use of this function could be:
+ *
+ * const char *pBufferStart = &(dataIn[0]);
+ * size_t bufferLength = sizeof(dataIn);
+ * const char *pBufferEnd = pBufferStart;
+ * int32_t messageClass;
+ * int32_t messageId;
+ * char messageBody[128];
+ *
+ * for (int32_t x = uUbxDecode(pBufferStart, bufferLength,
+ *                             &messageClass, &messageId,
+ *                             messageBody, sizeof(messageBody),
+ *                             &pBufferEnd);
+ *      x > 0;
+ *      x = uUbxDecode(pBufferStart, bufferLength,
+ *                     &messageClass, &messageId,
+ *                     messageBody, sizeof(messageBody),
+ *                     &pBufferEnd)) {
+ *    printf("Message class 0x%02x, message ID 0x%02x, "
+ *           " message body length %d byte(s).\n", messageClass,
+ *           messageId, x);
+ *    if (x > sizeof(messageBody)) {
+ *        printf("Warning: message body is larger than storage"
+ *               " buffer (only %d bytes).\n", sizeof(messageBody));
+ *        x = sizeof(messageBody);
+ *    }
+ *
+ *    // Handle the message here
+ *
+ *    bufferLength -= pBufferEnd - pBufferStart;
+ *    pBufferStart = pBufferEnd;
+ * }
+ *
+ * @param pBufferIn                  a pointer to the message buffer to
+ *                                   decode.
+ * @param bufferLengthBytes          the amount of data at pBufferIn.
+ * @param pMessageClass              a pointer to somewhere to store the
+ *                                   decoded ubx message class; may be NULL.
+ * @param pMessageId                 a pointer to somewher to store the
+ *                                   decoded ubx message ID; may be NULL.
+ * @param pMessageBody               a pointer to somewhere to store
+ *                                   the decoded message body; may be NULL.
+ * @param maxMessageBodyLengthBytes  the amount of storage at pMessageBody.
+ * @param ppBufferOut                a pointer to somewhere to store the
+ *                                   buffer pointer after message decoding
+ *                                   has been completed; may be NULL;
+ * @return                           on success the number of message body
+ *                                   bytes decoded, else negative error
+ *                                   code.  If pMessageBody is NULL then
+ *                                   the number of bytes that would have
+ *                                   been decoded is returned, hence
+ *                                   allowing the potential size of a
+ *                                   decoded message to be determined in
+ *                                   order to make a subsequent call with
+ *                                   exactly the right buffer size or
+ *                                   destination.  Note that the
+ *                                   return value may be larger than
+ *                                   maxMessageBodyLengthBytes, though only
+ *                                   a maximum of maxMessageBodyLengthBytes
+ *                                   will be written to pMessageBody.  If
+ *                                   pBufferIn contains a partial message
+ *                                   U_ERROR_COMMON_TIMEOUT will be returned.
+ */
+int32_t uUbxDecode(const char *pBufferIn, size_t bufferLengthBytes,
+                   int32_t *pMessageClass, int32_t *pMessageId,
+                   char *pMessageBody, size_t maxMessageBodyLengthBytes,
+                   const char **ppBufferOut);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // _U_UBX_H_
+
+// End of file

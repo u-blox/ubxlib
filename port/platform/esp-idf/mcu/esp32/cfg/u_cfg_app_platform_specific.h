@@ -151,6 +151,59 @@
 # define U_CFG_APP_PIN_CELL_RTS              -1
 #endif
 
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A GNSS MODULE ON ESP32: MISC
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_APP_GNSS_UART
+/** The UART HW block to use inside the ESP32 chip to talk to a
+ * GNSS module.
+ */
+# define U_CFG_APP_GNSS_UART                  -1
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A GNSS MODULE ON ESP32: PINS
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_APP_PIN_GNSS_EN
+/** The ESP32 GPIO output that that is connected to the GNSSEN
+ * pin of the GNSS module.
+ */
+# define U_CFG_APP_PIN_GNSS_EN               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_TXD
+/** The ESP32 GPIO output pin that sends UART data to the
+ * GNSS module.
+ */
+# define U_CFG_APP_PIN_GNSS_TXD              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_RXD
+/** The ESP32 GPIO input pin that receives UART data from the
+ * GNSS module.
+ */
+# define U_CFG_APP_PIN_GNSS_RXD              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_CTS
+/** The ESP32 GPIO input pin that the GNSS module will use to
+ * indicate that data can be sent to it.  -1 should be used where
+ * there is no such connection.
+ */
+# define U_CFG_APP_PIN_GNSS_CTS              -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_RTS
+/** The ESP32 GPIO output pin that tells the GNSS module
+ * that it can send more data to the host processor.  -1 should
+ * be used where there is no such connection. If this is *not* -1
+ * then be sure to set up U_CFG_HW_GNSS_RTS_THRESHOLD also.
+ */
+# define U_CFG_APP_PIN_GNSS_RTS              -1
+#endif
+
 #endif // _U_PORT_APP_PLATFORM_SPECIFIC_H_
 
 // End of file

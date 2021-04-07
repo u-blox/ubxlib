@@ -49,7 +49,7 @@ typedef struct {
                               must begin with this for error checking
                               purposes. */
     int32_t module; /**< The module type that is connected,
-                         see uShortRangeModuleType_t in u_short_range.h. */
+                         see uShortRangeModuleType_t in u_short_range_module_type.h. */
     int32_t uart; /**< The UART HW block to use. */
     int32_t pinTxd; /** The output pin that sends UART data to
                         the cellular module. */
