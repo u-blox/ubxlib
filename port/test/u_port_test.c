@@ -1920,14 +1920,14 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
 }
 #endif
 
-/** Test crypto: not a rigorous test, more
- * a "hello world".
+/** Test crypto: not a rigorous test, more a "hello world".
  */
 U_PORT_TEST_FUNCTION("[port]", "portCrypto")
 {
     char buffer[64];
     char iv[U_PORT_CRYPTO_AES128_INITIALISATION_VECTOR_LENGTH_BYTES];
     int32_t heapUsed;
+    int32_t x;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -1940,40 +1940,59 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     uPortLog("U_PORT_TEST: testing SHA256...\n");
-
-    U_PORT_TEST_ASSERT(uPortCryptoSha256(gSha256Input,
-                                         sizeof(gSha256Input) - 1,
-                                         buffer) == 0);
-    U_PORT_TEST_ASSERT(memcmp(buffer, gSha256Output,
-                              U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES) == 0);
+    x = uPortCryptoSha256(gSha256Input,
+                          sizeof(gSha256Input) - 1,
+                          buffer);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        U_PORT_TEST_ASSERT(x == (int32_t) U_ERROR_COMMON_SUCCESS);
+        U_PORT_TEST_ASSERT(memcmp(buffer, gSha256Output,
+                                  U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES) == 0);
+    } else {
+        uPortLog("U_PORT_TEST: SHA256 not supported.\n");
+    }
 
     uPortLog("U_PORT_TEST: testing HMAC SHA256...\n");
-    U_PORT_TEST_ASSERT(uPortCryptoHmacSha256(gHmacSha256Key,
-                                             sizeof(gHmacSha256Key) - 1,
-                                             gHmacSha256Input,
-                                             sizeof(gHmacSha256Input) - 1,
-                                             buffer) == 0);
-    U_PORT_TEST_ASSERT(memcmp(buffer, gHmacSha256Output,
-                              U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES) == 0);
+    x = uPortCryptoHmacSha256(gHmacSha256Key,
+                              sizeof(gHmacSha256Key) - 1,
+                              gHmacSha256Input,
+                              sizeof(gHmacSha256Input) - 1,
+                              buffer);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        U_PORT_TEST_ASSERT(x == (int32_t) U_ERROR_COMMON_SUCCESS);
+        U_PORT_TEST_ASSERT(memcmp(buffer, gHmacSha256Output,
+                                  U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES) == 0);
+    } else {
+        uPortLog("U_PORT_TEST: HMAC SHA256 not supported.\n");
+    }
 
     uPortLog("U_PORT_TEST: testing AES CBC 128...\n");
     memcpy(iv, gAes128CbcIV, sizeof(iv));
-    U_PORT_TEST_ASSERT(uPortCryptoAes128CbcEncrypt(gAes128CbcKey,
-                                                   sizeof(gAes128CbcKey) - 1,
-                                                   iv, gAes128CbcClear,
-                                                   sizeof(gAes128CbcClear) - 1,
-                                                   buffer) == 0);
-    U_PORT_TEST_ASSERT(memcmp(buffer, gAes128CbcEncrypted,
-                              sizeof(gAes128CbcEncrypted) - 1) == 0);
+    x = uPortCryptoAes128CbcEncrypt(gAes128CbcKey,
+                                    sizeof(gAes128CbcKey) - 1,
+                                    iv, gAes128CbcClear,
+                                    sizeof(gAes128CbcClear) - 1,
+                                    buffer);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        U_PORT_TEST_ASSERT(x == (int32_t) U_ERROR_COMMON_SUCCESS);
+        U_PORT_TEST_ASSERT(memcmp(buffer, gAes128CbcEncrypted,
+                                  sizeof(gAes128CbcEncrypted) - 1) == 0);
+    } else {
+        uPortLog("U_PORT_TEST: AES CBC 128 encryption not supported.\n");
+    }
 
     memcpy(iv, gAes128CbcIV, sizeof(iv));
-    U_PORT_TEST_ASSERT(uPortCryptoAes128CbcDecrypt(gAes128CbcKey,
-                                                   sizeof(gAes128CbcKey) - 1,
-                                                   iv, gAes128CbcEncrypted,
-                                                   sizeof(gAes128CbcEncrypted) - 1,
-                                                   buffer) == 0);
-    U_PORT_TEST_ASSERT(memcmp(buffer, gAes128CbcClear,
-                              sizeof(gAes128CbcClear) - 1) == 0);
+    x = uPortCryptoAes128CbcDecrypt(gAes128CbcKey,
+                                    sizeof(gAes128CbcKey) - 1,
+                                    iv, gAes128CbcEncrypted,
+                                    sizeof(gAes128CbcEncrypted) - 1,
+                                    buffer);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        U_PORT_TEST_ASSERT(x == (int32_t) U_ERROR_COMMON_SUCCESS);
+        U_PORT_TEST_ASSERT(memcmp(buffer, gAes128CbcClear,
+                                  sizeof(gAes128CbcClear) - 1) == 0);
+    } else {
+        uPortLog("U_PORT_TEST: AES CBC 128 decryption not supported.\n");
+    }
 
     uPortDeinit();
 
