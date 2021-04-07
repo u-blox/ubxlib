@@ -14,18 +14,24 @@
  * limitations under the License.
  */
 
+#ifndef _U_PORT_CLIB_MKTIME64_H_
+#define _U_PORT_CLIB_MKTIME64_H_
+
 /** @file
- * @brief an implementation of mktime().
+ * @brief This header file is somewhat of a special case: usually
+ * the C library functions in this directory have no header file, they
+ * are brought in as necessary through being added to
+ * u_port_clib_platform_specific.h specifically for each platform.
+ * However, a 64-bit version of mktime() is required by the credential
+ * security code and hence it is presented here in a separate header
+ * so that source file can include it alone, without everyone and
+ * their dog having to get both it and the definition of struct tm
+ * in all the places that u_port_clib_platform_specific.h is included.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
+#ifdef __cplusplus
+extern "C" {
 #endif
-
-#include "stdint.h"    // int32_t etc.
-#include "time.h"      // struct tm
-
-#include "u_port_clib_mktime64.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -36,23 +42,17 @@
  * -------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
- * VARIABLES
+ * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/* ----------------------------------------------------------------
- * STATIC FUNCTIONS
- * -------------------------------------------------------------- */
+/** mktime() with a guaranteed 64-bit return value.
+ */
+int64_t mktime64(struct tm *pTm);
 
-/* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS
- * -------------------------------------------------------------- */
-
-// mktime().
-//lint -esym(818, pTm) Suppress could be pointer to
-// const, need to follow function signature.
-time_t mktime(struct tm *pTm)
-{
-    return (time_t) mktime64(pTm);
+#ifdef __cplusplus
 }
+#endif
+
+#endif // _U_PORT_CLIB_MKTIME64_H_
 
 // End of file

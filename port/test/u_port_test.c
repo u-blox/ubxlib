@@ -49,6 +49,7 @@
                                               before the other port files if
                                               any print or scan function
                                               is used. */
+#include "u_port_clib_mktime64.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -131,12 +132,12 @@ typedef struct {
 
 #endif
 
-/** Struct for mktime() testing.
+/** Struct for mktime64() testing.
  */
 typedef struct {
     struct tm timeStruct;
-    time_t time;
-} mktimeTestData_t;
+    int64_t time;
+} mktime64TestData_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
@@ -220,9 +221,9 @@ static char gUartBuffer[(U_CFG_TEST_UART_BUFFER_LENGTH_BYTES / 2) +
 
 #endif // (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
 
-/** Data for mktime testing.
+/** Data for mktime64() testing.
  */
-static mktimeTestData_t gMktimeTestData[] = {
+static mktime64TestData_t gMktime64TestData[] = {
     {{0,  0, 0,  1, 0,  70,  0, 0, 0}, 0},
     {{1,  0, 0,  1, 0,  70,  0, 0, 0}, 1},
     {{1,  1, 0,  1, 0,  70,  0, 0, 0}, 61},
@@ -236,8 +237,9 @@ static mktimeTestData_t gMktimeTestData[] = {
     {{0, 59, 0,  1, 0,  70,  0, 0, 0}, 3540},
     {{0,  0, 23, 1, 0,  70,  0, 0, 0}, 82800},
     {{0,  0, 0, 31, 0,  70,  0, 0, 0}, 2592000},
-    {{0,  0, 0,  0, 12, 70,  0, 0, 0}, 31449600},
-    {{0,  0, 0,  0, 12, 137, 0, 0, 0}, 2145830400LL}
+    {{0,  0, 0,  1, 12, 70,  0, 0, 0}, 31536000},
+    {{0,  0, 0,  1, 0, 137,  0, 0, 0}, 2114380800LL},
+    {{0,  0, 0,  1, 0, 150,  0, 0, 0}, 2524608000LL}
 };
 
 /** SHA256 test vector, input, RC4.55 from:
@@ -1699,10 +1701,9 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
     U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
-/** Test: mktime since we have our own implementation on
- * some platforms.
+/** Test: mktime64().
  */
-U_PORT_TEST_FUNCTION("[port]", "portMktime")
+U_PORT_TEST_FUNCTION("[port]", "portMktime64")
 {
     int32_t heapUsed;
 
@@ -1713,12 +1714,12 @@ U_PORT_TEST_FUNCTION("[port]", "portMktime")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: testing mktime...\n");
+    uPortLog("U_PORT_TEST: testing mktime64()...\n");
 
-    for (size_t x = 0; x < sizeof(gMktimeTestData) /
-         sizeof(gMktimeTestData[0]); x++) {
-        U_PORT_TEST_ASSERT(mktime(&gMktimeTestData[x].timeStruct) ==
-                           gMktimeTestData[x].time);
+    for (size_t x = 0; x < sizeof(gMktime64TestData) /
+         sizeof(gMktime64TestData[0]); x++) {
+        U_PORT_TEST_ASSERT(mktime64(&gMktime64TestData[x].timeStruct) ==
+                           gMktime64TestData[x].time);
     }
 
     uPortDeinit();

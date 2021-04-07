@@ -139,6 +139,8 @@
       <file file_name="../../../../src/u_port_gpio.c" />
       <file file_name="../../../../src/u_port_os.c" />
       <file file_name="../../../../src/u_port_uart.c" />
+      <file file_name="../../../../../../clib/u_port_clib_mktime64.c" />
+      <file file_name="../../../../../../clib/u_port_clib_mktime64.h" />
       <file file_name="../../../../../common/mbedtls/u_port_crypto.c" />
       <file file_name="../../../../src/u_port_private.c" />
       <file file_name="../../../../../../test/u_port_test.c" />

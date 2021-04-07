@@ -68,6 +68,7 @@ UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
                        os.path.join("cell","src"),
                        os.path.join("cell","test"),
                        os.path.join("port","api"),
+                       os.path.join("port","clib"),
                        os.path.join("port","platform","common","event_queue"),
                        os.path.join("port","platform","common","runner"),
                        os.path.join("port","platform","lint","stubs")]

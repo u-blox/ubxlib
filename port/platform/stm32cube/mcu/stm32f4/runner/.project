@@ -373,6 +373,11 @@
 			<locationURI>$%7BPLATFORM_PATH%7D/src/u_port_uart.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Port/u_port_clib_mktime64.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/port/clib/u_port_clib_mktime64.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Port/u_port_event_queue.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/event_queue/u_port_event_queue.c</locationURI>
@@ -661,6 +666,11 @@
 			<name>Ubxlib/Inc/U-Blox/port/api</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/port/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/port/clib</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/port/clib</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/platform/common/event_queue</name>

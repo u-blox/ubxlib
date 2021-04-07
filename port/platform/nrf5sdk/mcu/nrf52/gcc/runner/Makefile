@@ -144,6 +144,7 @@ SRC_FILES += \
   ../../../../src/u_port_os.c \
   ../../../../src/u_port_uart.c \
   ../../../../src/u_port_private.c \
+  ../../../../../../clib/u_port_clib_mktime64.c \
   ../../../../../common/mbedtls/u_port_crypto.c \
   ../../../../../common/event_queue/u_port_event_queue.c \
   ../../../../src/heap_useNewlib.c \

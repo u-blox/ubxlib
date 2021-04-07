@@ -67,7 +67,8 @@ set(COMPONENT_SRCS
                    "../../../../src/u_port_debug.c"
                    "../../../../src/u_port_gpio.c"
                    "../../../../src/u_port_os.c"
-                   "../../../../src/u_port_uart.c")
+                   "../../../../src/u_port_uart.c"
+                   "../../../../../../clib/u_port_clib_mktime64.c")
 
 # The private include directories for the above
 set(COMPONENT_PRIV_INCLUDEDIRS
@@ -78,7 +79,8 @@ set(COMPONENT_PRIV_INCLUDEDIRS
 # The common security layer
                    "../../../../../../../common/security/src"
 # The porting layer
-                   "../../../../src")
+                   "../../../../src"
+                   "../../../../../../clib")
 
 # For crypto functions
 set(COMPONENT_REQUIRES mbedtls)

@@ -34,3 +34,4 @@ port/platform/common/event_queue/u_port_event_queue.c
 port/platform/static_size/stubs/u_port_stub.c
 port/platform/static_size/stubs/u_lib_stub.c
 port/platform/static_size/stubs/u_main_stub.c
+port/clib/u_port_clib_mktime64.c

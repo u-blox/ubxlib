@@ -37,14 +37,15 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // strlen(), strtol()
-#include "time.h"      // struct tm, mktime()
+#include "time.h"      // struct tm
 #include "ctype.h"     // isprint(), isblank()
 
 #include "u_cfg_sw.h"
 
 #include "u_error_common.h"
 
-#include "u_port_clib_platform_specific.h" /* Needed for isblank() and mktime() in some cases. */
+#include "u_port_clib_platform_specific.h" // isblank() in some cases
+#include "u_port_clib_mktime64.h"
 #include "u_port.h"
 #include "u_port_os.h"
 
@@ -284,7 +285,7 @@ static int64_t parseTimestampString(char *pStr)
         *(pStr + 4) = 0;
         timeStruct.tm_year = strtol(pStr, NULL, 10) - 1900;
 
-        utc = (int64_t) mktime(&timeStruct);
+        utc = mktime64(&timeStruct);
     }
 
     return utc;

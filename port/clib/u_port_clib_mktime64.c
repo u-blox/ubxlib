@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief an implementation of mktime().
+ * @brief an implementation of mktime() with a 64-bit return value.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -39,20 +39,70 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+// For date conversion.
+static const char gDaysInMonth[] = {31, 28, 31, 30, 31, 30, 31,
+                                    31, 30, 31, 30, 31
+                                   };
+static const char gDaysInMonthLeapYear[] = {31, 29, 31, 30, 31, 30,
+                                            31, 31, 30, 31, 30, 31
+                                           };
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Check if a year is a leap year.
+static int32_t isLeapYear(int32_t year)
+{
+    int32_t leapYear = 0;
+
+    if (year % 400 == 0) {
+        leapYear = 1;
+    } else if (year % 4 == 0) {
+        leapYear = 1;
+    }
+
+    return leapYear;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-
-// mktime().
+// mktime() with a guaranteed 64-bit return value.
 //lint -esym(818, pTm) Suppress could be pointer to
 // const, need to follow function signature.
-time_t mktime(struct tm *pTm)
+int64_t mktime64(struct tm *pTm)
 {
-    return (time_t) mktime64(pTm);
+    int64_t answer = 0;
+    int32_t year;
+    int32_t months;
+
+    // TM has years since 1900, so convert to since 1970
+    year = pTm->tm_year - 70;
+    // Months since January 0-11
+    months = pTm->tm_mon;
+    months += year * 12;
+    // Work out the number of seconds due to the year/month count
+    for (int32_t x = 0; x < months; x++) {
+        if (isLeapYear((x / 12) + 1970)) {
+            answer += gDaysInMonthLeapYear[x % 12] * 3600 * 24;
+        } else {
+            answer += gDaysInMonth[x % 12] * 3600 * 24;
+        }
+    }
+    // Day (1 to 31)
+    answer += (((int64_t) pTm->tm_mday) - 1) * 3600 * 24;
+    // Hours (0 to 23)
+    answer += ((int64_t) pTm->tm_hour) * 3600;
+    // Minutes (0 to 59)
+    answer += ((int64_t) pTm->tm_min) * 60;
+    // Seconds (0 to 59ish)
+    answer += pTm->tm_sec;
+    // Since this function returns local time
+    // the Daylight Saving Time flag has no
+    // effect on the answer.
+
+    return answer;
 }
 
 // End of file

@@ -17,12 +17,13 @@ target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/app/u_main.c)
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/error/api)
 
 #ubxlib port
-target_include_directories(app PRIVATE ${UBXLIB_BASE}/port/api ${UBXLIB_PF_COMMON}/event_queue)
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/port/api ${UBXLIB_BASE}/port/clib ${UBXLIB_PF_COMMON}/event_queue)
 target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port.c)
 target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_debug.c)
 target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_os.c)
 target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_gpio.c)
 target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_uart.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c)
 
 #ubxlib common
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/error/api ${UBXLIB_BASE}/port/api ${UBXLIB_PF_COMMON}/runner ${UBXLIB_PF_COMMON}/event_queue)
