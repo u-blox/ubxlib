@@ -127,29 +127,33 @@ bool uCellLocGnssEnableGet(int32_t cellHandle);
  */
 void uCellLocGnssEnableSet(int32_t cellHandle, bool onNotOff);
 
-/** Set the cellular module pin which is connected to the
- * GNSSEN pin of the GNSS chip.  This is the pin number of the
- * cellular module, so for instance GPIO2 is cellular module
- * pin 23 and hence 23 would be used here.  If no power control
- * functionality is required then specify -1 (which is the default).
+/** Set the cellular module pin which enables power to the
+ * GNSS chip.  This is the pin number of the cellular module so,
+ * for instance, GPIO2 is cellular module pin 23 and hence 23 would
+ * be used here.  If no power-enable functionality is required
+ * then specify -1 (which is the default).
+ * Note that this function is distinct and separate from the
+ * uGnssSetAtPinPwr() over in the GNSS API: if you are
+ * using that API then you should call that function.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pin         the pin to use.
- * @return            zero on success else negative error code.
  */
-int32_t uCellLocPinGnssPwrSet(int32_t cellHandle, int32_t pin);
+void uCellLocPinGnssPwrSet(int32_t cellHandle, int32_t pin);
 
 /** Set the cellular module pin which is connected to the Data
  * Ready pin of the GNSS chip.  This is the pin number of the
- * cellular module, so for instance GPIO3 is cellular module
+ * cellular module so, for instance, GPIO3 is cellular module
  * pin 24 and hence 24 would be used here.  If no Data Ready
  * signalling is required then specify -1 (which is the default).
+ * Note that this function is distinct and separate from the
+ * uGnssSetAtPinDataReady() over in the GNSS API: if you are
+ * using that API then you should call that function.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pin         the pin to use.
- * @return            zero on success else negative error code.
  */
-int32_t uCellLocPinGnssDataReadySet(int32_t cellHandle, int32_t pin);
+void uCellLocPinGnssDataReadySet(int32_t cellHandle, int32_t pin);
 
 /** Configure the Cell Locate server parameters.
  *
@@ -169,13 +173,11 @@ int32_t uCellLocPinGnssDataReadySet(int32_t cellHandle, int32_t pin);
  *                                "celllive2.services.u-blox.com".
  *                                May be NULL, in which case the default
  *                                is used.
- * @return                        zero on success, negative error code on
- *                                failure.
  */
-int32_t uCellLocServerCfg(int32_t cellHandle,
-                          const char *pAuthenticationTokenStr,
-                          const char *pPrimaryServerStr,
-                          const char *pSecondaryServerStr);
+void uCellLocServerCfg(int32_t cellHandle,
+                       const char *pAuthenticationTokenStr,
+                       const char *pPrimaryServerStr,
+                       const char *pSecondaryServerStr);
 
 /** Check whether a GNSS chip is present or not.
  *
@@ -183,6 +185,14 @@ int32_t uCellLocServerCfg(int32_t cellHandle,
  * @return            true if a GNSS chip is present, else false.
  */
 bool uCellLocIsGnssPresent(int32_t cellHandle);
+
+/** Check whether there is a GNSS chip on-board the cellular module.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            true if there is a GNSS chip inside the cellular
+ *                    module, else false.
+ */
+bool uCellLocGnssInsideCell(int32_t cellHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: LOCATION ESTABLISHMENT
@@ -193,7 +203,7 @@ bool uCellLocIsGnssPresent(int32_t cellHandle);
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pInfo       a pointer to the Wifi access point information,
- *                    which will be copied into this component and
+ *                    which will be copied into this API and
  *                    hence may be destroyed when this function
  *                    returns; cannot be NULL.
  * @return            zero on success or negative error code on
@@ -209,13 +219,13 @@ int32_t uCellLocWifiAddAp(int32_t cellHandle,
  */
 void uCellLocWifiClearAllAps(int32_t cellHandle);
 
-/** Get the current location, returning on success or until
+/** Get the current location, returning on success or if
  * pKeepGoingCallback returns false.
  *
  * @param cellHandle                  the handle of the cellular instance.
- * @param pLatitudeX1e6               a place to put latitude (in
+ * @param pLatitudeX1e7               a place to put latitude (in ten
  *                                    millionths of a degree); may be NULL.
- * @param pLongitudeX1e6              a place to put longitude (in millionths
+ * @param pLongitudeX1e7              a place to put longitude (in ten millionths
  *                                    of a degree); may be NULL.
  * @param pAltitudeMillimetres        a place to put the altitude (in
  *                                    millimetres); may be NULL.
@@ -255,7 +265,7 @@ void uCellLocWifiClearAllAps(int32_t cellHandle);
  *                                    failure.
  */
 int32_t uCellLocGet(int32_t cellHandle,
-                    int32_t *pLatitudeX1e6, int32_t *pLongitudeX1e6,
+                    int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                     int32_t *pAltitudeMillimetres, int32_t *pRadiusMillimetres,
                     int32_t *pSpeedMillimetresPerSecond, int32_t pSvs,
                     int64_t *pTimeUtc,
@@ -274,8 +284,8 @@ int32_t uCellLocGet(int32_t cellHandle,
  */
 int32_t uCellLocGetStart(int32_t cellHandle,
                          void (*pCallback) (int32_t cellHandle,
-                                            int32_t latitudeX1e6,
-                                            int32_t longitudeX1e6,
+                                            int32_t latitudeX1e7,
+                                            int32_t longitudeX1e7,
                                             int32_t altitudeMillimetres,
                                             int32_t radiusMillimetres,
                                             int32_t speedMillimetresPerSecond,

@@ -213,40 +213,46 @@
 
 #ifndef U_CFG_APP_GNSS_UART
 /** The UART HW block to use inside the STM32F4 chip to talk to a
- * GNSS module.
+ * GNSS module: USART6 the default for a C030 board where the GNSS
+ * chip is connected to PC_6 and PC_7.
  */
-# define U_CFG_APP_GNSS_UART                  -1
+# define U_CFG_APP_GNSS_UART                  6
 #endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON STM32F4: PINS
  * -------------------------------------------------------------- */
 
-#ifndef U_CFG_APP_PIN_GNSS_EN
-/** The STM32F4 GPIO output that that is connected to the GNSSEN
- * pin of the GNSS module.
+#ifndef U_CFG_APP_PIN_GNSS_ENABLE_POWER
+/** The STM32F4 GPIO output that that enables power to the GNSS
+ * module, use -1 if there is no such control.
+ * For the u-blox C030 boards this should be 0x0f, AKA PA_15.
  */
-# define U_CFG_APP_PIN_GNSS_EN               -1
+# define U_CFG_APP_PIN_GNSS_ENABLE_POWER     0x0f
 #endif
 
 #ifndef U_CFG_APP_PIN_GNSS_TXD
 /** The STM32F4 GPIO output pin that sends UART data to the
  * GNSS module.
+ * For the u-blox C030 boards this must be 0x26, AKA PC_6 (USART6_TX).
  */
-# define U_CFG_APP_PIN_GNSS_TXD              -1
+# define U_CFG_APP_PIN_GNSS_TXD              0x26
 #endif
 
 #ifndef U_CFG_APP_PIN_GNSS_RXD
 /** The STM32F4 GPIO input pin that receives UART data from the
  * GNSS module.
+ * For the u-blox C030 boards this must be 0x27, AKA PC_7 (USART6_RX).
  */
-# define U_CFG_APP_PIN_GNSS_RXD              -1
+# define U_CFG_APP_PIN_GNSS_RXD              0x27
 #endif
 
 #ifndef U_CFG_APP_PIN_GNSS_CTS
 /** The STM32F4 GPIO input pin that the GNSS module will use to
  * indicate that data can be sent to it.  -1 should be used where
  * there is no such connection.
+ * This is included for consistency: u-blox GNSS modules do not use
+ * UART HW flow control.
  */
 # define U_CFG_APP_PIN_GNSS_CTS              -1
 #endif
@@ -255,8 +261,35 @@
 /** The STM32F4 GPIO output pin that tells the GNSS module
  * that it can send more data to the host processor.  -1 should
  * be used where there is no such connection.
+ * This is included for consistency: u-blox GNSS modules do not use
+ * UART HW flow control.
  */
 # define U_CFG_APP_PIN_GNSS_RTS              -1
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A GNSS MODULE ON STM32F4: CELLULAR MODULE PINS
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_APP_CELL_PIN_GNSS_POWER
+/** Only relevant when a GNSS chip is connected via a cellular module:
+ * this is the the cellular module pin (i.e. not the pin of this MCU,
+ * the pin of the cellular module which this MCU is using) which controls
+ * power to GNSS. This is the cellular module pin number NOT the cellular
+ * module GPIO number.  Use -1 if there is no such connection.
+ */
+# define U_CFG_APP_CELL_PIN_GNSS_POWER  -1
+#endif
+
+#ifndef U_CFG_APP_CELL_PIN_GNSS_DATA_READY
+/** Only relevant when a GNSS chip is connected via a cellular module:
+ * this is the the cellular module pin (i.e. not the pin of this MCU,
+ * the pin of the cellular module which this MCU is using) which is
+ * connected to the Data Ready signal from the GNSS chip. This is the
+ * cellular module pin number NOT the cellular module GPIO number.
+ * Use -1 if there is no such connection.
+ */
+# define U_CFG_APP_CELL_PIN_GNSS_DATA_READY  -1
 #endif
 
 #endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_

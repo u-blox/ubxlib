@@ -28,6 +28,23 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+#include "stddef.h"    // NULL, size_t etc.
+#include "stdint.h"    // int32_t etc.
+#include "stdbool.h"
+#include "string.h"    // memcpy()
+
+#include "u_error_common.h"
+
+#include "u_port.h"
+#include "u_port_os.h"  // Required by u_gnss_private.h
+
+#include "u_ubx.h"
+
+#include "u_gnss_module_type.h"
+#include "u_gnss_type.h"
+#include "u_gnss_private.h"
+#include "u_gnss_cfg.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -44,8 +61,125 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Get the contents of UBX-CFG-NAV5.
+// pBuffer must point to a buffer of length 36 bytes.
+static int32_t uGnssCfgGetUbxCfgNav5(int32_t gnssHandle,
+                                     char *pBuffer)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            // Poll with the message class and ID of the
+            // UBX-CFG-NAV5 message
+            if (uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                  0x06, 0x24,
+                                                  NULL, 0,
+                                                  pBuffer, 36) == 36) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Set the contents of UBX-CFG-NAV5.
+static int32_t uGnssCfgSetUbxCfgNav5(int32_t gnssHandle,
+                                     uint16_t mask,
+                                     const char *pBuffer,
+                                     size_t size,
+                                     size_t offset)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+    // Enough room for the body of the UBX-CFG-NAV5 message
+    char message[36] = {0};
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            // Set the mask bytes at the start of the message
+            *((uint16_t *) message) = uUbxUint16Encode(mask);
+            // Copy in the contents, which must have already
+            // been correctly encoded
+            memcpy(message + offset, pBuffer, size);
+            // Send the UBX-CFG-NAV5 message
+            errorCode = uGnssPrivateSendUbxMessage(pInstance,
+                                                   0x06, 0x24,
+                                                   message,
+                                                   sizeof(message));
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+// Get the dynamic platform model from the GNSS chip.
+int32_t uGnssCfgGetDynamic(int32_t gnssHandle)
+{
+    int32_t errorCodeOrDynamic;
+    // Enough room for the body of the UBX-CFG-NAV5 message
+    char message[36];
+
+    errorCodeOrDynamic = uGnssCfgGetUbxCfgNav5(gnssHandle, message);
+    if (errorCodeOrDynamic == 0) {
+        // The dynamic platform model is at offset 2
+        errorCodeOrDynamic = message[2];
+    }
+
+    return errorCodeOrDynamic;
+}
+
+// Set the dynamic platform model of the GNSS chip.
+int32_t uGnssCfgSetDynamic(int32_t gnssHandle, uGnssDynamic_t dynamic)
+{
+    return uGnssCfgSetUbxCfgNav5(gnssHandle,
+                                 0x01, /* Mask for dynamic model */
+                                 (char *) &dynamic,
+                                 1, 2 /* One byte at offset 2 */);
+}
+
+// Get the fix mode from the GNSS chip.
+int32_t uGnssCfgGetFixMode(int32_t gnssHandle)
+{
+    int32_t errorCodeOrFixMode;
+    // Enough room for the body of the UBX-CFG-NAV5 message
+    char message[36];
+
+    errorCodeOrFixMode = uGnssCfgGetUbxCfgNav5(gnssHandle, message);
+    if (errorCodeOrFixMode == 0) {
+        // The fix mode is at offset 3
+        errorCodeOrFixMode = message[3];
+    }
+
+    return errorCodeOrFixMode;
+}
+
+// Set the fix mode of the GNSS chip.
+int32_t uGnssCfgSetFixMode(int32_t gnssHandle, uGnssFixMode_t fixMode)
+{
+    return uGnssCfgSetUbxCfgNav5(gnssHandle,
+                                 0x04, /* Mask for fix mode */
+                                 (char *) &fixMode,
+                                 1, 3 /* One byte at offset 3 */);
+}
 
 // End of file

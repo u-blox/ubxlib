@@ -49,13 +49,13 @@ typedef struct {
                               must begin with this for error checking
                               purposes. */
     int32_t moduleType; /**< The module type that is connected,
-                             see uGnssModuleType_t in u_gnss_types.h. */
-    int32_t pinGnssEn; /**< The output pin that is used to power-on
-                            the GNSS module; use -1 if there is no
-                            such connection. */
+                             see uGnssModuleType_t in u_gnss_module_type.h. */
+    int32_t pinGnssEnablePower; /**< The output pin that is used to power-on
+                                     the GNSS module; use -1 if there is no
+                                     such connection. */
     int32_t transportType; /**< The transport type to use,
                                 chosen from uGnssTransportType_t
-                                in gnss_types.h. */
+                                in gnss.h. */
     int32_t uart; /**< The UART HW block to use; ignored if transportType
                        does not indicate a UART connection. */
     int32_t pinTxd; /** The output pin that sends UART data to
@@ -82,6 +82,24 @@ typedef struct {
                                    through which the GNSS module is
                                    connected; ignored if transportType
                                    is set to anything else. */
+    int32_t gnssAtPinPwr; /**< Only relevant if transportType
+                               is set to U_GNSS_TRANSPORT_UBX_AT:
+                               set this to the pin of the intermediate
+                               (e.g. cellular) module that powers
+                               the GNSS chip.  For instance, in the
+                               case of a cellular module, GPIO2
+                               is module pin 23 and hence 23 would be
+                               used here. If there is no such
+                               functionality then use -1. */
+    int32_t gnssAtPinDataReady; /**< Only relevant if transportType is set
+                                     to U_GNSS_TRANSPORT_UBX_AT: set this to
+                                     the pin of the intermediate (e.g. cellular
+                                     module that is connected to the Data Ready
+                                     pin of the GNSS chip.  For instance, in
+                                     the case of cellular, GPIO3 is cellular
+                                     module pin 24 and hence 24 would be used here.
+                                     If no Data Ready signalling is required then
+                                     specify -1. */
 } uNetworkConfigurationGnss_t;
 
 #endif // _U_NETWORK_CONFIG_GNSS_H_

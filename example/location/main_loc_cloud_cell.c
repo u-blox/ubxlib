@@ -157,9 +157,9 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCloudCell")
         if (uLocationGet(networkHandle, U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
                          NULL, U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOCATE_AUTHENTICATION_TOKEN),
                          &location, NULL) == 0) {
-            uPortLog("I am here: https://maps.google.com/?q=%.5f,%.5f\n",
-                     ((double) location.latitudeX1e6) / 1000000,
-                     ((double) location.longitudeX1e6) / 1000000);
+            uPortLog("I am here: https://maps.google.com/?q=%3.7f,%3.7f\n",
+                     (double) location.latitudeX1e7 / 10000000,
+                     (double) location.longitudeX1e7 / 10000000);
         } else {
             uPortLog("Unable to get a location fix!\n");
         }

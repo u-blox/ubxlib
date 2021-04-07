@@ -56,8 +56,9 @@ extern "C" {
  *                    into pStr NOT including the null terminator
  *                    (i.e. as strlen() would return), else negative
  *                    error code.  Note that the string itself may
- *                    contain NULLs, depending on what the GNSS
- *                    device chooses to return.
+ *                    contain multiple lines separated by [more than
+ *                    one] null terminator, depending on what the
+ *                    GNSS device chooses to return.
  */
 int32_t uGnssInfoGetFirmwareVersionStr(int32_t gnssHandle,
                                        char *pStr, size_t size);
@@ -76,7 +77,9 @@ int32_t uGnssInfoGetFirmwareVersionStr(int32_t gnssHandle,
  * @return            on success, the number of characters copied
  *                    into pStr NOT including the null terminator
  *                    (i.e. as strlen() would return), else negative
- *                    error code.
+ *                    error code.  Note that the string itself may
+ *                    contain nulls, depending on what the GNSS
+ *                    device chooses to return
  */
 int32_t uGnssInfoGetIdStr(int32_t gnssHandle,
                           char *pStr, size_t size);
@@ -87,7 +90,7 @@ int32_t uGnssInfoGetIdStr(int32_t gnssHandle,
  * @return            on success the Unix UTC time, else negative
  *                    error code.
  */
-int32_t uGnssInfoGetTimeUtc(int32_t gnssHandle);
+int64_t uGnssInfoGetTimeUtc(int32_t gnssHandle);
 
 #ifdef __cplusplus
 }

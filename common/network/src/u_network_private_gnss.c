@@ -43,11 +43,13 @@
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"                 // For uCellAtClientHandleGet()
+#include "u_cell_loc.h"             // For uCellLocSetPinGnssPwr()/uCellLocSetPinGnssDataReady()
 
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"          // For uShortRangeAtClientHandleGet()
 
-#include "u_gnss_types.h"
+#include "u_gnss_module_type.h"
+#include "u_gnss_type.h"
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
 
@@ -197,10 +199,40 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
             errorCodeOrHandle = uGnssAdd((uGnssModuleType_t) pConfiguration->moduleType,
                                          (uGnssTransportType_t) pInstance->transportType,
                                          pInstance->transportHandle,
-                                         pConfiguration->pinGnssEn, false);
+                                         pConfiguration->pinGnssEnablePower, false);
             if (errorCodeOrHandle >= 0) {
                 pInstance->gnss = errorCodeOrHandle;
-                // Power on
+                if (pConfiguration->transportType == (int32_t) U_GNSS_TRANSPORT_UBX_AT) {
+                    // If specified, and if the GNSS chip is not inside the
+                    // intervening module, set the pins of the AT module that
+                    // control power to and see Data Ready from the GNSS chip
+                    // Note: if we put GNSS chips inside non-cellular modules
+                    // then this will need to be extended
+                    if (U_NETWORK_HANDLE_IS_CELL(pConfiguration->networkHandleAt) &&
+                        !uCellLocGnssInsideCell(pConfiguration->networkHandleAt)) {
+                        if (pConfiguration->gnssAtPinPwr >= 0) {
+                            uGnssSetAtPinPwr(pInstance->gnss,
+                                             pConfiguration->gnssAtPinPwr);
+                            // Do it for the Cell Locate API as well in case the
+                            // user wants to use that
+                            uCellLocPinGnssPwrSet(pConfiguration->networkHandleAt,
+                                                  pConfiguration->gnssAtPinPwr);
+                        }
+                        if (pConfiguration->gnssAtPinDataReady >= 0) {
+                            uGnssSetAtPinDataReady(pInstance->gnss,
+                                                   pConfiguration->gnssAtPinDataReady);
+                            // Do it for the Cell Locate API as well in case the
+                            // user wants to use that
+                            uCellLocPinGnssDataReadySet(pConfiguration->networkHandleAt,
+                                                        pConfiguration->gnssAtPinDataReady);
+                        }
+                    }
+
+                }
+                // Set printing of commands sent to the GNSS chip,
+                // which can be useful while debugging.
+                uGnssSetUbxMessagePrint(pInstance->gnss, true);
+                // Power on the GNSS chip
                 x = uGnssPwrOn(errorCodeOrHandle);
                 if (x != 0) {
                     // If we failed to power on, clean up

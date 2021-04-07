@@ -333,7 +333,7 @@
 			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_cfg.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/GNSS/u_gnssi_info.c</name>
+			<name>Ubxlib/U-Blox/GNSS/u_gnss_info.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_info.c</locationURI>
 		</link>
@@ -341,6 +341,11 @@
 			<name>Ubxlib/U-Blox/GNSS/u_gnss_pos.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_pos.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/GNSS/u_gnss_util.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_util.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/GNSS/u_gnss_private.c</name>
@@ -495,6 +500,11 @@
 			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_test.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_pwr_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_pwr_test.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_cfg_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_cfg_test.c</locationURI>
@@ -508,6 +518,16 @@
 			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_pos_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_pos_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_util_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_util_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_test_private.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_test_private.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/AtClient/u_at_client_test.c</name>
@@ -758,6 +778,11 @@
 			<name>Ubxlib/Inc/U-Blox/common/location/api</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/location/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/location/test</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/location/test</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/common/short_range/api</name>

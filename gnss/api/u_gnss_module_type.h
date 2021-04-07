@@ -14,30 +14,37 @@
  * limitations under the License.
  */
 
-#ifndef _U_CFG_HW_PLATFORM_SPECIFIC_H_
-#define _U_CFG_HW_PLATFORM_SPECIFIC_H_
+#ifndef _U_GNSS_MODULE_TYPES_H_
+#define _U_GNSS_MODULE_TYPES_H_
 
 /* No #includes allowed here */
 
 /** @file
- * @brief This header file contains hardware configuration information for
- * an ESP32 platform that is built into this porting code.  You may
- * override these values as necessary.
+ * @brief This header file defines the module types for the
+ * GNSS API.
  */
 
 /* ----------------------------------------------------------------
- * COMPILE-TIME MACROS FOR A CELLULAR MODULE ON ESP32: MISC
+ * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_CFG_HW_CELLULAR_RTS_THRESHOLD
-/** The buffer threshold at which RTS is de-asserted, indicating the
- * cellular module should stop sending data to us.  Must be defined
- * if U_CFG_APP_PIN_CELL_RTS is not -1.
- * Must be less than UART_FIFO_LEN, which is by default 128.
- */
-# define U_CFG_HW_CELLULAR_RTS_THRESHOLD         100
-#endif
+/* ----------------------------------------------------------------
+ * TYPES
+ * -------------------------------------------------------------- */
 
-#endif // _U_CFG_HW_PLATFORM_SPECIFIC_H_
+/** The possible types of GNSS module.
+ * Note: if you add a new module type here, check the
+ * U_GNSS_PRIVATE_MODULE_xxx macros in u_gnss_private.h
+ * to see if they need updating and also update the
+ * tables in u_gnss_private.c.
+ */
+//lint -estring(788, uGnssModuleType_t::U_GNSS_MODULE_TYPE_MAX_NUM)
+// Suppress not used within defaulted switch
+typedef enum {
+    U_GNSS_MODULE_TYPE_M8 = 0,
+    U_GNSS_MODULE_TYPE_MAX_NUM
+} uGnssModuleType_t;
+
+#endif // _U_GNSS_MODULE_TYPES_H_
 
 // End of file

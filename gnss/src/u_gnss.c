@@ -38,17 +38,26 @@
 
 #include "u_error_common.h"
 
-#include "u_port_debug.h"
 #include "u_port_os.h"
+#include "u_port_debug.h"
 #include "u_port_gpio.h"
 
-#include "u_gnss_types.h"
+#include "u_gnss_module_type.h"
+#include "u_gnss_type.h"
 #include "u_gnss.h"
 #include "u_gnss_private.h"
+
+#include "u_network_handle.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+/** The drive mode for the GNSS ENABLE_POWER pin.
+ */
+#ifndef U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE
+# define U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -60,7 +69,17 @@
 
 /** The next instance handle to use.
  */
-static int32_t gNextInstanceHandle = 0;
+static int32_t gNextInstanceHandle = (int32_t) U_NETWORK_HANDLE_GNSS_MIN;
+
+/** To display some nice text.
+ */
+//lint -esym(752, gpTransportTypeText) Suppress not referenced, which
+// it won't be if diagnostic prints are compiled out
+static const char *const gpTransportTypeText[] = {"None",        // U_GNSS_TRANSPORT_NONE
+                                                  "ubx UART",   // U_GNSS_TRANSPORT_UBX_UART
+                                                  "ubx AT",     // U_GNSS_TRANSPORT_UBX_AT
+                                                  "NMEA UART"
+                                                 }; // U_GNSS_TRANSPORT_NMEA_UART
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -110,8 +129,7 @@ static void addGnssInstance(uGnssPrivateInstance_t *pInstance)
 
 // Remove a GNSS instance from the list.
 // gUGnssPrivateMutex should be locked before this is called.
-// Note: doesn't free it, the caller must do that.
-static void removeGnssInstance(const uGnssPrivateInstance_t *pInstance)
+static void deleteGnssInstance(uGnssPrivateInstance_t *pInstance)
 {
     uGnssPrivateInstance_t *pCurrent;
     uGnssPrivateInstance_t *pPrev = NULL;
@@ -119,12 +137,19 @@ static void removeGnssInstance(const uGnssPrivateInstance_t *pInstance)
     pCurrent = gpUGnssPrivateInstanceList;
     while (pCurrent != NULL) {
         if (pInstance == pCurrent) {
+            // Stop any asynchronous position establishment task
+            uGnssPrivateCleanUpPosTask(pInstance);
+            // Delete the transport mutex
+            uPortMutexDelete(pInstance->transportMutex);
+            // Unlink the instance from the list
             if (pPrev != NULL) {
                 pPrev->pNext = pCurrent->pNext;
             } else {
                 gpUGnssPrivateInstanceList = pCurrent->pNext;
             }
             pCurrent = NULL;
+            // Free the instance
+            free(pInstance);
         } else {
             pPrev = pCurrent;
             pCurrent = pPrev->pNext;
@@ -152,17 +177,13 @@ int32_t uGnssInit()
 // Shut-down the GNSS driver.
 void uGnssDeinit()
 {
-    uGnssPrivateInstance_t *pInstance;
-
     if (gUGnssPrivateMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
 
         // Remove all GNSS instances
         while (gpUGnssPrivateInstanceList != NULL) {
-            pInstance = gpUGnssPrivateInstanceList;
-            removeGnssInstance(pInstance);
-            free(pInstance);
+            deleteGnssInstance(gpUGnssPrivateInstanceList);
         }
 
         // Unlock the mutex so that we can delete it
@@ -178,10 +199,10 @@ void uGnssDeinit()
 int32_t uGnssAdd(uGnssModuleType_t moduleType,
                  uGnssTransportType_t transportType,
                  const uGnssTransportHandle_t transportHandle,
-                 int32_t pinGnssEn,
+                 int32_t pinGnssEnablePower,
                  bool leavePowerAlone)
 {
-    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance = NULL;
     uPortGpioConfig_t gpioConfig;
     int32_t platformError = 0;
@@ -191,77 +212,92 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
         U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
 
         // Check parameters
-        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        errorCodeOrHandle = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (((size_t) moduleType < gUGnssPrivateModuleListSize) &&
             ((transportType > U_GNSS_TRANSPORT_NONE) &&
              (transportType < U_GNSS_TRANSPORT_MAX_NUM)) &&
             (pGetGnssInstanceTransportHandle(transportType, transportHandle) == NULL)) {
-            handleOrErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
             // Allocate memory for the instance
             pInstance = (uGnssPrivateInstance_t *) malloc(sizeof(uGnssPrivateInstance_t));
             if (pInstance != NULL) {
-                handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 // Fill the values in
                 memset(pInstance, 0, sizeof(*pInstance));
                 // Find a free handle
                 do {
                     pInstance->handle = gNextInstanceHandle;
                     gNextInstanceHandle++;
-                    if (gNextInstanceHandle < 0) {
-                        gNextInstanceHandle = 0;
+                    if (gNextInstanceHandle > (int32_t) U_NETWORK_HANDLE_GNSS_MAX) {
+                        gNextInstanceHandle = (int32_t) U_NETWORK_HANDLE_GNSS_MIN;
                     }
                 } while (pUGnssPrivateGetInstance(pInstance->handle) != NULL);
-                pInstance->transportType = transportType;
-                pInstance->transportHandle = transportHandle;
-                pInstance->timeoutMs = U_GNSS_DEFAULT_TIMEOUT_MS;
-                pInstance->pinGnssEn = pinGnssEn;
-                pInstance->portNumber = 0x01; // This the UART port number
-                pInstance->pendingSwitchOffNmea = false;
-                if (transportType == U_GNSS_TRANSPORT_UBX_UART) {
-                    pInstance->pendingSwitchOffNmea = true;
-                }
-                pInstance->pNext = NULL;
+                // Create a transport mutex
+                pInstance->transportMutex = NULL;
+                errorCodeOrHandle = uPortMutexCreate(&pInstance->transportMutex);
+                if (errorCodeOrHandle == 0) {
+                    pInstance->transportType = transportType;
+                    pInstance->pModule = &(gUGnssPrivateModuleList[moduleType]);
+                    pInstance->transportHandle = transportHandle;
+                    pInstance->timeoutMs = U_GNSS_DEFAULT_TIMEOUT_MS;
+                    pInstance->printUbxMessages = false;
+                    pInstance->pinGnssEnablePower = pinGnssEnablePower;
+                    pInstance->atModulePinPwr = -1;
+                    pInstance->atModulePinDataReady = -1;
+                    pInstance->portNumber = 0x01; // This is the UART port number inside the GNSS chip
+                    pInstance->posTask = NULL;
+                    pInstance->posMutex = NULL;
+                    pInstance->posTaskFlags = 0;
+                    pInstance->pNext = NULL;
 
-                // Now set up the pins
-                uPortLog("U_GNSS: initialising with GNSSEN ");
-                if (pinGnssEn >= 0) {
-                    uPortLog("%d (0x%02x).\n", pinGnssEn, pinGnssEn);
-                } else {
-                    uPortLog("not connected.\n");
-                }
-                // Sort GNSSEN pin if there is one
-                if (pinGnssEn >= 0) {
-                    if (!leavePowerAlone) {
-                        // Set GNSSEN high so that we can pull it low
-                        platformError = uPortGpioSet(pinGnssEn, 1);
-                    }
-                    if (platformError == 0) {
-                        // GNSSEN open drain so that we can pull it low and then let it
-                        // float afterwards since it is pulled-up by the GNSS module
-                        U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
-                        gpioConfig.pin = pinGnssEn;
-                        gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_NONE;
-                        gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN;
-                        gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
-                        platformError = uPortGpioConfig(&gpioConfig);
-                        if (platformError != 0) {
-                            uPortLog("U_GNSS: uPortGpioConfig() for GNSSEN pin %d"
-                                     " (0x%02x) returned error code %d.\n",
-                                     pinGnssEn, pinGnssEn, platformError);
+                    // Now set up the pins
+                    uPortLog("U_GNSS: initialising with ENABLE_POWER pin ");
+                    if (pinGnssEnablePower >= 0) {
+                        uPortLog("%d (0x%02x), set to %d to power on GNSS",
+                                 pinGnssEnablePower, pinGnssEnablePower, U_GNSS_PIN_ENABLE_POWER_ON_STATE);
+                        if (leavePowerAlone) {
+                            uPortLog(", leaving the level of the pin alone");
                         }
                     } else {
-                        uPortLog("U_GNSS: uPortGpioSet() for GNSSEN pin %d (0x%02x)"
-                                 " returned error code %d.\n",
-                                 pinGnssEn, pinGnssEn, platformError);
+                        uPortLog("not connected");
+                    }
+                    uPortLog(", transport type %s.\n", gpTransportTypeText[transportType]);
+
+                    // Sort ENABLE_POWER pin if there is one
+                    if (pinGnssEnablePower >= 0) {
+                        if (!leavePowerAlone) {
+                            // Set ENABLE_POWER high so that we can pull it low
+                            platformError = uPortGpioSet(pinGnssEnablePower,
+                                                         (int32_t) !U_GNSS_PIN_ENABLE_POWER_ON_STATE);
+                        }
+                        if (platformError == 0) {
+                            U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
+                            gpioConfig.pin = pinGnssEnablePower;
+                            gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_NONE;
+                            gpioConfig.driveMode = U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE;
+                            gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+                            platformError = uPortGpioConfig(&gpioConfig);
+                            if (platformError != 0) {
+                                uPortLog("U_GNSS: uPortGpioConfig() for ENABLE_POWER pin %d"
+                                         " (0x%02x) returned error code %d.\n",
+                                         pinGnssEnablePower, pinGnssEnablePower, platformError);
+                            }
+                        } else {
+                            uPortLog("U_GNSS: uPortGpioSet() for ENABLE_POWER pin %d (0x%02x)"
+                                     " returned error code %d.\n",
+                                     pinGnssEnablePower, pinGnssEnablePower, platformError);
+                        }
                     }
                 }
 
-                if (platformError == 0) {
+                if ((errorCodeOrHandle == 0) && (platformError == 0)) {
                     // Add it to the list
                     addGnssInstance(pInstance);
-                    handleOrErrorCode = pInstance->handle;
+                    errorCodeOrHandle = pInstance->handle;
                 } else {
-                    // If we hit a platform error, free memory again
+                    // If we hit an error, free memory again
+                    if (pInstance->transportMutex != NULL) {
+                        uPortMutexDelete(pInstance->transportMutex);
+                    }
                     free(pInstance);
                 }
             }
@@ -270,7 +306,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
     }
 
-    return (int32_t) handleOrErrorCode;
+    return (int32_t) errorCodeOrHandle;
 }
 
 // Remove a GNSS instance.
@@ -284,8 +320,7 @@ void uGnssRemove(int32_t gnssHandle)
 
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
-            removeGnssInstance(pInstance);
-            free(pInstance);
+            deleteGnssInstance(pInstance);
         }
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
@@ -294,9 +329,9 @@ void uGnssRemove(int32_t gnssHandle)
 
 // Get the type and handle of the transport used by the
 // given instance.
-int32_t uGnssUbxHandleGet(int32_t gnssHandle,
-                          uGnssTransportType_t *pTransportType,
-                          uGnssTransportHandle_t *pTransportHandle)
+int32_t uGnssGetTransportHandle(int32_t gnssHandle,
+                                uGnssTransportType_t *pTransportType,
+                                uGnssTransportHandle_t *pTransportHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
@@ -323,8 +358,45 @@ int32_t uGnssUbxHandleGet(int32_t gnssHandle,
     return errorCode;
 }
 
+// Set the cellular/short-range module pin which enables power
+// to the GNSS chip.
+void uGnssSetAtPinPwr(int32_t gnssHandle, int32_t pin)
+{
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            pInstance->atModulePinPwr = pin;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+}
+
+// Set the celluar module pin that is used for GNSS data ready.
+void uGnssSetAtPinDataReady(int32_t gnssHandle, int32_t pin)
+{
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            pInstance->atModulePinDataReady = pin;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+}
+
 // Get the maximum time to wait for a response from the GNSS chip.
-int32_t uGnssTimeoutGet(int32_t gnssHandle)
+int32_t uGnssGetTimeout(int32_t gnssHandle)
 {
     int32_t errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
@@ -346,7 +418,7 @@ int32_t uGnssTimeoutGet(int32_t gnssHandle)
 }
 
 // Set the timeout for getting a response from the GNSS chip.
-void uGnssTimeoutSet(int32_t gnssHandle, int32_t timeoutMs)
+void uGnssSetTimeout(int32_t gnssHandle, int32_t timeoutMs)
 {
     uGnssPrivateInstance_t *pInstance;
 
@@ -357,6 +429,45 @@ void uGnssTimeoutSet(int32_t gnssHandle, int32_t timeoutMs)
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             pInstance->timeoutMs = timeoutMs;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+}
+
+// Get whether printing of ubx commands and responses is on or off.
+bool uGnssGetUbxMessagePrint(int32_t gnssHandle)
+{
+    uGnssPrivateInstance_t *pInstance;
+    bool isOn = false;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            isOn = pInstance->printUbxMessages;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return isOn;
+}
+
+// Switch printing of ubx commands and response on or off.
+void uGnssSetUbxMessagePrint(int32_t gnssHandle, bool onNotOff)
+{
+    uGnssPrivateInstance_t *pInstance;
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if (pInstance != NULL) {
+            pInstance->printUbxMessages = onNotOff;
         }
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);

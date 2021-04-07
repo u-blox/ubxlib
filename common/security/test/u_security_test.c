@@ -215,6 +215,10 @@ static bool keepGoingCallback()
 // Standard preamble for all security tests
 static void stdPreamble()
 {
+#if (U_CFG_APP_GNSS_UART < 0)
+    int32_t networkHandle = -1;
+#endif
+
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uNetworkInit() == 0);
 
@@ -224,9 +228,23 @@ static void stdPreamble()
             if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
                 uPortLog("U_SECURITY_TEST: adding %s network...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+#if (U_CFG_APP_GNSS_UART < 0)
+                // If there is no GNSS UART then any GNSS chip must
+                // be connected via the cellular module's AT interface
+                // hence we capture the cellular network handle here and
+                // modify the GNSS configuration to use it before we add
+                // the GNSS network
+                uNetworkTestGnssAtConfiguration(networkHandle,
+                                                gUNetworkTestCfg[x].pConfiguration);
+#endif
                 gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
                                                          gUNetworkTestCfg[x].pConfiguration);
                 U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+#if (U_CFG_APP_GNSS_UART < 0)
+                if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
+                    networkHandle = gUNetworkTestCfg[x].handle;
+                }
+#endif
             }
         }
     }

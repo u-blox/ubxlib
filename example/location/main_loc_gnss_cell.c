@@ -47,8 +47,9 @@
 // For the cellular module types
 #include "u_cell_module_type.h"
 
-// For the GNSS interface types
-#include "u_gnss_types.h"
+// For the GNSS module and interface types
+#include "u_gnss_module_type.h"
+#include "u_gnss_type.h"
 
 // For the network API
 #include "u_network.h"
@@ -122,7 +123,7 @@ static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
 
 // GNSS network configuration:
 // Set U_CFG_TEST_GNSS_MODULE_TYPE to your module type,
-// chosen from the values in gnss/api/u_gnss_types.h
+// chosen from the values in gnss/api/u_gnss_module_type.h
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 static uNetworkConfigurationGnss_t gConfigGnss = {U_NETWORK_TYPE_GNSS,
                                                   U_GNSS_MODULE_TYPE_M8,
@@ -134,11 +135,24 @@ static uNetworkConfigurationGnss_t gConfigGnss = {U_NETWORK_TYPE_GNSS,
                                                      to that from the MCU: check the data
                                                      sheet for the module to determine
                                                      the mapping. */
-                                                  U_CFG_APP_PIN_GNSS_EN,
+                                                  U_CFG_APP_PIN_GNSS_ENABLE_POWER,
                                                   /* Connection is via the cellular
                                                      module's AT interface. */
-                                                  U_GNSS_TRANSPORT_UBX_AT
-                                                 };
+                                                  U_GNSS_TRANSPORT_UBX_AT,
+                                                  /* The GNSS UART number and pins are
+                                                     all irrelevant since the GNSS chip
+                                                     is not connected to this MCU; it is
+                                                     connected to the cellular module. */
+                                                  -1, -1, -1, -1, -1,
+                                                  /* The handle of the cellular interface will
+                                                     be filled in later. */
+                                                  0,
+                                                  /* The pins of the cellular module
+                                                     that are connected to the GNSS chip's
+                                                     power and Data Ready lines. */
+                                                  U_CFG_APP_CELL_PIN_GNSS_POWER,
+                                                  U_CFG_APP_CELL_PIN_GNSS_DATA_READY
+                                                  };
 #else
 static uNetworkConfigurationGnss_t gConfigGnss = {U_NETWORK_TYPE_NONE};
 #endif
@@ -198,9 +212,9 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
             // Now get location
             if (uLocationGet(networkHandleGnss, U_LOCATION_TYPE_GNSS,
                              NULL, NULL, &location, NULL) == 0) {
-                uPortLog("I am here: https://maps.google.com/?q=%.5f,%.5f\n",
-                         ((double) location.latitudeX1e6) / 1000000,
-                         ((double) location.longitudeX1e6) / 1000000);
+                uPortLog("I am here: https://maps.google.com/?q=%3.7f,%3.7f\n",
+                         (double) location.latitudeX1e7 / 10000000,
+                         (double) location.longitudeX1e7 / 10000000);
             } else {
                 uPortLog("Unable to get a location fix!\n");
             }
@@ -226,8 +240,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
 
     uPortLog("Done.\n");
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+# if 0 // Commenting out for now as the location API is not done yet
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE(location.tickTimeMs > 0);
+# endif
 #endif
 }
 

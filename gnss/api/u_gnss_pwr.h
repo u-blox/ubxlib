@@ -36,7 +36,7 @@ extern "C" {
 /** How long to wait for a GNSS chip to be available after it is
  * powered up.
  */
-# define U_GNSS_POWER_UP_TIME_MILLISECONDS 1000
+# define U_GNSS_POWER_UP_TIME_MILLISECONDS 2000
 #endif
 
 /* ----------------------------------------------------------------
@@ -47,11 +47,20 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Power a GNSS chip on.
+/** Power a GNSS chip on.  If the transport type for the given GNSS
+ * instance is U_GNSS_TRANSPORT_UBX_AT then you must have powered
+ * the associated cellular module up (e.g. with a call to uNetworkAdd()
+ * or uCellPwrOn()) before calling this function.
  *
  * @param gnssHandle  the handle of the GNSS instance to power on.
  */
 int32_t uGnssPwrOn(int32_t gnssHandle);
+
+/** Check that a GNSS chip is responsive.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ */
+bool uGnssPwrIsAlive(int32_t gnssHandle);
 
 /** Power a GNSS chip off
  *

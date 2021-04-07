@@ -60,6 +60,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../gnss/src/u_gnss_cfg.c"
                    "../../../../../../../gnss/src/u_gnss_info.c"
                    "../../../../../../../gnss/src/u_gnss_pos.c"
+                   "../../../../../../../gnss/src/u_gnss_util.c"
                    "../../../../../../../gnss/src/u_gnss_private.c"
 # The common network layer
                    "../../../../../../../common/network/src/u_network.c"

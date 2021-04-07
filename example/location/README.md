@@ -15,7 +15,7 @@ For the remainder of the #defines you may either override their values in the sa
 ## The GNSS Example `main_loc_gnss.c`
 If you have a GNSS chip attached directly to this MCU then you can run the `main_loc_gnss.c` example and the following values should be set.
 
-`U_CFG_TEST_GNSS_MODULE_TYPE`: consult [u_gnss_types.h](/gnss/api/u_gnss_types.h) to determine the type name for the GNSS module you intend to use.  For instance, to use an M8 module you would set `U_CFG_TEST_GNSS_MODULE_TYPE` to `U_GNSS_MODULE_TYPE_M8`.
+`U_CFG_TEST_GNSS_MODULE_TYPE`: consult [u_gnss_type.h](/gnss/api/u_gnss_type.h) to determine the type name for the GNSS module you intend to use.  For instance, to use an M8 module you would set `U_CFG_TEST_GNSS_MODULE_TYPE` to `U_GNSS_MODULE_TYPE_M8`.
 
 `U_CFG_APP_PIN_GNSS_xxx`: the default values for the MCU pins connecting your GNSS module to your MCU are #defined in the file `port/platform/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the #defines (where -1 means "not connected").
 
@@ -26,7 +26,7 @@ You will also need an antenna connected to the GNSS chip.
 ## The GNSS Cellular Example `main_loc_gnss_cell.c`
 If you have a GNSS chip attached via a cellular module then you can run the `main_loc_gnss_cell.c` example and the following values should be set.
 
-`U_CFG_TEST_GNSS_MODULE_TYPE`: consult [u_gnss_types.h](/gnss/api/u_gnss_types.h) to determine the type name for the GNSS module you intend to use.  For instance, to use an M8 module you would set `U_CFG_TEST_GNSS_MODULE_TYPE` to `U_GNSS_MODULE_TYPE_M8`.
+`U_CFG_TEST_GNSS_MODULE_TYPE`: consult [u_gnss_type.h](/gnss/api/u_gnss_type.h) to determine the type name for the GNSS module you intend to use.  For instance, to use an M8 module you would set `U_CFG_TEST_GNSS_MODULE_TYPE` to `U_GNSS_MODULE_TYPE_M8`.
 
 `U_CFG_TEST_CELL_MODULE_TYPE`: consult [u_cell_module_type.h](/cell/api/u_cell_module_type.h) to determine the type name for the cellular module you intend to use.  For instance, to use SARA-R5 you would set `U_CFG_TEST_CELL_MODULE_TYPE` to `U_CELL_MODULE_TYPE_SARA_R5`.
 

@@ -140,7 +140,8 @@
       <file file_name="../../../../../../../cell/api/u_cell_sec_c2c.h" />
       <file file_name="../../../../../../../cell/api/u_cell_mqtt.h" />
       <file file_name="../../../../../../../cell/api/u_cell_file.h" />
-      <file file_name="../../../../../../../cell/api/u_cell_loc.h" />      <file file_name="../../../../../../../cell/src/u_cell.c" />
+      <file file_name="../../../../../../../cell/api/u_cell_loc.h" />
+      <file file_name="../../../../../../../cell/src/u_cell.c" />
       <file file_name="../../../../../../../cell/src/u_cell_pwr.c" />
       <file file_name="../../../../../../../cell/src/u_cell_cfg.c" />
       <file file_name="../../../../../../../cell/src/u_cell_info.c" />
@@ -174,16 +175,20 @@
       <file file_name="../../../../../../../gnss/api/u_gnss_cfg.h" />
       <file file_name="../../../../../../../gnss/api/u_gnss_info.h" />
       <file file_name="../../../../../../../gnss/api/u_gnss_pos.h" />
+      <file file_name="../../../../../../../gnss/api/u_gnss_util.h" />
       <file file_name="../../../../../../../gnss/src/u_gnss.c" />
       <file file_name="../../../../../../../gnss/src/u_gnss_pwr.c" />
       <file file_name="../../../../../../../gnss/src/u_gnss_cfg.c" />
       <file file_name="../../../../../../../gnss/src/u_gnss_info.c" />
       <file file_name="../../../../../../../gnss/src/u_gnss_pos.c" />
+      <file file_name="../../../../../../../gnss/src/u_gnss_util.c" />
       <file file_name="../../../../../../../gnss/src/u_gnss_private.c" />
       <file file_name="../../../../../../../gnss/test/u_gnss_test.c" />
+      <file file_name="../../../../../../../gnss/test/u_gnss_pwr_test.c" />
       <file file_name="../../../../../../../gnss/test/u_gnss_cfg_test.c" />
       <file file_name="../../../../../../../gnss/test/u_gnss_info_test.c" />
       <file file_name="../../../../../../../gnss/test/u_gnss_pos_test.c" />
+      <file file_name="../../../../../../../gnss/test/u_gnss_util_test.c" />
       <file file_name="../../../../../../../gnss/test/u_gnss_test_private.c" />
       <file file_name="../../../../../../../gnss/test/u_gnss_test_private.h" />
       <file file_name="../../../../../common/event_queue/u_port_event_queue.c" />

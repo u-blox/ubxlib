@@ -47,7 +47,7 @@
 #define U_CFG_APP_PIN_SHORT_RANGE_RXD       0
 #define U_CFG_APP_PIN_SHORT_RANGE_CTS       0
 #define U_CFG_APP_PIN_SHORT_RANGE_RTS       0
-#define U_CFG_APP_PIN_GNSS_EN               0
+#define U_CFG_APP_PIN_GNSS_ENABLE_POWER     0
 #define U_CFG_APP_PIN_GNSS_TXD              0
 #define U_CFG_APP_PIN_GNSS_RXD              0
 #define U_CFG_APP_PIN_GNSS_CTS              0

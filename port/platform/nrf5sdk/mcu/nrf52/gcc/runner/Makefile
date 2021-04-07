@@ -113,6 +113,7 @@ SRC_FILES += \
   $(UBXLIB_PATH)/cell/src/u_cell_sec_tls.c \
   $(UBXLIB_PATH)/cell/src/u_cell_mqtt.c \
   $(UBXLIB_PATH)/cell/src/u_cell_file.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_loc.c \
   $(UBXLIB_PATH)/cell/src/u_cell_private.c \
   $(UBXLIB_PATH)/cell/test/u_cell_pwr_test.c \
   $(UBXLIB_PATH)/cell/test/u_cell_cfg_test.c \
@@ -131,11 +132,14 @@ SRC_FILES += \
   $(UBXLIB_PATH)/gnss/src/u_gnss_cfg.c \
   $(UBXLIB_PATH)/gnss/src/u_gnss_info.c \
   $(UBXLIB_PATH)/gnss/src/u_gnss_pos.c \
+  $(UBXLIB_PATH)/gnss/src/u_gnss_util.c \
   $(UBXLIB_PATH)/gnss/src/u_gnss_private.c \
   $(UBXLIB_PATH)/gnss/test/u_gnss_test.c \
+  $(UBXLIB_PATH)/gnss/test/u_gnss_pwr_test.c \
   $(UBXLIB_PATH)/gnss/test/u_gnss_cfg_test.c \
   $(UBXLIB_PATH)/gnss/test/u_gnss_info_test.c \
   $(UBXLIB_PATH)/gnss/test/u_gnss_pos_test.c \
+  $(UBXLIB_PATH)/gnss/test/u_gnss_util_test.c \
   $(UBXLIB_PATH)/gnss/test/u_gnss_test_private.c \
   $(UBXLIB_PATH)/common/network/src/u_network.c \
   $(UBXLIB_PATH)/common/network/src/u_network_private_ble_extmod.c \

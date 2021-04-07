@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _U_GNSS_TYPES_H_
-#define _U_GNSS_TYPES_H_
+#ifndef _U_GNSS_TYPE_H_
+#define _U_GNSS_TYPE_H_
 
 /* No #includes allowed here */
 
@@ -31,7 +31,7 @@
 #ifndef U_GNSS_UART_BAUD_RATE
 /** The baud rate for UART comms with the GNSS chip.
  */
-# define U_GNSS_UART_BAUD_RATE 115200
+# define U_GNSS_UART_BAUD_RATE 9600
 #endif
 
 #ifndef U_GNSS_UART_BUFFER_LENGTH_BYTES
@@ -48,22 +48,15 @@
 # define U_GNSS_DEFAULT_TIMEOUT_MS 10000
 #endif
 
+#ifndef U_GNSS_PIN_ENABLE_POWER_ON_STATE
+/** Which way up the GNSS_ENABLE_POWER pin ON state is.
+ */
+# define U_GNSS_PIN_ENABLE_POWER_ON_STATE 1
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-
-/** The possible types of GNSS module.
- * Note: if you add a new module type here, check the
- * U_GNSS_PRIVATE_MODULE_xxx macros in u_gnss_private.h
- * to see if they need updating and also update the
- * tables in u_gnss_private.c.
- */
-//lint -estring(788, uGnssModuleType_t::U_GNSS_MODULE_TYPE_MAX_NUM)
-// Suppress not used within defaulted switch
-typedef enum {
-    U_GNSS_MODULE_TYPE_M8 = 0,
-    U_GNSS_MODULE_TYPE_MAX_NUM
-} uGnssModuleType_t;
 
 /** The types of transport that the GNSS API can support.
  */
@@ -89,10 +82,33 @@ typedef enum {
  * uGnssTransportType_t.
  */
 typedef union {
-    const void *pAt;
+    void *pAt;
     int32_t uart;
 } uGnssTransportHandle_t;
 
-#endif // _U_GNSS_TYPES_H_
+/** The types of dynamic platform model.
+ */
+typedef enum {
+    U_GNSS_DYNAMIC_PORTABLE = 0,
+    U_GNSS_DYNAMIC_STATIONARY = 2,
+    U_GNSS_DYNAMIC_PEDESTRIAN = 3,
+    U_GNSS_DYNAMIC_AUTOMOTIVE = 4,
+    U_GNSS_DYNAMIC_SEA = 5,
+    U_GNSS_DYNAMIC_AIRBORNE_1G = 6,
+    U_GNSS_DYNAMIC_AIRBORNE_2G = 7,
+    U_GNSS_DYNAMIC_AIRBORNE_4G = 8,
+    U_GNSS_DYNAMIC_WRIST = 9,
+    U_GNSS_DYNAMIC_BIKE = 10
+} uGnssDynamic_t;
+
+/** The fix modes.
+ */
+typedef enum {
+    U_GNSS_FIX_MODE_2D = 1,
+    U_GNSS_FIX_MODE_3D = 2,
+    U_GNSS_FIX_MODE_AUTO = 3
+} uGnssFixMode_t;
+
+#endif // _U_GNSS_TYPE_H_
 
 // End of file

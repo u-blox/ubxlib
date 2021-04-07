@@ -44,8 +44,9 @@
 // For default values for U_CFG_APP_xxx
 #include "u_cfg_app_platform_specific.h"
 
-// For the GNSS interface types
-#include "u_gnss_types.h"
+// For the GNSS module and interface types
+#include "u_gnss_module_type.h"
+#include "u_gnss_type.h"
 
 // For the network API
 #include "u_network.h"
@@ -88,7 +89,7 @@
 
 // GNSS network configuration:
 // Set U_CFG_TEST_GNSS_MODULE_TYPE to your module type,
-// chosen from the values in gnss/api/u_gnss_types.h
+// chosen from the values in gnss/api/u_gnss_module_type.h
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_GNSS,
                                                     U_GNSS_MODULE_TYPE_M8,
@@ -100,7 +101,7 @@ static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_GNSS,
                                                        to that from the MCU: check the data
                                                        sheet for the module to determine
                                                        the mapping. */
-                                                    U_CFG_APP_PIN_GNSS_EN,
+                                                    U_CFG_APP_PIN_GNSS_ENABLE_POWER,
                                                     /* Connecton is UART. */
                                                     U_GNSS_TRANSPORT_UBX_UART,
                                                     U_CFG_APP_GNSS_UART,
@@ -108,8 +109,8 @@ static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_GNSS,
                                                     U_CFG_APP_PIN_GNSS_RXD,
                                                     U_CFG_APP_PIN_GNSS_CTS,
                                                     U_CFG_APP_PIN_GNSS_RTS,
-                                                    -1
-                                                    };
+                                                    0, -1, -1
+                                                   };
 #else
 static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_NONE};
 #endif
@@ -152,9 +153,9 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
         // Get location
         if (uLocationGet(networkHandle, U_LOCATION_TYPE_GNSS,
                          NULL, NULL, &location, NULL) == 0) {
-            uPortLog("I am here: https://maps.google.com/?q=%.5f,%.5f\n",
-                     ((double) location.latitudeX1e6) / 1000000,
-                     ((double) location.longitudeX1e6) / 1000000);
+            uPortLog("I am here: https://maps.google.com/?q=%3.7f,%3.7f\n",
+                     (double) location.latitudeX1e7 / 10000000,
+                     (double) location.longitudeX1e7 / 10000000);
         } else {
             uPortLog("Unable to get a location fix!\n");
         }
@@ -173,8 +174,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
     uPortLog("Done.\n");
 
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+# if 0 // Commenting out for now as the location API is not done yet
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE(location.tickTimeMs > 0);
+# endif
 #endif
 }
 

@@ -98,8 +98,8 @@ typedef struct {
  */
 typedef struct {
     uLocationType_t type; /**< the location mechanism that was used. */
-    int32_t latitudeX1e6; /**< latitude in millionths of a degree. */
-    int32_t longitudeX1e6; /**< longitude in millionths of a degree. */
+    int32_t latitudeX1e7; /**< latitude in ten millionths of a degree. */
+    int32_t longitudeX1e7; /**< longitude in ten millionths of a degree. */
     int32_t altitudeMillimetres; /**< altitude in millimetres; if the
                                       altitude is unknown -1 will be
                                       returned. */

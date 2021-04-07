@@ -39,6 +39,43 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Get the dynamic platform model from the GNSS chip.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            the number of the dynamic platform model or
+ *                    negative error code.
+ */
+int32_t uGnssCfgGetDynamic(int32_t gnssHandle);
+
+/** Set the dynamic platform model of the GNSS chip.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param dynamic     the number of the dynamic platform model; the
+ *                    value is deliberately not range-checked to allow
+ *                    future dynamic platform models to be passed
+ *                    in without the requirement to modify this code.
+ * @return            zero on succes or negative error code.
+ */
+int32_t uGnssCfgSetDynamic(int32_t gnssHandle, uGnssDynamic_t dynamic);
+
+/** Get the fix mode from the GNSS chip.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            the fix mode or negative error code.
+ */
+int32_t uGnssCfgGetFixMode(int32_t gnssHandle);
+
+/** Set the fix mode of the GNSS chip.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param fixMode     the fix mode; the value is deliberately not
+ *                    range-checked to allow future fix modes to be
+ *                    passed in without the requirement to modify
+ *                    this code.
+ * @return            zero on succes or negative error code.
+ */
+int32_t uGnssCfgSetFixMode(int32_t gnssHandle, uGnssFixMode_t fixMode);
+
 #ifdef __cplusplus
 }
 #endif

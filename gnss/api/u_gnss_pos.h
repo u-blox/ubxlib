@@ -50,10 +50,10 @@ extern "C" {
  *
  * @param gnssHandle                  the handle of the GNSS instance
  *                                    to use.
- * @param pLatitudeX1e6               a place to put latitude (in
+ * @param pLatitudeX1e7               a place to put latitude (in ten
  *                                    millionths of a degree); may
  *                                    be NULL.
- * @param pLongitudeX1e6              a place to put longitude (in
+ * @param pLongitudeX1e7              a place to put longitude (in ten
  *                                    millionths of a degree); may be
  *                                    NULL.
  * @param pAltitudeMillimetres        a place to put the altitude (in
@@ -79,6 +79,12 @@ extern "C" {
  *                                    the fix and, by the time the
  *                                    fix is returned, it may not
  *                                    represent the *current* time.
+ *                                    Note that this value may be
+ *                                    populated even if the return
+ *                                    value of the function is not
+ *                                    success, since time may be
+ *                                    available even if a position
+ *                                    fix is not.
  * @param pKeepGoingCallback          a callback function that governs
  *                                    how long position-fixing is
  *                                    allowed to take. This function
@@ -100,35 +106,48 @@ extern "C" {
  *                                    code on failure.
  */
 int32_t uGnssPosGet(int32_t gnssHandle,
-                    int32_t *pLatitudeX1e6, int32_t *pLongitudeX1e6,
+                    int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                     int32_t *pAltitudeMillimetres,
                     int32_t *pRadiusMillimetres,
                     int32_t *pSpeedMillimetresPerSecond,
-                    int32_t *pSvs, int32_t *pTimeUtc,
+                    int32_t *pSvs, int64_t *pTimeUtc,
                     bool (*pKeepGoingCallback) (int32_t));
 
-/** Get the current position, non-blocking version.
+/** Get the current position, non-blocking version.  Note that
+ * this function creates a mutex for thread-safety which remains
+ * in memory even after pCallback has been called; calling
+ * uGnssPosGetStop() will free it again.
  *
  * @param gnssHandle the handle of the GNSS instance to use.
  * @param pCallback  a callback that will be called when a fix has been
  *                   obtained.  The parameters to the callback are as
  *                   described in uGnssPosGet() except that they are
- *                   not pointers.
+ *                   not pointers.  The position fix is only valid
+ *                   if the second int32_t, errorCode, is zero but
+ *                   a timeUtc value may still be included even
+ *                   if a position fix has failed (timeUtc will be
+ *                   set to -1 if the UTC time is not valid).
+ *                   Note: don't call back into this API from your
+ *                   pCallback, it could lead to recursion.
  * @return           zero on success or negative error code on
  *                   failure.
  */
 int32_t uGnssPosGetStart(int32_t gnssHandle,
-                         void (*pCallback) (int32_t latitudeX1e6,
-                                            int32_t longitudeX1e6,
+                         void (*pCallback) (int32_t gnssHandle,
+                                            int32_t errorCode,
+                                            int32_t latitudeX1e7,
+                                            int32_t longitudeX1e7,
                                             int32_t altitudeMillimetres,
                                             int32_t radiusMillimetres,
                                             int32_t speedMillimetresPerSecond,
                                             int32_t svs,
-                                            int32_t timeUtc));
+                                            int64_t timeUtc));
 
-/** Cancel a uGnssPosGetStart(); after calling this function the
- * callback passed to uGnssPosGetStart() will not be called until
- * another uGnssPosGetStart() is begun.
+/** Cancel a uGnssPosGetStart(); after this function has returned the
+ * callback passed to uGnssPosGetStart() will not be called until another
+ * uGnssPosGetStart() is begun.  uGnssPosGetStart() also creates a mutex
+ * for thread safety which will remain in the system even after
+ * pCallback has been called; this will free the memory it occupies.
  *
  * @param gnssHandle  the handle of the GNSS instance.
  */

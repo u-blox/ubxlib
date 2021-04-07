@@ -35,11 +35,21 @@ extern "C" {
 
 /** Determine if the given network type supports sockets operations.
  */
-#define U_NETWORK_TEST_TYPE_HAS_SOCK(type) ((type == U_NETWORK_TYPE_CELL) || (type == U_NETWORK_TYPE_WIFI))
+#define U_NETWORK_TEST_TYPE_HAS_SOCK(type) ((type == U_NETWORK_TYPE_CELL) || \
+                                            (type == U_NETWORK_TYPE_WIFI))
 
 /** Determine if the given network type supports MQTT operations.
  */
-#define U_NETWORK_TEST_TYPE_HAS_MQTT(type) ((type == U_NETWORK_TYPE_CELL) || (type == U_NETWORK_TYPE_WIFI))
+#define U_NETWORK_TEST_TYPE_HAS_MQTT(type) ((type == U_NETWORK_TYPE_CELL) || \
+                                            (type == U_NETWORK_TYPE_WIFI))
+
+/** Determine if the given network and module combination supports
+ * credential storage.
+ */
+#define U_NETWORK_TEST_TYPE_HAS_CREDENTIAL_STORAGE(type, module) ((type == U_NETWORK_TYPE_CELL) || \
+                                                                  (type == U_NETWORK_TYPE_WIFI) || \
+                                                                  ((type == U_NETWORK_TYPE_BLE) && \
+                                                                   (module != (int32_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL)))
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -53,7 +63,7 @@ extern "C" {
 typedef struct {
     int32_t handle;
     uNetworkType_t type;
-    const void *pConfiguration;
+    void *pConfiguration;
 } uNetworkTestCfg_t;
 
 /* ----------------------------------------------------------------
@@ -80,6 +90,23 @@ extern const char *gpUNetworkTestTypeName[];
 #ifdef __cplusplus
 }
 #endif
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS
+ * -------------------------------------------------------------- */
+
+/** Update a GNSS network configuration for use with the AT
+ * interface.
+ *
+ * @param networkHandleAt    the handle of the network providing the
+ *                           AT interface (e.g. cellular).  NOT the
+ *                           AT client handle, the handle of the network.
+ * @param pGnssConfiguration a pointer to a structure of type
+ *                           uNetworkConfigurationGnss_t where the first
+ *                           element is set to U_NETWORK_TYPE_GNSS.
+ */
+void uNetworkTestGnssAtConfiguration(int32_t networkHandleAt,
+                                     void *pGnssConfiguration);
 
 #endif // _U_NETWORK_TEST_CFG_H_
 

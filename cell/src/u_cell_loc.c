@@ -115,45 +115,45 @@ void uCellLocGnssEnableSet(int32_t cellHandle, bool onNotOff)
 }
 
 // Set the module pin connected to GNSSEN.
-int32_t uCellLocPinGnssPwrSet(int32_t cellHandle, int32_t pin)
+void uCellLocPinGnssPwrSet(int32_t cellHandle, int32_t pin)
 {
     (void) cellHandle;
     (void) pin;
 
     // TODO
-
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
 // Set the module pin connected to Data Ready of the GNSS chip.
-int32_t uCellLocPinGnssDataReadySet(int32_t cellHandle, int32_t pin)
+void uCellLocPinGnssDataReadySet(int32_t cellHandle, int32_t pin)
 {
     (void) cellHandle;
     (void) pin;
-
-    // TODO
-
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
 // Configure the Cell Locate server parameters.
-int32_t uCellLocServerCfg(int32_t cellHandle,
-                          const char *pAuthenticationTokenStr,
-                          const char *pPrimaryServerStr,
-                          const char *pSecondaryServerStr)
+void uCellLocServerCfg(int32_t cellHandle,
+                       const char *pAuthenticationTokenStr,
+                       const char *pPrimaryServerStr,
+                       const char *pSecondaryServerStr)
 {
     (void) cellHandle;
     (void) pAuthenticationTokenStr;
     (void) pPrimaryServerStr;
     (void) pSecondaryServerStr;
-
-    // TODO
-
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
 // Check whether a GNSS chip is present.
 bool uCellLocIsGnssPresent(int32_t cellHandle)
+{
+    (void) cellHandle;
+
+    // TODO
+
+    return false;
+}
+
+// Check whether there is a GNSS chip on-board the cellular module.
+bool uCellLocGnssInsideCell(int32_t cellHandle)
 {
     (void) cellHandle;
 
@@ -187,15 +187,15 @@ void uCellLocWifiClearAllAps(int32_t cellHandle)
 
 // Get the current location.
 int32_t uCellLocGet(int32_t cellHandle,
-                    int32_t *pLatitudeX1e6, int32_t *pLongitudeX1e6,
+                    int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                     int32_t *pAltitudeMillimetres, int32_t *pRadiusMillimetres,
                     int32_t *pSpeedMillimetresPerSecond, int32_t pSvs,
                     int64_t *pTimeUtc,
                     bool (*pKeepGoingCallback) (int32_t))
 {
     (void) cellHandle;
-    (void) pLatitudeX1e6;
-    (void) pLongitudeX1e6;
+    (void) pLatitudeX1e7;
+    (void) pLongitudeX1e7;
     (void) pAltitudeMillimetres;
     (void) pRadiusMillimetres;
     (void) pSpeedMillimetresPerSecond;
@@ -221,8 +221,8 @@ int32_t uCellLocGet(int32_t cellHandle,
  */
 int32_t uCellLocGetStart(int32_t cellHandle,
                          void (*pCallback) (int32_t cellHandle,
-                                            int32_t latitudeX1e6,
-                                            int32_t longitudeX1e6,
+                                            int32_t latitudeX1e7,
+                                            int32_t longitudeX1e7,
                                             int32_t altitudeMillimetres,
                                             int32_t radiusMillimetres,
                                             int32_t speedMillimetresPerSecond,
