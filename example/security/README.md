@@ -61,7 +61,7 @@ For the remainder of the #defines you may either override their values in the sa
 ## Using A Cellular Module
 u-blox security is currently only supported on cellular, on the SARA-R5 cellular module.
 
-`U_CFG_TEST_CELL_MODULE_TYPE`: consult the `cell/api/u_cell_module_type.h` file to determine the type name for the cellular module you intend to use.  Since only SARA-R5 is supported you must set `U_CFG_TEST_CELL_MODULE_TYPE` to `CELL_CFG_MODULE_SARA_R5`.
+`U_CFG_TEST_CELL_MODULE_TYPE`: consult the `cell/api/u_cell_module_type.h` file to determine the type name for the cellular module you intend to use.  Since only SARA-R5 is supported you must set `U_CFG_TEST_CELL_MODULE_TYPE` to `U_CELL_MODULE_TYPE_SARA_R5`.
 
 `U_CFG_APP_PIN_CELL_xxx`: the default values for the MCU pins connecting your cellular module to your MCU are #defined in the file `port/platform/<vendor>/<chipset>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the #defines (where -1 means "not connected").
 
