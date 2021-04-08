@@ -185,10 +185,10 @@ def get_file_list(ubxlib_dir, lint_dirs, use_stubs):
         # file versions from the list
         for stub_file in stub_file_list:
             if stub_file.endswith("_stub.c"):
-                non_stub_file = stub_file.rstrip("_stub.c") + ".c"
+                non_stub_file = stub_file.replace("_stub.c", ".c")
             else:
                 if stub_file.endswith("_stub.cpp"):
-                    non_stub_file = stub_file.rstrip("_stub.cpp") + ".cpp"
+                    non_stub_file = stub_file.replace("_stub.cpp", ".cpp")
             for idx, item in enumerate(file_list):
                 if item == non_stub_file:
                     file_list.pop(idx)
