@@ -79,7 +79,7 @@ Hence a PC would be built to support a given set of instances (HW attached, tool
 # An **IMPORTANT** Detail: Multiple `ubxlib`s
 In the picture above the `ubxlib` repo exists in three different places:
 
-1.  on the machine where the `u_controller_client.py` script is running: Jenkins will typically have fetched the repo to test it and will run the version of `u_controller_client.py` that it finds there,
+1.  on the machine where the `u_controller_client.py` script is running: Jenkins will typically have fetched the repo to test it and will run the version of `u_controller._client.py` that it finds there,
 2.  on the machine where `u_agent_service.py` is running, in an "agent" directory,
 3.  also on the machine where `u_agent_service.py` is running but this time the version that `u_controller_client.py` has decided to test.
 

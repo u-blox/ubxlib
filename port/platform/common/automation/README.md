@@ -1,12 +1,6 @@
 # Introduction
 The files in here are used internally within u-blox to automate testing of `ubxlib`.  They are not supported externally.  However, if you find them useful please help yourselves.
 
-# Up-Coming Changes
-A number of changes are planned to this automated test system including Linux support, use of Docker to create test agents, separation of the build and test processes and introduction of a controller/agent pattern; please expect changes to occur without notice.
-
-The first of these changes, the controller/agent pattern (AKA MKII), is present in the scripts and described in these files but is not yet in active use.
-
-# MKII
 The automated test system has undergone an evolution.  This document describes all of the basics and how to use the automated test system in its MK I form, either locally on your computer, or driven from Jenkins, where Jenkins takes charge of the test agent and runs the tests scripts on the test agent just as you would on your laptop.
 
 Wrapping the MK I automated test system is a MK II automated test system.  The MK II automated test system uses [RPyC](https://rpyc.readthedocs.io/) in a controller/agent pattern with many agents and, potentally, more than one controller (i.e. Jenkinses).  At the lowest level the test agent is the same in the MK I and MK II worlds; adding the complication of the wrapper permits tests to be distributed across many test agents, improving test time by spreading the load.
