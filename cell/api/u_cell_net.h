@@ -405,8 +405,8 @@ int32_t uCellNetDisconnect(int32_t cellHandle,
  * ```
  * char buffer[U_CELL_NET_MCC_MNC_LENGTH_BYTES];
  *
- * for (int32_t x = uCellNetScanGetFirst(handle, NULL, NULL,
-                                         0, buffer, NULL);
+ * for (int32_t x = uCellNetScanGetFirst(handle, NULL, 0,
+                                         buffer, NULL, NULL);
  *      x >= 0;
  *      x = uCellNetScanGetNext(handle, NULL, 0, buffer, NULL)) {
  *     printf("%s\n", buffer);
