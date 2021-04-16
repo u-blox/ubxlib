@@ -215,19 +215,18 @@ def download_nrf53(connection, jlink_device_name, guard_time_seconds, build_dir,
     success = True
     if os.path.exists(cpunet_hex_path):
         printer.string("{}download NETCPU".format(prompt))
-        call_list = ["nrfjprog.exe", "-f", "NRF53", "-q", "--coprocessor", "CP_NETWORK", 
-                     "--sectorerase", "--program", cpunet_hex_path]
+        call_list = ["nrfjprog.exe", "-f", "NRF53", "--coprocessor", "CP_NETWORK", 
+                     "--chiperase", "--program", cpunet_hex_path]
         if connection and "debugger" in connection and connection["debugger"]:
             call_list.extend(["-s", connection["debugger"]])
         print_call_list(call_list, printer, prompt)
         success = u_utils.exe_run(call_list, guard_time_seconds, printer, prompt, shell_cmd=True, set_env=env)
-        u_utils.reset_nrf_target(connection, printer, prompt)
     if success:
         # Give nrfjprog some time to relax
         sleep(10)
         app_hex_path = os.path.join(build_dir, "zephyr", "merged.hex")
         printer.string("{}download APP".format(prompt))
-        call_list = ["nrfjprog.exe", "-f", "NRF53", "-q", "--sectorerase", "--program", app_hex_path]
+        call_list = ["nrfjprog.exe", "-f", "NRF53", "--chiperase", "--program", app_hex_path]
         if connection and "debugger" in connection and connection["debugger"]:
             call_list.extend(["-s", connection["debugger"]])
         print_call_list(call_list, printer, prompt)
