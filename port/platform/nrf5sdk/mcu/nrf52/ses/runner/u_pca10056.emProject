@@ -51,7 +51,8 @@
       <file file_name="../../../../../../../common/network/api/u_network_config_cell.h" />
       <file file_name="../../../../../../../common/network/api/u_network_config_wifi.h" />
       <file file_name="../../../../../../../common/network/src/u_network.c" />
-      <file file_name="../../../../../../../common/network/src/u_network_private_ble.c" />
+      <file file_name="../../../../../../../common/network/src/u_network_private_ble_extmod.c" />
+      <file file_name="../../../../../../../common/network/src/u_network_private_ble_intmod.c" />
       <file file_name="../../../../../../../common/network/src/u_network_private_cell.c" />
       <file file_name="../../../../../../../common/network/src/u_network_private_wifi.c" />
       <file file_name="../../../../../../../common/network/src/u_network_private_ble.h" />
@@ -94,9 +95,13 @@
       <file file_name="../../../../../../../ble/api/u_ble.h" />
       <file file_name="../../../../../../../ble/api/u_ble_cfg.h" />
       <file file_name="../../../../../../../ble/api/u_ble_data.h" />
-      <file file_name="../../../../../../../ble/src/u_ble.c" />
-      <file file_name="../../../../../../../ble/src/u_ble_cfg.c" />
-      <file file_name="../../../../../../../ble/src/u_ble_data.c" />
+      <file file_name="../../../../../../../ble/src/u_ble_extmod.c" />
+      <file file_name="../../../../../../../ble/src/u_ble_intmod.c" />
+      <file file_name="../../../../../../../ble/src/u_ble_cfg_extmod.c" />
+      <file file_name="../../../../../../../ble/src/u_ble_cfg_intmod.c" />
+      <file file_name="../../../../../../../ble/src/u_ble_data_extmod.c" />
+      <file file_name="../../../../../../../ble/src/u_ble_data_intmod.c" />
+      <file file_name="../../../../../../../ble/src/u_ble_private.c" />
       <file file_name="../../../../../../../ble/test/u_ble_test.c" />
       <file file_name="../../../../../../../ble/test/u_ble_cfg_test.c" />
       <file file_name="../../../../../../../ble/test/u_ble_data_test.c" />

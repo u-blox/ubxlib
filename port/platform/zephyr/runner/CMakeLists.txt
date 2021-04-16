@@ -23,6 +23,7 @@ target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_debug.c)
 target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_os.c)
 target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_gpio.c)
 target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_uart.c)
+target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_gatt.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c)
 
 #ubxlib common
@@ -30,6 +31,7 @@ target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/mbedtls/u_port_crypto.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/event_queue/u_port_event_queue.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/port/test/u_port_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/port/test/u_port_gatt_test.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/test/u_preamble_test.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/runner/u_runner.c)
 
@@ -48,7 +50,8 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/lib_common/test/u_lib_common_te
 #network
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/network/api ${UBXLIB_BASE}/common/network/src  ${UBXLIB_BASE}/common/network/test)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network.c)
-target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_ble.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_ble_intmod.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_cell.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/test/u_network_test.c)
@@ -94,9 +97,13 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_private.c)
 
 #ble API
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/ble/api ${UBXLIB_BASE}/ble/src ${UBXLIB_BASE}/ble/test)
-target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble.c)
-target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_cfg.c)
-target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_data.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_extmod.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_intmod.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_cfg_extmod.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_cfg_intmod.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_data_extmod.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_data_intmod.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/ble/src/u_ble_private.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_cfg_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_data_test.c)

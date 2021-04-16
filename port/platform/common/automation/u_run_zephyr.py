@@ -177,12 +177,14 @@ def jlink_device(mcu):
 
     return jlink_device_name
 
-def download(connection, jlink_device_name, guard_time_seconds,
-             build_dir, env, printer, prompt):
-    '''Download the given hex file'''
-    call_list = []
-    tool_opt = "-Autoconnect 1 -ExitOnError 1 -NoGui 1"
+def print_call_list(call_list, printer, prompt):
+    tmp = ""
+    for item in call_list:
+        tmp += " " + item
+    printer.string("{}in directory {} calling{}".         \
+                   format(prompt, os.getcwd(), tmp))
 
+def download_single_cpu(connection, jlink_device_name, guard_time_seconds, build_dir, env, printer, prompt):
     # Assemble the call list
     # Note that we use JLink to do the download
     # rather than the default of nrfjprog since there
@@ -190,36 +192,58 @@ def download(connection, jlink_device_name, guard_time_seconds,
     # resetting the target after the download when
     # it is used under west (whereas when JLink is
     # used this is the default)
-    call_list.append("west")
-    call_list.append("flash")
-    call_list.append("--skip-rebuild")
-    call_list.append("-d")
-    call_list.append(build_dir)
-    call_list.append("--runner")
-    call_list.append("jlink")
-    call_list.append("--erase")
-    # Just to be sure
-    call_list.append("--no-reset-after-load")
+    call_list = ["west", "flash", "-d", build_dir, "--runner", "jlink",
+                     "--erase", "--no-reset-after-load"]
+    tool_opt = "-Autoconnect 1 -ExitOnError 1 -NoGui 1"
+
     if jlink_device_name:
-        call_list.append("--device")
-        call_list.append(jlink_device_name)
+        call_list.extend(["--device", jlink_device_name])
     # Add the options that have to go through "--tool-opt"
     if connection and "debugger" in connection and connection["debugger"]:
         tool_opt += " -USB " + connection["debugger"]
     if tool_opt:
-        call_list.append("--tool-opt")
-        call_list.append(tool_opt)
+        call_list.extend(["--tool-opt", tool_opt])
 
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".         \
-                   format(prompt, os.getcwd(), tmp))
+    print_call_list(call_list, printer, prompt)
 
     # Call it
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt,
                            shell_cmd=True, set_env=env)
+
+def download_nrf53(connection, jlink_device_name, guard_time_seconds, build_dir, env, printer, prompt):
+    cpunet_hex_path = os.path.join(build_dir, "hci_rpmsg", "zephyr", "merged_CPUNET.hex")
+    success = True
+    if os.path.exists(cpunet_hex_path):
+        printer.string("{}download NETCPU".format(prompt))
+        call_list = ["nrfjprog.exe", "-f", "NRF53", "-q", "--coprocessor", "CP_NETWORK", 
+                     "--sectorerase", "--program", cpunet_hex_path]
+        if connection and "debugger" in connection and connection["debugger"]:
+            call_list.extend(["-s", connection["debugger"]])
+        print_call_list(call_list, printer, prompt)
+        success = u_utils.exe_run(call_list, guard_time_seconds, printer, prompt, shell_cmd=True, set_env=env)
+        u_utils.reset_nrf_target(connection, printer, prompt)
+    if success:
+        # Give nrfjprog some time to relax
+        sleep(10)
+        app_hex_path = os.path.join(build_dir, "zephyr", "merged.hex")
+        printer.string("{}download APP".format(prompt))
+        call_list = ["nrfjprog.exe", "-f", "NRF53", "-q", "--sectorerase", "--program", app_hex_path]
+        if connection and "debugger" in connection and connection["debugger"]:
+            call_list.extend(["-s", connection["debugger"]])
+        print_call_list(call_list, printer, prompt)
+        success = u_utils.exe_run(call_list, guard_time_seconds, printer, prompt, shell_cmd=True, set_env=env)
+    return success
+
+def download(connection, jlink_device_name, guard_time_seconds,
+             build_dir, env, printer, prompt):
+    '''Download the given hex file(s)'''
+    if jlink_device_name == "nRF5340_XXAA_APP":
+        success = download_nrf53(connection, jlink_device_name, guard_time_seconds, 
+                                 build_dir, env, printer, prompt)
+    else:
+        success = download_single_cpu(connection, jlink_device_name, guard_time_seconds, 
+                                      build_dir, env, printer, prompt)
+    return success
 
 def find_board(ubxlib_dir, mcu):
     '''Find the full board name for the given MCU'''

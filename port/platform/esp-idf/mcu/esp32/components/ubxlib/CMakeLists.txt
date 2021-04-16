@@ -27,9 +27,13 @@ set(COMPONENT_ADD_INCLUDEDIRS
 # The implementations of the APIs
 set(COMPONENT_SRCS 
 # The ble API
-                   "../../../../../../../ble/src/u_ble.c"
-                   "../../../../../../../ble/src/u_ble_cfg.c"
-                   "../../../../../../../ble/src/u_ble_data.c"
+                   "../../../../../../../ble/src/u_ble_extmod.c"
+                   "../../../../../../../ble/src/u_ble_intmod.c"
+                   "../../../../../../../ble/src/u_ble_cfg_extmod.c"
+                   "../../../../../../../ble/src/u_ble_cfg_intmod.c"
+                   "../../../../../../../ble/src/u_ble_data_extmod.c"
+                   "../../../../../../../ble/src/u_ble_data_intmod.c"
+                   "../../../../../../../ble/src/u_ble_private.c"
 # The cell API
                    "../../../../../../../cell/src/u_cell.c"
                    "../../../../../../../cell/src/u_cell_pwr.c"
@@ -43,7 +47,8 @@ set(COMPONENT_SRCS
                    "../../../../../../../cell/src/u_cell_private.c"
 # The common network layer
                    "../../../../../../../common/network/src/u_network.c"
-                   "../../../../../../../common/network/src/u_network_private_ble.c"
+                   "../../../../../../../common/network/src/u_network_private_ble_extmod.c"
+                   "../../../../../../../common/network/src/u_network_private_ble_intmod.c"
                    "../../../../../../../common/network/src/u_network_private_cell.c"
                    "../../../../../../../common/network/src/u_network_private_wifi.c"
 # The common sock layer

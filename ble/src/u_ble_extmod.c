@@ -24,6 +24,8 @@
  * @brief Implementation of the "general" API for ble.
  */
 
+#ifndef U_CFG_BLE_MODULE_INTERNAL
+
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
@@ -40,6 +42,9 @@
 
 #include "u_ble_module_type.h"
 #include "u_ble.h"
+#include "u_port_os.h"
+#include "u_port_gatt.h"
+#include "u_ble_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -87,8 +92,10 @@ uBleModuleType_t shortRangeToBleModule(uShortRangeModuleType_t module)
             bleModule = U_BLE_MODULE_TYPE_ODIN_W2;
             break;
         case U_SHORT_RANGE_MODULE_TYPE_INVALID:
-        default:
+        case U_SHORT_RANGE_MODULE_TYPE_INTERNAL:
             bleModule = U_BLE_MODULE_TYPE_INVALID;
+            break;
+        default:
             break;
     }
 
@@ -103,12 +110,14 @@ uBleModuleType_t shortRangeToBleModule(uShortRangeModuleType_t module)
 // Initialise the ble driver.
 int32_t uBleInit()
 {
+    uBleDataPrivateInit();
     return uShortRangeInit();
 }
 
 // Shut-down the ble driver.
 void uBleDeinit()
 {
+    uBleDataPrivateDeinit();
     uShortRangeDeinit();
 }
 
@@ -117,6 +126,11 @@ int32_t uBleAdd(uBleModuleType_t moduleType,
                 uAtClientHandle_t atHandle)
 {
     int32_t errorCode;
+
+    if (moduleType >= U_BLE_MODULE_TYPE_INVALID) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+
     errorCode = uShortRangeLock();
 
     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
@@ -168,4 +182,7 @@ uBleModuleType_t uBleDetectModule(int32_t bleHandle)
 
     return bleModule;
 }
+
+#endif
+
 // End of file

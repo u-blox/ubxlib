@@ -27,6 +27,8 @@
  * file should be private and this is simply named to match.
  */
 
+#ifndef U_CFG_BLE_MODULE_INTERNAL
+
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
@@ -268,4 +270,5 @@ int32_t uNetworkDownBle(int32_t handle,
     return uNetworkUpBle(handle, pConfiguration);
 }
 
+#endif
 // End of file

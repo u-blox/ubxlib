@@ -43,10 +43,10 @@ extern "C" {
 #endif
 
 #ifndef U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES
-/** Large enough for the largest possible EDM packet.
- * TODO: this needs revisiting, shouldn't have to be this big.
+/** UART buffer length. UART characters are placed in this buffer
+ * on arrival. EDM parser then consumes from this buffer.
  */
-# define U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES 4000
+# define U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES 512
 #endif
 
 #ifndef U_SHORT_RANGE_UART_BAUD_RATE

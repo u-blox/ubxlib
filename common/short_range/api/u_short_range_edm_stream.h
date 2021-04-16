@@ -56,6 +56,12 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
+typedef enum {
+    U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT,
+    U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_WIFI,
+    U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID
+} uShortRangeEdmStreamConnectionType_t;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -138,11 +144,15 @@ int32_t uShortRangeEdmStreamAtRead(int32_t handle, void *pBuffer,
  *                  the connected event callback.
  * @param pBuffer   a pointer to a buffer of data to send.
  * @param sizeBytes the number of bytes in pBuffer.
+ * @param timeoutMs timeout in ms. If timeout is reached, sending is
+ *                  interrupted and the actual number of bytes sent returned.
+ *                  Reaching timeout is not considered an error.
  * @return          the number of bytes sent or negative
  *                  error code.
  */
 int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
-                                  const void *pBuffer, size_t sizeBytes);
+                                  const void *pBuffer, size_t sizeBytes,
+                                  uint32_t timeoutMs);
 
 /** Set a callback to be called when an AT event occurs.
  * pFunction will be called asynchronously in its own task.

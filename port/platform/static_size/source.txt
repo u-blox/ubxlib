@@ -3,9 +3,13 @@
 # i.e. only core ubxlib functionality.
 # Paths are relative to the ubxlib root directory, forward-slashes must be used.
 
-ble/src/u_ble.c
-ble/src/u_ble_cfg.c
-ble/src/u_ble_data.c
+ble/src/u_ble_extmod.c
+ble/src/u_ble_intmod.c
+ble/src/u_ble_cfg_extmod.c
+ble/src/u_ble_cfg_intmod.c
+ble/src/u_ble_data_extmod.c
+ble/src/u_ble_data_intmod.c
+ble/src/u_ble_private.c
 cell/src/u_cell.c
 cell/src/u_cell_pwr.c
 cell/src/u_cell_cfg.c
@@ -17,7 +21,8 @@ cell/src/u_cell_sec_c2c.c
 cell/src/u_cell_sec_tls.c
 cell/src/u_cell_private.c
 common/network/src/u_network.c
-common/network/src/u_network_private_ble.c
+common/network/src/u_network_private_ble_extmod.c
+common/network/src/u_network_private_ble_intmod.c
 common/network/src/u_network_private_cell.c
 common/network/src/u_network_private_wifi.c
 common/sock/src/u_sock.c

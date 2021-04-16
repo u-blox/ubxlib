@@ -58,8 +58,9 @@
 #include "u_cell_test_cfg.h" // For the cellular test macros
 #endif
 
-#ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
+#if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
 #include "u_ble_data.h"
+#include "u_error_common.h"
 #endif
 
 #include "u_network.h"
@@ -67,6 +68,7 @@
 
 #include "u_sock.h"           // In order to prove that we can do
 #include "u_sock_test_shared_cfg.h"  // something with an "up" network
+
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -90,13 +92,22 @@ static const char gTestString[] = "Hello from u-blox.";
  */
 static size_t gSystemHeapLost = 0;
 
-#ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
-/** The macro U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS should be set to the
- * address of the BLE test peer WITHOUT quotation marks, e.g.
- * U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS=2462ABB6CC42p.  If the macro is
- * not defined then no network test of BLE will be run.
+/** One of the macro U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL or U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL
+ * should be set to the address of the BLE test peer WITHOUT quotation marks, e.g.
+ * U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL=2462ABB6CC42p.  If none of the macros are
+ * defined then no network test of BLE will be run.
  */
-static const char gRemoteSpsAddress[] = U_PORT_STRINGIFY_QUOTED(U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS);
+#ifdef U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL
+static const char gRemoteSpsAddress[] =
+    U_PORT_STRINGIFY_QUOTED(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL);
+#else
+#ifdef U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL
+static const char gRemoteSpsAddress[] =
+    U_PORT_STRINGIFY_QUOTED(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL);
+#endif
+#endif
+#if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
+#define U_BLE_TEST_TEST_DATA_LOOPS 2
 static const char gTestData[] =  "_____0000:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789"
                                  "_____0001:0123456789012345678901234567890123456789"
@@ -116,20 +127,27 @@ static const char gTestData[] =  "_____0000:012345678901234567890123456789012345
                                  "_____0008:0123456789012345678901234567890123456789"
                                  "01234567890123456789012345678901234567890123456789"
                                  "_____0009:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789";
+                                 "01234567890123456789012345678901234567890123456789"
+                                 "abcdefg";
+// Make sure the test data is not a multiple of the MTU
+// so we test packets smaller than MTU as well as MTU sized packets
+
+
 static volatile int32_t gConnHandle;
 static volatile int32_t gBytesReceived;
 static volatile int32_t gErrors = 0;
 static volatile uint32_t gIndexInBlock;
-static const int32_t gTotalData = sizeof gTestData - 1;
+static const int32_t gTotalBytes = (sizeof gTestData - 1) * U_BLE_TEST_TEST_DATA_LOOPS;
 static volatile int32_t gBytesSent;
+static volatile int32_t gChannel;
+static volatile size_t gBleHandle;
 #endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-#ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
+#if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
 
 // Print out text.
 static void print(const char *pStr, size_t length)
@@ -146,53 +164,90 @@ static void print(const char *pStr, size_t length)
             uPortLog("%c", c);
         }
     }
+    uPortLog("\n");
+}
+
+static void sendBleData(int32_t handle)
+{
+    uint32_t tries = 0;
+    int32_t testDataOffset = 0;
+    uPortLog("U_NETWORK_TEST: Sending data on channel %d...\n", gChannel);
+    while ((tries++ < 15) && (gBytesSent < gTotalBytes)) {
+        // -1 to omit gTestData string terminator
+        int32_t bytesSentNow =
+            uBleDataSend(handle, gChannel, gTestData + testDataOffset, sizeof gTestData - 1 - testDataOffset);
+
+        if (bytesSentNow >= 0) {
+            gBytesSent += bytesSentNow;
+            testDataOffset += bytesSentNow;
+            if (testDataOffset >= sizeof gTestData - 1) {
+                testDataOffset -= sizeof gTestData - 1;
+            }
+        } else {
+            uPortLog("U_NETWORK_TEST: Error sending Data!!\n");
+        }
+        uPortLog("U_NETWORK_TEST: %d byte(s) sent.\n", gBytesSent);
+
+        // Make room for context switch letting receive event process
+        uPortTaskBlock(U_CFG_OS_YIELD_MS);
+    }
+    if (gBytesSent < gTotalBytes) {
+        uPortLog("U_NETWORK_TEST: %d byte(s) were not sent.\n", gTotalBytes - gBytesSent);
+    }
 }
 
 //lint -e{818} Suppress 'pData' could be declared as const:
 // need to follow function signature
-static void dataCallback(int32_t channel, size_t length,
-                         char *pData, void *pParameters)
+static void bleDataCallback(int32_t channel, void *pParameters)
 {
-    bool hadErrors = false;
-#if U_CFG_OS_CLIB_LEAKS
-    int32_t heapClibLoss;
-#endif
-
-    (void) channel;
-    (void) pParameters;
-
+    char buffer[100];
+    int32_t length;
 #if U_CFG_OS_CLIB_LEAKS
     // Calling C library functions from new tasks will
     // allocate additional memory which, depending
     // on the OS/system, may not be recovered;
     // take account of that here.
-    heapClibLoss = uPortGetHeapFree();
+    int32_t heapClibLoss = uPortGetHeapFree();
 #endif
+    (void)pParameters;
 
-    // Compare the data with the expected data
-    for (uint32_t x = 0; (x < length); x++) {
-        gBytesReceived++;
-        if (gTestData[gIndexInBlock] == *(pData + x)) {
-            gIndexInBlock++;
-            if (gIndexInBlock >= sizeof(gTestData) - 1) {
-                gIndexInBlock = 0;
+    U_PORT_TEST_ASSERT(channel == gChannel);
+
+    do {
+        length = uBleDataReceive(gBleHandle, channel, buffer, sizeof buffer);
+        if (length > 0) {
+            int errorOrigDataStartIndex = -1;
+            int errorRecDataStartIndex = -1;
+            int errorLength = -1;
+
+            // Compare the data with the expected data
+            for (uint32_t x = 0; (x < length); x++) {
+                gBytesReceived++;
+                if (gTestData[gIndexInBlock] != buffer[x]) {
+                    if (errorOrigDataStartIndex < 0) {
+                        errorOrigDataStartIndex = gIndexInBlock;
+                        errorRecDataStartIndex = x;
+                        errorLength = 1;
+                    } else {
+                        errorLength++;
+                    }
+                    gErrors++;
+                }
+                if (++gIndexInBlock >= sizeof gTestData - 1) {
+                    gIndexInBlock -= sizeof gTestData - 1;
+                }
             }
-        } else {
-            hadErrors = true;
-            gErrors++;
-        }
-    }
-    if (hadErrors) {
-        uPortLog("U_NETWORK_TEST: received %d byte(s):\n", length);
-        print(pData, length);
-        uPortLog("\n");
-        uPortLog("U_NETWORK_TEST: expected:\n");
-        print(gTestData + gIndexInBlock, length);
-        uPortLog("\n");
-    }
-    uPortLog("U_NETWORK_TEST: received %d byte(s) of %d, error %d.\n",
-             length, gBytesReceived, gErrors);
 
+            uPortLog("U_NETWORK_TEST: received %d bytes (total %d with %d errors)\n", length, gBytesReceived,
+                     gErrors);
+            if (errorOrigDataStartIndex >= 0) {
+                uPortLog("U_NETWORK_TEST: expected:\n");
+                print(gTestData + errorOrigDataStartIndex, errorLength);
+                uPortLog("U_NETWORK_TEST: got:\n");
+                print(buffer + errorRecDataStartIndex, errorLength);
+            }
+        }
+    } while (length > 0);
 #if U_CFG_OS_CLIB_LEAKS
     // Take account of any heap lost through the
     // library calls
@@ -207,9 +262,9 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
     int32_t heapClibLoss;
 #endif
 
-    (void) address;
-    (void) mtu;
-    int32_t *pHandle = (int32_t *) pParameters;
+    (void)address;
+    (void)mtu;
+    (void)pParameters;
 
 #if U_CFG_OS_CLIB_LEAKS
     // Calling C library functions from new tasks will
@@ -220,29 +275,16 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
 #endif
 
     if (type == 0) {
-        int32_t testDataOffset = 0;
-        // Wait a moment for the other end may not be immediately ready
         gConnHandle = connHandle;
-        uPortLog("U_NETWORK_TEST: connected connection handle %d.\n", connHandle);
-        uPortTaskBlock(100);
-        while (gBytesSent < gTotalData * 2) {
-            int32_t bytesToSend = 20;
-            if (bytesToSend > gTotalData - testDataOffset) {
-                bytesToSend = gTotalData - testDataOffset;
-            }
-            uBleDataSend(*pHandle, channel, gTestData + testDataOffset, bytesToSend);
-            uPortTaskBlock(U_CFG_OS_YIELD_MS);
-
-            testDataOffset += bytesToSend;
-            if (testDataOffset >= gTotalData) {
-                testDataOffset -= gTotalData;
-            }
-            gBytesSent += bytesToSend;
-        }
-        uPortLog("U_NETWORK_TEST: %d byte(s) sent.\n", gBytesSent);
+        gChannel = channel;
+        uPortLog("U_NETWORK_TEST: connected %s handle %d (channel %d).\n", address, connHandle, channel);
     } else if (type == 1) {
         gConnHandle = -1;
-        uPortLog("U_NETWORK_TEST: disconnected connection handle %d.\n", connHandle);
+        if (connHandle != U_BLE_DATA_INVALID_HANDLE) {
+            uPortLog("U_NETWORK_TEST: disconnected connection handle %d.\n", connHandle);
+        } else {
+            uPortLog("U_NETWORK_TEST: connection attempt failed\n");
+        }
     }
 
 #if U_CFG_OS_CLIB_LEAKS
@@ -383,8 +425,11 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                     // Clean up to ensure no memory leaks
                     uSockCleanUp();
 
-#ifdef U_BLE_TEST_CFG_REMOTE_SPS_ADDRESS
+#if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
                 } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
+                    int32_t timeoutCount;
+                    uBleDataSpsHandles_t spsHandles;
+                    memset(&spsHandles, 0x00, sizeof spsHandles);
 
                     gConnHandle = -1;
                     gBytesSent = 0;
@@ -394,46 +439,73 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                     uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
                                                         connectionCallback,
                                                         &gUNetworkTestCfg[x].handle);
-                    uBleDataSetCallbackData(gUNetworkTestCfg[x].handle, dataCallback,
-                                            &gUNetworkTestCfg[x].handle);
+                    uBleDataSetDataAvailableCallback(gUNetworkTestCfg[x].handle, bleDataCallback,
+                                                     &gUNetworkTestCfg[x].handle);
+                    gBleHandle = gUNetworkTestCfg[x].handle;
 
-                    // Connections can fail so try this a few timees
-                    for (size_t z = 0; (z < 3) && (gConnHandle == -1) ; z++) {
-                        U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
-                                                              gRemoteSpsAddress) == 0);
-                        for (int32_t i = 0; (i < 40) && (gConnHandle == -1); i++) {
-                            uPortTaskBlock(100);
-                        };
-                        if (gConnHandle == -1) {
-                            uPortLog("U_NETWORK_TEST: *** WARNING *** BLE connection"
-                                     " attempt %d failed, will retry.\n", z + 1);
+                    for (int i = 0; i < 3; i++) {
+                        if (i > 0) {
+                            if (uBleDataPresetSpsServerHandles(gUNetworkTestCfg[x].handle, &spsHandles) ==
+                                U_ERROR_COMMON_NOT_IMPLEMENTED) {
+                                continue;
+                            }
                         }
+                        if (i > 1) {
+                            if (uBleDataDisableFlowCtrlOnNext(gUNetworkTestCfg[x].handle) ==
+                                U_ERROR_COMMON_NOT_IMPLEMENTED) {
+                                continue;
+                            }
+                        }
+                        for (uint32_t tries = 0; tries < 3; tries++) {
+                            uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
+                            U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                                                                  gRemoteSpsAddress) == 0);
+
+                            for (timeoutCount = 0; timeoutCount < 50; timeoutCount++) {
+                                // Wait for connection
+                                if (gConnHandle != -1) {
+                                    break;
+                                }
+                                uPortTaskBlock(100);
+                            }
+                            if (gConnHandle != -1) {
+                                break;
+                            }
+                        }
+
+                        if (timeoutCount >= 50) {
+                            uPortLog("U_NETWORK_TEST: All SPS connection attempts failed!\n");
+                        }
+                        U_PORT_TEST_ASSERT(timeoutCount < 50);
+                        if (i == 0) {
+                            uBleDataGetSpsServerHandles(gUNetworkTestCfg[x].handle, gChannel, &spsHandles);
+                        }
+
+                        uBleDataSetSendTimeout(gUNetworkTestCfg[x].handle, gChannel, 100);
+                        uPortTaskBlock(100);
+                        timeoutCount = 0;
+                        sendBleData(gUNetworkTestCfg[x].handle);
+                        while (gBytesReceived < gBytesSent) {
+                            uPortTaskBlock(10);
+                            if (timeoutCount++ > 100) {
+                                break;
+                            }
+                        }
+                        U_PORT_TEST_ASSERT(gBytesSent == gTotalBytes);
+                        U_PORT_TEST_ASSERT(gBytesSent == gBytesReceived);
+                        U_PORT_TEST_ASSERT(gErrors == 0);
+                        // Disconnect
+                        U_PORT_TEST_ASSERT(uBleDataDisconnect(gUNetworkTestCfg[x].handle, gConnHandle) == 0);
+                        for (int32_t i = 0; (i < 40) && (gConnHandle != -1); i++) {
+                            uPortTaskBlock(100);
+                        }
+                        gBytesSent = 0;
+                        gBytesReceived = 0;
+                        U_PORT_TEST_ASSERT(gConnHandle == -1);
                     }
 
-                    U_PORT_TEST_ASSERT(gConnHandle != -1);
-
-                    y = 100;
-                    while ((gBytesSent < gTotalData) && (y > 0)) {
-                        uPortTaskBlock(100);
-                        y--;
-                    };
-                    // All sent, give some time to finish receiving
-                    uPortTaskBlock(2000);
-
-                    U_PORT_TEST_ASSERT(gBytesSent == gTotalData * 2);
-                    U_PORT_TEST_ASSERT(gTotalData * 2 == gBytesReceived);
-                    U_PORT_TEST_ASSERT(gErrors == 0);
-
-                    // Disconnect
-                    U_PORT_TEST_ASSERT(uBleDataDisconnect(gUNetworkTestCfg[x].handle, gConnHandle) == 0);
-                    for (int32_t i = 0; (i < 40) && (gConnHandle != -1); i++) {
-                        uPortTaskBlock(100);
-                    };
-
-                    uBleDataSetCallbackData(gUNetworkTestCfg[x].handle, NULL, NULL);
+                    uBleDataSetDataAvailableCallback(gUNetworkTestCfg[x].handle, NULL, NULL);
                     uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle, NULL, NULL);
-
-                    U_PORT_TEST_ASSERT(gConnHandle == -1);
 #endif
                 }
             }

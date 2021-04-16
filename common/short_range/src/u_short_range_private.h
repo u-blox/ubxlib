@@ -102,10 +102,12 @@ typedef struct uShortRangePrivateInstance_t {
     void *pBtConnectionStatusCallbackParameter;
     void (*pWifiConnectionStatusCallback) (int32_t, int32_t, void *);
     void *pWifiConnectionStatusCallbackParameter;
-    void (*pSpsConnectionCallback) (int32_t, char *, int32_t, int32_t, int32_t, void *);
+    uBleDataConnectionStatusCallback_t pSpsConnectionCallback;
     void *pSpsConnectionCallbackParameter;
     void *pPendingSpsConnectionEvent;
     void (*pBtDataCallback) (int32_t, size_t, char *, void *);
+//lint -esym(768, uShortRangePrivateInstance_t::pBtDataAvailableCallback)
+    uBleDataAvailableCallback_t pBtDataAvailableCallback;
     void *pBtDataCallbackParameter;
     void (*pDataCallback) (int32_t, size_t, char *, void *);
     void *pDataCallbackParameter;

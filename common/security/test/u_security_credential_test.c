@@ -49,10 +49,12 @@
 #endif
 
 #include "u_network.h"
+#include "u_network_config_ble.h"
 #include "u_network_test_shared_cfg.h"
 
 #include "u_security_credential.h"
 #include "u_security_credential_test_data.h"
+#include "u_short_range_module_type.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -189,11 +191,17 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
         if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: adding %s network...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                                     gUNetworkTestCfg[x].pConfiguration);
-            U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+            if ((gUNetworkTestCfg[x].type == U_NETWORK_TYPE_BLE) &&
+                (((const uNetworkConfigurationBle_t *)gUNetworkTestCfg[x].pConfiguration)->module ==
+                 (int32_t)U_SHORT_RANGE_MODULE_TYPE_INTERNAL)) {
+                uPortLog("U_SECURITY_CREDENTIAL_TEST: not ported for internal Ble module, skipping test!\n");
+            } else {
+                uPortLog("U_SECURITY_CREDENTIAL_TEST: adding %s network...\n",
+                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+                gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
+                                                         gUNetworkTestCfg[x].pConfiguration);
+                U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+            }
         }
     }
 
@@ -410,7 +418,6 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             U_PORT_TEST_ASSERT(z == otherCredentialCount);
             uPortLog("U_SECURITY_CREDENTIAL_TEST: %d credential(s) listed.\n", z);
         }
-
     }
 
     // Remove each network type

@@ -54,7 +54,7 @@
 #include "u_short_range_edm_stream.h"
 #include "u_ble_module_type.h"
 #include "u_ble.h"
-#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+#if defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)
 #include "u_ble_data.h"
 #endif
 #include "u_ble_test_private.h"
@@ -81,16 +81,11 @@ static uBleTestPrivate_t gHandles = { -1, -1, NULL, -1 };
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+#if defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)
 
-//lint -e{818} Suppress 'pData' could be declared as const:
-// need to follow function signature
-static void dataCallback(int32_t channel, size_t length,
-                         char *pData, void *pParameters)
+static void dataAvailableCallback(int32_t channel, void *pParameters)
 {
     (void) channel;
-    (void) length;
-    (void) pData;
     (void) pParameters;
 }
 
@@ -111,8 +106,15 @@ U_PORT_TEST_FUNCTION("[bleData]", "bleData")
     int32_t heapUsed;
     heapUsed = uPortGetHeapFree();
 
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                &gHandles) == 0);
+#elif U_CFG_BLE_MODULE_INTERNAL
+    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_BLE_MODULE_TYPE_INTERNAL,
+                                               &gHandles) == 0);
+#else
+#error "Either U_CFG_TEST_SHORT_RANGE_MODULE_TYPE or U_CFG_BLE_MODULE_INTERNAL must be defined"
+#endif
 
 
     U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
@@ -133,12 +135,14 @@ U_PORT_TEST_FUNCTION("[bleData]", "bleData")
     U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
                                                            NULL, NULL) == 0);
 
-
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackData(gHandles.bleHandle, dataCallback, NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackData(gHandles.bleHandle, dataCallback, NULL) != 0);
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackData(gHandles.bleHandle, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackData(gHandles.bleHandle, dataCallback, NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackData(gHandles.bleHandle, NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
+                                                        NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
+                                                        NULL) != 0);
+    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
+                                                        NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, NULL, NULL) == 0);
 
     uBleTestPrivatePostamble(&gHandles);
 

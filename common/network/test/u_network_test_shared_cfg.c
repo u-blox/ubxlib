@@ -47,7 +47,7 @@
 #include "u_cell_test_cfg.h" // For the cellular test macros
 #endif
 
-#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+#if defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)
 #include "u_short_range_module_type.h"
 #endif
 
@@ -72,10 +72,14 @@
 
 /** The network configuration for BLE.
  */
-#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+#if defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)
 static const uNetworkConfigurationBle_t gConfigurationBle = {
     U_NETWORK_TYPE_BLE,
+#ifdef U_CFG_BLE_MODULE_INTERNAL
+    (int32_t)U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
+#else
     U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+#endif
     U_CFG_APP_SHORT_RANGE_UART,
     U_CFG_APP_PIN_SHORT_RANGE_TXD,
     U_CFG_APP_PIN_SHORT_RANGE_RXD,

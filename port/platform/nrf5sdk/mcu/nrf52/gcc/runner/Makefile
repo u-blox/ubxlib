@@ -88,9 +88,13 @@ SRC_FILES += \
   ../../../../../../../example/security/psk/psk_main.c \
   ../../../../../../../example/security/c2c/c2c_main.c \
   ../../../../../../../example/cell/lte_cfg/lte_cfg_main.c \
-  ../../../../../../../ble/src/u_ble.c \
-  ../../../../../../../ble/src/u_ble_cfg.c \
-  ../../../../../../../ble/src/u_ble_data.c \
+  ../../../../../../../ble/src/u_ble_extmod.c \
+  ../../../../../../../ble/src/u_ble_intmod.c \
+  ../../../../../../../ble/src/u_ble_cfg_extmod.c \
+  ../../../../../../../ble/src/u_ble_cfg_intmod.c \
+  ../../../../../../../ble/src/u_ble_data_extmod.c \
+  ../../../../../../../ble/src/u_ble_data_intmod.c \
+  ../../../../../../../ble/src/u_ble_private.c \
   ../../../../../../../ble/test/u_ble_test.c \
   ../../../../../../../ble/test/u_ble_cfg_test.c \
   ../../../../../../../ble/test/u_ble_data_test.c\
@@ -114,7 +118,8 @@ SRC_FILES += \
   ../../../../../../../cell/test/u_cell_test_preamble.c \
   ../../../../../../../cell/test/u_cell_test_private.c \
   ../../../../../../../common/network/src/u_network.c \
-  ../../../../../../../common/network/src/u_network_private_ble.c \
+  ../../../../../../../common/network/src/u_network_private_ble_extmod.c \
+  ../../../../../../../common/network/src/u_network_private_ble_intmod.c \
   ../../../../../../../common/network/src/u_network_private_cell.c \
   ../../../../../../../common/network/src/u_network_private_wifi.c \
   ../../../../../../../common/network/test/u_network_test.c \

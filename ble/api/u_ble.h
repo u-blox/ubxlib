@@ -87,12 +87,15 @@ void uBleDeinit(void);
 
 /** Add a ble instance.
  *
- * @param moduleType       the short range module type.
+ * @param moduleType       the short range module type, if external module.
+ *                         Otherwise just U_BLE_MODULE_TYPE_INTERNAL
  * @param atHandle         the handle of the AT client to use.  This must
  *                         already have been created by the caller with
  *                         a buffer of size U_BLE_AT_BUFFER_LENGTH_BYTES.
  *                         If a ble instance has already been added
  *                         for this atHandle an error will be returned.
+ *                         In case of internal module:
+ *                           just set the parameter to NULL.
  * @return                 on success the handle of the ble instance,
  *                         else negative error code.
  */

@@ -31,6 +31,7 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
@@ -51,12 +52,6 @@
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-
-typedef enum {
-    U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT,
-    U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_WIFI,
-    U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID
-} uShortRangeEdmStreamConnectionType_t;
 
 typedef enum {
     U_SHORT_RANGE_EDM_STREAM_CONNECTED,
@@ -843,7 +838,8 @@ int32_t uShortRangeEdmStreamAtRead(int32_t handle, void *pBuffer,
 }
 
 int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
-                                  const void *pBuffer, size_t sizeBytes)
+                                  const void *pBuffer, size_t sizeBytes,
+                                  uint32_t timeoutMs)
 {
     int32_t sizeOrErrorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
 
@@ -859,6 +855,8 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
                 char head[U_SHORT_RANGE_EDM_DATA_HEAD_SIZE];
                 char tail[U_SHORT_RANGE_EDM_TAIL_SIZE];
                 sizeOrErrorCode = 0;
+                int64_t startTime = uPortGetTickTimeMs();
+                int64_t endTime;
 
                 do {
                     if (((int32_t)sizeBytes - sizeOrErrorCode) > pConnection->frameSize) {
@@ -879,7 +877,9 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
                     } else {
                         sizeOrErrorCode += send;
                     }
-                } while ((int32_t)sizeBytes > sizeOrErrorCode);
+                    endTime = uPortGetTickTimeMs();
+                } while (((int32_t)sizeBytes > sizeOrErrorCode) &&
+                         (endTime - startTime < timeoutMs));
             }
         }
         U_PORT_MUTEX_UNLOCK(gMutex);

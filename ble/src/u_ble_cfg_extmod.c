@@ -24,6 +24,8 @@
  * @brief Implementation of the cfg API for ble.
  */
 
+#ifndef U_CFG_BLE_MODULE_INTERNAL
+
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
@@ -35,9 +37,12 @@
 
 #include "u_error_common.h"
 
+#include "u_cfg_sw.h"
 #include "u_port_os.h"
 
 #include "u_at_client.h"
+
+#include "u_ble_data.h"
 
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
@@ -155,6 +160,23 @@ static int32_t getServer(const uAtClientHandle_t atHandle, int32_t type)
     return error;
 }
 
+static int32_t disableServer(const uAtClientHandle_t atHandle, int32_t serverId)
+{
+    int32_t error;
+
+    uAtClientLock(atHandle);
+
+    uAtClientCommandStart(atHandle, "AT+UDSC=");
+    uAtClientWriteInt(atHandle, serverId);
+    uAtClientWriteInt(atHandle, 0);
+    uAtClientCommandStop(atHandle);
+    uAtClientCommandStopReadResponse(atHandle);
+
+    error = uAtClientUnlock(atHandle);
+
+    return error;
+}
+
 static int32_t setServer(const uAtClientHandle_t atHandle, uShortRangeServerType_t type)
 {
     int32_t error;
@@ -219,6 +241,7 @@ static int32_t restart(const uAtClientHandle_t atHandle, bool store)
     return error;
 }
 
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -231,6 +254,7 @@ int32_t uBleCfgConfigure(int32_t bleHandle,
 
     if (pCfg != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+
         if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
             pInstance = pUShortRangePrivateGetInstance(bleHandle);
             if (pInstance != NULL) {
@@ -254,6 +278,12 @@ int32_t uBleCfgConfigure(int32_t bleHandle,
                             restartNeeded = true;
                         }
                     }
+                } else {
+                    int32_t spsServerId = getServer(atHandle, U_BLE_CFG_SERVER_TYPE_SPS);
+                    if (spsServerId >= 0) {
+                        disableServer(atHandle, spsServerId);
+                        restartNeeded = true;
+                    }
                 }
 
                 int32_t mode = getStartupMode(atHandle);
@@ -275,5 +305,7 @@ int32_t uBleCfgConfigure(int32_t bleHandle,
 
     return errorCode;
 }
+
+#endif
 
 // End of file

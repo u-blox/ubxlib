@@ -82,9 +82,14 @@
 			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Common/Network/u_network_private_ble.c</name>
+			<name>Ubxlib/U-Blox/Common/Network/u_network_private_ble_extmod.c</name>
 			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_ble.c</locationURI>
+			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_ble_extmod.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/Network/u_network_private_ble_intmod.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_ble_intmod.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Common/Network/u_network_private_cell.c</name>
@@ -157,19 +162,39 @@
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/heap_check/u_heap_check.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Ble/u_ble.c</name>
+			<name>Ubxlib/U-Blox/Ble/u_ble_extmod.c</name>
 			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble.c</locationURI>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_extmod.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Ble/u_ble_cfg.c</name>
+			<name>Ubxlib/U-Blox/Ble/u_ble_intmod.c</name>
 			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_cfg.c</locationURI>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_intmod.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Ble/u_ble_data.c</name>
+			<name>Ubxlib/U-Blox/Ble/u_ble_cfg_extmod.c</name>
 			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_data.c</locationURI>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_cfg_extmod.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Ble/u_ble_cfg_intmod.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_cfg_intmod.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Ble/u_ble_data_extmod.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_data_extmod.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Ble/u_ble_data_intmod.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_data_intmod.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Ble/u_ble_private.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/ble/src/u_ble_private.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell.c</name>

@@ -112,6 +112,11 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
     uAtClientHandle_t atClientHandle;
     uAtClientHandle_t atClientHandleCheck = (uAtClientHandle_t) -1;
     int32_t heapUsed;
+#ifdef U_CFG_BLE_MODULE_INTERNAL
+    uBleModuleType_t testModuleType = U_BLE_MODULE_TYPE_INTERNAL;
+#else
+    uBleModuleType_t testModuleType = U_BLE_MODULE_TYPE_NINA_B3;
+#endif
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -145,27 +150,41 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
     uPortLog("U_BLE_TEST: adding a ble instance on that AT client...\n");
-    bleHandle = uBleAdd(U_BLE_MODULE_TYPE_NINA_B3, (void *)atClientHandle);
+    bleHandle = uBleAdd(testModuleType, (void *)atClientHandle);
     U_PORT_TEST_ASSERT(bleHandle >= 0);
+#ifdef U_CFG_BLE_MODULE_INTERNAL
+    // In the case of internal Ble module there is not atClient handle
+    // saved in the Ble instance
+    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
+                                             &atClientHandleCheck) < 0);
+#else
     U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
                                              &atClientHandleCheck) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
 
     uPortLog("U_BLE_TEST: adding another instance on the same AT client,"
              " should fail...\n");
-    U_PORT_TEST_ASSERT(uBleAdd(U_BLE_MODULE_TYPE_NINA_B3, atClientHandle));
+    U_PORT_TEST_ASSERT(uBleAdd(testModuleType, atClientHandle));
 
     uPortLog("U_BLE_TEST: removing ble instance...\n");
+//lint -save -e522 uBleRemove lack side-effects when compiling for internal ble module
     uBleRemove(bleHandle);
+//lint -restore
 
     uPortLog("U_BLE_TEST: adding it again...\n");
-    bleHandle = uBleAdd(U_BLE_MODULE_TYPE_NINA_B3, atClientHandle);
+    bleHandle = uBleAdd(testModuleType, atClientHandle);
     U_PORT_TEST_ASSERT(bleHandle >= 0);
+#endif
 
     atClientHandleCheck = (uAtClientHandle_t) -1;
+#ifdef U_CFG_BLE_MODULE_INTERNAL
+    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
+                                             &atClientHandleCheck) < 0);
+#else
     U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
                                              &atClientHandleCheck) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
+#endif
 
     uPortLog("U_BLE_TEST: deinitialising ble API...\n");
     uBleDeinit();
