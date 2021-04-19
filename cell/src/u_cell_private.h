@@ -138,7 +138,13 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_DATA_COUNTERS,
     U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING,
     U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION,
-    U_CELL_PRIVATE_FEATURE_SECURITY_TLS_PSK_AS_HEX
+    U_CELL_PRIVATE_FEATURE_SECURITY_TLS_PSK_AS_HEX,
+    U_CELL_PRIVATE_FEATURE_MQTT,
+    U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX,
+    U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT,
+    U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN,
+    U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH,
+    U_CELL_PRIVATE_FEATURE_MQTT_WILL
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -248,6 +254,8 @@ typedef struct uCellPrivateInstance_t {
     void *pConnectionStatusCallbackParameter;
     uCellPrivateNet_t *pScanResults;    /**< Anchor for list of network scan results. */
     void *pSecurityC2cContext;  /**< Hook for a chip to chip security context. */
+    volatile void *pMqttContext; /**< Hook for MQTT context, volatile as it
+                                      can be populared by a URC in a different thread. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 
@@ -336,6 +344,17 @@ void  uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
  */
 int32_t uCellPrivateGetImsi(const uCellPrivateInstance_t *pInstance,
                             char *pImsi);
+
+/** Get the IMEI of the module.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance  a pointer to the cellular instance.
+ * @param pImei      a pointer to 15 bytes in which the IMEI
+ *                   will be stored.
+ * @return           zero on success else negative error code.
+ */
+int32_t uCellPrivateGetImei(const uCellPrivateInstance_t *pInstance,
+                            char *pImei);
 
 /** Get whether the given instance is registered with the network.
  * Note: gUCellPrivateMutex should be locked before this is called.

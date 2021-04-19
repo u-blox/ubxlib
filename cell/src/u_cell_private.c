@@ -89,8 +89,13 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 2 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)
+         // Support for MQTT on this module flavour is present in the code
+         // but has not yet been tested, hence this feature is currently
+         // commented out.
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)
+        ) /* features */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -99,10 +104,18 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                            |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                                  |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)                       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)
+         // Support for MQTT on this module flavour is present in the code
+         // but has not yet been tested, hence these features are currently
+         // commented out.
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                   |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)                 |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                    |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)
+        ) /* features */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -111,22 +124,33 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)             |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                   |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)
+         // Support for MQTT on this module flavour is present in the code
+         // but has not yet been tested, hence these features are currently
+         // commented out.
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)              |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                 |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)
+        ) /* features */
     },
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         5 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
         20 /* Cmd wait ms */, 5000 /* Resp max wait ms */, 0 /* radioOffCfun */, 1 /* Simultaneous RATs */,
         (1UL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)             |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                   |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)           |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)            |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)           |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)                        |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)                       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)) /* features */
     }
 };
 
@@ -192,7 +216,7 @@ void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters
 
 // Clear the dynamic parameters of an instance,
 // so the network status, the active RAT and
-// the
+// the radio parameters.
 void uCellPrivateClearDynamicParameters(uCellPrivateInstance_t *pInstance)
 {
     for (size_t x = 0;
@@ -304,6 +328,44 @@ int32_t uCellPrivateGetImsi(const uCellPrivateInstance_t *pInstance,
     return errorCode;
 }
 
+// Get the IMEI of the cellular module.
+int32_t uCellPrivateGetImei(const uCellPrivateInstance_t *pInstance,
+                            char *pImei)
+{
+    int32_t errorCode = (int32_t) U_CELL_ERROR_AT;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    int32_t bytesRead;
+
+    // Try this ten times: unfortunately
+    // the module can spit out a URC just when
+    // we're expecting the IMEI and, since there
+    // is no prefix on the response, we have
+    // no way of telling the difference.  Hence
+    // check the length and that length being
+    // made up entirely of numerals
+    for (size_t x = 10; (x > 0) && (errorCode != 0); x--) {
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+CGSN");
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, NULL);
+        bytesRead = uAtClientReadBytes(atHandle, pImei,
+                                       15, false);
+        uAtClientResponseStop(atHandle);
+        if ((uAtClientUnlock(atHandle) == 0) &&
+            (bytesRead == 15) &&
+            uCellPrivateIsNumeric(pImei, 15)) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return errorCode;
+}
+
+
+
+
+
+
 // Get whether the given instance is registered with the network.
 // Needs to be in the packet switched domain, circuit switched is
 // no use for this API.
@@ -384,6 +446,8 @@ const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle)
 }
 
 // Convert a buffer into the ASCII hex equivalent.
+//lint -esym(429, pHex) Suppress Lint getting a bee in its
+// bonnet about pHex not being free()'d when it IS being free()'d.
 size_t uCellPrivateBinToHex(const char *pBin, size_t binLength,
                             char *pHex)
 {

@@ -13,6 +13,7 @@ set(COMPONENT_ADD_INCLUDEDIRS
                    "../../../../../../../common/sock/api"
                    "../../../../../../../common/network/api"
                    "../../../../../../../common/security/api"
+                   "../../../../../../../common/mqtt_client/api"
                    "../../../../../../../common/at_client/api"
                    "../../../../../../../common/short_range/api"
                    "../../../../../../../common/short_range/src"
@@ -44,6 +45,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../cell/src/u_cell_sec.c"
                    "../../../../../../../cell/src/u_cell_sec_c2c.c"
                    "../../../../../../../cell/src/u_cell_sec_tls.c"
+                   "../../../../../../../cell/src/u_cell_mqtt.c"
                    "../../../../../../../cell/src/u_cell_private.c"
 # The common network layer
                    "../../../../../../../common/network/src/u_network.c"
@@ -57,6 +59,8 @@ set(COMPONENT_SRCS
                    "../../../../../../../common/security/src/u_security.c"
                    "../../../../../../../common/security/src/u_security_tls.c"
                    "../../../../../../../common/security/src/u_security_credential.c"
+# The common MQTT layer
+                   "../../../../../../../common/mqtt_client/src/u_mqtt_client.c"
 # The common AT client
                    "../../../../../../../common/at_client/src/u_at_client.c"
 # The common short range layer

@@ -764,7 +764,11 @@ int32_t uAtClientReadUint64(uAtClientHandle_t atHandle,
  *                        including the null terminator. If
  *                        pString is NULL this should be
  *                        set to the maximum number of bytes
- *                        to be read and thrown away.
+ *                        to be read and thrown away. If
+ *                        the string is longer than lengthBytes
+ *                        any remaining characters up to the
+ *                        next delimiter or stop tag are
+ *                        thrown away.
  * @param ignoreStopTag   if true then continue reading even
  *                        if the stop tag is found; set this
  *                        to true to read a multi-line response
@@ -815,7 +819,12 @@ int32_t uAtClientReadString(uAtClientHandle_t atHandle,
  *                    socket AT command.  If this is false
  *                    then a delimiter (or the stop tag
  *                    for a response line) will be expected
- *                    following the sequence of bytes.
+ *                    following the sequence of bytes. If
+ *                    you have previously set
+ *                    uAtClientIgnoreStopTag() then standalone
+ *                    should be set to true, otherwise this
+ *                    function will search for a non-existent
+ *                    stop tag.
  * @return            the number of bytes read or negative
  *                    error code.  If pBuffer is NULL the
  *                    number of bytes that would have been

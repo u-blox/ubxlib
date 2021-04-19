@@ -585,8 +585,6 @@ int32_t uCellInfoGetImei(int32_t cellHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
-    int32_t bytesRead;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -595,33 +593,11 @@ int32_t uCellInfoGetImei(int32_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) && (pImei != NULL)) {
-            atHandle = pInstance->atHandle;
-            // Try this ten times: unfortunately
-            // the module can spit out a URC just when
-            // we're expecting the IMEI and, since there
-            // is no prefix on the response, we have
-            // no way of telling the difference.  Hence
-            // check the length and that length being
-            // made up entirely of numerals
-            errorCode = (int32_t) U_CELL_ERROR_AT;
-            for (size_t x = 10; (x > 0) && (errorCode != 0); x--) {
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+CGSN");
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, NULL);
-                bytesRead = uAtClientReadBytes(atHandle, pImei,
-                                               U_CELL_INFO_IMEI_SIZE,
-                                               false);
-                uAtClientResponseStop(atHandle);
-                if ((uAtClientUnlock(atHandle) == 0) &&
-                    (bytesRead == U_CELL_INFO_IMEI_SIZE) &&
-                    uCellPrivateIsNumeric(pImei, U_CELL_INFO_IMEI_SIZE)) {
-                    uPortLog("U_CELL_INFO: IMEI is %*s.\n",
-                             U_CELL_INFO_IMEI_SIZE, pImei);
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                }
-            }
-            if (errorCode != 0) {
+            errorCode = uCellPrivateGetImei(pInstance, pImei);
+            if (errorCode == 0) {
+                uPortLog("U_CELL_INFO: IMEI is %.*s.\n",
+                         U_CELL_INFO_IMEI_SIZE, pImei);
+            } else {
                 uPortLog("U_CELL_INFO: unable to read IMEI.\n");
             }
         }

@@ -72,6 +72,11 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/security/test/u_security_tls_te
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/security/test/u_security_credential_test_data.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/security/test/u_security_credential_test.c)
 
+#mqtt client
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/mqtt_client/api)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/mqtt_client/src/u_mqtt_client.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/mqtt_client/test/u_mqtt_client_test.c)
+
 #cell API
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/cell/api ${UBXLIB_BASE}/cell/src ${UBXLIB_BASE}/cell/test)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell.c)
@@ -83,6 +88,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sock.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sec.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sec_c2c.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_sec_tls.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_mqtt.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/src/u_cell_private.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_pwr_test.c)
@@ -92,6 +98,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_net_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sock_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sec_c2c_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_sec_tls_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_mqtt_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_preamble.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/cell/test/u_cell_test_private.c)
 
@@ -126,6 +133,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/example/sockets/credentials_tls.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/e2e/e2e_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/psk/psk_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/c2c/c2c_main.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/example/mqtt_client/mqtt_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/cell/lte_cfg/lte_cfg_main.c)
 
 # unity

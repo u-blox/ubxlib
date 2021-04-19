@@ -211,6 +211,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
                 pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
                 pInstance->pSecurityC2cContext = NULL;
+                pInstance->pMqttContext = NULL;
                 pInstance->pNext = NULL;
 
                 // Now set up the pins

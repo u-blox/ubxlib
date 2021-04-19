@@ -22,6 +22,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 - If you wish to bring up a network and don't care about the details, use the common [network](common/network) API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
 - If you wish to use a socket over that network, use the common [sock](common/sock) API.
 - If you wish to use security, use the common [security](common/security) API.
+- If you wish to contact an MQTT broker over that network, use the common [mqtt_client](common/mqtt_client) API.
 - If you wish to take finer control of your [cellular](cell), [ble](ble) or Wifi connection, use the respective control API directly.
 - GNSS is used via the gnss API.
 - The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](common/short_range) API.
@@ -35,14 +36,14 @@ The key APIs provided by this repo, and their relationships with each other, are
 |-----------|:-----------:|--------------|-----|-----|-----|
 |                         |              |C030 board|NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B10 series|
 |                         |              |**MCU**||||
-|                         |              |ST-Micro STM32|Espressif ESP32|Nordic nRF52|Nordic nRF53|
+|                         |              |ST-Micro STM32F4|Espressif ESP32|Nordic nRF52|Nordic nRF53|
 |                         |              |**Toolchain**||||
-|                         |              |Cube|ESP-IDF|GCC<br />Segger ES (nRF5)<br />nRF Connect|nRF Connect|
+|                         |              |Cube|ESP-IDF|GCC<br />SES (nRF5)<br />nRF Connect|nRF Connect|
 |                         |              |**RTOS / SDK**||||
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|
 | **ubxlib peripherals**   |**API**       |||||
-| SARA-U2 series<br />SARA-R41x series<br />| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />|Yes|Yes|Yes|Yes|
-| SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[security](common/security "security API")|Yes|Yes|Yes|Yes|
+| SARA-U2 series<br />SARA-R4x series<br />| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[tls&nbsp;security](common/security "security API")<br>|Yes|Yes|Yes|Yes|
+| SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[security](common/security "security API")<br>[mqtt_client](common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
 | SARA-R510M8S            | gnss|TBD|TBD|TBD|TBD|
 |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](ble "ble API")<br />[network](common/network "network API")|Yes|Yes|N/A|N/A|
 |NINA-W13|wifi<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q2 2021|N/A|Q2 2021|Q2 2021|
@@ -69,7 +70,8 @@ In order for u-blox to support multiple platforms with this code there is also a
 ¦   ¦   +---src                    containing public headers, a source directory with
 ¦   ¦   +---test                   the implementation and a test directory with the tests
 ¦   +---sock                   <-- the sockets API for cell, Wifi (and in the future BLE)
-¦   +---security               <-- common API for u-blox security
+¦   +---security               <-- common API for u-blox security and TLS security/credential storage
+¦   +---mqtt_client            <-- common MQTT client API for cell (and in the future Wifi)
 ¦   +---short_range            <-- internal API used by the BLE and Wifi APIs (see below)
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wifi APIs
 ¦   +---error                  <-- u_error_common.h: error codes common across APIs
@@ -109,15 +111,16 @@ Having chosen your MCU and installed the platform tools, navigate to the directo
 
 Configuration information for the examples and the tests can be found in the `cfg` directory of your chosen MCU.  Depending on how you have connected your MCU to a u-blox module you may need to override this configuration, e.g. to change which MCU pin is connected to which pin of the u-blox module.  The `README.md` in the `runner` directory will tell you how to override conditional compilation flags in order to do this.
 
-# Examples How To Use ubxlib
+# Examples: How To Use ubxlib
 
 |  Technology  | Example | Availability |
 |--------------|----------|--------------|
-| Cellular     | The [sockets](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q4 2020 / Q1 2021 |
-| Cellular     | The [end-to-end security](example/security/e2e "E2E Example") example using the [security](common/security "security API") API. | Q1 2021|
-| Cellular     | The [PSK generation](example/security/psk "PSK Example") example using the [security](common/security "security API") API. | Q1 2021|
-| Cellular     | The [chip-to-chip security](example/security/c2c "C2C Example") example using the [security](common/security "security API") API. | Q1 2021|
-| Cellular     | A [TLS-secured version](example/sockets "TLS sockets Example") of the sockets example. | Q2 2021|
+| Cellular     | The [sockets](example/sockets "socket example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q4 2020 / Q1 2021 |
+| Cellular     | The [end-to-end security](example/security/e2e "E2E example") example using the [security](common/security "security API") API. | Q1 2021|
+| Cellular     | The [PSK generation](example/security/psk "PSK example") example using the [security](common/security "security API") API. | Q1 2021|
+| Cellular     | The [chip-to-chip security](example/security/c2c "C2C example") example using the [security](common/security "security API") API. | Q1 2021|
+| Cellular     | A [TLS-secured version](example/sockets "TLS sockets example") of the sockets example. | Q2 2021|
+| Cellular     | An [MQTT client](example/mqtt_client "MQTT example") using the [MQTT client](common/mqtt_client "MQTT client API") API.| Q2 2021|
 | Cellular     | CellLocate | Q2 2021|
 | Bluetooth    | SPS (serial port service) | Q1 2021|
 | WiFi         | The [sockets](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q2 2021|
@@ -127,7 +130,7 @@ Configuration information for the examples and the tests can be found in the `cf
 The software in this repository is Apache 2.0 licensed and copyright u-blox with the following exceptions:
 
 - The heap management code (`heap_useNewlib.c`), required because the nRF5 SDK and STM32F4Cube platforms don't provide the necessary memory management for newlib and `FreeRTOS` to play together, is copyright Dave Nadler.
-- The AT client code in [/common/at_client](/common/at_client) is derived from the Apache 2.0 licensed AT parser of mbed-os.
+- The AT client code in [common/at_client](/common/at_client) is derived from the Apache 2.0 licensed AT parser of mbed-os.
 - The [stm32cube platform directory](/port/platform/stm32cube/src) necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
 - The `go` echo servers in [common/sock/test/echo_server](/common/sock/test/echo_server) are based on those used in testing of AWS FreeRTOS.
 - The `setjmp()/longjmp()` implementation in [port/clib/u_port_setjmp.S](/port/clib/u_port_setjmp.S), used when testing the Zephyr platform, is copyright Nick Clifton, Cygnus Solutions and part of newlib.

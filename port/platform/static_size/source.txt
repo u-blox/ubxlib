@@ -19,6 +19,7 @@ cell/src/u_cell_sock.c
 cell/src/u_cell_sec.c
 cell/src/u_cell_sec_c2c.c
 cell/src/u_cell_sec_tls.c
+cell/src/u_cell_mqtt.c
 cell/src/u_cell_private.c
 common/network/src/u_network.c
 common/network/src/u_network_private_ble_extmod.c
@@ -35,6 +36,7 @@ common/short_range/src/u_short_range_sec_tls.c
 common/short_range/src/u_short_range_edm.c
 common/short_range/src/u_short_range_edm_stream.c
 common/short_range/src/u_short_range_private.c
+common/mqtt_client/src/u_mqtt_client.c
 port/platform/common/event_queue/u_port_event_queue.c
 port/platform/static_size/stubs/u_port_stub.c
 port/platform/static_size/stubs/u_lib_stub.c

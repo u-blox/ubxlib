@@ -24,6 +24,7 @@ common/at_client/src
 common/error/api
 common/short_range/api
 common/short_range/src
+common/mqtt_client/api
 port/api
 port/clib
 port/platform/common/event_queue

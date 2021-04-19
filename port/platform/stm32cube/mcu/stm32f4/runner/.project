@@ -67,6 +67,11 @@
 			<locationURI>$%7BUBX_PATH%7D/example/security/c2c/c2c_main.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Example/MQTT_Client/mqtt_main.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/example/mqtt_client/mqtt_main.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Example/Cell/LTECfg/lte_cfg_main.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/example/cell/lte_cfg/lte_cfg_main.c</locationURI>
@@ -120,6 +125,11 @@
 			<name>Ubxlib/U-Blox/Common/Security/u_security_credential.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/security/src/u_security_credential.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/Mqtt/u_mqtt_client.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/mqtt_client/src/u_mqtt_client.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Common/AtClient/u_at_client.c</name>
@@ -242,6 +252,11 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_sec_tls.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Cell/u_cell_mqtt.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_mqtt.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_private.c</locationURI>
@@ -290,6 +305,11 @@
 			<name>Ubxlib/U-Blox/Test/Security/u_security_credential_test_data.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/security/test/u_security_credential_test_data.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/MQTT_Client/u_mqtt_client_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/mqtt_client/test/u_mqtt_client_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Ble/u_ble_test.c</name>
@@ -347,10 +367,14 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_sec_c2c_test.c</locationURI>
 		</link>
 		<link>
-
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_sec_tls_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_sec_tls_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Cell/u_cell_mqtt_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_mqtt_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test_preamble.c</name>
@@ -626,6 +650,11 @@
 			<name>Ubxlib/Inc/U-Blox/common/security/test</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/security/test</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/mqtt_client/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/mqtt_client/api</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/common/network/src</name>

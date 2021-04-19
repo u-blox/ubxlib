@@ -87,6 +87,7 @@ SRC_FILES += \
   ../../../../../../../example/security/e2e/e2e_main.c \
   ../../../../../../../example/security/psk/psk_main.c \
   ../../../../../../../example/security/c2c/c2c_main.c \
+  ../../../../../../../example/mqtt_client/mqtt_main.c \
   ../../../../../../../example/cell/lte_cfg/lte_cfg_main.c \
   ../../../../../../../ble/src/u_ble_extmod.c \
   ../../../../../../../ble/src/u_ble_intmod.c \
@@ -107,6 +108,7 @@ SRC_FILES += \
   ../../../../../../../cell/src/u_cell_sec.c \
   ../../../../../../../cell/src/u_cell_sec_c2c.c \
   ../../../../../../../cell/src/u_cell_sec_tls.c \
+  ../../../../../../../cell/src/u_cell_mqtt.c \
   ../../../../../../../cell/src/u_cell_private.c \
   ../../../../../../../cell/test/u_cell_pwr_test.c \
   ../../../../../../../cell/test/u_cell_cfg_test.c \
@@ -115,6 +117,7 @@ SRC_FILES += \
   ../../../../../../../cell/test/u_cell_sock_test.c \
   ../../../../../../../cell/test/u_cell_sec_c2c_test.c \
   ../../../../../../../cell/test/u_cell_sec_tls_test.c \
+  ../../../../../../../cell/test/u_cell_mqtt_test.c \
   ../../../../../../../cell/test/u_cell_test_preamble.c \
   ../../../../../../../cell/test/u_cell_test_private.c \
   ../../../../../../../common/network/src/u_network.c \
@@ -143,6 +146,7 @@ SRC_FILES += \
   ../../../../../../../common/short_range/src/u_short_range_private.c \
   ../../../../../../../common/short_range/test/u_short_range_test.c \
   ../../../../../../../common/short_range/test/u_short_range_test_private.c \
+  ../../../../../../../common/mqtt_client/src/u_mqtt_client.c \
   ../../../../src/u_port.c \
   ../../../../src/u_port_debug.c \
   ../../../../src/u_port_gpio.c \
@@ -216,6 +220,7 @@ INC_FOLDERS += \
   ../../../../../../../common/short_range/api \
   ../../../../../../../common/short_range/src \
   ../../../../../../../common/short_range/test \
+  ../../../../../../../common/mqtt_client/api \
   ../../../../../../api \
   ../../../../../../../cfg \
   ../../../../../../clib \
