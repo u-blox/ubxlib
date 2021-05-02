@@ -107,6 +107,37 @@ static const uCellNetRat_t gModuleRatToCellRat[][5] = {
  * STATIC FUNCTIONS: SARA-U2 RAT SETTING/GETTING BEHAVIOUR
  * -------------------------------------------------------------- */
 
+// Set the given COPS if it's not already the given one, returning
+// the one it was, if you see what I mean.
+static int32_t setCops(uAtClientHandle_t atHandle, int32_t cops)
+{
+    int32_t x;
+    int32_t errorCodeOrCops;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+COPS?");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+COPS:");
+    x = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    errorCodeOrCops = uAtClientUnlock(atHandle);
+    if (errorCodeOrCops == 0) {
+        errorCodeOrCops = x;
+        if (errorCodeOrCops != cops) {
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+COPS=");
+            uAtClientWriteInt(atHandle, cops);
+            uAtClientCommandStopReadResponse(atHandle);
+            x = uAtClientUnlock(atHandle);
+            if (x < 0) {
+                errorCodeOrCops = x;
+            }
+        }
+    }
+
+    return errorCodeOrCops;
+}
+
 // Get the radio access technology that is being used by
 // the cellular module at the given rank, SARA-U2 style.
 // Note: gUCellPrivateMutex should be locked before this is called.
@@ -120,8 +151,6 @@ static uCellNetRat_t getRatSaraU2(uCellPrivateInstance_t *pInstance,
 
     // For SARA-U2, need to be in AT+CFUN=1 to get the RAT
     cFunMode = uCellPrivateCFunOne(pInstance);
-    // Not checking error here, what follows will fail if this
-    // fails anyway
 
     // In the SARA-U2 case the first "RAT" represents the operating
     // mode and the second the preferred RAT in that operating mode
@@ -261,11 +290,11 @@ static int32_t setRatSaraU2(uCellPrivateInstance_t *pInstance,
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t cFunMode;
+    int32_t cops;
 
-    // For SARA-U2, need to be in AT+CFUN=1 to get the RAT
+    // For SARA-U2, need to be in AT+CFUN=1 and AT+COPS=2 to set the RAT
     cFunMode = uCellPrivateCFunOne(pInstance);
-    // Not checking error here, what follows will fail if this
-    // fails anyway
+    cops = setCops(atHandle, 2);
 
     uPortLog("U_CELL_CFG: setting sole RAT to %d (in module terms %d).\n",
              rat, gCellRatToModuleRat[rat][pInstance->pModule->moduleType]);
@@ -276,6 +305,11 @@ static int32_t setRatSaraU2(uCellPrivateInstance_t *pInstance,
     uAtClientCommandStopReadResponse(atHandle);
     errorCode = uAtClientUnlock(atHandle);
 
+    // Put AT+COPS back
+    if (cops >= 0) {
+        // Put COPS back
+        setCops(atHandle, cops);
+    }
     // Put the AT+CFUN mode back if it was not already 1
     if ((cFunMode >= 0) && (cFunMode != 1)) {
         uCellPrivateCFunMode(pInstance, cFunMode);
@@ -294,6 +328,7 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t modes[U_CELL_PRIVATE_MAX_NUM_SIMULTANEOUS_RATS];
     int32_t cFunMode;
+    int32_t cops;
 
     // In the SARA-U2 case the first "RAT" represents the operating
     // mode and the second the preferred RAT in that operating mode
@@ -306,10 +341,11 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
     }
     // For SARA-U2, need to be in AT+CFUN=1 to get the RAT
     cFunMode = uCellPrivateCFunOne(pInstance);
-    // Not checking error here, what follows will fail if this
-    // fails anyway
+    cops = setCops(atHandle, 2);
 
     // Get the existing operating modes
+    // Not checking error here, what follows will fail if this
+    // fails anyway
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+URAT?");
     uAtClientCommandStop(atHandle);
@@ -434,6 +470,11 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
                  gCellRatToModuleRat[rat][pInstance->pModule->moduleType], rank);
     }
 
+    // Put AT+COPS back
+    if (cops >= 0) {
+        // Put COPS back
+        setCops(atHandle, cops);
+    }
     // Put the AT+CFUN mode back if it was not already 1
     if ((cFunMode >= 0) && (cFunMode != 1)) {
         uCellPrivateCFunMode(pInstance, cFunMode);
