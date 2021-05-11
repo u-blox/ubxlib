@@ -126,6 +126,9 @@ Configuration information for the examples and the tests can be found in the `cf
 | WiFi         | The [sockets](example/sockets "socket Example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q2 2021|
 | GNSS         | TBD |TBD|
 
+# Feature request and roadmap
+New features can be requested and up-voted [here](https://github.com/u-blox/ubxlib/issues/12). The comments of this issue also contains an outlook about features of upcoming releases. Also it is the right place to discuss features and their priority.
+
 # License
 The software in this repository is Apache 2.0 licensed and copyright u-blox with the following exceptions:
 
