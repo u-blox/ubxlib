@@ -29,6 +29,7 @@
  * -------------------------------------------------------------- */
 
 #define U_PORT_TEST_ASSERT(condition) U_PORT_UNITY_TEST_ASSERT(condition)
+#define U_PORT_TEST_ASSERT_EQUAL(expected, actual) U_PORT_UNITY_TEST_ASSERT_EQUAL(expected, actual)
 #define U_PORT_TEST_FUNCTION(name, group) U_PORT_UNITY_TEST_FUNCTION(name,  \
                                                                      group)
 #define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 64)
