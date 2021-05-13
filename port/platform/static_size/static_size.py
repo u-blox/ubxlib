@@ -22,7 +22,11 @@ GNU_LINKER = "arm-none-eabi-gcc"
 GNU_SIZE = "arm-none-eabi-size"
 
 # The guard time in seconds for each compilation
-GUARD_TIME_SECONDS = 30
+# This may seem quite large: reason is that this script
+# can sometimes be run on a *very* heavily loaded test
+# machine which can take some considerable time finding
+# CPU memory to launch a process
+GUARD_TIME_SECONDS = 120
 
 # Sub-directory to use when building
 BUILD_SUBDIR = "build"
