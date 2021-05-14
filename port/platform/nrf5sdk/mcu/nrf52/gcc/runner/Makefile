@@ -1,8 +1,8 @@
 PROJECT_NAME     := u_pca10056
 TARGETS          := nrf52840_xxaa
 OUTPUT_DIRECTORY := _build
-UNITY_PATH := ../../../../../../../../Unity
-NRF5_PATH := ../../../../../../../../nrf5
+UNITY_PATH ?= ../../../../../../../../Unity
+NRF5_PATH ?= ../../../../../../../../nrf5
 JLINK_SERIAL_NUMBER := 
 # This is picked up in gcc_startup_nrf52840.S to
 # set the heap size.  If you modify this value then
