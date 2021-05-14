@@ -35,6 +35,7 @@ extern "C" {
 /** Macro to map a unit test assertion to Unity.
  */
 #define U_PORT_UNITY_TEST_ASSERT(condition) TEST_ASSERT(condition)
+#define U_PORT_UNITY_TEST_ASSERT_EQUAL(expected, actual) TEST_ASSERT_EQUAL(expected, actual)
 
 /** Used by U_RUNNER_NAME_EXPAND.
  */

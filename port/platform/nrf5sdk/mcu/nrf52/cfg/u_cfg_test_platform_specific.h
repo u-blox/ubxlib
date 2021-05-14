@@ -35,6 +35,7 @@
 /** Macro to wrap a test assertion and map it to our Unity port.
  */
 #define U_PORT_TEST_ASSERT(condition) U_PORT_UNITY_TEST_ASSERT(condition)
+#define U_PORT_TEST_ASSERT_EQUAL(expected, actual) U_PORT_UNITY_TEST_ASSERT_EQUAL(expected, actual)
 
 /** Macro to wrap the definition of a test function and
  * map it to our Unity port.
