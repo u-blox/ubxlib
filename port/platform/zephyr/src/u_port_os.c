@@ -535,7 +535,8 @@ void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
 
     k_mem_domain_init(&dom0, ARRAY_SIZE(app_parts), app_parts);
     k_mem_domain_add_thread(&dom0, k_current_get());
-
+    // Need to switch context to make the memory domain changes active
+    k_yield();
     *pSize = U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE;
 
     return exe_chunk_0;
