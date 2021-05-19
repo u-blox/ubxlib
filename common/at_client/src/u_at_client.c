@@ -2013,9 +2013,7 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                                                           U_AT_CLIENT_URC_TASK_PRIORITY);
                                     break;
                                 case U_AT_CLIENT_STREAM_TYPE_EDM:
-                                    errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient,
-                                                                                  U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
-                                                                                  U_AT_CLIENT_URC_TASK_PRIORITY);
+                                    errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient);
                                     break;
                                 default:
                                     // streamType is checked on entry

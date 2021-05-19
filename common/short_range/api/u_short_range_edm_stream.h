@@ -35,18 +35,9 @@ extern "C" {
 #define U_EDM_STREAM_TASK_STACK_SIZE_BYTES  1536
 #endif
 
-#ifndef U_EDM_STREAM_AT_EVENT_QUEUE_SIZE
-#define U_EDM_STREAM_AT_EVENT_QUEUE_SIZE 1
+#ifndef U_EDM_STREAM_EVENT_QUEUE_SIZE
+#define U_EDM_STREAM_EVENT_QUEUE_SIZE 3
 #endif
-
-#ifndef U_EDM_STREAM_BT_EVENT_QUEUE_SIZE
-#define U_EDM_STREAM_BT_EVENT_QUEUE_SIZE 1
-#endif
-
-#ifndef U_EDM_STREAM_DATA_EVENT_QUEUE_SIZE
-#define U_EDM_STREAM_DATA_EVENT_QUEUE_SIZE 1
-#endif
-
 
 #ifndef U_EDM_STREAM_TASK_PRIORITY
 # define U_EDM_STREAM_TASK_PRIORITY (U_CFG_OS_PRIORITY_MAX - 4)
@@ -79,10 +70,10 @@ void uShortRangeEdmStreamDeinit();
 /** Open an instance. Needs an open UART instance that is not accessed
  * by any other module.
  *
- * @param uartHandle             the UART HW block to use.
+ * @param uartHandle       the UART HW block to use.
  *
- * @return                       a stream handle else negative
- *                               error code.
+ * @return                 a stream handle else negative
+ *                         error code.
  */
 int32_t uShortRangeEdmStreamOpen(int32_t uartHandle);
 
@@ -163,29 +154,14 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
  * @param pParam           a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
- * @param stackSizeBytes   the number of bytes of stack for
- *                         the task in which pFunction is
- *                         called, must be at least
- *                         U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES.
- * @param priority         the priority of the task in which
- *                         pFunction is called; see
- *                         u_cfg_os_platform_specific.h for
- *                         your platform for more information.
- *                         The default application, for instance,
- *                         runs at U_CFG_OS_APP_TASK_PRIORITY,
- *                         so if you want pFunction to be
- *                         scheduled before it you might set a
- *                         priority of
- *                         U_CFG_OS_APP_TASK_PRIORITY + 1.
+ *
  * @return                 zero on success else negative error
  *                         code.
  */
 int32_t uShortRangeEdmStreamAtCallbackSet(int32_t handle,
                                           void (*pFunction)(int32_t, uint32_t,
                                                             void *),
-                                          void *pParam,
-                                          size_t stackSizeBytes,
-                                          int32_t priority);
+                                          void *pParam);
 
 /** Remove an AT event callback.
  *
@@ -228,29 +204,14 @@ void uShortRangeEdmStreamWifiEventCallbackRemove(int32_t handle);
  * @param pParam           a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
- * @param stackSizeBytes   the number of bytes of stack for
- *                         the task in which pFunction is
- *                         called, must be at least
- *                         U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES.
- * @param priority         the priority of the task in which
- *                         pFunction is called; see
- *                         u_cfg_os_platform_specific.h for
- *                         your platform for more information.
- *                         The default application, for instance,
- *                         runs at U_CFG_OS_APP_TASK_PRIORITY,
- *                         so if you want pFunction to be
- *                         scheduled before it you might set a
- *                         priority of
- *                         U_CFG_OS_APP_TASK_PRIORITY + 1.
+ *
  * @return                 zero on success else negative error
  *                         code.
  */
 int32_t uShortRangeEdmStreamBtEventCallbackSet(int32_t handle,
                                                void (*pFunction)(int32_t, uint32_t, uint32_t,
                                                                  bool, int32_t, uint8_t *, void *),
-                                               void *pParam,
-                                               size_t stackSizeBytes,
-                                               int32_t priority);
+                                               void *pParam);
 
 /** Remove a bt event callback.
  *
@@ -269,20 +230,7 @@ void uShortRangeEdmStreamBtEventCallbackRemove(int32_t handle);
  * @param pParam           a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
- * @param stackSizeBytes   the number of bytes of stack for
- *                         the task in which pFunction is
- *                         called, must be at least
- *                         U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES.
- * @param priority         the priority of the task in which
- *                         pFunction is called; see
- *                         u_cfg_os_platform_specific.h for
- *                         your platform for more information.
- *                         The default application, for instance,
- *                         runs at U_CFG_OS_APP_TASK_PRIORITY,
- *                         so if you want pFunction to be
- *                         scheduled before it you might set a
- *                         priority of
- *                         U_CFG_OS_APP_TASK_PRIORITY + 1.
+ *
  * @return                 zero on success else negative error
  *                         code.
  */
@@ -290,9 +238,7 @@ int32_t uShortRangeEdmStreamDataEventCallbackSet(int32_t handle,
                                                  int32_t type,
                                                  void (*pFunction)(int32_t, int32_t, int32_t,
                                                                    char *, void *),
-                                                 void *pParam,
-                                                 size_t stackSizeBytes,
-                                                 int32_t priority);
+                                                 void *pParam);
 
 /** Remove a data callback.
  *

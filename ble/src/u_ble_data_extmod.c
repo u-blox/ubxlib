@@ -438,8 +438,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
 
                 if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
                     errorCode = uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, btEdmConnectionCallback,
-                                                                       pInstance, U_BLE_DATA_EVENT_STACK_SIZE,
-                                                                       U_BLE_DATA_EVENT_PRIORITY);
+                                                                       pInstance);
                 }
 
                 if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
@@ -455,7 +454,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLC:");
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLD:");
                 uShortRangeConnectionStatusCallback(bleHandle, U_SHORT_RANGE_CONNECTION_TYPE_BT, NULL, NULL);
-                uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, NULL, NULL, 0, 0);
+                uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, NULL, NULL);
                 pInstance->pSpsConnectionCallback = NULL;
                 pInstance->pSpsConnectionCallbackParameter = NULL;
             }
@@ -610,13 +609,12 @@ int32_t uBleDataSetCallbackData(int32_t bleHandle,
                 pInstance->pBtDataCallbackParameter = pCallbackParameter;
 
                 errorCode = uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle, 0, dataCallback,
-                                                                     pInstance, U_BLE_DATA_EVENT_STACK_SIZE,
-                                                                     U_BLE_DATA_EVENT_PRIORITY);
+                                                                     pInstance);
             } else if (pInstance->pBtDataCallback != NULL && pCallback == NULL) {
                 pInstance->pBtDataCallback = NULL;
                 pInstance->pBtDataCallbackParameter = NULL;
 
-                errorCode = uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle, 0, NULL, NULL, 0, 0);
+                errorCode = uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle, 0, NULL, NULL);
             }
         }
 
@@ -656,9 +654,7 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
                 errorCode =
                     uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle,
                                                              (int32_t)U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT,
-                                                             dataCallback, pInstance,
-                                                             U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
-                                                             U_CFG_OS_PRIORITY_MAX - 5);
+                                                             dataCallback, pInstance);
             } else if (pInstance->pBtDataAvailableCallback != NULL && pCallback == NULL) {
                 pInstance->pBtDataAvailableCallback = NULL;
                 pInstance->pBtDataCallbackParameter = NULL;
@@ -666,7 +662,7 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
                 errorCode =
                     uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle,
                                                              (int32_t)U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT,
-                                                             NULL, NULL, 0, 0);
+                                                             NULL, NULL);
                 if (gBleDataEventQueue != (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
                     uPortEventQueueClose(gBleDataEventQueue);
                     gBleDataEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
