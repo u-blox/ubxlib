@@ -46,7 +46,7 @@ static uint8_t *getCallAddress(uLibHdl_t *pHdl, uint32_t funcIx)
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-int uLibProbe(uLibHdr_t *pHdr, const void *puLib)
+int uLibProbe(uLibHdl_t *pHdl, uLibHdr_t *pHdr, const void *puLib)
 {
     uLibDescriptor_t *pDescr = (uLibDescriptor_t *) puLib;
     if (pHdr == 0 || pDescr == 0 || pDescr->hdr.magic != U_LIB_I_MAGIC) {
@@ -55,11 +55,17 @@ int uLibProbe(uLibHdr_t *pHdr, const void *puLib)
     pHdr->flags = pDescr->hdr.flags;
     pHdr->name = pDescr->hdr.name;
     pHdr->version = pDescr->hdr.version;
+
+    if (pHdl != NULL) {
+        pHdl->puLibDescr = puLib;
+        pHdl->puLibCode = (void *)(&pDescr->funcs[pDescr->hdr.count]);
+    }
     return U_ERROR_COMMON_SUCCESS;
 }
 
 int uLibOpen(uLibHdl_t *pHdl, const void *puLib,
-             uLibLibc_t *pLibc, uint32_t flags)
+             uLibLibc_t *pLibc, uint32_t flags,
+             void *pRelocate)
 {
     int res = U_ERROR_COMMON_SUCCESS;
     uLibDescriptor_t *pDescr = (uLibDescriptor_t *) puLib;
@@ -71,7 +77,12 @@ int uLibOpen(uLibHdl_t *pHdl, const void *puLib,
         return U_ERROR_COMMON_INVALID_PARAMETER;
     }
     pHdl->puLibDescr = puLib;
-    pHdl->puLibCode = (void *)(&pDescr->funcs[pDescr->hdr.count]);
+
+    if (pRelocate != NULL) {
+        pHdl->puLibCode = pRelocate;
+    } else {
+        pHdl->puLibCode = (void *)(&pDescr->funcs[pDescr->hdr.count]);
+    }
     for (uint32_t i = 0; i < pDescr->hdr.count; i++) {
         if ((pDescr->funcs[i].flags & (U_LIB_I_FDESC_FLAG_INIT | U_LIB_I_FDESC_FLAG_FUNCTION))
             == (U_LIB_I_FDESC_FLAG_INIT | U_LIB_I_FDESC_FLAG_FUNCTION)) {

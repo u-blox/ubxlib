@@ -123,7 +123,7 @@ static int32_t runLibTest(void)
     // probe the library address to see if there is a proper library
     uLibHdr_t libHdr; // if the probe succeeds, we will get library information in here
     uPortLogF("\nProbing lib\n");
-    res = uLibProbe(&libHdr, &__libfibonacci_blob[0]);
+    res = uLibProbe(&libHdl, &libHdr, &__libfibonacci_blob[0]);
     U_PORT_TEST_ASSERT(res == U_ERROR_COMMON_SUCCESS);
 
     uPortLogF("name:    %s\n", libHdr.name);
@@ -141,7 +141,7 @@ static int32_t runLibTest(void)
 
     // try opening the library
     uPortLogF("Opening lib\n");
-    res = uLibOpen(&libHdl, &__libfibonacci_blob[0], &libc, 0);
+    res = uLibOpen(&libHdl, &__libfibonacci_blob[0], &libc, 0, NULL);
     U_PORT_TEST_ASSERT(res == U_ERROR_COMMON_SUCCESS);
 
     // declare the library api functions, see lib_fibonacci.h

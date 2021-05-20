@@ -133,22 +133,27 @@ typedef struct {
 
 /**
  * Reads library header.
+ * @param pHdl Pointer to library handle struct, used to reference this library instance
+ * This will be filled in by the function. Can be NULL.
  * @param pHdr Address of header struct to populate.
  * @param puLib Address of library blob
  * @return U_ERROR_COMMON_SUCCESS if OK, else error code
  */
-int uLibProbe(uLibHdr_t *pHdr, const void *puLib);
+int uLibProbe(uLibHdl_t *pHdl, uLibHdr_t *pHdr, const void *puLib);
 
 /**
  * Opens given library.
  * @param pHdl Pointer to library handle struct, used to reference this library instance
+ * This will be filled in by the function. Can be NULL.
  * @param puLib Address of library blob
  * @param pLibc Struct with pointers to utility functions. See uLibLibc_t for adding more functions.
  * @param flags Passed to library internal open function, ignored by handler
+ * @param pRelocate Relocate the library code to this address. Use NULL if no relocation is needed.
  * @return U_ERROR_COMMON_SUCCESS if OK, else error code
  */
 int uLibOpen(uLibHdl_t *pHdl, const void *puLib,
-             uLibLibc_t *pLibc, uint32_t flags);
+             uLibLibc_t *pLibc, uint32_t flags,
+             void *pRelocate);
 
 /**
  * Returns current location and size of the library executable code.

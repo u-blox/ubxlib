@@ -77,11 +77,11 @@ typedef struct {
     /* library flags, combinations of U_LIB_I_HDR_FLAG_x */
     uint32_t flags;
     /* number of function definitions following this header */
-    uint16_t count;
+    uint32_t count;
     /* size of code blob in bytes */
     uint32_t length;
     /* library name */
-    const char name[30];
+    const char name[32];
 } _uLibHeader_t;
 
 /**

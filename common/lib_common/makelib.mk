@@ -28,10 +28,20 @@ CFILES ?=
 PREFIX ?= .
 # Path to ubxlib
 UBXLIB_PATH ?= ../../
-# Default code transformation : none, simple copy
-TRANSFORM ?= cp
 
-CFLAGS_EXTRA = -nostartfiles -fPIC -nostdlib -MD
+USE_ENCRYPTION ?= 0
+
+ENC_TAG:= _enc
+
+ifeq (1,$(USE_ENCRYPTION))
+    enc_tag:= $(ENC_TAG)
+    LIB_FLAGS:= 1
+else
+    LIB_FLAGS:= 0
+    enc_tag:=
+endif
+
+CFLAGS_EXTRA = -nostartfiles -fPIC -nostdlib -MD -DUSE_ENCRYPTION=$(USE_ENCRYPTION)
 LDFLAGS_EXTRA = -nostdlib
 LIB_COMMON_PATH = $(UBXLIB_PATH)/common/lib_common
 LIB_NAME ?= lib$(NAME)
@@ -48,14 +58,14 @@ SHELL_DELIMETER ?=
 SHELL_COMMAND ?=
 
 v = $(VERBOSE)
-build = $(PREFIX)/build
+build = $(PREFIX)/build$(enc_tag)
 _ldflags := $(LDFLAGS_EXTRA:-%=-Wl,-%)
 
 objfiles := $(CFILES:%.c=$(build)/%.o)
 includes := $(foreach dir,$(INCLUDE),-I$(dir))
 
-library_c := $(PREFIX)/$(LIB_NAME)_blob.c
-library_bin := $(PREFIX)/$(LIB_NAME)_blob.bin
+library_c := $(PREFIX)/$(LIB_NAME)_blob$(enc_tag).c
+library_bin := $(PREFIX)/$(LIB_NAME)_blob$(enc_tag).bin
 
 library_descr_bin := $(build)/$(LIB_NAME)_descr.bin
 library_code_bin := $(build)/$(LIB_NAME)_code.bin
@@ -64,6 +74,9 @@ library_code_sym := $(build)/$(LIB_NAME)_code.sym
 
 library_code_elf := $(build)/$(LIB_NAME)_code.elf
 library_descr_elf := $(build)/$(LIB_NAME)_descr.elf
+
+library_descr_o := $(build)/descr.o
+library_descr_c := $(build)/descr.c
 
 all: $(library_c)
 
@@ -77,9 +90,10 @@ $(library_bin): $(library_descr_bin) $(library_code_final_bin)
 	$(v)$(SHELL_COMMAND) $(SHELL_DELIMETER) $(CAT) $(library_descr_bin) $(library_code_final_bin) > $@ $(SHELL_DELIMETER)
 	@echo "$(abspath $@)"
 
-$(library_code_final_bin): $(library_code_bin) 
-	@echo "* Transforming the code"
-	$(v)$(TRANSFORM) $< $@
+$(library_code_final_bin): $(library_descr_bin) $(library_code_bin) 
+	@echo "* Building library blob "
+	$(v)python $(LIB_COMMON_PATH)/genencryptedbin.py $(library_descr_bin) $(library_code_bin) $(USE_ENCRYPTION) $@
+	@echo "$(abspath $@)"
 
 $(library_code_bin): $(library_code_elf) 
 	@echo "* Dumping library code blob"
@@ -98,16 +112,16 @@ $(library_descr_bin): $(library_descr_elf)
 	@echo "* Dumping library descriptor blob"
 	$(v)$(OBJCOPY) -O binary -j .ulibhdr -j .ulibtbl $< $@
 
-$(library_descr_elf): $(build)/descr.o
+$(library_descr_elf): $(library_descr_o)
 	@echo "* Linking library descriptor"
 	$(v)$(CC) -shared -o $@ $(CFLAGS) $(CFLAGS_EXTRA) $(includes) $(_ldflags) $<
 
-$(build)/descr.o: $(build)/descr.c
+$(library_descr_o): $(library_descr_c)
 	@echo "* Compiling library descriptor: $<"
 	$(v)$(SHELL_COMMAND) $(SHELL_DELIMETER) $(MKDIR_P) $(@D) $(SHELL_DELIMETER)
 	$(v)$(CC) $(CFLAGS) $(CFLAGS_EXTRA) $(includes) -c -o $@ $<
 
-$(build)/descr.c: $(library_code_sym)
+$(library_descr_c): $(library_code_sym)
 	@echo "* Generating library descriptor"
 	$(v)python $(LIB_COMMON_PATH)/genlibhdr.py $< > $@
 
@@ -121,4 +135,6 @@ $(library_code_sym): $(library_code_elf) $(library_code_bin)
 
 clean:
 	@echo "* Cleaning"
-	$(v)rm -rf $(build) $(library_bin) $(library_c)
+	$(v)rm -rf $(build)
+	$(v)rm -rf $(build)$(ENC_TAG)
+	$(v)rm -rf $(PREFIX)/$(LIB_NAME)_blob*
