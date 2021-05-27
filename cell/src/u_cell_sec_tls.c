@@ -790,9 +790,6 @@ int32_t uCellSecTlsCipherSuiteListFirst(uCellSecTlsContext_t *pContext)
                         if (gLastErrorCode == 0) {
                             gLastErrorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
                             if (readSize >= U_CELL_SEC_IANA_STRING_NUM_CHARS) {
-                                // Release any spare memory
-                                pCipherList->pString = (char *) realloc(pCipherList->pString,
-                                                                        (size_t) (unsigned) (readSize + 1)); // +1 for terminator
                                 // Go get the first value
                                 gLastErrorCode = cipherListGetRemove(pCipherList);
                             }

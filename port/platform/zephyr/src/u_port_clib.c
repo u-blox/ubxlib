@@ -61,4 +61,18 @@ int rand()
     return (int) answer;
 }
 
+// We don't want to use the libc memory management since it does not use k_malloc
+// resulting in two heaps which might waste a lot of memory.
+// Therefore we map malloc/free directly to k_malloc/k_free and disable
+// libc RAM with CONFIG_MINIMAL_LIBC_MALLOC=n.
+void *malloc(size_t size)
+{
+    return k_malloc(size);
+}
+
+void free(void *p)
+{
+    k_free(p);
+}
+
 // End of file
