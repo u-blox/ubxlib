@@ -9,6 +9,7 @@ import u_monitor
 import u_report
 import u_utils
 import u_settings
+from u_rtt_reader import URttReader
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run_zephyr_"
@@ -444,51 +445,16 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                      printer, prompt)
                                             reporter.event(u_report.EVENT_TYPE_TEST,
                                                            u_report.EVENT_START)
-                                            if connection and "swo_port" in connection:
-                                                swo_port = connection["swo_port"]
 
-                                            # With JLink started
-                                            if jlink_device_name:
-                                                RUN_JLINK.append("-Device")
-                                                RUN_JLINK.append(jlink_device(mcu))
-                                            RUN_JLINK.append("-RTTTelnetPort")
-                                            RUN_JLINK.append(str(swo_port))
-                                            if connection and "debugger" in connection and \
-                                               connection["debugger"]:
-                                                RUN_JLINK.append("-USB")
-                                                RUN_JLINK.append(connection["debugger"])
-                                            with u_utils.ExeRun(RUN_JLINK, printer, prompt,
-                                                                with_stdin=True) as process_jlink:
-                                                # Open the Telnet port to JLink
-                                                # to get the debug output
-                                                telnet_handle = u_utils.open_telnet(swo_port,
-                                                                                    printer,
-                                                                                    prompt)
-                                                if telnet_handle is not None:
-                                                    # Monitor progress:
-                                                    # Note that the minimal C library used
-                                                    # by Zephyr emits "\n" as a line terminator
-                                                    # rather than "\r\n"
-                                                    return_value = u_monitor.    \
-                                                                   main(telnet_handle,
-                                                                        u_monitor.CONNECTION_TELNET,
-                                                                        RUN_GUARD_TIME_SECONDS,
-                                                                        RUN_INACTIVITY_TIME_SECONDS,
-                                                                        "\n", instance, printer,
-                                                                        reporter,
-                                                                        test_report_handle,
-                                                                        keep_going_flag=keep_going_flag)
-                                                    telnet_handle.close()
-                                                else:
-                                                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                                   u_report.EVENT_FAILED,
-                                                                   "unable to open RTT port " +  \
-                                                                   str(swo_port))
-                                                # JLink is VERY touchy as to how it exits,
-                                                # need to send it "exit\n" over stdin
-                                                # for it to exit cleanly
-                                                process_jlink.stdin.write("exit\n".encode())
-                                                sleep(JLINK_EXIT_DELAY_SECONDS)
+                                            with URttReader(jlink_device(mcu), jlink_serial=connection["debugger"]) as rtt_reader:
+                                                return_value = u_monitor.main(rtt_reader,
+                                                                              u_monitor.CONNECTION_RTT,
+                                                                              RUN_GUARD_TIME_SECONDS,
+                                                                              RUN_INACTIVITY_TIME_SECONDS,
+                                                                              "\n", instance, printer,
+                                                                              reporter,
+                                                                              test_report_handle,
+                                                                              keep_going_flag=keep_going_flag)
                                             if return_value == 0:
                                                 reporter.event(u_report.EVENT_TYPE_TEST,
                                                                u_report.EVENT_COMPLETE)

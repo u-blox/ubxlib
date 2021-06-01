@@ -23,6 +23,7 @@ CONNECTION_NONE = 0
 CONNECTION_SERIAL = 1
 CONNECTION_TELNET = 2
 CONNECTION_PIPE = 3
+CONNECTION_RTT = 4
 
 def reboot_callback(match, results, printer, prompt, reporter):
     '''Handler for reboots occuring unexpectedly'''
@@ -170,7 +171,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
             line = None
         return_value = line
         # Serial ports just use read()
-    elif connection_type == CONNECTION_SERIAL:
+    elif connection_type == CONNECTION_SERIAL or connection_type == CONNECTION_RTT:
         eol = False
         try:
             while not eol and line is not None:
