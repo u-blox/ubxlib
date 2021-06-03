@@ -203,12 +203,23 @@ def pwar_readline(in_handle, connection_type, terminator=None):
                     eol = character == terminator
                     if not eol:
                         line = line + character
+                else:
+                    # Since this is a busy/wait we sleep a bit if there is no data
+                    # to offload the CPU
+                    sleep(0.01)
             if eol:
                 line = line.strip()
         except UnicodeDecodeError:
             # Just ignore it.
             pass
         return_value = line
+
+    if return_value == None or return_value == "":
+        # Typically this function is called from a busy/wait loop
+        # so if there currently no data available we sleep a bit
+        # to offload the CPU
+        sleep(0.01)
+
     return return_value
 
 # Start the required executable.

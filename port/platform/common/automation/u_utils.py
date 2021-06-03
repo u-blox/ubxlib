@@ -556,8 +556,11 @@ def read_from_process_and_queue(process, read_queue):
     '''Read from a process, non-blocking'''
     while process.poll() is None:
         string = process.stdout.readline().decode()
-        if string:
+        if string and string != "":
             read_queue.put(string)
+        else:
+            sleep(0.1)
+
 
 def queue_get_no_exception(the_queue, block=True, timeout=None):
     '''A version of queue.get() that doesn't throw an Empty exception'''
@@ -668,6 +671,7 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
                         printer.string("{}{}".format(prompt, line))
                 line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
                 read_time = time()
+            sleep(0.1)
 
         # Can't join() read_thread here as it might have
         # blocked on a read() (if nrfjprog has anything to
@@ -782,7 +786,7 @@ class ExeRun():
                 # Terminate with a vengeance
                 self._process.terminate()
                 while self._process.poll() is None:
-                    pass
+                    sleep(0.1)
                 self._printer.string("{}{} pid {} terminated".format(self._prompt,
                                                                      self._call_list[0],
                                                                      self._process.pid))
@@ -926,9 +930,10 @@ class PrintThread(threading.Thread):
                     queue_forward["buffer"].append(my_string)
                 self._lock.release()
             except queue.Empty:
-                pass
+                sleep(0.1)
             except (EOFError, BrokenPipeError):
                 # Try to restore stdout
+                sleep(0.1)
                 sys.stdout = sys.__stdout__
             # Send from any forwarding buffers
             self._send_forward()

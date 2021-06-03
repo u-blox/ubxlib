@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 '''Write a report on the outcome of testing.'''
-from time import gmtime, strftime
+from time import gmtime, strftime, sleep
 import threading                  # For ReportThread
 from queue import Empty           # For ReportThread
 import u_utils
@@ -126,7 +126,7 @@ class ReportThread(threading.Thread):
                 event = self._queue.get(block=False, timeout=0.5)
                 self.add_event(event)
             except Empty:
-                pass
+                sleep(0.1)
 
 class ReportToQueue():
     '''Write a report to a queue, if there is one'''

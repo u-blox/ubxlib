@@ -440,8 +440,13 @@ def swo_decode_process(swo_data_file, swo_decoded_text_file):
         while True:
             try:
                 decoded_data = decoder.decode(file_handle_in.read(1024))
-                file_handle_out.write(decoded_data)
-                file_handle_out.flush()
+                if len(decoded_data) > 0:
+                    file_handle_out.write(decoded_data)
+                    file_handle_out.flush()
+                else:
+                    # Since this is a busy/wait we sleep a bit if there is no data
+                    # to offload the CPU
+                    sleep(0.01)
             except socket.timeout:
                 pass
     except (KeyboardInterrupt, OSError, ConnectionAbortedError):
