@@ -719,6 +719,24 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
 
     return success
 
+def set_process_prio_high():
+    if platform.system() == "Linux":
+        print("Setting process priority currently not supported for Linux")
+        # It should be possible to set prio with:
+        #  psutil.Process().nice(-10)
+        # However we get "[Errno 13] Permission denied" even when run as root
+    else:
+        psutil.Process().nice(psutil.HIGH_PRIORITY_CLASS)
+
+def set_process_prio_normal():
+    if platform.system() == "Linux":
+        print("Setting process priority currently not supported for Linux")
+        # It should be possible to set prio with:
+        #  psutil.Process().nice(0)
+        # However we get "[Errno 13] Permission denied" even when run as root
+    else:
+        psutil.Process().nice(psutil.NORMAL_PRIORITY_CLASS)
+
 class ExeRun():
     '''Run an executable as a "with:"'''
     def __init__(self, call_list, printer, prompt, shell_cmd=False, with_stdin=False):

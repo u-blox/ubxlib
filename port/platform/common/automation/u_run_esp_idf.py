@@ -262,7 +262,7 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
                    format(prompt, os.getcwd(), tmp))
 
     # Give ourselves priority here or the download can fail
-    psutil.Process().nice(psutil.HIGH_PRIORITY_CLASS)
+    u_utils.set_process_prio_high()
 
     # Do the download,
     # set shell to True to keep Jenkins happy
@@ -270,7 +270,7 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
                                   printer, prompt, shell_cmd=True, set_env=env)
 
     # Return priority to normal
-    psutil.Process().nice(psutil.NORMAL_PRIORITY_CLASS)
+    u_utils.set_process_prio_normal()
 
     return return_code
 
