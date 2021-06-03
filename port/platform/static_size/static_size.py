@@ -11,6 +11,7 @@ import sys # For exit() and stdout
 import argparse
 import subprocess
 import psutil                   # For killing things (make sure to do pip install psutil)
+import platform                 # Figure out current OS
 
 # Expected name for compiler
 GNU_COMPILER = "arm-none-eabi-gcc"
@@ -71,6 +72,23 @@ def exe_terminate(process_pid):
         proc.terminate()
     process.terminate()
 
+# subprocess arguments behaves a little differently on Linux and Windows
+# depending if a shell is used or not, which can be read here:
+# https://stackoverflow.com/a/15109975
+# This function will compensate for these deviations
+def subprocess_osify(cmd, shell=True):
+    ''' expects an array of strings being [command, param, ...] '''
+    if platform.system() == "Linux" and shell:
+        line = ''
+        for c in cmd:
+            # Put everything in a single string and quote args containing spaces
+            if ' ' in c:
+                line += '\"{}\" '.format(c)
+            else:
+                line += '{} '.format(c)
+        cmd = line
+    return cmd
+
 def exe_run(call_list, guard_time_seconds, shell_cmd=False):
     '''Call an executable, printing out what it does'''
     success = False
@@ -78,7 +96,7 @@ def exe_run(call_list, guard_time_seconds, shell_cmd=False):
     kill_time = None
 
     try:
-        process = subprocess.Popen(call_list,
+        process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    shell=shell_cmd)

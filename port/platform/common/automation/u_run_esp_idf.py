@@ -5,6 +5,7 @@
 import os            # For sep, getcwd(), isdir() and environ()
 from time import time, sleep
 import psutil
+import platform                 # Figure out current OS
 import u_connection
 import u_monitor
 import u_report
@@ -53,6 +54,9 @@ TEST_COMPONENT = u_settings.ESP_IDF_TEST_COMPONENT # e.g. "ubxlib_runner"
 
 # Build sub-directory
 BUILD_SUBDIR = u_settings.ESP_IDF_BUILD_SUBDIR # e.g. "build"
+
+# ubxlib esp32 port sub-directory
+ESP32_PORT_SUBDIR = "port/platform/esp-idf/mcu/esp32".replace("/", os.sep)
 
 # The guard time for the install in seconds:
 # this can take ages when tools first have to be installed
@@ -108,6 +112,14 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
             # Set up the environment variable IDF_TOOLS_PATH
             my_env = os.environ
             my_env["IDF_TOOLS_PATH"] = IDF_TOOLS_PATH
+            if u_utils.is_linux():
+                install_cmd = [ "./install.sh" ]
+                export_cmd = [ ".", "./export.sh" ]
+                bash_cmd = True
+            else:
+                install_cmd = [ "install.bat" ]
+                export_cmd = [ "export.bat" ]
+                bash_cmd = None
 
             printer.string("{}installing the Espressif tools to \"{}\" and"  \
                            " ESP-IDF to \"{}\".".                            \
@@ -116,14 +128,14 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
             # been fetched to
             with u_utils.ChangeDir(esp_idf_dir):
                 if not u_utils.has_admin():
-                    printer.string("{}NOTE: if install.bat fails (the return"   \
+                    printer.string("{}NOTE: if {} fails (the return"   \
                                    " code may still be 0), then try re-running" \
-                                   " as administrator.".format(prompt))
+                                   " as administrator.".format(prompt, " ".join(install_cmd)))
                 # First call install.bat
                 # set shell to True to keep Jenkins happy
                 if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                   u_utils.exe_run(["install.bat"], INSTALL_GUARD_TIME_SECONDS,
-                                    printer, prompt, shell_cmd=True):
+                   u_utils.exe_run(install_cmd, INSTALL_GUARD_TIME_SECONDS,
+                                   printer, prompt, shell_cmd=True):
                     # ...then export.bat to set up paths etc.
                     # which we return attached to returned_env.
                     # It is possible for the process of extracting
@@ -133,22 +145,23 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
                     while u_utils.keep_going(keep_going_flag, printer, prompt) and \
                           not returned_env and (count < 3):
                         # set shell to True to keep Jenkins happy
-                        u_utils.exe_run(["export.bat"], INSTALL_GUARD_TIME_SECONDS,
+                        u_utils.exe_run(export_cmd, INSTALL_GUARD_TIME_SECONDS,
                                         printer, prompt, shell_cmd=True,
-                                        returned_env=returned_env)
+                                        returned_env=returned_env,
+                                        bash_cmd=bash_cmd)
                         if not returned_env:
-                            printer.string("{}warning: retrying export.bat to"     \
+                            printer.string("{}warning: retrying {} to"     \
                                            " capture the environment variables...".
-                                           format(prompt))
+                                           format(prompt, " ".join(export_cmd)))
                         count += 1
                     if not returned_env:
                         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                        u_report.EVENT_FAILED,
-                                       "export.bat failed")
+                                       "{} failed".format(" ".join(export_cmd)))
                 else:
                     reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                    u_report.EVENT_FAILED,
-                                   "install.bat failed")
+                                   "{} failed".format(" ".join(install_cmd)))
         else:
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                            u_report.EVENT_FAILED,
@@ -205,11 +218,11 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
 
         # Assemble the call list for the build process
         call_list.append("python")
-        call_list.append(esp_idf_dir + os.sep + "tools\\idf.py")
+        call_list.append(esp_idf_dir + os.sep + "tools" + os.sep + "idf.py")
         call_list.append("-C")
-        call_list.append(ubxlib_dir + os.sep + \
-                         "port\\platform\\esp-idf\\mcu\\esp32"
-                         + os.sep + PROJECT_SUBDIR)
+        call_list.append(ubxlib_dir + os.sep +
+                         ESP32_PORT_SUBDIR + os.sep +
+                         PROJECT_SUBDIR)
         call_list.append("-B")
         call_list.append(build_dir)
         call_list.append("-D")
@@ -243,13 +256,13 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
 
     # Assemble the call list for the download process
     call_list.append("python")
-    call_list.append(esp_idf_dir + os.sep + "tools\\idf.py")
+    call_list.append(esp_idf_dir + os.sep + "tools" + os.sep + "idf.py")
     call_list.append("-p")
     call_list.append(serial_port)
     call_list.append("-C")
-    call_list.append(ubxlib_dir + os.sep + \
-                     "port\\platform\\esp-idf\\mcu\\esp32"
-                     + os.sep + PROJECT_SUBDIR)
+    call_list.append(ubxlib_dir + os.sep +
+                     ESP32_PORT_SUBDIR + os.sep +
+                     PROJECT_SUBDIR)
     call_list.append("-B")
     call_list.append(build_dir)
     call_list.append("flash")

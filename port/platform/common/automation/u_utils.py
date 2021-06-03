@@ -19,7 +19,27 @@ import platform                 # Figure out current OS
 import serial                   # Pyserial (make sure to do pip install pyserial)
 import psutil                   # For killing things (make sure to do pip install psutil)
 import requests                 # For HTTP comms with a KMTronic box (do pip install requests)
+import re                       # Regular Expression
 import u_settings
+
+# Since this function is used by the global variables below it needs
+# to be placed here.
+def is_linux():
+    '''Returns True when system is Linux'''
+    return platform.system() == 'Linux'
+
+# Since this function is used by the global variables below it needs
+# to be placed here.
+def pick_by_os(linux=None, other=None):
+    '''
+    This is a convenience function for selecting a value based on platform.
+    As an example the line below will print out "Linux" when running on a
+    Linux platform and "Not Linux" when running on some other platform:
+        print( u_utils.pick_by_os(linux="Linux", other="Not Linux") )
+    '''
+    if is_linux():
+        return linux
+    return other
 
 # The port that this agent service runs on
 # Deliberately NOT a setting, we need to be sure
@@ -90,6 +110,10 @@ EXE_RUN_QUEUE_WAIT_SECONDS = u_settings.EXE_RUN_QUEUE_WAIT_SECONDS #1
 # a KMTronic box are switched off for
 HW_RESET_DURATION_SECONDS = u_settings.HW_RESET_DURATION_SECONDS # e.g. 5
 
+# Executable file extension. This will be "" for Linux
+# and ".exe" for Windows
+EXE_EXT = pick_by_os(linux="", other=".exe")
+
 def keep_going(flag, printer=None, prompt=None):
     '''Check a keep_going flag'''
     do_not_stop = True
@@ -99,15 +123,34 @@ def keep_going(flag, printer=None, prompt=None):
             printer.string("{}aborting as requested.".format(prompt))
     return do_not_stop
 
-def subprocess_osify(cmd):
+
+# subprocess arguments behaves a little differently on Linux and Windows
+# depending if a shell is used or not, which can be read here:
+# https://stackoverflow.com/a/15109975
+# This function will compensate for these deviations
+def subprocess_osify(cmd, shell=True):
     ''' expects an array of strings being [command, param, ...] '''
-    if platform.system() == "Linux":
-        return [ ' '.join(cmd) ]
+    if is_linux() and shell:
+        line = ''
+        for c in cmd:
+            # Put everything in a single string and quote args containing spaces
+            if ' ' in c:
+                line += '\"{}\" '.format(c)
+            else:
+                line += '{} '.format(c)
+        cmd = line
     return cmd
+
+def split_command_line_args(cmd_line):
+    ''' Will split a command line string into a list of arguments.
+        Quoted arguments will be preserved as one argument '''
+    return [p for p in re.split("( |\\\".*?\\\"|'.*?')", cmd_line) if p.strip()]
 
 def get_actual_path(path):
     '''Given a drive number return real path if it is a subst'''
     actual_path = path
+    if is_linux():
+        return actual_path
 
     if os.name == 'nt':
         # Get a list of substs
@@ -503,8 +546,8 @@ def exe_where(exe_name, help_text, printer, prompt):
         # ...for why the construction "".join() is necessary when
         # passing things which might have spaces in them.
         # It is the only thing that works.
-        if platform.system() == "Linux":
-            cmd = ["which {}".format(exe_name)]
+        if is_linux():
+            cmd = ["which {}".format(exe_name.replace(":", "/"))]
             printer.string("{}detected linux, calling \"{}\"...".format(prompt, cmd))
         else:
             cmd = ["where", "".join(exe_name)]
@@ -591,7 +634,8 @@ def capture_env_var(line, env, printer, prompt):
 # of this is that the return value of the exe is,
 # of course, lost.
 def exe_run(call_list, guard_time_seconds, printer, prompt,
-            shell_cmd=False, set_env=None, returned_env=None):
+            shell_cmd=False, set_env=None, returned_env=None,
+            bash_cmd=False):
     '''Call an executable, printing out what it does'''
     success = False
     start_time = time()
@@ -610,7 +654,11 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
         call_list.append("echo")
         call_list.append("flibble")
         call_list.append("&&")
-        call_list.append("set")
+        if is_linux():
+            call_list.append("env")
+            bash_cmd = True
+        else:
+            call_list.append("set")
         # I've seen output from set get lost,
         # possibly because the process ending
         # is asynchronous with stdout,
@@ -625,11 +673,12 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
         # that is ignored 'cos the output is considered
         # binary.  Seems to work in any case, I guess
         # Winders, at least, is in any case line-buffered.
-        process = subprocess.Popen(call_list,
+        process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    shell=shell_cmd,
-                                   env=set_env)
+                                   env=set_env,
+                                   executable="/bin/bash" if bash_cmd else None)
         printer.string("{}{}, pid {} started with guard time {} second(s)". \
                        format(prompt, call_list[0], process.pid,
                               guard_time_seconds))
@@ -720,7 +769,7 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
     return success
 
 def set_process_prio_high():
-    if platform.system() == "Linux":
+    if is_linux():
         print("Setting process priority currently not supported for Linux")
         # It should be possible to set prio with:
         #  psutil.Process().nice(-10)
@@ -729,7 +778,7 @@ def set_process_prio_high():
         psutil.Process().nice(psutil.HIGH_PRIORITY_CLASS)
 
 def set_process_prio_normal():
-    if platform.system() == "Linux":
+    if is_linux():
         print("Setting process priority currently not supported for Linux")
         # It should be possible to set prio with:
         #  psutil.Process().nice(0)
@@ -758,19 +807,16 @@ class ExeRun():
                                                            text))
         try:
             # Start exe
+            popen_keywords = {
+                'stdout': subprocess.PIPE,
+                'stderr': subprocess.STDOUT,
+                'shell': self._shell_cmd
+            }
+            if not is_linux():
+                popen_keywords['creationflags'] = subprocess.CREATE_NEW_PROCESS_GROUP
             if self._with_stdin:
-                self._process = subprocess.Popen(self._call_list,
-                                                 stdin=subprocess.PIPE,
-                                                 stdout=subprocess.PIPE,
-                                                 stderr=subprocess.STDOUT,
-                                                 shell=self._shell_cmd,
-                                                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-            else:
-                self._process = subprocess.Popen(self._call_list,
-                                                 stdout=subprocess.PIPE,
-                                                 stderr=subprocess.STDOUT,
-                                                 shell=self._shell_cmd,
-                                                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+                popen_keywords['stdin'] = subprocess.PIPE
+            self._process = subprocess.Popen(self._call_list, **popen_keywords)
             self._printer.string("{}{} pid {} started".format(self._prompt,
                                                               self._call_list[0],
                                                               self._process.pid))
@@ -796,10 +842,11 @@ class ExeRun():
             retry = 5
             while (self._process.poll() is None) and (retry > 0):
                 # Try to stop with CTRL-C
-                if platform.system() == 'Linux':
-                    self._process.send_signal(signal.SIGINT)
+                if is_linux():
+                    sig = signal.SIGINT
                 else:
-                    self._process.send_signal(signal.CTRL_BREAK_EVENT)
+                    sig = signal.CTRL_BREAK_EVENT
+                self._process.send_signal(sig)
                 sleep(1)
                 retry -= 1
             return_value = self._process.poll()

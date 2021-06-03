@@ -76,7 +76,7 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
             printer.string("{}in directory {} calling{}".         \
                            format(prompt, os.getcwd(), tmp))
             try:
-                text = subprocess.check_output(call_list,
+                text = subprocess.check_output(u_utils.subprocess_osify(call_list),
                                                stderr=subprocess.STDOUT,
                                                shell=True) # Jenkins hangs without this
                 formatted = []

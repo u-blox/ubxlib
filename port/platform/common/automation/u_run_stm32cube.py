@@ -35,6 +35,10 @@ STM32CUBE_FW_PATH = u_settings.STM32CUBE_STM32CUBE_FW_PATH # e.g. "C:\\STM32Cube
 # Location of the STM32Cube IDE directory
 STM32CUBE_IDE_PATH = u_settings.STM32CUBE_STM32CUBE_IDE_PATH # e.g. "C:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE"
 
+# Name of the STM32Cube IDE executable
+STM32CUBE_IDE_EXE = u_utils.pick_by_os(linux="stm32cubeide",
+                                       other="stm32cubeidec.exe")
+
 # Location of STM32_Programmer_CLI.exe in
 # the STM32Cube IDE directory
 STM32_PROGRAMMER_CLI_PATH = u_settings.STM32CUBE_STM32_PROGRAMMER_CLI_PATH #
@@ -349,7 +353,7 @@ def build_binary(mcu_dir, workspace_subdir, project_name, clean, defines,
             # This information found nailed to the door of the
             # bog in the basement underneath the "beware of the
             # leopard" sign
-            call_list.append(STM32CUBE_IDE_PATH + os.sep + "stm32cubeidec.exe")
+            call_list.append(STM32CUBE_IDE_PATH + os.sep + STM32CUBE_IDE_EXE)
             call_list.append("--launcher.suppressErrors")
             call_list.append("-nosplash")
             call_list.append("-application")

@@ -90,7 +90,7 @@ TOOLS_LIST = [{"type": "gcc", "which_string": "make",
                        " http://gnuwin32.sourceforge.net/packages/make.htm)" \
                        " and ensure it is on the path.",
                "version_switch": "--version"},
-              {"type": "gcc", "which_string": GNU_INSTALL_ROOT + ":" + GNU_PREFIX + "-gcc.exe",
+              {"type": "gcc", "which_string": GNU_INSTALL_ROOT + ":" + GNU_PREFIX + "-gcc{}".format(u_utils.EXE_EXT),
                "hint": "can't find GCC ARM compiler expected to be found"    \
                        " in GNU_INSTALL_ROOT, please EITHER"                 \
                        " install it (no need to add it to the path)"         \
@@ -108,7 +108,7 @@ TOOLS_LIST = [{"type": "gcc", "which_string": "make",
                        " C:\\Program Files\\Segger\\SEGGER Embedded Studio"  \
                        " for ARM 4.50\\bin\\embuild.exe).",
                "version_switch": None},
-              {"type": None, "which_string": "nrfjprog.exe",
+              {"type": None, "which_string": "nrfjprog{}".format(u_utils.EXE_EXT),
                "hint": "couldn't find the nRF5 SDK at NRF5_PATH,"            \
                        " please download the latest version from"            \
                        " https://www.nordicsemi.com/Software-and-tools/"     \

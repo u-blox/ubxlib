@@ -20,6 +20,9 @@ NRFCONNECT_PATH = u_settings.ZEPHYR_NRFCONNECT_PATH # e.g. "C:\\nrfconnect\\v1.4
 # The list of things to execute jlink.exe
 RUN_JLINK = [u_utils.JLINK_PATH] + u_settings.ZEPHYR_RUN_JLINK #
 
+# Nordic nrfjprog CLI command
+NRFJPROG = "nrfjprog{}".format(u_utils.EXE_EXT)
+
 # List of device types we support as known to JLink
 JLINK_DEVICE = ["nRF52833_XXAA", "nRF52840_XXAA", "nRF5340_XXAA_APP"]
 
@@ -80,7 +83,7 @@ TOOLS_LIST = [{"which_string": "west",
                        " like: \"pip install -r C:\\nrfconnect"      \
                        "\\v1.4.2\\zephyr\\scripts\\requirements.txt\".",
                "version_switch": "--version"},
-              {"which_string": "nrfjprog.exe",
+              {"which_string": NRFJPROG,
                "hint": "couldn't find the nRFConnect SDK at NRFCONNECT_PATH,"  \
                        " please download the latest version from"              \
                        " https://www.nordicsemi.com/Software-and-Tools/"       \
@@ -135,7 +138,7 @@ def set_env(printer, prompt):
     # in exe_run) so give this up to three chances to succeed
     while not returned_env1 and (count < 3):
         # set shell to True to keep Jenkins happy
-        u_utils.exe_run([ZEPHYR_ENV_CMD], None,
+        u_utils.exe_run(u_utils.split_command_line_args(ZEPHYR_ENV_CMD), None,
                         printer, prompt, shell_cmd=True,
                         returned_env=returned_env1)
         if not returned_env1:
@@ -147,7 +150,7 @@ def set_env(printer, prompt):
     if returned_env1:
         while not returned_env2 and (count < 3):
             # set shell to True to keep Jenkins happy
-            u_utils.exe_run([GIT_BASH_ENV_CMD], None,
+            u_utils.exe_run(u_utils.split_command_line_args(GIT_BASH_ENV_CMD), None,
                             printer, prompt, shell_cmd=True,
                             returned_env=returned_env2)
             if not returned_env2:
@@ -216,7 +219,7 @@ def download_nrf53(connection, guard_time_seconds, build_dir, env, printer, prom
     success = True
     if os.path.exists(cpunet_hex_path):
         printer.string("{}download NETCPU".format(prompt))
-        call_list = ["nrfjprog.exe", "-f", "NRF53", "--coprocessor", "CP_NETWORK",
+        call_list = [NRFJPROG, "-f", "NRF53", "--coprocessor", "CP_NETWORK",
                      "--chiperase", "--program", cpunet_hex_path]
         if connection and "debugger" in connection and connection["debugger"]:
             call_list.extend(["-s", connection["debugger"]])
@@ -228,7 +231,7 @@ def download_nrf53(connection, guard_time_seconds, build_dir, env, printer, prom
         sleep(10)
         app_hex_path = os.path.join(build_dir, "zephyr", "merged.hex")
         printer.string("{}download APP".format(prompt))
-        call_list = ["nrfjprog.exe", "-f", "NRF53", "--chiperase", "--program", app_hex_path]
+        call_list = [NRFJPROG, "-f", "NRF53", "--chiperase", "--program", app_hex_path]
         if connection and "debugger" in connection and connection["debugger"]:
             call_list.extend(["-s", connection["debugger"]])
         print_call_list(call_list, printer, prompt)

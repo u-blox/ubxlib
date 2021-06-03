@@ -59,9 +59,9 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=No
                             try:
                                 # ignore u_settings module as it sets members programatically and
                                 # will thus generate a bunch of lint warnings
-                                text = subprocess.check_output(["pylint", "--exit-zero",
+                                text = subprocess.check_output(u_utils.subprocess_osify(["pylint", "--exit-zero",
                                                                 "--ignored-modules=u_settings",
-                                                                py_file],
+                                                                py_file]),
                                                                stderr=subprocess.STDOUT,
                                                                shell=True) # Stop Jenkins hanging
                                 rating = 0
