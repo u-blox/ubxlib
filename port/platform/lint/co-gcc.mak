@@ -76,6 +76,9 @@ $(info    ECHO will be "$(ECHO)")
 $(info    TOUCH will be "$(TOUCH)")
 $(info    AWK will be "$(AWK)")
 
+MAKEFILE_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+CURRENT_DIR := $(PWD)
+
 .PHONY = clean clean_temps
 
 config: clean preprocessor sizes clean_temps
@@ -135,7 +138,7 @@ include_path:
 		gsub(\"//*\",\"/\"); \
 		sub(\"\xd$$\",\"\"); \
 		sub(\"/$$\",\"\"); \
-		printf(\"--i"%s"\n\", \"$$0\"); \
+		printf(\"--i"%s"\n\", $$\"0\"); \
 		next; \
 	    } \
 	    S  {exit;} \
@@ -145,11 +148,11 @@ include_path:
 # of '\n'.  (Is it a newline, or a literal backslash followed by
 # a literal 'n'?  It seems to depend on your platform.)  So we
 # deliberately avoid the use of explicit newline characters here.
-sizes: 
+sizes:
 	$(RM) $(SIZE_GEN)*
-	@cp $(dir $(lastword $(MAKEFILE_LIST)))default_$(SIZE_GEN).cc $(SIZE_GEN).cc
-	@$(GXX) $(SIZE_GEN).cc -o $(SIZE_GEN)
-	@$(SIZE_GEN) >size-options.lnt
+	@cp $(MAKEFILE_DIR)default_$(SIZE_GEN).cc $(SIZE_GEN).cc
+	@$(GXX) $(SIZE_GEN).cc -o $(CURRENT_DIR)/$(SIZE_GEN)
+	@$(CURRENT_DIR)/$(SIZE_GEN) >size-options.lnt
 
 clean_temps:
 	$(RM) $(TEMP_FILE_PREFIX)*

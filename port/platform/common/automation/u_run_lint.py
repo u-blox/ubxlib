@@ -163,7 +163,7 @@ def create_lint_config(lint_platform_path, defines, printer, prompt):
                    format(prompt, os.getcwd(), tmp))
 
     # Call it
-    return u_utils.exe_run(call_list, None, printer, prompt)
+    return u_utils.exe_run(call_list, None, printer, prompt, shell_cmd=True)
 
 def get_file_list(ubxlib_dir, lint_dirs, use_stubs):
     '''Get the list of files to be Linted'''
@@ -275,7 +275,7 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter,
                     printer.string("{}in directory {} calling{}".         \
                                    format(prompt, os.getcwd(), tmp))
                     try:
-                        text = subprocess.check_output(call_list,
+                        text = subprocess.check_output(u_utils.subprocess_osify(call_list),
                                                        stderr=subprocess.STDOUT,
                                                        shell=True) # Jenkins hangs without this
                         reporter.event(u_report.EVENT_TYPE_CHECK,
