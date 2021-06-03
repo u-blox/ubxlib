@@ -778,7 +778,10 @@ class ExeRun():
             retry = 5
             while (self._process.poll() is None) and (retry > 0):
                 # Try to stop with CTRL-C
-                self._process.send_signal(signal.CTRL_BREAK_EVENT)
+                if platform.system() == 'Linux':
+                    self._process.send_signal(signal.SIGINT)
+                else:
+                    self._process.send_signal(signal.CTRL_BREAK_EVENT)
                 sleep(1)
                 retry -= 1
             return_value = self._process.poll()
