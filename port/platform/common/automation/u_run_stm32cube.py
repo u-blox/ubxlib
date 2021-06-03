@@ -466,7 +466,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
         keep_going_flag=None, unity_dir=None):
     '''Build/run on STM32Cube'''
     return_value = -1
-    mcu_dir = ubxlib_dir + os.sep + SDK_DIR + os.sep + "mcu" + os.sep + mcu
+    mcu_dir = ubxlib_dir + os.sep + SDK_DIR + os.sep + "mcu" + os.sep + mcu.lower()
     instance_text = u_utils.get_instance_text(instance)
     # Create a unique project name prefix in case more than
     # one process is running this
