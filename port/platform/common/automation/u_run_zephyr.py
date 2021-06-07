@@ -349,6 +349,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     return_value = -1
     build_dir = None
     instance_text = u_utils.get_instance_text(instance)
+    _ = (misc_locks) # Suppress unused variable
 
     # Don't need the platform lock
     del platform_lock
@@ -410,69 +411,55 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                        u_report.EVENT_PASSED,
                                        "build took {:.0f} second(s)".format(time() -
                                                                             build_start_time))
-                        # On NRF52 (NRF5)/Zephyr (NRF53/NRF52) doing a download
-                        # on more than one platform at a time or doing a download
-                        # while RTT logging is in progress seems to cause problems,
-                        # even though it should be tied to the serial number of the
-                        # given debugger on that board, so lock JLink for this.
-                        jlink_lock = None
-                        if misc_locks and ("jlink_lock" in misc_locks):
-                            jlink_lock = misc_locks["jlink_lock"]
-                        with u_utils.Lock(jlink_lock, INSTALL_LOCK_WAIT_SECONDS,
-                                          "JLink", printer, prompt) as locked_jlink:
-                            if locked_jlink:
-                                with u_connection.Lock(connection, connection_lock,
-                                                       CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                                       printer, prompt,
-                                                       keep_going_flag) as locked_connection:
-                                    if locked_connection:
-                                        # Get the device name for JLink
-                                        jlink_device_name = jlink_device(mcu)
-                                        if not jlink_device_name:
-                                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                           u_report.EVENT_WARNING,
-                                                           "MCU not found in JLink devices")
-                                        # Do the download
-                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                       u_report.EVENT_START)
-                                        if download(connection, jlink_device_name,
-                                                    DOWNLOAD_GUARD_TIME_SECONDS,
-                                                    build_dir, returned_env, printer, prompt):
-                                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                           u_report.EVENT_COMPLETE)
-                                            # Now the target can be reset
-                                            u_utils.reset_nrf_target(connection,
-                                                                     printer, prompt)
-                                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                                           u_report.EVENT_START)
+                        # Do the download
+                        with u_connection.Lock(connection, connection_lock,
+                                               CONNECTION_LOCK_GUARD_TIME_SECONDS,
+                                               printer, prompt,
+                                               keep_going_flag) as locked_connection:
+                            if locked_connection:
+                                # Get the device name for JLink
+                                jlink_device_name = jlink_device(mcu)
+                                if not jlink_device_name:
+                                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                                   u_report.EVENT_WARNING,
+                                                   "MCU not found in JLink devices")
+                                # Do the download
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                               u_report.EVENT_START)
+                                if download(connection, jlink_device_name,
+                                            DOWNLOAD_GUARD_TIME_SECONDS,
+                                            build_dir, returned_env, printer, prompt):
+                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                   u_report.EVENT_COMPLETE)
+                                    # Now the target can be reset
+                                    u_utils.reset_nrf_target(connection,
+                                                             printer, prompt)
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                   u_report.EVENT_START)
 
-                                            with URttReader(jlink_device(mcu), jlink_serial=connection["debugger"]) as rtt_reader:
-                                                return_value = u_monitor.main(rtt_reader,
-                                                                              u_monitor.CONNECTION_RTT,
-                                                                              RUN_GUARD_TIME_SECONDS,
-                                                                              RUN_INACTIVITY_TIME_SECONDS,
-                                                                              "\n", instance, printer,
-                                                                              reporter,
-                                                                              test_report_handle,
-                                                                              keep_going_flag=keep_going_flag)
-                                            if return_value == 0:
-                                                reporter.event(u_report.EVENT_TYPE_TEST,
-                                                               u_report.EVENT_COMPLETE)
-                                            else:
-                                                reporter.event(u_report.EVENT_TYPE_TEST,
-                                                               u_report.EVENT_FAILED)
-                                        else:
-                                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                           u_report.EVENT_FAILED,
-                                                           "check debug log for details")
+                                    with URttReader(jlink_device(mcu), jlink_serial=connection["debugger"]) as rtt_reader:
+                                        return_value = u_monitor.main(rtt_reader,
+                                                                      u_monitor.CONNECTION_RTT,
+                                                                      RUN_GUARD_TIME_SECONDS,
+                                                                      RUN_INACTIVITY_TIME_SECONDS,
+                                                                      "\n", instance, printer,
+                                                                      reporter,
+                                                                      test_report_handle,
+                                                                      keep_going_flag=keep_going_flag)
+                                    if return_value == 0:
+                                        reporter.event(u_report.EVENT_TYPE_TEST,
+                                                       u_report.EVENT_COMPLETE)
                                     else:
-                                        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                       u_report.EVENT_FAILED,
-                                                       "unable to lock a connection")
+                                        reporter.event(u_report.EVENT_TYPE_TEST,
+                                                       u_report.EVENT_FAILED)
+                                else:
+                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                   u_report.EVENT_FAILED,
+                                                   "check debug log for details")
                             else:
                                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                u_report.EVENT_FAILED,
-                                               "unable to lock JLink")
+                                               "unable to lock a connection")
                     else:
                         return_value = 1
                         reporter.event(u_report.EVENT_TYPE_BUILD,

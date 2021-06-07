@@ -330,8 +330,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     return_value = -1
     hex_file_path = None
     instance_text = u_utils.get_instance_text(instance)
-    swo_port = u_utils.JLINK_SWO_PORT
     downloaded = False
+    _ = (misc_locks) # Suppress unused variable
 
     # Don't need the platform lock
     del platform_lock
@@ -393,83 +393,65 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                    "build took {:.0f} second(s)".format(time() -
                                                                         build_start_time))
                     # Do the download
-                    # On nRF5 doing a download or starting RTT logging
-                    # on more than one platform at a time seems to cause
-                    # problems, even though it should be tied to the
-                    # serial number of the given debugger on that board,
-                    # so lock JLink for this.
-                    jlink_lock = None
-                    if misc_locks and ("jlink_lock" in misc_locks):
-                        jlink_lock = misc_locks["jlink_lock"]
-                    with u_utils.Lock(jlink_lock, INSTALL_LOCK_WAIT_SECONDS,
-                                      "JLink", printer, prompt) as locked_jlink:
-                        if locked_jlink:
-                            with u_connection.Lock(connection, connection_lock,
-                                                   CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                                   printer, prompt,
-                                                   keep_going_flag) as locked_connection:
-                                if locked_connection:
+                    with u_connection.Lock(connection, connection_lock,
+                                           CONNECTION_LOCK_GUARD_TIME_SECONDS,
+                                           printer, prompt,
+                                           keep_going_flag) as locked_connection:
+                        if locked_connection:
+                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                           u_report.EVENT_START)
+                            # I have seen the download fail on occasion
+                            # so give this two bites of the cherry
+                            retries = 2
+                            while not downloaded and (retries > 0):
+                                downloaded = download(connection,
+                                                      DOWNLOAD_GUARD_TIME_SECONDS,
+                                                      hex_file_path,
+                                                      printer, prompt)
+                                retries -= 1
+                                if not downloaded and (retries > 0):
                                     reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                   u_report.EVENT_START)
-                                    # I have seen the download fail on occasion
-                                    # so give this two bites of the cherry
-                                    retries = 2
-                                    while u_utils.keep_going(keep_going_flag,
-                                                             printer, prompt) and \
-                                          not downloaded and (retries > 0):
-                                        downloaded = download(connection,
-                                                              DOWNLOAD_GUARD_TIME_SECONDS,
-                                                              hex_file_path,
-                                                              printer, prompt)
-                                        retries -= 1
-                                        if not downloaded and (retries > 0):
-                                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                           u_report.EVENT_WARNING,
-                                                           "unable to download, will retry...")
-                                            sleep(5)
-                                    if downloaded:
-                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                       u_report.EVENT_COMPLETE)
-
-                                        # Now the target can be reset
-                                        u_utils.reset_nrf_target(connection,
-                                                                 printer, prompt)
-                                        reporter.event(u_report.EVENT_TYPE_TEST,
-                                                       u_report.EVENT_START)
-
-                                        with URttReader("NRF52840_XXAA", jlink_serial=connection["debugger"]) as rtt_reader:
-                                            return_value = u_monitor.main(rtt_reader,
-                                                                          u_monitor.CONNECTION_RTT,
-                                                                          RUN_GUARD_TIME_SECONDS,
-                                                                          RUN_INACTIVITY_TIME_SECONDS,
-                                                                          "\n", instance, printer,
-                                                                          reporter,
-                                                                          test_report_handle, None,
-                                                                          keep_going_flag=keep_going_flag)
-
-                                        if return_value == 0:
-                                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                                           u_report.EVENT_COMPLETE)
-                                        else:
-                                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                                           u_report.EVENT_FAILED)
-                                    else:
-                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                       u_report.EVENT_FAILED,
-                                                       "check debug log for details")
-                                    # Wait for a short while before giving
-                                    # the connection lock away to make sure
-                                    # that everything really has shut down
-                                    # in the debugger
+                                                   u_report.EVENT_WARNING,
+                                                   "unable to download, will retry...")
                                     sleep(5)
+                            if downloaded:
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                               u_report.EVENT_COMPLETE)
+
+                                # Now the target can be reset
+                                u_utils.reset_nrf_target(connection,
+                                                         printer, prompt)
+                                reporter.event(u_report.EVENT_TYPE_TEST,
+                                               u_report.EVENT_START)
+
+                                with URttReader("NRF52840_XXAA", jlink_serial=connection["debugger"]) as rtt_reader:
+                                    return_value = u_monitor.main(rtt_reader,
+                                                                  u_monitor.CONNECTION_RTT,
+                                                                  RUN_GUARD_TIME_SECONDS,
+                                                                  RUN_INACTIVITY_TIME_SECONDS,
+                                                                  "\n", instance, printer,
+                                                                  reporter,
+                                                                  test_report_handle)
+
+                                if return_value == 0:
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                   u_report.EVENT_COMPLETE)
                                 else:
-                                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                   u_report.EVENT_FAILED,
-                                                   "unable to lock a connection")
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                   u_report.EVENT_FAILED)
+                            else:
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                               u_report.EVENT_FAILED,
+                                               "check debug log for details")
+                            # Wait for a short while before giving
+                            # the connection lock away to make sure
+                            # that everything really has shut down
+                            # in the debugger
+                            sleep(5)
                         else:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                            u_report.EVENT_FAILED,
-                                           "unable to lock JLink")
+                                           "unable to lock a connection")
                 else:
                     return_value = 1
                     reporter.event(u_report.EVENT_TYPE_BUILD,
