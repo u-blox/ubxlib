@@ -146,7 +146,9 @@ void setUp(void)
 // Unity tearDown() function.
 void tearDown(void)
 {
-    // Nothing to do
+    // Add a small delay between test to make sure the
+    // host have some time to read out RTT buffer
+    uPortTaskBlock(10);
 }
 
 void testFail(void)

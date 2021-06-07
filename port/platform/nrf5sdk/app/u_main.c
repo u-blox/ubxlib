@@ -38,6 +38,7 @@
 #include "u_runner.h"
 
 #include "assert.h"
+#include "nrf_delay.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -102,7 +103,9 @@ void setUp(void)
 // Unity tearDown() function.
 void tearDown(void)
 {
-    // Nothing to do
+    // Add a small delay between test to make sure the
+    // host have some time to read out RTT buffer
+    nrf_delay_ms(10);
 }
 
 void testFail(void)
