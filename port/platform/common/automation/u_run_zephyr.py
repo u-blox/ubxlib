@@ -211,17 +211,18 @@ def download_single_cpu(connection, jlink_device_name, guard_time_seconds, build
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt,
                            shell_cmd=True, set_env=env)
 
-def download_nrf53(connection, jlink_device_name, guard_time_seconds, build_dir, env, printer, prompt):
+def download_nrf53(connection, guard_time_seconds, build_dir, env, printer, prompt):
     cpunet_hex_path = os.path.join(build_dir, "hci_rpmsg", "zephyr", "merged_CPUNET.hex")
     success = True
     if os.path.exists(cpunet_hex_path):
         printer.string("{}download NETCPU".format(prompt))
-        call_list = ["nrfjprog.exe", "-f", "NRF53", "--coprocessor", "CP_NETWORK", 
+        call_list = ["nrfjprog.exe", "-f", "NRF53", "--coprocessor", "CP_NETWORK",
                      "--chiperase", "--program", cpunet_hex_path]
         if connection and "debugger" in connection and connection["debugger"]:
             call_list.extend(["-s", connection["debugger"]])
         print_call_list(call_list, printer, prompt)
-        success = u_utils.exe_run(call_list, guard_time_seconds, printer, prompt, shell_cmd=True, set_env=env)
+        success = u_utils.exe_run(call_list, guard_time_seconds, printer,
+                                  prompt, shell_cmd=True, set_env=env)
     if success:
         # Give nrfjprog some time to relax
         sleep(10)
@@ -231,17 +232,18 @@ def download_nrf53(connection, jlink_device_name, guard_time_seconds, build_dir,
         if connection and "debugger" in connection and connection["debugger"]:
             call_list.extend(["-s", connection["debugger"]])
         print_call_list(call_list, printer, prompt)
-        success = u_utils.exe_run(call_list, guard_time_seconds, printer, prompt, shell_cmd=True, set_env=env)
+        success = u_utils.exe_run(call_list, guard_time_seconds, printer,
+                                  prompt, shell_cmd=True, set_env=env)
     return success
 
 def download(connection, jlink_device_name, guard_time_seconds,
              build_dir, env, printer, prompt):
     '''Download the given hex file(s)'''
     if jlink_device_name == "nRF5340_XXAA_APP":
-        success = download_nrf53(connection, jlink_device_name, guard_time_seconds, 
+        success = download_nrf53(connection, guard_time_seconds,
                                  build_dir, env, printer, prompt)
     else:
-        success = download_single_cpu(connection, jlink_device_name, guard_time_seconds, 
+        success = download_single_cpu(connection, jlink_device_name, guard_time_seconds,
                                       build_dir, env, printer, prompt)
     return success
 
@@ -437,7 +439,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                     reporter.event(u_report.EVENT_TYPE_TEST,
                                                    u_report.EVENT_START)
 
-                                    with URttReader(jlink_device(mcu), jlink_serial=connection["debugger"]) as rtt_reader:
+                                    with URttReader(jlink_device(mcu),
+                                                    jlink_serial=connection["debugger"]) as rtt_reader:
                                         return_value = u_monitor.main(rtt_reader,
                                                                       u_monitor.CONNECTION_RTT,
                                                                       RUN_GUARD_TIME_SECONDS,
