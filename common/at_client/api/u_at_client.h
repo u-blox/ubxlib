@@ -705,7 +705,9 @@ void uAtClientCommandStopReadResponse(uAtClientHandle_t atHandle);
  * handled by calling uAtClientCommandStopReadResponse()).
  * This is normally called after uAtClientCommandStop().
  * and may be called multiple times if the response to the
- * AT command has multiple lines.
+ * AT command has multiple lines (but see
+ * uAtClientIsInformationResponse() for the corner-case where
+ * there is no unique prefix on those response line(s)).
  * The AT response parameters, which will be separated by
  * delimiters, must then be read using uAtClientReadInt(),
  * uAtClientReadString(), uAtClientReadBytes(), etc.
@@ -874,6 +876,28 @@ void uAtClientIgnoreStopTag(uAtClientHandle_t atHandle);
  * @param atHandle the handle of the AT client.
  */
 void uAtClientRestoreStopTag(uAtClientHandle_t atHandle);
+
+/** There are some AT commands (e.g. AT+USECMNG=3) where
+ * the response has no prefix on it and hence it is
+ * impossible for the AT parser to tell whether what it
+ * has received is an information response or something
+ * else entirely (e.g. a URC) until the whole response has
+ * been received (and the `OK` has been detected on the end).
+ * This is a particular problem where the response can be
+ * a long one (again, AT+USECMNG=3), so the `OK` might
+ * not be picked up for some time, and the response consists
+ * of multiple lines and hence the user would like to call
+ * uAtClientResponseStart() repeatedly to process each of
+ * those lines.  In these situations the caller is usually
+ * able to tell if we are in the information response
+ * (e.g. because they are parsing that response for some
+ * expected sequence) and hence, for those situations
+ * (you guessed it...), this can be called to put the
+ * AT parser into the correct state.
+ *
+ * @param atHandle the handle of the AT client.
+ */
+void uAtClientIsInformationResponse(uAtClientHandle_t atHandle);
 
 /** Consume the given number of parameters from the
  * received AT response stream.

@@ -2630,6 +2630,20 @@ void uAtClientRestoreStopTag(uAtClientHandle_t atHandle)
     U_PORT_MUTEX_UNLOCK(pClient->mutex);
 }
 
+// Override scope to be information response.
+void uAtClientIsInformationResponse(uAtClientHandle_t atHandle)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_PORT_MUTEX_LOCK(pClient->mutex);
+
+    if (pClient->error == U_ERROR_COMMON_SUCCESS) {
+        setScope(pClient, U_AT_CLIENT_SCOPE_INFORMATION);
+    }
+
+    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+}
+
 // Skip the given number of parameters.
 void uAtClientSkipParameters(uAtClientHandle_t atHandle,
                              size_t count)

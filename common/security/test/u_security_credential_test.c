@@ -213,6 +213,11 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             networkHandle = pNetworkCfg->handle;
 
             // List the credentials at start of day
+            // Some modules (e.g. SARA-R5) can sometimes take a
+            // little while to sort themselves out internally before
+            // returning the true list so add a delay here to let
+            // them do that
+            uPortTaskBlock(10000);
             uPortLog("U_SECURITY_CREDENTIAL_TEST: listing credentials...\n");
             z = 0;
             for (int32_t y = uSecurityCredentialListFirst(networkHandle, &credential);

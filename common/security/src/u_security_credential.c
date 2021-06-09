@@ -547,9 +547,13 @@ int32_t uSecurityCredentialListFirst(int32_t networkHandle,
                         }
                     }
                 }
+
                 if (keepGoing) {
                     // Add the container to the end of the list
                     count = credentialListAddCount(pContainer);
+                    // Since it has no way of telling, reassure the
+                    // AT parser that we are in the information response
+                    uAtClientIsInformationResponse(atHandle);
                 } else {
                     // Nothing there, free it
                     free(pContainer);
