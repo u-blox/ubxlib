@@ -6,15 +6,16 @@ from time import sleep
 import u_utils
 import u_settings
 
-
 # The default guard time for waiting for a connection lock in seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = (60 * 30)
+
+# The connection for each instance
 CONNECTION_LIST = [None,      # Instance 0, Lint, no connection, no need for a lock
                    None,      # Instance 1, Doxygen, no connection, no need for a lock
                    None,      # Instance 2, AStyle checker, no connection, no need for a lock
                    None,      # Instance 3, Pylint, no connection, no need for a lock
-                   None,      # Instance 4, reserved
-                   None,      # Instance 5, reserved
+                   None,      # Instance 4, run static size check, no connection, no need for a lock
+                   None,      # Instance 5, run no floating point check, no connection, no need for a lock
                    None,      # Instance 6, reserved
                    None,      # Instance 7, reserved
                    None,      # Instance 8, reserved
@@ -95,14 +96,54 @@ def get_instance(wanted_connection):
                 pass
     return instance
 
+def get_kmtronic(wanted_connection):
+    '''Return the kmtronic HW reset mechanism for the given connection'''
+    kmtronic = {}
+
+    if wanted_connection:
+        for connection in enumerate(CONNECTION_LIST):
+            # Use try/catch in case just one side is None
+            try:
+                if (connection["serial_port"] == wanted_connection["serial_port"]) and \
+                    (connection["debugger"] == wanted_connection["debugger"]):
+                    # "kmtronic" should be an object that includes
+                    # "ip_address" and "hex_bitmap"
+                    if "kmtronic" in wanted_connection and wanted_connection["kmtronic"] and \
+                        wanted_connection["kmtronic"]["ip_address"] and \
+                        wanted_connection["kmtronic"]["hex_bitmap"]:
+                        kmtronic = wanted_connection["kmtronic"]
+                    break
+            except TypeError:
+                pass
+    return kmtronic
+
+def get_usb_cutter_id_str(wanted_connection):
+    '''Return the Cleware USB cutter ID string for the given connection'''
+    usb_cutter_id_str = ""
+
+    if wanted_connection:
+        for connection in enumerate(CONNECTION_LIST):
+            # Use try/catch in case just one side is None
+            try:
+                if (connection["serial_port"] == wanted_connection["serial_port"]) and \
+                    (connection["debugger"] == wanted_connection["debugger"]):
+                    if "usb_cutter_id_str" in wanted_connection:
+                        # "usb_cutter_id_str" for a Cleware USB cutter
+                        # should be something like "1750665"
+                        usb_cutter_id_str = wanted_connection["usb_cutter_id_str"]
+                    break
+            except TypeError:
+                pass
+    return usb_cutter_id_str
+
 # Note: it seems strange to be passing the connection_lock
-# in here as it's already in the table above.  However, the
+# in here as it is already in the table above.  However, the
 # locks need to work across process pools and so they
 # need to be passed in from the caller, the storage above
 # is for the caller only, if you call it from a different process
 # you'll get another copy which will contain no lock.
 def lock(connection, connection_lock, guard_time_seconds,
-         printer, prompt):
+         printer, prompt, keep_going_flag=None, hw_reset=True):
     '''Lock the given connection'''
     timeout_seconds = guard_time_seconds
     success = False
@@ -115,8 +156,9 @@ def lock(connection, connection_lock, guard_time_seconds,
                            " to lock connection...".                    \
                            format(prompt, instance_text, guard_time_seconds))
             count = 0
-            while not connection_lock.acquire(False) and                \
-                ((guard_time_seconds == 0) or (timeout_seconds > 0)):
+            while not connection_lock.acquire(False) and                 \
+                ((guard_time_seconds == 0) or (timeout_seconds > 0)) and \
+                u_utils.keep_going(keep_going_flag, printer, prompt):
                 sleep(1)
                 timeout_seconds -= 1
                 count += 1
@@ -128,9 +170,21 @@ def lock(connection, connection_lock, guard_time_seconds,
                                           connection_lock))
                     count = 0
             if (guard_time_seconds == 0) or (timeout_seconds > 0):
-                success = True
                 printer.string("{}instance {} has locked a connection ({}).". \
                                format(prompt, instance_text, connection_lock))
+                if hw_reset:
+                    kmtronic = get_kmtronic(connection)
+                    usb_cutter_id_str = get_usb_cutter_id_str(connection)
+                    if kmtronic:
+                        printer.string("{}using KMTronic to reset {}...". \
+                                       format(prompt, instance_text))
+                        u_utils.kmtronic_reset(kmtronic["ip_address"], kmtronic["hex_bitmap"],
+                                               printer, prompt)
+                    if usb_cutter_id_str:
+                        printer.string("{}using USB cutter to reset {}...". \
+                                       format(prompt, instance_text))
+                        u_utils.usb_cutter_reset([usb_cutter_id_str], printer, prompt)
+                success = True
         else:
             success = True
             printer.string("{}note: instance {} lock is empty.".           \
@@ -151,17 +205,18 @@ def unlock(connection, connection_lock, printer, prompt):
 class Lock():
     '''Hold a lock as a "with:"'''
     def __init__(self, connection, connection_lock, guard_time_seconds,
-                 printer, prompt):
+                 printer, prompt, keep_going_flag=None):
         self._connection = connection
         self._connection_lock = connection_lock
         self._guard_time_seconds = guard_time_seconds
         self._printer = printer
         self._prompt = prompt
+        self._keep_going_flag = keep_going_flag
         self._locked = False
     def __enter__(self):
         self._locked = lock(self._connection, self._connection_lock,
                             self._guard_time_seconds, self._printer,
-                            self._prompt)
+                            self._prompt, self._keep_going_flag)
         return self._locked
     def __exit__(self, _type, value, traceback):
         del _type

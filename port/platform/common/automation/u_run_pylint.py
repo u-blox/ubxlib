@@ -17,7 +17,7 @@ PYTHON_PATHS = ["port" + os.sep + "platform" + os.sep + "common" +  \
 # The minimum pylint rating to require
 MIN_RATING = 9
 
-def run(instance, ubxlib_dir, working_dir, printer, reporter):
+def run(instance, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=None):
     '''Run Pylint'''
     return_value = 1
     got_pylint = False
@@ -41,7 +41,6 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                         " sure that it is installed and on the path.", \
                         printer, prompt)
 
-
     if got_pylint:
         # Run Pylint on all the .py files in PYTHON_PATHS
         return_value = 0
@@ -52,6 +51,9 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
                 with u_utils.ChangeDir(abs_py_path):
                     for py_file in os.listdir(abs_py_path):
                         if py_file.endswith(".py"):
+                            if not u_utils.keep_going(keep_going_flag, printer, prompt):
+                                return_value = -1
+                                break
                             printer.string("{}running Pylint on {}...".format(prompt, py_file))
                             got_rating = False
                             try:

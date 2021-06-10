@@ -457,7 +457,8 @@ def swo_decode_process(swo_data_file, swo_decoded_text_file):
 
 def run(instance, mcu, toolchain, connection, connection_lock,
         platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle):
+        working_dir, printer, reporter, test_report_handle,
+        keep_going_flag=None, unity_dir=None):
     '''Build/run on STM32Cube'''
     return_value = -1
     mcu_dir = ubxlib_dir + os.sep + SDK_DIR + os.sep + "mcu" + os.sep + mcu
@@ -492,6 +493,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
         text += ", ubxlib directory \"" + ubxlib_dir + "\""
     if working_dir:
         text += ", working directory \"" + working_dir + "\""
+    if unity_dir:
+        text += ", using Unity from \"" + unity_dir + "\""
     printer.string("{}{}.".format(prompt, text))
 
     # On STM32F4 we can get USB errors if we try to do a download
@@ -510,11 +513,17 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     # Switch to the working directory
     with u_utils.ChangeDir(working_dir):
         # Check that everything we need is installed
-        if check_installation(PATHS_LIST, printer, prompt):
-            # Fetch Unity
-            if u_utils.fetch_repo(u_utils.UNITY_URL,
-                                  u_utils.UNITY_SUBDIR,
-                                  None, printer, prompt):
+        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+           check_installation(PATHS_LIST, printer, prompt):
+            # Fetch Unity, if necessary
+            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                not unity_dir:
+                if u_utils.fetch_repo(u_utils.UNITY_URL,
+                                      u_utils.UNITY_SUBDIR,
+                                      None, printer, prompt,
+                                      submodule_init=False):
+                    unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
+            if unity_dir:
                 # I've no idea why but on every other
                 # build STM32Cube loses track of where
                 # most of the files are: you'll see it
@@ -523,17 +532,18 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                 # give it two goes, deleting the project
                 # we created before trying again.
                 retries = 2
-                while (elf_path is None) and (retries > 0):
+                while u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                      (elf_path is None) and (retries > 0):
                     # The STM32Cube IDE, based on Eclipse
                     # has no mechanism for overriding the locations
                     # of things so here we read the .project
                     # file and replace the locations of the
                     # STM32Cube SDK and Unity files as
                     # appropriate
-                    if create_project(mcu_dir, PROJECT_NAME,
+                    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                       create_project(mcu_dir, PROJECT_NAME,
                                       updated_project_name_prefix + PROJECT_NAME,
-                                      STM32CUBE_FW_PATH,
-                                      working_dir + os.sep + u_utils.UNITY_SUBDIR,
+                                      STM32CUBE_FW_PATH, unity_dir,
                                       printer, prompt):
                         # Do the build
                         build_start_time = time()
@@ -557,7 +567,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                        u_report.EVENT_WARNING,
                                        "unable to create STM32Cube project, will retry")
                     retries -= 1
-                if elf_path:
+                if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                   elf_path:
                     reporter.event(u_report.EVENT_TYPE_BUILD,
                                    u_report.EVENT_PASSED,
                                    "build took {:.0f} second(s)".format(time() -
@@ -565,12 +576,13 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                     # Lock the connection.
                     with u_connection.Lock(connection, connection_lock,
                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                           printer, prompt) as locked_connection:
+                                           printer, prompt, keep_going_flag) as locked_connection:
                         if locked_connection:
                             # I have seen download failures occur if two
                             # ST-Link connections are initiated at the same time.
                             with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
-                                              "platform", printer, prompt) as locked_platform:
+                                              "platform", printer, prompt,
+                                              keep_going_flag) as locked_platform:
                                 if locked_platform:
                                     reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                    u_report.EVENT_START)
@@ -578,7 +590,9 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                     # barf on occasions so give this two bites of
                                     # the cherry
                                     retries = 2
-                                    while not downloaded and (retries > 0):
+                                    while u_utils.keep_going(keep_going_flag,
+                                                             printer, prompt) and \
+                                          not downloaded and (retries > 0):
                                         downloaded = download(connection,
                                                               DOWNLOAD_GUARD_TIME_SECONDS,
                                                               elf_path, printer, prompt)
@@ -608,7 +622,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                             u_utils.wait_for_completion(download_list,
                                                                         "STM32F4 downloads",
                                                                         DOWNLOADS_COMPLETE_GUARD_TIME_SECONDS,
-                                                                        printer, prompt)
+                                                                        printer, prompt, keep_going_flag)
                                         # So that all STM32Cube instances don't start up at
                                         # once, which can also cause problems, wait the
                                         # instance-number number of seconds.
@@ -649,7 +663,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                     RUN_INACTIVITY_TIME_SECONDS,
                                                                     "\r", instance, printer,
                                                                     reporter,
-                                                                    test_report_handle)
+                                                                    test_report_handle,
+                                                                    keep_going_flag=keep_going_flag)
                                                 file_handle.close()
                                             process.terminate()
                                         except KeyboardInterrupt:

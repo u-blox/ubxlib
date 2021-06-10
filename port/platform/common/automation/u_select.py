@@ -21,6 +21,11 @@ import u_data # Accesses the instance database
 #                                              a filter string for that one.
 # (d)     any .py file                       run Pylint to check for errors.
 # (e)         any                            run Doxygen to check for errors.
+#
+# In addition to all of the above a quite separate check
+# is provided: do any of the file paths that have been
+# changed affect the ubxlib test automation.  This allows
+# the caller to determine if those files need to be updated.
 
 # Prefix to put at the start of all prints
 PROMPT = "u_select: "
@@ -110,17 +115,18 @@ def instance_platform(database, paths, instances):
                                 if got_platform and (platform is not None) and got_mcu and \
                                    (mcu is not None):
                                     # We have an MCU-specific file
-                                    toolchains = u_data.                                             \
+                                    toolchains = u_data.                                          \
                                       get_toolchains_for_platform_mcu(database, platform, mcu)
                                     if (toolchains is None) or (idx + 1 == len(parts)):
                                         # A file in the <mcu> directory or a sub-directory
                                         # of a platform which doesn't support a choice of
                                         # toolchains, so it can be added
-                                        instances_local.extend(u_data.                               \
-                                          get_instances_for_platform_mcu_toolchain(database, platform,
+                                        instances_local.extend(u_data.                            \
+                                          get_instances_for_platform_mcu_toolchain(database,
+                                                                                   platform,
                                                                                    mcu, None)[:])
                                         if instances_local:
-                                            print("{}file {} is in platform/MCU {}/{} implying"     \
+                                            print("{}file {} is in platform/MCU {}/{} implying"   \
                                                   " instance(s) {}.".format(PROMPT, path, platform,
                                                   mcu, instances_string(instances_local)))
                                             instances.extend(instances_local[:])
@@ -314,3 +320,17 @@ def select(database, instances, paths):
     print()
 
     return filter_string
+
+def automation_changes(paths):
+    '''Return true if any automation files are included in paths'''
+    is_changed = False
+
+    if paths:
+        for path in paths:
+            if path.startswith("port/platform/common/automation/") and \
+               (path.lower().endswith(".py") or path.lower().endswith("database.md") or \
+                path.lower().endswith("jenkinsfile")):
+                is_changed = True
+                break
+
+    return is_changed

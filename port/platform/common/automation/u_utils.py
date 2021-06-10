@@ -4,7 +4,10 @@
 
 import queue                    # For PrintThread and exe_run
 from time import sleep, time, gmtime, strftime   # For lock timeout, exe_run timeout and logging
+from multiprocessing import RLock
+from copy import copy
 import threading                # For PrintThread
+import sys
 import os                       # For ChangeDir, has_admin
 import stat                     # To help deltree out
 from telnetlib import Telnet # For talking to JLink server
@@ -15,7 +18,18 @@ import subprocess
 import platform                 # Figure out current OS
 import serial                   # Pyserial (make sure to do pip install pyserial)
 import psutil                   # For killing things (make sure to do pip install psutil)
+import requests                 # For HTTP comms with a KMTronic box (do pip install requests)
 import u_settings
+
+# The port that this agent service runs on
+# Deliberately NOT a setting, we need to be sure
+# everyone uses the same value
+AGENT_SERVICE_PORT = 17003
+
+# The maximum number of characters that an agent will
+# use from controller_name when constructing a directory
+# name for a ubxlib branch to be checked out into
+AGENT_UBXLIB_PATH_CONTROLLER_NAME_MAX_LENGTH = 4
 
 # How long to wait for an install lock in seconds
 INSTALL_LOCK_WAIT_SECONDS = u_settings.INSTALL_LOCK_WAIT_SECONDS #(60 * 60)
@@ -72,6 +86,19 @@ FILTER_MACRO_NAME = u_settings.FILTER_MACRO_NAME #"U_CFG_APP_FILTER"
 # and moved on
 EXE_RUN_QUEUE_WAIT_SECONDS = u_settings.EXE_RUN_QUEUE_WAIT_SECONDS #1
 
+# The number of seconds a USB cutter and the bit positions of
+# a KMTronic box are switched off for
+HW_RESET_DURATION_SECONDS = u_settings.HW_RESET_DURATION_SECONDS # e.g. 5
+
+def keep_going(flag, printer=None, prompt=None):
+    '''Check a keep_going flag'''
+    do_not_stop = True
+    if flag is not None and not flag.is_set():
+        do_not_stop = False
+        if printer and prompt:
+            printer.string("{}aborting as requested.".format(prompt))
+    return do_not_stop
+
 def subprocess_osify(cmd):
     ''' expects an array of strings being [command, param, ...] '''
     if platform.system() == "Linux":
@@ -82,21 +109,22 @@ def get_actual_path(path):
     '''Given a drive number return real path if it is a subst'''
     actual_path = path
 
-    # Get a list of substs
-    text = subprocess.check_output("subst",
-                                   stderr=subprocess.STDOUT,
-                                   shell=True)  # Jenkins hangs without this
-    for line in text.splitlines():
-        # Lines should look like this:
-        # Z:\: => C:\projects\ubxlib_priv
-        # So, in this example, if we were given z:\blah
-        # then the actual path should be C:\projects\ubxlib_priv\blah
-        text = line.decode()
-        bits =  text.rsplit(": => ")
-        if (len(bits) > 1) and (len(path) > 1) and \
-          (bits[0].lower()[0:2] == path[0:2].lower()):
-            actual_path = bits[1] + path[2:]
-            break
+    if os.name == 'nt':
+        # Get a list of substs
+        text = subprocess.check_output("subst",
+                                       stderr=subprocess.STDOUT,
+                                       shell=True)  # Jenkins hangs without this
+        for line in text.splitlines():
+            # Lines should look like this:
+            # Z:\: => C:\projects\ubxlib_priv
+            # So, in this example, if we were given z:\blah
+            # then the actual path should be C:\projects\ubxlib_priv\blah
+            text = line.decode()
+            bits =  text.rsplit(": => ")
+            if (len(bits) > 1) and (len(path) > 1) and \
+              (bits[0].lower()[0:2] == path[0:2].lower()):
+                actual_path = bits[1] + path[2:]
+                break
 
     return actual_path
 
@@ -112,6 +140,16 @@ def get_instance_text(instance):
 
     return instance_text
 
+# Get a list of instances as a text string separated
+# by spaces.
+def get_instances_text(instances):
+    '''Return the instances as a text string'''
+    instances_text = ""
+    for instance in instances:
+        if instance:
+            instances_text += " {}".format(get_instance_text(instance))
+    return instances_text
+
 def remove_readonly(func, path, exec_info):
     '''Help deltree out'''
     del exec_info
@@ -120,7 +158,7 @@ def remove_readonly(func, path, exec_info):
 
 def deltree(directory, printer, prompt):
     '''Remove an entire directory tree'''
-    tries = 2
+    tries = 3
     success = False
 
     if os.path.isdir(directory):
@@ -130,20 +168,39 @@ def deltree(directory, printer, prompt):
         # Windows race condition
         while not success and (tries > 0):
             try:
-                # Need the onerror bit on Winders, seek
+                # Need the onerror bit on Winders, see
                 # this Stack Overflow post:
                 # https://stackoverflow.com/questions/1889597/deleting-directory-in-python
                 shutil.rmtree(directory, onerror=remove_readonly)
                 success = True
             except OSError as ex:
-                printer.string("{}ERROR unable to delete \"{}\" {}: \"{}\"".
-                               format(prompt, directory,
-                                      ex.errno, ex.strerror))
+                if printer and prompt:
+                    printer.string("{}ERROR unable to delete \"{}\" {}: \"{}\"".
+                                   format(prompt, directory,
+                                          ex.errno, ex.strerror))
+                sleep(1)
             tries -= 1
     else:
         success = True
 
     return success
+
+# Some list types aren't quite list types: for instance,
+# the lists returned by RPyC look like lists but they
+# aren't of type list and so "in", for instance, will fail.
+# This converts an instance list (i.e. a list-like object
+# containing items that are each another list-like object)
+# into a plain-old two-level list.
+def copy_two_level_list(instances_in):
+    '''Convert instances_in into a true list'''
+    instances_out = []
+    if instances_in:
+        for item1 in instances_in:
+            instances_out1 = []
+            for item2 in item1:
+                instances_out1.append(item2)
+            instances_out.append(copy(instances_out1))
+    return instances_out
 
 # Check if admin privileges are available, from:
 # https://stackoverflow.com/questions/2946746/python-checking-if-a-user-has-administrator-privileges
@@ -260,14 +317,15 @@ def open_telnet(port_number, printer, prompt):
                               port_number, str(ex)))
     return telnet_handle
 
-def install_lock_acquire(install_lock, printer, prompt):
+def install_lock_acquire(install_lock, printer, prompt, keep_going_flag=None):
     '''Attempt to acquire install lock'''
     timeout_seconds = INSTALL_LOCK_WAIT_SECONDS
     success = False
 
     if install_lock:
         printer.string("{}waiting for install lock...".format(prompt))
-        while not install_lock.acquire(False) and (timeout_seconds > 0):
+        while not install_lock.acquire(False) and (timeout_seconds > 0) and \
+              keep_going(keep_going_flag, printer, prompt):
             sleep(1)
             timeout_seconds -= 1
 
@@ -288,87 +346,149 @@ def install_lock_release(install_lock, printer, prompt):
         install_lock.release()
     printer.string("{}install lock released.".format(prompt))
 
-def fetch_repo(url, directory, branch, printer, prompt):
-    '''Fetch a repo: directory can be relative or absolute'''
+def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, force=False):
+    '''Fetch a repo: directory can be relative or absolute, branch can be a hash'''
     got_code = False
-    checked_out = False
     success = False
 
-    printer.string("{}in directory {}, fetching"
-                   " {} to directory {}".format(prompt, os.getcwd(),
-                                                url, directory))
+    dir_text = directory
+    if dir_text == ".":
+        dir_text = "this directory"
+    if printer and prompt:
+        printer.string("{}in directory {}, fetching"
+                       " {} to {}.".format(prompt, os.getcwd(),
+                                          url, dir_text))
     if not branch:
         branch = "master"
     if os.path.isdir(directory):
         # Update existing code
         with ChangeDir(directory):
-            printer.string("{}updating code in {}...".
-                           format(prompt, directory))
-            try:
-                text = subprocess.check_output(subprocess_osify(["git", "pull",
-                                                "origin", branch]),
-                                               stderr=subprocess.STDOUT,
-                                               shell=True) # Jenkins hangs without this
-                for line in text.splitlines():
-                    printer.string("{}{}".format(prompt, line.decode()))
-                got_code = True
-            except subprocess.CalledProcessError as error:
-                printer.string("{}git returned error {}: \"{}\"".
-                               format(prompt, error.returncode,
-                                      error.output))
-    else:
+            if printer and prompt:
+                printer.string("{}updating code in {}...".
+                               format(prompt, dir_text))
+            target = branch
+            if branch.startswith("#"):
+                # Actually been given a branch, lose the
+                # preceding #
+                target = branch[1:len(branch)]
+            # Try this once and, if it fails and force is set,
+            # do a git reset --hard and try again
+            tries = 1
+            if force:
+                tries += 1
+            while tries > 0:
+                try:
+                    call_list = []
+                    call_list.append("git")
+                    call_list.append("fetch")
+                    call_list.append("origin")
+                    call_list.append(target)
+                    if printer and prompt:
+                        text = ""
+                        for item in call_list:
+                            if text:
+                                text += " "
+                            text += item
+                        printer.string("{}in {} calling {}...".
+                                       format(prompt, os.getcwd(), text))
+                    # Try to pull the code
+                    text = subprocess.check_output(subprocess_osify(call_list),
+                                                   stderr=subprocess.STDOUT,
+                                                   shell=True) # Jenkins hangs without this
+                    for line in text.splitlines():
+                        if printer and prompt:
+                            printer.string("{}{}".format(prompt, line.decode()))
+                    got_code = True
+                except subprocess.CalledProcessError as error:
+                    if printer and prompt:
+                        printer.string("{}git returned error {}: \"{}\"".
+                                       format(prompt, error.returncode,
+                                              error.output))
+                if got_code:
+                    tries = 0
+                else:
+                    if force:
+                        # git reset --hard
+                        printer.string("{}in directory {} calling git reset --hard...".   \
+                                       format(prompt, os.getcwd()))
+                        try:
+                            text = subprocess.check_output(subprocess_osify(["git", "reset",
+                                                            "--hard"]),
+                                                           stderr=subprocess.STDOUT,
+                                                           shell=True) # Jenkins hangs without this
+                            for line in text.splitlines():
+                                if printer and prompt:
+                                    printer.string("{}{}".format(prompt, line.decode()))
+                        except subprocess.CalledProcessError as error:
+                            if printer and prompt:
+                                printer.string("{}git returned error {}: \"{}\"".
+                                               format(prompt, error.returncode,
+                                                      error.output))
+                        force = False
+                    tries -= 1
+        if not got_code:
+            # If we still haven't got the code, delete the
+            # directory for a true clean start
+            deltree(directory, printer, prompt)
+    if not os.path.isdir(directory):
         # Clone the repo
-        printer.string("{}cloning from {} into {}...".
-                       format(prompt, url, directory))
+        if printer and prompt:
+            printer.string("{}cloning from {} into {}...".
+                           format(prompt, url, dir_text))
         try:
-            text = subprocess.check_output(subprocess_osify(["git", "clone", url, directory]),
+            text = subprocess.check_output(subprocess_osify(["git", "clone", "-q",
+                                                             url, directory]),
                                            stderr=subprocess.STDOUT,
                                            shell=True) # Jenkins hangs without this
             for line in text.splitlines():
-                printer.string("{}{}".format(prompt, line.decode()))
+                if printer and prompt:
+                    printer.string("{}{}".format(prompt, line.decode()))
             got_code = True
         except subprocess.CalledProcessError as error:
-            printer.string("{}git returned error {}: \"{}\"".
-                           format(prompt, error.returncode,
-                                  error.output))
+            if printer and prompt:
+                printer.string("{}git returned error {}: \"{}\"".
+                               format(prompt, error.returncode,
+                                      error.output))
 
     if got_code and os.path.isdir(directory):
         # Check out the correct branch and recurse submodules
         with ChangeDir(directory):
-            printer.string("{}checking out branch {}...".
-                           format(prompt, branch))
+            target = "origin/" + branch
+            if branch.startswith("#"):
+                # Actually been given a branch, so lose the
+                # "origin/" and the preceding #
+                target = branch[1:len(branch)]
+            if printer and prompt:
+                printer.string("{}checking out {}...".
+                               format(prompt, target))
             try:
-                text = subprocess.check_output(subprocess_osify(["git", "-c",
-                                                "advice.detachedHead=false",
-                                                "checkout",
-                                                "origin/" + branch]),
+                call_list = ["git", "-c", "advice.detachedHead=false",
+                             "checkout", "--no-progress"]
+                if submodule_init:
+                    call_list.append("--recurse-submodules")
+                    printer.string("{}also recursing sub-modules (can take some time" \
+                                   " and gives no feedback).".format(prompt))
+                call_list.append(target)
+                if printer and prompt:
+                    text = ""
+                    for item in call_list:
+                        if text:
+                            text += " "
+                        text += item
+                    printer.string("{}in {} calling {}...".
+                                   format(prompt, os.getcwd(), text))
+                text = subprocess.check_output(subprocess_osify(call_list),
                                                stderr=subprocess.STDOUT,
                                                shell=True) # Jenkins hangs without this
                 for line in text.splitlines():
-                    printer.string("{}{}".format(prompt, line.decode()))
-                checked_out = True
-            except subprocess.CalledProcessError as error:
-                printer.string("{}git returned error {}: \"{}\"".
-                               format(prompt, error.returncode,
-                                      error.output))
-
-            if checked_out:
-                printer.string("{}recursing sub-modules (can take some time" \
-                               " and gives no feedback).".format(prompt))
-                try:
-                    text = subprocess.check_output(subprocess_osify(["git", "submodule",
-                                                    "update", "--init",
-                                                    "--recursive"]),
-                                                   stderr=subprocess.STDOUT,
-                                                   shell=True) # Jenkins hangs without this
-                    for line in text.splitlines():
+                    if printer and prompt:
                         printer.string("{}{}".format(prompt, line.decode()))
-                    success = True
-                except subprocess.CalledProcessError as error:
+                success = True
+            except subprocess.CalledProcessError as error:
+                if printer and prompt:
                     printer.string("{}git returned error {}: \"{}\"".
                                    format(prompt, error.returncode,
                                           error.output))
-
     return success
 
 def exe_where(exe_name, help_text, printer, prompt):
@@ -590,6 +710,8 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
     except ValueError as ex:
         printer.string("{}failed: {} while trying to execute {}.". \
                        format(prompt, type(ex).__name__, str(ex)))
+    except KeyboardInterrupt:
+        process.kill()
 
     return success
 
@@ -635,6 +757,8 @@ class ExeRun():
                 self._printer.string("{}failed: {} to start {}.". \
                                      format(self._prompt,
                                             type(ex).__name__, str(ex)))
+        except KeyboardInterrupt:
+            self._process.kill()
         return self._process
     def __exit__(self, _type, value, traceback):
         del _type
@@ -727,8 +851,65 @@ class PrintThread(threading.Thread):
     '''Print thread to organise prints nicely'''
     def __init__(self, print_queue):
         self._queue = print_queue
+        self._lock = RLock()
+        self._queue_forwards = []
         self._running = False
         threading.Thread.__init__(self)
+    def _send_forward(self):
+        # Send from any forwarding buffers
+        queue_idxes_to_remove = []
+        self._lock.acquire()
+        for idx, queue_forward in enumerate(self._queue_forwards):
+            if time() > queue_forward["last_send"] + queue_forward["buffer_time"]:
+                string_forward = ""
+                len_queue_forward = len(queue_forward["buffer"])
+                count = 0
+                for item in queue_forward["buffer"]:
+                    count += 1
+                    if count < len_queue_forward:
+                        item += "\n"
+                    if queue_forward["prefix_string"]:
+                        item = queue_forward["prefix_string"] + item
+                    string_forward += item
+                queue_forward["buffer"] = []
+                if string_forward:
+                    try:
+                        queue_forward["queue"].put(string_forward)
+                    except (EOFError, BrokenPipeError):
+                        queue_idxes_to_remove.append(idx)
+                    except TimeoutError:
+                        pass
+                queue_forward["last_send"] = time()
+        for idx in queue_idxes_to_remove:
+            self._queue_forwards.pop(idx)
+        self._lock.release()
+    def add_forward_queue(self, queue_forward, prefix_string=None, buffer_time=0):
+        '''Forward things received on the print queue to another queue'''
+        already_done = False
+        self._lock.acquire()
+        for item in self._queue_forwards:
+            if item["queue"] == queue_forward:
+                already_done = True
+                break
+        if not already_done:
+            item = {}
+            item["queue"] = queue_forward
+            item["prefix_string"] = prefix_string
+            item["buffer"] = []
+            item["buffer_time"] = buffer_time
+            item["last_send"] = time()
+            self._queue_forwards.append(item)
+        self._lock.release()
+    def remove_forward_queue(self, queue_forward):
+        '''Stop forwarding things received on the print queue to another queue'''
+        queues = []
+        self._lock.acquire()
+        self._send_forward()
+        for item in self._queue_forwards:
+            if item["queue"] == queue_forward:
+                queues.append(item)
+        self._queue_forwards = queues
+        self._lock.release()
     def stop_thread(self):
         '''Helper function to stop the thread'''
         self._running = False
@@ -736,27 +917,69 @@ class PrintThread(threading.Thread):
         '''Worker thread'''
         self._running = True
         while self._running:
+            # Print locally and store in any forwarding buffers
             try:
                 my_string = self._queue.get(block=False, timeout=0.5)
                 print(my_string)
+                self._lock.acquire()
+                for queue_forward in self._queue_forwards:
+                    queue_forward["buffer"].append(my_string)
+                self._lock.release()
             except queue.Empty:
                 pass
+            except (EOFError, BrokenPipeError):
+                # Try to restore stdout
+                sys.stdout = sys.__stdout__
+            # Send from any forwarding buffers
+            self._send_forward()
 
 class PrintToQueue():
     '''Print to a queue, if there is one'''
     def __init__(self, print_queue, file_handle, include_timestamp=False):
-        self._queue = print_queue
+        self._queues = []
+        self._lock = RLock()
+        if print_queue:
+            self._queues.append(print_queue)
         self._file_handle = file_handle
         self._include_timestamp = include_timestamp
+    def add_queue(self, print_queue):
+        '''Add a queue to the list of places to print to'''
+        already_done = False
+        self._lock.acquire()
+        for item in self._queues:
+            if item == print_queue:
+                already_done = True
+                break
+        if not already_done:
+            self._queues.append(print_queue)
+        self._lock.release()
+    def remove_queue(self, print_queue):
+        '''Remove a queue from  the list of places to print to'''
+        queues = []
+        self._lock.acquire()
+        for item in self._queues:
+            if item != print_queue:
+                queues.append(item)
+        self._queues = queues
+        self._lock.release()
     def string(self, string, file_only=False):
-        '''Print a string'''
+        '''Print a string to the queue(s)'''
         if self._include_timestamp:
             string = strftime(TIME_FORMAT, gmtime()) + " " + string
         if not file_only:
-            if self._queue:
-                self._queue.put(string)
+            queue_idxes_to_remove = []
+            self._lock.acquire()
+            if self._queues:
+                for idx, print_queue in enumerate(self._queues):
+                    try:
+                        print_queue.put(string)
+                    except (EOFError, BrokenPipeError):
+                        queue_idxes_to_remove.append(idx)
+                for idx in queue_idxes_to_remove:
+                    self._queues.pop(idx)
             else:
                 print(string)
+            self._lock.release()
         if self._file_handle:
             self._file_handle.write(string + "\n")
             self._file_handle.flush()
@@ -779,12 +1002,13 @@ class ChangeDir():
 class Lock():
     '''Hold a lock as a "with:"'''
     def __init__(self, lock, guard_time_seconds,
-                 lock_type, printer, prompt):
+                 lock_type, printer, prompt, keep_going_flag=None):
         self._lock = lock
         self._guard_time_seconds = guard_time_seconds
         self._lock_type = lock_type
         self._printer = printer
         self._prompt = prompt
+        self._keep_going_flag = keep_going_flag
         self._locked = False
     def __enter__(self):
         if not self._lock:
@@ -798,8 +1022,9 @@ class Lock():
                                         self._guard_time_seconds,
                                         self._lock_type))
             count = 0
-            while not self._lock.acquire(False) and                \
-                ((self._guard_time_seconds == 0) or (timeout_seconds > 0)):
+            while not self._lock.acquire(False) and                            \
+                ((self._guard_time_seconds == 0) or (timeout_seconds > 0)) and \
+                keep_going(self._keep_going_flag, self._printer, self._prompt):
                 sleep(1)
                 timeout_seconds -= 1
                 count += 1
@@ -831,24 +1056,25 @@ class Lock():
                 self._printer.string("{}{} lock was already released.". \
                                      format(self._prompt, self._lock_type))
 
-def wait_for_completion(list, purpose, guard_time_seconds,
-                        printer, prompt):
+def wait_for_completion(_list, purpose, guard_time_seconds,
+                        printer, prompt, keep_going_flag):
     '''Wait for a completion list to empty'''
     completed = False
-    if len(list) > 0:
+    if len(_list) > 0:
         timeout_seconds = guard_time_seconds
         printer.string("{}waiting up to {} second(s)"      \
                        " for {} completion...".          \
                        format(prompt, guard_time_seconds, purpose))
         count = 0
-        while (len(list) > 0) and                          \
-          ((guard_time_seconds == 0) or (timeout_seconds > 0)):
+        while (len(_list) > 0) and                                 \
+              ((guard_time_seconds == 0) or (timeout_seconds > 0)) and \
+              keep_going(keep_going_flag, printer, prompt):
             sleep(1)
             timeout_seconds -= 1
             count += 1
             if count == 30:
                 list_text = ""
-                for item in list:
+                for item in _list:
                     if list_text:
                         list_text += ", "
                     list_text += str(item)
@@ -858,7 +1084,7 @@ def wait_for_completion(list, purpose, guard_time_seconds,
                                format(prompt, timeout_seconds,
                                       purpose, list_text))
                 count = 0
-        if len(list) == 0:
+        if len(_list) == 0:
             completed = True
             printer.string("{}{} completed.".format(prompt, purpose))
     return completed
@@ -884,3 +1110,233 @@ def reset_nrf_target(connection, printer, prompt):
 
     # Call it
     return exe_run(call_list, 60, printer, prompt)
+
+def usb_cutter_reset(usb_cutter_id_strs, printer, prompt):
+    '''Cut and then un-cut USB cables using Cleware USB cutters'''
+
+    # First switch the USB cutters off
+    action = "1"
+    count = 0
+    call_list_root = ["usbswitchcmd"]
+    call_list_root.append("-s")
+    call_list_root.append("-n")
+    while count < 2:
+        for usb_cutter_id_str in usb_cutter_id_strs:
+            call_list = call_list_root.copy()
+            call_list.append(usb_cutter_id_str)
+            call_list.append(action)
+
+            # Print what we're gonna do
+            tmp = ""
+            for item in call_list:
+                tmp += " " + item
+            if printer:
+                printer.string("{}in directory {} calling{}".         \
+                               format(prompt, os.getcwd(), tmp))
+
+            # Set shell to keep Jenkins happy
+            exe_run(call_list, 0, printer, prompt, shell_cmd=True)
+
+        # Wait 5ish seconds
+        if printer:
+            printer.string("{}waiting {} second(s)...".         \
+                           format(prompt, HW_RESET_DURATION_SECONDS))
+        sleep(HW_RESET_DURATION_SECONDS)
+
+        # "0" to switch the USB cutters on again
+        action = "0"
+        count += 1
+
+def kmtronic_reset(ip_address, hex_bitmap, printer, prompt):
+    '''Cut and then un-cut power using a KMTronic box'''
+
+    # KMTronic is a web relay box which will be controlling
+    # power to, for instance, EVKs  The last byte of the URL
+    # is a hex bitmap of the outputs where 0 sets off and 1
+    # sets on
+
+    # Take only the last two digits of the hex bitmap
+    hex_bitmap_len = len(hex_bitmap)
+    hex_bitmap = hex_bitmap[hex_bitmap_len - 2:hex_bitmap_len]
+    kmtronic_off = "http://" + ip_address + "FFE0" + hex_bitmap
+    kmtronic_on = "http://" + ip_address + "FFE0" + "{0:x}".format(int(hex_bitmap, 16) ^ 0xFF)
+
+    try:
+        # First switch the given bit positions off
+        if printer:
+            printer.string("{}sending {}".         \
+                           format(prompt, kmtronic_off))
+        response = requests.get(kmtronic_off)
+        # Wait 5ish seconds
+        if printer:
+            printer.string("{}...received response {}, waiting {} second(s)...". \
+                           format(prompt, response.status_code, HW_RESET_DURATION_SECONDS))
+        sleep(HW_RESET_DURATION_SECONDS)
+        # Switch the given bit positions on
+        if printer:
+            printer.string("{}sending {}".format(prompt, kmtronic_on))
+        response = requests.get(kmtronic_on)
+        if printer:
+            printer.string("{}...received response {}.". \
+                           format(prompt, response.status_code))
+    except requests.ConnectionError:
+        if printer:
+            printer.string("{}unable to connect to KMTronic box at {}.". \
+                           format(prompt, ip_address))
+
+# Look for a single line anywhere in message
+# beginning with "test: ".  This must be followed by
+# "x.y.z a.b.c m.n.o" (i.e. instance IDs space separated)
+# and then an optional "blah" filter string, or just "*"
+# and an optional "blah" filter string or "None".
+# Valid examples are:
+#
+# test: 1
+# test: 1 3 7
+# test: 1.0.3 3 7.0
+# test: 1 2 example
+# test: 1.1 8 portInit
+# test: *
+# test: * port
+# test: none
+#
+# Filter strings must NOT begin with a digit.
+# There cannot be more than one * or a * with any other instance.
+# There can only be one filter string.
+# Only whitespace is expected after this on the line.
+# Anything else is ignored.
+# Populates instances with the "0 4.5 13.5.1" bit as instance
+# entries [[0], [4, 5], [13, 5, 1]] and returns the filter
+# string, if any.
+def commit_message_parse(message, instances, printer=None, prompt=None):
+    '''Find stuff in a commit message'''
+    instances_all = False
+    instances_local = []
+    filter_string_local = None
+    found = False
+
+    if message:
+        # Search through message for a line beginning
+        # with "test:"
+        if printer:
+            printer.string("{}### parsing message to see if it contains a test directive...". \
+                           format(prompt))
+        lines = message.split("\\n")
+        for idx1, line in enumerate(lines):
+            if printer:
+                printer.string("{}text line {}: \"{}\"".format(prompt, idx1 + 1, line))
+            if line.lower().startswith("test:"):
+                found = True
+                instances_all = False
+                # Pick through what follows
+                parts = line[5:].split()
+                for part in parts:
+                    if instances_all and (part[0].isdigit() or part == "*" or part.lower() == "none"):
+                        # If we've had a "*" and this is another one
+                        # or it begins with a digit then this is
+                        # obviously not a "test:" line,
+                        # leave the loop and try again.
+                        instances_local = []
+                        filter_string_local = None
+                        if printer:
+                            printer.string("{}...badly formed test directive, ignoring.". \
+                                           format(prompt))
+                            found = False
+                        break
+                    if filter_string_local:
+                        # If we've had a filter string then nothing
+                        # must follow so this is not a "test:" line,
+                        # leave the loop and try again.
+                        instances_local = []
+                        filter_string_local = None
+                        if printer:
+                            printer.string("{}...extraneous characters after test directive," \
+                                           " ignoring.".format(prompt))
+                            found = False
+                        break
+                    if part[0].isdigit():
+                        # If this part begins with a digit it could
+                        # be an instance containing numbers
+                        instance = []
+                        bad = False
+                        for item in part.split("."):
+                            try:
+                                instance.append(int(item))
+                            except ValueError:
+                                # Some rubbish, not a test line so
+                                # leave the loop and try the next
+                                # line
+                                bad = True
+                                break
+                        if bad:
+                            instances_local = []
+                            filter_string_local = None
+                            if printer:
+                                printer.string("{}...badly formed test directive, ignoring.". \
+                                               format(prompt))
+                            found = False
+                            break
+                        if instance:
+                            instances_local.append(instance[:])
+                    elif part == "*":
+                        if instances_local:
+                            # If we've already had any instances
+                            # this is obviously not a test line,
+                            # leave the loop and try again
+                            instances_local = []
+                            filter_string_local = None
+                            if printer:
+                                printer.string("{}...badly formed test directive, ignoring.". \
+                                               format(prompt))
+                                found = False
+                            break
+                        # If we haven't had any instances and
+                        # this is a * then it means "all"
+                        instances_local.append(part)
+                        instances_all = True
+                    elif part.lower() == "none":
+                        if instances_local:
+                            # If we've already had any instances
+                            # this is obviously not a test line,
+                            # leave the loop and try again
+                            if printer:
+                                printer.string("{}...badly formed test directive, ignoring.". \
+                                               format(prompt))
+                                found = False
+                        instances_local = []
+                        filter_string_local = None
+                        break
+                    elif instances_local and not part == "*":
+                        # If we've had an instance and this
+                        # is not a "*" then this must be a
+                        # filter string
+                        filter_string_local = part
+                    else:
+                        # Found some rubbish, not a "test:"
+                        # line after all, leave the loop
+                        # and try the next line
+                        instances_local = []
+                        filter_string_local = None
+                        if printer:
+                            printer.string("{}...badly formed test directive, ignoring.". \
+                                           format(prompt))
+                            found = False
+                        break
+                if found:
+                    text = "found test directive with"
+                    if instances_local:
+                        text += " instance(s)" + get_instances_text(instances_local)
+                        if filter_string_local:
+                            text += " and filter \"" + filter_string_local + "\""
+                    else:
+                        text += " instances \"None\""
+                    if printer:
+                        printer.string("{}{}.".format(prompt, text))
+                    break
+                if printer:
+                    printer.string("{}no test directive found".format(prompt))
+
+    if found and instances_local:
+        instances.extend(instances_local[:])
+
+    return found, filter_string_local

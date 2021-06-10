@@ -342,7 +342,8 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter):
 
 def run(instance, mcu, toolchain, connection, connection_lock,
         platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle):
+        working_dir, printer, reporter, test_report_handle,
+        keep_going_flag=None):
     '''Build/run on Zephyr'''
     return_value = -1
     build_dir = None
@@ -382,10 +383,12 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     with u_utils.ChangeDir(working_dir):
         # Check that everything we need is installed
         # and configured
-        if check_installation(TOOLS_LIST, printer, prompt):
+        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+           check_installation(TOOLS_LIST, printer, prompt):
             # Set up the environment variables for Zephyr
             returned_env = set_env(printer, prompt)
-            if returned_env:
+            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+               returned_env:
                 # The west tools need to use the environment
                 # configured above.
                 print_env(returned_env, printer, prompt)
@@ -399,7 +402,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                     build_start_time = time()
                     build_dir = build(board, clean, ubxlib_dir, defines,
                                       returned_env, printer, prompt, reporter)
-                    if build_dir:
+                    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                       build_dir:
                         # Build succeeded, need to lock some things to do the download
                         reporter.event(u_report.EVENT_TYPE_BUILD,
                                        u_report.EVENT_PASSED,
@@ -418,7 +422,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                             if locked_jlink:
                                 with u_connection.Lock(connection, connection_lock,
                                                        CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                                       printer, prompt) as locked_connection:
+                                                       printer, prompt,
+                                                       keep_going_flag) as locked_connection:
                                     if locked_connection:
                                         # Get the device name for JLink
                                         jlink_device_name = jlink_device(mcu)
@@ -471,7 +476,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                         RUN_INACTIVITY_TIME_SECONDS,
                                                                         "\n", instance, printer,
                                                                         reporter,
-                                                                        test_report_handle)
+                                                                        test_report_handle,
+                                                                        keep_going_flag=keep_going_flag)
                                                     telnet_handle.close()
                                                 else:
                                                     reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,

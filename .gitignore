@@ -16,3 +16,4 @@ sdkconfig
 *.pyc
 doxygen_output
 _jenkins_work
+_work

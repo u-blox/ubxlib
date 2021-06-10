@@ -201,7 +201,8 @@ def get_file_list(ubxlib_dir, lint_dirs, use_stubs):
 
     return file_list
 
-def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
+def run(instance, defines, ubxlib_dir, working_dir, printer, reporter,
+        keep_going_flag=None, unity_dir=None):
     '''Run Lint'''
     return_value = 1
     call_list = []
@@ -213,6 +214,8 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
     text = "running Lint from ubxlib directory \"" + ubxlib_dir + "\""
     if working_dir:
         text += ", working directory \"" + working_dir + "\""
+    if unity_dir:
+        text += ", using Unity from \"" + unity_dir + "\""
     printer.string("{}{}.".format(prompt, text))
 
     reporter.event(u_report.EVENT_TYPE_CHECK,
@@ -221,14 +224,21 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
     # Switch to the working directory
     with u_utils.ChangeDir(working_dir):
         # Check that everything we need is installed
-        if check_installation(TOOLS_LIST, COMPILER_INCLUDE_DIRS,
+        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+           check_installation(TOOLS_LIST, COMPILER_INCLUDE_DIRS,
                               printer, prompt):
-            # Fetch Unity
-            if u_utils.fetch_repo(u_utils.UNITY_URL,
-                                  u_utils.UNITY_SUBDIR,
-                                  None, printer, prompt):
+            # Fetch Unity, if necessary
+            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                not unity_dir:
+                if u_utils.fetch_repo(u_utils.UNITY_URL,
+                                      u_utils.UNITY_SUBDIR,
+                                      None, printer, prompt,
+                                      submodule_init=False):
+                    unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
+            if unity_dir:
                 # Create the local Lint configuration files
-                if create_lint_config(ubxlib_dir + os.sep +
+                if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                   create_lint_config(ubxlib_dir + os.sep +
                                       LINT_PLATFORM_PATH,
                                       defines, printer, prompt):
                     # Determine if "U_CFG_LINT_USE_STUBS" is in the list of
@@ -249,7 +259,7 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
                             call_list.append("-d" + item)
                     for item in COMPILER_INCLUDE_DIRS:
                         call_list.append("-i\"" + item + "\"")
-                    call_list.append("-i\"" + u_utils.UNITY_SUBDIR + os.sep + "src\"")
+                    call_list.append("-i\"" + unity_dir + os.sep + "src\"")
                     for item in UBXLIB_INCLUDE_DIRS:
                         call_list.append("-i\"" + ubxlib_dir + os.sep + item + "\"")
                     for item in LINT_PLATFORM_CONFIG_FILES:

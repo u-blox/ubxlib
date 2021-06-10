@@ -270,7 +270,7 @@ def esp32_send_first(send_string, in_handle, connection_type, printer, prompt):
 # looking for INTERESTING things.
 def watch_items(in_handle, connection_type, results, guard_time_seconds,
                 inactivity_time_seconds, terminator, printer,
-                reporter, prompt):
+                reporter, prompt, keep_going_flag):
     '''Watch output'''
     return_value = -1
     start_time = time()
@@ -288,10 +288,11 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
     readline_thread.start()
 
     try:
-        while not results["finished"] and                           \
-              (not guard_time_seconds or                            \
-               (time() - start_time < guard_time_seconds)) and      \
-              (not inactivity_time_seconds or                   \
+        while u_utils.keep_going(keep_going_flag, printer, prompt) and \
+              not results["finished"] and                              \
+              (not guard_time_seconds or                               \
+               (time() - start_time < guard_time_seconds)) and         \
+              (not inactivity_time_seconds or                          \
                (time() - last_activity_time < inactivity_time_seconds)):
             try:
                 line = read_queue.get(timeout=0.5)
@@ -323,7 +324,8 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
 
 def main(connection_handle, connection_type, guard_time_seconds,
          inactivity_time_seconds, terminator, instance, printer,
-         reporter, test_report_handle, send_string=None):
+         reporter, test_report_handle, send_string=None,
+         keep_going_flag=None):
     '''Main as a function'''
     # Dictionary in which results are stored
     results = {"finished": False,
@@ -346,7 +348,8 @@ def main(connection_handle, connection_type, guard_time_seconds,
         results["overall_start_time"] = time()
         return_value = watch_items(connection_handle, connection_type, results,
                                    guard_time_seconds, inactivity_time_seconds,
-                                   terminator, printer, reporter, prompt)
+                                   terminator, printer, reporter, prompt,
+                                   keep_going_flag)
 
     # Write the report
     if test_report_handle and instance:

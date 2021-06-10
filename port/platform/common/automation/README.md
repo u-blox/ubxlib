@@ -1,8 +1,20 @@
 # Introduction
 The files in here are used internally within u-blox to automate testing of `ubxlib`.  They are not supported externally.  However, if you find them useful please help yourselves.
 
+# Up-Coming Changes
+A number of changes are planned to this automated test system including Linux support, use of Docker to create test agents, separation of the build and test processes and introduction of a controller/agent pattern; please expect changes to occur without notice.
+
+The first of these changes, the controller/agent pattern (AKA MKII), is present in the scripts and described in these files but is not yet in active use.
+
+# MKII
+The automated test system has undergone an evolution.  This document describes all of the basics and how to use the automated test system in its MK I form, either locally on your computer, or driven from Jenkins, where Jenkins takes charge of the test agent and runs the tests scripts on the test agent just as you would on your laptop.
+
+Wrapping the MK I automated test system is a MK II automated test system.  The MK II automated test system uses [RPyC](https://rpyc.readthedocs.io/) in a controller/agent pattern with many agents and, potentally, more than one controller (i.e. Jenkinses).  At the lowest level the test agent is the same in the MK I and MK II worlds; adding the complication of the wrapper permits tests to be distributed across many test agents, improving test time by spreading the load.
+
+[MKII.md](MKII.md) describes the MK II automated test system.
+
 # Reading The Jenkins Output
-Since much of the test execution is inside these Python scripts the Jenkins level Groovy script `Jenkinsfile` doesn't do a great deal.  To see how testing has gone look in the Jenkins artifacts for files named `summary.log`.  There should be one at the top level and another inside the folder for each instance.  Check the top level `summary.log` to see how the run went.  The `summary.log` file inside each instance folder contains the portion of the summary for that instance but adds no additional information so, if there is a problem, check the `debug.log` file inside the instance folder for more detailed information.
+Since much of the test execution is inside these Python scripts the Jenkins level Groovy script `Jenkinsfile` doesn't do a great deal.  To see how testing has gone look in the Jenkins artifacts for files named `summary.txt`.  There should be one at the top level and another inside the folder for each instance.  Check the top level `summary.txt` to see how the run went.  The `summary.txt` file inside each instance folder contains the portion of the summary for that instance but adds no additional information so, if there is a problem, check the `debug.txt` file inside the instance folder for more detailed information.
 
 The best approach to looking for failures is to search for " \*\*\* ", i.e. a space, three asterisks, then a space, in these files.  Search first in the top-level summary log file to find any failures or warnings and determine which instance caused them.  When you have determined the instance, go to the directory of that instance, open the debug log file there and search for the same string again to find the failure and warning markers within the detailed trace.
 
@@ -12,12 +24,12 @@ The best approach to looking for failures is to search for " \*\*\* ", i.e. a sp
 You may need to run the automated tests locally, e.g. when sifting through Lint issues or checking for Doxygen issues, or simply running tests on a locally-connected board in the same way as they would run on the automated test system.  To do this, assuming you have the required tools installed (the scripts will often tell you if a tool is not found and give a hint as to where to find it), the simplest way to do this is to `CD` to this directory and run, for instance:
 
 ```
-python u_run.py 0.0 -w c:\temp -u c:\projects\ubxlib_priv -d debug.log
+python u_run.py 0.0 -w c:\temp -u c:\projects\ubxlib_priv -d debug.txt
 ```
 
-...where `0.0` is the instance you want to run (in this case Lint), `c:\temp` is a temporary working directory (replace as appropriate), `c:\projects\ubxlib_priv` the location of the root of this repo (replace as appropriate) and `debug.log` a place to write the detailed trace information.
+...where `0.0` is the instance you want to run (in this case Lint), `c:\temp` is a temporary working directory (replace as appropriate), `c:\projects\ubxlib_priv` the location of the root of this repo (replace as appropriate) and `debug.txt` a place to write the detailed trace information.
 
-If you are trying to run locally a test which talks to real hardware you will also need to edit the file `settings.json` file, which is stored in the `.ubx_automation` directory off the current user's home directory. Override the debugger serial number and/or COM port the scripts would use for that board on the automated test system. Assuming you only have one board connected to your PC, locate the entry for the instance you plan to run in the top of that file; there set `serial_port` to the port the board appears as on your local machine and set `debugger` (if present) to `None`.  For instance, to run instance 16 locally you might open that file and change:
+If you are trying to run locally a test which talks to real hardware you will also need to edit the file `settings_v2_agent_specific.json` file, which is stored in the `.ubx_automation` directory off the current user's home directory. Override the debugger serial number and/or COM port the scripts would use for that board on the automated test system. Assuming you only have one board connected to your PC, locate the entry for the instance you plan to run in the top of that file; there set `serial_port` to the port the board appears as on your local machine and set `debugger` (if present) to `None`.  For instance, to run instance 16 locally you might open that file and change:
 
 ```
   "CONNECTION_INSTANCE_16": {
@@ -37,23 +49,25 @@ If you are trying to run locally a test which talks to real hardware you will al
 
 By setting `debugger` to `None`, the script will simply pick the one and only connected board. Would there be multiple boards connected to the PC, one must specify corresponding serial number for debugger. 
 
-# Script Usage
+# Script Usage From Jenkins
+The description here is of the MK I automated test system.  It also applies to the MK II automated test system except where you see `u_run_branch.py` think `u_controller_client.py` instead; see [MKII.md](MKII.md) for details.
+
 The main intended entry point into automation is the `u_run_branch.py` Python script.  You can run it with parameter `-h` to obtain usage information but basically the form is:
 
 `u_run_branch.py "some text" <a list of file paths, unquoted, separated with spaces>`
 
-The "some text" is intended to be the text of the last commit message.  When `u_run_branch.py` is called from Jenkins, using `Jenkinsfile`, the most recent commit text is grabbed by the `Jenkinsfile` script.  This text is parsed for a line that starts with `test: foo bar`, where `foo` is either `*` or a series of digits separated by spaces or full stops, e.g. `0` `0 1` or `1.1` or `4.0.2 6.1.3` and `bar` is some more optional text, so for example `test: 1 example` or `test: 1 exampleSec`.  `foo` indicates the instance IDs to run from `DATABASE.md`, separated by spaces, and `bar` is a filter string, indicating that only examples/tests that begin with that string should be run; note that this is the name used in the test definition, the second parameter to `U_PORT_TEST_FUNCTION`, it is not the name of the sub-directory the file is in (e.g. to select tests of the AT client use `atClient` not `at_client`).  For instance `test: 1 2 3 example` would run all things that begin with `example` on instance IDs `1`, `2` and `3`, or `test: * port` would run all things that begin with `port` (i.e. the porting tests) on **all** instances, `test: * exampleSec` would run all things that begin with `exampleSec` (i.e. all of the security examples) or `test: *` would run everything on all instance IDs, etc.  Please make sure you use the **exact** syntax (e.g. don't add commas between the instances or a full stop on the end or quotation marks etc.) as it is strictly applied in order to avoid accidentally picking up lines not intended as test directives.
 
+The "some text" is intended to be the text of the last commit message.  When `u_run_branch.py` is called from Jenkins, using `Jenkinsfile`, the most recent commit text is grabbed by the `Jenkinsfile` script.  This text is parsed for a line that starts with `test: foo bar`, where `foo` is either `*` or a series of digits separated by spaces or full stops, e.g. `0` `0 1` or `1.1` or `4.0.2 6.1.3` and `bar` is some more optional text, so for example `test: 1 example` or `test: 1 exampleSec`.  `foo` indicates the instance IDs to run from `DATABASE.md`, separated by spaces, and `bar` is a filter string, indicating that only examples/tests that begin with that string should be run; note that this is the name used in the test definition, the second parameter to `U_PORT_TEST_FUNCTION`, it is not the name of the sub-directory the file is in (e.g. to select tests of the AT client use `atClient` not `at_client`).  For instance `test: 1 2 3 example` would run all things that begin with `example` on instance IDs `1`, `2` and `3`, or `test: * port` would run all things that begin with `port` (i.e. the porting tests) on **all** instances, `test: * exampleSec` would run all things that begin with `exampleSec` (i.e. all of the security examples) or `test: *` would run everything on all instance IDs, etc.  Please make sure you use the **exact** syntax (e.g. don't add commas between the instances or a full stop on the end or quotation marks etc.) as it is strictly applied in order to avoid accidentally picking up lines not intended as test directives.  Alternatively `test: None` can be specified to stop any tests being run e.g. because the change affects the automation code itself and could bring the test system tumbling down, or if the code is a very early version and there is no point in wasting valuable test time.
 Note: on the ESP-IDF platform, which comes with its own unit test implementation, the filter string is ignored since the Unity wrapper used by ESP-IDF does not support filtering.  Hence to reduce your test time it is best to use a list of instance IDs in your `test:` string (rather than just `*`) as well as a filter string.  For instance, if you want only `ble` to be tested you might specify `test: 19 ble`, since you know that instance 19 includes BLE testing and specifying `ble` will cause only the BLE-related tests to be run; if instead you specified `test: * ble` then only the BLE API would be tested on all instances except, because of the ESP-IDF platform limitation, **all** APIs would still be tested on ESP-IDF platforms, increasing your test time pointlessly.  Alternatively this selection can be performed automatically by the test system if the changes on your branch are limited to `ble` (see below).
 
 So, when submitting a branch the u-blox Jenkins configuration will parse the commit text to find a `test:` line and conduct those tests on the branch, returning the results to Github.
 
 If the commit text does *not* contain a line starting with `test:` (the usual case) then the file list must be provided.  Again, when `u_run_branch.py` is called from Jenkins, `Jenkinsfile`, will grab the list of changed files between `master` and the branch from Github.  `u_run_branch.py` then calls the `u_select.py` script to determine what tests should be run on which instance IDs to verify that the branch is good.  See the comments in `u_select.py` to determine how it does this.  It is worth noting that the list of tests/instances selected by `u_select.py` will always be the largest one: e.g. if a file in the `ble` directory has been changed then all the instances in`DATABASE.md` that have `ble` in their "APIs available" column will be selected.  To narrow the tests/instances that are run further, use the `test:` line in your most recent commit message to specify it yourself.
 
-For each instance ID the `u_run.py` script, the thing that ultimately does the work, will return a value which is zero for success or otherwise the number of failures that occurred during the run.  Search the output from the script for the word `EXITING` to find its return value.
+`u_run_branch.py` then calls `u_agent.py` which, when run under Jenkins, may be on any test agent.  `u_agent.py` calls `u_run.py`, the thing that ultimately does the work, for each instance ID.  `u_run.py` will return a value which is zero for success or otherwise the number of failures that occurred during the run.  Search the output from the script for the word `EXITING` to find its return value.
 
 # Script Descriptions
-`Jenkinsfile`: tells Jenkins what to do, written in Groovy stages.  Key point to note is that the archived files will be `summary.log` for a quick overview, `test_report.xml` for an XML formatted report on any tests that are executed on the target HW and `debug.log` for the full detailed debug on each build/download/run.
+`Jenkinsfile`/`Jenkinsfile_MKI`: tells Jenkins what to do, written in Groovy stages.  Key point to note is that the archived files will be `summary.txt` for a quick overview, `test_report.xml` for an XML formatted report on any tests that are executed on the target HW and `debug.txt` for the full detailed debug on each build/download/run.  The default `Jenkinsfile` runs the MKII test system, calling `u_controller_client.py`, while `Jenkinsfile_MKI` runs the MKI version, calling `u_run_branch.py` and doing more of the "leg work" driving HW reset mechanisms and archiving results files.
 
 `u_connection.py`: contains a record of how each item of HW is connected into the test system (COM port, debugger serial number, etc. collected from the settings) and functions to access this information.  All of the connections are retrieved-from/stored-in the settings file (see below).
 
@@ -61,23 +75,29 @@ For each instance ID the `u_run.py` script, the thing that ultimately does the w
 
 `u_monitor.py`: monitors the output from an instance that is executing tests, checking the output for passes/failures and optionally writing debug logs and an XML report to file.
 
-`u_run_branch.y`: see above.  `Jenkinsfile`, for instance, would run the following on a commit to a branch of `ubxlib`:
+`u_run_branch.py`: see above.  `Jenkinsfile_MKI`, for instance, would run the following on a commit to a branch of `ubxlib`:
 
 ```
-python u_run_branch.py "test: *" -w z:\_jenkins_work -u z:\ -s summary.log -d debug.log -t report.xml
+python u_run_branch.py "test: *" -w z:\_jenkins_work -u z:\ -s summary.txt -d debug.txt -t report.xml
 ```
+
+`u_controller_client.py`: effectively the version of `u_run_branch.py` for the MK II automated test system, expects to call an `AgentService` (see `u_agent_service.py`) using RPyC.  Requires installation of RPyC (`pip install rpyc`).  See [MKII.md](MKII.md) for a more detailed description.
+
+`u_agent.py`: called by `u_run_branch.py` and `u_controller_client.py`, run on a test agent; manages the test agent and ultimately calls `u_run.py` to run tests.
+
+`u_agent_service.py`: wrapper for the MK II automated test system to turn `u_agent.py` into an RPyC service, named `AgentService`.  Requires installation of RPyC (`pip install rpyc`).  See [MKII.md](MKII.md) for a more detailed description.
+
+`u_run.py`: handles the build/download/run of tests on a given instance by calling one of the `u_run_xxx.py` scripts below; this script is called multiple times in parallel by `u_agent.py`, each running in a Python process of its own.  If, for instance, you wanted to run all the tests on instance 0 as `Jenkinsfile` would, you might run:
+
+```
+python u_run.py 0 -w z:\_jenkins_work -u z:\ -s summary.txt -d debug.txt -t report.xml
+```
+
+...with `z:` `subst`ed to the root of the `ubxlib` directory (and the directory `_jenkins_work` created beforehand).  This is sometimes useful if `u_run_branch.py` or ``u_controller_client.py` ` reports an exception but can't tell you where it is because it has no way of tracing back into the multiple `u_run.py` processes it would have launched.
 
 `u_report.py`: write reports on progress.
 
-`u_run.py`: handles the build/download/run of tests on a given instance by calling one of the `u_run_xxx.py` scripts below; this script is called multiple times in parallel by `u_run_branch.py`, each running in a Python process of its own.  If, for instance, you wanted to run all the tests on instance 0 as `Jenkinsfile` would, you might run:
-
-```
-python u_run.py 0 -w z:\_jenkins_work -u z:\ -s summary.log -d debug.log -t report.xml
-```
-
-...with `z:` `subst`ed to the root of the `ubxlib` directory (and the directory `_jenkins_work` created beforehand).  This is sometimes useful if `u_run_branch.py` reports an exception but can't tell you where it is because it has no way of tracing back into the multiple `u_run.py` processes it would have launched.
-
-`u_settings.py`: stores and retrieves the paths etc. used by the various scripts.  The settings file is `settings.json` in a directory named `.ubx_automation` off the current user's home directory.  If no settings file exists a default one is first written.  If new settings are added when an existing settings file exists then they are merged into it and stored to preserve backwards-compatibility. If you **modify** an existing setting in `u_settings.py` you must delete the `.ubx_automation` directory for the new default settings to be written and read back into your script. **IMPORTANT**: if you do this while testing your branch you **must**, temporarily, change the name of the settings file used by the `u_settings.py` script, e.g. to something like `settings_my_change_name.json`.  This is because other branches (e.g. `master`) being run on the same test machine will be using the original settings and your change will mess them up.  Once your PR is merged you must then submit a subsequent PR to change the name back again to `settings.json`.  **ALSO IMPORTANT**: if you commit a change which **modifies** an existing setting in `u_settings.py` you must make sure that everyone using these scripts deletes their `.ubx_automation` directory (or updates their `.ubx_automation/settings.json` file with the changed value(s)) for them to adopt the new setting; their local scripts may fail until this is done, because they will have the wrong value for whatever setting you changed.
+`u_settings.py`: stores and retrieves the paths etc. used by the various scripts.  The settings files are stored in a directory named `.ubx_automation` off the current user's home directory and are called `settings_v2.json` for general stuff where the defaults are usually fine and `settings_v2_agent_specific.json` for things which you must usually configure yourself.  If no settings files exists default ones are first written with `_FIX_ME` added to the values in `settings_v2_agent_specific.json` which you must set: simply edit the value as necessary and then remove the `_FIX_ME` from the name.  If you **modify** an existing setting in `u_settings.py` it will not have any effect since the values that apply are those read from the settings files; either edit the values in the settings files or, if you don't have access to them (e.g. because you are running on a test agent via the automated test system) temporarily add a value to `u_settings.py` with the post-fix `_TEST_ONLY_TEMP`; e.g. to temporarily change the value of `JLINK_SWO_PORT` you would add an entry `JLINK_SWO_PORT_TEST_ONLY_TEMP` and set it to your desired value.  Obviously don't check such a change into `master`, this is purely for testing on your branch without affecting anyone else or changing the values written to the settings file.  This works as an override, so in the example `JLINK_SWO_PORT` would be left exactly as it is and the value used would be that from `JLINK_SWO_PORT_TEST_ONLY_TEMP`.  More details on the ins-and-outs of settings can be found in `u_settings.py` itself.
 
 `u_run_astyle.py`: run an advisory-only (i.e. no error will be thrown ever) AStyle check; called by `u_run.py`.  NOTE: because of the way AStyle directory selection works, if you add a new directory off the `ubxlib` root directory (i.e. you add something like `ubxlib\blah`) YOU MUST ALSO ADD it to the `ASTYLE_DIRS` variable of this script.  To AStyle your files before submission, install `AStyle` version 3.1 and, from the `ubxlib` root directory, run:
 

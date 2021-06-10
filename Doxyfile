@@ -890,8 +890,8 @@ EXCLUDE_SYMLINKS       = NO
 # Note that the wildcards are matched against the file with absolute path, so to
 # exclude all test directories for example use the pattern */test/*
 
-# Exclude the working directory used by the Jenkinsfile and Unity
-EXCLUDE_PATTERNS       = */_jenkins_work/* Unity
+# Exclude the working directory used by the Jenkinsfile, AgentService and Unity
+EXCLUDE_PATTERNS       = */_jenkins_work/* */_work/* Unity
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names
 # (namespaces, classes, functions, etc.) that should be excluded from the

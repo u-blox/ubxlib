@@ -176,7 +176,7 @@ def download(connection, guard_time_seconds, hex_path, printer, prompt):
     # Call it
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt)
 
-def build_gcc(clean, build_subdir, ubxlib_dir,
+def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
               defines, printer, prompt, reporter):
     '''Build on GCC'''
     call_list = []
@@ -190,9 +190,6 @@ def build_gcc(clean, build_subdir, ubxlib_dir,
     # to work
     directory = ubxlib_dir + os.sep + RUNNER_DIR_GCC
     printer.string("{}CD to {}.".format(prompt, directory))
-
-    # Set the Unity path before we change though
-    unity_path = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
 
     with u_utils.ChangeDir(directory):
         # Clear the output folder if we're not just running
@@ -215,7 +212,7 @@ def build_gcc(clean, build_subdir, ubxlib_dir,
             # Assemble the whole call list
             call_list.append("make")
             call_list.append("NRF5_PATH=" + NRF5SDK_PATH)
-            call_list.append("UNITY_PATH=" + unity_path.replace("\\", "/"))
+            call_list.append("UNITY_PATH=" + unity_dir.replace("\\", "/"))
             if defines:
                 call_list.append("CFLAGS=" + cflags)
             call_list.append("OUTPUT_DIRECTORY=" + build_subdir)
@@ -243,7 +240,7 @@ def build_gcc(clean, build_subdir, ubxlib_dir,
 
     return hex_file_path
 
-def build_ses(clean, ubxlib_dir, defines,
+def build_ses(clean, ubxlib_dir, unity_dir, defines,
               printer, prompt, reporter):
     '''Build on SES'''
     call_list = []
@@ -300,9 +297,7 @@ def build_ses(clean, ubxlib_dir, defines,
         call_list.append("-D")
         call_list.append("NRF5_PATH=" + "".join(NRF5SDK_PATH.replace("\\", "/")))
         call_list.append("-D")
-        call_list.append("UNITY_PATH=" +
-                         "".join((os.getcwd() + os.sep + u_utils.UNITY_SUBDIR).
-                                 replace("\\", "/")))
+        call_list.append("UNITY_PATH=" + "".join((unity_dir).replace("\\", "/")))
 
         # Clear the output folder if we're not just running
         if not clean or u_utils.deltree(BUILD_SUBDIR_SES,
@@ -328,7 +323,8 @@ def build_ses(clean, ubxlib_dir, defines,
 
 def run(instance, mcu, toolchain, connection, connection_lock,
         platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle):
+        working_dir, printer, reporter, test_report_handle,
+        keep_going_flag=None, unity_dir=None):
     '''Build/run on nRF5'''
     return_value = -1
     hex_file_path = None
@@ -358,6 +354,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
         text += ", ubxlib directory \"" + ubxlib_dir + "\""
     if working_dir:
         text += ", working directory \"" + working_dir + "\""
+    if unity_dir:
+        text += ", using Unity from \"" + unity_dir + "\""
     printer.string("{}{}.".format(prompt, text))
 
     reporter.event(u_report.EVENT_TYPE_BUILD,
@@ -366,20 +364,27 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     # Switch to the working directory
     with u_utils.ChangeDir(working_dir):
         # Check that everything we need is installed
-        if check_installation(toolchain, TOOLS_LIST, printer, prompt):
-            # Fetch Unity
-            if u_utils.fetch_repo(u_utils.UNITY_URL,
-                                  u_utils.UNITY_SUBDIR,
-                                  None, printer, prompt):
+        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+           check_installation(toolchain, TOOLS_LIST, printer, prompt):
+            # Fetch Unity, if necessary
+            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                not unity_dir:
+                if u_utils.fetch_repo(u_utils.UNITY_URL,
+                                      u_utils.UNITY_SUBDIR,
+                                      None, printer, prompt,
+                                      submodule_init=False):
+                    unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
+            if unity_dir:
                 # Do the build
                 build_start_time = time()
-                if toolchain.lower() == "gcc":
-                    build_subdir_gcc = BUILD_SUBDIR_PREFIX_GCC + instance_text.replace(".", "_")
-                    hex_file_path = build_gcc(clean, build_subdir_gcc, ubxlib_dir,
-                                              defines, printer, prompt, reporter)
-                elif toolchain.lower() == "ses":
-                    hex_file_path = build_ses(clean, ubxlib_dir, defines,
-                                              printer, prompt, reporter)
+                if u_utils.keep_going(keep_going_flag, printer, prompt):
+                    if toolchain.lower() == "gcc":
+                        build_subdir_gcc = BUILD_SUBDIR_PREFIX_GCC + instance_text.replace(".", "_")
+                        hex_file_path = build_gcc(clean, build_subdir_gcc, ubxlib_dir, unity_dir,
+                                                  defines, printer, prompt, reporter)
+                    elif toolchain.lower() == "ses":
+                        hex_file_path = build_ses(clean, ubxlib_dir, unity_dir, defines,
+                                                  printer, prompt, reporter)
                 if hex_file_path:
                     # Build succeeded, need to lock a connection to do the download
                     reporter.event(u_report.EVENT_TYPE_BUILD,
@@ -400,14 +405,17 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                         if locked_jlink:
                             with u_connection.Lock(connection, connection_lock,
                                                    CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                                   printer, prompt) as locked_connection:
+                                                   printer, prompt,
+                                                   keep_going_flag) as locked_connection:
                                 if locked_connection:
                                     reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                    u_report.EVENT_START)
                                     # I have seen the download fail on occasion
                                     # so give this two bites of the cherry
                                     retries = 2
-                                    while not downloaded and (retries > 0):
+                                    while u_utils.keep_going(keep_going_flag,
+                                                             printer, prompt) and \
+                                          not downloaded and (retries > 0):
                                         downloaded = download(connection,
                                                               DOWNLOAD_GUARD_TIME_SECONDS,
                                                               hex_file_path,
@@ -451,7 +459,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                     RUN_GUARD_TIME_SECONDS,
                                                                     RUN_INACTIVITY_TIME_SECONDS,
                                                                     "\r", instance, printer, reporter,
-                                                                    test_report_handle)
+                                                                    test_report_handle, None,
+                                                                    keep_going_flag=keep_going_flag)
                                                 telnet_handle.close()
                                             else:
                                                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,

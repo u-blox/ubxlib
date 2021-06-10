@@ -9,12 +9,13 @@ import u_settings
 # The instance data must be the only table in the file
 # and must be in Markdown format as follows:
 #
-# | instance | description | MCU | platform | toolchain | module(s) | APIs supported | #defines |
+# | instance | description | duration | MCU | platform | toolchain | module(s) | APIs supported | #defines |
 #
 # ... where:
 #
 # instance          is a set of integers x or x.y or x.y.z,
 # description       is a textual description,
+# duration          the estimated run-time of the instance in minutes,
 # MCU               is the name of the MCU, e.g. ESP32 or NRF52 or STM32F4,
 # platform          is the name of the platform, e.g. ESP-IDF or STM32Cube,
 # toolchain         is the name of a toolchain for that platform, e.g. SES or GCC for nRF5,
@@ -47,7 +48,6 @@ def get(filename):
     row = {}
     instance = []
 
-    print("{}getting instance data from file \"{}\"...".format(PROMPT, filename))
     file_handle = open(filename, "r")
     # Read lines from the file until we hit a row of our table,
     # which is defined as a line with at least six '|'
@@ -80,26 +80,30 @@ def get(filename):
                         row["description"] = stripped
                         index += 1
                     elif index == 2:
+                        # duration
+                        row["duration"] = stripped
+                        index += 1
+                    elif index == 3:
                         # MCU
                         row["mcu"] = stripped
                         index += 1
-                    elif index == 3:
+                    elif index == 4:
                         # Platform
                         row["platform"] = stripped
                         index += 1
-                    elif index == 4:
+                    elif index == 5:
                         # Toolchain
                         row["toolchain"] = stripped
                         index += 1
-                    elif index == 5:
+                    elif index == 6:
                         # Modules
                         row["modules"] = stripped.split()
                         index += 1
-                    elif index == 6:
+                    elif index == 7:
                         # APIs
                         row["apis"] = stripped.split()
                         index += 1
-                    elif index == 7:
+                    elif index == 8:
                         # #defines
                         row["defines"] = stripped.split()
                         index += 1
@@ -123,6 +127,11 @@ def display(database):
         item = item.rjust(8)
         # Then description
         item += ": \"{}\"".format(row["description"])
+        # Then duration
+        if row["duration"] != "":
+            item += " {} duration with".format(row["duration"])
+        else:
+            item += " with"
         # Then MCU
         if row["mcu"] != "":
             item += " {} MCU with".format(row["mcu"])
@@ -310,6 +319,16 @@ def get_description_for_instance(database, instance):
             description = row["description"]
 
     return description
+
+def get_duration_for_instance(database, instance):
+    '''Return the expected run duration for the given instance'''
+    duration = None
+
+    for row in database:
+        if instance == row["instance"]:
+            duration = int(row["duration"])
+
+    return duration
 
 def api_in_database(database, api):
     '''Return true if the given api is in the database'''

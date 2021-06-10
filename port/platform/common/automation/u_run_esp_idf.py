@@ -92,15 +92,17 @@ def print_env(returned_env, printer, prompt):
         printer.string("{}EMPTY".format(prompt))
 
 def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
-            system_lock, printer, prompt, reporter):
+            system_lock, keep_going_flag, printer, prompt, reporter):
     '''Install the Espressif tools and ESP-IDF'''
     returned_env = {}
     count = 0
 
     # Acquire the install lock as this is a global operation
-    if system_lock is None or u_utils.install_lock_acquire(system_lock, printer, prompt):
+    if system_lock is None or u_utils.install_lock_acquire(system_lock, printer,
+                                                           prompt, keep_going_flag):
         # Fetch the repo
-        if u_utils.fetch_repo(esp_idf_url, esp_idf_dir,
+        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+           u_utils.fetch_repo(esp_idf_url, esp_idf_dir,
                               esp_idf_branch, printer, prompt):
 
             # Set up the environment variable IDF_TOOLS_PATH
@@ -119,7 +121,8 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
                                    " as administrator.".format(prompt))
                 # First call install.bat
                 # set shell to True to keep Jenkins happy
-                if u_utils.exe_run(["install.bat"], INSTALL_GUARD_TIME_SECONDS,
+                if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                   u_utils.exe_run(["install.bat"], INSTALL_GUARD_TIME_SECONDS,
                                     printer, prompt, shell_cmd=True):
                     # ...then export.bat to set up paths etc.
                     # which we return attached to returned_env.
@@ -127,7 +130,8 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
                     # the environment variables to fail due to machine
                     # loading (see comments against EXE_RUN_QUEUE_WAIT_SECONDS
                     # in exe_run) so give this up to three chances to succeed
-                    while not returned_env and (count < 3):
+                    while u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                          not returned_env and (count < 3):
                         # set shell to True to keep Jenkins happy
                         u_utils.exe_run(["export.bat"], INSTALL_GUARD_TIME_SECONDS,
                                         printer, prompt, shell_cmd=True,
@@ -272,7 +276,8 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
 
 def run(instance, mcu, toolchain, connection, connection_lock,
         platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle):
+        working_dir, printer, reporter, test_report_handle,
+        keep_going_flag=None):
     '''Build/run on ESP-IDF'''
     return_value = -1
     instance_text = u_utils.get_instance_text(instance)
@@ -315,12 +320,14 @@ def run(instance, mcu, toolchain, connection, connection_lock,
         esp_idf_dir = ESP_IDF_ROOT + os.sep + esp_idf_location["subdir"]
         if esp_idf_location:
             system_lock = None
-            if misc_locks and ("system_lock" in misc_locks):
+            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+               misc_locks and ("system_lock" in misc_locks):
                 system_lock = misc_locks["system_lock"]
             returned_env = install(esp_idf_location["url"], esp_idf_dir,
                                    esp_idf_location["branch"], system_lock,
-                                   printer, prompt, reporter)
-            if returned_env:
+                                   keep_going_flag, printer, prompt, reporter)
+            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+               returned_env:
                 # From here on the ESP-IDF tools need to set up
                 # and use the set of environment variables
                 # returned above.
@@ -328,7 +335,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                 # Now do the build
                 build_dir = working_dir + os.sep + BUILD_SUBDIR
                 build_start_time = time()
-                if build(esp_idf_dir, ubxlib_dir, build_dir,
+                if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                   build(esp_idf_dir, ubxlib_dir, build_dir,
                          defines, returned_env, clean,
                          printer, prompt, reporter):
                     reporter.event(u_report.EVENT_TYPE_BUILD,
@@ -337,14 +345,15 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                    format(time() - build_start_time))
                     with u_connection.Lock(connection, connection_lock,
                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                           printer, prompt) as locked:
+                                           printer, prompt, keep_going_flag) as locked:
                         if locked:
                             # Have seen this fail, only with Python 3 for
                             # some reason, so give it a few goes
                             reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                            u_report.EVENT_START)
                             retries = 0
-                            while not download(esp_idf_dir, ubxlib_dir, build_dir,
+                            while u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                                  not download(esp_idf_dir, ubxlib_dir, build_dir,
                                                connection["serial_port"], returned_env,
                                                printer, prompt) and (retries < 3):
                                 reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
@@ -388,7 +397,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                                   RUN_INACTIVITY_TIME_SECONDS,
                                                                   "\r", instance, printer,
                                                                   reporter, test_report_handle,
-                                                                  send_string="*\r\n")
+                                                                  send_string="*\r\n",
+                                                                  keep_going_flag=keep_going_flag)
                                     serial_handle.close()
                                 else:
                                     reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,

@@ -41,7 +41,8 @@ def main(database, instance, filter_string, clean,
          ubxlib_dir, working_dir, connection_lock,
          platform_lock, misc_locks, print_queue,
          report_queue, summary_report_file_path,
-         test_report_file_path, debug_file_path):
+         test_report_file_path, debug_file_path,
+         keep_going_flag, running_flag, unity_dir):
     '''Main as a function'''
     return_value = 1
     connection = None
@@ -52,7 +53,9 @@ def main(database, instance, filter_string, clean,
     instance_text = u_utils.get_instance_text(instance)
     printer_text = []
 
-    signal(SIGINT, signal_handler)
+    if running_flag:
+        # We're off
+        running_flag.set()
 
     # Create the files
     if summary_report_file_path:
@@ -155,26 +158,28 @@ def main(database, instance, filter_string, clean,
                                                      connection_lock, platform_lock,
                                                      misc_locks, clean, defines,
                                                      ubxlib_dir, working_dir,
-                                                     printer, reporter,
-                                                     test_report_handle)
+                                                     printer, reporter, test_report_handle,
+                                                     keep_going_flag)
                 elif platform.lower() == "nrf5sdk":
                     return_value = u_run_nrf5sdk.run(instance, mcu, toolchain, connection,
                                                      connection_lock, platform_lock,
                                                      misc_locks, clean, defines, ubxlib_dir,
                                                      working_dir, printer, reporter,
-                                                     test_report_handle)
+                                                     test_report_handle, keep_going_flag,
+                                                     unity_dir)
                 elif platform.lower() == "zephyr":
                     return_value = u_run_zephyr.run(instance, mcu, toolchain, connection,
                                                     connection_lock, platform_lock,
                                                     misc_locks, clean, defines, ubxlib_dir,
                                                     working_dir, printer, reporter,
-                                                    test_report_handle)
+                                                    test_report_handle, keep_going_flag)
                 elif platform.lower() == "stm32cube":
                     return_value = u_run_stm32cube.run(instance, mcu, toolchain, connection,
                                                        connection_lock, platform_lock,
                                                        misc_locks, clean, defines, ubxlib_dir,
                                                        working_dir, printer, reporter,
-                                                       test_report_handle)
+                                                       test_report_handle, keep_going_flag,
+                                                       unity_dir)
                 else:
                     printer.string("{}don't know how to handle platform \"{}\".".    \
                                    format(PROMPT, platform))
@@ -184,7 +189,8 @@ def main(database, instance, filter_string, clean,
             # No connection, must be a local thing
             if instance[0] == 0:
                 return_value = u_run_lint.run(instance, defines, ubxlib_dir,
-                                              working_dir, printer, reporter)
+                                              working_dir, printer, reporter,
+                                              keep_going_flag, unity_dir)
             elif instance[0] == 1:
                 return_value = u_run_doxygen.run(instance, ubxlib_dir, working_dir,
                                                  printer, reporter)
@@ -193,7 +199,7 @@ def main(database, instance, filter_string, clean,
                                                 printer, reporter)
             elif instance[0] == 3:
                 return_value = u_run_pylint.run(instance, ubxlib_dir, working_dir,
-                                                printer, reporter)
+                                                printer, reporter, keep_going_flag)
             elif instance[0] == 4:
                 return_value = u_run_static_size.run(instance, defines, ubxlib_dir,
                                                      working_dir, printer, reporter)
@@ -234,6 +240,10 @@ def main(database, instance, filter_string, clean,
     if debug_handle:
         debug_handle.close()
 
+    if running_flag:
+        # We're done
+        running_flag.clear()
+
     return return_value
 
 if __name__ == "__main__":
@@ -261,7 +271,7 @@ if __name__ == "__main__":
                         " be over-written.")
     PARSER.add_argument("-d", help="debug output should be"         \
                         " written to the given file, e.g."          \
-                        " -d results.log, any existing file will"   \
+                        " -d debug.txt, any existing file will"     \
                         " be over-written.")
     PARSER.add_argument("-c", action='store_true', help="clean"     \
                         " first.")
@@ -305,7 +315,8 @@ if __name__ == "__main__":
                 # Call main()
                 RETURN_VALUE = main(DATABASE, INSTANCE, ARGS.f, ARGS.c,
                                     ARGS.u, ARGS.w, None, None, None,
-                                    None, None, ARGS.s, ARGS.t, ARGS.d)
+                                    None, None, ARGS.s, ARGS.t, ARGS.d,
+                                    None, None, None)
         else:
             print("{}must supply an instance.".format(PROMPT))
             PARSER.print_help()
@@ -317,5 +328,8 @@ if __name__ == "__main__":
 # see https://docs.python.org/2/library/multiprocessing.html#windows
 if __name__ == '__main__':
     freeze_support()
+
+    signal(SIGINT, signal_handler)
+
     PROCESS = Process(target=main)
     PROCESS.start()
