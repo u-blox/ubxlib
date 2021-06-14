@@ -79,10 +79,10 @@ Hence a PC would be built to support a given set of instances (HW attached, tool
 # An **IMPORTANT** Detail: Multiple `ubxlib`s
 In the picture above the `ubxlib` repo exists in three different places:
 
-1.  on the machine where the `u_controller_client.py` script is running: Jenkins will typically have fetched the repo to test it and will run the version of `u_controller._client.py` that it finds there,
+1.  on the machine where the `u_controller_client.py` script is running: Jenkins will typically have fetched the repo to test it and will run the version of `u_controller_client.py` that it finds there,
 2.  on the machine where `u_agent_service.py` is running, in an "agent" directory,
 3.  also on the machine where `u_agent_service.py` is running but this time the version that `u_controller_client.py` has decided to test.
 
 (2) and (3) are distinct and separate; `u_controller_client.py` is able to determine whether (2) on a given agent needs to be updated and will command `u_agent_service.py` to do this as necessary.
 
-The **IMPORTANT** bit: one impact of this is that you need to be careful if you are pushing changes to `u_agent_service.py` or the things it calls directly (e.g. `u_agent.py`): if you commit something that causes `u_agent_service.py` to stop even connecting then **all** of the test agents will stop working for everyone.  Should this happen you should fix the problem, commit it, push it, and then restart the agents with the new code (e.g. stop and restart `agent_start.bat` in the Windows Task Scheduler if you're using that platform/mechanism).
+The **IMPORTANT** bit: one impact of this is that you need to be careful if you are pushing changes to `u_agent_service.py` or the things it calls/imports (e.g. `u_agent.py`): if you commit something that causes `u_agent_service.py` to stop even connecting then **all** of the test agents will stop working for everyone.  Should this happen you should fix the problem, commit it, push it, and then restart the agents with the new code (e.g. stop and restart `agent_start.bat` in the Windows Task Scheduler if you're using that platform/mechanism).

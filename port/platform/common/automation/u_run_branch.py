@@ -80,9 +80,9 @@ if __name__ == "__main__":
                     print("at user request.")
                     del INSTANCES[:]
                     INSTANCES = u_data.get_instances_all(DATABASE)
-            else:
-                # No instance specified by the user, decide what to run
-                FILTER_STRING = u_select.select(DATABASE, INSTANCES, ARGS.file)
+        else:
+            # No instance specified by the user, decide what to run
+            FILTER_STRING = u_select.select(DATABASE, INSTANCES, ARGS.file)
 
     if INSTANCES:
         # From this post:
