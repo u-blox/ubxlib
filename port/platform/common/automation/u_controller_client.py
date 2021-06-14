@@ -751,8 +751,11 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
                             failed_agent_name = agent["name"]
                         text_result += " timed out"
                 if text_result:
-                    text = "{}, running{}".format(agent["name"],
-                                                  u_utils.get_instances_text(agent["instances_allocated"]))
+                    text = ""
+                    if agent["agent_result"] != 0:
+                        text = "*** "
+                    text += "{}, running{}".format(agent["name"],
+                                                   u_utils.get_instances_text(agent["instances_allocated"]))
                     text += text_result
                     text += " after {}, results in [{}] {}".format(strftime("%H:%M:%S", gmtime(time() - start_time)),
                                                                    agent["host_ip_address"],
