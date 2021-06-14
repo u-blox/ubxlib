@@ -247,6 +247,9 @@ static bool atTimeoutIsObeyed(uAtClientHandle_t atClientHandle,
     x = uAtClientReadInt(atClientHandle);
     uAtClientResponseStop(atClientHandle);
     y = uAtClientUnlock(atClientHandle);
+    // Give consecutiveTimeoutCallback() chance
+    // to complete
+    uPortTaskBlock(U_CFG_OS_YIELD_MS);
     if ((x < 0) && (y < 0) &&
         (gConsecutiveTimeout == consecutiveTimeouts + 1)) {
         duration = (int32_t) (uPortGetTickTimeMs() - startTime);
