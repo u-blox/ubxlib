@@ -799,7 +799,7 @@ class AgentService(rpyc.Service):
                                 self._printer.string("{}...returned result {}.".format(PROMPT, response.status_code))
                                 if response.status_code != 201:
                                     success = False
-                            except (ConnectionError, TimeoutError):
+                            except (ProtocolError, ConnectionError, TimeoutError):
                                 self._printer.string("{}...failed because of a connection error.".format(PROMPT))
                                 success = False
                 else:
