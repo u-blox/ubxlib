@@ -88,6 +88,11 @@
  */
 #define U_AT_CLIENT_TEST_AT_TIMEOUT_TOLERANCE_MS 250
 
+/** The AT client buffer length to use during testing:
+ * we send non-prefixed response of length 256 bytes plus
+ * we need room for initial and trailing line endings. */
+#define U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES (256 + 4 + U_AT_CLIENT_BUFFER_OVERHEAD_BYTES)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -1045,7 +1050,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
     uPortLog("U_AT_CLIENT_TEST: adding an AT client on UART %d...\n",
              U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
-                                  NULL, U_AT_CLIENT_BUFFER_LENGTH_BYTES);
+                                  NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
     thingIsOn = uAtClientDebugGet(atClientHandle);
@@ -1192,7 +1197,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     uPortLog("U_AT_CLIENT_TEST: adding an AT client on UART %d...\n",
              U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
-                                  NULL, U_AT_CLIENT_BUFFER_LENGTH_BYTES);
+                                  NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
     uPortLog("U_AT_CLIENT_TEST: setting consecutive AT timeout callback...\n");
@@ -1557,7 +1562,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
     uPortLog("U_AT_CLIENT_TEST: adding an AT client on UART %d...\n",
              U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
-                                  NULL, U_AT_CLIENT_BUFFER_LENGTH_BYTES);
+                                  NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
     uPortLog("U_AT_CLIENT_TEST: setting consecutive AT timeout callback...\n");

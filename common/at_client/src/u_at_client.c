@@ -1492,28 +1492,16 @@ static bool processResponse(uAtClientInstance_t *pClient,
                                 consumeToString(pClient, U_AT_CLIENT_CRLF);
                             }
                         } else {
-                            // If there is no prefix, no CR/LF after some stuff
-                            // and no point in running bufferMatch for OK,
-                            // ERROR or a URC again (since maxRespLength has
-                            // already been checked in the buffer), return
-                            // so that the caller can do something
-                            if (!pPrefix &&
-                                ((pClient->pReceiveBuffer->length -
-                                  pClient->pReceiveBuffer->readIndex) >=
-                                 pClient->maxRespLength)) {
-                                processingDone = true;
+                            // We might still bufferMatch something,
+                            // try to fill the buffer with more stuff
+                            if (!bufferFill(pClient, true)) {
+                                // If we don't get any data within
+                                // the timeout, set an error to
+                                // indicate the need for recovery
+                                setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+                                consecutiveTimeout(pClient);
                             } else {
-                                // We might still bufferMatch something,
-                                // try to fill the buffer with more stuff
-                                if (!bufferFill(pClient, true)) {
-                                    // If we don't get any data within
-                                    // the timeout, set an error to
-                                    // indicate the need for recovery
-                                    setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
-                                    consecutiveTimeout(pClient);
-                                } else {
-                                    pClient->numConsecutiveAtTimeouts = 0;
-                                }
+                                pClient->numConsecutiveAtTimeouts = 0;
                             }
                         }
                     }
@@ -2625,20 +2613,6 @@ void uAtClientRestoreStopTag(uAtClientHandle_t atHandle)
 
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
         setScope(pClient, U_AT_CLIENT_SCOPE_RESPONSE);
-    }
-
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
-}
-
-// Override scope to be information response.
-void uAtClientIsInformationResponse(uAtClientHandle_t atHandle)
-{
-    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
-
-    U_PORT_MUTEX_LOCK(pClient->mutex);
-
-    if (pClient->error == U_ERROR_COMMON_SUCCESS) {
-        setScope(pClient, U_AT_CLIENT_SCOPE_INFORMATION);
     }
 
     U_PORT_MUTEX_UNLOCK(pClient->mutex);
