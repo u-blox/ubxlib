@@ -148,6 +148,8 @@ def main(database, instance, filter_string, clean,
                 description = u_data.get_description_for_instance(database,
                                                                   instance)
                 mcu = u_data.get_mcu_for_instance(database, instance)
+                # Zephyr requires a board name also
+                board = u_data.get_board_for_instance(database, instance)
                 toolchain = u_data.get_toolchain_for_instance(database, instance)
                 if description:
                     reporter.event(u_report.EVENT_TYPE_BUILD,
@@ -168,7 +170,7 @@ def main(database, instance, filter_string, clean,
                                                      test_report_handle, keep_going_flag,
                                                      unity_dir)
                 elif platform.lower() == "zephyr":
-                    return_value = u_run_zephyr.run(instance, mcu, toolchain, connection,
+                    return_value = u_run_zephyr.run(instance, mcu, board, toolchain, connection,
                                                     connection_lock, platform_lock,
                                                     misc_locks, clean, defines, ubxlib_dir,
                                                     working_dir, printer, reporter,

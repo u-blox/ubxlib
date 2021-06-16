@@ -224,6 +224,10 @@ __DEFAULT_SETTINGS["ZEPHYR_CUSTOM_BOARD_DIR"] =                            \
     __DEFAULT_SETTINGS["ZEPHYR_DIR"] + os.sep + "custom_boards\\zephyr\\boards\\arm"
 __DEFAULT_SETTINGS["ZEPHYR_CUSTOM_BOARD_ROOT"] =                           \
     __DEFAULT_SETTINGS["ZEPHYR_DIR"] + os.sep + "custom_boards\\zephyr"
+__DEFAULT_SETTINGS["ZEPHYR_TEST_BOARD_DIR"] =                            \
+    __DEFAULT_SETTINGS["ZEPHYR_DIR"] + os.sep + "test_boards\\boards\\arm"
+__DEFAULT_SETTINGS["ZEPHYR_TEST_BOARD_ROOT"] =                           \
+    __DEFAULT_SETTINGS["ZEPHYR_DIR"] + os.sep + "test_boards"
 __DEFAULT_SETTINGS["ZEPHYR_BUILD_SUBDIR"] = "build"
 __DEFAULT_SETTINGS["ZEPHYR_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run_pylint.py

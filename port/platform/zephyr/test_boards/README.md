@@ -1,0 +1,1 @@
+The directories under here provide definitions for boards used in the ubxlib test farm and nowhere else.  The definitions are sufficient for our test purposes and nothing much else, hence their separation from the `custom_boards` directory, which contains fully formed definitions of boards that haven't yet made it into Zephyr proper.

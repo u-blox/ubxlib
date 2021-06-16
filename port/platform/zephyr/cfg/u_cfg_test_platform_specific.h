@@ -127,6 +127,11 @@
 #ifdef CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP
 #include "u_cfg_test_platform_specific_nrf5340dk_nrf5340.h"
 #endif
+
+#ifdef CONFIG_BOARD_SPARKFUN_ASSET_TRACKER_NRF52840
+#include "u_cfg_test_platform_specific_sparkfun_asset_tracker_nrf52840.h"
+#endif
+
 /** UART HW block for UART driver loopback testing.
  */
 #ifndef U_CFG_TEST_UART_A

@@ -40,14 +40,17 @@ GIT_BASH_ENV_CMD = u_settings.ZEPHYR_GIT_BASH_ENV_CMD # e.g. NRFCONNECT_PATH + o
 # The directory where the runner build can be found
 RUNNER_DIR = u_settings.ZEPHYR_DIR + os.sep + "runner"
 
-# The directory where the board overlays can be found
-OVERLAY_DIR = RUNNER_DIR + os.sep + "boards"
-
 # The directory where the custom boards can be found
 CUSTOM_BOARD_DIR = u_settings.ZEPHYR_CUSTOM_BOARD_DIR
 
 # The custom board root, as required by Zephyr
 CUSTOM_BOARD_ROOT = u_settings.ZEPHYR_CUSTOM_BOARD_ROOT
+
+# The directory where the test boards can be found
+TEST_BOARD_DIR = u_settings.ZEPHYR_TEST_BOARD_DIR
+
+# The test board root, as required by Zephyr
+TEST_BOARD_ROOT = u_settings.ZEPHYR_TEST_BOARD_ROOT
 
 # The name of the output sub-directory
 BUILD_SUBDIR = u_settings.ZEPHYR_BUILD_SUBDIR # e.g. "build"
@@ -167,21 +170,18 @@ def jlink_device(mcu):
     '''Return the JLink device name for a given MCU'''
     jlink_device_name = None
 
-    # NOTE: this is messy!  Because Zephyr is board-specific
-    # the MCU name we get  not just the MCU, it as to be more
-    # than that to find the board.  Since the bit before the
-    # underscore in a JLink device name is always the MCU
-    # name we can do a match for just that bit within the MCU
-    # name we are given
-
+    # The bit before the underscore in a JLink device name
+    # is always the MCU name so we can do a match for just
+    # that bit against the MCU name we are given
     for device in JLINK_DEVICE:
-        if device.split("_")[0].lower() in mcu.lower():
+        if device.split("_")[0].lower() == mcu.lower():
             jlink_device_name = device
             break
 
     return jlink_device_name
 
 def print_call_list(call_list, printer, prompt):
+    '''Print the call list'''
     tmp = ""
     for item in call_list:
         tmp += " " + item
@@ -189,7 +189,7 @@ def print_call_list(call_list, printer, prompt):
                    format(prompt, os.getcwd(), tmp))
 
 def download_single_cpu(connection, jlink_device_name, guard_time_seconds, build_dir, env, printer, prompt):
-    # Assemble the call list
+    '''Assemble the call list'''
     # Note that we use JLink to do the download
     # rather than the default of nrfjprog since there
     # appears to be no way to prevent nrfjprog from
@@ -215,6 +215,7 @@ def download_single_cpu(connection, jlink_device_name, guard_time_seconds, build
                            shell_cmd=True, set_env=env)
 
 def download_nrf53(connection, guard_time_seconds, build_dir, env, printer, prompt):
+    '''Download the given hex file(s) on NRF53'''
     cpunet_hex_path = os.path.join(build_dir, "hci_rpmsg", "zephyr", "merged_CPUNET.hex")
     success = True
     if os.path.exists(cpunet_hex_path):
@@ -250,30 +251,13 @@ def download(connection, jlink_device_name, guard_time_seconds,
                                       build_dir, env, printer, prompt)
     return success
 
-def find_board(ubxlib_dir, mcu):
-    '''Find the full board name for the given MCU'''
-    board = None
-    overlay_dir = ubxlib_dir + os.sep + OVERLAY_DIR
-
-    # Look in the runner directory for all the overlay files
-    overlays = [x for x in os.listdir(overlay_dir) if x.endswith(".overlay")]
-
-    # Return the first one with the MCU name in it
-    for overlay in overlays:
-        if mcu.lower() in overlay:
-            board = overlay.split(".overlay")[0]
-            break
-
-    return board
-
 def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter):
     '''Build using west'''
     call_list = []
     defines_text = ""
     runner_dir = ubxlib_dir + os.sep + RUNNER_DIR
     output_dir = os.getcwd() + os.sep + BUILD_SUBDIR
-    custom_board_dir = ubxlib_dir + os.sep + CUSTOM_BOARD_DIR
-    custom_board_root = ubxlib_dir + os.sep + CUSTOM_BOARD_ROOT
+    board_override_found = False
     build_dir = None
 
     # Put west at the front of the call list
@@ -289,14 +273,23 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter):
     # Board name
     call_list.append("-b")
     call_list.append((board).replace("\\", "/"))
-    # Under Zephyr we may need to override the Zephyr board files
-    # Check if this board has such an override
-    board_files = os.listdir(custom_board_dir)
+    # Under Zephyr we may need to provide a test-specific Zephyr board file
+    board_files = os.listdir(ubxlib_dir + os.sep + TEST_BOARD_DIR)
     for board_file in board_files:
         if board == board_file:
             call_list.append(runner_dir)
-            call_list.append("-DBOARD_ROOT=" + custom_board_root)
+            call_list.append("-DBOARD_ROOT=" + ubxlib_dir + os.sep + TEST_BOARD_ROOT)
+            board_override_found = True
             break
+    if not board_override_found:
+        # No test-specific board file found, see if there is a custom
+        # one instead
+        board_files = os.listdir(ubxlib_dir + os.sep + CUSTOM_BOARD_DIR)
+        for board_file in board_files:
+            if board == board_file:
+                call_list.append(runner_dir)
+                call_list.append("-DBOARD_ROOT=" + ubxlib_dir + os.sep + CUSTOM_BOARD_ROOT)
+                break
     # Build products directory
     call_list.append("-d")
     call_list.append((BUILD_SUBDIR).replace("\\", "/"))
@@ -346,7 +339,7 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter):
 
     return build_dir
 
-def run(instance, mcu, toolchain, connection, connection_lock,
+def run(instance, mcu, board, toolchain, connection, connection_lock,
         platform_lock, misc_locks, clean, defines, ubxlib_dir,
         working_dir, printer, reporter, test_report_handle,
         keep_going_flag=None):
@@ -354,10 +347,10 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     return_value = -1
     build_dir = None
     instance_text = u_utils.get_instance_text(instance)
-    _ = (misc_locks) # Suppress unused variable
 
-    # Don't need the platform lock
+    # Don't need the platform or misc locks
     del platform_lock
+    del misc_locks
 
     # Only one toolchain for Zephyr
     del toolchain
@@ -365,7 +358,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     prompt = PROMPT + instance_text + ": "
 
     # Print out what we've been told to do
-    text = "running Zephyr for " + mcu
+    text = "running Zephyr for " + mcu + " (on a \"" + board + "\" board)"
     if connection and "debugger" in connection and connection["debugger"]:
         text += ", on JLink debugger serial number " + connection["debugger"]
     if clean:
@@ -402,8 +395,6 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                 # Note that Zephyr brings in its own
                 # copy of Unity so there is no need to
                 # fetch it here.
-                # For Zephyr we need to obtain the full board name
-                board = find_board(ubxlib_dir, mcu)
                 if board:
                     # Do the build
                     build_start_time = time()
