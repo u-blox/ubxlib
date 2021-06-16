@@ -149,6 +149,7 @@ def create_lint_config(lint_platform_path, defines, printer, prompt):
 
     # Run make to create the configuration files
     call_list.append("make")
+    call_list.append("--debug=all")
     if defines:
         call_list.append("CFLAGS=" + cflags)
     call_list.append("-f")
