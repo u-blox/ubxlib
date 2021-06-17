@@ -286,6 +286,24 @@ __UPDATED_READ_SETTINGS = {}
 __WRITE_SETTINGS = {}
 __SETTINGS = {}
 
+def __replace_env_var(entry):
+    '''Use this function to expand environmental variables in strings.
+       The entry can be any object and for dicts and lists this function
+       will recursivly iterate through all their entries to find every
+       string.'''
+    if isinstance(entry, str):
+        entry = os.path.expandvars(entry)
+    elif isinstance(entry, dict):
+        # This is a dictonary - iterate through it and recursivly call
+        # __replace_env_var() replace any environmental variable in it
+        for __key in entry:
+            entry[__key] = __replace_env_var(entry[__key])
+    elif isinstance(entry, list):
+        # This is a list - iterate through it and recursivly call
+        # __replace_env_var() replace any environmental variable in it
+        entry[:] = [__replace_env_var(__value) for __value in entry]
+    return entry
+
 # Ensure exclusive access to avoid collisions when this is included
 # in many scripts, potentially running in their own processes.
 with portalocker.Lock(os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock"),
@@ -492,8 +510,9 @@ with portalocker.Lock(os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + "s
     # Populate this module with settings
     __current_module = sys.modules[__name__]
     for __key in __SETTINGS:
-        #print("u_settings: \"{}\" = {}".format(__key, __SETTINGS[__key]))
-        setattr(__current_module, __key, __SETTINGS[__key])
+        __value = __replace_env_var(__SETTINGS[__key])
+        #print("u_settings: \"{}\" = \"{}\"".format(__key,  __value))
+        setattr(__current_module, __key, __value)
 
 def user_intervention_required():
     '''Return true if a human needs to sort out the global settings files'''
