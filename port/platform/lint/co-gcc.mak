@@ -77,7 +77,7 @@ $(info    TOUCH will be "$(TOUCH)")
 $(info    AWK will be "$(AWK)")
 
 MAKEFILE_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-CURRENT_DIR := $(PWD)
+CURRENT_DIR := $(realpath .)
 
 .PHONY = clean clean_temps
 
@@ -149,10 +149,10 @@ include_path:
 # a literal 'n'?  It seems to depend on your platform.)  So we
 # deliberately avoid the use of explicit newline characters here.
 sizes:
-	$(RM) $(SIZE_GEN)*
-	@cp $(MAKEFILE_DIR)default_$(SIZE_GEN).cc $(SIZE_GEN).cc
-	@$(GXX) $(SIZE_GEN).cc -o $(CURRENT_DIR)/$(SIZE_GEN)
-	@$(CURRENT_DIR)/$(SIZE_GEN) >size-options.lnt
+	$(RM) $(CURRENT_DIR)/$(SIZE_GEN)*
+	cp $(MAKEFILE_DIR)default_$(SIZE_GEN).cc $(SIZE_GEN).cc
+	$(GXX) $(SIZE_GEN).cc -o $(CURRENT_DIR)/$(SIZE_GEN)
+	$(CURRENT_DIR)/$(SIZE_GEN) >size-options.lnt
 
 clean_temps:
 	$(RM) $(TEMP_FILE_PREFIX)*
