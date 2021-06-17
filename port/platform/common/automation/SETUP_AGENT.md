@@ -41,6 +41,8 @@ Note: when unzipping a downloaded file make sure to right-click and unblock it *
 |                          | `nRF command-line tools`: as for GCC version. |                                                   |                                 |
 |                          | `JLink Software and Documentation Pack`: as for GCC version. |                                    |                                 |
 | Zephyr platform          | `nRF Connect`: the kitchen sink; run this, select `Toolchain Manager`, open that and then use it to install the correct version of `nRF Connect`. | https://www.nordicsemi.com/Software-and-Tools/Development-Tools/nRF-Connect-for-desktop | `C:\nrfconnect\v1.4.2`; tell the installer to use `C:\nrfconnect` and it will add the rest. |
+|                          | `pip install west`: the build tool for Zephyr (from a command prompt as Administrator). |         |                                 |
+|                          | `pip install -r C:\nrfconnect\v1.4.2\zephyr\scripts\requirements.txt` (or equivalent), from a command prompt as Administrator.| |   |
 |                          | `nRF command-line tools`: as for nRF5SDK GCC. |                                                   |                                 |
 |                          | `JLink Software and Documentation Pack`: as for nRF5SDK. |                                        |                                 |
 | STM32Cube platform       | `STM32Cube FW F4`: SDK.                       | https://www.st.com/en/embedded-software/stm32cubef4.html | `C:\STM32Cube_FW_F4`     |
