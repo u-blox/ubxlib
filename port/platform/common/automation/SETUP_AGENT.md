@@ -10,13 +10,14 @@ Note: when unzipping a downloaded file make sure to right-click and unblock it *
 
 | Required for             | Application                                   | Link                                              | Installation directory          |
 | ------------------------ | --------------------------------------------- | ------------------------------------------------- | ------------------------------- |
-| Everything               | `Python`: version 3.8 or later is good; do the "disable path length limit" thing at the end if offered.       | https://www.python.org/downloads/                 | Anywhere on the path (and install for all users). |
+| Everything               | `Python`: version 3.8 or later is good; do the "disable path length limit" thing at the end if offered. | https://www.python.org/downloads/ | Anywhere on the path (and install for all users). |
 |                          | `RPyC`: no link, just `pip install rpyc`.     |                                                   |                                 |
 |                          | `pyserial`: no link, just `pip install pyserial`. |                                               |                                 |
 |                          | `psutil`: no link, just `pip install psutil`. |                                                   |                                 |
 |                          | `requests`: no link, just `pip install requests`. |                                               |                                 |
 |                          | `requests_toolbelt`: no link, just `pip install requests_toolbelt`. |                             |                                 |
-|                          | `pyink`: no link, just `pip install pylink`. |                                                   |                                 |
+|                          | `pylink-square` (NOT just "pylink", that's different!): no link, just `pip install pylink-square`. | |                              |
+|                          | `portalocker`: no link, just `pip install portalocker`. |                                         |                                 |
 |                          | `Git`: version control, unless you are well versed in `Vim`, suggest installing `notepad++` (see below) first and selecting it as the text editor for Git during installation. | https://git-scm.com/downloads | Anywhere on the path, let the installer choose. |
 |                          | `DevCon`: utility to reset USB ports.         | https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/devcon-examples | Anywhere on the path, conventionally copy the files into `C:\Program Files (x86)\utils\DevCon` and add `C:\Program Files (x86)\utils\DevCon\amd64` to the path. |
 |                          | `USBSwitchCmd`: to control Cleware USB cutter. | https://www.cleware-shop.de/USB-Cutter/en        | Anywhere on the path, conventionally copy the files into `C:\Program Files (x86)\utils\USBSwitchCmd`. |

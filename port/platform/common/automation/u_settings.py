@@ -5,6 +5,22 @@
 import sys
 import json
 import os
+import portalocker # To make sure that file accesses don't overlap
+
+# *** START: IMPORTANT NOTE ABOUT "_AGENT_SPECIFIC" ***
+#
+# If you add a setting here that ends with "_AGENT_SPECIFIC"
+# it will cause any test agents that do not have that setting
+# to STOP DEAD until the relevant setting is added to their
+# settings_v2_agent_specific.json files.
+#
+# So, please do NOT commit any code to ubxlib that adds an
+# agent specific setting without FIRST adding the
+# setting to settings_v2_agent_specific.json on all of
+# the agents (for which you will likely need to know
+# where they are and gain Remote Desktop access).
+#
+# *** END: IMPORTANT NOTE ABOUT "_AGENT_SPECIFIC" ***
 
 # Use this post-fix on the name of a setting if
 # the global configuration files MUST contain a
@@ -270,210 +286,214 @@ __UPDATED_READ_SETTINGS = {}
 __WRITE_SETTINGS = {}
 __SETTINGS = {}
 
-# Read settings from the global configuration files
-if os.path.isfile(__SETTINGS_FILE_PATH_GENERAL):
-    try:
-        with open(__SETTINGS_FILE_PATH_GENERAL) as f:
-            __READ_SETTINGS = json.load(f)
-    except Exception as ex:
-        print("u_settings: ************************** WARNING ***************************")
-        print("u_settings: error {}{} reading settings file \"{}\".".    \
-              format(type(ex).__name__, str(ex), __SETTINGS_FILE_PATH_GENERAL))
-        print("u_settings: ************************** WARNING ***************************")
-if os.path.isfile(__SETTINGS_FILE_PATH_AGENT_SPECIFIC):
-    try:
-        with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC) as f:
-            __READ_SETTINGS.update(json.load(f))
-    except Exception as ex:
-        print("u_settings: ************************** WARNING ***************************")
-        print("u_settings: error {}{} reading settings file \"{}\".".    \
-              format(type(ex).__name__, str(ex), __SETTINGS_FILE_PATH_AGENT_SPECIFIC))
-        print("u_settings: ************************** WARNING ***************************")
-if not __READ_SETTINGS:
-    # For backwards-compatibility
-    if os.path.isfile(__SETTINGS_FILE_PATH_OLD):
+# Ensure exclusive access to avoid collisions when this is included
+# in many scripts, potentially running in their own processes.
+with portalocker.Lock(os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock"),
+                      "w", portalocker.LOCK_EX):
+    # Read settings from the global configuration files
+    if os.path.isfile(__SETTINGS_FILE_PATH_GENERAL):
         try:
-            with open(__SETTINGS_FILE_PATH_OLD) as f:
-                __READ_SETTINGS.update(json.load(f))
-                __FORCE_WRITE = True
+            with open(__SETTINGS_FILE_PATH_GENERAL) as f:
+                __READ_SETTINGS = json.load(f)
         except Exception as ex:
             print("u_settings: ************************** WARNING ***************************")
-            print("u_settings: error {}{} reading old settings file \"{}\".".    \
-                  format(type(ex).__name__, str(ex), __SETTINGS_FILE_PATH_OLD))
+            print("u_settings: error {}{} reading settings file \"{}\".".    \
+                  format(type(ex).__name__, str(ex), __SETTINGS_FILE_PATH_GENERAL))
             print("u_settings: ************************** WARNING ***************************")
+    if os.path.isfile(__SETTINGS_FILE_PATH_AGENT_SPECIFIC):
+        try:
+            with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC) as f:
+                __READ_SETTINGS.update(json.load(f))
+        except Exception as ex:
+            print("u_settings: ************************** WARNING ***************************")
+            print("u_settings: error {}{} reading settings file \"{}\".".    \
+                  format(type(ex).__name__, str(ex), __SETTINGS_FILE_PATH_AGENT_SPECIFIC))
+            print("u_settings: ************************** WARNING ***************************")
+    if not __READ_SETTINGS:
+        # For backwards-compatibility
+        if os.path.isfile(__SETTINGS_FILE_PATH_OLD):
+            try:
+                with open(__SETTINGS_FILE_PATH_OLD) as f:
+                    __READ_SETTINGS.update(json.load(f))
+                    __FORCE_WRITE = True
+            except Exception as ex:
+                print("u_settings: ************************** WARNING ***********************")
+                print("u_settings: error {}{} reading old settings file \"{}\".".    \
+                      format(type(ex).__name__, str(ex), __SETTINGS_FILE_PATH_OLD))
+                print("u_settings: ************************** WARNING ***********************")
 
-# Having set up the default values and [potentially] read
-# settings from file, decide what to do:
-#
-# a) if __READ_SETTINGS is empty, use the defaults and
-#    write them back to file again (though see also (1)
-#    to (4) below concerning what is written-back),
-# b) if we have __READ_SETTINGS but the value of
-#    "SETTINGS_VERSION" from there is different to the
-#    one in __DEFAULT_SETTINGS then use the defaults and
-#    do not write those defaults back to disk: the version
-#    change indicates that user intervention is required;
-#    one of the Python scripts that includes this script
-#    (e.g. u_agent.py) will check for this and not allow
-#    the agent to run until the planets are aligned once
-#    more,
-# c) else use the values from __READ_SETTINGS (but see
-#    also (3) and (4) below).
-#
-# In addition to the above:
-#
-# 1) if we find an entry in __DEFAULT_SETTINGS which ends
-#    in "_TEST_ONLY_TEMP", e.g. "THINGY_TEST_ONLY_TEMP",
-#    then merge the bit before, e.g. "THINGY", into the
-#    settings we adopt and do NOT write that particular
-#    value back to disk: the user is trying something out,
-#    potentially replacing an existing setting, and doesn't
-#    want to infect the global configuration file with it,
-# 2) if we find an entry in __DEFAULT_SETTINGS which ends
-#    in "_AGENT_SPECIFIC", e.g. "PATH_X_AGENT_SPECIFIC",
-#    and we do not have an entry in __READ_SETTINGS that
-#    begins with the bit before the prefix, e.g. "PATH_X"
-#    then merge the bit before into the settings we adopt
-#    and merge "PATH_X_FIX_ME" into the value we write back
-#    to disk: again, someone must update the global
-#    configuration file on the agent with a value for "PATH_X"
-#    and a script such as u_agent.py which includes this
-#    script will not allow the agent to run until that is done,
-# 3) if we find an entry in __READ_SETTINGS which ends in
-#    "_AGENT_SPECIFIC", "_FIX_ME" or "_TEST_ONLY_TEMP" then
-#    remove it from the settings we use,
-# 4) if we find an entry in __DEFAULT_SETTINGS which is
-#    is not present in __READ_SETTINGS after doing the (1)
-#    and (2) modifications on it then merge it into
-#    the values we use (in its modified form).
+    # Having set up the default values and [potentially] read
+    # settings from file, decide what to do:
+    #
+    # a) if __READ_SETTINGS is empty, use the defaults and
+    #    write them back to file again (though see also (1)
+    #    to (4) below concerning what is written-back),
+    # b) if we have __READ_SETTINGS but the value of
+    #    "SETTINGS_VERSION" from there is different to the
+    #    one in __DEFAULT_SETTINGS then use the defaults and
+    #    do not write those defaults back to disk: the version
+    #    change indicates that user intervention is required;
+    #    one of the Python scripts that includes this script
+    #    (e.g. u_agent.py) will check for this and not allow
+    #    the agent to run until the planets are aligned once
+    #    more,
+    # c) else use the values from __READ_SETTINGS (but see
+    #    also (3) and (4) below).
+    #
+    # In addition to the above:
+    #
+    # 1) if we find an entry in __DEFAULT_SETTINGS which ends
+    #    in "_TEST_ONLY_TEMP", e.g. "THINGY_TEST_ONLY_TEMP",
+    #    then merge the bit before, e.g. "THINGY", into the
+    #    settings we adopt and do NOT write that particular
+    #    value back to disk: the user is trying something out,
+    #    potentially replacing an existing setting, and doesn't
+    #    want to infect the global configuration file with it,
+    # 2) if we find an entry in __DEFAULT_SETTINGS which ends
+    #    in "_AGENT_SPECIFIC", e.g. "PATH_X_AGENT_SPECIFIC",
+    #    and we do not have an entry in __READ_SETTINGS that
+    #    begins with the bit before the prefix, e.g. "PATH_X"
+    #    then merge the bit before into the settings we adopt
+    #    and merge "PATH_X_FIX_ME" into the value we write back
+    #    to disk: again, someone must update the global
+    #    configuration file on the agent with a value for "PATH_X"
+    #    and a script such as u_agent.py which includes this
+    #    script will not allow the agent to run until that is done,
+    # 3) if we find an entry in __READ_SETTINGS which ends in
+    #    "_AGENT_SPECIFIC", "_FIX_ME" or "_TEST_ONLY_TEMP" then
+    #    remove it from the settings we use,
+    # 4) if we find an entry in __DEFAULT_SETTINGS which is
+    #    is not present in __READ_SETTINGS after doing the (1)
+    #    and (2) modifications on it then merge it into
+    #    the values we use (in its modified form).
 
-# First sort out the settings we would use based on the defaults
-for __key in __DEFAULT_SETTINGS:
-    # Condition (4) above is assumed
-    __SETTINGS_KEY = __key
-    __REWRITE_KEY = __key
-    __VALUE = __DEFAULT_SETTINGS[__key]
-    if __SETTINGS_KEY.endswith(__SETTINGS_POSTFIX_TEST_ONLY_TEMP):
-        # Condition (1) above
-        __SETTINGS_KEY = __SETTINGS_KEY.replace(__SETTINGS_POSTFIX_TEST_ONLY_TEMP, "")
-        __REWRITE_KEY = None
-    if __SETTINGS_KEY.endswith(__SETTINGS_POSTFIX_AGENT_SPECIFIC):
-        # Condition (2) above
-        __SETTINGS_KEY = __SETTINGS_KEY.replace(__SETTINGS_POSTFIX_AGENT_SPECIFIC, "")
-        if __SETTINGS_KEY not in __READ_SETTINGS:
-            __USER_INTERVENTION_REQUIRED = True
-    # Populate __SETTINGS and __WRITE_SETTINGS
-    __SETTINGS[__SETTINGS_KEY] = __VALUE
-    if __REWRITE_KEY:
-        __WRITE_SETTINGS[__REWRITE_KEY] = __VALUE
+    # First sort out the settings we would use based on the defaults
+    for __key in __DEFAULT_SETTINGS:
+        # Condition (4) above is assumed
+        __SETTINGS_KEY = __key
+        __REWRITE_KEY = __key
+        __VALUE = __DEFAULT_SETTINGS[__key]
+        if __SETTINGS_KEY.endswith(__SETTINGS_POSTFIX_TEST_ONLY_TEMP):
+            # Condition (1) above
+            __SETTINGS_KEY = __SETTINGS_KEY.replace(__SETTINGS_POSTFIX_TEST_ONLY_TEMP, "")
+            __REWRITE_KEY = None
+        if __SETTINGS_KEY.endswith(__SETTINGS_POSTFIX_AGENT_SPECIFIC):
+            # Condition (2) above
+            __SETTINGS_KEY = __SETTINGS_KEY.replace(__SETTINGS_POSTFIX_AGENT_SPECIFIC, "")
+            if __SETTINGS_KEY not in __READ_SETTINGS:
+                __USER_INTERVENTION_REQUIRED = True
+        # Populate __SETTINGS and __WRITE_SETTINGS
+        __SETTINGS[__SETTINGS_KEY] = __VALUE
+        if __REWRITE_KEY:
+            __WRITE_SETTINGS[__REWRITE_KEY] = __VALUE
 
-# We now have a __SETTINGS list based on __DEFAULT_SETTINGS
-# and __WRITE_SETTINGS contains what we could write back
-# Next sort out __READ_SETTINGS
-if __READ_SETTINGS:
-    # Conditions (b) and (c) above
-    if "SETTINGS_VERSION" not in __READ_SETTINGS or  \
-       __READ_SETTINGS["SETTINGS_VERSION"] == __DEFAULT_SETTINGS["SETTINGS_VERSION"]:
-        # Condition (c) above: we're going to use __READ_SETTINGS
-        # so sort out conditions (3) and (4) above
-        # First, condition (3)
-        __FILTERED_READ_SETTINGS = {}
-        for __key in __READ_SETTINGS:
-            if not __key.endswith(__SETTINGS_POSTFIX_TEST_ONLY_TEMP) and \
-               not __key.endswith(__SETTINGS_POSTFIX_FIX_ME) and         \
-               not __key.endswith(__SETTINGS_POSTFIX_AGENT_SPECIFIC):
-                __FILTERED_READ_SETTINGS[__key] = __READ_SETTINGS[__key]
-        # Then condition (4)
-        __UPDATED_READ_SETTINGS = __FILTERED_READ_SETTINGS.copy()
-        for __key in __SETTINGS:
-            if __key not in __UPDATED_READ_SETTINGS:
-                __UPDATED_READ_SETTINGS[__key] = __SETTINGS[__key]
-        # And finally, condition (1) also needs handling here,
-        # so that the user can override values read from the
-        # settings file while testing
-        for __key in __DEFAULT_SETTINGS:
-            __key_root = __key.replace(__SETTINGS_POSTFIX_TEST_ONLY_TEMP, "")
-            if __key.endswith(__SETTINGS_POSTFIX_TEST_ONLY_TEMP) and \
-                __key_root in __UPDATED_READ_SETTINGS:
-                __UPDATED_READ_SETTINGS[__key_root] = __DEFAULT_SETTINGS[__key]
-    else:
-        # Condition (b) above
-        __USER_INTERVENTION_REQUIRED = True
-        __WRITE_SETTINGS = {}
-else:
-    # Condition (a) above
-    print("u_settings: no settings at \"{}\", \"{}\" or \"{}\""
-          " using defaults.".format(__SETTINGS_FILE_PATH_GENERAL,
-          __SETTINGS_FILE_PATH_AGENT_SPECIFIC, __SETTINGS_FILE_PATH_OLD))
-
-# If we have __UPDATED_READ_SETTINGS we use it instead of __SETTINGS
-if __UPDATED_READ_SETTINGS:
-    __SETTINGS = __UPDATED_READ_SETTINGS
-
-# Finally need to sort out the [re]writing.
-if __WRITE_SETTINGS:
-    # Where something is already present in __READ_SETTINGS
-    # then use the value from __READ_SETTINGS
-    __LISTS_DIFFER = __FORCE_WRITE
-    __local_write_settings = {}
-    for __key in __WRITE_SETTINGS:
-        __key_root = __key.replace(__SETTINGS_POSTFIX_AGENT_SPECIFIC, "")
-        if __key_root in __READ_SETTINGS:
-            __local_write_settings[__key] = __READ_SETTINGS[__key_root]
+    # We now have a __SETTINGS list based on __DEFAULT_SETTINGS
+    # and __WRITE_SETTINGS contains what we could write back
+    # Next sort out __READ_SETTINGS
+    if __READ_SETTINGS:
+        # Conditions (b) and (c) above
+        if "SETTINGS_VERSION" not in __READ_SETTINGS or  \
+           __READ_SETTINGS["SETTINGS_VERSION"] == __DEFAULT_SETTINGS["SETTINGS_VERSION"]:
+            # Condition (c) above: we're going to use __READ_SETTINGS
+            # so sort out conditions (3) and (4) above
+            # First, condition (3)
+            __FILTERED_READ_SETTINGS = {}
+            for __key in __READ_SETTINGS:
+                if not __key.endswith(__SETTINGS_POSTFIX_TEST_ONLY_TEMP) and \
+                   not __key.endswith(__SETTINGS_POSTFIX_FIX_ME) and         \
+                   not __key.endswith(__SETTINGS_POSTFIX_AGENT_SPECIFIC):
+                    __FILTERED_READ_SETTINGS[__key] = __READ_SETTINGS[__key]
+            # Then condition (4)
+            __UPDATED_READ_SETTINGS = __FILTERED_READ_SETTINGS.copy()
+            for __key in __SETTINGS:
+                if __key not in __UPDATED_READ_SETTINGS:
+                    __UPDATED_READ_SETTINGS[__key] = __SETTINGS[__key]
+            # And finally, condition (1) also needs handling here,
+            # so that the user can override values read from the
+            # settings file while testing
+            for __key in __DEFAULT_SETTINGS:
+                __key_root = __key.replace(__SETTINGS_POSTFIX_TEST_ONLY_TEMP, "")
+                if __key.endswith(__SETTINGS_POSTFIX_TEST_ONLY_TEMP) and \
+                    __key_root in __UPDATED_READ_SETTINGS:
+                    __UPDATED_READ_SETTINGS[__key_root] = __DEFAULT_SETTINGS[__key]
         else:
-            __LISTS_DIFFER = True
-            __local_write_settings[__key] = __WRITE_SETTINGS[__key]
-            if __key_root != __key:
-                print("u_settings: *** WARNING agent specific setting {}"    \
-                      " not found in settings file.".format(__key_root))
-    __WRITE_SETTINGS = __local_write_settings
+            # Condition (b) above
+            __USER_INTERVENTION_REQUIRED = True
+            __WRITE_SETTINGS = {}
+    else:
+        # Condition (a) above
+        print("u_settings: no settings at \"{}\", \"{}\" or \"{}\""
+              " using defaults.".format(__SETTINGS_FILE_PATH_GENERAL,
+              __SETTINGS_FILE_PATH_AGENT_SPECIFIC, __SETTINGS_FILE_PATH_OLD))
 
-    # Don't want to lose the user's stuff, so add anything that
-    # we don't understand to the write list
-    for __key in __FILTERED_READ_SETTINGS:
-        if __key not in __WRITE_SETTINGS and                                   \
-           (__key + __SETTINGS_POSTFIX_AGENT_SPECIFIC) not in __WRITE_SETTINGS:
-            __WRITE_SETTINGS[__key] = __FILTERED_READ_SETTINGS[__key]
+    # If we have __UPDATED_READ_SETTINGS we use it instead of __SETTINGS
+    if __UPDATED_READ_SETTINGS:
+        __SETTINGS = __UPDATED_READ_SETTINGS
 
-    if not __LISTS_DIFFER:
-        # Check if any of the values we've ended up with are different
+    # Finally need to sort out the [re]writing.
+    if __WRITE_SETTINGS:
+        # Where something is already present in __READ_SETTINGS
+        # then use the value from __READ_SETTINGS
+        __LISTS_DIFFER = __FORCE_WRITE
+        __local_write_settings = {}
         for __key in __WRITE_SETTINGS:
-            if __WRITE_SETTINGS[__key] != __READ_SETTINGS[__key.replace(__SETTINGS_POSTFIX_AGENT_SPECIFIC, "")]:
-                __LISTS_DIFFER = True
-                break
-    if __LISTS_DIFFER:
-        # Either there's a new entry or a value is different,
-        # write the now merged list into the global settings files
-        __write_settings_general = {}
-        __write_settings_agent_specific = {}
-        for __key in __WRITE_SETTINGS:
-            if __key.endswith(__SETTINGS_POSTFIX_AGENT_SPECIFIC):
-                __key_root = __key.replace(__SETTINGS_POSTFIX_AGENT_SPECIFIC,"")
-                if __FILTERED_READ_SETTINGS and __key_root in __FILTERED_READ_SETTINGS:
-                    __write_settings_agent_specific[__key_root] = __WRITE_SETTINGS[__key]
-                else:
-                    # Writing the __key with the post-fix "__FIX_ME"
-                    __write_settings_agent_specific[__key_root + __SETTINGS_POSTFIX_FIX_ME] = __WRITE_SETTINGS[__key]
+            __key_root = __key.replace(__SETTINGS_POSTFIX_AGENT_SPECIFIC, "")
+            if __key_root in __READ_SETTINGS:
+                __local_write_settings[__key] = __READ_SETTINGS[__key_root]
             else:
-                __write_settings_general[__key] = __WRITE_SETTINGS[__key]
-        if not os.path.isdir(os.path.expanduser(__SETTINGS_FILE_DIRECTORY)):
-            os.makedirs(os.path.expanduser(__SETTINGS_FILE_DIRECTORY))
-        if __write_settings_general:
-            print("u_settings: creating/re-writing global settings file \"{}\".". \
-                  format(__SETTINGS_FILE_PATH_GENERAL))
-            with open(__SETTINGS_FILE_PATH_GENERAL, 'w') as out:
-                json.dump(__write_settings_general, out, indent=2)
-        if __write_settings_agent_specific:
-            print("u_settings: creating/re-writing global settings file \"{}\".". \
-                  format(__SETTINGS_FILE_PATH_AGENT_SPECIFIC))
-            with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC, 'w') as out:
-                json.dump(__write_settings_agent_specific, out, indent=2)
+                __LISTS_DIFFER = True
+                __local_write_settings[__key] = __WRITE_SETTINGS[__key]
+                if __key_root != __key:
+                    print("u_settings: *** WARNING agent specific setting {}"    \
+                          " not found in settings file.".format(__key_root))
+        __WRITE_SETTINGS = __local_write_settings
 
-# Populate this module with settings
-__current_module = sys.modules[__name__]
-for __key in __SETTINGS:
-    #print("u_settings: \"{}\" = {}".format(__key, __SETTINGS[__key]))
-    setattr(__current_module, __key, __SETTINGS[__key])
+        # Don't want to lose the user's stuff, so add anything that
+        # we don't understand to the write list
+        for __key in __FILTERED_READ_SETTINGS:
+            if __key not in __WRITE_SETTINGS and                                   \
+               (__key + __SETTINGS_POSTFIX_AGENT_SPECIFIC) not in __WRITE_SETTINGS:
+                __WRITE_SETTINGS[__key] = __FILTERED_READ_SETTINGS[__key]
+
+        if not __LISTS_DIFFER:
+            # Check if any of the values we've ended up with are different
+            for __key in __WRITE_SETTINGS:
+                if __WRITE_SETTINGS[__key] != __READ_SETTINGS[__key.replace(__SETTINGS_POSTFIX_AGENT_SPECIFIC, "")]:
+                    __LISTS_DIFFER = True
+                    break
+        if __LISTS_DIFFER:
+            # Either there's a new entry or a value is different,
+            # write the now merged list into the global settings files
+            __write_settings_general = {}
+            __write_settings_agent_specific = {}
+            for __key in __WRITE_SETTINGS:
+                if __key.endswith(__SETTINGS_POSTFIX_AGENT_SPECIFIC):
+                    __key_root = __key.replace(__SETTINGS_POSTFIX_AGENT_SPECIFIC,"")
+                    if __FILTERED_READ_SETTINGS and __key_root in __FILTERED_READ_SETTINGS:
+                        __write_settings_agent_specific[__key_root] = __WRITE_SETTINGS[__key]
+                    else:
+                        # Writing the __key with the post-fix "__FIX_ME"
+                        __write_settings_agent_specific[__key_root + __SETTINGS_POSTFIX_FIX_ME] = __WRITE_SETTINGS[__key]
+                else:
+                    __write_settings_general[__key] = __WRITE_SETTINGS[__key]
+            if not os.path.isdir(os.path.expanduser(__SETTINGS_FILE_DIRECTORY)):
+                os.makedirs(os.path.expanduser(__SETTINGS_FILE_DIRECTORY))
+            if __write_settings_general:
+                print("u_settings: creating/re-writing global settings file \"{}\".". \
+                      format(__SETTINGS_FILE_PATH_GENERAL))
+                with open(__SETTINGS_FILE_PATH_GENERAL, 'w') as out:
+                    json.dump(__write_settings_general, out, indent=2)
+            if __write_settings_agent_specific:
+                print("u_settings: creating/re-writing global settings file \"{}\".". \
+                      format(__SETTINGS_FILE_PATH_AGENT_SPECIFIC))
+                with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC, 'w') as out:
+                    json.dump(__write_settings_agent_specific, out, indent=2)
+
+    # Populate this module with settings
+    __current_module = sys.modules[__name__]
+    for __key in __SETTINGS:
+        #print("u_settings: \"{}\" = {}".format(__key, __SETTINGS[__key]))
+        setattr(__current_module, __key, __SETTINGS[__key])
 
 def user_intervention_required():
     '''Return true if a human needs to sort out the global settings files'''
