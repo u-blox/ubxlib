@@ -67,6 +67,7 @@ SIZE_GEN:=$(TEMP_FILE_PREFIX)-generate-size-options.exe
 ECHO:=echo
 TOUCH:=touch
 AWK:=gawk
+SLEEP:=sleep
 
 $(info    CFLAGS will be "$(CFLAGS)")
 $(info    GCC_BIN will be "$(GCC_BIN)")
@@ -75,6 +76,7 @@ $(info    RM will be "$(RM)")
 $(info    ECHO will be "$(ECHO)")
 $(info    TOUCH will be "$(TOUCH)")
 $(info    AWK will be "$(AWK)")
+$(info    SLEEP will be "$(SLEEP)")
 
 MAKEFILE_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 CURRENT_DIR := $(realpath .)
@@ -154,7 +156,17 @@ sizes:
 	$(GXX) $(SIZE_GEN).cc -o $(CURRENT_DIR)/$(SIZE_GEN)
 	$(CURRENT_DIR)/$(SIZE_GEN) >size-options.lnt
 
+# HACK HACK HACK
+# When run under our automated test system, which runs four of
+# these in parallel, clean_temps will sometimes fail [on Windows]
+# because rm gets "permission denied" when trying to delete
+# SIZE_GEN, i.e. the executable file.  It is not clear why this
+# is occurring, could maybe be the virus checker or something in
+# Windows clinging-on to the file.  Whatever, adding a 1 second
+# delay here is the only workaround we have found.
+# HACK HACK HACK
 clean_temps:
+	$(SLEEP) 1
 	$(RM) $(TEMP_FILE_PREFIX)*
 
 clean:
