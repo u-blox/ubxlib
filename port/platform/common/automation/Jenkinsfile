@@ -132,41 +132,28 @@ node('TEST-gb-cmb-dt-022')
             }
         }
 
-        // Using the try/catch pattern as recommended in this post:
-        // https://stackoverflow.com/questions/48989238/post-equivalent-in-scripted-pipeline
-        // ... in order to make sure that currentBuild.description
-        // is always set while in the "scripted pipeline" world
-        try {
-            if (changed_files) {
-                stage("Test Selected") {
-                    // Call python to run the necessary builds and tests
-                    return_value = bat(script: "@echo off & cd port\\platform\\common\\automation & python u_controller_client.py -s ${summary_file} -t ${test_report_file} -d ${debug_file} -a ${archive_url}  -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"${git_commit_text}\" ${changed_files}", returnStatus: true)
-                    if (return_value != 0) {
-                        error("Running selected ubxlib test(s) returned error " + return_value + ".")
-                    } else {
-                        println "The selected ubxlib test(s) passed."
-                    }
-                }
-            } else {
-                stage("Test All") {
-                    // Call python to run all tests
-                    return_value = bat(script: "@echo off & cd port\\platform\\common\\automation & python u_controller_client.py -s ${summary_file} -t ${test_report_file} -d ${debug_file} -a ${archive_url} -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"test: *\"", returnStatus: true)
-                    if (return_value != 0) {
-                        error("Running all ubxlib tests returned " + return_value + " failed test(s).")
-                    } else {
-                        println "All ubxlib tests passed."
-                    }
+        // Add a link to where the results will be in the Jenkins GUI
+        currentBuild.description = "<a href='${archive_url}'>Results files</a>, <a href='${archive_url + "/" + summary_file}'>summary</a>";
+        if (changed_files) {
+            stage("Test Selected") {
+                // Call python to run the necessary builds and tests
+                return_value = bat(script: "@echo off & cd port\\platform\\common\\automation & python u_controller_client.py -s ${summary_file} -t ${test_report_file} -d ${debug_file} -a ${archive_url}  -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"${git_commit_text}\" ${changed_files}", returnStatus: true)
+                if (return_value != 0) {
+                    error("Running selected ubxlib test(s) returned error " + return_value + ".")
+                } else {
+                    println "The selected ubxlib test(s) passed."
                 }
             }
-        } catch (e) {
-            println "Failed."
-            // Since we're catching the exception in order to report on it,
-            // we need to re-throw it, to ensure that the build is marked as failed
-            throw e
-        } finally {
-            // Add a link to the results in the Jenkins GUI
-            currentBuild.description = "<a href='${archive_url + "/" + summary_file}'>Summary</a>, <a href='${archive_url}'>results files</a>";
+        } else {
+            stage("Test All") {
+                // Call python to run all tests
+                return_value = bat(script: "@echo off & cd port\\platform\\common\\automation & python u_controller_client.py -s ${summary_file} -t ${test_report_file} -d ${debug_file} -a ${archive_url} -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"test: *\"", returnStatus: true)
+                if (return_value != 0) {
+                    error("Running all ubxlib tests returned " + return_value + " failed test(s).")
+                } else {
+                    println "All ubxlib tests passed."
+                }
+            }
         }
-
     }
 }
