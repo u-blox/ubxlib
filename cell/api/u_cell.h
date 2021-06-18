@@ -68,6 +68,16 @@ extern "C" {
 # define U_CELL_UART_BAUD_RATE 115200
 #endif
 
+/** There can be an inverter in-line between the MCU pin
+ * that is connected to the cellular module's PWR_ON pin;
+ * this allows the sense to be switched easily.
+ */
+#ifndef U_CELL_PWR_ON_PIN_INVERTED
+# define U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE 0
+#else
+# define U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE 1
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

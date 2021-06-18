@@ -61,6 +61,16 @@
  */
 #define U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON 10
 
+/** There can be an inverter in-line between the VINT pin
+ * on the cellular module and the MCU pin; this allows the sense
+ * to be switched easily.
+ */
+#ifndef U_CELL_VINT_PIN_INVERTED
+# define U_CELL_VINT_PIN_ON_STATE 1
+#else
+# define U_CELL_VINT_PIN_ON_STATE 0
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -230,8 +240,8 @@ static void waitForPowerOff(uCellPrivateInstance_t *pInstance,
            ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->handle))) {
         if (pInstance->pinVInt >= 0) {
             // If we have a VInt pin then wait until that
-            // goes low
-            moduleIsOff = (uPortGpioGet(pInstance->pinVInt) == 0);
+            // goes to the off state
+            moduleIsOff = (uPortGpioGet(pInstance->pinVInt) == (int32_t) !U_CELL_VINT_PIN_ON_STATE);
         } else {
             // Wait for the module to stop responding at the AT interface
             // by poking it with "AT"
@@ -278,7 +288,7 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
         uPortGpioSet(pInstance->pinEnablePower, 0);
     }
     if (pInstance->pinPwrOn >= 0) {
-        uPortGpioSet(pInstance->pinPwrOn, 1);
+        uPortGpioSet(pInstance->pinPwrOn, (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
     }
 
     // Remove any security context as these disappear
@@ -298,9 +308,9 @@ static void quickPowerOff(uCellPrivateInstance_t *pInstance,
     if (pInstance->pinPwrOn >= 0) {
         // Power off the module by pulling the PWR_ON pin
         // low for the correct number of milliseconds
-        uPortGpioSet(pInstance->pinPwrOn, 0);
+        uPortGpioSet(pInstance->pinPwrOn, U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
         uPortTaskBlock(pInstance->pModule->powerOffPullMs);
-        uPortGpioSet(pInstance->pinPwrOn, 1);
+        uPortGpioSet(pInstance->pinPwrOn, (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
         // Wait for the module to power down
         waitForPowerOff(pInstance, pKeepGoingCallback);
         // Now switch off power if possible
@@ -391,8 +401,9 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                 // the module off, check if it is already on.
                 // Note: doing this even if there is an enable power
                 // pin for safety sake
-                if (((pInstance->pinVInt >= 0) && uPortGpioGet(pInstance->pinVInt)) ||
-                    (moduleIsAlive(pInstance, 1) == 0)) {
+                if (((pInstance->pinVInt >= 0) &&
+                     (uPortGpioGet(pInstance->pinVInt) == U_CELL_VINT_PIN_ON_STATE)) ||
+                     (moduleIsAlive(pInstance, 1) == 0)) {
                     uPortLog("U_CELL_PWR: powering on, module is already on.\n");
                     // Configure the module.  Since it was already
                     // powered on we might have been called from
@@ -424,15 +435,16 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                         uPortTaskBlock(100);
 
                         if (pInstance->pinPwrOn >= 0) {
-                            // Power the module on by holding the PWR_ON pin low
-                            // for the correct number of milliseconds
-                            platformError = uPortGpioSet(pInstance->pinPwrOn, 0);
+                            // Power the module on by holding the PWR_ON pin in 
+                            // the relevant state for the correct number of milliseconds
+                            platformError = uPortGpioSet(pInstance->pinPwrOn,
+                                                         U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                             if (platformError == 0) {
                                 uPortTaskBlock(pInstance->pModule->powerOnPullMs);
                                 // Not bothering with checking return code here
                                 // as it would have barfed on the last one if
                                 // it were going to
-                                uPortGpioSet(pInstance->pinPwrOn, 1);
+                                uPortGpioSet(pInstance->pinPwrOn, (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                                 uPortTaskBlock(pInstance->pModule->bootWaitSeconds * 1000);
                                 if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
                                     // SARA-R5 chucks out a load of stuff after
@@ -538,11 +550,12 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
             } else {
                 if (pInstance->pinPwrOn >= 0) {
                     uPortLog("U_CELL_PWR: powering off using the PWR_ON pin.\n");
-                    uPortGpioSet(pInstance->pinPwrOn, 0);
+                    uPortGpioSet(pInstance->pinPwrOn, U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                     // Power off the module by pulling the PWR_ON pin
-                    // low for the correct number of milliseconds
+                    // to the relevant state for the correct number of
+                    // milliseconds
                     uPortTaskBlock(pInstance->pModule->powerOffPullMs);
-                    uPortGpioSet(pInstance->pinPwrOn, 1);
+                    uPortGpioSet(pInstance->pinPwrOn, (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                     // Clear the dynamic parameters
                     uCellPrivateClearDynamicParameters(pInstance);
                     // Wait for the module to power down
@@ -666,10 +679,11 @@ int32_t uCellPwrReboot(int32_t cellHandle,
                         // during power on
                         if (pInstance->pinPwrOn >= 0) {
                             // Power off the module by pulling the PWR_ON pin
-                            // low for the correct number of milliseconds
-                            uPortGpioSet(pInstance->pinPwrOn, 0);
+                            // to the relevant state for the correct number of
+                            // milliseconds
+                            uPortGpioSet(pInstance->pinPwrOn, U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                             uPortTaskBlock(pInstance->pModule->powerOffPullMs);
-                            uPortGpioSet(pInstance->pinPwrOn, 1);
+                            uPortGpioSet(pInstance->pinPwrOn, (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                             // Wait for the module to power down
                             waitForPowerOff(pInstance, pKeepGoingCallback);
                             // Now switch off power if possible
@@ -686,9 +700,9 @@ int32_t uCellPwrReboot(int32_t cellHandle,
                             uPortTaskBlock(100);
                         }
                         if (pInstance->pinPwrOn >= 0) {
-                            uPortGpioSet(pInstance->pinPwrOn, 0);
+                            uPortGpioSet(pInstance->pinPwrOn, U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                             uPortTaskBlock(pInstance->pModule->powerOnPullMs);
-                            uPortGpioSet(pInstance->pinPwrOn, 1);
+                            uPortGpioSet(pInstance->pinPwrOn, (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                             uPortTaskBlock(pInstance->pModule->bootWaitSeconds * 1000);
                         }
                     }

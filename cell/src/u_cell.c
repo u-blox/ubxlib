@@ -55,6 +55,24 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The drive mode for the PWR_ON pin.
+ */
+#ifndef U_CELL_PWR_ON_PIN_DRIVE_MODE
+# if U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE == 0
+/* Open drain so that we can pull PWR_ON low and then
+ * let it float afterwards since it is pulled-up by the
+ * cellular module.
+ */
+#  define U_CELL_PWR_ON_PIN_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN
+# else
+/* Normal mode since we're only driving the inverter that
+ * must have been inserted between the MCU pin and the
+ * cellular module PWR_ON pin
+ */
+#  define U_CELL_PWR_ON_PIN_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_NORMAL
+# endif
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -223,7 +241,10 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 }
                 uPortLog("PWR_ON pin ", pinPwrOn, pinPwrOn);
                 if (pinPwrOn >= 0) {
-                    uPortLog("%d (0x%02x)", pinPwrOn, pinPwrOn);
+                    uPortLog("%d (0x%02x) (and is toggled from %d to %d)",
+                             pinPwrOn, pinPwrOn,
+                             (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE,
+                             (int32_t) U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                 } else {
                     uPortLog("not connected");
                 }
@@ -239,17 +260,19 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 // Sort PWR_ON pin if there is one
                 if (pinPwrOn >= 0) {
                     if (!leavePowerAlone) {
-                        // Set PWR_ON high so that we can pull it low
-                        platformError = uPortGpioSet(pinPwrOn, 1);
+                        // Set PWR_ON to its steady state so that we can pull it
+                        // the other way
+                        platformError = uPortGpioSet(pinPwrOn,
+                                                     (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                     }
                     if (platformError == 0) {
-                        // PWR_ON open drain so that we can pull it low and then let it
-                        // float afterwards since it is pulled-up by the cellular module
-                        // TODO: the u-blox C030-R412M board requires a pull-up here.
                         U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
                         gpioConfig.pin = pinPwrOn;
+#if U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE == 0
+                        // TODO: the u-blox C030-R412M board requires a pull-up here.
                         gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_PULL_UP;
-                        gpioConfig.driveMode = U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN;
+#endif
+                        gpioConfig.driveMode = U_CELL_PWR_ON_PIN_DRIVE_MODE;
                         gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
                         platformError = uPortGpioConfig(&gpioConfig);
                         if (platformError != 0) {
