@@ -253,7 +253,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 }
                 uPortLog(" and VInt pin ");
                 if (pinVInt >= 0) {
-                    uPortLog("%d (0x%02x).\n", pinVInt, pinVInt);
+                    uPortLog("%d (0x%02x) (and is %d when module is on).\n",
+                             pinVInt, pinVInt, U_CELL_VINT_PIN_ON_STATE);
                 } else {
                     uPortLog("not connected.\n");
                 }
