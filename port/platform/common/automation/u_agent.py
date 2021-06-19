@@ -373,6 +373,10 @@ def session_abort(session_name):
                 if ("name" in session) and (session_name == session["name"]):
                     # Clear the running flag
                     session["running_flag"].clear()
+                    if session["reporter"]:
+                        session["reporter"].event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                                  u_report.EVENT_INFORMATION,
+                                                  "session {} aborting...".format(session_name))
                     success = True
     return success
 

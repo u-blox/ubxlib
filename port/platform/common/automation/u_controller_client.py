@@ -191,6 +191,36 @@ def agents_connect(port):
                     PRINTER.string("{}{}.".format(PROMPT, text))
     return agents
 
+def agents_abort(agents_locked, controller_name):
+    '''Abort runs on the list of agents'''
+    agents_to_wait_for = []
+
+    for agent in agents_locked:
+        if agent["async_result_object"]:
+            if PRINTER:
+                PRINTER.string("{}aborting agent {}...".format(PROMPT, agent["name"]))
+            agent_call(agent, "session_abort", agent["session_name"], controller_name)
+            agents_to_wait_for.append(agent)
+
+    if len(agents_to_wait_for) > 0:
+        agents_active = len(agents_to_wait_for)
+        while agents_active > 0:
+            if PRINTER:
+                PRINTER.string("{}waiting for {} agent(s) to stop...".format(PROMPT, agents_active))
+            for agent in agents_to_wait_for:
+                if agent["connection"] and (agent_call(agent, "instance_running_count_get") <= 0):
+                    agent_call(agent, "unlock", controller_name)
+                    agent["locked"] = False
+                    agent_close(agent, "stopped")
+            sleep(5)
+            agents_active = 0
+            for agent in agents_to_wait_for:
+                if agent["connection"]:
+                    if PRINTER:
+                        PRINTER.string("{}agent {} still running...".format(PROMPT,
+                                                                            agent["name"]))
+                    agents_active += 1
+
 # Update the given agent; the agent must have
 # already been locked.  If the agent cannot be
 # updated it is unlocked and the connection to
@@ -1023,20 +1053,14 @@ if __name__ == "__main__":
                 if PRINTER:
                     PRINTER.string("{}*** WARNING: no instances to run! ***".format(PROMPT))
                 RETURN_VALUE = 0
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as ex:
         if PRINTER:
             PRINTER.string("{}caught CTRL-C, stopping gracefully (might take"    \
                            " a while)...".format(PROMPT))
         # Send abort signals to all the agents that are running so
         # that they can tidy up in their own time
-        for AGENT in AGENTS:
-            if AGENT["async_result_object"]:
-                if PRINTER:
-                    PRINTER.string("{}aborting agent {}...".format(PROMPT, AGENT["name"]))
-                agent_call(AGENT, "session_abort", AGENT["session_name"], ARGS.controller_name)
-            agent_call(AGENT, "unlock", ARGS.controller_name)
-            AGENT["locked"] = False
-            agent_close(AGENT)
+        agents_abort(AGENTS, ARGS.controller_name)
+        raise KeyboardInterrupt from ex
 
     if PRINTER:
         PRINTER.string("{}return value {} (0 = success, negative = probable" \
