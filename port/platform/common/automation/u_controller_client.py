@@ -1023,7 +1023,7 @@ if __name__ == "__main__":
                 if PRINTER:
                     PRINTER.string("{}*** WARNING: no instances to run! ***".format(PROMPT))
                 RETURN_VALUE = 0
-    except KeyboardInterrupt as ex:
+    except KeyboardInterrupt:
         if PRINTER:
             PRINTER.string("{}caught CTRL-C, stopping gracefully (might take"    \
                            " a while)...".format(PROMPT))
@@ -1031,11 +1031,12 @@ if __name__ == "__main__":
         # that they can tidy up in their own time
         for AGENT in AGENTS:
             if AGENT["async_result_object"]:
+                if PRINTER:
+                    PRINTER.string("{}aborting agent {}...".format(PROMPT, AGENT["name"]))
                 agent_call(AGENT, "session_abort", AGENT["session_name"], ARGS.controller_name)
             agent_call(AGENT, "unlock", ARGS.controller_name)
             AGENT["locked"] = False
             agent_close(AGENT)
-        raise KeyboardInterrupt from ex
 
     if PRINTER:
         PRINTER.string("{}return value {} (0 = success, negative = probable" \
