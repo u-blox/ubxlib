@@ -72,6 +72,9 @@ BUFFER_TIME_SECONDS = 5
 # when closing an agent down
 WAIT_FOR_REMAINING_DEBUG_TIME = 0
 
+# The handle for a summary file
+SUMMARY_FILE_HANDLE = None
+
 # Connect to an agent.
 def agent_connect(ip_address, port):
     '''Connect to the agent at the given IP address and port'''
@@ -190,36 +193,6 @@ def agents_connect(port):
                 if PRINTER:
                     PRINTER.string("{}{}.".format(PROMPT, text))
     return agents
-
-def agents_abort(agents_locked, controller_name):
-    '''Abort runs on the list of agents'''
-    agents_to_wait_for = []
-
-    for agent in agents_locked:
-        if agent["async_result_object"]:
-            if PRINTER:
-                PRINTER.string("{}aborting agent {}...".format(PROMPT, agent["name"]))
-            agent_call(agent, "session_abort", agent["session_name"], controller_name)
-            agents_to_wait_for.append(agent)
-
-    if len(agents_to_wait_for) > 0:
-        agents_active = len(agents_to_wait_for)
-        while agents_active > 0:
-            if PRINTER:
-                PRINTER.string("{}waiting for {} agent(s) to stop...".format(PROMPT, agents_active))
-            for agent in agents_to_wait_for:
-                if agent["connection"] and (agent_call(agent, "instance_running_count_get") <= 0):
-                    agent_call(agent, "unlock", controller_name)
-                    agent["locked"] = False
-                    agent_close(agent, "stopped")
-            sleep(5)
-            agents_active = 0
-            for agent in agents_to_wait_for:
-                if agent["connection"]:
-                    if PRINTER:
-                        PRINTER.string("{}agent {} still running...".format(PROMPT,
-                                                                            agent["name"]))
-                    agents_active += 1
 
 # Update the given agent; the agent must have
 # already been locked.  If the agent cannot be
@@ -470,6 +443,50 @@ def agents_allocated_sort(agents, database):
     # Now sort the agent list according to the
     # duration
     agents.sort(key=lambda item: item["instances_allocated_duration"], reverse = True)
+
+def archive_from_agent(agent, archive_url, archive_credentials,
+                       instance_results_files, recurse,
+                       summary_file_handle, summary_results_file):
+    '''Update the archive URL with results: call this after an agent finishes'''
+    text = ""
+    if instance_results_files:
+        if agent_call(agent, "archive_to_url",
+                      agent["agent_result_path"], instance_results_files,
+                      archive_url, recurse, archive_credentials):
+            text += " archived to {}".format(archive_url)
+        else:
+            text += " COULD NOT archive files to {}".format(archive_url)
+    if summary_file_handle:
+        summary_file_handle.write(bytes(agent["name"] + "\n", encoding="utf8"))
+        if not agent_call(agent, "copy",
+                          summary_file_handle,
+                          agent["agent_result_path"],
+                         [summary_results_file]):
+            text += ", unable to copy {}".format(summary_results_file)
+    return text
+
+def archive_summary(controller_name, archive_url, archive_credentials,
+                    summary_file_handle, summary_results_file):
+    '''Archive the collated summary'''
+    destination = archive_url + "/" + summary_results_file
+    summary_file_handle.seek(0)
+    if PRINTER:
+        PRINTER.string("{}PUTing {} to {}...".format(PROMPT,
+                                                     summary_results_file,
+                                                     archive_url))
+    try:
+        if archive_credentials:
+            response = requests.put(destination, files={controller_name: summary_file_handle},
+                                    headers={"Content-Type": "text/plain", "Content-Disposition": "inline"},
+                                    auth=tuple(archive_credentials.split(":")))
+        else:
+            response = requests.put(destination, files={controller_name: summary_file_handle},
+                                    headers={"Content-Type": "text/plain", "Content-Disposition": "inline"})
+        if PRINTER:
+            PRINTER.string("{}...returned result {}.".format(PROMPT, response.status_code))
+    except (ConnectionError, TimeoutError):
+        if PRINTER:
+            PRINTER.string("{}...failed because of a connection error.".format(PROMPT))
 
 # Allocate instances to agents.  The aim is
 # to spread runs across agents so that no single
@@ -748,13 +765,14 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
     last_report_time = start_time
     agents_running_count = len(agents_running)
     failed_agent_name = None
-    summary_file_handle = None
+
+    global SUMMARY_FILE_HANDLE
 
     if PRINTER:
         PRINTER.string("{}### waiting for instance(s) to finish...".format(PROMPT))
     if archive_url and summary_results_file:
         try:
-            summary_file_handle = tempfile.TemporaryFile()
+            SUMMARY_FILE_HANDLE = tempfile.TemporaryFile()
         except OSError:
             if PRINTER:
                 PRINTER.string("{}unable to open a temporary file for the summary results.". \
@@ -796,24 +814,13 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
                         agent_call(agent, "printer_stop", PRINT_QUEUE)
                     agent_poll(agent, WAIT_FOR_REMAINING_DEBUG_TIME)
 
-                    # If we have an archive URL, ask the agent to put the
-                    # instance result files there and then create the summary
-                    # file and put it there
                     if archive_url:
-                        if instance_results_files:
-                            if agent_call(agent, "archive_to_url",
-                                          agent["agent_result_path"], instance_results_files,
-                                          archive_url, recurse, archive_credentials):
-                                text += " and archived to {}".format(archive_url)
-                            else:
-                                text += " but COULD NOT archive files to {}".format(archive_url)
-                        if summary_file_handle:
-                            summary_file_handle.write(bytes(agent["name"] + "\n", encoding="utf8"))
-                            if not agent_call(agent, "copy",
-                                              summary_file_handle,
-                                              agent["agent_result_path"],
-                                             [summary_results_file]):
-                                text += ", unable to copy {}".format(summary_results_file)
+                        # If we have an archive URL, ask the agent to put the
+                        # instance result files there and add to the summary
+                        # file we are collating also
+                        text += archive_from_agent(agent, archive_url, archive_credentials,
+                                                   instance_results_files, recurse,
+                                                   SUMMARY_FILE_HANDLE, summary_results_file)
                     agent_close(agent, text)
                     agents_running_count -= 1
                     break
@@ -874,29 +881,6 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
             if (not negative) and (value > 0):
                 return_value += value
 
-    # Copy the collated summary results file over to the archive server
-    if summary_file_handle:
-        summary_file_handle.seek(0)
-        destination = archive_url + "/" + summary_results_file
-        if PRINTER:
-            PRINTER.string("{}PUTing {} to {}...".format(PROMPT,
-                                                         summary_results_file,
-                                                         archive_url))
-        try:
-            if archive_credentials:
-                response = requests.put(destination, files={controller_name: summary_file_handle},
-                                        headers={"Content-Type": "text/plain", "Content-Disposition": "inline"},
-                                        auth=tuple(archive_credentials.split(":")))
-            else:
-                response = requests.put(destination, files={controller_name: summary_file_handle},
-                                        headers={"Content-Type": "text/plain", "Content-Disposition": "inline"})
-            if PRINTER:
-                PRINTER.string("{}...returned result {}.".format(PROMPT, response.status_code))
-        except (ConnectionError, TimeoutError):
-            if PRINTER:
-                PRINTER.string("{}...failed because of a connection error.".format(PROMPT))
-        summary_file_handle.close()
-
     if PRINTER:
         PRINTER.string("{}### done.".format(PROMPT))
         PRINTER.string("{}all agent(s) finished after {} with result {}.". \
@@ -904,6 +888,54 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
                               return_value))
 
     return return_value
+
+def instances_abort(agents_locked, controller_name, archive_url, archive_credentials,
+                   instance_results_files, recurse, summary_results_file):
+    '''Abort all instances on the list of agents'''
+    agents_to_wait_for = []
+
+    for agent in agents_locked:
+        if agent["async_result_object"]:
+            if PRINTER:
+                PRINTER.string("{}aborting agent {}...".format(PROMPT, agent["name"]))
+            agent_call(agent, "session_abort", agent["session_name"], controller_name)
+            agents_to_wait_for.append(agent)
+
+    if len(agents_to_wait_for) > 0:
+        agents_running_count = len(agents_to_wait_for)
+        while agents_running_count > 0:
+            if PRINTER:
+                PRINTER.string("{}waiting for {} agent(s) to stop...".format(PROMPT,
+                                                                             agents_running_count))
+            for agent in agents_to_wait_for:
+                if agent["connection"] and (agent_call(agent, "instance_running_count_get") <= 0):
+                    # Close the printer and wait for any remaining
+                    # debug prints to arrive
+                    if PRINT_QUEUE:
+                        agent_call(agent, "printer_stop", PRINT_QUEUE)
+                    agent_poll(agent, WAIT_FOR_REMAINING_DEBUG_TIME)
+
+                    text = ""
+                    if archive_url:
+                        # If we have an archive URL, ask the agent to put the
+                        # instance result files there and add to the summary
+                        # file we are collating also
+                        text = archive_from_agent(agent, archive_url, archive_credentials,
+                                                  instance_results_files, recurse,
+                                                  SUMMARY_FILE_HANDLE, summary_results_file)
+
+                    if agent["locked"]:
+                        agent_call(agent, "unlock", controller_name)
+                        agent["locked"] = False
+                    agent_close(agent, "stopped" + text)
+            sleep(1)
+            agents_running_count = 0
+            for agent in agents_to_wait_for:
+                if agent["connection"]:
+                    if PRINTER:
+                        PRINTER.string("{}agent {} still running...".format(PROMPT,
+                                                                            agent["name"]))
+                    agents_running_count += 1
 
 if __name__ == "__main__":
     RETURN_VALUE = -1
@@ -1059,8 +1091,14 @@ if __name__ == "__main__":
                            " a while)...".format(PROMPT))
         # Send abort signals to all the agents that are running so
         # that they can tidy up in their own time
-        agents_abort(AGENTS, ARGS.controller_name)
-        raise KeyboardInterrupt from ex
+        instances_abort(AGENTS, ARGS.controller_name, ARGS.a, ARGS.c,
+                        INSTANCE_RESULTS_FILES, 1, ARGS.s)
+
+    # Copy the collated summary results file over to the archive server
+    if SUMMARY_FILE_HANDLE:
+        archive_summary(ARGS.controller_name, ARGS.a, ARGS.c,
+                        SUMMARY_FILE_HANDLE, ARGS.s)
+        SUMMARY_FILE_HANDLE.close()
 
     if PRINTER:
         PRINTER.string("{}return value {} (0 = success, negative = probable" \
