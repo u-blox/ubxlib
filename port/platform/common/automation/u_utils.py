@@ -763,8 +763,9 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
     except ValueError as ex:
         printer.string("{}failed: {} while trying to execute {}.". \
                        format(prompt, type(ex).__name__, str(ex)))
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as ex:
         process.kill()
+        raise KeyboardInterrupt from ex
 
     return success
 
