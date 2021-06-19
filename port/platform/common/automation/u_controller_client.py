@@ -545,13 +545,13 @@ def instances_allocate(agents_locked, database, instances, controller_name):
                 agents_busy_sort(agents_locked, database)
                 for agent in agents_locked:
                     if instance_to_distribute in agent["instances_activated"]:
-                        agents_locked[0]["instances_allocated"].append(instance_to_distribute.copy())
-                        agents_locked[0]["instances_running"].append(instance_to_distribute.copy())
+                        agent["instances_allocated"].append(instance_to_distribute.copy())
+                        agent["instances_running"].append(instance_to_distribute.copy())
                         if PRINTER:
                             PRINTER.string("{}allocated instance {} to agent {}.". \
                                            format(PROMPT,
                                                   u_utils.get_instance_text(instance_to_distribute),
-                                                  agents_locked[0]["name"]))
+                                                  agent["name"]))
                         instance_to_distribute = None
                         instances[idx] = None
                         allocated += 1
@@ -1023,7 +1023,7 @@ if __name__ == "__main__":
                 if PRINTER:
                     PRINTER.string("{}*** WARNING: no instances to run! ***".format(PROMPT))
                 RETURN_VALUE = 0
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as ex:
         print("#### GOT CTRL-C ####")
         if PRINTER:
             PRINTER.string("{}caught CTRL-C, stopping gracefully (might take"    \
@@ -1036,7 +1036,7 @@ if __name__ == "__main__":
             agent_call(AGENT, "unlock", ARGS.controller_name)
             AGENT["locked"] = False
             agent_close(AGENT)
-        raise KeyboardInterrupt
+        raise KeyboardInterrupt from ex
 
     if PRINTER:
         PRINTER.string("{}return value {} (0 = success, negative = probable" \

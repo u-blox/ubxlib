@@ -825,9 +825,9 @@ class ExeRun():
                 self._printer.string("{}failed: {} to start {}.". \
                                      format(self._prompt,
                                             type(ex).__name__, str(ex)))
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as ex:
             self._process.kill()
-            raise KeyboardInterrupt
+            raise KeyboardInterrupt from ex
         return self._process
     def __exit__(self, _type, value, traceback):
         del _type
