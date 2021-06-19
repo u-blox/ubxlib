@@ -4,6 +4,7 @@
 
 from time import time, sleep, gmtime, strftime
 from multiprocessing.dummy import Pool as ThreadPool
+from signal import signal, SIGTERM
 import socket   # for socket.timeout
 import sys      # for exit() and stdout
 import queue
@@ -937,6 +938,10 @@ def instances_abort(agents_locked, controller_name, archive_url, archive_credent
                                                                             agent["name"]))
                     agents_running_count += 1
 
+def sigterm_handler():
+    '''Handle SIGTERM by raising a KeyboardInterrupt instead'''
+    raise KeyboardInterrupt
+
 if __name__ == "__main__":
     RETURN_VALUE = -1
     DATABASE = []
@@ -1005,6 +1010,9 @@ if __name__ == "__main__":
                         " changed between master_hash and"          \
                         " branch_or_hash.")
     ARGS = PARSER.parse_args()
+
+    # Jenkins issues SIGTERM, so need to trap that
+    SAVED_SIGTERM_HANDLER = signal(SIGTERM, sigterm_handler)
 
     # We go multi-threaded, so set up a printer to handle the output
     PRINT_QUEUE = queue.Queue()
@@ -1110,5 +1118,8 @@ if __name__ == "__main__":
     PRINT_THREAD.stop_thread()
     PRINT_THREAD.join()
     PRINTER = None
+
+    # Restore the SIGTERM handler
+    signal(SIGTERM, SAVED_SIGTERM_HANDLER)
 
     sys.exit(RETURN_VALUE)

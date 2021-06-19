@@ -555,8 +555,6 @@ def session_run(database, instances, filter_string,
                                                " as requested...".                     \
                                                format(PROMPT))
                                 abort_on_first_failure = False
-                        except KeyboardInterrupt as ex:
-                            raise KeyboardInterrupt from ex
                         except Exception as ex:
                             # If an instance threw an exception then flag an
                             # infrastructure error
