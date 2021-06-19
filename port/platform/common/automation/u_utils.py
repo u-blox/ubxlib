@@ -827,6 +827,7 @@ class ExeRun():
                                             type(ex).__name__, str(ex)))
         except KeyboardInterrupt:
             self._process.kill()
+            raise KeyboardInterrupt
         return self._process
     def __exit__(self, _type, value, traceback):
         del _type

@@ -133,7 +133,7 @@ node('TEST-gb-cmb-dt-022')
         }
 
         // Add a link to where the results will be in the Jenkins GUI
-        currentBuild.description = "<a href='${archive_url}'>Results so far (works after first agent finishes)</a>";
+        currentBuild.description = "Agents <a href='${archive_url}'>results files</a> (link works after first agent finishes)";
 
         // Using the try/catch pattern as recommended in this post:
         // https://stackoverflow.com/questions/48989238/post-equivalent-in-scripted-pipeline
@@ -168,7 +168,7 @@ node('TEST-gb-cmb-dt-022')
             throw e
         } finally {
             // UPdate the link in the Jenkins GUI to include one for the summary file
-            currentBuild.description = "<a href='${archive_url + "/" + summary_file}'>Summary</a>, <a href='${archive_url}'>final results files</a>";
+            currentBuild.description = "Agents <a href='${archive_url + "/" + summary_file}'>summary</a> and <a href='${archive_url}'>final results files</a>";
         }
 
     }

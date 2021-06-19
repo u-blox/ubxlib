@@ -1036,6 +1036,7 @@ if __name__ == "__main__":
             agent_call(AGENT, "unlock", ARGS.controller_name)
             AGENT["locked"] = False
             agent_close(AGENT)
+        raise KeyboardInterrupt
 
     if PRINTER:
         PRINTER.string("{}return value {} (0 = success, negative = probable" \
