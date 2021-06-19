@@ -67,7 +67,7 @@
 # else
 /* Normal mode since we're only driving the inverter that
  * must have been inserted between the MCU pin and the
- * cellular module PWR_ON pin
+ * cellular module PWR_ON pin.
  */
 #  define U_CELL_PWR_ON_PIN_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_NORMAL
 # endif
@@ -272,6 +272,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
 #if U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE == 0
                         // TODO: the u-blox C030-R412M board requires a pull-up here.
                         gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_PULL_UP;
+#else 
+                        gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_PULL_DOWN;
 #endif
                         gpioConfig.driveMode = U_CELL_PWR_ON_PIN_DRIVE_MODE;
                         gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
