@@ -940,6 +940,8 @@ def instances_abort(agents_locked, controller_name, archive_url, archive_credent
 
 def sigterm_handler():
     '''Handle SIGTERM by raising a KeyboardInterrupt instead'''
+    if PRINTER:
+        PRINTER.string("{}received SIGTERM, raising SIGINT instead.".format(PROMPT))
     raise KeyboardInterrupt
 
 if __name__ == "__main__":
