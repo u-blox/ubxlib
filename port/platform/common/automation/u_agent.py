@@ -225,19 +225,9 @@ def start(print_queue=None, hw_reset=False):
 
     return success
 
-def stop(and_stay_dead=False):
+def _stop(and_stay_dead=False):
     '''Stop the agent'''
-
     global AND_STAY_DEAD
-
-    # It is possible for this to be called
-    # asynchronously to recover from a situation
-    # where all controllers have disconnected
-    # without notice, in which case the context
-    # lock will have been deliberately vapourised
-    # to prevent deadlocks
-    if CONTEXT_LOCK:
-        CONTEXT_LOCK.acquire()
 
     # Nothing in here, or called from here, must
     # rely on CONTEXT_LOCK or CONTEXT_MANAGER being
@@ -277,8 +267,19 @@ def stop(and_stay_dead=False):
     if and_stay_dead:
         AND_STAY_DEAD = True
 
+def stop(and_stay_dead=False):
+    '''Wrapper for stop() to handle locking'''
+    # It is possible for this to be called
+    # asynchronously to recover from a situation
+    # where all controllers have disconnected
+    # without notice, in which case the context
+    # lock will have been deliberately vapourised
+    # to prevent deadlocks
     if CONTEXT_LOCK:
-        CONTEXT_LOCK.release()
+        with CONTEXT_LOCK:
+            _stop(and_stay_dead)
+    else:
+        _stop(and_stay_dead)
 
 def restart(hw_reset=False):
     '''Restart an agent'''
@@ -582,6 +583,7 @@ def session_run(database, instances, filter_string,
         except KeyboardInterrupt:
             # Start things cleaning up
             session["running_flag"].clear()
+            raise KeyboardInterrupt from ex
 
         CONTEXT_LOCK.acquire()
 
