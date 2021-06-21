@@ -1030,4 +1030,3 @@ if __name__ == "__main__":
         PROCESS_POOL.close()
         PROCESS_POOL.join()
         # Note: ThreadedServer exits on CTRL-C, no need to worry about it
-        raise KeyboardInterrupt

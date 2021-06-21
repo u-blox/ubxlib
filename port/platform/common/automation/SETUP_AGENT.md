@@ -109,7 +109,7 @@ If you have chosen instances for which hardware is required you should now attac
 
 A few notes:
 
-- make sure that each HW setup works before it is connected to the agent (e.g. by running `u_run.py` locally),
+- make sure that each HW setup works before it is connected to the agent (e.g. by running `u_run.py` locally); specifically, newly purchased boards with on-board debug chips will often need to be updated with the latest debugger firmware before they can be used and this can often result in immediate failure when they are run automagically,
 - make sure that the UART flow control lines between the MCU and each module are either (a) connected or (b) not connected and the relevant HW lines tied to ground, as required by the definition of the instance,
 - if u-blox security is to be tested on an instance, make sure that (a) the module is security sealed (just set `U_CFG_SECURITY_DEVICE_PROFILE_UID` to the device profile UID for that module (without quotes) taken from the [Thingstream portal](https://portal.thingstream.io) and then run the `securitySeal` test) and (b) the module is given the special feature `LocalC2CKeyPairing` by a member of the u-blox security team,
 - make backups of the settings files for each agent as you add each instance, just in case the files get re-written to defaults by the automation code, which may happen if an error is detected.

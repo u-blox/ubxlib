@@ -1095,7 +1095,7 @@ if __name__ == "__main__":
                 if PRINTER:
                     PRINTER.string("{}*** WARNING: no instances to run! ***".format(PROMPT))
                 RETURN_VALUE = 0
-    except KeyboardInterrupt as ex:
+    except KeyboardInterrupt:
         if PRINTER:
             PRINTER.string("{}caught CTRL-C, stopping gracefully (might take"    \
                            " a while)...".format(PROMPT))
