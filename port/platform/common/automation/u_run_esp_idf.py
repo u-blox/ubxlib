@@ -39,7 +39,7 @@ ESP_IDF_LOCATION = [None,                     # 0 (not ESP-IDF)
                     None,                     # 7 (not ESP-IDF)
                     None,                     # 8 (not ESP-IDF)
                     None,                     # 9 (not ESP-IDF)
-                    ESP_IDF_LOCATION_NINA_W1, # 10
+                    ESP_IDF_LOCATION_LATEST, # 10
                     ESP_IDF_LOCATION_LATEST,  # 11
                     ESP_IDF_LOCATION_LATEST]  # 12
 
