@@ -778,7 +778,6 @@ class AgentService(rpyc.Service):
 
             success = True
             for root, _directories, files in os.walk(local_directory):
-                self._printer.string("### {} are the file(s) in {}.".format(files, root))
                 if root[len(local_directory):].count(os.sep) <= recurse:
                     for file in files:
                         if file in file_list:
