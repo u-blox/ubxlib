@@ -467,9 +467,10 @@ def archive_from_agent(agent, archive_url, archive_credentials,
     return text
 
 def archive_summary(controller_name, archive_url, archive_credentials,
-                    summary_file_handle, summary_results_file):
+                    outcome_text, summary_file_handle, summary_results_file):
     '''Archive the collated summary'''
     destination = archive_url + "/" + summary_results_file
+    summary_file_handle.write(bytes(outcome_text + "\n", encoding="utf8"))
     summary_file_handle.seek(0)
     if PRINTER:
         PRINTER.string("{}PUTing {} to {}...".format(PROMPT,
@@ -1104,16 +1105,19 @@ if __name__ == "__main__":
         instances_abort(AGENTS, ARGS.controller_name, ARGS.a, ARGS.c,
                         INSTANCE_RESULTS_FILES, 1, ARGS.s)
 
+    # State the overall return value and how to interpret it
+    TEXT = "{}return value {} (0 = success, negative = probable" \
+           " infrastructure failure, positive = failure(s) (may" \
+           " still be due to infrastructure)).".format(PROMPT, RETURN_VALUE)
+
     # Copy the collated summary results file over to the archive server
     if SUMMARY_FILE_HANDLE:
         archive_summary(ARGS.controller_name, ARGS.a, ARGS.c,
-                        SUMMARY_FILE_HANDLE, ARGS.s)
+                        TEXT, SUMMARY_FILE_HANDLE, ARGS.s)
         SUMMARY_FILE_HANDLE.close()
 
     if PRINTER:
-        PRINTER.string("{}return value {} (0 = success, negative = probable" \
-                       " infrastructure failure, positive = failure(s) (may" \
-                       " still be due to infrastructure)).".format(PROMPT, RETURN_VALUE))
+        PRINTER.string(TEXT)
 
     # Stop the printer
     sleep(1)
