@@ -62,7 +62,9 @@ Git clone into it https://github.com/u-blox/ubxlib, or for internal u-blox users
 
 Git clone https://github.com/ThrowTheSwitch/Unity into it; you should now have `C:\agent\Unity` also.
 
-Open a command window, with Administrator privileges, `CD` to `C:\agent\ubxlib\port\platform\common\automation` and run `python u_settings.py`.  This will spew out a load of warnings about things not existing and will create two settings files, `settings_v2.json` and `settings_v2_agent_specific.json`, in the directory`C:\Users\<your_username>\.ubx_automation`.  Open `settings_v2_agent_specific.json` in a text editor; if you installed any of the applications above (ignoring ones that are "anywhere on the path") into a directory other than the default, find the original entry in the file and edit it to match the location you used.  Then remove all of the `_FIX_ME` post-fixes in the file using search and replace and save the file.  It is a good idea to make a backup of these files now, in case of accidents.
+Open a command window, with Administrator privileges, `CD` to `C:\agent\ubxlib\port\platform\common\automation` and run `python u_settings.py`.  This will spew out a load of warnings about things not existing and will create two settings files, `settings_v2.json` and `settings_v2_agent_specific.json`, in the directory`C:\Users\<your_username>\.ubx_automation`.  Open `settings_v2_agent_specific.json` in a text editor; if you installed any of the applications above (ignoring ones that are "anywhere on the path") into a directory other than the default, find the original entry in the file and edit it to match the location you used.  Then remove all of the `_FIX_ME` post-fixes in the file using search and replace and save the file.
+
+IMPORTANT: if you make a JSON syntax error in the file and then run the agent the Python scripts will re-write the file with defaults (since the file is obviously rubbish), hence it is a good idea to make a backup of your precious settings each time you make a change.
 
 # Run The Agent
 
