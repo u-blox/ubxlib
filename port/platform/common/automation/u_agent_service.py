@@ -803,8 +803,6 @@ class AgentService(rpyc.Service):
                             except (ProtocolError, ConnectionError, TimeoutError):
                                 self._printer.string("{}...failed because of a connection error.".format(PROMPT))
                                 success = False
-                else:
-                    break
         return success
 
     # Copy the given files from the given directory (and sub-directories)

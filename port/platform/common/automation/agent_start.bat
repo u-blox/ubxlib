@@ -27,7 +27,12 @@ if "%U_AGENT_INSTANCES%"=="" (
     goto usage
 )
 
-rem Populate ubxlib directory.
+rem Try to ensure a clean start
+if exist %dir_ubxlib% (
+    echo Removing existing %dir_ubxlib%...
+    rd /s /q %dir_ubxlib%
+)
+rem Populate directory.
 if not exist %dir_ubxlib% (
     echo Populating %dir_ubxlib% from %url_ubxlib%...
     call git clone %url_ubxlib% %dir_ubxlib%
@@ -38,7 +43,11 @@ call git fetch
 call git checkout %branch_ubxlib%
 popd
 
-rem Populate Unity.
+rem Same with Unity.
+if exist %dir_unity% (
+    echo Removing existing %dir_unity%...
+    rd /s /q %dir_unity%
+)
 if not exist %dir_unity% (
     echo Populating %dir_unity% from %url_unity%...
     call git clone %url_unity%
