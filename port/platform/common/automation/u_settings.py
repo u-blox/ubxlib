@@ -280,6 +280,7 @@ __DEFAULT_SETTINGS["EXE_RUN_QUEUE_WAIT_SECONDS"] = 1
 # Other stuff
 __USER_INTERVENTION_REQUIRED = False
 __FORCE_WRITE = False
+__HOLD_THE_BUS = False
 __READ_SETTINGS = {}
 __FILTERED_READ_SETTINGS = {}
 __UPDATED_READ_SETTINGS = {}
@@ -318,6 +319,10 @@ with portalocker.Lock(os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + "s
             print("u_settings: error {}{} reading settings file \"{}\".".    \
                   format(type(ex).__name__, str(ex), __SETTINGS_FILE_PATH_GENERAL))
             print("u_settings: ************************** WARNING ***************************")
+            # Most likely the user has just inserted a syntax
+            # error and they won't want us writing the defaults
+            # over all their good stuff
+            __HOLD_THE_BUS = True
     if os.path.isfile(__SETTINGS_FILE_PATH_AGENT_SPECIFIC):
         try:
             with open(__SETTINGS_FILE_PATH_AGENT_SPECIFIC) as f:
@@ -327,6 +332,10 @@ with portalocker.Lock(os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + "s
             print("u_settings: error {}{} reading settings file \"{}\".".    \
                   format(type(ex).__name__, str(ex), __SETTINGS_FILE_PATH_AGENT_SPECIFIC))
             print("u_settings: ************************** WARNING ***************************")
+            # Most likely the user has just inserted a syntax
+            # error and they won't want us writing the defaults
+            # over all their good stuff
+            __HOLD_THE_BUS = True
     if not __READ_SETTINGS:
         # For backwards-compatibility
         if os.path.isfile(__SETTINGS_FILE_PATH_OLD):
@@ -449,7 +458,7 @@ with portalocker.Lock(os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + "s
         __SETTINGS = __UPDATED_READ_SETTINGS
 
     # Finally need to sort out the [re]writing.
-    if __WRITE_SETTINGS:
+    if __WRITE_SETTINGS and not __HOLD_THE_BUS:
         # Where something is already present in __READ_SETTINGS
         # then use the value from __READ_SETTINGS
         __LISTS_DIFFER = __FORCE_WRITE
