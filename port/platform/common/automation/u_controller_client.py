@@ -470,7 +470,7 @@ def archive_summary(controller_name, archive_url, archive_credentials,
                     outcome_text, summary_file_handle, summary_results_file):
     '''Archive the collated summary'''
     destination = archive_url + "/" + summary_results_file
-    summary_file_handle.write(bytes(outcome_text + "\n", encoding="utf8"))
+    summary_file_handle.write(bytes("\n" + outcome_text + "\n", encoding="utf8"))
     summary_file_handle.seek(0)
     if PRINTER:
         PRINTER.string("{}PUTing {} to {}...".format(PROMPT,
