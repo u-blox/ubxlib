@@ -633,7 +633,7 @@ def capture_env_var(line, env, printer, prompt):
 # variables will be returned in it.  The down-side
 # of this is that the return value of the exe is,
 # of course, lost.
-def exe_run(call_list, guard_time_seconds, printer, prompt,
+def exe_run(call_list, guard_time_seconds = None, printer = None, prompt = None,
             shell_cmd=False, set_env=None, returned_env=None,
             bash_cmd=False):
     '''Call an executable, printing out what it does'''
@@ -668,20 +668,24 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
         call_list.append("2")
 
     try:
+        popen_keywords = {
+            'stdout': subprocess.PIPE,
+            'stderr': subprocess.STDOUT,
+            'shell': shell_cmd,
+            'env': set_env,
+            'executable': "bin/bash" if bash_cmd else None
+        }
         # Call the thang
         # Note: used to have bufsize=1 here but it turns out
         # that is ignored 'cos the output is considered
         # binary.  Seems to work in any case, I guess
         # Winders, at least, is in any case line-buffered.
         process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT,
-                                   shell=shell_cmd,
-                                   env=set_env,
-                                   executable="/bin/bash" if bash_cmd else None)
-        printer.string("{}{}, pid {} started with guard time {} second(s)". \
-                       format(prompt, call_list[0], process.pid,
-                              guard_time_seconds))
+                                   **popen_keywords)
+        if printer:
+            printer.string("{}{}, pid {} started with guard time {} second(s)". \
+                           format(prompt, call_list[0], process.pid,
+                                  guard_time_seconds))
         # This is over complex but, unfortunately, necessary.
         # At least one thing that we try to run, nrfjprog, can
         # crash silently: just hangs and sends no output.  However
@@ -702,10 +706,11 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
                ((time() - start_time > guard_time_seconds) or
                 (time() - read_time > guard_time_seconds)):
                 kill_time = time()
-                printer.string("{}guard time of {} second(s)." \
-                               " expired, stopping {}...".
-                               format(prompt, guard_time_seconds,
-                                      call_list[0]))
+                if printer:
+                    printer.string("{}guard time of {} second(s)." \
+                                   " expired, stopping {}...".
+                                   format(prompt, guard_time_seconds,
+                                          call_list[0]))
                 exe_terminate(process.pid)
             line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
             read_time = time()
@@ -757,12 +762,14 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
 
         if (process.poll() == 0) and kill_time is None:
             success = True
-        printer.string("{}{}, pid {} ended with return value {}.".    \
-                       format(prompt, call_list[0],
-                              process.pid, process.poll()))
+        if printer:
+            printer.string("{}{}, pid {} ended with return value {}.".    \
+                           format(prompt, call_list[0],
+                                  process.pid, process.poll()))
     except ValueError as ex:
-        printer.string("{}failed: {} while trying to execute {}.". \
-                       format(prompt, type(ex).__name__, str(ex)))
+        if printer:
+            printer.string("{}failed: {} while trying to execute {}.". \
+                           format(prompt, type(ex).__name__, str(ex)))
     except KeyboardInterrupt as ex:
         process.kill()
         raise KeyboardInterrupt from ex
@@ -789,7 +796,7 @@ def set_process_prio_normal():
 
 class ExeRun():
     '''Run an executable as a "with:"'''
-    def __init__(self, call_list, printer, prompt, shell_cmd=False, with_stdin=False):
+    def __init__(self, call_list, printer=None, prompt=None, shell_cmd=False, with_stdin=False):
         self._call_list = call_list
         self._printer = printer
         self._prompt = prompt
@@ -818,9 +825,10 @@ class ExeRun():
             if self._with_stdin:
                 popen_keywords['stdin'] = subprocess.PIPE
             self._process = subprocess.Popen(self._call_list, **popen_keywords)
-            self._printer.string("{}{} pid {} started".format(self._prompt,
-                                                              self._call_list[0],
-                                                              self._process.pid))
+            if self._printer:
+                self._printer.string("{}{} pid {} started".format(self._prompt,
+                                                                  self._call_list[0],
+                                                                  self._process.pid))
         except (OSError, subprocess.CalledProcessError, ValueError) as ex:
             if self._printer:
                 self._printer.string("{}failed: {} to start {}.". \
@@ -857,17 +865,20 @@ class ExeRun():
                 self._process.terminate()
                 while self._process.poll() is None:
                     sleep(0.1)
-                self._printer.string("{}{} pid {} terminated".format(self._prompt,
-                                                                     self._call_list[0],
-                                                                     self._process.pid))
+                if self._printer:
+                    self._printer.string("{}{} pid {} terminated".format(self._prompt,
+                                                                         self._call_list[0],
+                                                                         self._process.pid))
             else:
-                self._printer.string("{}{} pid {} CTRL-C'd".format(self._prompt,
-                                                                   self._call_list[0],
-                                                                   self._process.pid))
+                if self._printer:
+                    self._printer.string("{}{} pid {} CTRL-C'd".format(self._prompt,
+                                                                       self._call_list[0],
+                                                                       self._process.pid))
         else:
-            self._printer.string("{}{} pid {} already ended".format(self._prompt,
-                                                                    self._call_list[0],
-                                                                    self._process.pid))
+            if self._printer:
+                self._printer.string("{}{} pid {} already ended".format(self._prompt,
+                                                                        self._call_list[0],
+                                                                        self._process.pid))
 
         return return_value
 
