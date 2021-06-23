@@ -37,22 +37,27 @@ def end_process(process_pid, signal_to_send, kill_timeout_seconds=0, wait_for_en
 
         for proc in process.children(recursive=True):
             process_list.append(proc)
+            print("#### sending signal {} to {}".format(signal_to_send, proc.name()))
             proc.send_signal(signal_to_send)
         process.send_signal(signal_to_send)
+        print("#### sending signal {} to {}".format(signal_to_send, process.name()))
 
         # Wait for the processes to end and kill if requested
         while wait_for_end:
             if ((kill_timeout_seconds > 0) and (time() - start_time > kill_timeout_seconds)):
                 kill_now = True
             wait_for_end = False
+            count = 0
             for proc in process_list:
                 if proc.is_running():
+                    count += 1
                     if kill_now:
                         proc.terminate()
                     else:
                         wait_for_end = True
-                        sleep(0.1)
-                        break
+            sleep(1)
+            print("#### {} process(es) still running.".format(count))
+            break
     except psutil.NoSuchProcess:
         pass
 
