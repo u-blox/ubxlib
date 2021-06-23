@@ -78,7 +78,7 @@ if __name__ == "__main__":
                         help="parameters to go with the script.")
     ARGS = PARSER.parse_args()
 
-    # Start a thread that attempts to connect 
+    # Start a thread that attempts to connect
     # to PROCESS_CHECKER on the given port
     connect_thread = threading.Thread(target=connect_to_process_checker,
                                       args=(ARGS.p,))
@@ -88,10 +88,6 @@ if __name__ == "__main__":
     CALL_LIST = []
     # Launch as a separate process so that it is not affected
     # by the killing of us
-    # TODO: Linux
-    CALL_LIST.append("cmd")
-    CALL_LIST.append("/c")
-    CALL_LIST.append("start")
     if PROCESS_PYTHON:
         CALL_LIST.append(PROCESS_PYTHON)
     CALL_LIST.append(PROCESS_CHECKER)
@@ -117,11 +113,19 @@ if __name__ == "__main__":
           format(os.getcwd(), TMP))
 
     try:
+        CREATION_FLAGS = 0
+        if u_utils.is_linux():
+            # TODO
+            pass
+        else:
+            CREATION_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
+            CREATION_FLAGS |= subprocess.CREATE_NO_WINDOW
         # Set shell to True to keep Jenkins happy
         PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
-                                   shell=True)
+                                   shell=True,
+                                   creationflags=CREATION_FLAGS)
         # Wait for the process to finish
         while PROCESS.poll() is None:
             string = PROCESS.stdout.readline()

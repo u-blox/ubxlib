@@ -139,8 +139,8 @@ node('TEST-gb-cmb-dt-022')
         // https://stackoverflow.com/questions/48989238/post-equivalent-in-scripted-pipeline
         // ... in order to make sure that currentBuild.description
         // is always updated while in the "scripted pipeline" world
-        try {
-            dir ("port\\platform\\common\\automation") {
+        dir ("port\\platform\\common\\automation") {
+            try {
                 // Call python to run the necessary builds and tests
                 if (changed_files) {
                     stage("Test Selected") {
@@ -162,20 +162,20 @@ node('TEST-gb-cmb-dt-022')
                         }
                     }
                 }
-            }
-        } catch (e) {
-            println "Failed."
-            // Since we're catching the exception in order to report on it,
-            // we need to re-throw it, to ensure that the build is marked as failed
-            throw e
-        } finally {
-            // Update the link in the Jenkins GUI to include one for the summary file
-            currentBuild.description = "Agents <a href='${archive_url + "/" + summary_file}'>summary</a> and <a href='${archive_url}'>final results files</a>";
-            stage("Termination") {
-                // Wait for the processes to end
-                while (bat(script: "python u_process_checker_is_running.py", returnStatus: true) != 0) {
-                    println "Waiting for processes to finish..."
-                    sleep(time: 5, unit: 'SECONDS')
+            } catch (e) {
+                println "Failed."
+                // Since we're catching the exception in order to report on it,
+                // we need to re-throw it, to ensure that the build is marked as failed
+                throw e
+            } finally {
+                // Update the link in the Jenkins GUI to include one for the summary file
+                currentBuild.description = "Agents <a href='${archive_url + "/" + summary_file}'>summary</a> and <a href='${archive_url}'>final results files</a>";
+                stage("Termination") {
+                    // Wait for the processes to end
+                    while (bat(script: "python u_process_checker_is_running.py", returnStatus: true) != 0) {
+                        println "Waiting for processes to finish..."
+                        sleep(time: 5, unit: 'SECONDS')
+                    }
                 }
             }
         }

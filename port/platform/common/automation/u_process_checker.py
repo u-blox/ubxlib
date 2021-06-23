@@ -5,11 +5,11 @@
 import sys
 import os
 import signal
-import psutil
 import socket
 import subprocess
 import argparse
 from time import sleep, time
+import psutil
 import u_settings
 import u_utils
 
@@ -34,7 +34,7 @@ def end_process(process_pid, signal_to_send, kill_timeout_seconds=0, wait_for_en
         # Find all the processes and send them the signal
         process = psutil.Process(process_pid)
         process_list.append(process)
-        
+
         for proc in process.children(recursive=True):
             process_list.append(proc)
             proc.send_signal(signal_to_send)
@@ -126,26 +126,26 @@ if __name__ == "__main__":
                                            shell=True)
                 # Wait for the process to finish
                 while PROCESS.poll() is None:
-                        string = PROCESS.stdout.readline()
-                        if string:
-                            print("{}".format(string.decode()), end="")
-                        else:
-                            try:
-                                # Do a receive on the socket: we don't
-                                # ever expect to receive anything, we
-                                # are simply checking that the far end
-                                # is still there
-                                CONNECTION.recv(1)
-                            except BlockingIOError:
-                                # This is fine, the socket is there and
-                                # we have received nothing
-                                pass
-                            except socket.error:
-                                # Any other error means PROCESS_WRAPPER
-                                # has been taken down: terminate
-                                # the script and any children in the
-                                # selected manner
-                                end_process(PROCESS.pid, SIGNAL, ARGS.k)
+                    string = PROCESS.stdout.readline()
+                    if string:
+                        print("{}".format(string.decode()), end="")
+                    else:
+                        try:
+                            # Do a receive on the socket: we don't
+                            # ever expect to receive anything, we
+                            # are simply checking that the far end
+                            # is still there
+                            CONNECTION.recv(1)
+                        except BlockingIOError:
+                            # This is fine, the socket is there and
+                            # we have received nothing
+                            pass
+                        except socket.error:
+                            # Any other error means PROCESS_WRAPPER
+                            # has been taken down: terminate
+                            # the script and any children in the
+                            # selected manner
+                            end_process(PROCESS.pid, SIGNAL, ARGS.k)
                 # Set the return value
                 if PROCESS.poll() is not None:
                     RETURN_VALUE = PROCESS.poll()
