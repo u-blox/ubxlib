@@ -46,6 +46,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../cell/src/u_cell_sec_c2c.c"
                    "../../../../../../../cell/src/u_cell_sec_tls.c"
                    "../../../../../../../cell/src/u_cell_mqtt.c"
+                   "../../../../../../../cell/src/u_cell_file.c"
                    "../../../../../../../cell/src/u_cell_private.c"
 # The common network layer
                    "../../../../../../../common/network/src/u_network.c"

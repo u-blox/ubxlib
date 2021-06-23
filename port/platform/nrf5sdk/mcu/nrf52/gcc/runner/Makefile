@@ -109,6 +109,7 @@ SRC_FILES += \
   ../../../../../../../cell/src/u_cell_sec_c2c.c \
   ../../../../../../../cell/src/u_cell_sec_tls.c \
   ../../../../../../../cell/src/u_cell_mqtt.c \
+  ../../../../../../../cell/src/u_cell_file.c \
   ../../../../../../../cell/src/u_cell_private.c \
   ../../../../../../../cell/test/u_cell_pwr_test.c \
   ../../../../../../../cell/test/u_cell_cfg_test.c \
@@ -118,6 +119,7 @@ SRC_FILES += \
   ../../../../../../../cell/test/u_cell_sec_c2c_test.c \
   ../../../../../../../cell/test/u_cell_sec_tls_test.c \
   ../../../../../../../cell/test/u_cell_mqtt_test.c \
+  ../../../../../../../cell/test/u_cell_file_test.c \
   ../../../../../../../cell/test/u_cell_test_preamble.c \
   ../../../../../../../cell/test/u_cell_test_private.c \
   ../../../../../../../common/network/src/u_network.c \

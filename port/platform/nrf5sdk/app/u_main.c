@@ -33,6 +33,7 @@
 #include "u_cfg_test_platform_specific.h"
 #include "u_error_common.h"
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_debug.h"
 
 #include "u_runner.h"
@@ -43,6 +44,18 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+/** When running under automation the target is reset and then
+ * logging begins, which should be fine, except that the NRF logging
+ * system over RTT doesn't seem to like reaching a blocking state
+ * for any length of time, which it will do if there's a long string
+ * printed (e.g. a lot of tests in the test menu) _before_ an RTT
+ * logging thing is connected to the MCU.  Hence this delay is added
+ * to keep it happy.
+ */
+#ifndef U_CFG_STARTUP_DELAY_SECONDS
+# define U_CFG_STARTUP_DELAY_SECONDS 10
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -60,6 +73,8 @@
 static void appTask(void *pParam)
 {
     (void) pParam;
+
+    uPortTaskBlock(U_CFG_STARTUP_DELAY_SECONDS * 1000);
 
     uPortInit();
     uPortLog("\n\nU_APP: application task started.\n");

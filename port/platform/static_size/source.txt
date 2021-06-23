@@ -20,6 +20,7 @@ cell/src/u_cell_sec.c
 cell/src/u_cell_sec_c2c.c
 cell/src/u_cell_sec_tls.c
 cell/src/u_cell_mqtt.c
+cell/src/u_cell_file.c
 cell/src/u_cell_private.c
 common/network/src/u_network.c
 common/network/src/u_network_private_ble_extmod.c

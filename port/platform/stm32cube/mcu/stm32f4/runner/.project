@@ -257,6 +257,11 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_mqtt.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Cell/u_cell_file.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_file.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_private.c</locationURI>
@@ -375,6 +380,11 @@
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_mqtt_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_mqtt_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Cell/u_cell_file_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_file_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test_preamble.c</name>
