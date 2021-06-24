@@ -206,16 +206,18 @@ if __name__ == "__main__":
                 print("{}ERROR: {} while trying to execute {}.". \
                       format(PROMPT, type(ex).__name__, str(ex)))
             except KeyboardInterrupt:
+                print("{}received CTRL-C, exiting...".format(PROMPT))
                 if PROCESS:
                     # Terminate the process and all children in the
                     # selected manner
                     end_process(PROCESS.pid, SIGNAL, ARGS.k)
 
-                # Send the return value back if the connection is there
-                try:
-                    CONNECTION.sendall(str(RETURN_VALUE).encode())
-                except (BlockingIOError, socket.error):
-                    pass
+            # Send the return value back if the connection is there
+            try:
+                CONNECTION.sendall(str(RETURN_VALUE).encode())
+            except (BlockingIOError, socket.error) as ex:
+                print("{}ERROR: {} {} while trying to send return value.". \
+                      format(PROMPT, type(ex).__name__, str(ex)))
 
     print("{}return value {}".format(PROMPT, RETURN_VALUE))
 
