@@ -961,6 +961,11 @@ def parse_instances(instances_text):
         instances = []
     return instances
 
+def limit_cpu(priority):
+    '''Called in each worker to set priority'''
+    proc = psutil.Process(os.getpid())
+    proc.nice(priority)
+
 if __name__ == "__main__":
     freeze_support()
 
@@ -1013,17 +1018,18 @@ if __name__ == "__main__":
     # ...create a pool of worker processes to run our
     # instances, then they will handle sigint correctly
     # and tidy up after themselves.
+    # From this post:
+    # https://stackoverflow.com/questions/42103367/limit-total-cpu-usage-in-python-multiprocessing
+    # ...set the priority of the pool of worker processes
+    # to be lower than us otherwise commands coming into
+    # AgentService won't be processed in a timely manner.
 
     # SIGINT is ignored while the pool is created
     ORIGINAL_SIGINT_HANDLER = signal(SIGINT, SIG_IGN)
-    PROCESS_POOL = u_agent.NoDaemonPool(len(INSTANCES))
-    signal(SIGINT, ORIGINAL_SIGINT_HANDLER)
-
-    # Set us to be higher priority than the process 
-    # pool or things like disconnects will be ignored
     # TODO Linux priority
-    PROCESS = psutil.Process(os.getpid())
-    PROCESS.nice(psutil.ABOVE_NORMAL_PRIORITY_CLASS)
+    PROCESS_POOL = u_agent.NoDaemonPool(len(INSTANCES),
+                                        limit_cpu(psutil.BELOW_NORMAL_PRIORITY_CLASS))
+    signal(SIGINT, ORIGINAL_SIGINT_HANDLER)
 
     try:
         THREAD = rpyc.utils.server.ThreadedServer(AgentService(ARGS.working_dir, ARGS.n,
