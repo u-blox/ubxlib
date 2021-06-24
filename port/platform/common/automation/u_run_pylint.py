@@ -5,6 +5,7 @@
 import os              # For sep, listdir, isfile, join
 import subprocess
 from time import sleep
+import psutil
 import u_report
 import u_utils
 
@@ -67,6 +68,8 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=No
                             printer.string("{}running Pylint on {}...".format(prompt, py_file))
                             got_rating = False
                             try:
+                                temp = psutil.Process(os.getpid())
+                                print("##### PYLINT will be run at task priority {}.".format(temp.nice()))
                                 # ignore u_settings module as it sets members programatically and
                                 # will thus generate a bunch of lint warnings
                                 text = subprocess.check_output(u_utils.subprocess_osify(["pylint", "--exit-zero",
