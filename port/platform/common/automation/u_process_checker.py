@@ -92,16 +92,15 @@ def end_process(process_pid, signal_to_send, kill_timeout_seconds=0, wait_for_en
                     pass
             print("{}{} process(es) still running.".format(PROMPT, count))
 
-        # Finish off any zombies
+        # For debug purposes, count the zombie processes
+        count = 0
         for proc in process_list:
             try:
                 if proc.status() == "zombie":
-                    proc.terminate()
-                    print("{}terminated zombie process PID {} ({}).".format(PROMPT,
-                                                                            proc.pid,
-                                                                            proc.name()))
+                    count += 1
             except psutil.NoSuchProcess:
                 pass
+        print("{}zombie process(es) left.".format(PROMPT, count))
 
 if __name__ == "__main__":
     RETURN_VALUE = -1

@@ -8,6 +8,8 @@ import argparse
 import socket
 import u_settings
 
+PROMPT = "u_process_checker_is_running: "
+
 # The name of the process checker script.
 PROCESS_CHECKER = u_settings.PROCESS_CHECKER # e.g. "u_process_checker.py"
 
@@ -32,7 +34,9 @@ if __name__ == "__main__":
     ARGS = PARSER.parse_args()
 
     # Try binding to the port
-    print("Checking for {} on port {}...".format(PROCESS_CHECKER, ARGS.p))
+    print("{}checking if {} is running on port {}...".format(PROMPT,
+                                                             PROCESS_CHECKER,
+                                                             ARGS.p))
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as SOCKET:
         end_time = time() + ARGS.t
         while RETURN_VALUE <= 0:
@@ -40,6 +44,7 @@ if __name__ == "__main__":
                 SOCKET.bind(("127.0.0.1", ARGS.p))
                 SOCKET.listen()
                 # We're able to bind to it, hence process checker must have exited
+                print("{}{} has exited.".format(PROMPT, PROCESS_CHECKER))
                 RETURN_VALUE = 1
             except socket.error:
                 # Can't bind to the socket, infer the process checker is running
@@ -49,5 +54,4 @@ if __name__ == "__main__":
                 else:
                     break
 
-    print("Return value {}".format(RETURN_VALUE))
     sys.exit(RETURN_VALUE)
