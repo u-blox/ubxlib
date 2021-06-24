@@ -130,7 +130,7 @@ if __name__ == "__main__":
         while PROCESS.poll() is None:
             string = PROCESS.stdout.readline().decode()
             if string and string != "":
-                print(string)
+                print(string.rstrip())
             else:
                 sleep(0.1)
     except ValueError as ex:

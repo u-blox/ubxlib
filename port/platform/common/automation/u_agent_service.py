@@ -332,6 +332,9 @@ class AgentService(rpyc.Service):
 
     def on_disconnect(self, conn):
         self._printer.string("{}a connection was dropped.".format(PROMPT))
+        print("#####################################################################")
+        print("                  a connection was dropped                           ")
+        print("#####################################################################")
         if self._connection_count > 0:
             self._connection_count -= 1
             if self._connection_count == 0:
