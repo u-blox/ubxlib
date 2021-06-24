@@ -15,6 +15,7 @@ from threading import Lock
 from signal import signal, SIGINT, SIG_IGN  # for signal_handler
 import requests # For HTTP file uploads
 from requests_toolbelt.multipart.encoder import MultipartEncoder
+import psutil
 import rpyc     # RPyC, mmmmm :-)
 import u_agent  # The agent stuff itself
 import u_utils
@@ -1015,7 +1016,15 @@ if __name__ == "__main__":
 
     # SIGINT is ignored while the pool is created
     ORIGINAL_SIGINT_HANDLER = signal(SIGINT, SIG_IGN)
+    # Temporarily set our process priority to below normal
+    # so that the process pool inherits that priority
+    # Without this commands comming into AgentService
+    # can be deferred for a VERY long time
+    PARENT = psutil.Process()
+    SAVED_PRIORITY = PARENT.nice()
+    PARENT.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
     PROCESS_POOL = u_agent.NoDaemonPool(len(INSTANCES))
+    PARENT.nice(SAVED_PRIORITY)
     signal(SIGINT, ORIGINAL_SIGINT_HANDLER)
 
     try:
