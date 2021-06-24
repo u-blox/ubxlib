@@ -89,6 +89,10 @@ if __name__ == "__main__":
     CALL_LIST = []
     # Launch as a separate process so that it is not affected
     # by the killing of us
+    if not u_utils.is_linux():
+        CALL_LIST.append("cmd")
+        CALL_LIST.append("/c")
+        CALL_LIST.append("call")
     if PROCESS_PYTHON:
         CALL_LIST.append(PROCESS_PYTHON)
     CALL_LIST.append(PROCESS_CHECKER)
@@ -115,11 +119,8 @@ if __name__ == "__main__":
 
     try:
         CREATION_FLAGS = 0
-        if u_utils.is_linux():
-            # TODO
-            pass
-        else:
-            CREATION_FLAGS |= subprocess.CREATE_NO_WINDOW
+        # TODO Linux
+        if not u_utils.is_linux():
             CREATION_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
         # Set shell to True to keep Jenkins happy
         PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
