@@ -3,14 +3,9 @@
 '''Check if u_process_checker.py is still running.'''
 
 import sys
-import os
-import signal
-import psutil
 import argparse
 import socket
-from time import sleep, time
 import u_settings
-import u_utils
 
 # The name of the process checker script.
 PROCESS_CHECKER = u_settings.PROCESS_CHECKER # e.g. "u_process_checker.py"
