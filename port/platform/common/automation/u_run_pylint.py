@@ -4,6 +4,7 @@
 
 import os              # For sep, listdir, isfile, join
 import subprocess
+import psutil
 import u_report
 import u_utils
 
@@ -59,11 +60,15 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=No
                             try:
                                 # ignore u_settings module as it sets members programatically and
                                 # will thus generate a bunch of lint warnings
+
+                                psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS) # lower priority
                                 text = subprocess.check_output(u_utils.subprocess_osify(["pylint", "--exit-zero",
                                                                 "--ignored-modules=u_settings",
                                                                 py_file]),
                                                                stderr=subprocess.STDOUT,
                                                                shell=True) # Stop Jenkins hanging
+                                psutil.Process().nice(psutil.NORMAL_PRIORITY_CLASS)  # reset current priority
+
                                 rating = 0
                                 for line in text.splitlines():
                                     line = line.decode()

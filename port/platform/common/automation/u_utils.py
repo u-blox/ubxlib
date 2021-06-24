@@ -680,8 +680,12 @@ def exe_run(call_list, guard_time_seconds = None, printer = None, prompt = None,
         # that is ignored 'cos the output is considered
         # binary.  Seems to work in any case, I guess
         # Winders, at least, is in any case line-buffered.
+
+        psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS) # lower priority        
         process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
                                    **popen_keywords)
+        psutil.Process().nice(psutil.NORMAL_PRIORITY_CLASS)  # reset current priority
+
         if printer:
             printer.string("{}{}, pid {} started with guard time {} second(s)". \
                            format(prompt, call_list[0], process.pid,
@@ -824,7 +828,11 @@ class ExeRun():
                 popen_keywords['creationflags'] = subprocess.CREATE_NEW_PROCESS_GROUP
             if self._with_stdin:
                 popen_keywords['stdin'] = subprocess.PIPE
+
+            psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS) # lower priority
             self._process = subprocess.Popen(self._call_list, **popen_keywords)
+            psutil.Process().nice(psutil.NORMAL_PRIORITY_CLASS)  # reset current priority
+
             if self._printer:
                 self._printer.string("{}{} pid {} started".format(self._prompt,
                                                                   self._call_list[0],
