@@ -119,7 +119,6 @@ if __name__ == "__main__":
             pass
         else:
             CREATION_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
-            CREATION_FLAGS |= subprocess.CREATE_NO_WINDOW
         # Set shell to True to keep Jenkins happy
         PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
                                    stdout=subprocess.PIPE,
@@ -130,7 +129,7 @@ if __name__ == "__main__":
         while PROCESS.poll() is None:
             string = PROCESS.stdout.readline()
             if string:
-                print("{}".format(string.decode().rstrip("\r")), end="")
+                print("{}".format(string.decode().rstrip()), end="")
     except ValueError as ex:
         print("ERROR: {} while trying to execute {}.". \
               format(type(ex).__name__, str(ex)))

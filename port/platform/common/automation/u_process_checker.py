@@ -133,7 +133,7 @@ if __name__ == "__main__":
                 while PROCESS.poll() is None:
                     string = PROCESS.stdout.readline()
                     if string:
-                        print("{}".format(string.decode().rstrip("\r")), end="")
+                        print("{}".format(string.decode().rstrip()), end="")
                     else:
                         try:
                             # Do a receive on the socket: we don't
