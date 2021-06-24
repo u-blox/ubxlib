@@ -101,6 +101,11 @@ def exe_run(call_list, guard_time_seconds, shell_cmd=False):
             'stderr': subprocess.STDOUT,
             'shell': shell_cmd
         }
+        # Run this at below normal priority to avoid holding
+        # everything else out
+        # TODO: Linux
+        if not platform.system() == "Linux":
+            popen_keywords['creationflags'] = subprocess.BELOW_NORMAL_PRIORITY_CLASS
         process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
                                    **popen_keywords)
         while process.poll() is None:
