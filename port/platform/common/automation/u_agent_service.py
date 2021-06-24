@@ -961,6 +961,11 @@ def parse_instances(instances_text):
         instances = []
     return instances
 
+def limit_cpu(priority):
+    '''Called at start of life in each worker to set priority'''
+    proc = psutil.Process(os.getpid())
+    proc.nice(priority)
+
 if __name__ == "__main__":
     freeze_support()
 
@@ -1013,18 +1018,17 @@ if __name__ == "__main__":
     # ...create a pool of worker processes to run our
     # instances, then they will handle sigint correctly
     # and tidy up after themselves.
+    # From this post:
+    # https://stackoverflow.com/questions/42103367/limit-total-cpu-usage-in-python-multiprocessing
+    # ...set the priority of the pool of worker processes
+    # to be lower than us otherwise commands coming into
+    # AgentService won't be processed in a timely manner.
 
     # SIGINT is ignored while the pool is created
     ORIGINAL_SIGINT_HANDLER = signal(SIGINT, SIG_IGN)
-    # Temporarily set our process priority to below normal
-    # so that the process pool inherits that priority
-    # Without this commands comming into AgentService
-    # can be deferred for a VERY long time
-    PARENT = psutil.Process()
-    SAVED_PRIORITY = PARENT.nice()
-    PARENT.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
-    PROCESS_POOL = u_agent.NoDaemonPool(len(INSTANCES))
-    PARENT.nice(SAVED_PRIORITY)
+    # TODO Linux priority
+    PROCESS_POOL = u_agent.NoDaemonPool(len(INSTANCES),
+                                        limit_cpu(psutil.BELOW_NORMAL_PRIORITY_CLASS))
     signal(SIGINT, ORIGINAL_SIGINT_HANDLER)
 
     try:
@@ -1036,7 +1040,6 @@ if __name__ == "__main__":
         THREAD.start()
     except KeyboardInterrupt:
         print("{}caught CTRL-C, stopping.".format(PROMPT))
-        # Note: close() rather than terminate() for a graceful shut-down
-        PROCESS_POOL.close()
+        PROCESS_POOL.terminate()
         PROCESS_POOL.join()
         # Note: ThreadedServer exits on CTRL-C, no need to worry about it
