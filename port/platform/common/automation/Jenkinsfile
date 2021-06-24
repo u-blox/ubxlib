@@ -144,7 +144,7 @@ node('TEST-gb-cmb-dt-022')
                 // Call python to run the necessary builds and tests
                 if (changed_files) {
                     stage("Test Selected") {
-                        return_value = bat(script: "python u_process_wrapper.py u_controller_client.py -s ${summary_file} -t ${test_report_file} -d ${debug_file} -a ${archive_url}  -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"${git_commit_text}\" ${changed_files}", returnStatus: true)
+                        return_value = bat(script: "python u_controller_client.py -s ${summary_file} -t ${test_report_file} -d ${debug_file} -a ${archive_url}  -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"${git_commit_text}\" ${changed_files}", returnStatus: true)
                         if (return_value != 0) {
                             error("Running selected ubxlib test(s) returned error " + return_value + ".")
                         } else {
@@ -154,7 +154,7 @@ node('TEST-gb-cmb-dt-022')
                 } else {
                     stage("Test All") {
                         // Call python to run all tests
-                        return_value = bat(script: "python u_process_wrapper.py u_controller_client.py -s ${summary_file} -t ${test_report_file} -d ${debug_file} -a ${archive_url} -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"test: *\"", returnStatus: true)
+                        return_value = bat(script: "python u_controller_client.py -s ${summary_file} -t ${test_report_file} -d ${debug_file} -a ${archive_url} -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"test: *\"", returnStatus: true)
                         if (return_value != 0) {
                             error("Running all ubxlib tests returned " + return_value + " failed test(s).")
                         } else {
