@@ -4,6 +4,7 @@
 
 import os              # For sep, listdir, isfile, join
 import subprocess
+from time import sleep
 import u_report
 import u_utils
 
@@ -92,6 +93,8 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=No
                                         except ValueError:
                                             # Can't have been a rating line
                                             pass
+                                # Let other things in
+                                sleep(0.01)
                                 if got_rating:
                                     if rating < MIN_RATING:
                                         reporter.event(u_report.EVENT_TYPE_CHECK,
