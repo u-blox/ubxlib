@@ -13,6 +13,8 @@ import psutil
 import u_settings
 import u_utils
 
+PROMPT = "u_process_checker: "
+
 # The name of the script which forms the other half
 # of the process wrapper/process checker pair.
 PROCESS_WRAPPER = u_settings.PROCESS_WRAPPER # e.g. "u_process_wrapper.py"
@@ -23,24 +25,43 @@ PROCESS_PORT = u_settings.PROCESS_PORT # e.g. 50123
 # What to use to invoke Python
 PROCESS_PYTHON = u_settings.PROCESS_PYTHON # e.g. "python"
 
+# How often to check if process wrapper is still there.
+PROCESS_CHECK_INTERVAL_SECONDS = 1
+
 def end_process(process_pid, signal_to_send, kill_timeout_seconds=0, wait_for_end=True):
     '''End the process and its children in the given way'''
     start_time = time()
     process_list = []
     wait_for_end = True
     kill_now = False
+    main_process = None
 
     try:
-        # Find all the processes and send them the signal
-        process = psutil.Process(process_pid)
-        process_list.append(process)
+        # Find all the processes and send them the signals
+        main_process = psutil.Process(process_pid)
+    except psutil.NoSuchProcess:
+        print("{}no process(es) to clean up.".format(PROMPT))
 
-        for proc in process.children(recursive=True):
-            process_list.append(proc)
-            print("#### sending signal {} to {}".format(signal_to_send, proc.name()))
-            proc.send_signal(signal_to_send)
-        process.send_signal(signal_to_send)
-        print("#### sending signal {} to {}".format(signal_to_send, process.name()))
+    if main_process:
+        for child_process in main_process.children(recursive=True):
+            try:
+                child_process.send_signal(signal_to_send)
+                print("{}sent signal {} to child process {} ({}).".format(PROMPT,
+                                                                          signal_to_send,
+                                                                          child_process.pid,
+                                                                          child_process.name()))
+                process_list.append(child_process)
+            except psutil.NoSuchProcess:
+                pass
+        try:
+            main_process.send_signal(signal_to_send)
+            print("{}sent signal {} to main process {} ({}).".format(PROMPT,
+                                                                     signal_to_send,
+                                                                     main_process.pid,
+                                                                     main_process.name()))
+            process_list.append(main_process)
+        except psutil.NoSuchProcess:
+            pass
 
         # Wait for the processes to end and kill if requested
         while wait_for_end:
@@ -49,21 +70,43 @@ def end_process(process_pid, signal_to_send, kill_timeout_seconds=0, wait_for_en
             wait_for_end = False
             count = 0
             for proc in process_list:
-                if proc.is_running():
-                    count += 1
-                    if kill_now:
-                        proc.terminate()
-                    else:
-                        wait_for_end = True
-            sleep(1)
-            print("#### {} process(es) still running.".format(count))
-            break
-    except psutil.NoSuchProcess:
-        pass
+                try:
+                    if proc.is_running() and not proc.status() == "zombie":
+                        count += 1
+                        print("{}process {} ({}) is still running.".format(PROMPT,
+                                                                           proc.pid,
+                                                                           proc.name()))
+                        if kill_now:
+                            try:
+                                proc.terminate()
+                                print("{}terminated process {} ({}).".format(PROMPT,
+                                                                             proc.pid,
+                                                                             proc.name()))
+                            except psutil.NoSuchProcess:
+                                pass
+                        else:
+                            wait_for_end = True
+                            sleep(1)
+                            break
+                except KeyboardInterrupt:
+                    pass
+            print("{}{} process(es) still running.".format(PROMPT, count))
+
+        # Finish off any zombies
+        for proc in process_list:
+            try:
+                if proc.status() == "zombie":
+                    proc.terminate()
+                    print("{}terminated zombie process PID {} ({}).".format(PROMPT,
+                                                                            proc.pid,
+                                                                            proc.name()))
+            except psutil.NoSuchProcess:
+                pass
 
 if __name__ == "__main__":
     RETURN_VALUE = -1
     PROCESS = None
+    NEXT_CHECK = time()
     SIGNAL = signal.CTRL_C_EVENT
 
     PARSER = argparse.ArgumentParser(description="The other half of"         \
@@ -96,14 +139,15 @@ if __name__ == "__main__":
         SIGNAL = signal.SIGTERM
 
     # Listen on the port for a connection from u_process_wrapper.py
-    print("Listening for connection from {} on port {}...".format(PROCESS_WRAPPER,
-                                                                  ARGS.p))
+    print("{}listening for connection from {} on port {}...".format(PROMPT,
+                                                                    PROCESS_WRAPPER,
+                                                                    ARGS.p))
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as SOCKET:
         SOCKET.bind(("127.0.0.1", ARGS.p))
         SOCKET.listen()
         CONNECTION, ADDRESS = SOCKET.accept()
         with CONNECTION:
-            print("Connected on {}.".format(ADDRESS))
+            print("{}connected on {}.".format(PROMPT, ADDRESS))
             # Set connection to non-blocking with zero timeout
             CONNECTION.settimeout(0)
 
@@ -121,20 +165,21 @@ if __name__ == "__main__":
                 if TMP:
                     TMP += " "
                 TMP += item
-            print("In directory \"{}\" calling \"{}\"...".format(os.getcwd(), TMP))
+            print("{}in directory \"{}\" calling \"{}\"...".format(PROMPT,
+                                                                   os.getcwd(),
+                                                                   TMP))
 
             try:
-                # Set shell to True to keep Jenkins happy
-                PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
+                PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST),
                                            stdout=subprocess.PIPE,
-                                           stderr=subprocess.STDOUT,
-                                           shell=True)
+                                           stderr=subprocess.STDOUT)
                 # Wait for the process to finish
                 while PROCESS.poll() is None:
                     string = PROCESS.stdout.readline().decode()
                     if string and string != "":
                         print(string.rstrip())
-                    else:
+                    if time() > NEXT_CHECK:
+                        NEXT_CHECK = time() + PROCESS_CHECK_INTERVAL_SECONDS
                         try:
                             # Do a receive on the socket: we don't
                             # ever expect to receive anything, we
@@ -144,32 +189,34 @@ if __name__ == "__main__":
                         except BlockingIOError:
                             # This is fine, the socket is there and
                             # we have received nothing
-                            pass
-                        except socket.error:
+                            sleep(0.1)
+                        except socket.error as ex:
+                            print("{}socket error {} {} on {}.". \
+                                  format(PROMPT, type(ex).__name__,
+                                         str(ex), ADDRESS))
                             # Any other error means PROCESS_WRAPPER
                             # has been taken down: terminate
                             # the script and any children in the
                             # selected manner
                             end_process(PROCESS.pid, SIGNAL, ARGS.k)
-                        sleep(0.1)
                 # Set the return value
-                if PROCESS.poll() is not None:
+                if PROCESS.poll():
                     RETURN_VALUE = PROCESS.poll()
             except ValueError as ex:
-                print("ERROR: {} while trying to execute {}.". \
-                      format(type(ex).__name__, str(ex)))
+                print("{}ERROR: {} while trying to execute {}.". \
+                      format(PROMPT, type(ex).__name__, str(ex)))
             except KeyboardInterrupt:
                 if PROCESS:
                     # Terminate the process and all children in the
                     # selected manner
                     end_process(PROCESS.pid, SIGNAL, ARGS.k)
 
-            # Send the return value back if the connection is there
-            try:
-                CONNECTION.sendall(str(RETURN_VALUE).encode())
-            except (BlockingIOError, socket.error):
-                pass
+                # Send the return value back if the connection is there
+                try:
+                    CONNECTION.sendall(str(RETURN_VALUE).encode())
+                except (BlockingIOError, socket.error):
+                    pass
 
-    print("Return value {}".format(RETURN_VALUE))
+    print("{}return value {}".format(PROMPT, RETURN_VALUE))
 
     sys.exit(RETURN_VALUE)

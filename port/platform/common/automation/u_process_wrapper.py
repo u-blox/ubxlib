@@ -12,6 +12,8 @@ import argparse
 import u_settings
 import u_utils
 
+PROMPT = "u_process_wrapper: "
+
 # The name of the script which forms the other half
 # of the process wrapper/process checker pair.
 PROCESS_CHECKER = u_settings.PROCESS_CHECKER # e.g. "u_process_checker.py"
@@ -89,6 +91,7 @@ if __name__ == "__main__":
     CALL_LIST = []
     # Launch as a separate process so that it is not affected
     # by the killing of us
+    # TODO Linux
     if not u_utils.is_linux():
         CALL_LIST.append("cmd")
         CALL_LIST.append("/c")
@@ -114,8 +117,8 @@ if __name__ == "__main__":
         if TMP:
             TMP += " "
         TMP += item
-    print("In directory \"{}\" calling \"{}\" and waiting to be terminated.". \
-          format(os.getcwd(), TMP))
+    print("{}in directory \"{}\" calling \"{}\" and waiting to be terminated.". \
+          format(PROMPT, os.getcwd(), TMP))
 
     try:
         CREATION_FLAGS = 0
@@ -136,8 +139,8 @@ if __name__ == "__main__":
             else:
                 sleep(0.1)
     except ValueError as ex:
-        print("ERROR: {} while trying to execute {}.". \
-              format(type(ex).__name__, str(ex)))
+        print("{}ERROR: {} while trying to execute {}.". \
+              format(PROMPT, type(ex).__name__, str(ex)))
     except KeyboardInterrupt:
         pass
 
@@ -145,7 +148,9 @@ if __name__ == "__main__":
     connect_thread.join()
 
     if not CONNECTED_TO_PROCESS_CHECKER:
-        print("ERROR: unable to connect to {} on port {}.".format(PROCESS_CHECKER, ARGS.p))
+        print("{}ERROR: unable to connect to {} on port {}.".format(PROMPT,
+                                                                    PROCESS_CHECKER,
+                                                                    ARGS.p))
 
-    print("Return value {}".format(RETURN_VALUE))
+    print("{}return value {}".format(PROMPT, RETURN_VALUE))
     sys.exit(RETURN_VALUE)
