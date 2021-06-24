@@ -200,7 +200,7 @@ if __name__ == "__main__":
                             # selected manner
                             end_process(PROCESS.pid, SIGNAL, ARGS.k)
                 # Set the return value
-                if PROCESS.poll():
+                if PROCESS.poll() is not None:
                     RETURN_VALUE = PROCESS.poll()
             except ValueError as ex:
                 print("{}ERROR: {} while trying to execute {}.". \
