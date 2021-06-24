@@ -7,6 +7,7 @@ import os
 import threading
 import socket
 import subprocess
+from time import sleep
 import argparse
 import u_settings
 import u_utils
@@ -127,9 +128,11 @@ if __name__ == "__main__":
                                    creationflags=CREATION_FLAGS)
         # Wait for the process to finish
         while PROCESS.poll() is None:
-            string = PROCESS.stdout.readline()
-            if string:
-                print("{}".format(string.decode()), end="")
+            string = PROCESS.stdout.readline().decode()
+            if string and string != "":
+                print(string)
+            else:
+                sleep(0.1)
     except ValueError as ex:
         print("ERROR: {} while trying to execute {}.". \
               format(type(ex).__name__, str(ex)))

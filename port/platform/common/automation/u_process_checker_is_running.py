@@ -3,6 +3,7 @@
 '''Check if u_process_checker.py is still running.'''
 
 import sys
+from time import time, sleep
 import argparse
 import socket
 import u_settings
@@ -26,18 +27,27 @@ if __name__ == "__main__":
     PARSER.add_argument("-p", type=int, default=PROCESS_PORT, help="the port"\
                         " number " + PROCESS_CHECKER + " was using, default" \
                         " " + str(PROCESS_PORT) + ".")
+    PARSER.add_argument("-t", type=int, default=0, help="keep checking"      \
+                        " for the specified number of seconds.")
     ARGS = PARSER.parse_args()
 
     # Try binding to the port
     print("Checking for {} on port {}...".format(PROCESS_CHECKER, ARGS.p))
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as SOCKET:
-        try:
-            SOCKET.bind(("127.0.0.1", ARGS.p))
-            SOCKET.listen()
-            # We're able to bind to it, hence process checker must have exitted
-            RETURN_VALUE = 1
-        except socket.error:
-            RETURN_VALUE = 0
+        end_time = time() + ARGS.t
+        while RETURN_VALUE <= 0:
+            try:
+                SOCKET.bind(("127.0.0.1", ARGS.p))
+                SOCKET.listen()
+                # We're able to bind to it, hence process checker must have exited
+                RETURN_VALUE = 1
+            except socket.error:
+                # Can't bind to the socket, infer the process checker is running
+                RETURN_VALUE = 0
+                if ((ARGS.t > 0) and (time() < end_time)):
+                    sleep(1)
+                else:
+                    break
 
     print("Return value {}".format(RETURN_VALUE))
     sys.exit(RETURN_VALUE)

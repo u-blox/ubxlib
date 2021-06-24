@@ -172,9 +172,8 @@ node('TEST-gb-cmb-dt-022')
                 currentBuild.description = "Agents <a href='${archive_url + "/" + summary_file}'>summary</a> and <a href='${archive_url}'>final results files</a>";
                 stage("Termination") {
                     // Wait for the processes to end
-                    while (bat(script: "python u_process_checker_is_running.py", returnStatus: true) == 0) {
-                        println "Waiting for processes to finish..."
-                        sleep(time: 5, unit: 'SECONDS')
+                    while (bat(script: "python u_process_checker_is_running.py -t 10", returnStatus: true) == 0) {
+                        println "Processes still running..."
                     }
                 }
             }

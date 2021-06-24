@@ -131,9 +131,9 @@ if __name__ == "__main__":
                                            shell=True)
                 # Wait for the process to finish
                 while PROCESS.poll() is None:
-                    string = PROCESS.stdout.readline()
-                    if string:
-                        print("{}".format(string.decode()), end="")
+                    string = PROCESS.stdout.readline().decode()
+                    if string and string != "":
+                        print(string)
                     else:
                         try:
                             # Do a receive on the socket: we don't
@@ -151,6 +151,7 @@ if __name__ == "__main__":
                             # the script and any children in the
                             # selected manner
                             end_process(PROCESS.pid, SIGNAL, ARGS.k)
+                        sleep(0.1)
                 # Set the return value
                 if PROCESS.poll() is not None:
                     RETURN_VALUE = PROCESS.poll()
