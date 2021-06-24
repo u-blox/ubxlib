@@ -119,7 +119,7 @@ if __name__ == "__main__":
             # TODO
             pass
         else:
-            CREATION_FLAGS |= subprocess.DETACH_PROCESS
+            CREATION_FLAGS |= subprocess.CREATE_NO_WINDOW
             CREATION_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
         # Set shell to True to keep Jenkins happy
         PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
