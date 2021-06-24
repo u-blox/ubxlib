@@ -129,7 +129,7 @@ if __name__ == "__main__":
         while PROCESS.poll() is None:
             string = PROCESS.stdout.readline()
             if string:
-                print("{}".format(string.decode().rstrip()), end="")
+                print("{}".format(string.decode()), end="")
     except ValueError as ex:
         print("ERROR: {} while trying to execute {}.". \
               format(type(ex).__name__, str(ex)))
