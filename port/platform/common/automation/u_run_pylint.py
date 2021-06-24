@@ -4,7 +4,6 @@
 
 import os              # For sep, listdir, isfile, join
 import subprocess
-import psutil
 import u_report
 import u_utils
 
@@ -50,6 +49,15 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=No
             if os.path.exists(abs_py_path):
                 printer.string("{}CD to {}...".format(prompt, abs_py_path))
                 with u_utils.ChangeDir(abs_py_path):
+                    popen_keywords = {
+                        'stderr': subprocess.STDOUT,
+                        'shell': True # Stop Jenkins hanging
+                    }
+                    # Run this at below normal priority to avoid holding
+                    # everything else out
+                    # TODO: Linux
+                    if not u_utils.is_linux():
+                        popen_keywords['creationflags'] = subprocess.BELOW_NORMAL_PRIORITY_CLASS
                     for py_file in os.listdir(abs_py_path):
                         if py_file.endswith(".py"):
                             if not u_utils.keep_going(keep_going_flag, printer, prompt):
@@ -63,9 +71,7 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=No
                                 text = subprocess.check_output(u_utils.subprocess_osify(["pylint", "--exit-zero",
                                                                 "--ignored-modules=u_settings",
                                                                 py_file]),
-                                                               stderr=subprocess.STDOUT,
-                                                               shell=True,
-                                                               creationflags=BELOW_NORMAL_PRIORITY_CLASS) # Stop Jenkins hanging
+                                                               **popen_keywords)
 
                                 rating = 0
                                 for line in text.splitlines():

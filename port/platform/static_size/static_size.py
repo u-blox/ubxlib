@@ -96,10 +96,13 @@ def exe_run(call_list, guard_time_seconds, shell_cmd=False):
     kill_time = None
 
     try:
+        popen_keywords = {
+            'stdout': subprocess.PIPE,
+            'stderr': subprocess.STDOUT,
+            'shell': shell_cmd
+        }
         process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT,
-                                   shell=shell_cmd)
+                                   **popen_keywords)
         while process.poll() is None:
             string = process.stdout.readline()
             if string:

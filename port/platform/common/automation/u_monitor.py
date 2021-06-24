@@ -230,11 +230,18 @@ def start_exe(exe_name, printer, prompt):
     text = "{}trying to launch \"{}\" as an executable...".     \
            format(prompt, exe_name)
     try:
-        return_value = subprocess.Popen(exe_name,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.STDOUT,
-                                        bufsize=1,
-                                        shell=True)  # Jenkins hangs without this
+        popen_keywords = {
+            'stdout': subprocess.PIPE,
+            'stderr': subprocess.STDOUT,
+            'bufsize': 1,
+            'shell': True # Jenkins hangs without this
+        }
+        # Run this at below normal priority to avoid holding
+        # everything else out
+        # TODO: Linux
+        if not u_utils.is_linux():
+            popen_keywords['creationflags'] = subprocess.BELOW_NORMAL_PRIORITY_CLASS
+        return_value = subprocess.Popen(exe_name, **popen_keywords)
         stdout_handle = return_value.stdout
     except (ValueError, serial.SerialException, WindowsError):
         printer.string("{} failed.".format(text))

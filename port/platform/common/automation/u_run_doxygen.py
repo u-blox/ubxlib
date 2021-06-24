@@ -52,9 +52,16 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
             printer.string("{}in directory {} calling doxygen {}.".    \
                            format(prompt, os.getcwd(), config_path))
             try:
-                text = subprocess.check_output(["doxygen", config_path],
-                                               stderr=subprocess.STDOUT,
-                                               shell=True) # Jenkins hangs without this
+                popen_keywords = {
+                    'stderr': subprocess.STDOUT,
+                    'shell': True # Stop Jenkins hanging
+                }
+                # Run this at below normal priority to avoid holding
+                # everything else out
+                # TODO: Linux
+                if not u_utils.is_linux():
+                    popen_keywords['creationflags'] = subprocess.BELOW_NORMAL_PRIORITY_CLASS
+                text = subprocess.check_output(["doxygen", config_path], **popen_keywords)
                 reporter.event(u_report.EVENT_TYPE_CHECK,
                                u_report.EVENT_PASSED)
                 for line in text.splitlines():

@@ -78,7 +78,7 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
                        format(prompt, os.getcwd(), tmp))
 
         # Set shell to keep Jenkins happy
-        if u_utils.exe_run(call_list, 0, printer, prompt, shell_cmd=True):
+        if u_utils.exe_run(call_list, 0, printer, prompt, shell_cmd=True, lower_priority=True):
             return_value = 0
             reporter.event(u_report.EVENT_TYPE_BUILD,
                            u_report.EVENT_COMPLETE)

@@ -330,7 +330,7 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter):
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
                            printer, prompt, shell_cmd=True,
-                           set_env=env):
+                           set_env=env, lower_priority=True):
             build_dir = output_dir
     else:
         reporter.event(u_report.EVENT_TYPE_BUILD,

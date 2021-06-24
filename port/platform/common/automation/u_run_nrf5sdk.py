@@ -231,7 +231,7 @@ def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
             # Call make to do the build
             # Set shell to keep Jenkins happy
             if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
-                               printer, prompt, shell_cmd=True):
+                               printer, prompt, shell_cmd=True, lower_priority=True):
                 hex_file_path = os.getcwd() + os.sep + build_subdir +  \
                                 os.sep + "nrf52840_xxaa.hex"
         else:
@@ -313,7 +313,7 @@ def build_ses(clean, ubxlib_dir, unity_dir, defines,
             # Call Segger Embedded Studio builder to do the build
             # Set shell to keep Jenkins happy
             if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
-                               printer, prompt, shell_cmd=True):
+                               printer, prompt, shell_cmd=True, lower_priority=True):
                 hex_file_path = output_dir + os.sep + PROJECT_NAME_SES + ".hex"
         else:
             reporter.event(u_report.EVENT_TYPE_BUILD,

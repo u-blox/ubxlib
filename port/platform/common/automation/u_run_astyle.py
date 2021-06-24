@@ -76,9 +76,17 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
             printer.string("{}in directory {} calling{}".         \
                            format(prompt, os.getcwd(), tmp))
             try:
+                popen_keywords = {
+                    'stderr': subprocess.STDOUT,
+                    'shell': True # Stop Jenkins hanging
+                }
+                # Run this at below normal priority to avoid holding
+                # everything else out
+                # TODO: Linux
+                if not u_utils.is_linux():
+                    popen_keywords['creationflags'] = subprocess.BELOW_NORMAL_PRIORITY_CLASS
                 text = subprocess.check_output(u_utils.subprocess_osify(call_list),
-                                               stderr=subprocess.STDOUT,
-                                               shell=True) # Jenkins hangs without this
+                                               **popen_keywords)
                 formatted = []
                 for line in text.splitlines():
                     line = line.decode(encoding="utf-8", errors="ignore")

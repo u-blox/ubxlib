@@ -635,7 +635,7 @@ def capture_env_var(line, env, printer, prompt):
 # of course, lost.
 def exe_run(call_list, guard_time_seconds = None, printer = None, prompt = None,
             shell_cmd=False, set_env=None, returned_env=None,
-            bash_cmd=False):
+            bash_cmd=False, lower_priority=False):
     '''Call an executable, printing out what it does'''
     success = False
     start_time = time()
@@ -675,16 +675,18 @@ def exe_run(call_list, guard_time_seconds = None, printer = None, prompt = None,
             'env': set_env,
             'executable': "bin/bash" if bash_cmd else None
         }
+        if lower_priority:
+            # TODO: Linux
+            if not is_linux():
+                popen_keywords['creationflags'] = subprocess.BELOW_NORMAL_PRIORITY_CLASS
         # Call the thang
         # Note: used to have bufsize=1 here but it turns out
         # that is ignored 'cos the output is considered
         # binary.  Seems to work in any case, I guess
         # Winders, at least, is in any case line-buffered.
 
-        psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS) # lower priority        
         process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
                                    **popen_keywords)
-        psutil.Process().nice(psutil.NORMAL_PRIORITY_CLASS)  # reset current priority
 
         if printer:
             printer.string("{}{}, pid {} started with guard time {} second(s)". \
@@ -800,12 +802,13 @@ def set_process_prio_normal():
 
 class ExeRun():
     '''Run an executable as a "with:"'''
-    def __init__(self, call_list, printer=None, prompt=None, shell_cmd=False, with_stdin=False):
+    def __init__(self, call_list, printer=None, prompt=None, shell_cmd=False, with_stdin=False, lower_priority=False):
         self._call_list = call_list
         self._printer = printer
         self._prompt = prompt
         self._shell_cmd = shell_cmd
         self._with_stdin=with_stdin
+        self._lower_priority=lower_priority
         self._process = None
     def __enter__(self):
         if self._printer:
@@ -826,12 +829,14 @@ class ExeRun():
             }
             if not is_linux():
                 popen_keywords['creationflags'] = subprocess.CREATE_NEW_PROCESS_GROUP
+            if self._lower_priority:
+                # TODO: Linux
+                if not is_linux():
+                    popen_keywords['creationflags'] = subprocess.BELOW_NORMAL_PRIORITY_CLASS
             if self._with_stdin:
                 popen_keywords['stdin'] = subprocess.PIPE
 
-            psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS) # lower priority
             self._process = subprocess.Popen(self._call_list, **popen_keywords)
-            psutil.Process().nice(psutil.NORMAL_PRIORITY_CLASS)  # reset current priority
 
             if self._printer:
                 self._printer.string("{}{} pid {} started".format(self._prompt,
