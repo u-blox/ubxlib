@@ -1022,6 +1022,13 @@ class PrintThread(threading.Thread):
     def stop_thread(self):
         '''Helper function to stop the thread'''
         self._running = False
+        # Write anything remaining to the window file
+        if self._window_update_pending:
+            self._window_file_handle.seek(0)
+            for item in self._window:
+                self._window_file_handle.write(item + "\n")
+            self._window_file_handle.flush()
+            self._window_update_pending = False
     def run(self):
         '''Worker thread'''
         self._running = True
