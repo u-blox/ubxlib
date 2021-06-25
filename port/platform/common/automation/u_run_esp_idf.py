@@ -4,8 +4,6 @@
 
 import os            # For sep, getcwd(), isdir() and environ()
 from time import time, sleep
-import psutil
-import platform                 # Figure out current OS
 import u_connection
 import u_monitor
 import u_report

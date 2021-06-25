@@ -1101,7 +1101,7 @@ if __name__ == "__main__":
     # Copy the console output to a file if requested
     if ARGS.o:
         try:
-            CONSOLE_OUTPUT_FILE_HANDLE = open(ARGS.o, "w")
+            CONSOLE_OUTPUT_FILE_HANDLE = open(ARGS.o, "w+")
         except OSError:
             print("{}unable to open \"{}\", not writing console output to it.". \
                   format(PROMPT, ARGS.o))
