@@ -5,6 +5,7 @@
 from time import time, sleep, gmtime, strftime
 from multiprocessing.dummy import Pool as ThreadPool
 from signal import signal, SIGINT, SIGTERM, SIGBREAK
+import os       # for os.path
 import socket   # for socket.timeout
 import sys      # for exit() and stdout
 import queue
@@ -513,6 +514,25 @@ def archive_summary(controller_name, archive_url, archive_credentials,
         if PRINTER:
             PRINTER.string("{}...failed because of a connection error.".format(PROMPT))
 
+def archive_console_output(controller_name, archive_url, archive_credentials,
+                           console_file_handle, console_file_path):
+    '''Archive the controller debug output'''
+    _, file_name = os.path.split(console_file_path)
+    destination = archive_url + "/" + file_name
+    console_file_handle.seek(0)
+    print("{}PUTing {} to {}...".format(PROMPT, console_file_path, archive_url))
+    try:
+        if archive_credentials:
+            response = requests.put(destination, files={controller_name: console_file_handle},
+                                    headers={"Content-Type": "text/plain", "Content-Disposition": "inline"},
+                                    auth=tuple(archive_credentials.split(":")))
+        else:
+            response = requests.put(destination, files={controller_name: console_file_handle},
+                                    headers={"Content-Type": "text/plain", "Content-Disposition": "inline"})
+        print("{}...returned result {}.".format(PROMPT, response.status_code))
+    except (ConnectionError, TimeoutError):
+        print("{}...failed because of a connection error.".format(PROMPT))
+
 # Allocate instances to agents.  The aim is
 # to spread runs across agents so that no single
 # agent is unduly loaded, taking into account
@@ -997,6 +1017,7 @@ if __name__ == "__main__":
     DATABASE = []
     INSTANCES = []
     FILTER_STRING = None
+    CONSOLE_OUTPUT_FILE_HANDLE = None
 
     # Switch off traceback to stop the horrid developmenty prints
     #sys.tracebacklimit = 0
@@ -1004,20 +1025,24 @@ if __name__ == "__main__":
                                      " run examples/tests on"       \
                                      " ubxlib agent services"       \
                                      " connected over RPyC.")
-    PARSER.add_argument("-s", help="a summary report should be"      \
-                        " written to the given file, e.g."           \
+    PARSER.add_argument("-s", help="each agent should write a"       \
+                        " summary report to the given file, e.g."    \
                         " -s summary.txt; any existing file will be" \
                         " over-written.")
-    PARSER.add_argument("-t", help="an XML test report should be"   \
-                        " written to the given file, e.g."          \
-                        " -t report.xml; any existing file will be" \
-                        " over-written.")
-    PARSER.add_argument("-d", help="debug output for each test"     \
-                        " instance executed should be written to"   \
-                        " the given file, e.g. -d debug.txt; any"   \
+    PARSER.add_argument("-t", help="each agent should write an XML" \
+                        " test report for each instance to the"    \
+                        " given file, e.g. -t report.xml; any"     \
                         " existing file will be over-written.")
-    PARSER.add_argument("-a", help="archive the -s, -t and -d files" \
-                        " to this URL e.g. on a Nexus server,"       \
+    PARSER.add_argument("-d", help="each agent should write debug"  \
+                        " output for each instance to the given"    \
+                        " file, e.g. -d debug.txt; any existing"    \
+                        " file will be over-written.")
+    PARSER.add_argument("-o", help="also write the console output"   \
+                        " of this script to the given file path,"    \
+                        " e.g. -o /log/controller_debug.txt; any"    \
+                        " existing file will be over-written.")
+    PARSER.add_argument("-a", help="archive the -s, -t, -d and -o"   \
+                        " files to this URL e.g. on a Nexus server," \
                         " something like -a"                         \
                         " http://nexus.blah.com:7000/thingy; if"     \
                         " credentials are required they must be"     \
@@ -1073,11 +1098,19 @@ if __name__ == "__main__":
     SAVED_SIGBREAK_HANDLER = signal(SIGBREAK, sig_handler)
     SAVED_SIGINT_HANDLER = signal(SIGINT, sig_handler)
 
+    # Copy the console output to a file if requested
+    if ARGS.o:
+        try:
+            CONSOLE_OUTPUT_FILE_HANDLE = open(ARGS.o, "w")
+        except OSError:
+            print("{}unable to open \"{}\", not writing console output to it.". \
+                  format(PROMPT, ARGS.o))
+
     # We go multi-threaded, so set up a printer to handle the output
     PRINT_QUEUE = queue.Queue()
     PRINT_THREAD =  u_utils.PrintThread(PRINT_QUEUE)
     PRINT_THREAD.start()
-    PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, None, True)
+    PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, CONSOLE_OUTPUT_FILE_HANDLE, True)
 
     # Get the instance DATABASE by parsing the data file
     DATABASE = u_data.get(u_data.DATA_FILE)
@@ -1170,6 +1203,13 @@ if __name__ == "__main__":
     PRINT_THREAD.stop_thread()
     PRINT_THREAD.join()
     PRINTER = None
+
+    # If there was a controller output file, archive it and close it
+    if CONSOLE_OUTPUT_FILE_HANDLE:
+        if ARCHIVE_URL:
+            archive_console_output(CONTROLLER_NAME, ARCHIVE_URL, ARCHIVE_CREDENTIALS,
+                                   CONSOLE_OUTPUT_FILE_HANDLE, ARGS.o)
+        CONSOLE_OUTPUT_FILE_HANDLE.close()
 
     # Restore the signal handlers
     if SAVED_SIGINT_HANDLER:
