@@ -956,6 +956,7 @@ class PrintThread(threading.Thread):
         self._lock = RLock()
         self._queue_forwards = []
         self._running = False
+        self._window = None
         self._window_file_handle = window_file_handle
         if self._window_file_handle:
             self._window = deque(self._window_file_handle, maxlen=window_size)
