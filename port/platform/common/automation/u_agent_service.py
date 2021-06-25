@@ -96,7 +96,7 @@ class AgentService(rpyc.Service):
         self._print_queue = queue.Queue()
         self._print_thread = u_utils.PrintThread(self._print_queue, self._debug_handle, debug_tailed_lines)
         self._print_thread.start()
-        self._printer = u_utils.PrintToQueue(self._print_queue, self._debug_handle, True)
+        self._printer = u_utils.PrintToQueue(self._print_queue, None, True)
         # rpyc.ThreadedService does not seem to call our destructor
         # so we daisy-chain ourselves into the SIGINT handler here
         # in order to do our clean-up
