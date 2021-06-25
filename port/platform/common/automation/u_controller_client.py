@@ -94,6 +94,11 @@ ARCHIVE_CREDENTIALS = None
 # Name of the summary file to write to the archive
 SUMMARY_FILE_NAME = None
 
+# Places to save signal handlers
+SAVED_SIGINT_HANDLER = None
+SAVED_SIGTERM_HANDLER = None
+SAVED_SIGBREAK_HANDLER = None
+
 # Connect to an agent.
 def agent_connect(ip_address, port):
     '''Connect to the agent at the given IP address and port'''
@@ -961,7 +966,8 @@ def sig_handler(signum, frame):
     '''Handle termination from above'''
     global AGENTS, CONTROLLER_NAME, \
            ARCHIVE_URL, ARCHIVE_CREDENTIALS, \
-           INSTANCE_RESULTS_FILES, SUMMARY_FILE_NAME
+           INSTANCE_RESULTS_FILES, SUMMARY_FILE_NAME, \
+           SAVED_SIGINT_HANDLER, SAVED_SIGBREAK_HANDLER, SAVED_SIGTERM_HANDLER
 
     if PRINTER:
         PRINTER.string("{}caught termination signal, stopping gracefully (might take"    \
@@ -1073,80 +1079,77 @@ if __name__ == "__main__":
     PRINT_THREAD.start()
     PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, None, True)
 
-    try:
-        # Get the instance DATABASE by parsing the data file
-        DATABASE = u_data.get(u_data.DATA_FILE)
-        if RUN_EVERYTHING:
-            # Safety switch has been thrown, run the lot
-            if PRINTER:
-                PRINTER.string("{}settings \"RUN_EVERYTHING\" is True.".format(PROMPT))
-            INSTANCES = u_data.get_instances_all(DATABASE)
-        else:
-            # Parse the message
-            FOUND, FILTER_STRING = u_utils.commit_message_parse(ARGS.message, INSTANCES, PRINTER, PROMPT)
-            if FOUND:
-                if INSTANCES:
-                    # Deal with the "run everything" case
-                    if INSTANCES[0][0] == "*":
-                        TEXT = "running everything"
-                        if FILTER_STRING:
-                            TEXT += " on API \"{}\"".format(FILTER_STRING)
-                        TEXT += " at user request"
-                        if PRINTER:
-                            PRINTER.string("{}{}.".format(PROMPT, TEXT))
-                        INSTANCES = u_data.get_instances_all(DATABASE)
-            else:
-                # No instance specified by the user, decide what to run
-                FILTER_STRING = u_select.select(DATABASE, INSTANCES, ARGS.file)
-
+    # Get the instance DATABASE by parsing the data file
+    DATABASE = u_data.get(u_data.DATA_FILE)
+    if RUN_EVERYTHING:
+        # Safety switch has been thrown, run the lot
+        if PRINTER:
+            PRINTER.string("{}settings \"RUN_EVERYTHING\" is True.".format(PROMPT))
+        INSTANCES = u_data.get_instances_all(DATABASE)
+    else:
+        # Parse the message
+        FOUND, FILTER_STRING = u_utils.commit_message_parse(ARGS.message, INSTANCES, PRINTER, PROMPT)
+        if FOUND:
             if INSTANCES:
-                # Connect to all agents listening on the given port
-                AGENTS = agents_connect(ARGS.p)
+                # Deal with the "run everything" case
+                if INSTANCES[0][0] == "*":
+                    TEXT = "running everything"
+                    if FILTER_STRING:
+                        TEXT += " on API \"{}\"".format(FILTER_STRING)
+                    TEXT += " at user request"
+                    if PRINTER:
+                        PRINTER.string("{}{}.".format(PROMPT, TEXT))
+                    INSTANCES = u_data.get_instances_all(DATABASE)
+        else:
+            # No instance specified by the user, decide what to run
+            FILTER_STRING = u_select.select(DATABASE, INSTANCES, ARGS.file)
+
+        if INSTANCES:
+            # Connect to all agents listening on the given port
+            AGENTS = agents_connect(ARGS.p)
+            if AGENTS:
+                # Lock the agents we can use and update them if required
+                AGENTS = agents_lock_and_update(AGENTS, CONTROLLER_NAME, ARGS.url,
+                                                ARGS.master_hash, ARGS.branch_or_hash,
+                                                ARGS.file)
                 if AGENTS:
-                    # Lock the agents we can use and update them if required
-                    AGENTS = agents_lock_and_update(AGENTS, CONTROLLER_NAME, ARGS.url,
-                                                    ARGS.master_hash, ARGS.branch_or_hash,
-                                                    ARGS.file)
+                    # Decide where to run each instance
+                    AGENTS = instances_allocate(AGENTS, DATABASE, INSTANCES,
+                                                CONTROLLER_NAME)
                     if AGENTS:
-                        # Decide where to run each instance
-                        AGENTS = instances_allocate(AGENTS, DATABASE, INSTANCES,
-                                                    CONTROLLER_NAME)
+                        # Start the instances running on the agents
+                        AGENTS = instances_start(AGENTS, DATABASE, CONTROLLER_NAME,
+                                                 ARGS.url, ARGS.branch_or_hash, FILTER_STRING,
+                                                 SUMMARY_FILE_NAME, ARGS.t, ARGS.d, ARGS.f, ARGS.g)
                         if AGENTS:
-                            # Start the instances running on the agents
-                            AGENTS = instances_start(AGENTS, DATABASE, CONTROLLER_NAME,
-                                                     ARGS.url, ARGS.branch_or_hash, FILTER_STRING,
-                                                     SUMMARY_FILE_NAME, ARGS.t, ARGS.d, ARGS.f, ARGS.g)
-                            if AGENTS:
-                                # Wait for the runs to complete and archive the results
-                                if ARGS.a:
-                                    if ARGS.t:
-                                        INSTANCE_RESULTS_FILES.append(ARGS.t)
-                                    if ARGS.d:
-                                        INSTANCE_RESULTS_FILES.append(ARGS.d)
-                                RETURN_VALUE = instances_wait(AGENTS, CONTROLLER_NAME,
-                                                              ARCHIVE_URL, ARCHIVE_CREDENTIALS,
-                                                              INSTANCE_RESULTS_FILES,
-                                                              1, SUMMARY_FILE_NAME, ARGS.f)
-                            else:
-                                if PRINTER:
-                                    PRINTER.string("{}unable to run any instances on any agents.". \
-                                                   format(PROMPT))
+                            # Wait for the runs to complete and archive the results
+                            if ARGS.a:
+                                if ARGS.t:
+                                    INSTANCE_RESULTS_FILES.append(ARGS.t)
+                                if ARGS.d:
+                                    INSTANCE_RESULTS_FILES.append(ARGS.d)
+                            RETURN_VALUE = instances_wait(AGENTS, CONTROLLER_NAME,
+                                                          ARCHIVE_URL, ARCHIVE_CREDENTIALS,
+                                                          INSTANCE_RESULTS_FILES,
+                                                          1, SUMMARY_FILE_NAME, ARGS.f)
                         else:
                             if PRINTER:
-                                PRINTER.string("{}unable to allocate all instances to an agent.". \
+                                PRINTER.string("{}unable to run any instances on any agents.". \
                                                format(PROMPT))
                     else:
                         if PRINTER:
-                            PRINTER.string("{}unable to lock any agents.".format(PROMPT))
+                            PRINTER.string("{}unable to allocate all instances to an agent.". \
+                                           format(PROMPT))
                 else:
                     if PRINTER:
-                        PRINTER.string("{}no agents available.".format(PROMPT))
+                        PRINTER.string("{}unable to lock any agents.".format(PROMPT))
             else:
                 if PRINTER:
-                    PRINTER.string("{}*** WARNING: no instances to run! ***".format(PROMPT))
-                RETURN_VALUE = 0
-    except KeyboardInterrupt:
-        sig_handler()
+                    PRINTER.string("{}no agents available.".format(PROMPT))
+        else:
+            if PRINTER:
+                PRINTER.string("{}*** WARNING: no instances to run! ***".format(PROMPT))
+            RETURN_VALUE = 0
 
     # State the overall return value and how to interpret it
     TEXT = "{}return value {} (0 = success, negative = probable" \
