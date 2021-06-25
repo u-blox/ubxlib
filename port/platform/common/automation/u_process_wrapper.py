@@ -70,7 +70,7 @@ if __name__ == "__main__":
                                      " SIGINT, AKA CTRL-C).")
     PARSER.add_argument("-t", action='store_true', help="use SIGTERM intead" \
                         " of SIGINT as the termination signal.")
-    PARSER.add_argument("-k", type=int, help="send SIGKILL if the script"    \
+    PARSER.add_argument("-k", type=int, help="terminate the script if it"    \
                         " does not terminate in the given number of seconds" \
                         " after being sent the termination signal.")
     PARSER.add_argument("-p", type=int, default=PROCESS_PORT, help="the port"\
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     CALL_LIST.append(PROCESS_CHECKER)
     if ARGS.t:
         CALL_LIST.append("-t")
-    if ARGS.k:
+    if ARGS.k is not None:
         CALL_LIST.append("-k")
         CALL_LIST.append(str(ARGS.k))
     if ARGS.p:
@@ -124,6 +124,11 @@ if __name__ == "__main__":
         CREATION_FLAGS = 0
         # TODO Linux
         if not u_utils.is_linux():
+            # When debugging from the command-line on Windows
+            # set this so that PROCESS_CHECKER pops up in another
+            # window and you can see what's going on after we've
+            # been killed
+            # CREATION_FLAGS |= subprocess.DETACHED_PROCESS
             CREATION_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
         # Set shell to True to keep Jenkins happy
         PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
@@ -142,7 +147,7 @@ if __name__ == "__main__":
         print("{}ERROR: {} while trying to execute {}.". \
               format(PROMPT, type(ex).__name__, str(ex)))
     except KeyboardInterrupt:
-        pass
+        print("{}received CTRL-C, exiting...".format(PROMPT))
 
     # Finished with the connection now
     connect_thread.join()

@@ -16,10 +16,10 @@ import shutil                   # To delete a directory tree
 import signal                   # For CTRL_C_EVENT
 import subprocess
 import platform                 # Figure out current OS
+import re                       # Regular Expression
 import serial                   # Pyserial (make sure to do pip install pyserial)
 import psutil                   # For killing things (make sure to do pip install psutil)
 import requests                 # For HTTP comms with a KMTronic box (do pip install requests)
-import re                       # Regular Expression
 import u_settings
 
 # Since this function is used by the global variables below it needs
@@ -132,12 +132,12 @@ def subprocess_osify(cmd, shell=True):
     ''' expects an array of strings being [command, param, ...] '''
     if is_linux() and shell:
         line = ''
-        for c in cmd:
+        for item in cmd:
             # Put everything in a single string and quote args containing spaces
-            if ' ' in c:
-                line += '\"{}\" '.format(c)
+            if ' ' in item:
+                line += '\"{}\" '.format(item)
             else:
-                line += '{} '.format(c)
+                line += '{} '.format(item)
         cmd = line
     return cmd
 
@@ -783,6 +783,7 @@ def exe_run(call_list, guard_time_seconds = None, printer = None, prompt = None,
     return success
 
 def set_process_prio_high():
+    '''Set the priority of the current process to high'''
     if is_linux():
         print("Setting process priority currently not supported for Linux")
         # It should be possible to set prio with:
@@ -792,6 +793,7 @@ def set_process_prio_high():
         psutil.Process().nice(psutil.HIGH_PRIORITY_CLASS)
 
 def set_process_prio_normal():
+    '''Set the priority of the current process to normal'''
     if is_linux():
         print("Setting process priority currently not supported for Linux")
         # It should be possible to set prio with:

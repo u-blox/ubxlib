@@ -11,20 +11,43 @@ set branch_unity=master
 set dir_work=work
 set dir_start=%~dp0
 set drive_subst=z
+set kill_python=
 
-rem Handle optional command-line parameters.
-if not "%~1"=="" (
-    if "%~1"=="/?" goto usage
-    set url_ubxlib=%~1
-)
-if not "%~2"=="" (
-    set branch_ubxlib=%~2
-)
+rem Process optional command line parameters
+set pos=0
+:parameters
+    rem Retrieve arg removing quotes
+    set arg=%~1
+    rem pos represents the number of a positional argument
+    if not "%arg%"=="" (
+        if "%arg%"=="/k" (
+            set kill_python=YES
+        ) else if "%arg%"=="/?" (
+            goto usage
+        ) else if "%pos%"=="0" (
+            set url_ubxlib=%arg%
+            set /A pos=pos+1
+        ) else if "%pos%"=="1" (
+            set branch_ubxlib=%arg%
+            set /A pos=pos+1
+        ) else (
+            echo %~n0: ERROR can't understand parameter "%arg%".
+            goto usage
+        )
+        shift /1
+        goto parameters
+    )
 
 rem Check environment variables.
 if "%U_AGENT_INSTANCES%"=="" (
     echo %~n0: ERROR environment variable U_AGENT_INSTANCES must be populated.
     goto usage
+)
+
+rem If requested, kill all existing Python processes first.
+if not "%kill_python%"=="" (
+    echo Killing existing Python processes...
+    taskkill /IM Python.exe /F > nul 2>&1
 )
 
 rem Try to ensure a clean start
@@ -71,10 +94,11 @@ goto end
 rem Usage string.
 :usage
     echo.
-    echo Usage: %~n0  /? [ubxlib_url] [ubxlib_branch]
+    echo Usage: %~n0  /? [/k] [ubxlib_url] [ubxlib_branch]
     echo.
     echo where:
     echo.
+    echo - [/k] optionally kill ALL python processes first; useful to get rid of zombies,
     echo - [ubxlib_url] optionally provides the URL to the ubxlib repo (default %url_ubxlib%),
     echo - [ubxlib_branch] optionally provides the branch of [ubxlib_url] to use (default "%branch_ubxlib%"),
     echo - /? (on its own, no other parameters) print this help and exit.

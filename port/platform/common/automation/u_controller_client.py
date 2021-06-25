@@ -4,7 +4,7 @@
 
 from time import time, sleep, gmtime, strftime
 from multiprocessing.dummy import Pool as ThreadPool
-from signal import signal, SIGTERM
+from signal import signal, SIGINT, SIGTERM, SIGBREAK
 import socket   # for socket.timeout
 import sys      # for exit() and stdout
 import queue
@@ -75,6 +75,24 @@ WAIT_FOR_REMAINING_DEBUG_TIME = 0
 
 # The handle for a summary file
 SUMMARY_FILE_HANDLE = None
+
+# List of agents
+AGENTS = []
+
+# Array of instance results files names
+INSTANCE_RESULTS_FILES = []
+
+# Our controller's name
+CONTROLLER_NAME = None
+
+# Where we stick the interesting files afterwards
+ARCHIVE_URL = None
+
+# Credentials for the above
+ARCHIVE_CREDENTIALS = None
+
+# Name of the summary file to write to the archive
+SUMMARY_FILE_NAME = None
 
 # Connect to an agent.
 def agent_connect(ip_address, port):
@@ -939,11 +957,34 @@ def instances_abort(agents_locked, controller_name, archive_url, archive_credent
                                                                             agent["name"]))
                     agents_running_count += 1
 
-def sigterm_handler():
-    '''Handle SIGTERM by raising a KeyboardInterrupt instead'''
+def sig_handler(signum, frame):
+    '''Handle termination from above'''
+    global AGENTS, CONTROLLER_NAME, \
+           ARCHIVE_URL, ARCHIVE_CREDENTIALS, \
+           INSTANCE_RESULTS_FILES, SUMMARY_FILE_NAME
+
     if PRINTER:
-        PRINTER.string("{}received SIGTERM, raising SIGINT instead.".format(PROMPT))
-    raise KeyboardInterrupt
+        PRINTER.string("{}caught termination signal, stopping gracefully (might take"    \
+                       " a while)...".format(PROMPT))
+    # Send abort signals to all the agents that are running so
+    # that they can tidy up in their own time
+    instances_abort(AGENTS, CONTROLLER_NAME, ARCHIVE_URL, ARCHIVE_CREDENTIALS,
+                    INSTANCE_RESULTS_FILES, 1, SUMMARY_FILE_NAME)
+
+    # Put the signal handler back as it was and call the next
+    # thing in the chain
+    if signum == SIGINT:
+        signal(SIGINT, SAVED_SIGINT_HANDLER)
+        SAVED_SIGINT_HANDLER(signum, frame)
+        SAVED_SIGINT_HANDLER = None
+    if signum == SIGBREAK:
+        signal(SIGBREAK, SAVED_SIGBREAK_HANDLER)
+        SAVED_SIGBREAK_HANDLER(signum, frame)
+        SAVED_SIGBREAK_HANDLER = None
+    if signum == SIGTERM:
+        signal(SIGTERM, SAVED_SIGTERM_HANDLER)
+        SAVED_SIGTERM_HANDLER(signum, frame)
+        SAVED_SIGTERM_HANDLER = None
 
 if __name__ == "__main__":
     RETURN_VALUE = -1
@@ -1014,8 +1055,17 @@ if __name__ == "__main__":
                         " branch_or_hash.")
     ARGS = PARSER.parse_args()
 
-    # Jenkins issues SIGTERM, so need to trap that
-    SAVED_SIGTERM_HANDLER = signal(SIGTERM, sigterm_handler)
+    # Fill in the globals; global because we need the termination
+    # signal handler to be able to get at them
+    CONTROLLER_NAME = ARGS.controller_name
+    ARCHIVE_URL = ARGS.a
+    ARCHIVE_CREDENTIALS = ARGS.c
+    SUMMARY_FILE_NAME = ARGS.s
+
+    # Trap termination signals
+    SAVED_SIGTERM_HANDLER = signal(SIGTERM, sig_handler)
+    SAVED_SIGBREAK_HANDLER = signal(SIGBREAK, sig_handler)
+    SAVED_SIGINT_HANDLER = signal(SIGINT, sig_handler)
 
     # We go multi-threaded, so set up a printer to handle the output
     PRINT_QUEUE = queue.Queue()
@@ -1023,7 +1073,6 @@ if __name__ == "__main__":
     PRINT_THREAD.start()
     PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, None, True)
 
-    AGENTS = []
     try:
         # Get the instance DATABASE by parsing the data file
         DATABASE = u_data.get(u_data.DATA_FILE)
@@ -1055,29 +1104,29 @@ if __name__ == "__main__":
                 AGENTS = agents_connect(ARGS.p)
                 if AGENTS:
                     # Lock the agents we can use and update them if required
-                    AGENTS = agents_lock_and_update(AGENTS, ARGS.controller_name, ARGS.url,
+                    AGENTS = agents_lock_and_update(AGENTS, CONTROLLER_NAME, ARGS.url,
                                                     ARGS.master_hash, ARGS.branch_or_hash,
                                                     ARGS.file)
                     if AGENTS:
                         # Decide where to run each instance
                         AGENTS = instances_allocate(AGENTS, DATABASE, INSTANCES,
-                                                    ARGS.controller_name)
+                                                    CONTROLLER_NAME)
                         if AGENTS:
                             # Start the instances running on the agents
-                            AGENTS = instances_start(AGENTS, DATABASE, ARGS.controller_name,
+                            AGENTS = instances_start(AGENTS, DATABASE, CONTROLLER_NAME,
                                                      ARGS.url, ARGS.branch_or_hash, FILTER_STRING,
-                                                     ARGS.s, ARGS.t, ARGS.d, ARGS.f, ARGS.g)
+                                                     SUMMARY_FILE_NAME, ARGS.t, ARGS.d, ARGS.f, ARGS.g)
                             if AGENTS:
                                 # Wait for the runs to complete and archive the results
-                                INSTANCE_RESULTS_FILES = []
                                 if ARGS.a:
                                     if ARGS.t:
                                         INSTANCE_RESULTS_FILES.append(ARGS.t)
                                     if ARGS.d:
                                         INSTANCE_RESULTS_FILES.append(ARGS.d)
-                                RETURN_VALUE = instances_wait(AGENTS, ARGS.controller_name,
-                                                              ARGS.a, ARGS.c, INSTANCE_RESULTS_FILES,
-                                                              1, ARGS.s, ARGS.f)
+                                RETURN_VALUE = instances_wait(AGENTS, CONTROLLER_NAME,
+                                                              ARCHIVE_URL, ARCHIVE_CREDENTIALS,
+                                                              INSTANCE_RESULTS_FILES,
+                                                              1, SUMMARY_FILE_NAME, ARGS.f)
                             else:
                                 if PRINTER:
                                     PRINTER.string("{}unable to run any instances on any agents.". \
@@ -1097,13 +1146,7 @@ if __name__ == "__main__":
                     PRINTER.string("{}*** WARNING: no instances to run! ***".format(PROMPT))
                 RETURN_VALUE = 0
     except KeyboardInterrupt:
-        if PRINTER:
-            PRINTER.string("{}caught CTRL-C, stopping gracefully (might take"    \
-                           " a while)...".format(PROMPT))
-        # Send abort signals to all the agents that are running so
-        # that they can tidy up in their own time
-        instances_abort(AGENTS, ARGS.controller_name, ARGS.a, ARGS.c,
-                        INSTANCE_RESULTS_FILES, 1, ARGS.s)
+        sig_handler()
 
     # State the overall return value and how to interpret it
     TEXT = "{}return value {} (0 = success, negative = probable" \
@@ -1112,8 +1155,8 @@ if __name__ == "__main__":
 
     # Copy the collated summary results file over to the archive server
     if SUMMARY_FILE_HANDLE:
-        archive_summary(ARGS.controller_name, ARGS.a, ARGS.c,
-                        TEXT, SUMMARY_FILE_HANDLE, ARGS.s)
+        archive_summary(CONTROLLER_NAME, ARCHIVE_URL, ARCHIVE_CREDENTIALS,
+                        TEXT, SUMMARY_FILE_HANDLE, SUMMARY_FILE_NAME)
         SUMMARY_FILE_HANDLE.close()
 
     if PRINTER:
@@ -1125,7 +1168,12 @@ if __name__ == "__main__":
     PRINT_THREAD.join()
     PRINTER = None
 
-    # Restore the SIGTERM handler
-    signal(SIGTERM, SAVED_SIGTERM_HANDLER)
+    # Restore the signal handlers
+    if SAVED_SIGINT_HANDLER:
+        signal(SIGINT, SAVED_SIGINT_HANDLER)
+    if SAVED_SIGBREAK_HANDLER:
+        signal(SIGBREAK, SAVED_SIGBREAK_HANDLER)
+    if SAVED_SIGTERM_HANDLER:
+        signal(SIGTERM, SAVED_SIGTERM_HANDLER)
 
     sys.exit(RETURN_VALUE)
