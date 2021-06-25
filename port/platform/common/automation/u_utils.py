@@ -1039,7 +1039,7 @@ class PrintThread(threading.Thread):
             try:
                 my_string = self._queue.get(block=False, timeout=0.5)
                 print(my_string)
-                if self._window:
+                if self._window is not None:
                     self._window.append(my_string)
                     self._window_update_pending = True
                 self._lock.acquire()
