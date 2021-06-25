@@ -69,7 +69,8 @@ class AgentService(rpyc.Service):
 #########################################################
 
     def __init__(self, working_dir, name, unity_dir,
-                 debug_file_name, instances, process_pool):
+                 debug_file_name, debug_tailed_lines,
+                 instances, process_pool):
         u_agent.init()
         self._working_dir = working_dir
         self._name = name
@@ -91,9 +92,9 @@ class AgentService(rpyc.Service):
         # and can also write to a debug file
         self._debug_handle = None
         if debug_file_name:
-            self._debug_handle = open(debug_file_name, "a")
+            self._debug_handle = open(debug_file_name, "w+")
         self._print_queue = queue.Queue()
-        self._print_thread = u_utils.PrintThread(self._print_queue)
+        self._print_thread = u_utils.PrintThread(self._print_queue, self._debug_handle, debug_tailed_lines)
         self._print_thread.start()
         self._printer = u_utils.PrintToQueue(self._print_queue, self._debug_handle, True)
         # rpyc.ThreadedService does not seem to call our destructor
@@ -984,9 +985,11 @@ if __name__ == "__main__":
                         " instance will fetch its own copy as"      \
                         " required.")
     PARSER.add_argument("-d", help="debug output should be"         \
-                        " written to the given file; note that"     \
-                        " this can become very large so only use"   \
-                        " it for specific debug runs.")
+                        " written to the given file; it will be"    \
+                        " tailed at -t lines.")
+    PARSER.add_argument("-t", type=int, default=10000, help="debug" \
+                        " output should be tailed at this number"  \
+                        " of lines.")
     PARSER.add_argument("working_dir", help="the directory to use,"  \
                         " should be really short to avoid path length" \
                         " issues e.g. c:\\work is good or, if you are" \
@@ -1008,7 +1011,8 @@ if __name__ == "__main__":
         TEXT = u_utils.get_instances_text(INSTANCES)
     print(", instance(s) supported:{}".format(TEXT), end="")
     if ARGS.d:
-        print(", debug being written to \"{}\"".format(ARGS.d), end="")
+        print(", debug being written to \"{}\", tailed at {} lines". \
+              format(ARGS.d, ARGS.t), end="")
     if ARGS.u:
         print(", Unity being fetched to \"{}\"".format(ARGS.u), end="")
     print(".")
@@ -1033,8 +1037,8 @@ if __name__ == "__main__":
 
     try:
         THREAD = rpyc.utils.server.ThreadedServer(AgentService(ARGS.working_dir, ARGS.n,
-                                                               ARGS.u, ARGS.d, INSTANCES,
-                                                               PROCESS_POOL),
+                                                               ARGS.u, ARGS.d, ARGS.t,
+                                                               INSTANCES, PROCESS_POOL),
                                                   port=ARGS.p, auto_register=True,
                                                   protocol_config={"sync_request_timeout": None})
         THREAD.start()

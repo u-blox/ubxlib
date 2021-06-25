@@ -10,7 +10,8 @@ import threading                # For PrintThread
 import sys
 import os                       # For ChangeDir, has_admin
 import stat                     # To help deltree out
-from telnetlib import Telnet # For talking to JLink server
+from collections import deque   # For storing a window of debug
+from telnetlib import Telnet    # For talking to JLink server
 import socket
 import shutil                   # To delete a directory tree
 import signal                   # For CTRL_C_EVENT
@@ -949,11 +950,18 @@ class SwoDecoder():
 
 class PrintThread(threading.Thread):
     '''Print thread to organise prints nicely'''
-    def __init__(self, print_queue):
+    def __init__(self, print_queue, window_file_handle=None, window_size=10000,
+                 window_update_period_seconds=1):
         self._queue = print_queue
         self._lock = RLock()
         self._queue_forwards = []
         self._running = False
+        self._window_file_handle = window_file_handle
+        if self._window_file_handle:
+            self._window = deque(self._window_file_handle, maxlen=window_size)
+        self._window_update_pending = False
+        self._window_update_period_seconds = window_update_period_seconds
+        self._window_next_update_time = time()
         threading.Thread.__init__(self)
     def _send_forward(self):
         # Send from any forwarding buffers
@@ -1021,6 +1029,9 @@ class PrintThread(threading.Thread):
             try:
                 my_string = self._queue.get(block=False, timeout=0.5)
                 print(my_string)
+                if self._window:
+                    self._window.append(my_string)
+                    self._window_update_pending = True
                 self._lock.acquire()
                 for queue_forward in self._queue_forwards:
                     queue_forward["buffer"].append(my_string)
@@ -1033,6 +1044,14 @@ class PrintThread(threading.Thread):
                 sys.stdout = sys.__stdout__
             # Send from any forwarding buffers
             self._send_forward()
+            # Write the window to file if required
+            if self._window_update_pending and time() > self._window_next_update_time:
+                self._window_file_handle.seek(0)
+                for item in self._window:
+                    self._window_file_handle.write(item + "\n")
+                self._window_file_handle.flush()
+                self._window_update_pending = False
+                self._window_next_update_time = time() + self._window_update_period_seconds
 
 class PrintToQueue():
     '''Print to a queue, if there is one'''

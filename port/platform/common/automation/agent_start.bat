@@ -12,6 +12,7 @@ set dir_work=work
 set dir_start=%~dp0
 set drive_subst=z
 set kill_python=
+set debug_file=agent_output.txt
 
 rem Process optional command line parameters
 set pos=0
@@ -29,6 +30,9 @@ set pos=0
             set /A pos=pos+1
         ) else if "%pos%"=="1" (
             set branch_ubxlib=%arg%
+            set /A pos=pos+1
+        ) else if "%pos%"=="2" (
+            set debug_file=%arg%
             set /A pos=pos+1
         ) else (
             echo %~n0: ERROR can't understand parameter "%arg%".
@@ -87,21 +91,22 @@ if exist %drive_subst%:\ subst %drive_subst%: /D
 if not exist %dir_work% mkdir %dir_work%
 subst %drive_subst%: %~dp0%dir_work%
 pushd %dir_ubxlib%\port\platform\common\automation
-cmd /c python u_agent_service.py -u %~dp0%dir_unity% -n %COMPUTERNAME% %drive_subst%: %U_AGENT_INSTANCES%
+cmd /c python u_agent_service.py -u %~dp0%dir_unity% -d %~dp0%debug_file% -n %COMPUTERNAME% %drive_subst%: %U_AGENT_INSTANCES%
 popd
 goto end
 
 rem Usage string.
 :usage
     echo.
-    echo Usage: %~n0  /? [/k] [ubxlib_url] [ubxlib_branch]
+    echo Usage: %~n0  [/?] [/k] [ubxlib_url] [ubxlib_branch] [debug_file]
     echo.
     echo where:
     echo.
     echo - [/k] optionally kill ALL python processes first; useful to get rid of zombies,
     echo - [ubxlib_url] optionally provides the URL to the ubxlib repo (default %url_ubxlib%),
     echo - [ubxlib_branch] optionally provides the branch of [ubxlib_url] to use (default "%branch_ubxlib%"),
-    echo - /? (on its own, no other parameters) print this help and exit.
+    echo - [debug_file] optionally provides an alternative name for the window-ed debug file that the agent will write (default "%debug_file%"),
+    echo - [/?] print this help and exit.
     echo.
     echo Note: one environment variable should also be populated:
     echo.
