@@ -1022,6 +1022,7 @@ class PrintThread(threading.Thread):
     def stop_thread(self):
         '''Helper function to stop the thread'''
         self._running = False
+        self._lock.acquire()
         # Write anything remaining to the window file
         if self._window_update_pending:
             self._window_file_handle.seek(0)
@@ -1029,6 +1030,7 @@ class PrintThread(threading.Thread):
                 self._window_file_handle.write(item + "\n")
             self._window_file_handle.flush()
             self._window_update_pending = False
+        self._lock.release()
     def run(self):
         '''Worker thread'''
         self._running = True
@@ -1052,6 +1054,7 @@ class PrintThread(threading.Thread):
                 sys.stdout = sys.__stdout__
             # Send from any forwarding buffers
             self._send_forward()
+            self._lock.acquire()
             # Write the window to file if required
             if self._window_update_pending and time() > self._window_next_update_time:
                 self._window_file_handle.seek(0)
@@ -1060,6 +1063,7 @@ class PrintThread(threading.Thread):
                 self._window_file_handle.flush()
                 self._window_update_pending = False
                 self._window_next_update_time = time() + self._window_update_period_seconds
+            self._lock.release()
 
 class PrintToQueue():
     '''Print to a queue, if there is one'''
