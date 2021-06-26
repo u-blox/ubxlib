@@ -12,7 +12,7 @@ set dir_work=work
 set dir_start=%~dp0
 set drive_subst=z
 set kill_python=
-set debug_file=agent_output.txt
+set debug_file=agent_service_output.txt
 
 rem Process optional command line parameters
 set pos=0
