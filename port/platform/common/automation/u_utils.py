@@ -1063,7 +1063,7 @@ class PrintThread(threading.Thread):
             if self._window_update_pending and time() > self._window_next_update_time:
                 self._window_file_handle.seek(0)
                 for item in self._window:
-                    self._window_file_handle.write(item)
+                    self._window_file_handle.write(item + "\n")
                 self._window_file_handle.flush()
                 self._window_update_pending = False
                 self._window_next_update_time = time() + self._window_update_period_seconds
