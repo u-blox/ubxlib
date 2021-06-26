@@ -1041,7 +1041,11 @@ class PrintThread(threading.Thread):
                 print(my_string)
                 self._lock.acquire()
                 if self._window is not None:
-                    self._window.append(my_string)
+                    # Note that my_string can contain multiple lines,
+                    # hence the need to split it here to maintain the
+                    # window
+                    for line in my_string.splitlines():
+                        self._window.append(line)
                     self._window_update_pending = True
                 for queue_forward in self._queue_forwards:
                     queue_forward["buffer"].append(my_string)
