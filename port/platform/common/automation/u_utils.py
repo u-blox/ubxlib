@@ -959,11 +959,7 @@ class PrintThread(threading.Thread):
         self._window = None
         self._window_file_handle = window_file_handle
         if self._window_file_handle:
-            self._window = deque(maxlen=window_size)
-            line = self._window_file_handle.readline()
-            while line:
-                self._window.append(line.rstrip())
-                line = self._window_file_handle.readline()
+            self._window = deque(self._window_file_handle, maxlen=window_size)
         self._window_update_pending = False
         self._window_update_period_seconds = window_update_period_seconds
         self._window_next_update_time = time()
@@ -1031,9 +1027,10 @@ class PrintThread(threading.Thread):
         if self._window_update_pending:
             self._window_file_handle.seek(0)
             for item in self._window:
-                self._window_file_handle.write(item + "\n")
+                self._window_file_handle.write(item)
             self._window_file_handle.flush()
             self._window_update_pending = False
+            self._window_next_update_time = time() + self._window_update_period_seconds
         self._lock.release()
     def run(self):
         '''Worker thread'''
@@ -1049,7 +1046,7 @@ class PrintThread(threading.Thread):
                     # hence the need to split it here to maintain the
                     # window
                     for line in my_string.splitlines():
-                        self._window.append(line)
+                        self._window.append(line + "\n")
                     self._window_update_pending = True
                 for queue_forward in self._queue_forwards:
                     queue_forward["buffer"].append(my_string)
@@ -1067,7 +1064,7 @@ class PrintThread(threading.Thread):
             if self._window_update_pending and time() > self._window_next_update_time:
                 self._window_file_handle.seek(0)
                 for item in self._window:
-                    self._window_file_handle.write(item + "\n")
+                    self._window_file_handle.write(item)
                 self._window_file_handle.flush()
                 self._window_update_pending = False
                 self._window_next_update_time = time() + self._window_update_period_seconds
