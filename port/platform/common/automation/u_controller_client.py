@@ -1108,9 +1108,9 @@ if __name__ == "__main__":
 
     # We go multi-threaded, so set up a printer to handle the output
     PRINT_QUEUE = queue.Queue()
-    PRINT_THREAD =  u_utils.PrintThread(PRINT_QUEUE)
+    PRINT_THREAD =  u_utils.PrintThread(PRINT_QUEUE, file_handle=CONSOLE_OUTPUT_FILE_HANDLE)
     PRINT_THREAD.start()
-    PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, CONSOLE_OUTPUT_FILE_HANDLE, True)
+    PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, None, True)
 
     # Get the instance DATABASE by parsing the data file
     DATABASE = u_data.get(u_data.DATA_FILE)

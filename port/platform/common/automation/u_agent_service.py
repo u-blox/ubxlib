@@ -69,7 +69,7 @@ class AgentService(rpyc.Service):
 #########################################################
 
     def __init__(self, working_dir, name, unity_dir,
-                 debug_file_name, debug_tailed_lines,
+                 window_debug_file_name, window_debug_tailed_lines,
                  instances, process_pool):
         u_agent.init()
         self._working_dir = working_dir
@@ -90,14 +90,16 @@ class AgentService(rpyc.Service):
         # we can then re-use the utility functions
         # that work that way and we get timestamps
         # and can also write to a debug file
-        self._debug_handle = None
-        if debug_file_name:
+        self.window_debug_handle = None
+        if window_debug_file_name:
             # Make sure the file exists and don't truncate it
-            self._debug_handle = open(debug_file_name,"a")
-            self._debug_handle.close()
-            self._debug_handle = open(debug_file_name, "r+")
+            self.window_debug_handle = open(window_debug_file_name,"a")
+            self.window_debug_handle.close()
+            self.window_debug_handle = open(window_debug_file_name, "r+")
         self._print_queue = queue.Queue()
-        self._print_thread = u_utils.PrintThread(self._print_queue, self._debug_handle, debug_tailed_lines)
+        self._print_thread = u_utils.PrintThread(self._print_queue,
+                                                 window_file_handle=self.window_debug_handle,
+                                                 window_size=window_debug_tailed_lines)
         self._print_thread.start()
         self._printer = u_utils.PrintToQueue(self._print_queue, None, True)
         # rpyc.ThreadedService does not seem to call our destructor
@@ -144,8 +146,8 @@ class AgentService(rpyc.Service):
         sleep(1)
         self._print_thread.stop_thread()
         self._print_thread.join()
-        if self._debug_handle:
-            self._debug_handle.close()
+        if self.window_debug_handle:
+            self.window_debug_handle.close()
         self._cleanup_done = True
 
     # Create a ubxlib path: this will be inside

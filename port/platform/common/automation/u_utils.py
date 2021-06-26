@@ -950,12 +950,14 @@ class SwoDecoder():
 
 class PrintThread(threading.Thread):
     '''Print thread to organise prints nicely'''
-    def __init__(self, print_queue, window_file_handle=None, window_size=10000,
+    def __init__(self, print_queue, file_handle=None,
+                 window_file_handle=None, window_size=10000,
                  window_update_period_seconds=1):
         self._queue = print_queue
         self._lock = RLock()
         self._queue_forwards = []
         self._running = False
+        self._file_handle = file_handle
         self._window = None
         self._window_file_handle = window_file_handle
         if self._window_file_handle:
@@ -1040,6 +1042,8 @@ class PrintThread(threading.Thread):
             try:
                 my_string = self._queue.get(block=False, timeout=0.5)
                 print(my_string)
+                if self._file_handle:
+                    self._file_handle.write(my_string + "\n")
                 self._lock.acquire()
                 if self._window is not None:
                     # Note that my_string can contain multiple lines,
