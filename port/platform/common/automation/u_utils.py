@@ -959,7 +959,11 @@ class PrintThread(threading.Thread):
         self._window = None
         self._window_file_handle = window_file_handle
         if self._window_file_handle:
-            self._window = deque(self._window_file_handle, maxlen=window_size)
+            self._window = deque(maxlen=window_size)
+            line = self._window_file_handle.readline()
+            while line:
+                self._window.append(line.rstrip())
+                line = self._window_file_handle.readline()
         self._window_update_pending = False
         self._window_update_period_seconds = window_update_period_seconds
         self._window_next_update_time = time()
@@ -1039,7 +1043,6 @@ class PrintThread(threading.Thread):
             try:
                 my_string = self._queue.get(block=False, timeout=0.5)
                 print(my_string)
-                self._lock.acquire()
                 if self._window is not None:
                     # Note that my_string can contain multiple lines,
                     # hence the need to split it here to maintain the
@@ -1047,6 +1050,7 @@ class PrintThread(threading.Thread):
                     for line in my_string.splitlines():
                         self._window.append(line)
                     self._window_update_pending = True
+                self._lock.acquire()
                 for queue_forward in self._queue_forwards:
                     queue_forward["buffer"].append(my_string)
                 self._lock.release()
