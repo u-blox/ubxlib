@@ -92,6 +92,9 @@ class AgentService(rpyc.Service):
         # and can also write to a debug file
         self._debug_handle = None
         if debug_file_name:
+            # Make sure the file exists and don't truncate it
+            self._debug_handle = open(debug_file_name,"a")
+            self._debug_handle.close()
             self._debug_handle = open(debug_file_name, "w+")
         self._print_queue = queue.Queue()
         self._print_thread = u_utils.PrintThread(self._print_queue, self._debug_handle, debug_tailed_lines)

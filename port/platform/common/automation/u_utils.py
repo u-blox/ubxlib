@@ -1039,10 +1039,10 @@ class PrintThread(threading.Thread):
             try:
                 my_string = self._queue.get(block=False, timeout=0.5)
                 print(my_string)
+                self._lock.acquire()
                 if self._window is not None:
                     self._window.append(my_string)
                     self._window_update_pending = True
-                self._lock.acquire()
                 for queue_forward in self._queue_forwards:
                     queue_forward["buffer"].append(my_string)
                 self._lock.release()
