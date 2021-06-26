@@ -1062,6 +1062,9 @@ class PrintThread(threading.Thread):
             self._lock.acquire()
             # Write the window to file if required
             if self._window_update_pending and time() > self._window_next_update_time:
+                # If you don't do this you can end up with garbage
+                # at the end of the file
+                self._window_file_handle.truncate()
                 self._window_file_handle.seek(0)
                 for item in self._window:
                     self._window_file_handle.write(item)
