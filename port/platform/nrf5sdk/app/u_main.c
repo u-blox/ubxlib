@@ -33,7 +33,6 @@
 #include "u_cfg_test_platform_specific.h"
 #include "u_error_common.h"
 #include "u_port.h"
-#include "u_port_os.h"
 #include "u_port_debug.h"
 
 #include "u_runner.h"
@@ -74,9 +73,8 @@ static void appTask(void *pParam)
 {
     (void) pParam;
 
-    uPortTaskBlock(U_CFG_STARTUP_DELAY_SECONDS * 1000);
-
     uPortInit();
+
     uPortLog("\n\nU_APP: application task started.\n");
 
     UNITY_BEGIN();
