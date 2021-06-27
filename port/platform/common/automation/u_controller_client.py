@@ -68,7 +68,7 @@ PRINTER = None
 
 # How long to buffer strings on the agent before sending them
 # all to the controller (to speed things up)
-BUFFER_TIME_SECONDS = 5
+BUFFER_TIME_SECONDS = 1
 
 # How long to wait for any remaining debug to arrive
 # when closing an agent down

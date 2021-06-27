@@ -42,8 +42,6 @@ def process_read(process, read_queue):
         string = process.stdout.readline().decode()
         if string and string != "":
             read_queue.put(string.rstrip())
-        else:
-            sleep(0.1)
 
 def end_process(process_pid, signal_to_send, kill_timeout_seconds=None, wait_for_end=True):
     '''End the process and its children in the given way'''
@@ -195,7 +193,8 @@ if __name__ == "__main__":
             try:
                 PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST),
                                            stdout=subprocess.PIPE,
-                                           stderr=subprocess.STDOUT)
+                                           stderr=subprocess.STDOUT,
+                                           creationflags=0)
                 # Run a thread to queue stuff from the process
                 PROCESS_READ_THREAD = threading.Thread(target=process_read,
                                                        args=(PROCESS, PRINT_QUEUE))
