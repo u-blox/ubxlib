@@ -966,11 +966,12 @@ class PrintThread(threading.Thread):
         self._window_update_period_seconds = window_update_period_seconds
         self._window_next_update_time = time()
         threading.Thread.__init__(self)
-    def _send_forward(self):
+    def _send_forward(self, flush=False):
         # Send from any forwarding buffers
+        # self._lock should be acquired before this is called
         queue_idxes_to_remove = []
         for idx, queue_forward in enumerate(self._queue_forwards):
-            if time() > queue_forward["last_send"] + queue_forward["buffer_time"]:
+            if flush or time() > queue_forward["last_send"] + queue_forward["buffer_time"]:
                 string_forward = ""
                 len_queue_forward = len(queue_forward["buffer"])
                 count = 0
@@ -985,10 +986,10 @@ class PrintThread(threading.Thread):
                 if string_forward:
                     try:
                         queue_forward["queue"].put(string_forward)
-                    except (OSError, EOFError, BrokenPipeError):
-                        queue_idxes_to_remove.append(idx)
                     except TimeoutError:
                         pass
+                    except (OSError, EOFError, BrokenPipeError):
+                        queue_idxes_to_remove.append(idx)
                 queue_forward["last_send"] = time()
         for idx in queue_idxes_to_remove:
             self._queue_forwards.pop(idx)
@@ -1013,9 +1014,9 @@ class PrintThread(threading.Thread):
         '''Stop forwarding things received on the print queue to another queue'''
         queues = []
         self._lock.acquire()
-        self._send_forward()
+        self._send_forward(flush=True)
         for item in self._queue_forwards:
-            if item["queue"] == queue_forward:
+            if item["queue"] != queue_forward:
                 queues.append(item)
         self._queue_forwards = queues
         self._lock.release()
