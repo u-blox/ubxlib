@@ -969,7 +969,6 @@ class PrintThread(threading.Thread):
     def _send_forward(self):
         # Send from any forwarding buffers
         queue_idxes_to_remove = []
-        self._lock.acquire()
         for idx, queue_forward in enumerate(self._queue_forwards):
             if time() > queue_forward["last_send"] + queue_forward["buffer_time"]:
                 string_forward = ""
@@ -993,7 +992,6 @@ class PrintThread(threading.Thread):
                 queue_forward["last_send"] = time()
         for idx in queue_idxes_to_remove:
             self._queue_forwards.pop(idx)
-        self._lock.release()
     def add_forward_queue(self, queue_forward, prefix_string=None, buffer_time=0):
         '''Forward things received on the print queue to another queue'''
         already_done = False
@@ -1061,9 +1059,9 @@ class PrintThread(threading.Thread):
                 # Try to restore stdout
                 sleep(0.1)
                 sys.stdout = sys.__stdout__
+            self._lock.acquire()
             # Send from any forwarding buffers
             self._send_forward()
-            self._lock.acquire()
             # Write the window to file if required
             if self._window_update_pending and time() > self._window_next_update_time:
                 # If you don't do this you can end up with garbage
