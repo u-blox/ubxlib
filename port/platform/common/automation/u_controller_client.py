@@ -970,7 +970,7 @@ def instances_abort(agents_locked, controller_name, archive_url, archive_credent
                                                                               agents_running_count))
             for agent in agents_to_wait_for:
                 if agent["connection"]:
-                    PRINTER.string("#### BOO 1")
+                    PRINTER.string("#### BOO 1 on agent {}".format(agent["name"]))
                     if (agent_call(agent, "instance_running_count_get") <= 0):
                         PRINTER.string("{}agent {} has stopped, tidying it up...".  \
                                        format(PROMPT, agent["name"]))
