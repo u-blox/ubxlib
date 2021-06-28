@@ -337,6 +337,8 @@ def instance_running_count(session_name=None):
                         for process in session["processes"]:
                             if process["running_flag"].is_set():
                                 count += 1
+        print("BOO 3")
+    print("BOO 4")
 
     return count
 
