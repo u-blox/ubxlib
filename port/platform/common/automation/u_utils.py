@@ -986,7 +986,7 @@ class PrintThread(threading.Thread):
                 if string_forward:
                     try:
                         queue_forward["queue"].put(string_forward)
-                    except (EOFError, BrokenPipeError):
+                    except (OSError, EOFError, BrokenPipeError):
                         queue_idxes_to_remove.append(idx)
                     except TimeoutError:
                         pass
@@ -1057,7 +1057,7 @@ class PrintThread(threading.Thread):
                 self._lock.release()
             except queue.Empty:
                 sleep(0.1)
-            except (EOFError, BrokenPipeError):
+            except (OSError, EOFError, BrokenPipeError):
                 # Try to restore stdout
                 sleep(0.1)
                 sys.stdout = sys.__stdout__
