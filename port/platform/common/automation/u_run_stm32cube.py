@@ -5,6 +5,7 @@
 import os
 from time import sleep, time
 from multiprocessing import Process  # To launch swo_decoder.py
+from  xml.etree import ElementTree
 import socket
 import subprocess
 import u_monitor
@@ -66,10 +67,6 @@ SDK_DIR = u_settings.STM32CUBE_SDK_DIR #
 
 # The project name to build
 PROJECT_NAME = u_settings.STM32CUBE_PROJECT_NAME #
-
-# The prefix that forms the modified project name that
-# is created with updated paths
-UPDATED_PROJECT_NAME_PREFIX = u_settings.STM32CUBE_UPDATED_PROJECT_NAME_PREFIX #
 
 # The name of the configuration to build
 PROJECT_CONFIGURATION = u_settings.STM32CUBE_PROJECT_CONFIGURATION #
@@ -182,102 +179,91 @@ def check_installation(paths_list, printer, prompt):
 
     return success
 
-def replace_variable_list_value(string, old_value, new_value):
-    '''Replace location URIs with absolute locations in .project'''
-    # Find <locationURI>$%7Bold_value%7D...</locationURI>
-    # and replace it with <location>new_value...</location>
-    new_string = ""
-    find_string = "<locationURI>$%7B" + old_value + "%7D"
-    find_string_len = len(find_string)
-    replace_string = "<location>" + new_value.replace("\\", "/")
+def replace_variable_path(tree, variable_name, path):
+    '''Replace variable URIs with absolute locations in .project'''
 
-    for line in string.splitlines():
-        pos1 = line.find(find_string)
-        if pos1 >= 0:
-            # Find the start of </locationURI>
-            pos2 = line.find("</locationURI>")
-            if pos2 >= 0:
-                # This is one we want to replace
-                # Take up to the start of find_string first
-                new_string += line[:pos1]
-                # Then put in the replacement string bit
-                new_string += replace_string
-                # Copy in the bits between the end of find_string
-                # and the start of <locationURI>
-                new_string += line[pos1 + find_string_len:pos2]
-                # Add <location> on the end
-                new_string += "</location>\n"
-        else:
-            # Not an interesting line, let it pass through
-            new_string += line + "\n"
+    # It seems STMCubeIDE is very picky with the exact path syntax
+    # file:/ must be added as a prefix, for Windows this would be:
+    #    file:/C:/foo
+    # However in Linux you should NOT add an extra / so the syntax is:
+    #    file:/foo
+    if path[0] == '/':
+        path = path[1:]
+    path = "file:/" + path.replace("\\", "/")
 
-    return new_string
+    # Find variable_name matching:
+    #  <variable><name>variable_name</name></variable>
+    # and set path:
+    #  <variable><name>variable_name</name><value>path</value></variable>
+    xpath = "*/variable/name[.='{}']/../value".format(variable_name)
+    tree.find(xpath).text = path
 
-def create_project(project_path, old_project_name, new_project_name,
+    return tree
+
+
+
+def create_project(project_name,
+                   source_project_dir,
+                   destination_project_dir,
                    stm32cube_fw_path, unity_dir,
                    printer, prompt):
     '''Create a new project with the right paths'''
-    new_project_path = project_path + os.sep + new_project_name
+    source_project_path = source_project_dir + os.sep + project_name
+    destination_project_path = destination_project_dir + os.sep + project_name
     success = False
 
     # If there is already a project with our intended name,
     # delete it
-    if u_utils.deltree(new_project_path, printer, prompt):
+    if u_utils.deltree(destination_project_path, printer, prompt):
 
         # Create the new project directory
         printer.string("{}creating {}...".format(prompt,
-                                                 new_project_path))
-        os.makedirs(new_project_path)
+                                                 destination_project_path))
+        os.makedirs(destination_project_path)
 
         # Read the .cproject file from the old project
-        printer.string("{}reading .cproject file`...".format(prompt))
-        file_handle = open(project_path + os.sep + old_project_name +
-                           os.sep + ".cproject", "r")
+        printer.string("{}reading .cproject file...".format(prompt))
+        file_handle = open(source_project_path + os.sep + ".cproject", "r")
         string = file_handle.read()
         file_handle.close()
 
         # Write it out to the new
-        printer.string("{}writing .cproject file...".format(prompt))
-        file_handle = open(project_path + os.sep + new_project_name +
-                           os.sep + ".cproject", "w")
+        printer.string("{}writing {}/.cproject file...".format(prompt, destination_project_path))
+        file_handle = open(destination_project_path + os.sep + ".cproject", "w")
         file_handle.write(string)
         file_handle.close()
 
         # Read the .project file from the old project
         printer.string("{}reading .project file...".format(prompt))
-        file_handle = open(project_path + os.sep + old_project_name +
-                           os.sep + ".project", "r")
+        file_handle = open(source_project_path + os.sep + ".project", "r")
         string = file_handle.read()
         file_handle.close()
 
-        # Replace "<name>blah</name>" with "<name>test_only_blah</name>
-        printer.string("{}changing name in .cproject file from \"{}\"" \
-                       " to \"{}\"...".format(prompt, old_project_name,
-                                              new_project_name))
-        string = string.replace("<name>" + old_project_name + "</name>",
-                                "<name>" + new_project_name + "</name>", 1)
+        tree = ElementTree.parse(source_project_path + os.sep + ".project")
+
+        # Replace UBX_PROJ_PATH variable using XPath
+        printer.string("{}updating UBX_PROJ_PATH to \"{}\"...".    \
+                       format(prompt, source_project_path))
+        replace_variable_path(tree, 'UBX_PROJ_PATH', source_project_path)
 
         # Replace STM32CUBE_FW_PATH
         printer.string("{}updating STM32CUBE_FW_PATH to \"{}\"...".    \
                        format(prompt, stm32cube_fw_path))
-        string = replace_variable_list_value(string, "STM32CUBE_FW_PATH",
-                                             stm32cube_fw_path)
+        replace_variable_path(tree, 'STM32CUBE_FW_PATH', stm32cube_fw_path)
+
         # Replace UNITY_PATH
-        printer.string("{}updating UNITY_PATH to \"{}\"...".           \
+        printer.string("{}updating UNITY_PATH to \"{}\"...".    \
                        format(prompt, unity_dir))
-        string = replace_variable_list_value(string, "UNITY_PATH",
-                                             unity_dir)
+        replace_variable_path(tree, 'UNITY_PATH', unity_dir)
 
         # Write it out to the new
-        printer.string("{}writing .project file...".format(prompt))
-        file_handle = open(project_path + os.sep + new_project_name +
-                           os.sep + ".project", "w")
-        file_handle.write(string)
-        file_handle.close()
+        printer.string("{}writing {}/.project file...".format(
+            prompt, destination_project_path))
+        tree.write(destination_project_path + os.sep + ".project")
 
         # Write in a warning file just in case anyone
         # wonders what the hell this weird project is
-        file_handle = open(project_path + os.sep + new_project_name +
+        file_handle = open(destination_project_path +
                            os.sep + "ignore_this_directory.txt", "w")
         file_handle.write("See u_run_stm32cube.py for an explanation.")
         file_handle.close()
@@ -286,11 +272,11 @@ def create_project(project_path, old_project_name, new_project_name,
 
     return success
 
-def build_binary(mcu_dir, workspace_subdir, project_name, clean, defines,
+def build_binary(project_dir, workspace_subdir, project_name, clean, defines,
                  printer, prompt):
     '''Build'''
     call_list = []
-    build_dir = mcu_dir + os.sep + project_name + os.sep + PROJECT_CONFIGURATION
+    build_dir = project_dir + os.sep + project_name + os.sep + PROJECT_CONFIGURATION
     num_defines = 0
     too_many_defines = False
     elf_path = None
@@ -298,11 +284,10 @@ def build_binary(mcu_dir, workspace_subdir, project_name, clean, defines,
     # The STM32Cube IDE doesn't provide
     # a mechanism to override the build
     # output directory in the .cproject file
-    # from the command-line so I'm afraid
-    # all output will end up in a
-    # sub-directory with the name of the
-    # PROJECT_CONFIGURATION off the project
-    # directory.  <sigh>
+    # from the command-line so all output will
+    # end up in a sub-directory with the name
+    # of the PROJECT_CONFIGURATION off the project
+    # directory.
     printer.string("{}building in {}.".format(prompt, build_dir))
 
     if not clean or u_utils.deltree(build_dir,
@@ -361,7 +346,7 @@ def build_binary(mcu_dir, workspace_subdir, project_name, clean, defines,
             call_list.append("-data")
             call_list.append(workspace_subdir)
             call_list.append("-import")
-            call_list.append(mcu_dir + os.sep + project_name)
+            call_list.append(project_dir + os.sep + project_name)
             call_list.append("-no-indexer")
             call_list.append("-build")
             call_list.append(project_name + "/" + PROJECT_CONFIGURATION)
@@ -472,10 +457,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     return_value = -1
     mcu_dir = ubxlib_dir + os.sep + SDK_DIR + os.sep + "mcu" + os.sep + mcu.lower()
     instance_text = u_utils.get_instance_text(instance)
-    # Create a unique project name prefix in case more than
-    # one process is running this
-    updated_project_name_prefix = UPDATED_PROJECT_NAME_PREFIX + str(os.getpid()) + "_"
-    workspace_subdir = STM32CUBE_IDE_WORKSPACE_SUBDIR + "_" + str(os.getpid())
+    workspace_dir = working_dir + os.sep + STM32CUBE_IDE_WORKSPACE_SUBDIR
+    output_project_dir = working_dir + os.sep + "project"
     elf_path = None
     downloaded = False
     download_list = None
@@ -550,14 +533,15 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                     # STM32Cube SDK and Unity files as
                     # appropriate
                     if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                       create_project(mcu_dir, PROJECT_NAME,
-                                      updated_project_name_prefix + PROJECT_NAME,
+                       create_project(PROJECT_NAME,
+                                      mcu_dir,
+                                      output_project_dir,
                                       STM32CUBE_FW_PATH, unity_dir,
                                       printer, prompt):
                         # Do the build
                         build_start_time = time()
-                        elf_path = build_binary(mcu_dir, workspace_subdir,
-                                                updated_project_name_prefix + PROJECT_NAME,
+                        elf_path = build_binary(output_project_dir, workspace_dir,
+                                                PROJECT_NAME,
                                                 clean, defines, printer, prompt)
                         if elf_path is None:
                             reporter.event(u_report.EVENT_TYPE_BUILD,
@@ -702,15 +686,14 @@ def run(instance, mcu, toolchain, connection, connection_lock,
 
                 # To avoid a build up of stuff, delete the temporary build and
                 # workspace on exit
-                tmp = mcu_dir + os.sep + updated_project_name_prefix + PROJECT_NAME
-                if os.path.exists(tmp):
+                if os.path.exists(output_project_dir):
                     printer.string("{}deleting temporary build directory {}...".   \
-                                   format(prompt, tmp))
-                    u_utils.deltree(tmp, printer, prompt)
-                if os.path.exists(workspace_subdir):
+                                   format(prompt, output_project_dir))
+                    u_utils.deltree(output_project_dir, printer, prompt)
+                if os.path.exists(workspace_dir):
                     printer.string("{}deleting temporary workspace directory {}...". \
-                                   format(prompt, workspace_subdir))
-                    u_utils.deltree(workspace_subdir, printer, prompt)
+                                   format(prompt, workspace_dir))
+                    u_utils.deltree(workspace_dir, printer, prompt)
 
             else:
                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,

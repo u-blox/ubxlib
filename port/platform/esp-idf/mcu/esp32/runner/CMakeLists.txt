@@ -7,6 +7,8 @@ set(EXTRA_COMPONENT_DIRS "../components"
                          "main"
                          "ubxlib_runner")
 
+set(SDKCONFIG "sdkconfig" CACHE STRING "IDF sdkconfig file path")
+
 # Reduce the component list to a minimum
 set(COMPONENTS "esp32" "esptool_py" "unity" "ubxlib" "main" "ubxlib_runner" "heap")
 

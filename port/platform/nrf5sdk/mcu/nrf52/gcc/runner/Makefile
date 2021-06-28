@@ -1,9 +1,14 @@
 PROJECT_NAME     := u_pca10056
 TARGETS          := nrf52840_xxaa
-OUTPUT_DIRECTORY := _build
-UNITY_PATH ?= ../../../../../../../../Unity
-NRF5_PATH ?= ../../../../../../../../nrf5
+
+MAKEFILE_DIR := $(subst \,/,$(dir $(lastword $(MAKEFILE_LIST))))
+UBXLIB_PATH ?= $(MAKEFILE_DIR)/../../../../../../../
+NRF5_PORT_PATH ?= $(MAKEFILE_DIR)/../../../../
+OUTPUT_DIRECTORY ?= _build
+UNITY_PATH ?= $(UBXLIB_PATH)/../Unity
+NRF5_PATH ?= $(UBXLIB_PATH)/../nrf5
 JLINK_SERIAL_NUMBER := 
+
 # This is picked up in gcc_startup_nrf52840.S to
 # set the heap size.  If you modify this value then
 # make sure that the value of configTOTAL_HEAP_SIZE
@@ -13,9 +18,11 @@ JLINK_SERIAL_NUMBER :=
 # file, if you want to align the two SDKs).
 HEAP_SIZE        := 40960
 
+$(info    MAKEFILE_DIR is "$(MAKEFILE_DIR)")
 $(info    OUTPUT_DIRECTORY will be "$(OUTPUT_DIRECTORY)")
 $(info    UNITY_PATH will be "$(UNITY_PATH)")
 $(info    NRF5_PATH will be "$(NRF5_PATH)")
+$(info    UBXLIB_PATH will be $(UBXLIB_PATH))
 $(info    JLINK_SERIAL_NUMBER will be "$(JLINK_SERIAL_NUMBER)")
 $(info    HEAP_SIZE will be $(HEAP_SIZE))
 ifneq ($(strip $(CFLAGS)),)
@@ -29,7 +36,7 @@ $(info    GNU_VERSION will be $(GNU_VERSION))
 $(info    GNU_PREFIX will be $(GNU_PREFIX))
 
 $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
-  LINKER_SCRIPT  := uart_gcc_nrf52.ld
+  LINKER_SCRIPT  := $(MAKEFILE_DIR)/uart_gcc_nrf52.ld
 
 # Source files common to all targets
 SRC_FILES += \
@@ -81,96 +88,95 @@ SRC_FILES += \
   $(NRF5_PATH)/external/mbedtls/library/md_wrap.c \
   $(NRF5_PATH)/external/mbedtls/library/md5.c \
   $(NRF5_PATH)/external/mbedtls/library/aes.c \
-  ../../../../../../../example/sockets/main.c \
-  ../../../../../../../example/sockets/main_tls.c \
-  ../../../../../../../example/sockets/credentials_tls.c \
-  ../../../../../../../example/security/e2e/e2e_main.c \
-  ../../../../../../../example/security/psk/psk_main.c \
-  ../../../../../../../example/security/c2c/c2c_main.c \
-  ../../../../../../../example/mqtt_client/mqtt_main.c \
-  ../../../../../../../example/cell/lte_cfg/lte_cfg_main.c \
-  ../../../../../../../ble/src/u_ble_extmod.c \
-  ../../../../../../../ble/src/u_ble_intmod.c \
-  ../../../../../../../ble/src/u_ble_cfg_extmod.c \
-  ../../../../../../../ble/src/u_ble_cfg_intmod.c \
-  ../../../../../../../ble/src/u_ble_data_extmod.c \
-  ../../../../../../../ble/src/u_ble_data_intmod.c \
-  ../../../../../../../ble/src/u_ble_private.c \
-  ../../../../../../../ble/test/u_ble_test.c \
-  ../../../../../../../ble/test/u_ble_cfg_test.c \
-  ../../../../../../../ble/test/u_ble_data_test.c\
-  ../../../../../../../cell/src/u_cell.c \
-  ../../../../../../../cell/src/u_cell_pwr.c \
-  ../../../../../../../cell/src/u_cell_cfg.c \
-  ../../../../../../../cell/src/u_cell_info.c \
-  ../../../../../../../cell/src/u_cell_net.c \
-  ../../../../../../../cell/src/u_cell_sock.c \
-  ../../../../../../../cell/src/u_cell_sec.c \
-  ../../../../../../../cell/src/u_cell_sec_c2c.c \
-  ../../../../../../../cell/src/u_cell_sec_tls.c \
-  ../../../../../../../cell/src/u_cell_mqtt.c \
-  ../../../../../../../cell/src/u_cell_file.c \
-  ../../../../../../../cell/src/u_cell_private.c \
-  ../../../../../../../cell/test/u_cell_pwr_test.c \
-  ../../../../../../../cell/test/u_cell_cfg_test.c \
-  ../../../../../../../cell/test/u_cell_info_test.c\
-  ../../../../../../../cell/test/u_cell_net_test.c \
-  ../../../../../../../cell/test/u_cell_sock_test.c \
-  ../../../../../../../cell/test/u_cell_sec_c2c_test.c \
-  ../../../../../../../cell/test/u_cell_sec_tls_test.c \
-  ../../../../../../../cell/test/u_cell_mqtt_test.c \
-  ../../../../../../../cell/test/u_cell_file_test.c \
-  ../../../../../../../cell/test/u_cell_test_preamble.c \
-  ../../../../../../../cell/test/u_cell_test_private.c \
-  ../../../../../../../common/network/src/u_network.c \
-  ../../../../../../../common/network/src/u_network_private_ble_extmod.c \
-  ../../../../../../../common/network/src/u_network_private_ble_intmod.c \
-  ../../../../../../../common/network/src/u_network_private_cell.c \
-  ../../../../../../../common/network/src/u_network_private_wifi.c \
-  ../../../../../../../common/network/test/u_network_test.c \
-  ../../../../../../../common/network/test/u_network_test_shared_cfg.c \
-  ../../../../../../../common/sock/src/u_sock.c \
-  ../../../../../../../common/sock/test/u_sock_test.c \
-  ../../../../../../../common/security/src/u_security.c \
-  ../../../../../../../common/security/src/u_security_tls.c \
-  ../../../../../../../common/security/src/u_security_credential.c \
-  ../../../../../../../common/security/test/u_security_test.c \
-  ../../../../../../../common/security/test/u_security_tls_test.c \
-  ../../../../../../../common/security/test/u_security_credential_test.c \
-  ../../../../../../../common/security/test/u_security_credential_test_data.c \
-  ../../../../../../../common/at_client/src/u_at_client.c \
-  ../../../../../../../common/at_client/test/u_at_client_test.c \
-  ../../../../../../../common/at_client/test/u_at_client_test_data.c \
-  ../../../../../../../common/short_range/src/u_short_range.c \
-  ../../../../../../../common/short_range/src/u_short_range_edm.c \
-  ../../../../../../../common/short_range/src/u_short_range_edm_stream.c \
-  ../../../../../../../common/short_range/src/u_short_range_sec_tls.c \
-  ../../../../../../../common/short_range/src/u_short_range_private.c \
-  ../../../../../../../common/short_range/test/u_short_range_test.c \
-  ../../../../../../../common/short_range/test/u_short_range_test_private.c \
-  ../../../../../../../common/mqtt_client/src/u_mqtt_client.c \
-  ../../../../src/u_port.c \
-  ../../../../src/u_port_debug.c \
-  ../../../../src/u_port_gpio.c \
-  ../../../../src/u_port_os.c \
-  ../../../../src/u_port_uart.c \
-  ../../../../src/u_port_private.c \
-  ../../../../../../clib/u_port_clib_mktime64.c \
-  ../../../../../common/mbedtls/u_port_crypto.c \
-  ../../../../../common/event_queue/u_port_event_queue.c \
-  ../../../../src/heap_useNewlib.c \
-  ../../../../../../test/u_port_test.c \
-  ../../../../../common/test/u_preamble_test.c \
-  ../../../../app/u_main.c \
-  ../../../../../common/runner/u_runner.c \
-  ../../../../../common/heap_check/u_heap_check.c \
+  $(UBXLIB_PATH)/example/sockets/main.c \
+  $(UBXLIB_PATH)/example/sockets/main_tls.c \
+  $(UBXLIB_PATH)/example/sockets/credentials_tls.c \
+  $(UBXLIB_PATH)/example/security/e2e/e2e_main.c \
+  $(UBXLIB_PATH)/example/security/psk/psk_main.c \
+  $(UBXLIB_PATH)/example/security/c2c/c2c_main.c \
+  $(UBXLIB_PATH)/example/mqtt_client/mqtt_main.c \
+  $(UBXLIB_PATH)/example/cell/lte_cfg/lte_cfg_main.c \
+  $(UBXLIB_PATH)/ble/src/u_ble_extmod.c \
+  $(UBXLIB_PATH)/ble/src/u_ble_intmod.c \
+  $(UBXLIB_PATH)/ble/src/u_ble_cfg_extmod.c \
+  $(UBXLIB_PATH)/ble/src/u_ble_cfg_intmod.c \
+  $(UBXLIB_PATH)/ble/src/u_ble_data_extmod.c \
+  $(UBXLIB_PATH)/ble/src/u_ble_data_intmod.c \
+  $(UBXLIB_PATH)/ble/src/u_ble_private.c \
+  $(UBXLIB_PATH)/ble/test/u_ble_test.c \
+  $(UBXLIB_PATH)/ble/test/u_ble_cfg_test.c \
+  $(UBXLIB_PATH)/ble/test/u_ble_data_test.c\
+  $(UBXLIB_PATH)/cell/src/u_cell.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_pwr.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_cfg.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_info.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_net.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_sock.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_sec.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_sec_c2c.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_sec_tls.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_mqtt.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_file.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_private.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_pwr_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_cfg_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_info_test.c\
+  $(UBXLIB_PATH)/cell/test/u_cell_net_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_sock_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_sec_c2c_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_sec_tls_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_mqtt_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_file_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_test_preamble.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_test_private.c \
+  $(UBXLIB_PATH)/common/network/src/u_network.c \
+  $(UBXLIB_PATH)/common/network/src/u_network_private_ble_extmod.c \
+  $(UBXLIB_PATH)/common/network/src/u_network_private_ble_intmod.c \
+  $(UBXLIB_PATH)/common/network/src/u_network_private_cell.c \
+  $(UBXLIB_PATH)/common/network/src/u_network_private_wifi.c \
+  $(UBXLIB_PATH)/common/network/test/u_network_test.c \
+  $(UBXLIB_PATH)/common/network/test/u_network_test_shared_cfg.c \
+  $(UBXLIB_PATH)/common/sock/src/u_sock.c \
+  $(UBXLIB_PATH)/common/sock/test/u_sock_test.c \
+  $(UBXLIB_PATH)/common/security/src/u_security.c \
+  $(UBXLIB_PATH)/common/security/src/u_security_tls.c \
+  $(UBXLIB_PATH)/common/security/src/u_security_credential.c \
+  $(UBXLIB_PATH)/common/security/test/u_security_test.c \
+  $(UBXLIB_PATH)/common/security/test/u_security_tls_test.c \
+  $(UBXLIB_PATH)/common/security/test/u_security_credential_test.c \
+  $(UBXLIB_PATH)/common/security/test/u_security_credential_test_data.c \
+  $(UBXLIB_PATH)/common/at_client/src/u_at_client.c \
+  $(UBXLIB_PATH)/common/at_client/test/u_at_client_test.c \
+  $(UBXLIB_PATH)/common/at_client/test/u_at_client_test_data.c \
+  $(UBXLIB_PATH)/common/short_range/src/u_short_range.c \
+  $(UBXLIB_PATH)/common/short_range/src/u_short_range_edm.c \
+  $(UBXLIB_PATH)/common/short_range/src/u_short_range_edm_stream.c \
+  $(UBXLIB_PATH)/common/short_range/src/u_short_range_sec_tls.c \
+  $(UBXLIB_PATH)/common/short_range/src/u_short_range_private.c \
+  $(UBXLIB_PATH)/common/short_range/test/u_short_range_test.c \
+  $(UBXLIB_PATH)/common/short_range/test/u_short_range_test_private.c \
+  $(UBXLIB_PATH)/common/mqtt_client/src/u_mqtt_client.c \
+  $(UBXLIB_PATH)/port/clib/u_port_clib_mktime64.c \
+  $(UBXLIB_PATH)/port/test/u_port_test.c \
+  $(UBXLIB_PATH)/port/platform/common/mbedtls/u_port_crypto.c \
+  $(UBXLIB_PATH)/port/platform/common/event_queue/u_port_event_queue.c \
+  $(UBXLIB_PATH)/port/platform/common/test/u_preamble_test.c \
+  $(UBXLIB_PATH)/port/platform/common/runner/u_runner.c \
+  $(UBXLIB_PATH)/port/platform/common/heap_check/u_heap_check.c \
+  $(NRF5_PORT_PATH)/src/u_port.c \
+  $(NRF5_PORT_PATH)/src/u_port_debug.c \
+  $(NRF5_PORT_PATH)/src/u_port_gpio.c \
+  $(NRF5_PORT_PATH)/src/u_port_os.c \
+  $(NRF5_PORT_PATH)/src/u_port_uart.c \
+  $(NRF5_PORT_PATH)/src/u_port_private.c \
+  $(NRF5_PORT_PATH)/src/heap_useNewlib.c \
+  $(NRF5_PORT_PATH)/app/u_main.c \
   $(UNITY_PATH)/src/unity.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
-  . \
-  ../../../.. \
-  ../../cfg \
+  $(MAKEFILE_DIR)/../../cfg \
+  $(MAKEFILE_DIR)/. \
   $(NRF5_PATH)/components \
   $(NRF5_PATH)/modules/nrfx/mdk \
   $(NRF5_PATH)/components/libraries/fifo \
@@ -202,36 +208,38 @@ INC_FOLDERS += \
   $(NRF5_PATH)/external/segger_rtt \
   $(NRF5_PATH)/components/libraries/hardfault \
   $(NRF5_PATH)/external/mbedtls/include \
-  ../../../../../../../ble/api \
-  ../../../../../../../ble/src \
-  ../../../../../../../ble/test \
-  ../../../../../../../cell/api \
-  ../../../../../../../cell/src \
-  ../../../../../../../cell/test \
-  ../../../../../../../common/sock/api \
-  ../../../../../../../common/sock/test \
-  ../../../../../../../common/network/api \
-  ../../../../../../../common/network/src \
-  ../../../../../../../common/network/test \
-  ../../../../../../../common/security/api \
-  ../../../../../../../common/security/test \
-  ../../../../../../../common/at_client/api \
-  ../../../../../../../common/at_client/src \
-  ../../../../../../../common/at_client/test \
-  ../../../../../../../common/error/api \
-  ../../../../../../../common/short_range/api \
-  ../../../../../../../common/short_range/src \
-  ../../../../../../../common/short_range/test \
-  ../../../../../../../common/mqtt_client/api \
-  ../../../../../../api \
-  ../../../../../../../cfg \
-  ../../../../../../clib \
-  ../../../../src \
-  ../../../../../common/event_queue \
-  ../../../../../../test \
-  ../../../../../common/runner \
-  ../../../../../common/heap_check \
-  ../../../../app \
+  $(UBXLIB_PATH)/ble/api \
+  $(UBXLIB_PATH)/ble/src \
+  $(UBXLIB_PATH)/ble/test \
+  $(UBXLIB_PATH)/cell/api \
+  $(UBXLIB_PATH)/cell/src \
+  $(UBXLIB_PATH)/cell/test \
+  $(UBXLIB_PATH)/common/sock/api \
+  $(UBXLIB_PATH)/common/sock/test \
+  $(UBXLIB_PATH)/common/network/api \
+  $(UBXLIB_PATH)/common/network/src \
+  $(UBXLIB_PATH)/common/network/test \
+  $(UBXLIB_PATH)/common/security/api \
+  $(UBXLIB_PATH)/common/security/test \
+  $(UBXLIB_PATH)/common/at_client/api \
+  $(UBXLIB_PATH)/common/at_client/src \
+  $(UBXLIB_PATH)/common/at_client/test \
+  $(UBXLIB_PATH)/common/error/api \
+  $(UBXLIB_PATH)/common/short_range/api \
+  $(UBXLIB_PATH)/common/short_range/src \
+  $(UBXLIB_PATH)/common/short_range/test \
+  $(UBXLIB_PATH)/common/mqtt_client/api \
+  $(UBXLIB_PATH)/cfg \
+  $(UBXLIB_PATH)/port \
+  $(UBXLIB_PATH)/port/api \
+  $(UBXLIB_PATH)/port/clib \
+  $(UBXLIB_PATH)/port/test \
+  $(UBXLIB_PATH)/port/platform/common/event_queue \
+  $(UBXLIB_PATH)/port/platform/common/runner \
+  $(UBXLIB_PATH)/port/platform/common/heap_check \
+  $(NRF5_PORT_PATH) \
+  $(NRF5_PORT_PATH)/src \
+  $(NRF5_PORT_PATH)/app \
   $(UNITY_PATH)/src \
 
 # Libraries common to all targets
@@ -329,7 +337,7 @@ flash: default
 erase:
 	nrfjprog -f nrf52 --chiperase
 
-SDK_CONFIG_FILE := ../../../cfg/sdk_config.h
+SDK_CONFIG_FILE := $(MAKEFILE_DIR)/../../cfg/sdk_config.h
 CMSIS_CONFIG_TOOL := $(NRF5_PATH)/external_tools/cmsisconfig/CMSIS_Configuration_Wizard.jar
 sdk_config:
 	java -jar $(CMSIS_CONFIG_TOOL) $(SDK_CONFIG_FILE)

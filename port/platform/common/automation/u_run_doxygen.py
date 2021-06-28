@@ -52,8 +52,11 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
             printer.string("{}in directory {} calling doxygen {}.".    \
                            format(prompt, os.getcwd(), config_path))
             try:
+                my_env = os.environ.copy()
+                my_env['UBX_WORKDIR'] = working_dir
                 text = subprocess.check_output(["doxygen", config_path],
                                                stderr=subprocess.STDOUT,
+                                               env=my_env,
                                                shell=True) # Jenkins hangs without this
                 reporter.event(u_report.EVENT_TYPE_CHECK,
                                u_report.EVENT_PASSED)

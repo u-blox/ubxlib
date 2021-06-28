@@ -10,6 +10,7 @@ node('TEST-gb-cmb-dt-022')
     def subst_drive = "z:"
     // If you change the following line you need to change EXCLUDE_PATTERNS in Doxyfile to match
     def working_dir = "_jenkins_work"
+    def ubxlib_dir = "ubxlib"
     def archive_dir = working_dir
     def summary_file = "summary.log"
     def test_report_file = "test_report.xml"
@@ -38,53 +39,55 @@ node('TEST-gb-cmb-dt-022')
             }
 
             stage("Fetch") {
-                // Create a modified version of the remote configs in scm to
-                // add master.  With master fetched as well as the
-                // branch-under-test  we can get the file difference between the two
-                println "Creating scmPlus to add fetch of master...\n"
-                refspec = scm.userRemoteConfigs[0].refspec
-                if (!scm.userRemoteConfigs[0].refspec.contains("/master:")) {
-                    refspec += " refs/heads/master:refs/remotes/origin/master"
-                }
-                userRemoteConfigPlus = new UserRemoteConfig(scm.userRemoteConfigs[0].url,
-                                                            scm.userRemoteConfigs[0].name,
-                                                            refspec,
-                                                            scm.userRemoteConfigs[0].credentialsId)
+                dir(ubxlib_dir) {
+                    // Create a modified version of the remote configs in scm to
+                    // add master.  With master fetched as well as the
+                    // branch-under-test  we can get the file difference between the two
+                    println "Creating scmPlus to add fetch of master...\n"
+                    refspec = scm.userRemoteConfigs[0].refspec
+                    if (!scm.userRemoteConfigs[0].refspec.contains("/master:")) {
+                        refspec += " refs/heads/master:refs/remotes/origin/master"
+                    }
+                    userRemoteConfigPlus = new UserRemoteConfig(scm.userRemoteConfigs[0].url,
+                                                                scm.userRemoteConfigs[0].name,
+                                                                refspec,
+                                                                scm.userRemoteConfigs[0].credentialsId)
 
-                scmPlus = new GitSCM([userRemoteConfigPlus],
-                                     scm.branches,
-                                     scm.doGenerateSubmoduleConfigurations,
-                                     scm.submoduleCfg,
-                                     scm.browser,
-                                     scm.gitTool,
-                                     scm.extensions)
+                    scmPlus = new GitSCM([userRemoteConfigPlus],
+                                        scm.branches,
+                                        scm.doGenerateSubmoduleConfigurations,
+                                        scm.submoduleCfg,
+                                        scm.browser,
+                                        scm.gitTool,
+                                        scm.extensions)
 
-                // For debug purposes, print out scmPlus
-                println "scmPlus contains: " + scmPlus.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
+                    // For debug purposes, print out scmPlus
+                    println "scmPlus contains: " + scmPlus.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
 
-                // Get the code
-                println "checkout() branch \"" + scmPlus.branches[0] + "\" and also fetch master...\n"
-                scmMap = checkout scmPlus
+                    // Get the code
+                    println "checkout() branch \"" + scmPlus.branches[0] + "\" and also fetch master...\n"
+                    scmMap = checkout scmPlus
 
-                // Recurse submodules
-                println "Recursing submodules..."
-                bat "git submodule update --init"
+                    // Recurse submodules
+                    println "Recursing submodules..."
+                    bat "git submodule update --init"
 
-                // For debug purposes, print out the entries in the scm
-                // map returned by checkout
-                println "checkout() returned: " + scmMap.each{entry -> "$entry.key = $entry.value"}
+                    // For debug purposes, print out the entries in the scm
+                    // map returned by checkout
+                    println "checkout() returned: " + scmMap.each{entry -> "$entry.key = $entry.value"}
 
-                // Use git to get the last commit message, @echo off to avoid capturing the command
-                // output as well as the returned text
-                git_commit_text = bat(script: "@echo off & git log -1 --pretty=%%B", returnStdout: true)
+                    // Use git to get the last commit message, @echo off to avoid capturing the command
+                    // output as well as the returned text
+                    git_commit_text = bat(script: "@echo off & git log -1 --pretty=%%B", returnStdout: true)
 
-                if (git_commit_text) {
-                    // Convert newlines to "/n" and quotation marks to back-ticks to prevent them
-                    // screwing up the command-line they get passed to lower down
-                    git_commit_text = git_commit_text.replaceAll("\\n", "\\\\n").replaceAll("\"", "`")
-                    println "Last commit message was: \"" + git_commit_text + "\""
-                } else {
-                    println "Unable to get last commit message."
+                    if (git_commit_text) {
+                        // Convert newlines to "/n" and quotation marks to back-ticks to prevent them
+                        // screwing up the command-line they get passed to lower down
+                        git_commit_text = git_commit_text.replaceAll("\\n", "\\\\n").replaceAll("\"", "`")
+                        println "Last commit message was: \"" + git_commit_text + "\""
+                    } else {
+                        println "Unable to get last commit message."
+                    }
                 }
             }
 
@@ -96,16 +99,18 @@ node('TEST-gb-cmb-dt-022')
                 println "This is not master, checking which tests to run..."
                 try {
                     stage("Check Branch Differences") {
-                        if (env.JOB_BASE_NAME) {
-                            // No user direction so use git to get the list
-                            // of file differences from main, @echo off to avoid
-                            // capturing the command output as well as the  returned text
-                            println "Checking for changed files between master and " + env.JOB_BASE_NAME + "..."
-                            changed_files = bat(script: "@echo off & git diff --name-only origin/master", returnStdout: true).trim()
-                            changed_files = changed_files.replaceAll("\n", " ");
-                            println "Changed file(s) were: " + changed_files
-                        } else {
-                            println "Environment variable JOB_BASE_NAME not found, unable to determine the files that are different to master."
+                        dir(ubxlib_dir) {
+                            if (env.JOB_BASE_NAME) {
+                                // No user direction so use git to get the list
+                                // of file differences from main, @echo off to avoid
+                                // capturing the command output as well as the  returned text
+                                println "Checking for changed files between master and " + env.JOB_BASE_NAME + "..."
+                                changed_files = bat(script: "@echo off & git diff --name-only origin/master", returnStdout: true).trim()
+                                changed_files = changed_files.replaceAll("\n", " ");
+                                println "Changed file(s) were: " + changed_files
+                            } else {
+                                println "Environment variable JOB_BASE_NAME not found, unable to determine the files that are different to master."
+                            }
                         }
                     }
                 } catch (e) {
@@ -119,7 +124,7 @@ node('TEST-gb-cmb-dt-022')
                 }
             }
 
-            code_dir = pwd()
+            jenkins_dir = pwd()
             // Delete any previously subst'ed drive, no check for errors 'cos there might not be one
             script {
                 try {
@@ -129,13 +134,14 @@ node('TEST-gb-cmb-dt-022')
                 }
             }
             // Now subst the drive
-            if (bat(script: "subst ${subst_drive} ${code_dir}", returnStatus: true) == 0) {
+            if (bat(script: "subst ${subst_drive} ${jenkins_dir}", returnStatus: true) == 0) {
                 // Need to add the "\" to the drive name or if something CD's to it they may not end up in the root
-                code_dir = subst_drive + "\\"
-                working_dir = code_dir + working_dir
+                ubxlib_dir = subst_drive + "\\" + ubxlib_dir
+                working_dir = subst_drive + "\\" + working_dir
             } else {
-                working_dir = code_dir + "\\" + working_dir
-                error("Unable to subst ${subst_drive} for \"${code_dir}\", builds with long path lengths may fail.")
+                ubxlib_dir = jenkins_dir + "\\" + ubxlib_dir
+                working_dir = jenkins_dir + "\\" + working_dir
+                error("Unable to subst ${subst_drive} for \"${jenkins_dir}\", builds with long path lengths may fail.")
             }
             stage ("Reset USB/Power") {
                 // usbswitchcmd sets a return value of 1 if it was given the
@@ -166,7 +172,7 @@ node('TEST-gb-cmb-dt-022')
                 if (changed_files) {
                     stage("Test Selected") {
                         // Call python to run the necessary builds and tests
-                        return_value = bat(script: "@echo off & cd ${code_dir}\\port\\platform\\common\\automation & python u_run_branch.py -u ${code_dir} -w ${working_dir} -s ${summary_file} -t ${test_report_file} -d ${debug_file} \"${git_commit_text}\" ${changed_files}", returnStatus: true)
+                        return_value = bat(script: "@echo off & cd ${ubxlib_dir}\\port\\platform\\common\\automation & python u_run_branch.py -u ${ubxlib_dir} -w ${working_dir} -s ${summary_file} -t ${test_report_file} -d ${debug_file} \"${git_commit_text}\" ${changed_files}", returnStatus: true)
                         if (return_value != 0) {
                             error("Running selected ubxlib test(s) returned error " + return_value + ".")
                         } else {
@@ -176,7 +182,7 @@ node('TEST-gb-cmb-dt-022')
                 } else {
                     stage("Test All") {
                         // Call python to run all tests
-                        return_value = bat(script: "@echo off & cd ${code_dir}\\port\\platform\\common\\automation & python u_run_branch.py -u ${code_dir} -w ${working_dir} -s ${summary_file} -t ${test_report_file} -d ${debug_file} \"test: *\"", returnStatus: true)
+                        return_value = bat(script: "@echo off & cd ${ubxlib_dir}\\port\\platform\\common\\automation & python u_run_branch.py -u ${ubxlib_dir} -w ${working_dir} -s ${summary_file} -t ${test_report_file} -d ${debug_file} \"test: *\"", returnStatus: true)
                         if (return_value != 0) {
                             error("Running all ubxlib tests returned " + return_value + " failed test(s).")
                         } else {

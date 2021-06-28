@@ -227,6 +227,7 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
         call_list.append(build_dir)
         call_list.append("-D")
         call_list.append("TEST_COMPONENTS=" + TEST_COMPONENT)
+        call_list.append("-DSDKCONFIG:STRING={}/sdkconfig".format(build_dir))
         call_list.append("size")
         call_list.append("build")
 

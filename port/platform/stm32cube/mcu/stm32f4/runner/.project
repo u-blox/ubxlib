@@ -850,11 +850,11 @@
 	<variableList>
 		<variable>
 			<name>PLATFORM_PATH</name>
-			<value>$%7BPARENT-3-PROJECT_LOC%7D</value>
+			<value>$%7BPARENT-3-UBX_PROJ_PATH%7D</value>
 		</variable>
 		<variable>
 			<name>MCU_PATH</name>
-			<value>$%7BPARENT-1-PROJECT_LOC%7D</value>
+			<value>$%7BPARENT-1-UBX_PROJ_PATH%7D</value>
 		</variable>
 		<variable>
 			<name>STM32CUBE_FW_PATH</name>
@@ -862,7 +862,11 @@
 		</variable>
 		<variable>
 			<name>UBX_PATH</name>
-			<value>$%7BPARENT-6-PROJECT_LOC%7D</value>
+			<value>$%7BPARENT-6-UBX_PROJ_PATH%7D</value>
+		</variable>
+		<variable>
+			<name>UBX_PROJ_PATH</name>
+			<value>$%7BPROJECT_LOC%7D</value>
 		</variable>
 		<variable>
 			<name>UNITY_PATH</name>

@@ -443,7 +443,9 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                    u_report.EVENT_START)
 
                                     with URttReader(jlink_device(mcu),
-                                                    jlink_serial=connection["debugger"]) as rtt_reader:
+                                                    jlink_serial=connection["debugger"],
+                                                    printer=printer,
+                                                    prompt=prompt) as rtt_reader:
                                         return_value = u_monitor.main(rtt_reader,
                                                                       u_monitor.CONNECTION_RTT,
                                                                       RUN_GUARD_TIME_SECONDS,

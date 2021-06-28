@@ -5,6 +5,7 @@
 import os                    # For sep(), getcwd()
 from time import time, sleep
 import subprocess
+from pathlib import Path
 import u_connection
 import u_monitor
 import u_report
@@ -183,61 +184,69 @@ def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
     call_list = []
     hex_file_path = None
 
-    # The Nordic Makefile can only handle a
-    # single sub-directory name which
-    # must be off the directory that
-    # Makefile is located in, so need to be
-    # in the Makefile directory for building
-    # to work
-    directory = ubxlib_dir + os.sep + RUNNER_DIR_GCC
-    printer.string("{}CD to {}.".format(prompt, directory))
+    makefile = ubxlib_dir + os.sep + RUNNER_DIR_GCC + os.sep + "Makefile"
+    outputdir = os.getcwd() + os.sep + build_subdir
 
-    with u_utils.ChangeDir(directory):
-        # Clear the output folder if we're not just running
-        if not clean or u_utils.deltree(build_subdir,
-                                        printer, prompt):
-            if defines:
-                # Create the CFLAGS string
-                cflags = ""
-                for idx, define in enumerate(defines):
-                    if idx == 0:
-                        cflags = "-D" + define
-                    else:
-                        cflags += " -D" + define
-            # Note: when entering things from the command-line
-            # if there is more than one CFLAGS parameter then
-            # they must be quoted but that is specifically
-            # NOT required here as the fact that CFLAGS
-            # is passed in as one array entry is sufficient
+    # The Nordic Makefile.common that is included by our Makefile
+    # is quite limited and weird behaiviours:
+    # 1. It is not possible to specify an OUTPUT_DIRECTORY that
+    #    is not on the same drive as the source code. In our case
+    #    the source code is mounted as a subst device in the Windows
+    #    case.
+    # 2. Makefile.common expects having a "Makefile" in the current
+    #    directory. However, since we want the build output to be placed
+    #    outside the source tree and due to 1) we want to call our
+    #    Makefile using "make -f $UBXLIB_DIR/$RUNNER_DIR_GCC/Makefile"
+    #    from a workdir. In this case the Makefile will NOT be located
+    #    in current directory. So to get nRF5 SDK Makefile.common happy
+    #    we fake this Makefile with an empty file:
+    Path('./Makefile').touch()
 
-            # Assemble the whole call list
-            call_list.append("make")
-            call_list.append("NRF5_PATH=" + NRF5SDK_PATH)
-            call_list.append("UNITY_PATH=" + unity_dir.replace("\\", "/"))
-            if defines:
-                call_list.append("CFLAGS=" + cflags)
-            call_list.append("OUTPUT_DIRECTORY=" + build_subdir)
-            call_list.append("GNU_VERSION=" + GNU_VERSION)
-            call_list.append("GNU_PREFIX=" + GNU_PREFIX)
-            call_list.append("GNU_INSTALL_ROOT=" + GNU_INSTALL_ROOT)
+    # Clear the output folder if we're not just running
+    if not clean or u_utils.deltree(outputdir,
+                                    printer, prompt):
+        if defines:
+            # Create the CFLAGS string
+            cflags = ""
+            for idx, define in enumerate(defines):
+                if idx == 0:
+                    cflags = "-D" + define
+                else:
+                    cflags += " -D" + define
+        # Note: when entering things from the command-line
+        # if there is more than one CFLAGS parameter then
+        # they must be quoted but that is specifically
+        # NOT required here as the fact that CFLAGS
+        # is passed in as one array entry is sufficient
 
-            # Print what we're gonna do
-            tmp = ""
-            for item in call_list:
-                tmp += " " + item
-            printer.string("{}in directory {} calling{}".         \
-                           format(prompt, os.getcwd(), tmp))
+        # Assemble the whole call list
+        call_list += ["make", "-f", makefile]
+        call_list.append("NRF5_PATH=" + NRF5SDK_PATH)
+        call_list.append("UNITY_PATH=" + unity_dir.replace("\\", "/"))
+        if defines:
+            call_list.append("CFLAGS=" + cflags)
+        call_list.append("OUTPUT_DIRECTORY=" + build_subdir)
+        call_list.append("GNU_VERSION=" + GNU_VERSION)
+        call_list.append("GNU_PREFIX=" + GNU_PREFIX)
+        call_list.append("GNU_INSTALL_ROOT=" + GNU_INSTALL_ROOT)
 
-            # Call make to do the build
-            # Set shell to keep Jenkins happy
-            if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
-                               printer, prompt, shell_cmd=True):
-                hex_file_path = os.getcwd() + os.sep + build_subdir +  \
-                                os.sep + "nrf52840_xxaa.hex"
-        else:
-            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                           u_report.EVENT_FAILED,
-                           "unable to clean build directory")
+        # Print what we're gonna do
+        tmp = ""
+        for item in call_list:
+            tmp += " " + item
+        printer.string("{}in directory {} calling{}".         \
+                        format(prompt, os.getcwd(), tmp))
+
+        # Call make to do the build
+        # Set shell to keep Jenkins happy
+        if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
+                            printer, prompt, shell_cmd=True):
+            hex_file_path = outputdir +  \
+                            os.sep + "nrf52840_xxaa.hex"
+    else:
+        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                        u_report.EVENT_FAILED,
+                        "unable to clean build directory")
 
     return hex_file_path
 
@@ -424,7 +433,10 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                 reporter.event(u_report.EVENT_TYPE_TEST,
                                                u_report.EVENT_START)
 
-                                with URttReader("NRF52840_XXAA", jlink_serial=connection["debugger"]) as rtt_reader:
+                                with URttReader("NRF52840_XXAA",
+                                                jlink_serial=connection["debugger"],
+                                                printer=printer,
+                                                prompt=prompt) as rtt_reader:
                                     return_value = u_monitor.main(rtt_reader,
                                                                   u_monitor.CONNECTION_RTT,
                                                                   RUN_GUARD_TIME_SECONDS,
