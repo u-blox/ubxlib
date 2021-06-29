@@ -1271,9 +1271,9 @@ if __name__ == "__main__":
         REMOTE_CONTROL_THREAD.stop_thread()
         REMOTE_CONTROL_THREAD.join()
 
-    # Stop the printer, flushing what might be a long queue
+    # Stop the printer
     sleep(1)
-    PRINT_THREAD.stop_thread(flush=True)
+    PRINT_THREAD.stop_thread()
     PRINT_THREAD.join()
     PRINTER = None
 

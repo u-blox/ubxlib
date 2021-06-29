@@ -957,7 +957,6 @@ class PrintThread(threading.Thread):
         self._lock = RLock()
         self._queue_forwards = []
         self._running = False
-        self._flush = False
         self._file_handle = file_handle
         self._window = None
         self._window_file_handle = window_file_handle
@@ -1021,17 +1020,24 @@ class PrintThread(threading.Thread):
                 queues.append(item)
         self._queue_forwards = queues
         self._lock.release()
-    def stop_thread(self, flush=False):
+    def stop_thread(self):
         '''Helper function to stop the thread'''
         self._lock.acquire()
-        self._flush = flush
         self._running = False
+        # Write anything remaining to the window file
+        if self._window_update_pending:
+            self._window_file_handle.seek(0)
+            for item in self._window:
+                self._window_file_handle.write(item)
+            self._window_file_handle.flush()
+            self._window_update_pending = False
+            self._window_next_update_time = time() + self._window_update_period_seconds
+        self._lock.release()
     def run(self):
         '''Worker thread'''
         self._running = True
-        while self._running or self._flush:
+        while self._running:
             # Print locally and store in any forwarding buffers
-            queue_is_empty = False
             try:
                 my_string = self._queue.get(block=False, timeout=0.5)
                 print(my_string)
@@ -1049,19 +1055,16 @@ class PrintThread(threading.Thread):
                     queue_forward["buffer"].append(my_string)
                 self._lock.release()
             except queue.Empty:
-                queue_is_empty = True
                 sleep(0.1)
             except (OSError, EOFError, BrokenPipeError):
-                queue_is_empty = True
                 # Try to restore stdout
                 sleep(0.1)
                 sys.stdout = sys.__stdout__
             self._lock.acquire()
             # Send from any forwarding buffers
-            self._send_forward(flush=self._flush)
+            self._send_forward()
             # Write the window to file if required
-            if self._window_update_pending and \
-                (self._flush or time() > self._window_next_update_time):
+            if self._window_update_pending and time() > self._window_next_update_time:
                 # If you don't do this you can end up with garbage
                 # at the end of the file
                 self._window_file_handle.truncate()
@@ -1071,8 +1074,6 @@ class PrintThread(threading.Thread):
                 self._window_update_pending = False
                 self._window_next_update_time = time() + self._window_update_period_seconds
             self._lock.release()
-            if queue_is_empty:
-                self._flush = False
 
 class PrintToQueue():
     '''Print to a queue, if there is one'''
