@@ -919,7 +919,6 @@ class AgentService(rpyc.Service):
     # running on this agent
     def exposed_instance_running_count_get(self, session_name=None):
         '''Get the number of instances running on this agent'''
-        print("BooBoo")
         return u_agent.instance_running_count(session_name)
 
     # Get the list of instances running on this agent,

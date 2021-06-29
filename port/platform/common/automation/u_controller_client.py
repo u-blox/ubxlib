@@ -4,7 +4,6 @@
 
 from time import time, sleep, gmtime, strftime
 from multiprocessing.dummy import Pool as ThreadPool
-from signal import signal, SIGINT, SIGTERM, SIGBREAK
 import os       # for os.path
 import socket
 import threading
@@ -89,20 +88,6 @@ INSTANCE_RESULTS_FILES = []
 
 # Our controller's name
 CONTROLLER_NAME = None
-
-# Where we stick the interesting files afterwards
-ARCHIVE_URL = None
-
-# Credentials for the above
-ARCHIVE_CREDENTIALS = None
-
-# Name of the summary file to write to the archive
-SUMMARY_FILE_NAME = None
-
-# Places to save signal handlers
-SAVED_SIGINT_HANDLER = None
-SAVED_SIGTERM_HANDLER = None
-SAVED_SIGBREAK_HANDLER = None
 
 # Connect to an agent.
 def agent_connect(ip_address, port):
@@ -950,122 +935,37 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
 
     return return_value
 
-def instances_abort(agents_locked, controller_name, archive_url, archive_credentials,
-                   instance_results_files, recurse, summary_results_file):
+def instances_abort(agents_locked, controller_name):
     '''Abort all instances on the list of agents'''
-    agents_to_wait_for = []
 
     if PRINTER:
-        PRINTER.string("{}waiting for ability to abort...".format(PROMPT))
+        PRINTER.string("{}waiting for ability to abort {} agent(s)...".format(PROMPT,
+                                                                              len(agents_locked)))
     AGENTS_LOCK.acquire()
 
+    count = 0
     for agent in agents_locked:
         if agent["async_result_object"]:
             if PRINTER:
                 PRINTER.string("{}aborting agent {}...".format(PROMPT, agent["name"]))
             agent_call(agent, "session_abort", agent["session_name"], controller_name)
-            agents_to_wait_for.append(agent)
-
-    while len(agents_to_wait_for) > 0:
-        if PRINTER:
-            PRINTER.string("{}waiting for {} agent(s) to abort...".format(PROMPT,
-                                                                          len(agents_to_wait_for)))
-        agents_stopped_idx = []
-        for idx, agent in enumerate(agents_to_wait_for):
-            instance_running_count = agent_call(agent, "instance_running_count_get")
-            if instance_running_count is None:
-                # Note: agent_call() returns None if the agent has been closed
-                PRINTER.string("{}agent {} has already disconnected.".  \
-                               format(PROMPT, agent["name"]))
-                agents_stopped_idx.append(idx)
-            else:
-                if instance_running_count <= 0:
-                    PRINTER.string("{}agent {} has stopped, tidying it up...".  \
-                                   format(PROMPT, agent["name"]))
-                    # Close the printer and wait for any remaining
-                    # debug prints to arrive
-                    if PRINT_QUEUE:
-                        agent_call(agent, "printer_stop", PRINT_QUEUE)
-                    agent_poll(agent, WAIT_FOR_REMAINING_DEBUG_TIME)
-
-                    PRINTER.string("#### Archiving {}".format(agent["name"]))
-                    print("#### Print Archiving {}".format(agent["name"]))
-                    text = ""
-                    if archive_url:
-                        # If we have an archive URL, ask the agent to put the
-                        # instance result files there and add to the summary
-                        # file we are collating also
-                        text += "results from [{}] {}". \
-                                 format(agent["host_ip_address"],
-                                        agent["agent_result_path"].replace("\\", "/"))
-                        text += archive_from_agent(agent, archive_url, archive_credentials,
-                                                   instance_results_files, recurse,
-                                                   SUMMARY_FILE_HANDLE, summary_results_file)
-
-                    if agent["locked"]:
-                        agent_call(agent, "unlock", controller_name)
-                        agent["locked"] = False
-                    agent_close(agent, text)
-                    agents_stopped_idx.append(idx)
-
-        # Note: have to do this in reverse or the index will
-        # change at each pop() and it will mess up
-        for idx in reversed(agents_stopped_idx):
-            agents_to_wait_for.pop(idx)
-
-        for agent in agents_to_wait_for:
-            if PRINTER:
-                PRINTER.string("{}agent {} still running...".format(PROMPT,
-                                                                    agent["name"]))
-        sleep(1)
+            count += 1
 
     if PRINTER:
-        PRINTER.string("{}abort completed.".format(PROMPT))
+        PRINTER.string("{}{} agent(s) asked to abort.".format(PROMPT, count))
+
     AGENTS_LOCK.release()
-
-def sig_handler(signum, frame):
-    '''Handle termination from above'''
-    global AGENTS, CONTROLLER_NAME, \
-           ARCHIVE_URL, ARCHIVE_CREDENTIALS, \
-           INSTANCE_RESULTS_FILES, SUMMARY_FILE_NAME, \
-           SAVED_SIGINT_HANDLER, SAVED_SIGBREAK_HANDLER, SAVED_SIGTERM_HANDLER
-
-    if PRINTER:
-        PRINTER.string("{}caught termination signal, stopping gracefully (might take"    \
-                       " a while)...".format(PROMPT))
-    # Send abort signals to all the agents that are running so
-    # that they can tidy up in their own time
-    instances_abort(AGENTS, CONTROLLER_NAME, ARCHIVE_URL, ARCHIVE_CREDENTIALS,
-                    INSTANCE_RESULTS_FILES, 1, SUMMARY_FILE_NAME)
-
-    # Put the signal handler back as it was and call the next
-    # thing in the chain
-    if signum == SIGINT:
-        signal(SIGINT, SAVED_SIGINT_HANDLER)
-        SAVED_SIGINT_HANDLER(signum, frame)
-        SAVED_SIGINT_HANDLER = None
-    if signum == SIGBREAK:
-        signal(SIGBREAK, SAVED_SIGBREAK_HANDLER)
-        SAVED_SIGBREAK_HANDLER(signum, frame)
-        SAVED_SIGBREAK_HANDLER = None
-    if signum == SIGTERM:
-        signal(SIGTERM, SAVED_SIGTERM_HANDLER)
-        SAVED_SIGTERM_HANDLER(signum, frame)
-        SAVED_SIGTERM_HANDLER = None
 
 def remote_control_command_abort():
     '''Handle the abort command'''
-    global AGENTS, CONTROLLER_NAME, \
-           ARCHIVE_URL, ARCHIVE_CREDENTIALS, \
-           INSTANCE_RESULTS_FILES, SUMMARY_FILE_NAME
+    global AGENTS, CONTROLLER_NAME
 
     if PRINTER:
         PRINTER.string("{}received abort command, stopping gracefully (might take"    \
                        " a while)...".format(PROMPT))
-    # Send abort signals to all the agents that are running so
+    # Send abort messages to all the agents that are running so
     # that they can tidy up in their own time
-    instances_abort(AGENTS, CONTROLLER_NAME, ARCHIVE_URL, ARCHIVE_CREDENTIALS,
-                    INSTANCE_RESULTS_FILES, 1, SUMMARY_FILE_NAME)
+    instances_abort(AGENTS, CONTROLLER_NAME)
 
 # List of remote control commands, if you update
 # this, update the help text for "-r" also
@@ -1244,17 +1144,9 @@ if __name__ == "__main__":
                         " branch_or_hash.")
     ARGS = PARSER.parse_args()
 
-    # Fill in the globals; global because we need the termination
-    # signal handler to be able to get at them
+    # The controller name is global because we need
+    # the remote control handler to be able to get at it
     CONTROLLER_NAME = ARGS.controller_name
-    ARCHIVE_URL = ARGS.a
-    ARCHIVE_CREDENTIALS = ARGS.c
-    SUMMARY_FILE_NAME = ARGS.s
-
-    # Trap termination signals
-    SAVED_SIGTERM_HANDLER = signal(SIGTERM, sig_handler)
-    SAVED_SIGBREAK_HANDLER = signal(SIGBREAK, sig_handler)
-    SAVED_SIGINT_HANDLER = signal(SIGINT, sig_handler)
 
     # Copy the console output to a file if requested
     if ARGS.o:
@@ -1319,7 +1211,7 @@ if __name__ == "__main__":
                         # Start the instances running on the agents
                         AGENTS = instances_start(AGENTS, DATABASE, CONTROLLER_NAME,
                                                  ARGS.url, ARGS.branch_or_hash, FILTER_STRING,
-                                                 SUMMARY_FILE_NAME, ARGS.t, ARGS.d, ARGS.f, ARGS.g)
+                                                 ARGS.s, ARGS.t, ARGS.d, ARGS.f, ARGS.g)
                         if AGENTS:
                             # Wait for the runs to complete and archive the results
                             if ARGS.a:
@@ -1329,12 +1221,17 @@ if __name__ == "__main__":
                                     INSTANCE_RESULTS_FILES.append(ARGS.d)
                             # Asynchronous aborts can now occur
                             AGENTS_LOCK.release()
-                            if PRINTER:
-                                PRINTER.string("{}it is now possible to abort.".format(PROMPT))
-                            RETURN_VALUE = instances_wait(AGENTS, CONTROLLER_NAME,
-                                                          ARCHIVE_URL, ARCHIVE_CREDENTIALS,
-                                                          INSTANCE_RESULTS_FILES,
-                                                          1, SUMMARY_FILE_NAME, ARGS.f)
+                            try:
+                                if PRINTER:
+                                    PRINTER.string("{}it is now possible to abort.".format(PROMPT))
+                                RETURN_VALUE = instances_wait(AGENTS, CONTROLLER_NAME,
+                                                              ARGS.a, ARGS.c,
+                                                              INSTANCE_RESULTS_FILES,
+                                                              1, ARGS.s, ARGS.f)
+                            except KeyboardInterrupt:
+                                if PRINTER:
+                                    PRINTER.string("{}CTRL-C received, aborting agents...".format(PROMPT))
+                                instances_abort(AGENTS, CONTROLLER_NAME)
                         else:
                             if PRINTER:
                                 PRINTER.string("{}unable to run any instances on any agents.". \
@@ -1362,8 +1259,8 @@ if __name__ == "__main__":
 
     # Copy the collated summary results file over to the archive server
     if SUMMARY_FILE_HANDLE:
-        archive_summary(CONTROLLER_NAME, ARCHIVE_URL, ARCHIVE_CREDENTIALS,
-                        TEXT, SUMMARY_FILE_HANDLE, SUMMARY_FILE_NAME)
+        archive_summary(CONTROLLER_NAME, ARGS.a, ARGS.c,
+                        TEXT, SUMMARY_FILE_HANDLE, ARGS.s)
         SUMMARY_FILE_HANDLE.close()
 
     if PRINTER:
@@ -1376,23 +1273,15 @@ if __name__ == "__main__":
 
     # Stop the printer, flushing what might be a long queue
     sleep(1)
-    PRINT_THREAD.stop_thread(and_flush=True)
+    PRINT_THREAD.stop_thread(flush=True)
     PRINT_THREAD.join()
     PRINTER = None
 
     # If there was a controller output file, archive it and close it
     if CONSOLE_OUTPUT_FILE_HANDLE:
-        if ARCHIVE_URL:
-            archive_console_output(CONTROLLER_NAME, ARCHIVE_URL, ARCHIVE_CREDENTIALS,
+        if ARGS.a:
+            archive_console_output(CONTROLLER_NAME, ARGS.a, ARGS.c,
                                    CONSOLE_OUTPUT_FILE_HANDLE, ARGS.o)
         CONSOLE_OUTPUT_FILE_HANDLE.close()
-
-    # Restore the signal handlers
-    if SAVED_SIGINT_HANDLER:
-        signal(SIGINT, SAVED_SIGINT_HANDLER)
-    if SAVED_SIGBREAK_HANDLER:
-        signal(SIGBREAK, SAVED_SIGBREAK_HANDLER)
-    if SAVED_SIGTERM_HANDLER:
-        signal(SIGTERM, SAVED_SIGTERM_HANDLER)
 
     sys.exit(RETURN_VALUE)

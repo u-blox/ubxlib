@@ -319,9 +319,7 @@ def session_running_names():
 
 def instance_running_count(session_name=None):
     '''Get the number of instances running on this agent'''
-    print("BOO 1")
     with CONTEXT_LOCK:
-        print("BOO 2")
         count = 0
         agent_context = get()
         if agent_context:
@@ -337,9 +335,6 @@ def instance_running_count(session_name=None):
                         for process in session["processes"]:
                             if process["running_flag"].is_set():
                                 count += 1
-        print("BOO 3")
-    print("BOO 4")
-
     return count
 
 def instances_running(session_name=None):
