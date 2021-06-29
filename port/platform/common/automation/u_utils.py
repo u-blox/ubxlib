@@ -995,8 +995,8 @@ class PrintThread(threading.Thread):
             self._queue_forwards.pop(idx)
     def add_forward_queue(self, queue_forward, prefix_string=None, buffer_time=0):
         '''Forward things received on the print queue to another queue'''
-        already_done = False
         self._lock.acquire()
+        already_done = False
         for item in self._queue_forwards:
             if item["queue"] == queue_forward:
                 already_done = True
@@ -1012,8 +1012,8 @@ class PrintThread(threading.Thread):
         self._lock.release()
     def remove_forward_queue(self, queue_forward):
         '''Stop forwarding things received on the print queue to another queue'''
-        queues = []
         self._lock.acquire()
+        queues = []
         self._send_forward(flush=True)
         for item in self._queue_forwards:
             if item["queue"] != queue_forward:
@@ -1022,8 +1022,8 @@ class PrintThread(threading.Thread):
         self._lock.release()
     def stop_thread(self):
         '''Helper function to stop the thread'''
-        self._running = False
         self._lock.acquire()
+        self._running = False
         # Write anything remaining to the window file
         if self._window_update_pending:
             self._window_file_handle.seek(0)
@@ -1086,8 +1086,8 @@ class PrintToQueue():
         self._include_timestamp = include_timestamp
     def add_queue(self, print_queue):
         '''Add a queue to the list of places to print to'''
-        already_done = False
         self._lock.acquire()
+        already_done = False
         for item in self._queues:
             if item == print_queue:
                 already_done = True
@@ -1097,8 +1097,8 @@ class PrintToQueue():
         self._lock.release()
     def remove_queue(self, print_queue):
         '''Remove a queue from  the list of places to print to'''
-        queues = []
         self._lock.acquire()
+        queues = []
         for item in self._queues:
             if item != print_queue:
                 queues.append(item)
@@ -1109,8 +1109,8 @@ class PrintToQueue():
         if self._include_timestamp:
             string = strftime(TIME_FORMAT, gmtime()) + " " + string
         if not file_only:
-            queue_idxes_to_remove = []
             self._lock.acquire()
+            queue_idxes_to_remove = []
             if self._queues:
                 for idx, print_queue in enumerate(self._queues):
                     try:
