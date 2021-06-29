@@ -78,7 +78,8 @@ if __name__ == "__main__":
     PARSER.add_argument("-p", type=int, default=PROCESS_PORT, help="the port"\
                         " number to use, default " + str(PROCESS_PORT) + ".")
     PARSER.add_argument("-r",  type=int, help="use the given port number"    \
-                        " to abort the script using a remote control protocol"\
+                        " to abort the script using a bespole remote control"\
+                        " protocol (specific to u_controller_client.py)"     \
                         " instead of sending a signal (cannot be specified at"\
                         " the same time as -t).")
     PARSER.add_argument("script", default=None, help="the name of the Python" \

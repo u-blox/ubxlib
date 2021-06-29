@@ -365,9 +365,6 @@ def instances_running(session_name=None):
 def session_abort(session_name):
     '''Stop the given session (though don't wait for it to end)'''
     success = False
-    print("---------------------------------------------------------------------")
-    print("                       got session_abort()                           ")
-    print("---------------------------------------------------------------------")
     with CONTEXT_LOCK:
         agent_context = get()
         if agent_context and (agent_context["session_running_count"] > 0):

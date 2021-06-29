@@ -815,98 +815,94 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
     while (agents_running_count > 0) and not failed_agent_name:
         for agent in agents_running:
             # Prevent collisions with an asynchronous abort
-            AGENTS_LOCK.acquire()
-            print("#### STILL IN HERE")
-            if agent["connection"]:
-                text_result = ""
-                agent_poll(agent, AGENT_POLL_TIME)
-                if agent["async_result_object"].ready:
-                    try:
-                        agent["agent_result"] = agent["async_result_object"].value
-                        if agent["agent_result"] != 0:
+            with AGENTS_LOCK:
+                if agent["connection"]:
+                    text_result = ""
+                    agent_poll(agent, AGENT_POLL_TIME)
+                    if agent["async_result_object"].ready:
+                        try:
+                            agent["agent_result"] = agent["async_result_object"].value
+                            if agent["agent_result"] != 0:
+                                if abort_on_first_failure:
+                                    failed_agent_name = agent["name"]
+                            text_result += ", gave return value {}".format(agent["agent_result"])
+                        except Exception as ex:
                             if abort_on_first_failure:
                                 failed_agent_name = agent["name"]
-                        text_result += ", gave return value {}".format(agent["agent_result"])
-                    except Exception as ex:
-                        if abort_on_first_failure:
-                            failed_agent_name = agent["name"]
-                        text_result += ", threw exception {} - {}".format(type(ex).__name__, str(ex))
-                else:
-                    if agent["async_result_object"].expired:
-                        if abort_on_first_failure:
-                            failed_agent_name = agent["name"]
-                        text_result += " timed out"
-                if text_result:
-                    text = ""
-                    if agent["agent_result"] != 0:
-                        text = "*** "
-                    text += "{}, running{}".format(agent["name"],
-                                                   u_utils.get_instances_text(agent["instances_allocated"]))
-                    text += text_result
-                    text += " after {}, results in [{}] {}".format(strftime("%H:%M:%S", gmtime(time() - start_time)),
-                                                                   agent["host_ip_address"],
-                                                                   agent["agent_result_path"].replace("\\", "/"))
-                    # Close the printer and wait for any remaining
-                    # debug prints to arrive
-                    if PRINT_QUEUE:
-                        agent_call(agent, "printer_stop", PRINT_QUEUE)
-                    agent_poll(agent, WAIT_FOR_REMAINING_DEBUG_TIME)
+                            text_result += ", threw exception {} - {}".format(type(ex).__name__, str(ex))
+                    else:
+                        if agent["async_result_object"].expired:
+                            if abort_on_first_failure:
+                                failed_agent_name = agent["name"]
+                            text_result += " timed out"
+                    if text_result:
+                        text = ""
+                        if agent["agent_result"] != 0:
+                            text = "*** "
+                        text += "{}, running{}".format(agent["name"],
+                                                       u_utils.get_instances_text(agent["instances_allocated"]))
+                        text += text_result
+                        text += " after {}, results in [{}] {}".format(strftime("%H:%M:%S", gmtime(time() - start_time)),
+                                                                       agent["host_ip_address"],
+                                                                       agent["agent_result_path"].replace("\\", "/"))
+                        # Close the printer and wait for any remaining
+                        # debug prints to arrive
+                        if PRINT_QUEUE:
+                            agent_call(agent, "printer_stop", PRINT_QUEUE)
+                        agent_poll(agent, WAIT_FOR_REMAINING_DEBUG_TIME)
 
-                    if archive_url:
-                        # If we have an archive URL, ask the agent to put the
-                        # instance result files there and add to the summary
-                        # file we are collating also
-                        text += archive_from_agent(agent, archive_url, archive_credentials,
-                                                   instance_results_files, recurse,
-                                                   SUMMARY_FILE_HANDLE, summary_results_file)
-                    agent_close(agent, text)
-                    agents_running_count -= 1
-                    break
-            AGENTS_LOCK.release()
+                        if archive_url:
+                            # If we have an archive URL, ask the agent to put the
+                            # instance result files there and add to the summary
+                            # file we are collating also
+                            text += archive_from_agent(agent, archive_url, archive_credentials,
+                                                       instance_results_files, recurse,
+                                                       SUMMARY_FILE_HANDLE, summary_results_file)
+                        agent_close(agent, text)
+                        agents_running_count -= 1
+                        break
             sleep(1)
 
         if (time() > last_report_time + RESULT_REPORT_INTERVAL) or (agents_running_count == 0):
-            AGENTS_LOCK.acquire()
-            last_report_time = time()
-            text = ""
-            for agent in agents_running:
-                if agent["connection"]:
-                    if text:
-                        text += " "
-                    text += "{}".format(agent["name"])
-                    agent["instances_running"] = u_utils.copy_two_level_list(agent_call(agent, "instances_running_get",
-                                                                                        agent["session_name"]))
-                    if agent["instances_running"]:
-                        if agent["locked"] and agent_call(agent, "unlock", controller_name):
-                            if PRINTER:
-                                PRINTER.string("{}agent {} now unlocked, lock is not required once instances are running.". \
-                                               format(PROMPT, agent["name"]))
-                            agent["locked"] = False
-                        text += " [{}]".\
-                                format(u_utils.get_instances_text(agent["instances_running"]).strip())
-            if PRINTER:
-                PRINTER.string("{}{} agent(s) ({}) still running after {}.". \
-                               format(PROMPT, agents_running_count, text.strip(),
-                                     strftime("%H:%M:%S", gmtime(time() - start_time))))
-            AGENTS_LOCK.release()
+            with AGENTS_LOCK:
+                last_report_time = time()
+                text = ""
+                for agent in agents_running:
+                    if agent["connection"]:
+                        if text:
+                            text += " "
+                        text += "{}".format(agent["name"])
+                        agent["instances_running"] = u_utils.copy_two_level_list(agent_call(agent, "instances_running_get",
+                                                                                            agent["session_name"]))
+                        if agent["instances_running"]:
+                            if agent["locked"] and agent_call(agent, "unlock", controller_name):
+                                if PRINTER:
+                                    PRINTER.string("{}agent {} now unlocked, lock is not required once instances are running.". \
+                                                   format(PROMPT, agent["name"]))
+                                agent["locked"] = False
+                            text += " [{}]".\
+                                    format(u_utils.get_instances_text(agent["instances_running"]).strip())
+                if PRINTER:
+                    PRINTER.string("{}{} agent(s) ({}) still running after {}.". \
+                                   format(PROMPT, agents_running_count, text.strip(),
+                                         strftime("%H:%M:%S", gmtime(time() - start_time))))
 
     if failed_agent_name:
-        AGENTS_LOCK.acquire()
-        if PRINTER:
-            PRINTER.string("{}aborting at first failure (on {}) as requested...". \
-                           format(PROMPT, failed_agent_name))
-        for agent in agents_running:
-            agent_call(agent, "session_abort", agent["session_name"], controller_name)
-            if agent["locked"] and agent_call(agent, "unlock", controller_name):
-                if PRINTER:
-                    PRINTER.string("{}agent {} now unlocked.". \
-                                   format(PROMPT, agent["name"]))
-                agent["locked"] = False
-            if PRINT_QUEUE:
-                agent_call(agent, "printer_stop", PRINT_QUEUE)
-            agent_close(agent, "aborted")
-            agents_running_count -= 1
-        AGENTS_LOCK.release()
+        with AGENTS_LOCK:
+            if PRINTER:
+                PRINTER.string("{}aborting at first failure (on {}) as requested...". \
+                               format(PROMPT, failed_agent_name))
+            for agent in agents_running:
+                agent_call(agent, "session_abort", agent["session_name"], controller_name)
+                if agent["locked"] and agent_call(agent, "unlock", controller_name):
+                    if PRINTER:
+                        PRINTER.string("{}agent {} now unlocked.". \
+                                       format(PROMPT, agent["name"]))
+                    agent["locked"] = False
+                if PRINT_QUEUE:
+                    agent_call(agent, "printer_stop", PRINT_QUEUE)
+                agent_close(agent, "aborted")
+                agents_running_count -= 1
 
     # Calculate the overall return value.
     # If any return value has gone negative, i.e.
@@ -941,20 +937,18 @@ def instances_abort(agents_locked, controller_name):
     if PRINTER:
         PRINTER.string("{}waiting for ability to abort {} agent(s)...".format(PROMPT,
                                                                               len(agents_locked)))
-    AGENTS_LOCK.acquire()
+    with AGENTS_LOCK:
 
-    count = 0
-    for agent in agents_locked:
-        if agent["async_result_object"]:
-            if PRINTER:
-                PRINTER.string("{}aborting agent {}...".format(PROMPT, agent["name"]))
-            agent_call(agent, "session_abort", agent["session_name"], controller_name)
-            count += 1
+        count = 0
+        for agent in agents_locked:
+            if agent["async_result_object"]:
+                if PRINTER:
+                    PRINTER.string("{}aborting agent {}...".format(PROMPT, agent["name"]))
+                agent_call(agent, "session_abort", agent["session_name"], controller_name)
+                count += 1
 
-    if PRINTER:
-        PRINTER.string("{}{} agent(s) asked to abort.".format(PROMPT, count))
-
-    AGENTS_LOCK.release()
+        if PRINTER:
+            PRINTER.string("{}{} agent(s) asked to abort.".format(PROMPT, count))
 
 def remote_control_command_abort():
     '''Handle the abort command'''
@@ -1232,6 +1226,7 @@ if __name__ == "__main__":
                                 if PRINTER:
                                     PRINTER.string("{}CTRL-C received, aborting agents...".format(PROMPT))
                                 instances_abort(AGENTS, CONTROLLER_NAME)
+                            AGENTS_LOCK.acquire()
                         else:
                             if PRINTER:
                                 PRINTER.string("{}unable to run any instances on any agents.". \
