@@ -130,6 +130,7 @@ if __name__ == "__main__":
             CALL_LIST.append("/c")
             CALL_LIST.append("start")
             CALL_LIST.append("/B")
+            CALL_LIST.append("/W")
         if PROCESS_PYTHON:
             CALL_LIST.append(PROCESS_PYTHON)
         CALL_LIST.append(PROCESS_CHECKER)
@@ -165,7 +166,7 @@ if __name__ == "__main__":
                 # set this so that PROCESS_CHECKER pops up in another
                 # window and you can see what's going on after we've
                 # been killed
-                CREATION_FLAGS |= subprocess.DETACHED_PROCESS
+                # CREATION_FLAGS |= subprocess.DETACHED_PROCESS
                 CREATION_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
             # Set shell to True to keep Jenkins happy
             PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
