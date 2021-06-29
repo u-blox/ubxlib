@@ -1027,12 +1027,13 @@ class RemoteControlThread(threading.Thread):
                         connection.settimeout(0)
                         connected = True
                         while self._running and connected:
-                            message = None
+                            message = b""
                             try:
                                 # Receive all we can on the socket
-                                message = connection.recv(64)
-                                while message:
-                                    message += connection.recv(64)
+                                part = connection.recv(64)
+                                while part:
+                                    message += part
+                                    part = connection.recv(64)
                             except BlockingIOError:
                                 # This is fine, the socket is there and
                                 # we have received nothing

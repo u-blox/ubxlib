@@ -53,16 +53,17 @@ class ConnectToProcessChecker(threading.Thread):
                 # check self._running every so often
                 sock.settimeout(0)
                 connected = True
-                process_checker_said = None
+                process_checker_said = b""
                 # Now just wait either to be told to stop, for
                 # the connection to drop or for a return value
                 # to be sent to us
-                while self._running and connected and process_checker_said is None:
+                while self._running and connected:
                     try:
                         # Receive all we can on the socket
-                        process_checker_said = sock.recv(64)
-                        while process_checker_said:
-                            process_checker_said += sock.recv(64)
+                        part = sock.recv(64)
+                        while part:
+                            process_checker_said += part
+                            part = sock.recv(64)
                     except BlockingIOError:
                         # This is fine, the socket is there and
                         # we have received nothing
@@ -180,12 +181,16 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("{}received CTRL-C, exiting...".format(PROMPT))
 
-        if not connect_thread.has_been_connected():
+        if connect_thread.has_been_connected():
+            # Wait a moment to make sure that the return value comes
+            # through on the socket
+            sleep(1)
+            if connect_thread.return_value() is not None:
+                RETURN_VALUE = connect_thread.return_value()
+        else:
             print("{}ERROR: unable to connect to {} on port {}.".format(PROMPT,
                                                                         PROCESS_CHECKER,
                                                                         ARGS.p))
-        if connect_thread.return_value() is not None:
-            RETURN_VALUE = connect_thread.return_value()
 
         # Finished with the connection now
         connect_thread.stop_thread()
