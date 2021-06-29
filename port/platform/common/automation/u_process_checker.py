@@ -326,13 +326,6 @@ if __name__ == "__main__":
 
         print("{}return value {}".format(PROMPT, RETURN_VALUE))
 
-        # Uncomment the two lines below when debugging with this script
-        # launched in its own window (see u_process_wrapper.py for how
-        # to do that) and you don't want it to evaporate or stop printing
-        # at the end
-        #while True:
-        #    pass
-
         # Stop the printer
         sleep(1)
         PRINT_THREAD.stop_thread()

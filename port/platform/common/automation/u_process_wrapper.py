@@ -125,10 +125,6 @@ if __name__ == "__main__":
 
         # Launch PROCESS_CHECKER with the script and its parameters
         CALL_LIST = []
-        #if not u_utils.is_linux():
-        #    CALL_LIST.append("start")
-        #    CALL_LIST.append("/B")
-        #    CALL_LIST.append("/W")
         if PROCESS_PYTHON:
             CALL_LIST.append(PROCESS_PYTHON)
         CALL_LIST.append(PROCESS_CHECKER)
@@ -157,21 +153,9 @@ if __name__ == "__main__":
               format(PROMPT, os.getcwd(), TMP))
 
         try:
-            CREATION_FLAGS = 0
-            # TODO Linux
-            if not u_utils.is_linux():
-                # When debugging from the command-line on Windows
-                # set this so that PROCESS_CHECKER pops up in another
-                # window and you can see what's going on after we've
-                # been killed
-                CREATION_FLAGS |= subprocess.DETACHED_PROCESS
-                CREATION_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
-            # Set shell to True to keep Jenkins happy
-            PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
+            PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST),
                                        stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT,
-                                       shell=True,
-                                       creationflags=CREATION_FLAGS)
+                                       stderr=subprocess.STDOUT)
             # Wait for the process to finish
             while PROCESS.poll() is None:
                 string = PROCESS.stdout.readline().decode()
@@ -183,7 +167,8 @@ if __name__ == "__main__":
             print("{}ERROR: {} while trying to execute {}.". \
                   format(PROMPT, type(ex).__name__, str(ex)))
         except KeyboardInterrupt:
-            print("{}received CTRL-C, exiting...".format(PROMPT))
+            print("{}received CTRL-C, exiting and leaving {}"
+                  " to do its work.".format(PROMPT, PROCESS_CHECKER))
 
         if connect_thread.has_been_connected():
             # Wait a moment to make sure that the return value comes
