@@ -162,11 +162,13 @@ if __name__ == "__main__":
               format(PROMPT, os.getcwd(), TMP))
 
         try:
+            CREATION_FLAGS = subprocess.CREATE_BREAKAWAY_FROM_JOB
             # Set shell to True to keep Jenkins happy
             PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT,
-                                       shell=True)
+                                       shell=True,
+                                       creationflags=CREATION_FLAGS)
             # Wait for the process to finish
             while PROCESS.poll() is None:
                 string = PROCESS.stdout.readline().decode()
