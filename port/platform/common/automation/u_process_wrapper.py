@@ -4,7 +4,6 @@
 
 import sys
 import os
-from signal import signal, SIGTERM, SIGBREAK
 import threading
 import socket
 import subprocess
@@ -79,12 +78,6 @@ class ConnectToProcessChecker(threading.Thread):
             except (socket.error, ConnectionRefusedError):
                 pass
 
-def sig_handler():
-    '''Handle termination from above and convert to CTRL-C'''
-    print("{}caught termination signal, raising KeyboardInterrupt."    \
-         .format(PROMPT))
-    raise KeyboardInterrupt
-
 if __name__ == "__main__":
     RETURN_VALUE = -1
 
@@ -121,10 +114,6 @@ if __name__ == "__main__":
     PARSER.add_argument("params", nargs=argparse.REMAINDER, default=None,    \
                         help="parameters to go with the script.")
     ARGS = PARSER.parse_args()
-
-    # Trap SIGTERM and SIGBREAK (which Jenkins may send)
-    SAVED_SIGTERM_HANDLER = signal(SIGTERM, sig_handler)
-    SAVED_SIGBREAK_HANDLER = signal(SIGBREAK, sig_handler)
 
     if ARGS.t and ARGS.r:
         print("Cannot specify -t and -r at the same time.")
@@ -197,9 +186,5 @@ if __name__ == "__main__":
         connect_thread.join()
 
         print("{}return value {}".format(PROMPT, RETURN_VALUE))
-
-    # Restore the signal handlers
-    signal(SIGBREAK, SAVED_SIGBREAK_HANDLER)
-    signal(SIGTERM, SAVED_SIGTERM_HANDLER)
 
     sys.exit(RETURN_VALUE)
