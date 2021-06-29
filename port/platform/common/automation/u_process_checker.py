@@ -301,23 +301,21 @@ if __name__ == "__main__":
                                 else:
                                     end_process_with_signal(PROCESS.pid, SIGNAL,
                                                             kill_timeout_seconds=ARGS.k)
-                                break
+                            except KeyboardInterrupt:
+                                print("{}received CTRL-C, exiting...".format(PROMPT))
+                                # Get the process to terminate in the selected manner
+                                if ARGS.r:
+                                    end_process_with_command(PROCESS.pid, ARGS.r,
+                                                             kill_timeout_seconds=ARGS.k)
+                                else:
+                                    end_process_with_signal(PROCESS.pid, SIGNAL,
+                                                            kill_timeout_seconds=ARGS.k)
                     # Set the return value
                     if PROCESS.poll() is not None:
                         RETURN_VALUE = PROCESS.poll()
                 except ValueError as ex:
                     print("{}ERROR: {} while trying to execute {}.". \
                           format(PROMPT, type(ex).__name__, str(ex)))
-                except KeyboardInterrupt:
-                    print("{}received CTRL-C, exiting...".format(PROMPT))
-                    if PROCESS and PROCESS.poll() is not None:
-                        # Terminate the process in the selected manner
-                        if ARGS.r:
-                            end_process_with_command(PROCESS.pid, ARGS.r,
-                                                     kill_timeout_seconds=ARGS.k)
-                        else:
-                            end_process_with_signal(PROCESS.pid, SIGNAL,
-                                                    kill_timeout_seconds=ARGS.k)
 
                 # Send the return value back if the connection is there
                 try:
