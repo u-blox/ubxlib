@@ -105,7 +105,7 @@ if __name__ == "__main__":
         if not u_utils.is_linux():
             CALL_LIST.append("cmd")
             CALL_LIST.append("/c")
-            CALL_LIST.append("call")
+            CALL_LIST.append("start")
         if PROCESS_PYTHON:
             CALL_LIST.append(PROCESS_PYTHON)
         CALL_LIST.append(PROCESS_CHECKER)
