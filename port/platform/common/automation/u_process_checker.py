@@ -339,8 +339,8 @@ if __name__ == "__main__":
         PRINT_THREAD.join()
         PRINTER = None
 
-        # Tidy up remote control thread
-        if PROCESS_READ_THREAD:
-            PROCESS_READ_THREAD.join()
+        # Can't join() PROCESS_READ_THREAD here as it might have
+        # blocked on a read(); it will be tidied up when this process
+        # exits.
 
     sys.exit(RETURN_VALUE)

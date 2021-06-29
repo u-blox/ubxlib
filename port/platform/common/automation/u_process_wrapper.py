@@ -24,36 +24,62 @@ PROCESS_PORT = u_settings.PROCESS_PORT # e.g. 50123
 # What to use to invoke Python
 PROCESS_PYTHON = u_settings.PROCESS_PYTHON # e.g. "python"
 
-# The return value global so that connect_to_process_checker() can update it
-RETURN_VALUE = -1
-
-# Variable to indicate we're connected
-CONNECTED_TO_PROCESS_CHECKER = False
-
-def connect_to_process_checker(port):
-    '''Connect to process checker on the given port number'''
-    global RETURN_VALUE, CONNECTED_TO_PROCESS_CHECKER
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(5)
-        try:
-            sock.connect(("127.0.0.1", port))
-            CONNECTED_TO_PROCESS_CHECKER = True
-            # Now all we do is block until the integer return
-            # value is sent to us as a string (or an error occurs)
-            sock.settimeout(None)
+class ConnectToProcessChecker(threading.Thread):
+    '''Class to connect to process checker on the given port number'''
+    def __init__(self, port):
+        self._port = port
+        self._running = False
+        self._has_been_connected = False
+        self._return_value = None
+        threading.Thread.__init__(self)
+    def stop_thread(self):
+        '''Helper function to stop the thread'''
+        self._running = False
+    def has_been_connected(self):
+        '''Is we ever been connected?'''
+        return self._has_been_connected
+    def return_value(self):
+        '''The return value from PROCESS_CHECKER'''
+        return self._return_value
+    def run(self):
+        '''Worker thread'''
+        self._running = True
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(5)
             try:
-                process_checker_said = sock.recv(64)
-                try:
-                    RETURN_VALUE = int(process_checker_said.decode("utf8"))
-                except (UnicodeDecodeError, ValueError):
-                    pass
-            except socket.error:
+                sock.connect(("127.0.0.1", self._port))
+                self._has_been_connected = True
+                # Set connection to non-blocking so that we
+                # check self._running every so often
+                sock.settimeout(0)
+                connected = True
+                process_checker_said = None
+                # Now just wait either to be told to stop, for
+                # the connection to drop or for a return value
+                # to be sent to us
+                while self._running and connected and process_checker_said is None:
+                    try:
+                        # Receive all we can on the socket
+                        process_checker_said = sock.recv(64)
+                        while process_checker_said:
+                            process_checker_said += sock.recv(64)
+                    except BlockingIOError:
+                        # This is fine, the socket is there and
+                        # we have received nothing
+                        sleep(1)
+                    except socket.error:
+                        connected = False
+                    if process_checker_said:
+                        try:
+                            self._return_value = int(process_checker_said.decode("utf8"))
+                        except (UnicodeDecodeError, ValueError):
+                            pass
+            except (socket.error, ConnectionRefusedError):
                 pass
-        except (socket.error, ConnectionRefusedError):
-            pass
 
 if __name__ == "__main__":
+    RETURN_VALUE = -1
+
     PARSER = argparse.ArgumentParser(description="Wrap a Python script so"   \
                                      " that it can be ended in a controlled" \
                                      " way if this process is killed; this"  \
@@ -93,8 +119,7 @@ if __name__ == "__main__":
     else:
         # Start a thread that attempts to connect
         # to PROCESS_CHECKER on the given port
-        connect_thread = threading.Thread(target=connect_to_process_checker,
-                                          args=(ARGS.p,))
+        connect_thread = ConnectToProcessChecker(ARGS.p)
         connect_thread.start()
 
         # Launch PROCESS_CHECKER with the script and its parameters
@@ -155,13 +180,16 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("{}received CTRL-C, exiting...".format(PROMPT))
 
-        # Finished with the connection now
-        connect_thread.join()
-
-        if not CONNECTED_TO_PROCESS_CHECKER:
+        if not connect_thread.has_been_connected():
             print("{}ERROR: unable to connect to {} on port {}.".format(PROMPT,
                                                                         PROCESS_CHECKER,
                                                                         ARGS.p))
+        if connect_thread.return_value() is not None:
+            RETURN_VALUE = connect_thread.return_value()
+
+        # Finished with the connection now
+        connect_thread.stop_thread()
+        connect_thread.join()
 
         print("{}return value {}".format(PROMPT, RETURN_VALUE))
 
