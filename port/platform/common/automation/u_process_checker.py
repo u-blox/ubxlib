@@ -4,7 +4,7 @@
 
 import sys
 import os
-from signal import signal, SIGBREAK, SIGTERM, CTRL_C_EVENT
+import signal
 import socket
 import subprocess
 import queue
@@ -181,15 +181,11 @@ def end_process_with_signal(process_pid, signal_to_send, kill_timeout_seconds=No
         if wait_for_end:
             wait_for_termination(process_list, kill_timeout_seconds)
 
-def sig_handler():
-    '''Trap and ignore termination from above'''
-    print("{}caught and ignoring termination signal".format(PROMPT))
-
 if __name__ == "__main__":
     RETURN_VALUE = -1
     NEXT_CHECK = time()
     PROCESS = None
-    SIGNAL = CTRL_C_EVENT
+    SIGNAL = signal.CTRL_C_EVENT
     PROCESS_READ_THREAD = None
 
     PARSER = argparse.ArgumentParser(description="The other half of"         \
@@ -225,15 +221,11 @@ if __name__ == "__main__":
                         help="parameters to go with the script.")
     ARGS = PARSER.parse_args()
 
-    # Trap SIGTERM and SIGBREAK (which Jenkins may send)
-    SAVED_SIGTERM_HANDLER = signal(SIGTERM, sig_handler)
-    SAVED_SIGBREAK_HANDLER = signal(SIGBREAK, sig_handler)
-
     if ARGS.t and ARGS.r:
         print("Cannot specify -t and -r at the same time.")
     else:
         if ARGS.t:
-            SIGNAL = SIGTERM
+            SIGNAL = signal.SIGTERM
 
         # For the output from the script we call
         PRINT_QUEUE = queue.Queue()
@@ -343,9 +335,5 @@ if __name__ == "__main__":
         # Can't join() PROCESS_READ_THREAD here as it might have
         # blocked on a read(); it will be tidied up when this process
         # exits.
-
-    # Restore the signal handlers
-    signal(SIGBREAK, SAVED_SIGBREAK_HANDLER)
-    signal(SIGTERM, SAVED_SIGTERM_HANDLER)
 
     sys.exit(RETURN_VALUE)
