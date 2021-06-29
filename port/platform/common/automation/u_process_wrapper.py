@@ -4,6 +4,7 @@
 
 import sys
 import os
+from signal import signal, SIGTERM
 import threading
 import socket
 import subprocess
@@ -78,6 +79,10 @@ class ConnectToProcessChecker(threading.Thread):
             except (socket.error, ConnectionRefusedError):
                 pass
 
+def sigterm_handler():
+    ''' Just exit on receipt of SIGTERM'''
+    sys.exit(-1)
+
 if __name__ == "__main__":
     RETURN_VALUE = -1
 
@@ -115,6 +120,9 @@ if __name__ == "__main__":
                         help="parameters to go with the script.")
     ARGS = PARSER.parse_args()
 
+    # Trap SIGERM, which Jenkins sends
+    signal(SIGTERM, sigterm_handler)
+
     if ARGS.t and ARGS.r:
         print("Cannot specify -t and -r at the same time.")
     else:
@@ -125,10 +133,10 @@ if __name__ == "__main__":
 
         # Launch PROCESS_CHECKER with the script and its parameters
         CALL_LIST = []
-        if not u_utils.is_linux():
-            CALL_LIST.append("cmd")
-            CALL_LIST.append("/c")
-            CALL_LIST.append("start")
+        #if not u_utils.is_linux():
+        #    CALL_LIST.append("cmd")
+        #    CALL_LIST.append("/c")
+        #    CALL_LIST.append("start")
         if PROCESS_PYTHON:
             CALL_LIST.append(PROCESS_PYTHON)
         CALL_LIST.append(PROCESS_CHECKER)
