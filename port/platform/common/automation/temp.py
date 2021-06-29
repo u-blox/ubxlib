@@ -3,19 +3,25 @@
 '''Process wrapper to help with Jenkins integration; a version of Morné Joubert's great idea.'''
 
 import sys
-from signal import signal, SIGTERM
+from signal import signal, SIGTERM, SIGBREAK
 from time import sleep
+
+def sigterm_break():
+    ''' Just exit on receipt of SIGBREAK'''
+    print("{}received SIGBREAK, exiting.".format(PROMPT))
+    sys.exit(-12)
 
 def sigterm_handler():
     ''' Just exit on receipt of SIGTERM'''
     print("{}received SIGTERM, exiting.".format(PROMPT))
-    sys.exit(-1)
+    sys.exit(-2)
 
 if __name__ == "__main__":
-    RETURN_VALUE = -1
-
     # Trap SIGERM, which Jenkins sends
     signal(SIGTERM, sigterm_handler)
+
+    # Trap SIGBREAK
+    signal(SIGBREAK, sigterm_handler)
 
     try:
         while(True):
