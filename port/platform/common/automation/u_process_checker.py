@@ -4,7 +4,7 @@
 
 import sys
 import os
-import signal
+from signal import signal, SIGTERM, CTRL_C_EVENT
 import socket
 import subprocess
 import queue
@@ -181,11 +181,15 @@ def end_process_with_signal(process_pid, signal_to_send, kill_timeout_seconds=No
         if wait_for_end:
             wait_for_termination(process_list, kill_timeout_seconds)
 
+def sigterm_handler():
+    ''' Igore SIGTERM'''
+    print("{}ignoring SIGTERM.".format(PROMPT))
+
 if __name__ == "__main__":
     RETURN_VALUE = -1
     NEXT_CHECK = time()
     PROCESS = None
-    SIGNAL = signal.CTRL_C_EVENT
+    SIGNAL = CTRL_C_EVENT
     PROCESS_READ_THREAD = None
 
     PARSER = argparse.ArgumentParser(description="The other half of"         \
@@ -221,11 +225,14 @@ if __name__ == "__main__":
                         help="parameters to go with the script.")
     ARGS = PARSER.parse_args()
 
+    # Trap SIGERM, which Jenkins sends
+    signal(SIGTERM, sigterm_handler)
+
     if ARGS.t and ARGS.r:
         print("Cannot specify -t and -r at the same time.")
     else:
         if ARGS.t:
-            SIGNAL = signal.SIGTERM
+            SIGNAL = SIGTERM
 
         # For the output from the script we call
         PRINT_QUEUE = queue.Queue()
