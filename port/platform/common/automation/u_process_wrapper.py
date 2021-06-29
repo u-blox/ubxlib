@@ -129,6 +129,7 @@ if __name__ == "__main__":
             CALL_LIST.append("cmd")
             CALL_LIST.append("/c")
             CALL_LIST.append("start")
+            CALL_LIST.append("/B")
         if PROCESS_PYTHON:
             CALL_LIST.append(PROCESS_PYTHON)
         CALL_LIST.append(PROCESS_CHECKER)
