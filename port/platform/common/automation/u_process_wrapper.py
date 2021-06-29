@@ -99,12 +99,6 @@ if __name__ == "__main__":
 
         # Launch PROCESS_CHECKER with the script and its parameters
         CALL_LIST = []
-        # Launch as a separate process so that it is not affected
-        # by the killing of us
-        # TODO Linux
-        if not u_utils.is_linux():
-            CALL_LIST.append("start")
-            CALL_LIST.append("/B")
         if PROCESS_PYTHON:
             CALL_LIST.append(PROCESS_PYTHON)
         CALL_LIST.append(PROCESS_CHECKER)
