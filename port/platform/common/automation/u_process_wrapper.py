@@ -127,6 +127,7 @@ if __name__ == "__main__":
         CALL_LIST = []
         if not u_utils.is_linux():
             CALL_LIST.append("cmd")
+            CALL_LIST.append("/c")
             CALL_LIST.append("start")
             CALL_LIST.append("/B")
         if PROCESS_PYTHON:
