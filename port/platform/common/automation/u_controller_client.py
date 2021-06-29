@@ -828,9 +828,10 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
                 PRINTER.string("{}unable to open a temporary file for the summary results.". \
                                format(PROMPT))
     while (agents_running_count > 0) and not failed_agent_name:
-        # Prevent collisions with an asynchronous abort
-        AGENTS_LOCK.acquire()
         for agent in agents_running:
+            # Prevent collisions with an asynchronous abort
+            AGENTS_LOCK.acquire()
+            print("#### STILL IN HERE")
             if agent["connection"]:
                 text_result = ""
                 agent_poll(agent, AGENT_POLL_TIME)
@@ -876,7 +877,11 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
                     agent_close(agent, text)
                     agents_running_count -= 1
                     break
+            AGENTS_LOCK.release()
+            sleep(1)
+
         if (time() > last_report_time + RESULT_REPORT_INTERVAL) or (agents_running_count == 0):
+            AGENTS_LOCK.acquire()
             last_report_time = time()
             text = ""
             for agent in agents_running:
@@ -898,8 +903,7 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
                 PRINTER.string("{}{} agent(s) ({}) still running after {}.". \
                                format(PROMPT, agents_running_count, text.strip(),
                                      strftime("%H:%M:%S", gmtime(time() - start_time))))
-        AGENTS_LOCK.release()
-        sleep(1)
+            AGENTS_LOCK.release()
 
     if failed_agent_name:
         AGENTS_LOCK.acquire()
@@ -962,49 +966,58 @@ def instances_abort(agents_locked, controller_name, archive_url, archive_credent
             agent_call(agent, "session_abort", agent["session_name"], controller_name)
             agents_to_wait_for.append(agent)
 
-    if len(agents_to_wait_for) > 0:
-        agents_running_count = len(agents_to_wait_for)
-        while agents_running_count > 0:
+    while len(agents_to_wait_for) > 0:
+        if PRINTER:
+            PRINTER.string("{}waiting for {} agent(s) to abort...".format(PROMPT,
+                                                                          len(agents_to_wait_for)))
+        agents_stopped_idx = []
+        for idx, agent in enumerate(agents_to_wait_for):
+            instance_running_count = agent_call(agent, "instance_running_count_get")
+            if instance_running_count is None:
+                # Note: agent_call() returns None if the agent has been closed
+                PRINTER.string("{}agent {} has already disconnected.".  \
+                               format(PROMPT, agent["name"]))
+                agents_stopped_idx.append(idx)
+            else:
+                if instance_running_count <= 0:
+                    PRINTER.string("{}agent {} has stopped, tidying it up...".  \
+                                   format(PROMPT, agent["name"]))
+                    # Close the printer and wait for any remaining
+                    # debug prints to arrive
+                    if PRINT_QUEUE:
+                        agent_call(agent, "printer_stop", PRINT_QUEUE)
+                    agent_poll(agent, WAIT_FOR_REMAINING_DEBUG_TIME)
+
+                    PRINTER.string("#### Archiving {}".format(agent["name"]))
+                    print("#### Print Archiving {}".format(agent["name"]))
+                    text = ""
+                    if archive_url:
+                        # If we have an archive URL, ask the agent to put the
+                        # instance result files there and add to the summary
+                        # file we are collating also
+                        text += "results from [{}] {}". \
+                                 format(agent["host_ip_address"],
+                                        agent["agent_result_path"].replace("\\", "/"))
+                        text += archive_from_agent(agent, archive_url, archive_credentials,
+                                                   instance_results_files, recurse,
+                                                   SUMMARY_FILE_HANDLE, summary_results_file)
+
+                    if agent["locked"]:
+                        agent_call(agent, "unlock", controller_name)
+                        agent["locked"] = False
+                    agent_close(agent, text)
+                    agents_stopped_idx.append(idx)
+
+        # Note: have to do this in reverse or the index will
+        # change at each pop() and it will mess up
+        for idx in reversed(agents_stopped_idx):
+            agents_to_wait_for.pop(idx)
+
+        for agent in agents_to_wait_for:
             if PRINTER:
-                PRINTER.string("{}waiting for {} agent(s) to abort...".format(PROMPT,
-                                                                              agents_running_count))
-            for agent in agents_to_wait_for:
-                if agent["connection"]:
-                    PRINTER.string("#### BOO 1 on agent {}".format(agent["name"]))
-                    if (agent_call(agent, "instance_running_count_get") <= 0):
-                        PRINTER.string("{}agent {} has stopped, tidying it up...".  \
-                                       format(PROMPT, agent["name"]))
-                        # Close the printer and wait for any remaining
-                        # debug prints to arrive
-                        if PRINT_QUEUE:
-                            agent_call(agent, "printer_stop", PRINT_QUEUE)
-                        agent_poll(agent, WAIT_FOR_REMAINING_DEBUG_TIME)
-
-                        if archive_url:
-                            # If we have an archive URL, ask the agent to put the
-                            # instance result files there and add to the summary
-                            # file we are collating also
-                            text = "results from [{}] {}". \
-                                    format(agent["host_ip_address"],
-                                           agent["agent_result_path"].replace("\\", "/"))
-                            text += archive_from_agent(agent, archive_url, archive_credentials,
-                                                       instance_results_files, recurse,
-                                                       SUMMARY_FILE_HANDLE, summary_results_file)
-
-                        if agent["locked"]:
-                            agent_call(agent, "unlock", controller_name)
-                            agent["locked"] = False
-                        agent_close(agent, text)
-                    PRINTER.string("#### BOO 2")
-
-            sleep(1)
-            agents_running_count = 0
-            for agent in agents_to_wait_for:
-                if agent["connection"]:
-                    if PRINTER:
-                        PRINTER.string("{}agent {} still running...".format(PROMPT,
-                                                                            agent["name"]))
-                    agents_running_count += 1
+                PRINTER.string("{}agent {} still running...".format(PROMPT,
+                                                                    agent["name"]))
+        sleep(1)
 
     if PRINTER:
         PRINTER.string("{}abort completed.".format(PROMPT))
@@ -1042,6 +1055,10 @@ def sig_handler(signum, frame):
 
 def remote_control_command_abort():
     '''Handle the abort command'''
+    global AGENTS, CONTROLLER_NAME, \
+           ARCHIVE_URL, ARCHIVE_CREDENTIALS, \
+           INSTANCE_RESULTS_FILES, SUMMARY_FILE_NAME
+
     if PRINTER:
         PRINTER.string("{}received abort command, stopping gracefully (might take"    \
                        " a while)...".format(PROMPT))
@@ -1357,9 +1374,9 @@ if __name__ == "__main__":
         REMOTE_CONTROL_THREAD.stop_thread()
         REMOTE_CONTROL_THREAD.join()
 
-    # Stop the printer
+    # Stop the printer, flushing what might be a long queue
     sleep(1)
-    PRINT_THREAD.stop_thread()
+    PRINT_THREAD.stop_thread(and_flush=True)
     PRINT_THREAD.join()
     PRINTER = None
 
