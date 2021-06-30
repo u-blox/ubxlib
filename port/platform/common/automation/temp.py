@@ -22,11 +22,15 @@ def log(string):
 def sigterm_break():
     ''' Exit on SIGBREAK'''
     log("received SIGBREAK, exiting...")
+    if FILE:
+        FILE.close()
     sys.exit(-22)
 
 def sigterm_handler():
     ''' Exit on SIGTERM'''
     log("received SIGTERM, exiting...")
+    if FILE:
+        FILE.close()
     sys.exit(-2)
 
 def process_read(process):

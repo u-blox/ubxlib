@@ -20,6 +20,8 @@ def log(string):
 def sigterm_break():
     ''' Exit on SIGBREAK'''
     log("received SIGBREAK, exiting...")
+    if FILE:
+        FILE.close()
     sys.exit(-32)
 
 def sigterm_handler():
@@ -34,15 +36,13 @@ if __name__ == "__main__":
     COUNT = 0
     FILE = open("{}.txt".format(MY_NAME), "w+")
 
-    try:
-
-        while COUNT < 30:
+    while COUNT < 30:
+        try:
             COUNT += 1
             log("wait {}".format(COUNT))
             sleep(1)
-
-    except KeyboardInterrupt:
-        log("ignoring CTRL-C")
+        except KeyboardInterrupt:
+            log("ignoring CTRL-C")
 
     FILE.close()
 

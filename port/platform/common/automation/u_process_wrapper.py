@@ -98,9 +98,9 @@ class ConnectToProcessChecker(threading.Thread):
                                     self._return_value = int(process_checker_said.split(RETURN_VALUE_PREFIX)[1])
                                 except (IndexError, ValueError):
                                     if self._printing:
-                                        # I've no idea where the extra linefeeds
-                                        # are coming from so remove them heavy-handedly
-                                        # here
+                                        # Somewhere along the way line endings are being
+                                        # turned into "\r\n" which Jenkins interprets as
+                                        # two linefeeds (<sigh>) so strip them off here.
                                         print(process_checker_said.replace("\r\n","\n"), end="")
                         except UnicodeDecodeError:
                             pass
