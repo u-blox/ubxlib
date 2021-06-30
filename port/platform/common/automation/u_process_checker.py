@@ -44,11 +44,11 @@ REMOTE_CONTROL_ACK = "ack\n"
 def process_forward_output(process, socket_handle):
     '''Read output from a process and queue'''
     while process.poll() is None:
-        string = process.stdout.readline().decode()
+        string = process.stdout.readline().decode("utf8")
         if string and string != "":
             if socket_handle is not None:
                 try:
-                    socket_handle.sendall(string.encode().replace("\r", ""))
+                    socket_handle.sendall(string.encode())
                 except socket.error:
                     # Don't waste our time if it's gone
                     socket_handle = None
