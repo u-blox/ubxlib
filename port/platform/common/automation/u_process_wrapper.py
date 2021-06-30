@@ -96,9 +96,8 @@ class ConnectToProcessChecker(threading.Thread):
                             try:
                                 self._return_value = int(process_checker_said.split(RETURN_VALUE_PREFIX)[1])
                             except (IndexError, ValueError):
-                                pass
-                            if self._printing:
-                                print(process_checker_said.rstrip())
+                                if self._printing:
+                                    print(process_checker_said.rstrip())
                         except UnicodeDecodeError:
                             pass
                     if self._receive_timeout is not None and \
@@ -237,10 +236,6 @@ if __name__ == "__main__":
                     print("{}ERROR: unable to connect to {} on port {}.".format(PROMPT,
                                                                                 PROCESS_CHECKER,
                                                                                 ARGS.p))
-                # Finished with the connection now
-                CONNECT_THREAD.stop_thread()
-                CONNECT_THREAD.join()
-
             else:
                 print("{}ERROR: process returned {}.". \
                       format(PROMPT, PROCESS_RETURN_VALUE))
@@ -250,9 +245,11 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("{}received CTRL-C, exiting and leaving {}"
                   " to do its work.".format(PROMPT, PROCESS_CHECKER))
-            if CONNECT_THREAD:
-                CONNECT_THREAD.stop_thread()
-                CONNECT_THREAD.join()
+
+        # Tidy up
+        if CONNECT_THREAD:
+            CONNECT_THREAD.stop_thread()
+            CONNECT_THREAD.join()
 
         print("{}return value {}".format(PROMPT, RETURN_VALUE))
 
