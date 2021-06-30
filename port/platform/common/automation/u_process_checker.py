@@ -7,7 +7,6 @@ import os
 from signal import SIGTERM, CTRL_C_EVENT
 import socket
 import subprocess
-import queue
 import threading
 import argparse
 from time import sleep, time
@@ -42,12 +41,17 @@ REMOTE_CONTROL_COMMAND_ABORT = "abort\n"
 # The ack for a command, sent by u_controller_client.py
 REMOTE_CONTROL_ACK = "ack\n"
 
-def process_read(process, read_queue):
+def process_forward_output(process, socket_handle):
     '''Read output from a process and queue'''
     while process.poll() is None:
         string = process.stdout.readline().decode()
         if string and string != "":
-            read_queue.put(string.rstrip())
+            if socket_handle is not None:
+                try:
+                    socket_handle.sendall(string.encode())
+                except socket.error:
+                    # Don't waste our time if it's gone
+                    socket_handle = None
 
 def wait_for_termination(process_list, kill_timeout_seconds=None):
     '''Called by end_process_with_command() and end_process_with_signal()'''
@@ -190,7 +194,6 @@ if __name__ == "__main__":
     NEXT_CHECK = time()
     PROCESS = None
     SIGNAL = CTRL_C_EVENT
-    PROCESS_READ_THREAD = None
 
     PARSER = argparse.ArgumentParser(description="The other half of"         \
                                      " " + PROCESS_WRAPPER + "; this script" \
@@ -248,12 +251,6 @@ if __name__ == "__main__":
                 # Set connection to non-blocking with zero timeout
                 CONNECTION.settimeout(0)
 
-                # For the output from the script we call
-                PRINT_QUEUE = queue.Queue()
-                PRINT_THREAD =  u_utils.PrintThread(PRINT_QUEUE, socket_handle=CONNECTION)
-                PRINT_THREAD.start()
-                PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, None)
-
                 # Launch the script with its parameters
                 CALL_LIST = []
                 if PROCESS_PYTHON:
@@ -275,11 +272,11 @@ if __name__ == "__main__":
                 try:
                     PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST),
                                                stdout=subprocess.PIPE,
-                                               stderr=subprocess.STDOUT,
-                                               creationflags=0)
-                    # Run a thread to queue stuff from the process
-                    PROCESS_READ_THREAD = threading.Thread(target=process_read,
-                                                           args=(PROCESS, PRINT_QUEUE))
+                                               stderr=subprocess.STDOUT)
+                    # Run a thread to grab stuff from the process
+                    # and sent it back over the socket
+                    PROCESS_READ_THREAD = threading.Thread(target=process_forward_output,
+                                                           args=(PROCESS, CONNECTION))
                     PROCESS_READ_THREAD.start()
 
                     # Wait for the process to finish
@@ -327,16 +324,10 @@ if __name__ == "__main__":
 
                 # Send the return value back if the connection is there
                 try:
-                    CONNECTION.sendall(str(RETURN_VALUE_PREFIX + RETURN_VALUE).encode())
+                    CONNECTION.sendall((RETURN_VALUE_PREFIX + str(RETURN_VALUE)).encode())
                 except (BlockingIOError, socket.error) as ex:
                     print("{}can't send return value to {}, likely it exited ({} {}).". \
                           format(PROMPT, PROCESS_WRAPPER, type(ex).__name__, str(ex)))
-
-                # Stop the printer
-                sleep(1)
-                PRINT_THREAD.stop_thread()
-                PRINT_THREAD.join()
-                PRINTER = None
 
         print("{}return value {}".format(PROMPT, RETURN_VALUE))
 

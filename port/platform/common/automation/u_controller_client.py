@@ -1027,7 +1027,7 @@ class RemoteControlThread(threading.Thread):
                         connection.settimeout(0)
                         connected = True
                         while self._running and connected:
-                            message = b""
+                            message = bytes()
                             try:
                                 # Receive all we can on the socket
                                 part = connection.recv(64)

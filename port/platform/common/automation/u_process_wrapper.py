@@ -71,16 +71,16 @@ class ConnectToProcessChecker(threading.Thread):
                 # check self._running every so often
                 sock.settimeout(0)
                 last_receive_time = time()
-                process_checker_said = b""
                 # Now just wait either to be told to stop, for
                 # the connection to drop or for a return value
                 # to be sent to us
                 while self._running and self._connected:
+                    message = bytes()
                     try:
                         # Receive all we can on the socket
                         part = sock.recv(SOCKET_BUFFER_LENGTH)
                         while part:
-                            process_checker_said += part
+                            message += part
                             part = sock.recv(SOCKET_BUFFER_LENGTH)
                     except BlockingIOError:
                         # This is fine, the socket is there and
@@ -88,13 +88,13 @@ class ConnectToProcessChecker(threading.Thread):
                         sleep(0.1)
                     except socket.error:
                         self._connected = False
-                    if process_checker_said:
+                    if message:
                         last_receive_time = time()
                         # Pick out the return value and print the stream if asked
                         try:
-                            process_checker_said = process_checker_said.decode("utf8")
+                            process_checker_said = message.decode("utf8")
                             try:
-                                self._return_value = int(process_checker_said.split[RETURN_VALUE_PREFIX][1])
+                                self._return_value = int(process_checker_said.split(RETURN_VALUE_PREFIX)[1])
                             except (IndexError, ValueError):
                                 pass
                             if self._printing:
@@ -114,6 +114,7 @@ def sigterm_handler():
 
 if __name__ == "__main__":
     RETURN_VALUE = -1
+    CONNECT_THREAD = None
 
     PARSER = argparse.ArgumentParser(description="Wrap a Python script so"   \
                                      " that it can be ended in a controlled" \
@@ -155,19 +156,12 @@ if __name__ == "__main__":
     if ARGS.t and ARGS.r:
         print("Cannot specify -t and -r at the same time.")
     else:
-        # Start a thread that attempts to connect
-        # to PROCESS_CHECKER on the given port
-        connect_thread = ConnectToProcessChecker(ARGS.p,
-                                                 printing=True,
-                                                 receive_timeout=SOCKET_RECEIVE_GUARD_TIME_SECONDS)
-        connect_thread.start()
-
         # Launch PROCESS_CHECKER with the script and its parameters
         CALL_LIST = []
         if not u_utils.is_linux():
-            # We run process checker via "start": this way
-            # if process wrapper is terminated by Jenkins, process
-            # checker gets to continue.
+            # We run process checker via "start" (the closest Windows
+            # gets to fork): this way if process wrapper is terminated
+            # by Jenkins, process checker gets to continue.
             # Note however, that means we don't get to see its output
             # at all, so process checker must send it over the socket as
             # well.
@@ -205,26 +199,35 @@ if __name__ == "__main__":
             PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST),
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT)
-            # The process will exit immediately, having forked
+            # The process should exit immediately, having forked
             # the thing we actually want
             while PROCESS.poll() is None:
-                string = PROCESS.stdout.readline().decode()
-                print(string.rstrip())
                 sleep(0.1)
             PROCESS_RETURN_VALUE = PROCESS.poll()
             if PROCESS_RETURN_VALUE == 0:
-                if connect_thread.connected():
+                # Start a thread that attempts to connect
+                # to PROCESS_CHECKER on the given port
+                CONNECT_THREAD = ConnectToProcessChecker(ARGS.p,
+                                                         printing=True,
+                                                         receive_timeout=SOCKET_RECEIVE_GUARD_TIME_SECONDS)
+                CONNECT_THREAD.start()
+
+                COUNT = 0
+                while not CONNECT_THREAD.connected() and COUNT < 10:
+                    sleep(1)
+                    COUNT += 1
+                if CONNECT_THREAD.connected():
                     # Now we wait for either a timeout in
                     # the receipt of stuff on the socket
                     # or the return value to arrive on
                     # the socket
-                    while connect_thread.return_value() is None and \
-                        not connect_thread.guard_timed_out():
+                    while CONNECT_THREAD.return_value() is None and \
+                        not CONNECT_THREAD.guard_timed_out():
                         sleep(1)
-                    if connect_thread.return_value() is not None:
-                        RETURN_VALUE = connect_thread.return_value()
+                    if CONNECT_THREAD.return_value() is not None:
+                        RETURN_VALUE = CONNECT_THREAD.return_value()
                     else:
-                        if connect_thread.guard_timed_out():
+                        if CONNECT_THREAD.guard_timed_out():
                             print("{}ERROR: nothing from {} on port {}"\
                                   " in {} second(s).".format(PROMPT,
                                                              PROCESS_CHECKER,
@@ -234,6 +237,10 @@ if __name__ == "__main__":
                     print("{}ERROR: unable to connect to {} on port {}.".format(PROMPT,
                                                                                 PROCESS_CHECKER,
                                                                                 ARGS.p))
+                # Finished with the connection now
+                CONNECT_THREAD.stop_thread()
+                CONNECT_THREAD.join()
+
             else:
                 print("{}ERROR: process returned {}.". \
                       format(PROMPT, PROCESS_RETURN_VALUE))
@@ -243,10 +250,9 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("{}received CTRL-C, exiting and leaving {}"
                   " to do its work.".format(PROMPT, PROCESS_CHECKER))
-
-        # Finished with the connection now
-        connect_thread.stop_thread()
-        connect_thread.join()
+            if CONNECT_THREAD:
+                CONNECT_THREAD.stop_thread()
+                CONNECT_THREAD.join()
 
         print("{}return value {}".format(PROMPT, RETURN_VALUE))
 
