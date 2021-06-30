@@ -8,37 +8,54 @@ from signal import signal, SIGTERM
 import threading
 import socket
 import subprocess
-from time import sleep
+from time import time, sleep
 import argparse
-import u_settings
 import u_utils
+import u_process_settings
 
 PROMPT = "u_process_wrapper: "
 
 # The name of the script which forms the other half
 # of the process wrapper/process checker pair.
-PROCESS_CHECKER = u_settings.PROCESS_CHECKER # e.g. "u_process_checker.py"
+PROCESS_CHECKER = u_process_settings.CHECKER_NAME # e.g. "u_process_checker.py"
 
 # The default port number to use
-PROCESS_PORT = u_settings.PROCESS_PORT # e.g. 50123
+PROCESS_PORT = u_process_settings.PORT # e.g. 50123
 
 # What to use to invoke Python
-PROCESS_PYTHON = u_settings.PROCESS_PYTHON # e.g. "python"
+PROCESS_PYTHON = u_process_settings.PYTHON # e.g. "python"
+
+# The special prefix used before a return value
+# sent on a socket by u_process_checker
+RETURN_VALUE_PREFIX = u_process_settings.RETURN_VALUE_PREFIX # e.g. "#!ubx!# RETURN_VALUE:"
+
+# The receive socket buffer size to use
+SOCKET_BUFFER_LENGTH = 4096
+
+# The amount of silence on the socket which
+# constitutes a timeout
+SOCKET_RECEIVE_GUARD_TIME_SECONDS = 300
 
 class ConnectToProcessChecker(threading.Thread):
     '''Class to connect to process checker on the given port number'''
-    def __init__(self, port):
+    def __init__(self, port, printing=True, receive_timeout=None):
         self._port = port
+        self._printing = printing
         self._running = False
-        self._has_been_connected = False
+        self._connected = False
+        self._receive_timeout = receive_timeout
+        self._guard_timed_out = False
         self._return_value = None
         threading.Thread.__init__(self)
     def stop_thread(self):
         '''Helper function to stop the thread'''
         self._running = False
-    def has_been_connected(self):
-        '''Is we ever been connected?'''
-        return self._has_been_connected
+    def connected(self):
+        '''Are we connected?'''
+        return self._connected
+    def guard_timed_out(self):
+        '''Return true if we're no longer receiving stuff on the socket'''
+        return self._guard_timed_out
     def return_value(self):
         '''The return value from PROCESS_CHECKER'''
         return self._return_value
@@ -49,33 +66,44 @@ class ConnectToProcessChecker(threading.Thread):
             sock.settimeout(5)
             try:
                 sock.connect(("127.0.0.1", self._port))
-                self._has_been_connected = True
+                self._connected = True
                 # Set connection to non-blocking so that we
                 # check self._running every so often
                 sock.settimeout(0)
-                connected = True
+                last_receive_time = time()
                 process_checker_said = b""
                 # Now just wait either to be told to stop, for
                 # the connection to drop or for a return value
                 # to be sent to us
-                while self._running and connected:
+                while self._running and self._connected:
                     try:
                         # Receive all we can on the socket
-                        part = sock.recv(64)
+                        part = sock.recv(SOCKET_BUFFER_LENGTH)
                         while part:
                             process_checker_said += part
-                            part = sock.recv(64)
+                            part = sock.recv(SOCKET_BUFFER_LENGTH)
                     except BlockingIOError:
                         # This is fine, the socket is there and
                         # we have received nothing
-                        sleep(1)
+                        sleep(0.1)
                     except socket.error:
-                        connected = False
+                        self._connected = False
                     if process_checker_said:
+                        last_receive_time = time()
+                        # Pick out the return value and print the stream if asked
                         try:
-                            self._return_value = int(process_checker_said.decode("utf8"))
-                        except (UnicodeDecodeError, ValueError):
+                            process_checker_said = process_checker_said.decode("utf8")
+                            try:
+                                self._return_value = int(process_checker_said.split[RETURN_VALUE_PREFIX][1])
+                            except (IndexError, ValueError):
+                                pass
+                            if self._printing:
+                                print(process_checker_said.rstrip())
+                        except UnicodeDecodeError:
                             pass
+                    if self._receive_timeout is not None and \
+                       time() > last_receive_time + self._receive_timeout:
+                        self._guard_timed_out = True
             except (socket.error, ConnectionRefusedError):
                 pass
 
@@ -121,7 +149,7 @@ if __name__ == "__main__":
                         help="parameters to go with the script.")
     ARGS = PARSER.parse_args()
 
-    # Trap SIGERM, which Jenkins sends
+    # Trap SIGTERM, which Jenkins can send
     signal(SIGTERM, sigterm_handler)
 
     if ARGS.t and ARGS.r:
@@ -129,11 +157,23 @@ if __name__ == "__main__":
     else:
         # Start a thread that attempts to connect
         # to PROCESS_CHECKER on the given port
-        connect_thread = ConnectToProcessChecker(ARGS.p)
+        connect_thread = ConnectToProcessChecker(ARGS.p,
+                                                 printing=True,
+                                                 receive_timeout=SOCKET_RECEIVE_GUARD_TIME_SECONDS)
         connect_thread.start()
 
         # Launch PROCESS_CHECKER with the script and its parameters
         CALL_LIST = []
+        if not u_utils.is_linux():
+            # We run process checker via "start": this way
+            # if process wrapper is terminated by Jenkins, process
+            # checker gets to continue.
+            # Note however, that means we don't get to see its output
+            # at all, so process checker must send it over the socket as
+            # well.
+            CALL_LIST.append("cmd")
+            CALL_LIST.append("/c")
+            CALL_LIST.append("start")
         if PROCESS_PYTHON:
             CALL_LIST.append(PROCESS_PYTHON)
         CALL_LIST.append(PROCESS_CHECKER)
@@ -162,37 +202,47 @@ if __name__ == "__main__":
               format(PROMPT, os.getcwd(), TMP))
 
         try:
-            CREATION_FLAGS = subprocess.CREATE_BREAKAWAY_FROM_JOB
-            # Set shell to True to keep Jenkins happy
-            PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
+            PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST),
                                        stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT,
-                                       shell=True,
-                                       creationflags=CREATION_FLAGS)
-            # Wait for the process to finish
+                                       stderr=subprocess.STDOUT)
+            # The process will exit immediately, having forked
+            # the thing we actually want
             while PROCESS.poll() is None:
                 string = PROCESS.stdout.readline().decode()
-                if string and string != "":
-                    print(string.rstrip())
+                print(string.rstrip())
+                sleep(0.1)
+            PROCESS_RETURN_VALUE = PROCESS.poll()
+            if PROCESS_RETURN_VALUE == 0:
+                if connect_thread.connected():
+                    # Now we wait for either a timeout in
+                    # the receipt of stuff on the socket
+                    # or the return value to arrive on
+                    # the socket
+                    while connect_thread.return_value() is None and \
+                        not connect_thread.guard_timed_out():
+                        sleep(1)
+                    if connect_thread.return_value() is not None:
+                        RETURN_VALUE = connect_thread.return_value()
+                    else:
+                        if connect_thread.guard_timed_out():
+                            print("{}ERROR: nothing from {} on port {}"\
+                                  " in {} second(s).".format(PROMPT,
+                                                             PROCESS_CHECKER,
+                                                             ARGS.p,
+                                                             SOCKET_RECEIVE_GUARD_TIME_SECONDS))
                 else:
-                    sleep(0.1)
+                    print("{}ERROR: unable to connect to {} on port {}.".format(PROMPT,
+                                                                                PROCESS_CHECKER,
+                                                                                ARGS.p))
+            else:
+                print("{}ERROR: process returned {}.". \
+                      format(PROMPT, PROCESS_RETURN_VALUE))
         except ValueError as ex:
             print("{}ERROR: {} while trying to execute {}.". \
                   format(PROMPT, type(ex).__name__, str(ex)))
         except KeyboardInterrupt:
             print("{}received CTRL-C, exiting and leaving {}"
                   " to do its work.".format(PROMPT, PROCESS_CHECKER))
-
-        if connect_thread.has_been_connected():
-            # Wait a moment to make sure that the return value comes
-            # through on the socket
-            sleep(1)
-            if connect_thread.return_value() is not None:
-                RETURN_VALUE = connect_thread.return_value()
-        else:
-            print("{}ERROR: unable to connect to {} on port {}.".format(PROMPT,
-                                                                        PROCESS_CHECKER,
-                                                                        ARGS.p))
 
         # Finished with the connection now
         connect_thread.stop_thread()

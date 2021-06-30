@@ -4,7 +4,7 @@
 
 import sys
 import os
-from signal import signal, SIGTERM, CTRL_C_EVENT
+from signal import SIGTERM, CTRL_C_EVENT
 import socket
 import subprocess
 import queue
@@ -12,21 +12,25 @@ import threading
 import argparse
 from time import sleep, time
 import psutil
-import u_settings
 import u_utils
+import u_process_settings
 
 PROMPT = "u_process_checker: "
 
 # The name of the script which forms the other half
 # of the process wrapper/process checker pair.
-PROCESS_WRAPPER = u_settings.PROCESS_WRAPPER # e.g. "u_process_wrapper.py"
+PROCESS_WRAPPER = u_process_settings.WRAPPER_NAME # e.g. "u_process_wrapper.py"
 
 # The default port number to use to check if process wrapper
 # is still there
-PROCESS_PORT = u_settings.PROCESS_PORT # e.g. 50123
+PROCESS_PORT = u_process_settings.PORT # e.g. 50123
 
 # What to use to invoke Python
-PROCESS_PYTHON = u_settings.PROCESS_PYTHON # e.g. "python"
+PROCESS_PYTHON = u_process_settings.PYTHON # e.g. "python"
+
+# The special prefix used before a return value
+# when we send it on the socket to process wrapper
+RETURN_VALUE_PREFIX = u_process_settings.RETURN_VALUE_PREFIX # e.g. "#!ubx!# RETURN_VALUE:"
 
 # How often to check if process wrapper is still there.
 PROCESS_CHECK_INTERVAL_SECONDS = 1
@@ -35,7 +39,7 @@ PROCESS_CHECK_INTERVAL_SECONDS = 1
 # will be understood by u_controller_client.py
 REMOTE_CONTROL_COMMAND_ABORT = "abort\n"
 
-# The ack for a commmand
+# The ack for a command, sent by u_controller_client.py
 REMOTE_CONTROL_ACK = "ack\n"
 
 def process_read(process, read_queue):
@@ -181,10 +185,6 @@ def end_process_with_signal(process_pid, signal_to_send, kill_timeout_seconds=No
         if wait_for_end:
             wait_for_termination(process_list, kill_timeout_seconds)
 
-def sigterm_handler():
-    ''' Igore SIGTERM'''
-    print("{}ignoring SIGTERM.".format(PROMPT))
-
 if __name__ == "__main__":
     RETURN_VALUE = -1
     NEXT_CHECK = time()
@@ -195,8 +195,8 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(description="The other half of"         \
                                      " " + PROCESS_WRAPPER + "; this script" \
                                      " is intended to be invoked by"         \
-                                     " " + PROCESS_WRAPPER + ".  It runs"    \
-                                     " the given Python script, with its"    \
+                                     " " + PROCESS_WRAPPER + ".  This script"\
+                                     " runs the given Python script, with its"\
                                      " parameters, and then checks that"     \
                                      " " + PROCESS_WRAPPER + " is still"     \
                                      " running by connecting to it on the"   \
@@ -205,7 +205,11 @@ if __name__ == "__main__":
                                      " exited it terminates the Python"      \
                                      " script using the selected mechanism"  \
                                      " (default SIGINT, AKA CTRL-C, unless"  \
-                                     " -r or -t is specified).")
+                                     " -r or -t is specified).  The output"  \
+                                     " from both this script and the launched"\
+                                     " script is sent to " + PROCESS_WRAPPER + \
+                                     " on the same port so that it can see"  \
+                                     " what we're up to.")
     PARSER.add_argument("-t", action='store_true', help="use SIGTERM intead" \
                         " of SIGINT as the termination signal (cannot be"    \
                         " specified at the same time as -r).")
@@ -225,20 +229,11 @@ if __name__ == "__main__":
                         help="parameters to go with the script.")
     ARGS = PARSER.parse_args()
 
-    # Trap SIGERM, which Jenkins sends
-    signal(SIGTERM, sigterm_handler)
-
     if ARGS.t and ARGS.r:
         print("Cannot specify -t and -r at the same time.")
     else:
         if ARGS.t:
             SIGNAL = SIGTERM
-
-        # For the output from the script we call
-        PRINT_QUEUE = queue.Queue()
-        PRINT_THREAD =  u_utils.PrintThread(PRINT_QUEUE)
-        PRINT_THREAD.start()
-        PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, None)
 
         # Listen on the port for a connection from u_process_wrapper.py
         print("{}listening for connection from {} on port {}...".format(PROMPT,
@@ -252,6 +247,12 @@ if __name__ == "__main__":
                 print("{}connected on {}.".format(PROMPT, ADDRESS))
                 # Set connection to non-blocking with zero timeout
                 CONNECTION.settimeout(0)
+
+                # For the output from the script we call
+                PRINT_QUEUE = queue.Queue()
+                PRINT_THREAD =  u_utils.PrintThread(PRINT_QUEUE, socket_handle=CONNECTION)
+                PRINT_THREAD.start()
+                PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, None)
 
                 # Launch the script with its parameters
                 CALL_LIST = []
@@ -326,18 +327,18 @@ if __name__ == "__main__":
 
                 # Send the return value back if the connection is there
                 try:
-                    CONNECTION.sendall(str(RETURN_VALUE).encode())
+                    CONNECTION.sendall(str(RETURN_VALUE_PREFIX + RETURN_VALUE).encode())
                 except (BlockingIOError, socket.error) as ex:
                     print("{}can't send return value to {}, likely it exited ({} {}).". \
                           format(PROMPT, PROCESS_WRAPPER, type(ex).__name__, str(ex)))
 
-        print("{}return value {}".format(PROMPT, RETURN_VALUE))
+                # Stop the printer
+                sleep(1)
+                PRINT_THREAD.stop_thread()
+                PRINT_THREAD.join()
+                PRINTER = None
 
-        # Stop the printer
-        sleep(1)
-        PRINT_THREAD.stop_thread()
-        PRINT_THREAD.join()
-        PRINTER = None
+        print("{}return value {}".format(PROMPT, RETURN_VALUE))
 
         # Can't join() PROCESS_READ_THREAD here as it might have
         # blocked on a read(); it will be tidied up when this process

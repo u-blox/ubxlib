@@ -7,17 +7,19 @@ from time import time, sleep
 import argparse
 import socket
 import u_settings
+import u_process_settings
 
 PROMPT = "u_process_checker_is_running: "
 
 # The name of the process checker script.
-PROCESS_CHECKER = u_settings.PROCESS_CHECKER # e.g. "u_process_checker.py"
+PROCESS_CHECKER = u_process_settings.CHECKER # e.g. "u_process_checker.py"
 
 # The default port number that process checker would have been using.
-PROCESS_PORT = u_settings.PROCESS_PORT # e.g. 50123
+PROCESS_PORT = u_process_settings.PORT # e.g. 50123
 
 if __name__ == "__main__":
     RETURN_VALUE = -1
+    START_TIME = None
 
     PARSER = argparse.ArgumentParser(description="Return zero if the"         \
                                      " " + PROCESS_CHECKER + "script (and"    \
@@ -44,9 +46,14 @@ if __name__ == "__main__":
                 SOCKET.bind(("127.0.0.1", ARGS.p))
                 SOCKET.listen()
                 # We're able to bind to it, hence process checker must have exited
-                print("{}{} has exited.".format(PROMPT, PROCESS_CHECKER))
+                TEXT = "{} has exited".format(PROMPT, PROCESS_CHECKER)
+                if START_TIME is not None:
+                    TEXT += " after {} second(s)".format(START_TIME)
+                print("{}{}.".format(PROMPT, TEXT))
                 RETURN_VALUE = 1
             except socket.error:
+                if START_TIME is None:
+                    START_TIME = time()
                 # Can't bind to the socket, infer the process checker is running
                 RETURN_VALUE = 0
                 if ((ARGS.t > 0) and (time() < end_time)):

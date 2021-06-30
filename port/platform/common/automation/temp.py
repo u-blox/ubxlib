@@ -4,30 +4,74 @@
 
 import sys
 from signal import signal, SIGTERM, SIGBREAK
-from time import sleep
+import subprocess
+import threading
+from time import sleep, gmtime, strftime
+
+MY_NAME = "wrapper"
+
+FILE = None
+
+def log(string):
+    string = "{} {}: {}".format(strftime("%Y-%m-%d_%H:%M:%S", gmtime()), MY_NAME, string)
+    print(string)
+    if FILE:
+        FILE.write(string + "\n")
+        FILE.flush()
 
 def sigterm_break():
-    ''' Just exit on receipt of SIGBREAK'''
-    print("{}received SIGBREAK, exiting.".format(PROMPT))
-    sys.exit(-12)
+    ''' Exit on SIGBREAK'''
+    log("received SIGBREAK, exiting...")
+    sys.exit(-22)
 
 def sigterm_handler():
-    ''' Just exit on receipt of SIGTERM'''
-    print("{}received SIGTERM, exiting.".format(PROMPT))
+    ''' Exit on SIGTERM'''
+    log("received SIGTERM, exiting...")
     sys.exit(-2)
 
-if __name__ == "__main__":
-    # Trap SIGERM, which Jenkins sends
-    signal(SIGTERM, sigterm_handler)
+def process_read(process):
+    '''Read output from a process and log it'''
+    while process.poll() is None:
+        string = process.stdout.readline().decode()
+        log(string.rstrip())
 
-    # Trap SIGBREAK
+if __name__ == "__main__":
+
+    signal(SIGTERM, sigterm_handler)
     signal(SIGBREAK, sigterm_handler)
 
+    FILE = open("{}.txt".format(MY_NAME), "w+")
+
     try:
-        while(True):
-            print("WAITING FOR THE END.")
-            sleep(5)
+        CREATION_FLAGS = 0
+        #CREATION_FLAGS |= subprocess.CREATE_NO_WINDOW
+        CREATION_FLAGS |= subprocess.DETACHED_PROCESS
+        #CREATION_FLAGS |= subprocess.CREATE_NEW_CONSOLE
+        #CREATION_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
+        #CREATION_FLAGS |= subprocess.CREATE_BREAKAWAY_FROM_JOB
+        PROCESS = subprocess.Popen(["python", "temp1.py"],
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   shell=True,
+                                   creationflags=CREATION_FLAGS)
+
+        PROCESS_READ_THREAD = threading.Thread(target=process_read,
+                                               args=(PROCESS,))
+        PROCESS_READ_THREAD.start()
+
+        while PROCESS.poll() is None:
+            log("process is running.")
+            sleep(1)
+
+        while True:
+            log("waiting for the end.")
+            sleep(1)
+
+    except ValueError as ex:
+        log("ERROR: {} while trying to execute {}.".format(type(ex).__name__, str(ex)))
     except KeyboardInterrupt:
-        print("{}received CTRL-C, exiting.")
+        log("received CTRL-C, exiting...")
+
+    FILE.close()
 
     sys.exit(0)
