@@ -98,7 +98,10 @@ class ConnectToProcessChecker(threading.Thread):
                                     self._return_value = int(process_checker_said.split(RETURN_VALUE_PREFIX)[1])
                                 except (IndexError, ValueError):
                                     if self._printing:
-                                        print(process_checker_said, end="")
+                                        # I've no idea where the extra linefeeds
+                                        # are coming from so remove them heavy-handedly
+                                        # here
+                                        print(process_checker_said.replace("\n\n","\n"), end="")
                         except UnicodeDecodeError:
                             pass
                     if self._receive_timeout is not None and \
