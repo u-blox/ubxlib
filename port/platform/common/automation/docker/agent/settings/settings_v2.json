@@ -1,0 +1,10 @@
+{
+  "SETTINGS_VERSION": 2,
+  "NRF5SDK_GNU_VERSION": "$GNU_VERSION",
+  "NRF5SDK_SES_NAME": "emBuild",
+  "JLINK_PATH": "JLinkExe",
+  "ZEPHYR_DIR": "port/platform/zephyr",
+  "ZEPHYR_CUSTOM_BOARD_DIR": "port/platform/zephyr/custom_boards/zephyr/boards/arm",
+  "ZEPHYR_CUSTOM_BOARD_ROOT": "port/platform/zephyr/custom_boards/zephyr",
+  "STM32CUBE_SDK_DIR": "port/platform/stm32cube"
+}
