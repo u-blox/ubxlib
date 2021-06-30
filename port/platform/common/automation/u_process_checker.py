@@ -48,7 +48,7 @@ def process_forward_output(process, socket_handle):
         if string and string != "":
             if socket_handle is not None:
                 try:
-                    socket_handle.sendall(string.encode())
+                    socket_handle.sendall(string.encode().replace("\r", ""))
                 except socket.error:
                     # Don't waste our time if it's gone
                     socket_handle = None
