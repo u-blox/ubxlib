@@ -5,6 +5,8 @@ node('TEST-gb-cmb-dt-022')
 {
     def git_commit_text
     def changed_files
+    def changed_files_file_name = "changed_files.txt"
+    def changed_files_file_path
     def archive_url_root = env.U_ARCHIVE_URL
     def summary_file = "summary.txt"
     def test_report_file = "test_report.xml"
@@ -123,14 +125,17 @@ node('TEST-gb-cmb-dt-022')
                         // capturing the command output as well as the  returned text
                         println "Checking for changed files between master and " + env.JOB_BASE_NAME + "..."
                         changed_files = bat(script: "@echo off & git diff --name-only origin/master", returnStdout: true).trim()
-                        changed_files = changed_files.replaceAll("\n", " ");
-                        println "Changed file(s) were: " + changed_files
+                        println "Changed file(s) were: " + changed_files.replaceAll("\n", " ")
+                        // To keep the command-line short, write the list of changed files to a file
+                        writeFile file: changed_files_file_name, text: changed_files
+                        changed_files_file_path = env.WORKSPACE + "/" + changed_files_file_name
+                        println "Changed file(s) written to file: " + changed_files_file_path
                     } else {
                         println "Environment variable JOB_BASE_NAME not found, unable to determine the files that are different to master."
                     }
                 }
             } catch (e) {
-                println "Git was unable to determine the files that are different to master."
+                println "Git was unable to determine the files that are different to master (" + e + ")."
             }
         }
 
@@ -146,7 +151,7 @@ node('TEST-gb-cmb-dt-022')
                 // Call python to run the necessary builds and tests
                 if (changed_files) {
                     stage("Test Selected") {
-                        return_value = bat(script: "python u_process_wrapper.py -r ${remote_control_port} -k 60 u_controller_client.py -r ${remote_control_port} -s ${summary_file} -t ${test_report_file} -d ${debug_file} -o ${console_output_file_path} -a ${archive_url} -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"${git_commit_text}\" ${changed_files}", returnStatus: true)
+                        return_value = bat(script: "python u_process_wrapper.py -r ${remote_control_port} -k 60 u_controller_client.py -r ${remote_control_port} -s ${summary_file} -t ${test_report_file} -d ${debug_file} -o ${console_output_file_path} -a ${archive_url} -c ${archive_credentials} ${controller_name} ${repo_url} #${hash_master} #${hash_to_test} \"${git_commit_text}\" @${changed_files_file_path}", returnStatus: true)
                         if (return_value != 0) {
                             error("Running selected ubxlib test(s) returned error " + return_value + ".")
                         } else {

@@ -97,7 +97,7 @@ class ConnectToProcessChecker(threading.Thread):
                                 self._return_value = int(process_checker_said.split(RETURN_VALUE_PREFIX)[1])
                             except (IndexError, ValueError):
                                 if self._printing:
-                                    print(process_checker_said.rstrip())
+                                    print(process_checker_said, end="")
                         except UnicodeDecodeError:
                             pass
                     if self._receive_timeout is not None and \
