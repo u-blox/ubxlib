@@ -53,7 +53,7 @@ if __name__ == "__main__":
         #CREATION_FLAGS |= subprocess.CREATE_NEW_CONSOLE
         CREATION_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
         #CREATION_FLAGS |= subprocess.CREATE_BREAKAWAY_FROM_JOB
-        PROCESS = subprocess.Popen(["cmd", "/c", "start", "python", "temp1.py"],
+        PROCESS = subprocess.Popen(["cmd", "/c", "start", "/B", "python", "temp1.py"],
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    shell=True,
