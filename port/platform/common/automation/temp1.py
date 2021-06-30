@@ -19,10 +19,7 @@ def log(string):
 
 def sigterm_break():
     ''' Exit on SIGBREAK'''
-    log("received SIGBREAK, exiting...")
-    if FILE:
-        FILE.close()
-    sys.exit(-32)
+    log("ignoring  SIGBREAK...")
 
 def sigterm_handler():
     ''' Ignore SIGTERM'''
