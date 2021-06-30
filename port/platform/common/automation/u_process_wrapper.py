@@ -101,7 +101,7 @@ class ConnectToProcessChecker(threading.Thread):
                                         # I've no idea where the extra linefeeds
                                         # are coming from so remove them heavy-handedly
                                         # here
-                                        print(process_checker_said.replace("\n\n","\n"), end="")
+                                        print(process_checker_said.replace("\r\n","\n"), end="")
                         except UnicodeDecodeError:
                             pass
                     if self._receive_timeout is not None and \
@@ -199,9 +199,11 @@ if __name__ == "__main__":
               format(PROMPT, os.getcwd(), TMP))
 
         try:
-            PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST),
+            # Shell True to keep Jenkins happy
+            PROCESS = subprocess.Popen(u_utils.subprocess_osify(CALL_LIST, shell=True),
                                        stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT)
+                                       stderr=subprocess.STDOUT,
+                                       shell=True)
             # The process should exit immediately, having forked
             # the thing we actually want
             while PROCESS.poll() is None:
