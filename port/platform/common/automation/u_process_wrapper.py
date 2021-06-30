@@ -93,11 +93,12 @@ class ConnectToProcessChecker(threading.Thread):
                         # Pick out the return value and print the stream if asked
                         try:
                             process_checker_said = message.decode("utf8")
-                            try:
-                                self._return_value = int(process_checker_said.split(RETURN_VALUE_PREFIX)[1])
-                            except (IndexError, ValueError):
-                                if self._printing:
-                                    print(process_checker_said, end="")
+                            if process_checker_said:
+                                try:
+                                    self._return_value = int(process_checker_said.split(RETURN_VALUE_PREFIX)[1])
+                                except (IndexError, ValueError):
+                                    if self._printing:
+                                        print(process_checker_said, end="")
                         except UnicodeDecodeError:
                             pass
                     if self._receive_timeout is not None and \
