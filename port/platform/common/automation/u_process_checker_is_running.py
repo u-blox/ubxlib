@@ -45,13 +45,17 @@ if __name__ == "__main__":
                 SOCKET.bind(("127.0.0.1", ARGS.p))
                 SOCKET.listen()
                 # We're able to bind to it, hence process checker must have exited
-                TEXT = "{} has exited".format(PROCESS_CHECKER)
-                if START_TIME is not None:
-                    TEXT += " after {} second(s)".format(START_TIME)
-                print("{}{}.".format(PROMPT, TEXT))
+                if START_TIME:
+                    print("{}{} exited after {} second(s).".format(PROMPT,
+                                                                   PROCESS_CHECKER,
+                                                                   int(time() - START_TIME)))
+                else:
+                    print("{}{} is not running.".format(PROMPT, PROCESS_CHECKER))
                 RETURN_VALUE = 1
             except socket.error:
-                if START_TIME is None:
+                if START_TIME is None and ARGS.t > 0:
+                    print("{}{} is running, waiting up to {} second(s) for"   \
+                          " it to exit...".format(PROMPT, PROCESS_CHECKER, ARGS.t))
                     START_TIME = time()
                 # Can't bind to the socket, infer the process checker is running
                 RETURN_VALUE = 0

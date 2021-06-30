@@ -1069,7 +1069,8 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(description="A script to"      \
                                      " run examples/tests on"       \
                                      " ubxlib agent services"       \
-                                     " connected over RPyC.")
+                                     " connected over RPyC.",
+                                     fromfile_prefix_chars="@")
     PARSER.add_argument("-s", help="each agent should write a"       \
                         " summary report to the given file, e.g."    \
                         " -s summary.txt; any existing file will be" \
