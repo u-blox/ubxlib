@@ -20,7 +20,7 @@ From tool chain manager start Segger embedded studio (SES) using Open IDE button
 - Always load project from SES using file->Open nRF connect SDK project
 - Select the `CMakeLists.txt` of the application you want to build.
 - Board file should be `{your_sdk_path}/zephyr/boards/arm/nrf5340dk_nrf5340` for EVK-NORA-B1.
-  For a custom board e.g. `port/platform/zephyr/custom_boards/zephyr/boards/arm/ubx_evkninab4_nrf52833`
+  For a custom board e.g. `port/platform/zephyr/boards/short_range/zephyr/boards/arm/ubx_evkninab4_nrf52833`
 - Board name should be `nrf5340dk_nrf5340_cpuapp` for EVK-NORA-B1.  For a custom board e.g. `ubx_evkninab4_nrf52833`.
 - Where a board-specific configuration file is available (e.g. `ubx_evkninab4_nrf52833.conf`) this will be picked up automatically.
 - Always clean the build directory when upgrading to a new ubxlib version.
@@ -45,12 +45,12 @@ While in the `port/platform/zephyr/runner` directory:
   ```
   
   ```
-  west build -p auto -b ubx_evkninab4_nrf52833 . -DBOARD_ROOT=../custom_boards/zephyr --build-dir build_ubx_evkninab4_nrf52833
+  west build -p auto -b ubx_evkninab4_nrf52833 . -DBOARD_ROOT=../boards/short_range/zephyr --build-dir build_ubx_evkninab4_nrf52833
   west flash --build-dir build_ubx_evkninab4_nrf52833
   ```
 
   ```
-  west build -p auto -b ubx_evkninab3_nrf52840 . -DBOARD_ROOT=../custom_boards/zephyr --build-dir build_ubx_evkninab3_nrf52840
+  west build -p auto -b ubx_evkninab3_nrf52840 . -DBOARD_ROOT=../boards/short_range/zephyr --build-dir build_ubx_evkninab3_nrf52840
   west flash --build-dir build_ubx_evkninab3_nrf52840
   ```
 

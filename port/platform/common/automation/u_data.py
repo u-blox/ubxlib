@@ -9,7 +9,7 @@ import u_settings
 # The instance data must be the only table in the file
 # and must be in Markdown format as follows:
 #
-# | instance | description | duration | MCU | platform | toolchain | module(s) | APIs supported | #defines |
+# | instance | description | duration | MCU | board | platform | toolchain | module(s) | APIs supported | #defines |
 #
 # ... where:
 #
@@ -17,6 +17,7 @@ import u_settings
 # description       is a textual description,
 # duration          the estimated run-time of the instance in minutes,
 # MCU               is the name of the MCU, e.g. ESP32 or NRF52 or STM32F4,
+# board             the name of the board, only used by the Zephyr platform,
 # platform          is the name of the platform, e.g. ESP-IDF or STM32Cube,
 # toolchain         is the name of a toolchain for that platform, e.g. SES or GCC for nRF5,
 # module(s)         are the modules connected to the MCU on that platform,
@@ -56,7 +57,7 @@ def get(filename):
     lines = contents.splitlines()
     for line in lines:
         items = line.split("|")
-        if len(items) >= 6:
+        if len(items) >= 7:
             index = 0
             row.clear()
             for item in items:
@@ -80,7 +81,7 @@ def get(filename):
                         row["description"] = stripped
                         index += 1
                     elif index == 2:
-                        # duration
+                        # Duration
                         row["duration"] = stripped
                         index += 1
                     elif index == 3:
@@ -88,22 +89,26 @@ def get(filename):
                         row["mcu"] = stripped
                         index += 1
                     elif index == 4:
+                        # Board
+                        row["board"] = stripped
+                        index += 1
+                    elif index == 5:
                         # Platform
                         row["platform"] = stripped
                         index += 1
-                    elif index == 5:
+                    elif index == 6:
                         # Toolchain
                         row["toolchain"] = stripped
                         index += 1
-                    elif index == 6:
+                    elif index == 7:
                         # Modules
                         row["modules"] = stripped.split()
                         index += 1
-                    elif index == 7:
+                    elif index == 8:
                         # APIs
                         row["apis"] = stripped.split()
                         index += 1
-                    elif index == 8:
+                    elif index == 9:
                         # #defines
                         row["defines"] = stripped.split()
                         index += 1
@@ -135,6 +140,11 @@ def display(database):
         # Then MCU
         if row["mcu"] != "":
             item += " {} MCU with".format(row["mcu"])
+        else:
+            item += " with"
+        # Then board
+        if row["board"] != "":
+            item += " {} board with".format(row["board"])
         else:
             item += " with"
         # Then platform
@@ -309,6 +319,17 @@ def get_mcu_for_instance(database, instance):
             break
 
     return mcu
+
+def get_board_for_instance(database, instance):
+    '''Return the board for the given instance'''
+    board = None
+
+    for row in database:
+        if instance == row["instance"]:
+            board = row["board"]
+            break
+
+    return board
 
 def get_description_for_instance(database, instance):
     '''Return the description for the given instance'''

@@ -146,7 +146,7 @@ __DEFAULT_SETTINGS["SHORT_RANGE_MODULE_TYPE_PREFIX"] = "U_SHORT_RANGE_MODULE_TYP
 __DEFAULT_SETTINGS["ASTYLE_CONFIG_FILE"] = "astyle.cfg"
 __DEFAULT_SETTINGS["ASTYLE_FILE_EXTENSIONS"] = "*.c,*.cpp,*.h,*.hpp"
 __DEFAULT_SETTINGS["ASTYLE_DIRS"] = ["cfg", "port", "common"]
-__DEFAULT_SETTINGS["ASTYLE_EXCLUDE_DIRS"] = ["custom_boards"]
+__DEFAULT_SETTINGS["ASTYLE_EXCLUDE_DIRS"] = ["boards"]
 # u_run_doxygen.py
 __DEFAULT_SETTINGS["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py
@@ -219,10 +219,8 @@ __DEFAULT_SETTINGS["ZEPHYR_GIT_BASH_ENV_CMD" + __SETTINGS_POSTFIX_AGENT_SPECIFIC
     __DEFAULT_SETTINGS["ZEPHYR_NRFCONNECT_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] + os.sep + \
     "toolchain\\cmd\\env.cmd"
 __DEFAULT_SETTINGS["ZEPHYR_DIR"] = "port\\platform\\zephyr"
-__DEFAULT_SETTINGS["ZEPHYR_CUSTOM_BOARD_DIR"] =                            \
-    __DEFAULT_SETTINGS["ZEPHYR_DIR"] + os.sep + "custom_boards\\zephyr\\boards\\arm"
-__DEFAULT_SETTINGS["ZEPHYR_CUSTOM_BOARD_ROOT"] =                           \
-    __DEFAULT_SETTINGS["ZEPHYR_DIR"] + os.sep + "custom_boards\\zephyr"
+__DEFAULT_SETTINGS["ZEPHYR_CUSTOM_BOARD_DIR_LIST"] =                            \
+    [__DEFAULT_SETTINGS["ZEPHYR_DIR"] + os.sep + "boards\\short_range\\zephyr\\boards\\arm"]
 __DEFAULT_SETTINGS["ZEPHYR_BUILD_SUBDIR"] = "build"
 __DEFAULT_SETTINGS["ZEPHYR_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run_pylint.py
