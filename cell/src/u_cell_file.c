@@ -202,7 +202,13 @@ int32_t uCellFileRead(int32_t cellHandle,
             uAtClientWriteString(atHandle, pFileName, true);
             uAtClientCommandStop(atHandle);
             // Grab the response
-            uAtClientResponseStart(atHandle, "+URDFILE:");
+            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B) {
+                // SARA-R412M-02B only puts \n before the
+                // response, not \r\n as it should
+                uAtClientResponseStart(atHandle, "\n+URDFILE:");
+            } else {
+                uAtClientResponseStart(atHandle, "+URDFILE:");
+            }
             // Skip the file name
             uAtClientSkipParameters(atHandle, 1);
             // Read the size
@@ -275,7 +281,13 @@ int32_t uCellFileBlockRead(int32_t cellHandle,
             uAtClientWriteInt(atHandle, (int32_t) dataSize);
             uAtClientCommandStop(atHandle);
             // Grab the response
-            uAtClientResponseStart(atHandle, "+URDBLOCK:");
+            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R412M_02B) {
+                // SARA-R412M-02B only puts \n before the
+                // response, not \r\n as it should
+                uAtClientResponseStart(atHandle, "\n+URDBLOCK:");
+            } else {
+                uAtClientResponseStart(atHandle, "+URDBLOCK:");
+            }
             // Skip the file name
             uAtClientSkipParameters(atHandle, 1);
             // Read the size
