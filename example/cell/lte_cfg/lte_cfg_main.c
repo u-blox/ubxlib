@@ -395,19 +395,19 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
     uint64_t readBandMask1;
     uint64_t readBandMask2;
     if (uCellCfgGetBandMask(networkHandle, U_CELL_NET_RAT_CATM1,
-                           &readBandMask1, &readBandMask2) == 0) {
+                            &readBandMask1, &readBandMask2) == 0) {
         uPortLog("### Band mask for RAT %s is 0x%08x%08x %08x%08x.\n",
                  gpRatStr[U_CELL_NET_RAT_CATM1],
                  (uint32_t) (readBandMask2 >> 32), (uint32_t) readBandMask2,
                  (uint32_t) (readBandMask1 >> 32), (uint32_t) readBandMask1);
     } else {
-       uPortLog("### unable to read bandmask!\n");
+        uPortLog("### unable to read bandmask!\n");
     }
     for (x = uCellNetScanGetFirst(networkHandle, NULL, 0,
                                   buffer, NULL, NULL);
-        x >= 0;
-        x = uCellNetScanGetNext(networkHandle, NULL, 0, buffer, NULL)) {
-       uPortLog("### %d: network: %s\n", x, buffer);
+         x >= 0;
+         x = uCellNetScanGetNext(networkHandle, NULL, 0, buffer, NULL)) {
+        uPortLog("### %d: network: %s\n", x, buffer);
     }
 
     // Now that the module is configured, bring up the network
