@@ -83,12 +83,14 @@ int32_t uCellFileWrite(int32_t cellHandle,
  *                   File name cannot contain these characters:
  *                   / * : % | " < > ?.
  * @param pData      a pointer to stream of data bytes to be read.
+ * @param dataSize   number of data bytes to read.
  * @return           on success return number of bytes read from file
  *                   or negative error code on failure.
  */
 int32_t uCellFileRead(int32_t cellHandle,
                       const char *pFileName,
-                      char *pData);
+                      char *pData,
+                      size_t dataSize);
 
 /** Read partial contents of file from file system, based on given offset and size.
  * If the file does not exist, error will be return. In order to avoid character loss

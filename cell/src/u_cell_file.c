@@ -177,12 +177,14 @@ int32_t uCellFileWrite(int32_t cellHandle,
 // Read data from file.
 int32_t uCellFileRead(int32_t cellHandle,
                       const char *pFileName,
-                      char *pData)
+                      char *pData,
+                      size_t dataSize)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
     int32_t readSize = 0;
+    int32_t indicatedReadSize = 0;
 
     if (gUCellPrivateMutex != NULL) {
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
@@ -204,7 +206,11 @@ int32_t uCellFileRead(int32_t cellHandle,
             // Skip the file name
             uAtClientSkipParameters(atHandle, 1);
             // Read the size
-            readSize = uAtClientReadInt(atHandle);
+            indicatedReadSize = uAtClientReadInt(atHandle);
+            readSize = indicatedReadSize;
+            if (readSize > (int32_t) dataSize) {
+                readSize = (int32_t) dataSize;
+            }
             // Don't stop for anything!
             uAtClientIgnoreStopTag(atHandle);
             // Get the leading quote mark out of the way
@@ -215,6 +221,13 @@ int32_t uCellFileRead(int32_t cellHandle,
                                           // Cast in two stages to keep Lint happy
                                           (size_t)  (unsigned) readSize,
                                           true);
+            if (indicatedReadSize > readSize) {
+                //...and then the rest poured away to NULL
+                uAtClientReadBytes(atHandle, NULL,
+                                   // Cast in two stages to keep Lint happy
+                                   (size_t) (unsigned) (indicatedReadSize - readSize),
+                                   true);
+            }
             // Make sure to wait for the stop tag before
             // we finish
             uAtClientRestoreStopTag(atHandle);

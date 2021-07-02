@@ -243,7 +243,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileRead")
     uPortLog("U_CELL_FILE_TEST: reading whole file...\n");
     length = uCellFileRead(cellHandle, // Cellular Handle
                            U_CELL_FILE_TEST_FILE_NAME, // File name
-                           buffer); // Buffer to store file contents
+                           buffer, sizeof(buffer)); // Buffer to store file contents
     uPortLog("U_CELL_FILE_TEST: number of bytes read = %d.\n", length);
     uPortLog("U_CELL_FILE_TEST: data read \"%.*s\".\n", length, buffer);
     U_PORT_TEST_ASSERT(length > 0);
