@@ -61,16 +61,6 @@
  */
 #define U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON 10
 
-/** There can be an inverter in-line between the VINT pin
- * on the cellular module and the MCU pin; this allows the sense
- * to be switched easily.
- */
-#ifndef U_CELL_VINT_PIN_INVERTED
-# define U_CELL_VINT_PIN_ON_STATE 1
-#else
-# define U_CELL_VINT_PIN_ON_STATE 0
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

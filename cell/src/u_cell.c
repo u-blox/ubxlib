@@ -67,7 +67,7 @@
 # else
 /* Normal mode since we're only driving the inverter that
  * must have been inserted between the MCU pin and the
- * cellular module PWR_ON pin
+ * cellular module PWR_ON pin.
  */
 #  define U_CELL_PWR_ON_PIN_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_NORMAL
 # endif
@@ -253,7 +253,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 }
                 uPortLog(" and VInt pin ");
                 if (pinVInt >= 0) {
-                    uPortLog("%d (0x%02x).\n", pinVInt, pinVInt);
+                    uPortLog("%d (0x%02x) (and is %d when module is on).\n",
+                             pinVInt, pinVInt, U_CELL_VINT_PIN_ON_STATE);
                 } else {
                     uPortLog("not connected.\n");
                 }
