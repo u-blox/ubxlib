@@ -218,9 +218,9 @@ __DEFAULT_SETTINGS["ZEPHYR_ZEPHYR_ENV_CMD" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] 
 __DEFAULT_SETTINGS["ZEPHYR_GIT_BASH_ENV_CMD" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =             \
     __DEFAULT_SETTINGS["ZEPHYR_NRFCONNECT_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] + os.sep + \
     "toolchain\\cmd\\env.cmd"
-__DEFAULT_SETTINGS["ZEPHYR_DIR"] = "port\\platform\\zephyr"
+__DEFAULT_SETTINGS["ZEPHYR_DIR"] = "port/platform/zephyr"
 __DEFAULT_SETTINGS["ZEPHYR_CUSTOM_BOARD_DIR_LIST"] =                            \
-    [__DEFAULT_SETTINGS["ZEPHYR_DIR"] + os.sep + "boards\\short_range\\zephyr\\boards\\arm"]
+    [__DEFAULT_SETTINGS["ZEPHYR_DIR"] + os.sep + "boards/short_range/zephyr"]
 __DEFAULT_SETTINGS["ZEPHYR_BUILD_SUBDIR"] = "build"
 __DEFAULT_SETTINGS["ZEPHYR_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run_pylint.py

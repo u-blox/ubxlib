@@ -40,9 +40,6 @@ GIT_BASH_ENV_CMD = u_settings.ZEPHYR_GIT_BASH_ENV_CMD # e.g. NRFCONNECT_PATH + o
 # The directory where the runner build can be found
 RUNNER_DIR = u_settings.ZEPHYR_DIR + os.sep + "runner"
 
-# The directory where the board overlays can be found
-OVERLAY_DIR = RUNNER_DIR + os.sep + "boards"
-
 # The directories where custom boards can be found
 CUSTOM_BOARD_DIR_LIST = u_settings.ZEPHYR_CUSTOM_BOARD_DIR_LIST
 
@@ -175,6 +172,7 @@ def jlink_device(mcu):
     return jlink_device_name
 
 def print_call_list(call_list, printer, prompt):
+    '''Print the call list'''
     tmp = ""
     for item in call_list:
         tmp += " " + item
@@ -182,7 +180,7 @@ def print_call_list(call_list, printer, prompt):
                    format(prompt, os.getcwd(), tmp))
 
 def download_single_cpu(connection, jlink_device_name, guard_time_seconds, build_dir, env, printer, prompt):
-    # Assemble the call list
+    '''Assemble the call list'''
     # Note that we use JLink to do the download
     # rather than the default of nrfjprog since there
     # appears to be no way to prevent nrfjprog from
@@ -208,6 +206,7 @@ def download_single_cpu(connection, jlink_device_name, guard_time_seconds, build
                            shell_cmd=True, set_env=env)
 
 def download_nrf53(connection, guard_time_seconds, build_dir, env, printer, prompt):
+    '''Download the given hex file(s) on NRF53'''
     cpunet_hex_path = os.path.join(build_dir, "hci_rpmsg", "zephyr", "merged_CPUNET.hex")
     success = True
     if os.path.exists(cpunet_hex_path):
@@ -272,9 +271,9 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter):
         text = ""
         for custom_board_root in CUSTOM_BOARD_DIR_LIST:
             if text:
-                text += " "
-            text += custom_board_root
-        call_list.append("-DBOARD_ROOT=\"" + text + "\"")
+                text += ";"
+            text += ubxlib_dir + os.sep + custom_board_root
+        call_list.append("-DBOARD_ROOT=" + text.replace("\\", "/"))
     # Build products directory
     call_list.append("-d")
     call_list.append((BUILD_SUBDIR).replace("\\", "/"))
@@ -343,7 +342,7 @@ def run(instance, mcu, board, toolchain, connection, connection_lock,
     prompt = PROMPT + instance_text + ": "
 
     # Print out what we've been told to do
-    text = "running Zephyr for " + mcu
+    text = "running Zephyr for " + mcu + " (on a \"" + board + "\" board)"
     if connection and "debugger" in connection and connection["debugger"]:
         text += ", on JLink debugger serial number " + connection["debugger"]
     if clean:
