@@ -169,13 +169,9 @@ __DEFAULT_SETTINGS["ESP_IDF_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = "c:\\es
 __DEFAULT_SETTINGS["ESP_IDF_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =           \
     __DEFAULT_SETTINGS["ESP_IDF_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] + os.sep +    \
     "esp-idf-tools-latest"
-__DEFAULT_SETTINGS["ESP_IDF_LOCATION_LATEST"] =                                     \
+__DEFAULT_SETTINGS["ESP_IDF_LOCATION"] =                                     \
     {"url": "https://github.com/espressif/esp-idf",
      "subdir": "esp-idf-latest",
-     "branch": "release/v4.1"}
-__DEFAULT_SETTINGS["ESP_IDF_LOCATION_NINA_W1"] =                                    \
-    {"url": "https://github.com/u-blox/esp-idf",
-     "subdir": "esp-idf-u-blox",
      "branch": "master"}
 __DEFAULT_SETTINGS["ESP_IDF_PROJECT_SUBDIR"] = "runner"
 __DEFAULT_SETTINGS["ESP_IDF_TEST_COMPONENT"] = "ubxlib_runner"

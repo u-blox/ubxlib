@@ -6,7 +6,7 @@ Follow the instructions to build for the ESP-IDF platform:
 
 https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html#get-started-step-by-step
 
-The builds here have been tested with release 4.1 of ESP-IDF.
+The builds here are tested with the most recent ESP-IDF master branch.
 
 # SDK Usage
 You may override or provide conditional compilation flags to ESP-IDF without modifying the build file.  Do this by setting an environment variable `U_FLAGS`, e.g.:

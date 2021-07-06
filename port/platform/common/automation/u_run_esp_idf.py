@@ -4,8 +4,6 @@
 
 import os            # For sep, getcwd(), isdir() and environ()
 from time import time, sleep
-import psutil
-import platform                 # Figure out current OS
 import u_connection
 import u_monitor
 import u_report
@@ -18,30 +16,8 @@ PROMPT = "u_run_esp_idf_"
 # The root directory for ESP-IDF
 ESP_IDF_ROOT = u_settings.ESP_IDF_ROOT # e.g. "c:\\esp32"
 
-# The ESP-IDF URL and directory for latest
-# Espressif code
-ESP_IDF_LOCATION_LATEST = u_settings.ESP_IDF_LOCATION_LATEST
-
-# The ESP-IDF URL and directory for NINA-W1.
-# NINA-W1 must use u-blox fork as the flash
-# device is not supported by latest ESP-IDF
-ESP_IDF_LOCATION_NINA_W1 = u_settings.ESP_IDF_LOCATION_NINA_W1
-
-# A table of ESP-IDF URL/sub-directory to use
-# for each ESP-IDF instance.
-ESP_IDF_LOCATION = [None,                     # 0 (not ESP-IDF)
-                    None,                     # 1 (not ESP-IDF)
-                    None,                     # 2 (not ESP-IDF)
-                    None,                     # 3 (not ESP-IDF)
-                    None,                     # 4 (not ESP-IDF)
-                    None,                     # 5 (not ESP-IDF)
-                    None,                     # 6 (not ESP-IDF)
-                    None,                     # 7 (not ESP-IDF)
-                    None,                     # 8 (not ESP-IDF)
-                    None,                     # 9 (not ESP-IDF)
-                    ESP_IDF_LOCATION_NINA_W1, # 10
-                    ESP_IDF_LOCATION_LATEST,  # 11
-                    ESP_IDF_LOCATION_LATEST]  # 12
+# The ESP-IDF URL and directory
+ESP_IDF_LOCATION = u_settings.ESP_IDF_LOCATION
 
 # The place where the IDF tools should be found/installed
 IDF_TOOLS_PATH = u_settings.ESP_IDF_TOOLS_PATH # e.g. ESP_IDF_ROOT + os.sep + "esp-idf-tools-latest"
@@ -76,15 +52,6 @@ RUN_GUARD_TIME_SECONDS = u_utils.RUN_GUARD_TIME_SECONDS
 
 # The inactivity time for running tests in seconds
 RUN_INACTIVITY_TIME_SECONDS = u_utils.RUN_INACTIVITY_TIME_SECONDS
-
-def get_esp_idf_location(instance):
-    '''Return the ESP-IDF URL and sub-directory'''
-    esp_idf_location = None
-
-    if instance[0] < len(ESP_IDF_LOCATION):
-        esp_idf_location = ESP_IDF_LOCATION[instance[0]]
-
-    return esp_idf_location
 
 def print_env(returned_env, printer, prompt):
     '''Print a dictionary that contains the new environment'''
@@ -330,122 +297,114 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     with u_utils.ChangeDir(working_dir):
         # Fetch ESP-IDF into the right sub directory
         # and install the tools
-        esp_idf_location = get_esp_idf_location(instance)
-        esp_idf_dir = ESP_IDF_ROOT + os.sep + esp_idf_location["subdir"]
-        if esp_idf_location:
-            system_lock = None
+        esp_idf_dir = ESP_IDF_ROOT + os.sep + ESP_IDF_LOCATION["subdir"]
+        system_lock = None
+        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+           misc_locks and ("system_lock" in misc_locks):
+            system_lock = misc_locks["system_lock"]
+        returned_env = install(ESP_IDF_LOCATION["url"], esp_idf_dir,
+                               ESP_IDF_LOCATION["branch"], system_lock,
+                               keep_going_flag, printer, prompt, reporter)
+        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+           returned_env:
+            # From here on the ESP-IDF tools need to set up
+            # and use the set of environment variables
+            # returned above.
+            print_env(returned_env, printer, prompt)
+            # Now do the build
+            build_dir = working_dir + os.sep + BUILD_SUBDIR
+            build_start_time = time()
             if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-               misc_locks and ("system_lock" in misc_locks):
-                system_lock = misc_locks["system_lock"]
-            returned_env = install(esp_idf_location["url"], esp_idf_dir,
-                                   esp_idf_location["branch"], system_lock,
-                                   keep_going_flag, printer, prompt, reporter)
-            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-               returned_env:
-                # From here on the ESP-IDF tools need to set up
-                # and use the set of environment variables
-                # returned above.
-                print_env(returned_env, printer, prompt)
-                # Now do the build
-                build_dir = working_dir + os.sep + BUILD_SUBDIR
-                build_start_time = time()
-                if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                   build(esp_idf_dir, ubxlib_dir, build_dir,
-                         defines, returned_env, clean,
-                         printer, prompt, reporter):
-                    reporter.event(u_report.EVENT_TYPE_BUILD,
-                                   u_report.EVENT_PASSED,
-                                   "build took {:.0f} second(s)". \
-                                   format(time() - build_start_time))
-                    with u_connection.Lock(connection, connection_lock,
-                                           CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                           printer, prompt, keep_going_flag) as locked:
-                        if locked:
-                            # Have seen this fail, only with Python 3 for
-                            # some reason, so give it a few goes
+               build(esp_idf_dir, ubxlib_dir, build_dir,
+                     defines, returned_env, clean,
+                     printer, prompt, reporter):
+                reporter.event(u_report.EVENT_TYPE_BUILD,
+                               u_report.EVENT_PASSED,
+                               "build took {:.0f} second(s)". \
+                               format(time() - build_start_time))
+                with u_connection.Lock(connection, connection_lock,
+                                       CONNECTION_LOCK_GUARD_TIME_SECONDS,
+                                       printer, prompt, keep_going_flag) as locked:
+                    if locked:
+                        # Have seen this fail, only with Python 3 for
+                        # some reason, so give it a few goes
+                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                       u_report.EVENT_START)
+                        retries = 0
+                        while u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                              not download(esp_idf_dir, ubxlib_dir, build_dir,
+                                           connection["serial_port"], returned_env,
+                                           printer, prompt) and (retries < 3):
                             reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                           u_report.EVENT_WARNING,
+                                           "unable to download, will retry...")
+                            retries += 1
+                            sleep(5)
+                        if retries < 3:
+                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                           u_report.EVENT_COMPLETE)
+                            reporter.event(u_report.EVENT_TYPE_TEST,
                                            u_report.EVENT_START)
-                            retries = 0
-                            while u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                                  not download(esp_idf_dir, ubxlib_dir, build_dir,
-                                               connection["serial_port"], returned_env,
-                                               printer, prompt) and (retries < 3):
-                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_WARNING,
-                                               "unable to download, will retry...")
-                                retries += 1
-                                sleep(5)
-                            if retries < 3:
-                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_COMPLETE)
-                                reporter.event(u_report.EVENT_TYPE_TEST,
-                                               u_report.EVENT_START)
-                                # Search the defines list to see if it includes a
-                                # "U_CFG_APP_FILTER=blah" item.  On ESP32 the tests
-                                # that are run are not selected at compile time,
-                                # so we can't do this filtering, just print a warning
-                                # that the filter is being ignored.
-                                for define in defines:
-                                    tmp = u_utils.FILTER_MACRO_NAME + "="
-                                    if define.startswith(tmp):
-                                        filter_string = define[len(tmp):]
-                                        reporter.event(u_report.EVENT_TYPE_TEST,
-                                                       u_report.EVENT_INFORMATION,
-                                                       "filter string \"" +
-                                                       filter_string + "\" ignored")
-                                        printer.string("{} filter string \"{}\""         \
-                                                       " was specified but ESP-IDF uses" \
-                                                       " its own test wrapper which"     \
-                                                       " does not support filtering"     \
-                                                       " hence it will be ignored.".     \
-                                                       format(prompt, filter_string))
-                                        break
-                                # Open the COM port to get debug output
-                                serial_handle = u_utils.open_serial(connection["serial_port"],
-                                                                    115200, printer, prompt)
-                                if serial_handle is not None:
-                                    # Monitor progress
-                                    return_value = u_monitor.main(serial_handle,
-                                                                  u_monitor.CONNECTION_SERIAL,
-                                                                  RUN_GUARD_TIME_SECONDS,
-                                                                  RUN_INACTIVITY_TIME_SECONDS,
-                                                                  "\r", instance, printer,
-                                                                  reporter, test_report_handle,
-                                                                  send_string="*\r\n",
-                                                                  keep_going_flag=keep_going_flag)
-                                    serial_handle.close()
-                                else:
-                                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                   u_report.EVENT_FAILED,
-                                                   "unable to open serial port " +      \
-                                                   connection["serial_port"])
-                                if return_value == 0:
+                            # Search the defines list to see if it includes a
+                            # "U_CFG_APP_FILTER=blah" item.  On ESP32 the tests
+                            # that are run are not selected at compile time,
+                            # so we can't do this filtering, just print a warning
+                            # that the filter is being ignored.
+                            for define in defines:
+                                tmp = u_utils.FILTER_MACRO_NAME + "="
+                                if define.startswith(tmp):
+                                    filter_string = define[len(tmp):]
                                     reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_COMPLETE)
-                                else:
-                                    reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_FAILED)
+                                                   u_report.EVENT_INFORMATION,
+                                                   "filter string \"" +
+                                                   filter_string + "\" ignored")
+                                    printer.string("{} filter string \"{}\""         \
+                                                   " was specified but ESP-IDF uses" \
+                                                   " its own test wrapper which"     \
+                                                   " does not support filtering"     \
+                                                   " hence it will be ignored.".     \
+                                                   format(prompt, filter_string))
+                                    break
+                            # Open the COM port to get debug output
+                            serial_handle = u_utils.open_serial(connection["serial_port"],
+                                                                115200, printer, prompt)
+                            if serial_handle is not None:
+                                # Monitor progress
+                                return_value = u_monitor.main(serial_handle,
+                                                              u_monitor.CONNECTION_SERIAL,
+                                                              RUN_GUARD_TIME_SECONDS,
+                                                              RUN_INACTIVITY_TIME_SECONDS,
+                                                              "\r", instance, printer,
+                                                              reporter, test_report_handle,
+                                                              send_string="*\r\n",
+                                                              keep_going_flag=keep_going_flag)
+                                serial_handle.close()
                             else:
-                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                u_report.EVENT_FAILED,
-                                               "unable to download to the target")
+                                               "unable to open serial port " +      \
+                                               connection["serial_port"])
+                            if return_value == 0:
+                                reporter.event(u_report.EVENT_TYPE_TEST,
+                                               u_report.EVENT_COMPLETE)
+                            else:
+                                reporter.event(u_report.EVENT_TYPE_TEST,
+                                               u_report.EVENT_FAILED)
                         else:
-                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                            u_report.EVENT_FAILED,
-                                           "unable to lock a connection")
-                else:
-                    reporter.event(u_report.EVENT_TYPE_BUILD,
-                                   u_report.EVENT_FAILED,
-                                   "unable to build, check debug log for details")
+                                           "unable to download to the target")
+                    else:
+                        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                       u_report.EVENT_FAILED,
+                                       "unable to lock a connection")
             else:
-                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                reporter.event(u_report.EVENT_TYPE_BUILD,
                                u_report.EVENT_FAILED,
-                               "tools installation failed")
+                               "unable to build, check debug log for details")
         else:
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                            u_report.EVENT_FAILED,
-                           "don't have ESP-IDF URL for this instance")
-            printer.string("{}error: don't have ESP-IDF URL instance {}.".
-                           format(prompt, instance_text))
+                           "tools installation failed")
 
     return return_value

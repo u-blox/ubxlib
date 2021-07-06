@@ -42,7 +42,6 @@ The table below defines the instances of test hardware available on the `ubxlib`
 | 19    | C030-R5 board (STM32F437), Cat M1          |        25       |   STM32F4   |             | STM32Cube |            | SARA_R5 NINA_W15                 | port network sock ble cell short_range security mqtt_client | U_CFG_TEST_PIN_A=-1 U_CFG_TEST_PIN_B=-1 U_CFG_TEST_PIN_C=-1 U_CFG_TEST_UART_A=-1 U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL=2462ABB6CC42p U_CFG_TEST_SECURITY_C2C_TE_SECRET=\x00\x01\x02\x03\x04\x05\x06\x07\xff\xfe\xfd\xfc\xfb\xfa\xf9\xf8 |
 
 Notes:
-- don't change existing instance IDs without checking the rest of the automation system for scripts which "know" about their numbers (e.g. the `ESP32` ones do),
 - the #defines listed are *overrides* on the default values that are defined in the code or additional to those defined in the code; they are not a complete list,
 - the instances on which `at_client` is available to test use the same wiring as the other boards but allocate UARTs to pins differently: two UARTs are used for back-to-back testing, no flow control, and the CTS/RTS pins that are back-to-back connected for `port` UART testing are instead allocated to the second UART; on these instances the `port` UART test will be skipped,
 - the cellular tests take quite a long time to run and so where there are two SDKs on a single platform usually only one of them will run the cellular tests to keep the execution time down.
