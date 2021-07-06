@@ -167,12 +167,12 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
 
 #ifndef U_CFG_BLE_MODULE_INTERNAL
     uPortLog("U_BLE_TEST_PRIVATE: removing AT client...\n");
-    uAtClientRemove(pParameters->atClientHandle);
-    uAtClientDeinit();
-
     uShortRangeEdmStreamClose(pParameters->edmStreamHandle);
     uShortRangeEdmStreamDeinit();
     pParameters->edmStreamHandle = -1;
+
+    uAtClientRemove(pParameters->atClientHandle);
+    uAtClientDeinit();
 
     uPortUartClose(pParameters->uartHandle);
     pParameters->uartHandle = -1;
@@ -187,9 +187,9 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
 void uBleTestPrivateCleanup(uBleTestPrivate_t *pParameters)
 {
     uBleDeinit();
-    uAtClientDeinit();
     uShortRangeEdmStreamClose(pParameters->edmStreamHandle);
     pParameters->edmStreamHandle = -1;
+    uAtClientDeinit();
     uPortUartClose(pParameters->uartHandle);
     pParameters->uartHandle = -1;
 }
