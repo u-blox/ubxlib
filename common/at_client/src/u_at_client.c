@@ -373,6 +373,20 @@ static const uAtClientTagDef_t gNoStopTag = {"", 0};
  */
 static int32_t gEventQueueHandle;
 
+/** Mutex to protect gEventQueueHandle.
+ * Note: the reason for this being separate to gMutex is
+ * because uAtClientCallback(), which needs to ensure that
+ * gEventQueueHandle is good, can be called by a URC callback.
+ * If a URC lands while we're in uAtClientResponseStart(),
+ * the URC callback will be called directly from within
+ * uAtClientResponseStart(), rather than by the separate
+ * URC task.  Since uAtClientResponseStart() must lock
+ * gMutex while it runs gMutex can't also be locked
+ * by uAtClientCallback() so we need a separate
+ * mutex for the protection of gEventQueueHandle.
+ */
+static uPortMutexHandle_t gMutexEventQueue = NULL;
+
 #ifdef U_CFG_AT_CLIENT_DETAILED_DEBUG
 /** Array for detailed debugging.
  */
@@ -644,6 +658,8 @@ static void consecutiveTimeout(uAtClientInstance_t *pClient)
 {
     uAtClientCallback_t cb;
 
+    U_PORT_MUTEX_LOCK(gMutexEventQueue);
+
     pClient->numConsecutiveAtTimeouts++;
     if (pClient->pConsecutiveTimeoutsCallback != NULL) {
         // pConsecutiveTimeoutsCallback second parameter
@@ -655,6 +671,8 @@ static void consecutiveTimeout(uAtClientInstance_t *pClient)
         cb.pParam = &(pClient->numConsecutiveAtTimeouts);
         uPortEventQueueSend(gEventQueueHandle, &cb, sizeof(cb));
     }
+
+    U_PORT_MUTEX_UNLOCK(gMutexEventQueue);
 }
 
 // Calculate the remaining time for polling based on the start
@@ -1884,9 +1902,18 @@ int32_t uAtClientInit()
                                                 U_AT_CLIENT_CALLBACK_QUEUE_LENGTH);
         if (errorCodeOrHandle >= 0) {
             gEventQueueHandle = errorCodeOrHandle;
-            // Create the mutex that protects the linked list
-            errorCodeOrHandle = uPortMutexCreate(&gMutex);
-            if (errorCodeOrHandle != 0) {
+            // Create the mutex that protects gEventQueueHandle
+            errorCodeOrHandle = uPortMutexCreate(&gMutexEventQueue);
+            if (errorCodeOrHandle == 0) {
+                // Create the mutex that protects the linked list
+                errorCodeOrHandle = uPortMutexCreate(&gMutex);
+                if (errorCodeOrHandle != 0) {
+                    // Failed, release the callbacks event queue again
+                    // and its mutex
+                    uPortEventQueueClose(gEventQueueHandle);
+                    uPortMutexDelete(gMutexEventQueue);
+                }
+            } else {
                 // Failed, release the callbacks event queue again
                 uPortEventQueueClose(gEventQueueHandle);
             }
@@ -1908,10 +1935,14 @@ void uAtClientDeinit()
             removeClient(gpAtClientList);
         }
 
+        U_PORT_MUTEX_LOCK(gMutexEventQueue);
         // Release the callbacks event queue
         uPortEventQueueClose(gEventQueueHandle);
 
-        // Delete the mutex
+        // Delete the mutexes
+        U_PORT_MUTEX_UNLOCK(gMutexEventQueue);
+        uPortMutexDelete(gMutexEventQueue);
+        gMutexEventQueue = NULL;
         U_PORT_MUTEX_UNLOCK(gMutex);
         uPortMutexDelete(gMutex);
         gMutex = NULL;
@@ -2835,7 +2866,7 @@ int32_t uAtClientCallback(uAtClientHandle_t atHandle,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientCallback_t cb;
 
-    U_PORT_MUTEX_LOCK(gMutex);
+    U_PORT_MUTEX_LOCK(gMutexEventQueue);
 
     if (pCallback != NULL) {
         cb.pFunction = pCallback;
@@ -2844,7 +2875,7 @@ int32_t uAtClientCallback(uAtClientHandle_t atHandle,
         errorCode = uPortEventQueueSend(gEventQueueHandle, &cb, sizeof(cb));
     }
 
-    U_PORT_MUTEX_UNLOCK(gMutex);
+    U_PORT_MUTEX_UNLOCK(gMutexEventQueue);
 
     return errorCode;
 }
@@ -2854,11 +2885,11 @@ int32_t uAtClientCallbackStackMinFree()
 {
     int32_t sizeOrErrorCode;
 
-    U_PORT_MUTEX_LOCK(gMutex);
+    U_PORT_MUTEX_LOCK(gMutexEventQueue);
 
     sizeOrErrorCode = uPortEventQueueStackMinFree(gEventQueueHandle);
 
-    U_PORT_MUTEX_UNLOCK(gMutex);
+    U_PORT_MUTEX_UNLOCK(gMutexEventQueue);
 
     return sizeOrErrorCode;
 }
