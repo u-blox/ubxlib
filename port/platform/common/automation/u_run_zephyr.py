@@ -242,7 +242,7 @@ def download(connection, jlink_device_name, guard_time_seconds,
                                       build_dir, env, printer, prompt)
     return success
 
-def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter):
+def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter, keep_going_flag):
     '''Build using west'''
     call_list = []
     defines_text = ""
@@ -314,7 +314,7 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter):
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
                            printer, prompt, shell_cmd=True,
-                           set_env=env):
+                           set_env=env, keep_going_flag=keep_going_flag):
             build_dir = output_dir
     else:
         reporter.event(u_report.EVENT_TYPE_BUILD,
@@ -331,10 +331,10 @@ def run(instance, mcu, board, toolchain, connection, connection_lock,
     return_value = -1
     build_dir = None
     instance_text = u_utils.get_instance_text(instance)
-    _ = (misc_locks) # Suppress unused variable
 
-    # Don't need the platform lock
+    # Don't need the platform or misc locks
     del platform_lock
+    del misc_locks
 
     # Only one toolchain for Zephyr
     del toolchain
@@ -383,7 +383,8 @@ def run(instance, mcu, board, toolchain, connection, connection_lock,
                     # Do the build
                     build_start_time = time()
                     build_dir = build(board, clean, ubxlib_dir, defines,
-                                      returned_env, printer, prompt, reporter)
+                                      returned_env, printer, prompt, reporter,
+                                      keep_going_flag)
                     if u_utils.keep_going(keep_going_flag, printer, prompt) and \
                        build_dir:
                         # Build succeeded, need to lock some things to do the download

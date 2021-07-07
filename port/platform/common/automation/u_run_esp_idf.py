@@ -102,7 +102,8 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
                 # set shell to True to keep Jenkins happy
                 if u_utils.keep_going(keep_going_flag, printer, prompt) and \
                    u_utils.exe_run(install_cmd, INSTALL_GUARD_TIME_SECONDS,
-                                   printer, prompt, shell_cmd=True):
+                                   printer, prompt, shell_cmd=True,
+                                   keep_going_flag=keep_going_flag):
                     # ...then export.bat to set up paths etc.
                     # which we return attached to returned_env.
                     # It is possible for the process of extracting
@@ -115,7 +116,8 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
                         u_utils.exe_run(export_cmd, INSTALL_GUARD_TIME_SECONDS,
                                         printer, prompt, shell_cmd=True,
                                         returned_env=returned_env,
-                                        bash_cmd=bash_cmd)
+                                        bash_cmd=bash_cmd,
+                                        keep_going_flag=keep_going_flag)
                         if not returned_env:
                             printer.string("{}warning: retrying {} to"     \
                                            " capture the environment variables...".
@@ -143,7 +145,7 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
     return returned_env
 
 def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
-          printer, prompt, reporter):
+          printer, prompt, reporter, keep_going_flag):
     '''Build the code'''
     call_list = []
     defines_text = ""
@@ -209,7 +211,8 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
         # set shell to True to keep Jenkins happy
         success = u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
                                   printer, prompt, shell_cmd=True,
-                                  set_env=env)
+                                  set_env=env,
+                                  keep_going_flag=keep_going_flag)
     else:
         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                        u_report.EVENT_FAILED,
@@ -317,7 +320,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
             if u_utils.keep_going(keep_going_flag, printer, prompt) and \
                build(esp_idf_dir, ubxlib_dir, build_dir,
                      defines, returned_env, clean,
-                     printer, prompt, reporter):
+                     printer, prompt, reporter, keep_going_flag):
                 reporter.event(u_report.EVENT_TYPE_BUILD,
                                u_report.EVENT_PASSED,
                                "build took {:.0f} second(s)". \
@@ -331,16 +334,19 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                         reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                        u_report.EVENT_START)
                         retries = 0
+                        downloaded = False
                         while u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                              not download(esp_idf_dir, ubxlib_dir, build_dir,
-                                           connection["serial_port"], returned_env,
-                                           printer, prompt) and (retries < 3):
-                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                           u_report.EVENT_WARNING,
-                                           "unable to download, will retry...")
-                            retries += 1
-                            sleep(5)
-                        if retries < 3:
+                              not downloaded and (retries < 3):
+                            downloaded = download(esp_idf_dir, ubxlib_dir, build_dir,
+                                                  connection["serial_port"], returned_env,
+                                                  printer, prompt)
+                            if not downloaded:
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                               u_report.EVENT_WARNING,
+                                               "unable to download, will retry...")
+                                retries += 1
+                                sleep(5)
+                        if downloaded:
                             reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                            u_report.EVENT_COMPLETE)
                             reporter.event(u_report.EVENT_TYPE_TEST,

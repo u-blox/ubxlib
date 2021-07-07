@@ -5,7 +5,7 @@
 from multiprocessing import Process, freeze_support # Needed to make Windows behave
                                                     # when run under multiprocessing,
 from signal import signal, SIGINT   # For CTRL-C handling
-from time import time
+from time import time, sleep
 import os
 import sys # For exit() and stdout
 import argparse
@@ -96,10 +96,13 @@ def exe_run(call_list, guard_time_seconds, shell_cmd=False):
     kill_time = None
 
     try:
+        popen_keywords = {
+            'stdout': subprocess.PIPE,
+            'stderr': subprocess.STDOUT,
+            'shell': shell_cmd
+        }
         process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT,
-                                   shell=shell_cmd)
+                                   **popen_keywords)
         while process.poll() is None:
             string = process.stdout.readline()
             if string:
@@ -147,6 +150,8 @@ def build(source_list, include_list, cflag_list, ldflag_list, gcc_bin_dir):
         print("{}".format(tmp))
         if not exe_run(call_list, GUARD_TIME_SECONDS, True):
             return_value = -1
+        # Relax a little between files to let others in
+        sleep(0.1)
 
     if return_value == 0:
         # Now link them

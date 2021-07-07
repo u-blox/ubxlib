@@ -273,7 +273,7 @@ def create_project(project_name,
     return success
 
 def build_binary(project_dir, workspace_subdir, project_name, clean, defines,
-                 printer, prompt):
+                 printer, prompt, keep_going_flag):
     '''Build'''
     call_list = []
     build_dir = project_dir + os.sep + project_name + os.sep + PROJECT_CONFIGURATION
@@ -360,8 +360,8 @@ def build_binary(project_dir, workspace_subdir, project_name, clean, defines,
                            format(prompt, os.getcwd(), tmp))
 
             # Call stm32cubeidec.exe to do the build
-            if (u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
-                                printer, prompt)):
+            if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
+                               printer, prompt, keep_going_flag=keep_going_flag):
                 # The binary should be
                 elf_path = build_dir + os.sep + project_name + ".elf"
 
@@ -542,7 +542,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                         build_start_time = time()
                         elf_path = build_binary(output_project_dir, workspace_dir,
                                                 PROJECT_NAME,
-                                                clean, defines, printer, prompt)
+                                                clean, defines, printer, prompt, keep_going_flag)
                         if elf_path is None:
                             reporter.event(u_report.EVENT_TYPE_BUILD,
                                            u_report.EVENT_INFORMATION,

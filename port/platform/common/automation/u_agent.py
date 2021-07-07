@@ -225,19 +225,9 @@ def start(print_queue=None, hw_reset=False):
 
     return success
 
-def stop(and_stay_dead=False):
+def _stop(and_stay_dead=False):
     '''Stop the agent'''
-
     global AND_STAY_DEAD
-
-    # It is possible for this to be called
-    # asynchronously to recover from a situation
-    # where all controllers have disconnected
-    # without notice, in which case the context
-    # lock will have been deliberately vapourised
-    # to prevent deadlocks
-    if CONTEXT_LOCK:
-        CONTEXT_LOCK.acquire()
 
     # Nothing in here, or called from here, must
     # rely on CONTEXT_LOCK or CONTEXT_MANAGER being
@@ -277,8 +267,19 @@ def stop(and_stay_dead=False):
     if and_stay_dead:
         AND_STAY_DEAD = True
 
+def stop(and_stay_dead=False):
+    '''Wrapper for stop() to handle locking'''
+    # It is possible for this to be called
+    # asynchronously to recover from a situation
+    # where all controllers have disconnected
+    # without notice, in which case the context
+    # lock will have been deliberately vapourised
+    # to prevent deadlocks
     if CONTEXT_LOCK:
-        CONTEXT_LOCK.release()
+        with CONTEXT_LOCK:
+            _stop(and_stay_dead)
+    else:
+        _stop(and_stay_dead)
 
 def restart(hw_reset=False):
     '''Restart an agent'''
@@ -334,7 +335,6 @@ def instance_running_count(session_name=None):
                         for process in session["processes"]:
                             if process["running_flag"].is_set():
                                 count += 1
-
     return count
 
 def instances_running(session_name=None):
@@ -372,6 +372,10 @@ def session_abort(session_name):
                 if ("name" in session) and (session_name == session["name"]):
                     # Clear the running flag
                     session["running_flag"].clear()
+                    if session["reporter"]:
+                        session["reporter"].event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                                  u_report.EVENT_INFORMATION,
+                                                  "session {} aborting...".format(session_name))
                     success = True
     return success
 
@@ -393,135 +397,135 @@ def session_run(database, instances, filter_string,
     debug_file_path = None
     return_value = 0
     local_agent = False
+    agent_context = None
 
-    CONTEXT_LOCK.acquire()
+    with CONTEXT_LOCK:
 
-    # Start the agent if not already running
-    agent_context = get()
-    if agent_context:
-        if print_queue:
-            agent_context["print_thread"].add_forward_queue(print_queue, print_queue_prompt)
-    else:
-        return_value = -1
-        # HW reset is false when the agent is started implicitly:
-        # it is up to the caller to call agent.start() explicitly
-        # if it wants a HW reset
-        if start(print_queue, hw_reset=False):
-            return_value = 0
-            agent_context = get()
-            local_agent = True
+        # Start the agent if not already running
+        agent_context = get()
+        if agent_context:
+            if print_queue:
+                agent_context["print_thread"].add_forward_queue(print_queue, print_queue_prompt)
+        else:
+            return_value = -1
+            # HW reset is false when the agent is started implicitly:
+            # it is up to the caller to call agent.start() explicitly
+            # if it wants a HW reset
+            if start(print_queue, hw_reset=False):
+                return_value = 0
+                agent_context = get()
+                local_agent = True
 
-    if agent_context:
-        printer = agent_context["printer"]
+        if agent_context:
+            printer = agent_context["printer"]
 
-        # Name the session and add it to the session list
-        session["id"] = agent_context["next_session_id"]
-        agent_context["next_session_id"] += 1
-        session["name"] = "session " + str(session["id"])
-        if session_name:
-            session["name"] = session_name
+            # Name the session and add it to the session list
+            session["id"] = agent_context["next_session_id"]
+            agent_context["next_session_id"] += 1
+            session["name"] = "session " + str(session["id"])
+            if session_name:
+                session["name"] = session_name
 
-        # Set a flag to indicate that the session is
-        # running: processes can watch this and, if it is
-        # cleared, they must exit at the next opportunity
-        session["running_flag"] = CONTEXT_MANAGER.Event()
-        session["running_flag"].set()
-        session["process_running_count"] = 0
-        session["processes"] = []
-        agent_context["sessions"].append(session)
-        agent_context["session_running_count"] += 1
+            # Set a flag to indicate that the session is
+            # running: processes can watch this and, if it is
+            # cleared, they must exit at the next opportunity
+            session["running_flag"] = CONTEXT_MANAGER.Event()
+            session["running_flag"].set()
+            session["process_running_count"] = 0
+            session["processes"] = []
+            agent_context["sessions"].append(session)
+            agent_context["session_running_count"] += 1
 
-        # Launch a thread that manages reporting
-        # from multiple sources
-        session["report_queue"] = None
-        session["reporter"] = None
-        session["report_thread"] = None
-        session["summary_report_handle"] = None
-        if summary_report_file:
-            summary_report_file_path = working_dir + os.sep + summary_report_file
-            session["summary_report_handle"] = open(summary_report_file_path, "w")
-            if session["summary_report_handle"]:
-                printer.string("{}writing summary report to \"{}\".".  \
-                              format(PROMPT, summary_report_file_path))
-            else:
-                printer.string("{}unable to open file \"{}\" for summary report.".   \
-                               format(PROMPT, summary_report_file_path))
-            session["report_queue"] = agent_context["manager"].Queue()
-            session["report_thread"] = u_report.ReportThread(session["report_queue"],
-                                                             session["summary_report_handle"])
-            session["report_thread"].start()
-            session["reporter"] = u_report.ReportToQueue(session["report_queue"], None, None,
-                                                         agent_context["printer"])
-            session["reporter"].open()
-
-        # Add any new platform locks required for these instances
-        create_platform_locks(database, instances,
-                              agent_context["manager"],
-                              agent_context["platform_locks"])
-
-        # Set up all the instances
-        for instance in instances:
-            # Provide a working directory that is unique
-            # for each instance and make sure it exists
-            if working_dir:
-                this_working_dir = working_dir + os.sep +       \
-                                   INSTANCE_DIR_PREFIX + \
-                                   u_utils.get_instance_text(instance)
-            else:
-                this_working_dir = os.getcwd() + os.sep +       \
-                                   INSTANCE_DIR_PREFIX + \
-                                   u_utils.get_instance_text(instance)
-
-            if not os.path.isdir(this_working_dir):
-                os.makedirs(this_working_dir)
-            # Only clean the working directory if requested
-            if clean:
-                u_utils.deltree(this_working_dir, printer, PROMPT)
-                os.makedirs(this_working_dir)
-
-            # Create the file paths for this instance
+            # Launch a thread that manages reporting
+            # from multiple sources
+            session["report_queue"] = None
+            session["reporter"] = None
+            session["report_thread"] = None
+            session["summary_report_handle"] = None
             if summary_report_file:
-                summary_report_file_path = this_working_dir + os.sep + summary_report_file
-            if test_report_file:
-                test_report_file_path = this_working_dir + os.sep + test_report_file
-            if debug_file:
-                debug_file_path = this_working_dir + os.sep + debug_file
+                summary_report_file_path = working_dir + os.sep + summary_report_file
+                session["summary_report_handle"] = open(summary_report_file_path, "w")
+                if session["summary_report_handle"]:
+                    printer.string("{}writing summary report to \"{}\".".  \
+                                  format(PROMPT, summary_report_file_path))
+                else:
+                    printer.string("{}unable to open file \"{}\" for summary report.".   \
+                                   format(PROMPT, summary_report_file_path))
+                session["report_queue"] = agent_context["manager"].Queue()
+                session["report_thread"] = u_report.ReportThread(session["report_queue"],
+                                                                 session["summary_report_handle"])
+                session["report_thread"].start()
+                session["reporter"] = u_report.ReportToQueue(session["report_queue"], None, None,
+                                                             agent_context["printer"])
+                session["reporter"].open()
 
-            # Start u_run.main in each worker thread
-            process = {}
-            process["platform"] = u_data.get_platform_for_instance(database, instance)
-            process["instance"] = instance
-            # Create a flag to be set by u_run. while the process is running
-            process["running_flag"] = CONTEXT_MANAGER.Event()
-            process["platform_lock"] = None
-            process["connection_lock"] = u_connection.get_lock(instance)
-            for platform_lock in agent_context["platform_locks"]:
-                if process["platform"] == platform_lock["platform"]:
-                    process["platform_lock"] = platform_lock["lock"]
-                    break
+            # Add any new platform locks required for these instances
+            create_platform_locks(database, instances,
+                                  agent_context["manager"],
+                                  agent_context["platform_locks"])
 
-            process["handle"] = process_pool.apply_async(u_run.main,
-                                                         (database, instance,
-                                                          filter_string, True,
-                                                          ubxlib_dir,
-                                                          this_working_dir,
-                                                          process["connection_lock"],
-                                                          process["platform_lock"],
-                                                          agent_context["misc_locks"],
-                                                          agent_context["print_queue"],
-                                                          session["report_queue"],
-                                                          summary_report_file_path,
-                                                          test_report_file_path,
-                                                          debug_file_path,
-                                                          session["running_flag"],
-                                                          process["running_flag"],
-                                                          unity_dir))
-            session["process_running_count"] += 1
-            session["processes"].append(process)
+            # Set up all the instances
+            for instance in instances:
+                # Provide a working directory that is unique
+                # for each instance and make sure it exists
+                if working_dir:
+                    this_working_dir = working_dir + os.sep +       \
+                                       INSTANCE_DIR_PREFIX + \
+                                       u_utils.get_instance_text(instance)
+                else:
+                    this_working_dir = os.getcwd() + os.sep +       \
+                                       INSTANCE_DIR_PREFIX + \
+                                       u_utils.get_instance_text(instance)
 
-        # Release the lock while we're running so that others can get in
-        CONTEXT_LOCK.release()
+                if not os.path.isdir(this_working_dir):
+                    os.makedirs(this_working_dir)
+                # Only clean the working directory if requested
+                if clean:
+                    u_utils.deltree(this_working_dir, printer, PROMPT)
+                    os.makedirs(this_working_dir)
 
+                # Create the file paths for this instance
+                if summary_report_file:
+                    summary_report_file_path = this_working_dir + os.sep + summary_report_file
+                if test_report_file:
+                    test_report_file_path = this_working_dir + os.sep + test_report_file
+                if debug_file:
+                    debug_file_path = this_working_dir + os.sep + debug_file
+
+                # Start u_run.main in each worker thread
+                process = {}
+                process["platform"] = u_data.get_platform_for_instance(database, instance)
+                process["instance"] = instance
+                # Create a flag to be set by u_run. while the process is running
+                process["running_flag"] = CONTEXT_MANAGER.Event()
+                process["platform_lock"] = None
+                process["connection_lock"] = u_connection.get_lock(instance)
+                for platform_lock in agent_context["platform_locks"]:
+                    if process["platform"] == platform_lock["platform"]:
+                        process["platform_lock"] = platform_lock["lock"]
+                        break
+
+                process["handle"] = process_pool.apply_async(u_run.main,
+                                                             (database, instance,
+                                                              filter_string, True,
+                                                              ubxlib_dir,
+                                                              this_working_dir,
+                                                              process["connection_lock"],
+                                                              process["platform_lock"],
+                                                              agent_context["misc_locks"],
+                                                              agent_context["print_queue"],
+                                                              session["report_queue"],
+                                                              summary_report_file_path,
+                                                              test_report_file_path,
+                                                              debug_file_path,
+                                                              session["running_flag"],
+                                                              process["running_flag"],
+                                                              unity_dir))
+                session["process_running_count"] += 1
+                session["processes"].append(process)
+
+    # The lock is released while we're running so that others can get in
+    if agent_context:
         try:
             # IMPORTANT: need to be careful here with the bits of context
             # referenced while the context lock is released. Stick to things
@@ -550,8 +554,6 @@ def session_run(database, instances, filter_string,
                                                " as requested...".                     \
                                                format(PROMPT))
                                 abort_on_first_failure = False
-                        except KeyboardInterrupt as ex:
-                            raise KeyboardInterrupt from ex
                         except Exception as ex:
                             # If an instance threw an exception then flag an
                             # infrastructure error
@@ -582,44 +584,45 @@ def session_run(database, instances, filter_string,
         except KeyboardInterrupt:
             # Start things cleaning up
             session["running_flag"].clear()
+            raise KeyboardInterrupt from ex
 
-        CONTEXT_LOCK.acquire()
+    #  Now need to lock again while we're manipulating stuff
+    with CONTEXT_LOCK:
 
-        # Remove the session from the list
-        idx_to_remove = None
-        for idx, item in enumerate(agent_context["sessions"]):
-            if item["id"] == session["id"]:
-                idx_to_remove = idx
-                break
-        if idx_to_remove is not None:
-            agent_context["session_running_count"] -= 1
-            agent_context["sessions"].pop(idx_to_remove)
+        if agent_context:
+            # Remove the session from the list
+            idx_to_remove = None
+            for idx, item in enumerate(agent_context["sessions"]):
+                if item["id"] == session["id"]:
+                    idx_to_remove = idx
+                    break
+            if idx_to_remove is not None:
+                agent_context["session_running_count"] -= 1
+                agent_context["sessions"].pop(idx_to_remove)
 
-        # Tidy up
-        if session["reporter"]:
-            session["reporter"].event_extra_information("return value overall {} (0 = success," \
-                                                        " negative = probable infrastructure"   \
-                                                        " failure, positive = failure(s) (may"  \
-                                                        " still be due to infrastructure))".    \
-                                                        format(return_value))
-            session["reporter"].close()
-        if session["report_thread"]:
-            session["report_thread"].stop_thread()
-            session["report_thread"].join()
-            session["report_thread"] = None
-        if session["summary_report_handle"]:
-            session["summary_report_handle"].close()
-            session["summary_report_handle"] = None
+            # Tidy up
+            if session["reporter"]:
+                session["reporter"].event_extra_information("return value overall {} (0 = success," \
+                                                            " negative = probable infrastructure"   \
+                                                            " failure, positive = failure(s) (may"  \
+                                                            " still be due to infrastructure))".    \
+                                                            format(return_value))
+                session["reporter"].close()
+            if session["report_thread"]:
+                session["report_thread"].stop_thread()
+                session["report_thread"].join()
+                session["report_thread"] = None
+            if session["summary_report_handle"]:
+                session["summary_report_handle"].close()
+                session["summary_report_handle"] = None
 
-        printer.string("{}run(s) complete, return value {}.".
-                       format(PROMPT, return_value))
-        if local_agent:
-            stop()
-        else:
-            if print_queue:
-                agent_context["print_thread"].remove_forward_queue(print_queue)
-
-    CONTEXT_LOCK.release()
+            printer.string("{}run(s) complete, return value {}.".
+                           format(PROMPT, return_value))
+            if local_agent:
+                stop()
+            else:
+                if print_queue:
+                    agent_context["print_thread"].remove_forward_queue(print_queue)
 
     return return_value
 

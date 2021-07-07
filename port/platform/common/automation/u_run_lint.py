@@ -133,7 +133,7 @@ def check_installation(tools_list, compiler_dirs_list, printer, prompt):
 
     return success
 
-def create_lint_config(lint_platform_path, defines, printer, prompt):
+def create_lint_config(lint_platform_path, defines, printer, prompt, keep_going_flag):
     '''Create the Lint configuration files'''
     call_list = []
 
@@ -163,7 +163,8 @@ def create_lint_config(lint_platform_path, defines, printer, prompt):
                    format(prompt, os.getcwd(), tmp))
 
     # Call it
-    return u_utils.exe_run(call_list, None, printer, prompt, shell_cmd=True)
+    return u_utils.exe_run(call_list, None, printer, prompt, shell_cmd=True,
+                           keep_going_flag=keep_going_flag)
 
 def get_file_list(ubxlib_dir, lint_dirs, use_stubs):
     '''Get the list of files to be Linted'''
@@ -241,7 +242,7 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter,
                 if u_utils.keep_going(keep_going_flag, printer, prompt) and \
                    create_lint_config(ubxlib_dir + os.sep +
                                       LINT_PLATFORM_PATH,
-                                      defines, printer, prompt):
+                                      defines, printer, prompt, keep_going_flag):
                     # Determine if "U_CFG_LINT_USE_STUBS" is in the list of
                     # compiler options
                     use_stubs = False

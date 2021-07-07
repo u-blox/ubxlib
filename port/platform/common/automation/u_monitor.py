@@ -135,6 +135,8 @@ def readline_and_queue(results, read_queue, in_handle, connection_type, terminat
         line = pwar_readline(in_handle, connection_type, terminator)
         if line:
             read_queue.put(line)
+        # Let others in
+        sleep(0.01)
 
 # Read lines from input, returns the line as
 # a string when terminator or '\n' is encountered.
@@ -183,6 +185,9 @@ def pwar_readline(in_handle, connection_type, terminator=None):
                         line = line + character
                 else:
                     line = None
+                    # Since this is a busy/wait we sleep a bit if there is no data
+                    # to offload the CPU
+                    sleep(0.01)
             if eol:
                 line = line.strip()
         except UnicodeDecodeError:
@@ -230,11 +235,13 @@ def start_exe(exe_name, printer, prompt):
     text = "{}trying to launch \"{}\" as an executable...".     \
            format(prompt, exe_name)
     try:
-        return_value = subprocess.Popen(exe_name,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.STDOUT,
-                                        bufsize=1,
-                                        shell=True)  # Jenkins hangs without this
+        popen_keywords = {
+            'stdout': subprocess.PIPE,
+            'stderr': subprocess.STDOUT,
+            'bufsize': 1,
+            'shell': True # Jenkins hangs without this
+        }
+        return_value = subprocess.Popen(exe_name, **popen_keywords)
         stdout_handle = return_value.stdout
     except (ValueError, serial.SerialException, WindowsError):
         printer.string("{} failed.".format(text))
@@ -316,6 +323,8 @@ def watch_items(in_handle, connection_type, results, guard_time_seconds,
                         entry[1](match, results, printer, prompt, reporter)
             except queue.Empty:
                 pass
+            # Let others in
+            sleep(0.01)
         # Set this to stop the read thread
         results["finished"] = True
         readline_thread.join()

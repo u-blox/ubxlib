@@ -179,7 +179,7 @@ def download(connection, guard_time_seconds, hex_path, printer, prompt):
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt)
 
 def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
-              defines, printer, prompt, reporter):
+              defines, printer, prompt, reporter, keep_going_flag):
     '''Build on GCC'''
     call_list = []
     hex_file_path = None
@@ -240,7 +240,8 @@ def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
         # Call make to do the build
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
-                            printer, prompt, shell_cmd=True):
+                           printer, prompt, shell_cmd=True,
+                           keep_going_flag=keep_going_flag):
             hex_file_path = outputdir +  \
                             os.sep + "nrf52840_xxaa.hex"
     else:
@@ -251,7 +252,7 @@ def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
     return hex_file_path
 
 def build_ses(clean, ubxlib_dir, unity_dir, defines,
-              printer, prompt, reporter):
+              printer, prompt, reporter, keep_going_flag):
     '''Build on SES'''
     call_list = []
     ses_dir = ubxlib_dir + os.sep + RUNNER_DIR_SES
@@ -322,7 +323,8 @@ def build_ses(clean, ubxlib_dir, unity_dir, defines,
             # Call Segger Embedded Studio builder to do the build
             # Set shell to keep Jenkins happy
             if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
-                               printer, prompt, shell_cmd=True):
+                               printer, prompt, shell_cmd=True,
+                               keep_going_flag=keep_going_flag):
                 hex_file_path = output_dir + os.sep + PROJECT_NAME_SES + ".hex"
         else:
             reporter.event(u_report.EVENT_TYPE_BUILD,
@@ -391,10 +393,10 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                     if toolchain.lower() == "gcc":
                         build_subdir_gcc = BUILD_SUBDIR_PREFIX_GCC + instance_text.replace(".", "_")
                         hex_file_path = build_gcc(clean, build_subdir_gcc, ubxlib_dir, unity_dir,
-                                                  defines, printer, prompt, reporter)
+                                                  defines, printer, prompt, reporter, keep_going_flag)
                     elif toolchain.lower() == "ses":
                         hex_file_path = build_ses(clean, ubxlib_dir, unity_dir, defines,
-                                                  printer, prompt, reporter)
+                                                  printer, prompt, reporter, keep_going_flag)
                 if hex_file_path:
                     # Build succeeded, need to lock a connection to do the download
                     reporter.event(u_report.EVENT_TYPE_BUILD,

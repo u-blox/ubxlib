@@ -23,11 +23,11 @@ Note: when unzipping a downloaded file make sure to right-click and unblock it *
 |                          | `USBSwitchCmd`: to control Cleware USB cutter. | https://www.cleware-shop.de/USB-Cutter/en        | Anywhere on the path, conventionally copy the files into `C:\Program Files (x86)\utils\USBSwitchCmd`. |
 | Lint "platform"          | `flexelint`: a *licensed* product that is no longer sold (u-blox has a licensed copy). | https://www.gimpel.com/archive/products.htm | Anywhere on the path, conventionally copy the files into `C:\flexelint` and add `C:\flexelint\bin` to the path. |
 |                          | `TDM-GCC-64`: a 64 bit C compiler.            | https://jmeubank.github.io/tdm-gcc/               | `C:\TDM-GCC-64` and *also* add `C:\TDM-GCC-64\bin` to the path. |
-|                          | `make`: you are *strongly advised* to use the version at the link; there are other versions of `make` for Windows around that do not work correctly. | http://gnuwin32.sourceforge.net/packages/make.htm | Anywhere on the path, let the installer choose, provided it is *before* what follows. |
+|                          | `make`: you are *strongly advised* to use the version at the link; there are other versions of `make` for Windows around that do not work correctly. | https://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-make-4.3-1-any.pkg.tar.xz | Rename `mingw32-make.exe` to `make.exe` and place it anywhere on the path provided it is *before* what follows. |
 |                          | `unxutils`: `rm`, `touch`, `gawk`, etc.       | https://sourceforge.net/projects/unxutils/        | Anywhere on the path *after* the preceding line (conventionally copy the files into `C:\Program Files (x86)\utils\unxutils`), i.e. so that the version of `make` that comes inside this package is ignored.  You will need to add the `usr\local\wbin` sub-directory to the path. |
 | Doyxgen                  | `Doxygen`.                                    | https://www.doxygen.nl/index.html                 | Anywhere on the path, let the installer choose. |
 | AStyle                   | `AStyle`: *must* be version 3.1; version 3.0 will *not* work. | http://astyle.sourceforge.net/    | Anywhere on the path, conventionally copy the files into `C:\AStyle` and add `C:\AStyle\bin` to the path. |
-| PyLint                   | `PyLint`: no link, just `pip install pylint` from a command prompt with administrator privileges. |                                                   |                                 |
+| PyLint                   | `PyLint`: no link, just `pip install pylint` from a command prompt with administrator privileges. | |                               |
 | Static size "platform"   | `GCC ARM`: GNU ARM compiler.                  | https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads | `C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin` |
 | No floating point check  | Same as for static size above.                |                                                   |                                 |
 | ESP-IDF platform         | None: `u_run_esp_idf.py` does all the work.   |                                                   |                                 |
@@ -41,6 +41,8 @@ Note: when unzipping a downloaded file make sure to right-click and unblock it *
 |                          | `nRF command-line tools`: as for GCC version. |                                                   |                                 |
 |                          | `JLink Software and Documentation Pack`: as for GCC version. |                                    |                                 |
 | Zephyr platform          | `nRF Connect`: the kitchen sink; run this, select `Toolchain Manager`, open that and then use it to install the correct version of `nRF Connect`. | https://www.nordicsemi.com/Software-and-Tools/Development-Tools/nRF-Connect-for-desktop | `C:\nrfconnect\v1.4.2`; tell the installer to use `C:\nrfconnect` and it will add the rest. |
+|                          | `pip install west`: the build tool for Zephyr (from a command prompt as Administrator). |         |                                 |
+|                          | `pip install -r C:\nrfconnect\v1.4.2\zephyr\scripts\requirements.txt` (or equivalent), from a command prompt as Administrator. | |  |
 |                          | `nRF command-line tools`: as for nRF5SDK GCC. |                                                   |                                 |
 |                          | `JLink Software and Documentation Pack`: as for nRF5SDK. |                                        |                                 |
 | STM32Cube platform       | `STM32Cube FW F4`: SDK.                       | https://www.st.com/en/embedded-software/stm32cubef4.html | `C:\STM32Cube_FW_F4`     |
@@ -60,19 +62,13 @@ Git clone into it https://github.com/u-blox/ubxlib, or for internal u-blox users
 
 Git clone https://github.com/ThrowTheSwitch/Unity into it; you should now have `C:\agent\Unity` also.
 
-Open a command window, with Administrator privileges, `CD` to `C:\agent\ubxlib\port\platform\common\automation` and run `python u_settings.py`.  This will spew out a load of warnings about things not existing and will create two settings files, `settings_v2.json` and `settings_v2_agent_specific.json`, in the directory`C:\Users\<your_username>\.ubx_automation`.  Open `settings_v2_agent_specific.json` in a text editor; if you installed any of the applications above (ignoring ones that are "anywhere on the path") into a directory other than the default, find the original entry in the file and edit it to match the location you used.  Then remove all of the `_FIX_ME` post-fixes in the file using search and replace and save the file.  It is a good idea to make a backup of these files now, in case of accidents.
-
-# Attach Boards
-
-If you have chosen instances for which hardware is required you should now attach that hardware to the agent and check that it is working as expected.
-
-TODO: add detail here.
+Open a command window, with Administrator privileges, `CD` to `C:\agent\ubxlib\port\platform\common\automation` and run `python u_settings.py`.  This will spew out a load of warnings about things not existing and will create two settings files, `settings_v2.json` and `settings_v2_agent_specific.json`, in the directory`C:\Users\<your_username>\.ubx_automation`.  Open `settings_v2_agent_specific.json` in a text editor; if you installed any of the applications above (ignoring ones that are "anywhere on the path") into a directory other than the default, find the original entry in the file and edit it to match the location you used.  Then remove all of the `_FIX_ME` post-fixes in the file using search and replace and save the file.
 
 # Run The Agent
 
 To take the easy route:
 
-- on Windows create the directory you wish to run in, conventionally `C:\agent`, copy the batch file `agent_start.bat` into that directory, open a command prompt in that directory and run `agent_start /?` for further instructions.  You can then use the Windows Task Scheduler to have this batch file run at boot; if you want to avoid the irritating `Terminate batch job (Y/N)?` prompt when CTRL-C is pressed then append `< nul` to the end of the command-line, e.g. `agent_start.bat < nul`.
+- on Windows create the directory you wish to run in, conventionally `C:\agent`, copy the batch file `agent_start.bat` into that directory, open a command prompt in that directory and run `agent_start /?` for further instructions.  You can then use the Windows Task Scheduler to have this batch file run at boot; if you want to avoid the irritating `Terminate batch job (Y/N)?` prompt when CTRL-C is pressed then append `< nul` to the end of the command-line, e.g. `agent_start.bat < nul`.  note that, when run by the Windows Task Scheduler, no debug output is visible locally on the agent and hence you may wish to just run `agent_start.bat < nul` at a command prompt (with Administrator privileges) while performing initial testing.
 
 - on Linux TODO.
 
@@ -106,3 +102,14 @@ no registry acknowledged
 ...this means that the agent has been unable to locate `rpyc_registry.py`, which should be listening on port 18811 of a machine on the same network.  This is a requirement for [RPyC](https://rpyc.readthedocs.io/) to work (i.e. a single machine somewhere on the same network as the controller and this agent must be running something like `python "C:\Program Files\Python39\Scripts\rpyc_registry.py"`).  This problem should be resolved before you continue.
 
 It is a good idea to do a test run of the controller using this new agent: the controller should find it and be able to execute tests on it.
+
+# Attach Boards
+
+If you have chosen instances for which hardware is required you should now attach each piece of hardware to the agent, one by one, setting up the appropriate values for COM port and (where relevant) debugger in `settings_v2_agent_specific.json`, adding each instance to the list of instances supported by the agent and checking that each instance is working as expected.
+
+A few notes:
+
+- make sure that each HW setup works before it is connected to the agent (e.g. by running `u_run.py` locally); specifically, newly purchased boards with on-board debug chips will often need to be updated with the latest debugger firmware before they can be used and this can often result in immediate failure when they are run automagically,
+- make sure that the UART flow control lines between the MCU and each module are either (a) connected or (b) not connected and the relevant HW lines tied to ground, as required by the definition of the instance,
+- if u-blox security is to be tested on an instance, make sure that (a) the module is security sealed (just set `U_CFG_SECURITY_DEVICE_PROFILE_UID` to the device profile UID for that module (without quotes) taken from the [Thingstream portal](https://portal.thingstream.io) and then run the `securitySeal` test) and (b) the module is given the special feature `LocalC2CKeyPairing` by a member of the u-blox security team,
+- make backups of the settings files for each agent as you add each instance, just in case the files get re-written to defaults by the automation code, which may happen if an error is detected.

@@ -4,7 +4,10 @@
 
 from time import time, sleep, gmtime, strftime
 from multiprocessing.dummy import Pool as ThreadPool
-import socket   # for socket.timeout
+from copy import deepcopy
+import os       # for os.path
+import socket
+import threading
 import sys      # for exit() and stdout
 import queue
 import argparse
@@ -26,7 +29,7 @@ AGENT_SERVICE_PORT = u_utils.AGENT_SERVICE_PORT
 
 # The maxium number of characters from a controller name
 # that will be used when constructing ubxlib_path
-AGENT_UBXLIB_PATH_CONTROLLER_NAME_MAX_LENGTH = u_utils.AGENT_UBXLIB_PATH_CONTROLLER_NAME_MAX_LENGTH
+AGENT_WORKING_SUBDIR_CONTROLLER_NAME_MAX_LENGTH = u_utils.AGENT_WORKING_SUBDIR_CONTROLLER_NAME_MAX_LENGTH
 
 # The number of times to retry an agent reconnection
 # attempt at one second intervals
@@ -66,11 +69,27 @@ PRINTER = None
 
 # How long to buffer strings on the agent before sending them
 # all to the controller (to speed things up)
-BUFFER_TIME_SECONDS = 5
+BUFFER_TIME_SECONDS = 1
 
 # How long to wait for any remaining debug to arrive
 # when closing an agent down
 WAIT_FOR_REMAINING_DEBUG_TIME = 0
+
+# The handle for a summary file
+SUMMARY_FILE_HANDLE = None
+
+# List of agents
+AGENTS = []
+
+# Lock for the agent list, used to prevent collisions
+# with the asynchronous abort process
+ABORT_LOCK = threading.Lock()
+
+# Array of instance results files names
+INSTANCE_RESULTS_FILES = []
+
+# Our controller's name
+CONTROLLER_NAME = None
 
 # Connect to an agent.
 def agent_connect(ip_address, port):
@@ -79,9 +98,9 @@ def agent_connect(ip_address, port):
                                                                 "allow_pickle": True,
                                                                 "sync_request_timeout": None,
                                                                 "allow_safe_attrs": True,
-                                                                 # Need this to get queue output
-                                                                 # from agent (.put())
-                                                                 "allow_public_attrs": True})
+                                                                # Need this to get queue output
+                                                                # from agent (.put())
+                                                                "allow_public_attrs": True})
 
 # Close an agent, optionally printing something out.
 def agent_close(agent, text=None):
@@ -103,7 +122,8 @@ def agent_call(agent, function, *args, **kwargs):
         try:
             result = getattr(agent["connection"].root, function)(*args, **kwargs)
         except (ConnectionRefusedError, EOFError) as ex:
-            text = "error \"{} {}\" calling function {}.".format(type(ex).__name__, str(ex), function)
+            text = "error \"{} {}\" calling function {} on agent {}".format(type(ex).__name__, str(ex),
+                                                                             function, agent["name"])
             agent_close(agent, text)
     return result
 
@@ -178,7 +198,9 @@ def agents_connect(port):
                     agent["agent_result_path"] = None
                     agent["agent_result"] = -1
                     # Get the activated instances for information
-                    agent["instances_activated"] = u_utils.copy_two_level_list(agent_call(agent, "instances_activated_get"))
+                    # Note the deepcopy() so that we don't keep referring
+                    # back to the agent over the network
+                    agent["instances_activated"] = u_utils.copy_two_level_list(deepcopy(agent_call(agent, "instances_activated_get")))
                     text += ", instance(s) activated"
                     instance_text = " none"
                     if agent["instances_activated"]:
@@ -215,7 +237,9 @@ def agent_update(agent_locked, url, controller_name):
                 # error due to the restart
                 agent_call(agent_locked, "agent_restart", controller_name)
                 # The connection to the agent will drop,
-                # we must now reconnect to it
+                # we must now reconnect to it.  Give it time to
+                # drop first though
+                sleep(5)
                 agent_locked["connection"] = None
                 retries = 0
                 while not agent_locked["connection"] and (retries < AGENT_RECONNECT_RETRIES):
@@ -286,7 +310,7 @@ def _agent_lock_and_check(agent, controller_name, master_hash, branch_or_hash,
                                                                        branch_or_hash))
             else:
                 if PRINTER:
-                    PRINTER.string("{}{} needs no update: either we're testing master"   \
+                    PRINTER.string("{}{} needs no update: either we are testing master"  \
                                    " and it is on master or there have been no"          \
                                    " automation changes".format(PROMPT, agent["name"]))
             # If the agent is running something and would need to
@@ -316,16 +340,28 @@ def _agent_lock_and_check(agent, controller_name, master_hash, branch_or_hash,
 def _agent_update(agent_locked, controller_name, url):
     '''Update an agent, if it needs it'''
     if agent_locked["connection"]:
-        if (not agent_locked["agent_update_branch_or_hash"]) or  \
-           agent_update(agent_locked, url, controller_name):
-            agent_locked["instances_activated"] = u_utils.copy_two_level_list(agent_call(agent_locked,
-                                                                                         "instances_activated_get"))
-            agent_locked["instances_running"] = u_utils.copy_two_level_list(agent_call(agent_locked,
-                                                                                       "instances_running_get"))
-        else:
+        try:
+            if (not agent_locked["agent_update_branch_or_hash"]) or  \
+               agent_update(agent_locked, url, controller_name):
+                # Note the deepcopy() so that we don't keep referring
+                # back to the agent over the network
+                agent_locked["instances_activated"] = u_utils.copy_two_level_list(deepcopy(agent_call(agent_locked,
+                                                                                                      "instances_activated_get")))
+                agent_locked["instances_running"] = u_utils.copy_two_level_list(deepcopy(agent_call(agent_locked,
+                                                                                                    "instances_running_get")))
+            else:
+                agent_call(agent_locked, "unlock", controller_name)
+                agent_locked["locked"] = False
+                agent_close(agent_locked, "unable to update agent " + agent_locked["name"])
+        except Exception as ex:
+            # Print stuff out here as this is called in a process
+            # and so we won't be able to find out what the exception
+            # is otherwise
             agent_call(agent_locked, "unlock", controller_name)
             agent_locked["locked"] = False
-            agent_close(agent_locked, "unable to update agent")
+            text = "exception {} - {} while trying to update agent {}". \
+                   format(type(ex).__name__, str(ex), agent_locked["name"])
+            agent_close(agent_locked, text)
 
 # Lock and update suitable agents, closing the rest.
 # An agent must be updated if (a) we're testing master
@@ -358,7 +394,7 @@ def agents_lock_and_update(agents, controller_name, url,
 
     if PRINTER:
         PRINTER.string("{}### locking and updating agents...".format(PROMPT))
-        text = "we're"
+        text = "we are"
         if not testing_master:
             text += " not"
         text += " testing master"
@@ -440,6 +476,70 @@ def agents_allocated_sort(agents, database):
     # Now sort the agent list according to the
     # duration
     agents.sort(key=lambda item: item["instances_allocated_duration"], reverse = True)
+
+def archive_from_agent(agent, archive_url, archive_credentials,
+                       instance_results_files, recurse,
+                       summary_file_handle, summary_results_file):
+    '''Update the archive URL with results: call this after an agent finishes'''
+    text = ""
+    if instance_results_files:
+        if agent_call(agent, "archive_to_url",
+                      agent["agent_result_path"], instance_results_files,
+                      archive_url, recurse, archive_credentials):
+            text += " archived to {}".format(archive_url)
+        else:
+            text += " COULD NOT archive files to {}".format(archive_url)
+    if summary_file_handle:
+        summary_file_handle.write(bytes(agent["name"] + "\n", encoding="utf8"))
+        if not agent_call(agent, "copy",
+                          summary_file_handle,
+                          agent["agent_result_path"],
+                         [summary_results_file]):
+            text += ", unable to copy {}".format(summary_results_file)
+    return text
+
+def archive_summary(controller_name, archive_url, archive_credentials,
+                    outcome_text, summary_file_handle, summary_results_file):
+    '''Archive the collated summary'''
+    destination = archive_url + "/" + summary_results_file
+    summary_file_handle.write(bytes("\n" + outcome_text + "\n", encoding="utf8"))
+    summary_file_handle.seek(0)
+    if PRINTER:
+        PRINTER.string("{}PUTing {} to {}...".format(PROMPT,
+                                                     summary_results_file,
+                                                     archive_url))
+    try:
+        if archive_credentials:
+            response = requests.put(destination, files={controller_name: summary_file_handle},
+                                    headers={"Content-Type": "text/plain", "Content-Disposition": "inline"},
+                                    auth=tuple(archive_credentials.split(":")))
+        else:
+            response = requests.put(destination, files={controller_name: summary_file_handle},
+                                    headers={"Content-Type": "text/plain", "Content-Disposition": "inline"})
+        if PRINTER:
+            PRINTER.string("{}...returned result {}.".format(PROMPT, response.status_code))
+    except (ConnectionError, TimeoutError):
+        if PRINTER:
+            PRINTER.string("{}...failed because of a connection error.".format(PROMPT))
+
+def archive_console_output(controller_name, archive_url, archive_credentials,
+                           console_file_handle, console_file_path):
+    '''Archive the controller debug output'''
+    _, file_name = os.path.split(console_file_path)
+    destination = archive_url + "/" + file_name
+    console_file_handle.seek(0)
+    print("{}PUTing {} to {}...".format(PROMPT, console_file_path, archive_url))
+    try:
+        if archive_credentials:
+            response = requests.put(destination, files={controller_name: console_file_handle},
+                                    headers={"Content-Type": "text/plain", "Content-Disposition": "inline"},
+                                    auth=tuple(archive_credentials.split(":")))
+        else:
+            response = requests.put(destination, files={controller_name: console_file_handle},
+                                    headers={"Content-Type": "text/plain", "Content-Disposition": "inline"})
+        print("{}...returned result {}.".format(PROMPT, response.status_code))
+    except (ConnectionError, TimeoutError):
+        print("{}...failed because of a connection error.".format(PROMPT))
 
 # Allocate instances to agents.  The aim is
 # to spread runs across agents so that no single
@@ -545,13 +645,13 @@ def instances_allocate(agents_locked, database, instances, controller_name):
                 agents_busy_sort(agents_locked, database)
                 for agent in agents_locked:
                     if instance_to_distribute in agent["instances_activated"]:
-                        agents_locked[0]["instances_allocated"].append(instance_to_distribute.copy())
-                        agents_locked[0]["instances_running"].append(instance_to_distribute.copy())
+                        agent["instances_allocated"].append(instance_to_distribute.copy())
+                        agent["instances_running"].append(instance_to_distribute.copy())
                         if PRINTER:
                             PRINTER.string("{}allocated instance {} to agent {}.". \
                                            format(PROMPT,
                                                   u_utils.get_instance_text(instance_to_distribute),
-                                                  agents_locked[0]["name"]))
+                                                  agent["name"]))
                         instance_to_distribute = None
                         instances[idx] = None
                         allocated += 1
@@ -661,8 +761,10 @@ def instances_start(agents_locked_allocated, database, controller_name, url,
                                                             controller_name)
                     if agent["agent_result_path"]:
                         count = len(agent["instances_allocated"])
-                        agent["instances_running"] = u_utils.copy_two_level_list(agent_call(agent, "instances_running_get",
-                                                                                            agent["session_name"]))
+                        # Note the deepcopy() so that we don't keep referring
+                        # back to the agent over the network
+                        agent["instances_running"] = u_utils.copy_two_level_list(deepcopy(agent_call(agent, "instances_running_get",
+                                                                                                     agent["session_name"])))
                         if agent["instances_running"]:
                             count += len(agent["instances_running"])
                         if PRINTER:
@@ -709,6 +811,7 @@ def instances_start(agents_locked_allocated, database, controller_name, url,
 # as they do so.
 # Returns an error value: zero for success, negative for
 # infrastructure failure, positive for tests failed.
+# Note: ABORT_LOCK must be released before this is called.
 def instances_wait(agents_running, controller_name, archive_url, archive_credentials,
                    instance_results_files, recurse, summary_results_file,
                    abort_on_first_failure):
@@ -718,109 +821,112 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
     last_report_time = start_time
     agents_running_count = len(agents_running)
     failed_agent_name = None
-    summary_file_handle = None
+
+    global SUMMARY_FILE_HANDLE
 
     if PRINTER:
         PRINTER.string("{}### waiting for instance(s) to finish...".format(PROMPT))
     if archive_url and summary_results_file:
         try:
-            summary_file_handle = tempfile.TemporaryFile()
+            SUMMARY_FILE_HANDLE = tempfile.TemporaryFile()
         except OSError:
             if PRINTER:
                 PRINTER.string("{}unable to open a temporary file for the summary results.". \
                                format(PROMPT))
     while (agents_running_count > 0) and not failed_agent_name:
         for agent in agents_running:
-            if agent["connection"]:
-                text_result = ""
-                agent_poll(agent, AGENT_POLL_TIME)
-                if agent["async_result_object"].ready:
-                    try:
-                        agent["agent_result"] = agent["async_result_object"].value
-                        if agent["agent_result"] != 0:
+            # Prevent collisions with an asynchronous abort
+            with ABORT_LOCK:
+                if agent["connection"]:
+                    text_result = ""
+                    agent_poll(agent, AGENT_POLL_TIME)
+                    if agent["async_result_object"].ready:
+                        try:
+                            agent["agent_result"] = agent["async_result_object"].value
+                            if agent["agent_result"] != 0:
+                                if abort_on_first_failure:
+                                    failed_agent_name = agent["name"]
+                            text_result += ", gave return value {}".format(agent["agent_result"])
+                        except Exception as ex:
                             if abort_on_first_failure:
                                 failed_agent_name = agent["name"]
-                        text_result += ", gave return value {}".format(agent["agent_result"])
-                    except Exception as ex:
-                        if abort_on_first_failure:
-                            failed_agent_name = agent["name"]
-                        text_result += ", threw exception {} - {}".format(type(ex).__name__, str(ex))
-                else:
-                    if agent["async_result_object"].expired:
-                        if abort_on_first_failure:
-                            failed_agent_name = agent["name"]
-                        text_result += " timed out"
-                if text_result:
-                    text = "{}, running{}".format(agent["name"],
-                                                  u_utils.get_instances_text(agent["instances_allocated"]))
-                    text += text_result
-                    text += " after {}, results in [{}] {}".format(strftime("%H:%M:%S", gmtime(time() - start_time)),
-                                                                   agent["host_ip_address"],
-                                                                   agent["agent_result_path"].replace("\\", "/"))
-                    # Close the printer and wait for any remaining
-                    # debug prints to arrive
-                    if PRINT_QUEUE:
-                        agent_call(agent, "printer_stop", PRINT_QUEUE)
-                    agent_poll(agent, WAIT_FOR_REMAINING_DEBUG_TIME)
+                            text_result += ", threw exception {} - {}".format(type(ex).__name__, str(ex))
+                    else:
+                        if agent["async_result_object"].expired:
+                            if abort_on_first_failure:
+                                failed_agent_name = agent["name"]
+                            text_result += " timed out"
+                    if text_result:
+                        text = ""
+                        if agent["agent_result"] != 0:
+                            text = "*** "
+                        text += "{}, running{}".format(agent["name"],
+                                                       u_utils.get_instances_text(agent["instances_allocated"]))
+                        text += text_result
+                        text += " after {}, results in [{}] {}".format(strftime("%H:%M:%S", gmtime(time() - start_time)),
+                                                                       agent["host_ip_address"],
+                                                                       agent["agent_result_path"].replace("\\", "/"))
+                        # Close the printer and wait for any remaining
+                        # debug prints to arrive
+                        if PRINT_QUEUE:
+                            agent_call(agent, "printer_stop", PRINT_QUEUE)
+                        agent_poll(agent, WAIT_FOR_REMAINING_DEBUG_TIME)
 
-                    # If we have an archive URL, ask the agent to put the
-                    # instance result files there and then create the summary
-                    # file and put it there
-                    if archive_url:
-                        if instance_results_files:
-                            if agent_call(agent, "archive_to_url",
-                                          agent["agent_result_path"], instance_results_files,
-                                          archive_url, recurse, archive_credentials):
-                                text += " and archived to {}".format(archive_url)
-                            else:
-                                text += " but COULD NOT archive files to {}".format(archive_url)
-                        if summary_file_handle:
-                            summary_file_handle.write(bytes(agent["name"] + "\n", encoding="utf8"))
-                            if not agent_call(agent, "copy",
-                                              summary_file_handle,
-                                              agent["agent_result_path"],
-                                             [summary_results_file]):
-                                text += ", unable to copy {}".format(summary_results_file)
-                    agent_close(agent, text)
-                    agents_running_count -= 1
-                    break
+                        if archive_url:
+                            # If we have an archive URL, ask the agent to put the
+                            # instance result files there and add to the summary
+                            # file we are collating also
+                            text += archive_from_agent(agent, archive_url, archive_credentials,
+                                                       instance_results_files, recurse,
+                                                       SUMMARY_FILE_HANDLE, summary_results_file)
+                        agent_close(agent, text)
+                        agents_running_count -= 1
+                        break
+            sleep(1)
+
         if (time() > last_report_time + RESULT_REPORT_INTERVAL) or (agents_running_count == 0):
-            last_report_time = time()
-            text = ""
-            for agent in agents_running:
-                if agent["connection"]:
-                    if text:
-                        text += " "
-                    text += "{}".format(agent["name"])
-                    agent["instances_running"] = u_utils.copy_two_level_list(agent_call(agent, "instances_running_get",
-                                                                                        agent["session_name"]))
-                    if agent["instances_running"]:
-                        if agent["locked"] and agent_call(agent, "unlock", controller_name):
-                            if PRINTER:
-                                PRINTER.string("{}agent {} now unlocked, lock is not required once instances are running.". \
-                                               format(PROMPT, agent["name"]))
-                            agent["locked"] = False
-                        text += " [{}]".\
-                                format(u_utils.get_instances_text(agent["instances_running"]).strip())
-            if PRINTER:
-                PRINTER.string("{}{} agent(s) ({}) still running after {}.". \
-                               format(PROMPT, agents_running_count, text.strip(),
-                                     strftime("%H:%M:%S", gmtime(time() - start_time))))
-    if failed_agent_name:
-        if PRINTER:
-            PRINTER.string("{}aborting at first failure (on {}) as requested...". \
-                           format(PROMPT, failed_agent_name))
-        for agent in agents_running:
-            agent_call(agent, "session_abort", agent["session_name"], controller_name)
-            if agent["locked"] and agent_call(agent, "unlock", controller_name):
+            with ABORT_LOCK:
+                last_report_time = time()
+                text = ""
+                for agent in agents_running:
+                    if agent["connection"]:
+                        if text:
+                            text += " "
+                        text += "{}".format(agent["name"])
+                        # We used to call instances_running_get() on the agent here as it
+                        # may be interesting for the user to see the list, however copying
+                        # the array across can take ages when the agent is very busy so
+                        # instead we just get the number of instances running.
+                        instance_running_count = agent_call(agent, "instance_running_count_get",
+                                                            agent["session_name"])
+                        if instance_running_count > 0:
+                            if agent["locked"] and agent_call(agent, "unlock", controller_name):
+                                if PRINTER:
+                                    PRINTER.string("{}agent {} now unlocked, lock is not required once instances are running.". \
+                                                   format(PROMPT, agent["name"]))
+                                agent["locked"] = False
+                            text += " ({})".format(instance_running_count)
                 if PRINTER:
-                    PRINTER.string("{}agent {} now unlocked.". \
-                                   format(PROMPT, agent["name"]))
-                agent["locked"] = False
-            if PRINT_QUEUE:
-                agent_call(agent, "printer_stop", PRINT_QUEUE)
-            agent_close(agent, "aborted")
-            agents_running_count -= 1
+                    PRINTER.string("{}{} agent(s) ({}) still running after {}.". \
+                                   format(PROMPT, agents_running_count, text.strip(),
+                                         strftime("%H:%M:%S", gmtime(time() - start_time))))
+
+    if failed_agent_name:
+        with ABORT_LOCK:
+            if PRINTER:
+                PRINTER.string("{}aborting at first failure (on {}) as requested...". \
+                               format(PROMPT, failed_agent_name))
+            for agent in agents_running:
+                agent_call(agent, "session_abort", agent["session_name"], controller_name)
+                if agent["locked"] and agent_call(agent, "unlock", controller_name):
+                    if PRINTER:
+                        PRINTER.string("{}agent {} now unlocked.". \
+                                       format(PROMPT, agent["name"]))
+                    agent["locked"] = False
+                if PRINT_QUEUE:
+                    agent_call(agent, "printer_stop", PRINT_QUEUE)
+                agent_close(agent, "aborted")
+                agents_running_count -= 1
 
     # Calculate the overall return value.
     # If any return value has gone negative, i.e.
@@ -841,29 +947,6 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
             if (not negative) and (value > 0):
                 return_value += value
 
-    # Copy the collated summary results file over to the archive server
-    if summary_file_handle:
-        summary_file_handle.seek(0)
-        destination = archive_url + "/" + summary_results_file
-        if PRINTER:
-            PRINTER.string("{}PUTing {} to {}...".format(PROMPT,
-                                                         summary_results_file,
-                                                         archive_url))
-        try:
-            if archive_credentials:
-                response = requests.put(destination, files={controller_name: summary_file_handle},
-                                        headers={"Content-Type": "text/plain", "Content-Disposition": "inline"},
-                                        auth=tuple(archive_credentials.split(":")))
-            else:
-                response = requests.put(destination, files={controller_name: summary_file_handle},
-                                        headers={"Content-Type": "text/plain", "Content-Disposition": "inline"})
-            if PRINTER:
-                PRINTER.string("{}...returned result {}.".format(PROMPT, response.status_code))
-        except (ConnectionError, TimeoutError):
-            if PRINTER:
-                PRINTER.string("{}...failed because of a connection error.".format(PROMPT))
-        summary_file_handle.close()
-
     if PRINTER:
         PRINTER.string("{}### done.".format(PROMPT))
         PRINTER.string("{}all agent(s) finished after {} with result {}.". \
@@ -872,32 +955,164 @@ def instances_wait(agents_running, controller_name, archive_url, archive_credent
 
     return return_value
 
+def instances_abort(agents_locked, controller_name):
+    '''Abort all instances on the list of agents'''
+
+    if PRINTER:
+        PRINTER.string("{}waiting for ability to abort {} agent(s)...".format(PROMPT,
+                                                                              len(agents_locked)))
+    with ABORT_LOCK:
+
+        count = 0
+        for agent in agents_locked:
+            if agent["async_result_object"]:
+                if PRINTER:
+                    PRINTER.string("{}aborting agent {}...".format(PROMPT, agent["name"]))
+                agent_call(agent, "session_abort", agent["session_name"], controller_name)
+                count += 1
+
+        if PRINTER:
+            PRINTER.string("{}{} agent(s) asked to abort.".format(PROMPT, count))
+
+def remote_control_command_abort():
+    '''Handle the abort command'''
+    global AGENTS, CONTROLLER_NAME
+
+    if PRINTER:
+        PRINTER.string("{}received abort command, stopping gracefully (might take"    \
+                       " a while)...".format(PROMPT))
+    # Send abort messages to all the agents that are running so
+    # that they can tidy up in their own time
+    instances_abort(AGENTS, CONTROLLER_NAME)
+
+# List of remote control commands, if you update
+# this, update the help text for "-r" also
+REMOTE_CONTROL_COMMANDS = [{"cmd": "abort\n", "func": remote_control_command_abort}]
+
+# The ack for a commmand
+REMOTE_CONTROL_ACK = "ack\n"
+
+def remote_control_command(connection, message):
+    '''Handle a remote control command'''
+    command_recognised = False
+    if PRINTER:
+        PRINTER.string("{}received remote control command \"{}\".". \
+                       format(PROMPT, message.rstrip()))
+    for command in REMOTE_CONTROL_COMMANDS:
+        if message.lower() == command["cmd"].lower():
+            # Send back an ack and then process the command
+            try:
+                connection.sendall(REMOTE_CONTROL_ACK.encode())
+                if PRINTER:
+                    PRINTER.string("{}\"{}\" for remote control command sent.". \
+                                   format(PROMPT, REMOTE_CONTROL_ACK.rstrip()))
+            except socket.error as ex:
+                if PRINTER:
+                    PRINTER.string("{}remote control connection closed" \
+                                   " (socket error {} {}).". \
+                                   format(PROMPT, type(ex).__name__, str(ex)))
+            command_recognised = True
+            command["func"]()
+            break
+    if not command_recognised and PRINTER:
+        PRINTER.string("{}command is not recognised.".format(PROMPT))
+
+    return command_recognised
+
+class RemoteControlThread(threading.Thread):
+    '''Class to hold the remote control thread'''
+    def __init__(self, port):
+        self._port = port
+        self._running = False
+        threading.Thread.__init__(self)
+    def stop_thread(self):
+        '''Helper function to stop the thread'''
+        self._running = False
+    def run(self):
+        '''Worker thread'''
+        self._running = True
+        # Listen for a remote control connection
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            # Set a timeout so that we go around the loop
+            # and check the running flag every so often
+            sock.settimeout(1)
+            sock.bind(("127.0.0.1", self._port))
+            sock.listen()
+            if PRINTER:
+                PRINTER.string("{}listening for a remote control" \
+                               " connection on port {}.".format(PROMPT, self._port))
+            while self._running:
+                try:
+                    connection, address = sock.accept()
+                    with connection:
+                        if PRINTER:
+                            PRINTER.string("{}remote control connected on {}.".format(PROMPT, address))
+                        # Set connection to non-blocking
+                        connection.settimeout(0)
+                        connected = True
+                        while self._running and connected:
+                            message = bytes()
+                            try:
+                                # Receive all we can on the socket
+                                part = connection.recv(64)
+                                while part:
+                                    message += part
+                                    part = connection.recv(64)
+                            except BlockingIOError:
+                                # This is fine, the socket is there and
+                                # we have received nothing
+                                sleep(0.1)
+                            except socket.error as ex:
+                                connected = False
+                                if PRINTER:
+                                    PRINTER.string("{}remote control connection closed" \
+                                                   " (socket error {} {} on {}).". \
+                                                   format(PROMPT, type(ex).__name__, str(ex), address))
+                            try:
+                                if message:
+                                    remote_control_command(connection,
+                                                           message.decode("utf8").lower())
+                            except UnicodeDecodeError:
+                                # Just ignore it.
+                                pass
+                    if PRINTER:
+                        PRINTER.string("{}remote control disconnected.".format(PROMPT))
+                except socket.timeout:
+                    pass
+
 if __name__ == "__main__":
     RETURN_VALUE = -1
     DATABASE = []
     INSTANCES = []
     FILTER_STRING = None
+    CONSOLE_OUTPUT_FILE_HANDLE = None
+    REMOTE_CONTROL_THREAD = None
 
     # Switch off traceback to stop the horrid developmenty prints
     #sys.tracebacklimit = 0
     PARSER = argparse.ArgumentParser(description="A script to"      \
                                      " run examples/tests on"       \
                                      " ubxlib agent services"       \
-                                     " connected over RPyC.")
-    PARSER.add_argument("-s", help="a summary report should be"      \
-                        " written to the given file, e.g."           \
+                                     " connected over RPyC.",
+                                     fromfile_prefix_chars="@")
+    PARSER.add_argument("-s", help="each agent should write a"       \
+                        " summary report to the given file, e.g."    \
                         " -s summary.txt; any existing file will be" \
                         " over-written.")
-    PARSER.add_argument("-t", help="an XML test report should be"   \
-                        " written to the given file, e.g."          \
-                        " -t report.xml; any existing file will be" \
-                        " over-written.")
-    PARSER.add_argument("-d", help="debug output for each test"     \
-                        " instance executed should be written to"   \
-                        " the given file, e.g. -d debug.txt; any"   \
+    PARSER.add_argument("-t", help="each agent should write an XML" \
+                        " test report for each instance to the"    \
+                        " given file, e.g. -t report.xml; any"     \
                         " existing file will be over-written.")
-    PARSER.add_argument("-a", help="archive the -s, -t and -d files" \
-                        " to this URL e.g. on a Nexus server,"       \
+    PARSER.add_argument("-d", help="each agent should write debug"  \
+                        " output for each instance to the given"    \
+                        " file, e.g. -d debug.txt; any existing"    \
+                        " file will be over-written.")
+    PARSER.add_argument("-o", help="also write the console output"   \
+                        " of this script to the given file path,"    \
+                        " e.g. -o /log/controller_debug.txt; any"    \
+                        " existing file will be over-written.")
+    PARSER.add_argument("-a", help="archive the -s, -t, -d and -o"   \
+                        " files to this URL e.g. on a Nexus server," \
                         " something like -a"                         \
                         " http://nexus.blah.com:7000/thingy; if"     \
                         " credentials are required they must be"     \
@@ -908,14 +1123,22 @@ if __name__ == "__main__":
                         " like myusername:mypassword.")
     PARSER.add_argument("-f", action="store_true", help="abort"     \
                         " on first failure.")
-    PARSER.add_argument("-p", help="the port number to look for agents" \
-                        " on, usually " + str(AGENT_SERVICE_PORT) + ".")
+    PARSER.add_argument("-p", type=int, help="the port number to"   \
+                        " look for agents on, usually " +           \
+                        str(AGENT_SERVICE_PORT) + ".")
     PARSER.add_argument("-g", default=GUARD_TIMEOUT_SECONDS, help=""\
                         " guard timer when running tests in seconds,"\
                         " default " + str(GUARD_TIMEOUT_SECONDS) + ".")
+    PARSER.add_argument("-r",  type=int, help="optional port number" \
+                        " to listen on for a remote control"         \
+                        " connection; this allows a controller to be" \
+                        " sent commands while in operation; the sole" \
+                        " command supported is \"abort\\n\", which"   \
+                        " will cause the controller to abort all"     \
+                        " running processes and return.")
     PARSER.add_argument("controller_name", help="a name for this"  \
                         " controller; please keep it to " +        \
-                        str(AGENT_UBXLIB_PATH_CONTROLLER_NAME_MAX_LENGTH) + \
+                        str(AGENT_WORKING_SUBDIR_CONTROLLER_NAME_MAX_LENGTH) + \
                         " characters or less as it will be used"   \
                         " in a path and the agent will shorten"    \
                         " it if it is longer.")
@@ -941,13 +1164,30 @@ if __name__ == "__main__":
                         " branch_or_hash.")
     ARGS = PARSER.parse_args()
 
+    # The controller name is global because we need
+    # the remote control handler to be able to get at it
+    CONTROLLER_NAME = ARGS.controller_name
+
+    # Copy the console output to a file if requested
+    if ARGS.o:
+        try:
+            CONSOLE_OUTPUT_FILE_HANDLE = open(ARGS.o, "w+")
+        except OSError:
+            print("{}unable to open \"{}\", not writing console output to it.". \
+                  format(PROMPT, ARGS.o))
+
     # We go multi-threaded, so set up a printer to handle the output
     PRINT_QUEUE = queue.Queue()
-    PRINT_THREAD =  u_utils.PrintThread(PRINT_QUEUE)
+    PRINT_THREAD = u_utils.PrintThread(PRINT_QUEUE, file_handle=CONSOLE_OUTPUT_FILE_HANDLE)
     PRINT_THREAD.start()
     PRINTER = u_utils.PrintToQueue(PRINT_QUEUE, None, True)
 
-    AGENTS = []
+    # If requested, start a thread that listens for a remote
+    # control connection
+    if ARGS.r:
+        REMOTE_CONTROL_THREAD = RemoteControlThread(ARGS.r)
+        REMOTE_CONTROL_THREAD.start()
+
     try:
         # Get the instance DATABASE by parsing the data file
         DATABASE = u_data.get(u_data.DATA_FILE)
@@ -958,7 +1198,8 @@ if __name__ == "__main__":
             INSTANCES = u_data.get_instances_all(DATABASE)
         else:
             # Parse the message
-            FOUND, FILTER_STRING = u_utils.commit_message_parse(ARGS.message, INSTANCES, PRINTER, PROMPT)
+            FOUND, FILTER_STRING = u_utils.commit_message_parse(ARGS.message, INSTANCES,
+                                                                PRINTER, PROMPT)
             if FOUND:
                 if INSTANCES:
                     # Deal with the "run everything" case
@@ -975,36 +1216,50 @@ if __name__ == "__main__":
                 FILTER_STRING = u_select.select(DATABASE, INSTANCES, ARGS.file)
 
             if INSTANCES:
+                # Prevent an asynchronous abort from occurring just yet
+                ABORT_LOCK.acquire()
                 # Connect to all agents listening on the given port
                 AGENTS = agents_connect(ARGS.p)
                 if AGENTS:
                     # Lock the agents we can use and update them if required
-                    AGENTS = agents_lock_and_update(AGENTS, ARGS.controller_name, ARGS.url,
+                    AGENTS = agents_lock_and_update(AGENTS, CONTROLLER_NAME, ARGS.url,
                                                     ARGS.master_hash, ARGS.branch_or_hash,
                                                     ARGS.file)
                     if AGENTS:
                         # Decide where to run each instance
                         AGENTS = instances_allocate(AGENTS, DATABASE, INSTANCES,
-                                                    ARGS.controller_name)
+                                                    CONTROLLER_NAME)
                         if AGENTS:
                             # Start the instances running on the agents
-                            AGENTS = instances_start(AGENTS, DATABASE, ARGS.controller_name,
+                            AGENTS = instances_start(AGENTS, DATABASE, CONTROLLER_NAME,
                                                      ARGS.url, ARGS.branch_or_hash, FILTER_STRING,
                                                      ARGS.s, ARGS.t, ARGS.d, ARGS.f, ARGS.g)
                             if AGENTS:
                                 # Wait for the runs to complete and archive the results
-                                INSTANCE_RESULTS_FILES = []
                                 if ARGS.a:
                                     if ARGS.t:
                                         INSTANCE_RESULTS_FILES.append(ARGS.t)
                                     if ARGS.d:
                                         INSTANCE_RESULTS_FILES.append(ARGS.d)
-                                RETURN_VALUE = instances_wait(AGENTS, ARGS.controller_name,
-                                                              ARGS.a, ARGS.c, INSTANCE_RESULTS_FILES,
-                                                              1, ARGS.s, ARGS.f)
+                                # Asynchronous aborts can now occur
+                                ABORT_LOCK.release()
+                                try:
+                                    if PRINTER:
+                                        PRINTER.string("{}it is now possible to abort.". \
+                                                       format(PROMPT))
+                                    RETURN_VALUE = instances_wait(AGENTS, CONTROLLER_NAME,
+                                                                  ARGS.a, ARGS.c,
+                                                                  INSTANCE_RESULTS_FILES,
+                                                                  1, ARGS.s, ARGS.f)
+                                except KeyboardInterrupt:
+                                    if PRINTER:
+                                        PRINTER.string("{}CTRL-C received, aborting agents...". \
+                                                       format(PROMPT))
+                                    instances_abort(AGENTS, CONTROLLER_NAME)
+                                ABORT_LOCK.acquire()
                             else:
                                 if PRINTER:
-                                    PRINTER.string("{}unable to run any instances on any agents.". \
+                                    PRINTER.string("{}unable to run any instances on any agents.".\
                                                    format(PROMPT))
                         else:
                             if PRINTER:
@@ -1016,32 +1271,44 @@ if __name__ == "__main__":
                 else:
                     if PRINTER:
                         PRINTER.string("{}no agents available.".format(PROMPT))
+                ABORT_LOCK.release()
             else:
                 if PRINTER:
                     PRINTER.string("{}*** WARNING: no instances to run! ***".format(PROMPT))
                 RETURN_VALUE = 0
-    except KeyboardInterrupt:
+
+    finally:
+        # State the overall return value and how to interpret it
+        TEXT = "{}return value {} (0 = success, negative = probable" \
+               " infrastructure failure, positive = failure(s) (may" \
+               " still be due to infrastructure)).".format(PROMPT, RETURN_VALUE)
+
+        # Copy the collated summary results file over to the archive server
+        if SUMMARY_FILE_HANDLE:
+            archive_summary(CONTROLLER_NAME, ARGS.a, ARGS.c,
+                            TEXT, SUMMARY_FILE_HANDLE, ARGS.s)
+            SUMMARY_FILE_HANDLE.close()
+
         if PRINTER:
-            PRINTER.string("{}caught CTRL-C, stopping gracefully (might take"    \
-                           " a while)...".format(PROMPT))
-        # Send abort signals to all the agents that are running so
-        # that they can tidy up in their own time
-        for AGENT in AGENTS:
-            if AGENT["async_result_object"]:
-                agent_call(AGENT, "session_abort", AGENT["session_name"], ARGS.controller_name)
-            agent_call(AGENT, "unlock", ARGS.controller_name)
-            AGENT["locked"] = False
-            agent_close(AGENT)
+            PRINTER.string(TEXT)
 
-    if PRINTER:
-        PRINTER.string("{}return value {} (0 = success, negative = probable" \
-                       " infrastructure failure, positive = failure(s) (may" \
-                       " still be due to infrastructure)).".format(PROMPT, RETURN_VALUE))
+        # Tidy up the remote contol thread if there is one
+        if REMOTE_CONTROL_THREAD:
+            REMOTE_CONTROL_THREAD.stop_thread()
+            REMOTE_CONTROL_THREAD.join()
 
-    # Stop the printer
-    sleep(1)
-    PRINT_THREAD.stop_thread()
-    PRINT_THREAD.join()
-    PRINTER = None
+        # Stop the printer
+        if PRINT_THREAD:
+            sleep(1)
+            PRINT_THREAD.stop_thread()
+            PRINT_THREAD.join()
+            PRINTER = None
+
+        # If there was a controller output file, archive it and close it
+        if CONSOLE_OUTPUT_FILE_HANDLE:
+            if ARGS.a:
+                archive_console_output(CONTROLLER_NAME, ARGS.a, ARGS.c,
+                                       CONSOLE_OUTPUT_FILE_HANDLE, ARGS.o)
+            CONSOLE_OUTPUT_FILE_HANDLE.close()
 
     sys.exit(RETURN_VALUE)

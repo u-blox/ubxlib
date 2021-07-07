@@ -31,7 +31,7 @@ SUB_DIR = u_settings.STATIC_SIZE_LD_FLAGS_SUB_DIR # e.g. "port/platform/static_s
 # do here is configure it as we wish and wrap it
 # in order to shoot the output into the usual
 # streams for automation
-def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
+def run(instance, defines, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=None):
     '''Build to check static sizes'''
     return_value = -1
     instance_text = u_utils.get_instance_text(instance)
@@ -78,7 +78,8 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter):
                        format(prompt, os.getcwd(), tmp))
 
         # Set shell to keep Jenkins happy
-        if u_utils.exe_run(call_list, 0, printer, prompt, shell_cmd=True):
+        if u_utils.exe_run(call_list, 0, printer, prompt, shell_cmd=True,
+                           keep_going_flag=keep_going_flag):
             return_value = 0
             reporter.event(u_report.EVENT_TYPE_BUILD,
                            u_report.EVENT_COMPLETE)

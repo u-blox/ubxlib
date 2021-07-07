@@ -155,6 +155,13 @@ def main(database, instance, filter_string, clean,
                     reporter.event(u_report.EVENT_TYPE_BUILD,
                                    u_report.EVENT_NAME,
                                    description)
+                # A NOTE ABOUT keep_going_flag: the keep_going_flag is passed
+                # into any instance that will take more than a few seconds
+                # to run.  Each instance receiving it should ensure that
+                # anything that can be safely stopped and is likely to run
+                # for more than about 10ish seconds should be stopped
+                # if the flag is cleared, in case the user decides to abort
+                # a test run.
                 if platform.lower() == "esp-idf":
                     return_value = u_run_esp_idf.run(instance, mcu, toolchain, connection,
                                                      connection_lock, platform_lock,
@@ -204,10 +211,12 @@ def main(database, instance, filter_string, clean,
                                                 printer, reporter, keep_going_flag)
             elif instance[0] == 4:
                 return_value = u_run_static_size.run(instance, defines, ubxlib_dir,
-                                                     working_dir, printer, reporter)
+                                                     working_dir, printer, reporter,
+                                                     keep_going_flag)
             elif instance[0] == 5:
                 return_value = u_run_no_floating_point.run(instance, defines, ubxlib_dir,
-                                                           working_dir, printer, reporter)
+                                                           working_dir, printer, reporter,
+                                                           keep_going_flag)
             elif instance[0] == 6:
                 printer.string("{}reserved, nothing to do.".format(PROMPT))
                 return_value = 0

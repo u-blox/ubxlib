@@ -10,16 +10,17 @@ import threading                # For PrintThread
 import sys
 import os                       # For ChangeDir, has_admin
 import stat                     # To help deltree out
-from telnetlib import Telnet # For talking to JLink server
+from collections import deque   # For storing a window of debug
+from telnetlib import Telnet    # For talking to JLink server
 import socket
 import shutil                   # To delete a directory tree
 import signal                   # For CTRL_C_EVENT
 import subprocess
 import platform                 # Figure out current OS
+import re                       # Regular Expression
 import serial                   # Pyserial (make sure to do pip install pyserial)
 import psutil                   # For killing things (make sure to do pip install psutil)
 import requests                 # For HTTP comms with a KMTronic box (do pip install requests)
-import re                       # Regular Expression
 import u_settings
 
 # Since this function is used by the global variables below it needs
@@ -49,7 +50,7 @@ AGENT_SERVICE_PORT = 17003
 # The maximum number of characters that an agent will
 # use from controller_name when constructing a directory
 # name for a ubxlib branch to be checked out into
-AGENT_UBXLIB_PATH_CONTROLLER_NAME_MAX_LENGTH = 4
+AGENT_WORKING_SUBDIR_CONTROLLER_NAME_MAX_LENGTH = 4
 
 # How long to wait for an install lock in seconds
 INSTALL_LOCK_WAIT_SECONDS = u_settings.INSTALL_LOCK_WAIT_SECONDS #(60 * 60)
@@ -132,12 +133,12 @@ def subprocess_osify(cmd, shell=True):
     ''' expects an array of strings being [command, param, ...] '''
     if is_linux() and shell:
         line = ''
-        for c in cmd:
+        for item in cmd:
             # Put everything in a single string and quote args containing spaces
-            if ' ' in c:
-                line += '\"{}\" '.format(c)
+            if ' ' in item:
+                line += '\"{}\" '.format(item)
             else:
-                line += '{} '.format(c)
+                line += '{} '.format(item)
         cmd = line
     return cmd
 
@@ -633,9 +634,9 @@ def capture_env_var(line, env, printer, prompt):
 # variables will be returned in it.  The down-side
 # of this is that the return value of the exe is,
 # of course, lost.
-def exe_run(call_list, guard_time_seconds, printer, prompt,
+def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
             shell_cmd=False, set_env=None, returned_env=None,
-            bash_cmd=False):
+            bash_cmd=False, keep_going_flag=None):
     '''Call an executable, printing out what it does'''
     success = False
     start_time = time()
@@ -668,20 +669,26 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
         call_list.append("2")
 
     try:
+        popen_keywords = {
+            'stdout': subprocess.PIPE,
+            'stderr': subprocess.STDOUT,
+            'shell': shell_cmd,
+            'env': set_env,
+            'executable': "bin/bash" if bash_cmd else None
+        }
         # Call the thang
         # Note: used to have bufsize=1 here but it turns out
         # that is ignored 'cos the output is considered
         # binary.  Seems to work in any case, I guess
         # Winders, at least, is in any case line-buffered.
+
         process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT,
-                                   shell=shell_cmd,
-                                   env=set_env,
-                                   executable="/bin/bash" if bash_cmd else None)
-        printer.string("{}{}, pid {} started with guard time {} second(s)". \
-                       format(prompt, call_list[0], process.pid,
-                              guard_time_seconds))
+                                   **popen_keywords)
+
+        if printer:
+            printer.string("{}{}, pid {} started with guard time {} second(s)". \
+                           format(prompt, call_list[0], process.pid,
+                                  guard_time_seconds))
         # This is over complex but, unfortunately, necessary.
         # At least one thing that we try to run, nrfjprog, can
         # crash silently: just hangs and sends no output.  However
@@ -698,14 +705,18 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
                                        args=(process, read_queue))
         read_thread.start()
         while process.poll() is None:
-            if guard_time_seconds and (kill_time is None) and   \
-               ((time() - start_time > guard_time_seconds) or
-                (time() - read_time > guard_time_seconds)):
-                kill_time = time()
-                printer.string("{}guard time of {} second(s)." \
-                               " expired, stopping {}...".
-                               format(prompt, guard_time_seconds,
-                                      call_list[0]))
+            if keep_going_flag is None or keep_going(keep_going_flag, printer, prompt):
+                if guard_time_seconds and (kill_time is None) and   \
+                   ((time() - start_time > guard_time_seconds) or
+                    (time() - read_time > guard_time_seconds)):
+                    kill_time = time()
+                    if printer:
+                        printer.string("{}guard time of {} second(s)." \
+                                       " expired, stopping {}...".
+                                       format(prompt, guard_time_seconds,
+                                              call_list[0]))
+                    exe_terminate(process.pid)
+            else:
                 exe_terminate(process.pid)
             line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
             read_time = time()
@@ -757,18 +768,22 @@ def exe_run(call_list, guard_time_seconds, printer, prompt,
 
         if (process.poll() == 0) and kill_time is None:
             success = True
-        printer.string("{}{}, pid {} ended with return value {}.".    \
-                       format(prompt, call_list[0],
-                              process.pid, process.poll()))
+        if printer:
+            printer.string("{}{}, pid {} ended with return value {}.".    \
+                           format(prompt, call_list[0],
+                                  process.pid, process.poll()))
     except ValueError as ex:
-        printer.string("{}failed: {} while trying to execute {}.". \
-                       format(prompt, type(ex).__name__, str(ex)))
-    except KeyboardInterrupt:
+        if printer:
+            printer.string("{}failed: {} while trying to execute {}.". \
+                           format(prompt, type(ex).__name__, str(ex)))
+    except KeyboardInterrupt as ex:
         process.kill()
+        raise KeyboardInterrupt from ex
 
     return success
 
 def set_process_prio_high():
+    '''Set the priority of the current process to high'''
     if is_linux():
         print("Setting process priority currently not supported for Linux")
         # It should be possible to set prio with:
@@ -778,6 +793,7 @@ def set_process_prio_high():
         psutil.Process().nice(psutil.HIGH_PRIORITY_CLASS)
 
 def set_process_prio_normal():
+    '''Set the priority of the current process to normal'''
     if is_linux():
         print("Setting process priority currently not supported for Linux")
         # It should be possible to set prio with:
@@ -788,7 +804,7 @@ def set_process_prio_normal():
 
 class ExeRun():
     '''Run an executable as a "with:"'''
-    def __init__(self, call_list, printer, prompt, shell_cmd=False, with_stdin=False):
+    def __init__(self, call_list, printer=None, prompt=None, shell_cmd=False, with_stdin=False):
         self._call_list = call_list
         self._printer = printer
         self._prompt = prompt
@@ -816,17 +832,21 @@ class ExeRun():
                 popen_keywords['creationflags'] = subprocess.CREATE_NEW_PROCESS_GROUP
             if self._with_stdin:
                 popen_keywords['stdin'] = subprocess.PIPE
+
             self._process = subprocess.Popen(self._call_list, **popen_keywords)
-            self._printer.string("{}{} pid {} started".format(self._prompt,
-                                                              self._call_list[0],
-                                                              self._process.pid))
+
+            if self._printer:
+                self._printer.string("{}{} pid {} started".format(self._prompt,
+                                                                  self._call_list[0],
+                                                                  self._process.pid))
         except (OSError, subprocess.CalledProcessError, ValueError) as ex:
             if self._printer:
                 self._printer.string("{}failed: {} to start {}.". \
                                      format(self._prompt,
                                             type(ex).__name__, str(ex)))
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as ex:
             self._process.kill()
+            raise KeyboardInterrupt from ex
         return self._process
     def __exit__(self, _type, value, traceback):
         del _type
@@ -855,17 +875,20 @@ class ExeRun():
                 self._process.terminate()
                 while self._process.poll() is None:
                     sleep(0.1)
-                self._printer.string("{}{} pid {} terminated".format(self._prompt,
-                                                                     self._call_list[0],
-                                                                     self._process.pid))
+                if self._printer:
+                    self._printer.string("{}{} pid {} terminated".format(self._prompt,
+                                                                         self._call_list[0],
+                                                                         self._process.pid))
             else:
-                self._printer.string("{}{} pid {} CTRL-C'd".format(self._prompt,
-                                                                   self._call_list[0],
-                                                                   self._process.pid))
+                if self._printer:
+                    self._printer.string("{}{} pid {} CTRL-C'd".format(self._prompt,
+                                                                       self._call_list[0],
+                                                                       self._process.pid))
         else:
-            self._printer.string("{}{} pid {} already ended".format(self._prompt,
-                                                                    self._call_list[0],
-                                                                    self._process.pid))
+            if self._printer:
+                self._printer.string("{}{} pid {} already ended".format(self._prompt,
+                                                                        self._call_list[0],
+                                                                        self._process.pid))
 
         return return_value
 
@@ -921,18 +944,28 @@ class SwoDecoder():
 
 class PrintThread(threading.Thread):
     '''Print thread to organise prints nicely'''
-    def __init__(self, print_queue):
+    def __init__(self, print_queue, file_handle=None,
+                 window_file_handle=None, window_size=10000,
+                 window_update_period_seconds=1):
         self._queue = print_queue
         self._lock = RLock()
         self._queue_forwards = []
         self._running = False
+        self._file_handle = file_handle
+        self._window = None
+        self._window_file_handle = window_file_handle
+        if self._window_file_handle:
+            self._window = deque(self._window_file_handle, maxlen=window_size)
+        self._window_update_pending = False
+        self._window_update_period_seconds = window_update_period_seconds
+        self._window_next_update_time = time()
         threading.Thread.__init__(self)
-    def _send_forward(self):
+    def _send_forward(self, flush=False):
         # Send from any forwarding buffers
+        # self._lock should be acquired before this is called
         queue_idxes_to_remove = []
-        self._lock.acquire()
         for idx, queue_forward in enumerate(self._queue_forwards):
-            if time() > queue_forward["last_send"] + queue_forward["buffer_time"]:
+            if flush or time() > queue_forward["last_send"] + queue_forward["buffer_time"]:
                 string_forward = ""
                 len_queue_forward = len(queue_forward["buffer"])
                 count = 0
@@ -947,18 +980,17 @@ class PrintThread(threading.Thread):
                 if string_forward:
                     try:
                         queue_forward["queue"].put(string_forward)
-                    except (EOFError, BrokenPipeError):
-                        queue_idxes_to_remove.append(idx)
                     except TimeoutError:
                         pass
+                    except (OSError, EOFError, BrokenPipeError):
+                        queue_idxes_to_remove.append(idx)
                 queue_forward["last_send"] = time()
         for idx in queue_idxes_to_remove:
             self._queue_forwards.pop(idx)
-        self._lock.release()
     def add_forward_queue(self, queue_forward, prefix_string=None, buffer_time=0):
         '''Forward things received on the print queue to another queue'''
-        already_done = False
         self._lock.acquire()
+        already_done = False
         for item in self._queue_forwards:
             if item["queue"] == queue_forward:
                 already_done = True
@@ -974,17 +1006,27 @@ class PrintThread(threading.Thread):
         self._lock.release()
     def remove_forward_queue(self, queue_forward):
         '''Stop forwarding things received on the print queue to another queue'''
-        queues = []
         self._lock.acquire()
-        self._send_forward()
+        queues = []
+        self._send_forward(flush=True)
         for item in self._queue_forwards:
-            if item["queue"] == queue_forward:
+            if item["queue"] != queue_forward:
                 queues.append(item)
         self._queue_forwards = queues
         self._lock.release()
     def stop_thread(self):
         '''Helper function to stop the thread'''
+        self._lock.acquire()
         self._running = False
+        # Write anything remaining to the window file
+        if self._window_update_pending:
+            self._window_file_handle.seek(0)
+            for item in self._window:
+                self._window_file_handle.write(item)
+            self._window_file_handle.flush()
+            self._window_update_pending = False
+            self._window_next_update_time = time() + self._window_update_period_seconds
+        self._lock.release()
     def run(self):
         '''Worker thread'''
         self._running = True
@@ -993,18 +1035,39 @@ class PrintThread(threading.Thread):
             try:
                 my_string = self._queue.get(block=False, timeout=0.5)
                 print(my_string)
+                if self._file_handle:
+                    self._file_handle.write(my_string + "\n")
                 self._lock.acquire()
+                if self._window is not None:
+                    # Note that my_string can contain multiple lines,
+                    # hence the need to split it here to maintain the
+                    # window
+                    for line in my_string.splitlines():
+                        self._window.append(line + "\n")
+                    self._window_update_pending = True
                 for queue_forward in self._queue_forwards:
                     queue_forward["buffer"].append(my_string)
                 self._lock.release()
             except queue.Empty:
                 sleep(0.1)
-            except (EOFError, BrokenPipeError):
+            except (OSError, EOFError, BrokenPipeError):
                 # Try to restore stdout
                 sleep(0.1)
                 sys.stdout = sys.__stdout__
+            self._lock.acquire()
             # Send from any forwarding buffers
             self._send_forward()
+            # Write the window to file if required
+            if self._window_update_pending and time() > self._window_next_update_time:
+                # If you don't do this you can end up with garbage
+                # at the end of the file
+                self._window_file_handle.truncate()
+                self._window_file_handle.seek(0)
+                for item in self._window:
+                    self._window_file_handle.write(item)
+                self._window_update_pending = False
+                self._window_next_update_time = time() + self._window_update_period_seconds
+            self._lock.release()
 
 class PrintToQueue():
     '''Print to a queue, if there is one'''
@@ -1017,8 +1080,8 @@ class PrintToQueue():
         self._include_timestamp = include_timestamp
     def add_queue(self, print_queue):
         '''Add a queue to the list of places to print to'''
-        already_done = False
         self._lock.acquire()
+        already_done = False
         for item in self._queues:
             if item == print_queue:
                 already_done = True
@@ -1028,8 +1091,8 @@ class PrintToQueue():
         self._lock.release()
     def remove_queue(self, print_queue):
         '''Remove a queue from  the list of places to print to'''
-        queues = []
         self._lock.acquire()
+        queues = []
         for item in self._queues:
             if item != print_queue:
                 queues.append(item)
@@ -1040,8 +1103,8 @@ class PrintToQueue():
         if self._include_timestamp:
             string = strftime(TIME_FORMAT, gmtime()) + " " + string
         if not file_only:
-            queue_idxes_to_remove = []
             self._lock.acquire()
+            queue_idxes_to_remove = []
             if self._queues:
                 for idx, print_queue in enumerate(self._queues):
                     try:
