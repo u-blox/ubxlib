@@ -20,7 +20,7 @@ Install a version of the nRF5 SDK from here:
 
 https://www.nordicsemi.com/Software-and-Tools/Software/nRF5-SDK
 
-The builds here have been tested with version 16 of the nRF5 SDK.
+The builds here have been tested with version 17 of the nRF5 SDK.
 
 If you install it to the same directory as you cloned this repo with the name `nrf5`, i.e.:
 

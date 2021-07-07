@@ -2,8 +2,8 @@ PROJECT_NAME     := u_pca10056
 TARGETS          := nrf52840_xxaa
 
 MAKEFILE_DIR := $(subst \,/,$(dir $(lastword $(MAKEFILE_LIST))))
-UBXLIB_PATH ?= $(MAKEFILE_DIR)/../../../../../../../
-NRF5_PORT_PATH ?= $(MAKEFILE_DIR)/../../../../
+UBXLIB_PATH ?= $(MAKEFILE_DIR)/../../../../../../..
+NRF5_PORT_PATH ?= $(MAKEFILE_DIR)/../../../..
 OUTPUT_DIRECTORY ?= _build
 UNITY_PATH ?= $(UBXLIB_PATH)/../Unity
 NRF5_PATH ?= $(UBXLIB_PATH)/../nrf5
@@ -170,6 +170,7 @@ SRC_FILES += \
   $(NRF5_PORT_PATH)/src/u_port_uart.c \
   $(NRF5_PORT_PATH)/src/u_port_private.c \
   $(NRF5_PORT_PATH)/src/heap_useNewlib.c \
+  $(NRF5_PORT_PATH)/src/mbedtls_platform_zeroize.c \
   $(NRF5_PORT_PATH)/app/u_main.c \
   $(UNITY_PATH)/src/unity.c \
 

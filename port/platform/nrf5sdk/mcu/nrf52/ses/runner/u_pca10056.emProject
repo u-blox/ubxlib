@@ -30,7 +30,7 @@
       linker_scanf_fp_enabled="Yes"
       linker_section_placement_file="flash_placement.xml"
       linker_section_placement_macros="FLASH_PH_START=0x0;FLASH_PH_SIZE=0x100000;RAM_PH_START=0x20000000;RAM_PH_SIZE=0x40000;FLASH_START=0x0;FLASH_SIZE=0x100000;RAM_START=0x20000000;RAM_SIZE=0x40000"
-      linker_section_placements_segments="FLASH RX 0x0 0x100000;RAM RWX 0x20000000 0x40000"
+      linker_section_placements_segments="FLASH RX 0x0 0x100000;RAM1 RWX 0x20000000 0x40000"
       macros="NRF5_PATH=$(NRF5_PATH:../../../../../../../../nrf5);UNITY_PATH=$(UNITY_PATH:../../../../../../../../Unity);CMSIS_CONFIG_TOOL=$(NRF5_PATH)/external_tools/cmsisconfig/CMSIS_Configuration_Wizard.jar"
       project_directory=""
       project_type="Executable" />
@@ -158,6 +158,7 @@
       <file file_name="../../../../../../clib/u_port_clib_mktime64.c" />
       <file file_name="../../../../../../clib/u_port_clib_mktime64.h" />
       <file file_name="../../../../../common/mbedtls/u_port_crypto.c" />
+      <file file_name="../../../../src/mbedtls_platform_zeroize.c" />
       <file file_name="../../../../src/u_port_private.c" />
       <file file_name="../../../../../../test/u_port_test.c" />
       <file file_name="../../../../../common/test/u_preamble_test.c" />

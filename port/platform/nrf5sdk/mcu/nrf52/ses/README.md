@@ -6,7 +6,7 @@ Follow the instructions to install the development tools:
 
 https://infocenter.nordicsemi.com/topic/ug_nrf52840_dk/UG/common/nordic_tools.html
 
-Make sure you install Segger Embedded Studio, the Nordic nRF5 SDK (the builds here have been tested with version 16) and the Nordic command-line tools.  Ensure NO SPACES in the install location of the nRF5 SDK.
+Make sure you install Segger Embedded Studio, the Nordic nRF5 SDK (the builds here have been tested with version 17) and the Nordic command-line tools.  Ensure NO SPACES in the install location of the nRF5 SDK.
 
 When you install the nRF5 SDK, if you install it to the same directory as you cloned this repo with the name `nrf5`, i.e.:
 
