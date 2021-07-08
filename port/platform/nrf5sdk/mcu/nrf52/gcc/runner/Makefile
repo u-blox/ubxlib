@@ -1,7 +1,8 @@
 PROJECT_NAME     := u_pca10056
 TARGETS          := nrf52840_xxaa
 
-MAKEFILE_DIR := $(subst \,/,$(dir $(lastword $(MAKEFILE_LIST))))
+# Note "realpath" in the line below to remove the last trailing slash for neatness
+MAKEFILE_DIR := $(realpath $(subst \,/,$(dir $(lastword $(MAKEFILE_LIST)))))
 UBXLIB_PATH ?= $(MAKEFILE_DIR)/../../../../../../..
 NRF5_PORT_PATH ?= $(MAKEFILE_DIR)/../../../..
 OUTPUT_DIRECTORY ?= _build
@@ -62,15 +63,7 @@ SRC_FILES += \
   $(NRF5_PATH)/external/fprintf/nrf_fprintf.c \
   $(NRF5_PATH)/external/fprintf/nrf_fprintf_format.c \
   $(NRF5_PATH)/integration/nrfx/legacy/nrf_drv_clock.c \
-  $(NRF5_PATH)/components/libraries/log/src/nrf_log_backend_rtt.c \
-  $(NRF5_PATH)/components/libraries/log/src/nrf_log_backend_serial.c \
-  $(NRF5_PATH)/components/libraries/log/src/nrf_log_backend_uart.c \
-  $(NRF5_PATH)/components/libraries/log/src/nrf_log_default_backends.c \
-  $(NRF5_PATH)/components/libraries/log/src/nrf_log_frontend.c \
   $(NRF5_PATH)/components/libraries/log/src/nrf_log_str_formatter.c \
-  $(NRF5_PATH)/external/segger_rtt/SEGGER_RTT.c \
-  $(NRF5_PATH)/external/segger_rtt/SEGGER_RTT_printf.c \
-  $(NRF5_PATH)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
   $(NRF5_PATH)/components/libraries/hardfault/nrf52/handler/hardfault_handler_gcc.c \
   $(NRF5_PATH)/components/libraries/hardfault/hardfault_implementation.c \
   $(NRF5_PATH)/external/freertos/source/croutine.c \
@@ -171,6 +164,9 @@ SRC_FILES += \
   $(NRF5_PORT_PATH)/src/u_port_private.c \
   $(NRF5_PORT_PATH)/src/heap_useNewlib.c \
   $(NRF5_PORT_PATH)/src/mbedtls_platform_zeroize.c \
+  $(NRF5_PORT_PATH)/src/segger_rtt/RTT/SEGGER_RTT.c \
+  $(NRF5_PORT_PATH)/src/segger_rtt/RTT/SEGGER_RTT_printf.c \
+  $(NRF5_PORT_PATH)/src/segger_rtt/Syscalls/SEGGER_RTT_Syscalls_GCC.c \
   $(NRF5_PORT_PATH)/app/u_main.c \
   $(UNITY_PATH)/src/unity.c \
 
@@ -206,7 +202,6 @@ INC_FOLDERS += \
   $(NRF5_PATH)/modules/nrfx/drivers/include \
   $(NRF5_PATH)/external/fprintf \
   $(NRF5_PATH)/components/libraries/log/src \
-  $(NRF5_PATH)/external/segger_rtt \
   $(NRF5_PATH)/components/libraries/hardfault \
   $(NRF5_PATH)/external/mbedtls/include \
   $(UBXLIB_PATH)/ble/api \
@@ -241,6 +236,7 @@ INC_FOLDERS += \
   $(NRF5_PORT_PATH) \
   $(NRF5_PORT_PATH)/src \
   $(NRF5_PORT_PATH)/app \
+  $(NRF5_PORT_PATH)/src/segger_rtt/RTT \
   $(UNITY_PATH)/src \
 
 # Libraries common to all targets

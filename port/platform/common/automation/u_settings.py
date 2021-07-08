@@ -146,7 +146,7 @@ __DEFAULT_SETTINGS["SHORT_RANGE_MODULE_TYPE_PREFIX"] = "U_SHORT_RANGE_MODULE_TYP
 __DEFAULT_SETTINGS["ASTYLE_CONFIG_FILE"] = "astyle.cfg"
 __DEFAULT_SETTINGS["ASTYLE_FILE_EXTENSIONS"] = "*.c,*.cpp,*.h,*.hpp"
 __DEFAULT_SETTINGS["ASTYLE_DIRS"] = ["cfg", "port", "common"]
-__DEFAULT_SETTINGS["ASTYLE_EXCLUDE_DIRS"] = ["boards"]
+__DEFAULT_SETTINGS["ASTYLE_EXCLUDE_DIRS"] = ["boards", "segger_rtt"]
 # u_run_doxygen.py
 __DEFAULT_SETTINGS["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py

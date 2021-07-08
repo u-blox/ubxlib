@@ -26,9 +26,17 @@
 #include "stdio.h"
 #include "stdarg.h"
 
-#include "nrfx.h"
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
+#if NRF_LOG_ENABLED
+# include "nrfx.h"
+# include "nrf_log.h"
+# include "nrf_log_ctrl.h"
+#else
+# ifndef U_CFG_PLAIN_OLD_PRINTF
+#  include "SEGGER_RTT.h"
+# endif
+#endif
+
+
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -66,9 +74,12 @@ void uPortLogF(const char *pFormat, ...)
     NRF_LOG_RAW_INFO("%s", gLogBuffer);
     NRF_LOG_FLUSH();
 #else
+# ifdef U_CFG_PLAIN_OLD_PRINTF
     vprintf(pFormat, args);
+# else
+    SEGGER_RTT_vprintf(0, pFormat, &args);
+# endif
 #endif
-
     va_end(args);
 }
 

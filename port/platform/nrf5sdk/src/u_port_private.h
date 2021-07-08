@@ -81,6 +81,18 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Initialise logging.
+ */
+void uPortPrivateLoggingInit();
+
+/** Lock logging.
+ */
+void uPortPrivateLoggingLock();
+
+/** Unlock logging.
+ */
+void uPortPrivateLoggingUnlock();
+
 /** Initialise the private stuff.
  *
  * @return zero on success else negative error code.

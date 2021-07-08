@@ -7459,7 +7459,7 @@
 // <e> NRF_LOG_ENABLED - nrf_log - Logger
 //==========================================================
 #ifndef NRF_LOG_ENABLED
-#define NRF_LOG_ENABLED 1
+#define NRF_LOG_ENABLED 0
 #endif
 // <h> Log message pool - Configuration of log message pool
 
@@ -11712,7 +11712,7 @@
 // <2=> BLOCK_IF_FIFO_FULL
 
 #ifndef SEGGER_RTT_CONFIG_DEFAULT_MODE
-#define SEGGER_RTT_CONFIG_DEFAULT_MODE 2
+#define SEGGER_RTT_CONFIG_DEFAULT_MODE 1
 #endif
 
 // </h>

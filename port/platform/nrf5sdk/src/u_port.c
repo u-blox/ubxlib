@@ -84,8 +84,10 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
     if (pEntryPoint != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
 
+#if NRF_LOG_ENABLED
         NRF_LOG_INIT(NULL);
         NRF_LOG_DEFAULT_BACKENDS_INIT();
+#endif
 
 #if configTICK_SOURCE == FREERTOS_USE_RTC
         // If the clock has not already been started, start it
@@ -110,6 +112,9 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 
             // Activate deep sleep mode.
             SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+
+            // Initialise logging.
+            uPortPrivateLoggingInit();
 
             // Start the scheduler.
             vTaskStartScheduler();

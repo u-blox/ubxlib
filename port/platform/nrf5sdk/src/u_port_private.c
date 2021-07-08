@@ -30,6 +30,9 @@
 #include "u_port_private.h"
 #include "u_cfg_hw_platform_specific.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 #include "nrfx.h"
 #include "nrfx_timer.h"
 
@@ -77,6 +80,9 @@ static void (*gpCb) (void *);
 
 // The user parameter for the callback.
 static void *gpCbParameter;
+
+// Mutex to protect RTT logging.
+SemaphoreHandle_t gRttLoggingMutex = NULL;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -137,6 +143,25 @@ static void tickTimerStop()
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS SPECIFIC TO THIS PORT
  * -------------------------------------------------------------- */
+
+// Initialise logging.
+void uPortPrivateLoggingInit()
+{
+    //Create a mutex that can be used with RTT logging
+    gRttLoggingMutex = xSemaphoreCreateMutex();
+}
+
+// Lock logging.
+void uPortPrivateLoggingLock()
+{
+    xSemaphoreTake(gRttLoggingMutex, (portTickType) portMAX_DELAY);
+}
+
+// Unlock logging.
+void uPortPrivateLoggingUnlock()
+{
+    xSemaphoreGive(gRttLoggingMutex);
+}
 
 // Convert a tick value to a microsecond value
 inline int64_t uPortPrivateTicksToUs(int32_t tickValue)

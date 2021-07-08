@@ -134,6 +134,7 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 
 - The heap management code (`heap_useNewlib.c`), required because the nRF5 SDK and STM32F4Cube platforms don't provide the necessary memory management for newlib and `FreeRTOS` to play together, is copyright Dave Nadler.
 - The `mbedtls_platform_zeroize()` function in [mbedtls_platform_zeroize.c](/port/platform/nrf5sdk/src/mbedtls_platform_zeroize.c) is copied from the Apache licensed mbed TLS and is copyright Arm Limited.
+- The SEGGER RTT logging files in [port/platform/nrf5sdk/src/segger_rtt](/port/platform/nrf5sdk/src/segger_rtt) are copyright SEGGER MICROCONTROLLER GmbH & Co. KG.
 - The AT client code in [common/at_client](/common/at_client) is derived from the Apache 2.0 licensed AT parser of mbed-os.
 - The [stm32cube platform directory](/port/platform/stm32cube/src) necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
 - The `go` echo servers in [common/sock/test/echo_server](/common/sock/test/echo_server) are based on those used in testing of AWS FreeRTOS.
