@@ -40,9 +40,6 @@ GIT_BASH_ENV_CMD = u_settings.ZEPHYR_GIT_BASH_ENV_CMD # e.g. NRFCONNECT_PATH + o
 # The directory where the runner build can be found
 RUNNER_DIR = u_settings.ZEPHYR_DIR + os.sep + "runner"
 
-# The directories where custom boards can be found
-CUSTOM_BOARD_DIR_LIST = u_settings.ZEPHYR_CUSTOM_BOARD_DIR_LIST
-
 # The name of the output sub-directory
 BUILD_SUBDIR = u_settings.ZEPHYR_BUILD_SUBDIR # e.g. "build"
 
@@ -263,17 +260,6 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter, kee
     # Board name
     call_list.append("-b")
     call_list.append((board).replace("\\", "/"))
-    # Add the list of custom board roots to the BOARD_ROOT
-    # directive on the west command-line.  Zephyr's own board root
-    # will be automatically included on the end by west itself.
-    if CUSTOM_BOARD_DIR_LIST:
-        call_list.append(runner_dir)
-        text = ""
-        for custom_board_root in CUSTOM_BOARD_DIR_LIST:
-            if text:
-                text += ";"
-            text += ubxlib_dir + os.sep + custom_board_root
-        call_list.append("-DBOARD_ROOT=" + text.replace("\\", "/"))
     # Build products directory
     call_list.append("-d")
     call_list.append((BUILD_SUBDIR).replace("\\", "/"))

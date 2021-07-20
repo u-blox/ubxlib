@@ -2,6 +2,9 @@
 
 cmake_minimum_required(VERSION 3.13.1)
 
+list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../boards/short_range/zephyr/)
+list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../boards/cellular/)
+
 find_package(Zephyr HINTS $ENV{ZEPHYR_BASE})
 project(ubxlib)
 set(UBXLIB_BASE ../../../..)
