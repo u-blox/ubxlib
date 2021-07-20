@@ -33,7 +33,6 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
-#include "u_port_os.h"
 #include "u_port_gatt.h"
 #include "u_ble_private.h"
 
@@ -74,94 +73,6 @@ static void intToHex(const uint8_t in, char *pOut)
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-void ringBufferCreate(ringBuffer_t *pRingBuffer, char *linearBuffer, size_t size)
-{
-    memset(pRingBuffer, 0x00, sizeof (ringBuffer_t));
-    pRingBuffer->pBuffer = linearBuffer;
-    pRingBuffer->size = size;
-    uPortMutexCreate(&(pRingBuffer->mutex));
-}
-
-void ringBufferDelete(ringBuffer_t *pRingBuffer)
-{
-    if ((pRingBuffer != NULL) && (pRingBuffer->mutex != NULL)) {
-        uPortMutexDelete(pRingBuffer->mutex);
-        pRingBuffer->pBuffer = NULL;
-        pRingBuffer->mutex = NULL;
-    }
-}
-
-bool ringBufferAdd(ringBuffer_t *pRingBuffer, const char *pData, size_t length)
-{
-    bool dataFitsInBuffer = true;
-
-    if (pRingBuffer->pBuffer != NULL) {
-        U_PORT_MUTEX_LOCK(pRingBuffer->mutex);
-        if (pRingBuffer->dataSize + length > pRingBuffer->size) {
-            dataFitsInBuffer = false;
-        }
-
-        if (dataFitsInBuffer) {
-            pRingBuffer->dataSize += length;
-            while (length-- > 0) {
-                pRingBuffer->pBuffer[pRingBuffer->dataIndex++] = *pData++;
-                if (pRingBuffer->dataIndex == pRingBuffer->size) {
-                    pRingBuffer->dataIndex = 0;
-                }
-            }
-        }
-        U_PORT_MUTEX_UNLOCK(pRingBuffer->mutex);
-    }
-
-    return dataFitsInBuffer;
-}
-
-size_t ringBufferRead(ringBuffer_t *pRingBuffer, char *pData, size_t length)
-{
-    size_t readIndex;
-    size_t bytesRead = 0;
-
-    if (pRingBuffer->pBuffer != NULL) {
-        U_PORT_MUTEX_LOCK(pRingBuffer->mutex);
-        if (pRingBuffer->dataSize < length) {
-            length = pRingBuffer->dataSize;
-        }
-
-        if (pRingBuffer->dataIndex >= pRingBuffer->dataSize) {
-            readIndex = pRingBuffer->dataIndex - pRingBuffer->dataSize;
-        } else {
-            readIndex = pRingBuffer->dataIndex + pRingBuffer->size - pRingBuffer->dataSize;
-        }
-
-        pRingBuffer->dataSize -= length;
-        while (bytesRead < length) {
-            *pData++ = pRingBuffer->pBuffer[readIndex++];
-            bytesRead++;
-            if (readIndex == pRingBuffer->size) {
-                readIndex = 0;
-            }
-        }
-        U_PORT_MUTEX_UNLOCK(pRingBuffer->mutex);
-    }
-
-    return bytesRead;
-}
-
-size_t ringBufferDataSize(const ringBuffer_t *pRingBuffer)
-{
-    return (pRingBuffer->dataSize);
-}
-
-size_t ringBufferAvailableSize(const ringBuffer_t *pRingBuffer)
-{
-    return (pRingBuffer->size - pRingBuffer->dataSize);
-}
-
-void ringBufferReset(ringBuffer_t *pRingBuffer)
-{
-    pRingBuffer->dataIndex = 0;
-    pRingBuffer->dataSize = 0;
-}
 
 void addrArrayToString(const uint8_t *pAddrIn, uPortBtLeAddressType_t addrType, bool msbLast,
                        char *pAddrOut)

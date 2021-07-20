@@ -47,7 +47,8 @@ LINT_DIRS = [os.path.join("common","network","src"),
              os.path.join("port","platform","common","event_queue"),
              os.path.join("port","test"),
              os.path.join("port","platform","common","test"),
-             os.path.join("port","platform","common","runner")]
+             os.path.join("port","platform","common","runner"),
+             os.path.join("common","utils","src")]
 
 # Include directories for ubxlib, off the ubxlib root.
 UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
@@ -67,6 +68,7 @@ UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
                        os.path.join("common","short_range","api"),
                        os.path.join("common","short_range","src"),
                        os.path.join("common","short_range","test"),
+                       os.path.join("common","utils","api"),
                        os.path.join("cell","api"),
                        os.path.join("cell","src"),
                        os.path.join("cell","test"),

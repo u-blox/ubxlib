@@ -59,6 +59,7 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/src}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/test}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/utils/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/mqtt_client/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/src}"/>
@@ -205,6 +206,7 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/src}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/short_range/test}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/utils/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/common/mqtt_client/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/api}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/cell/src}"/>

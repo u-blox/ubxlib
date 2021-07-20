@@ -45,6 +45,7 @@
 #include "u_port_event_queue.h"
 #include "u_cfg_os_platform_specific.h"
 
+#include "u_ringbuffer.h"
 #include "u_at_client.h"
 #include "u_ble_data.h"
 #include "u_ble_private.h"
@@ -82,7 +83,7 @@ typedef struct uBleDataSpsChannel_s {
     int32_t                       channel;
     uShortRangePrivateInstance_t  *pInstance;
     char                          pRxBuffer[U_BLE_DATA_BUFFER_SIZE];
-    ringBuffer_t                  rxRingBuffer;
+    uRingBuffer_t                 rxRingBuffer;
     uint32_t                      txTimeout;
     struct uBleDataSpsChannel_s   *pNext;
 } uBleDataSpsChannel_t;
@@ -184,7 +185,7 @@ static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
     }
 
     if (pChannel != NULL) {
-        ringBufferCreate(&(pChannel->rxRingBuffer), pChannel->pRxBuffer, sizeof(pChannel->pRxBuffer));
+        uRingBufferCreate(&(pChannel->rxRingBuffer), pChannel->pRxBuffer, sizeof(pChannel->pRxBuffer));
         pChannel->channel = channel;
         pChannel->pInstance = pInstance;
         pChannel->pNext = NULL;
@@ -241,7 +242,7 @@ static void deleteSpsChannel(const uShortRangePrivateInstance_t *pInstance,
             // This happens when the list only has one item
             *ppListHead = NULL;
         }
-        ringBufferDelete(&pChannel->rxRingBuffer);
+        uRingBufferDelete(&pChannel->rxRingBuffer);
         free(pChannel);
     }
 
@@ -255,7 +256,7 @@ static void deleteAllSpsChannels(uBleDataSpsChannel_t **ppListHead)
     while (pChannel != NULL) {
         uBleDataSpsChannel_t *pChanToFree;
 
-        ringBufferDelete(&pChannel->rxRingBuffer);
+        uRingBufferDelete(&pChannel->rxRingBuffer);
         pChanToFree = pChannel;
         pChannel = pChannel->pNext;
         free(pChanToFree);
@@ -375,9 +376,9 @@ static void dataCallback(int32_t handle, int32_t channel, int32_t length,
             uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
 
             if (pChannel != NULL) {
-                bool bufferWasEmtpy = (ringBufferDataSize(&(pChannel->rxRingBuffer)) == 0);
+                bool bufferWasEmtpy = (uRingBufferDataSize(&(pChannel->rxRingBuffer)) == 0);
                 // If the buffer can't fit the data we will just drop it for now
-                if (!ringBufferAdd(&(pChannel->rxRingBuffer), pData, length)) {
+                if (!uRingBufferAdd(&(pChannel->rxRingBuffer), pData, length)) {
                     uPortLog("U_BLE_DATA: RX FIFO full, dropping %d bytes!\n", length);
                 }
 
@@ -540,7 +541,7 @@ int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t
         uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
 
         if (pChannel != NULL) {
-            sizeOrErrorCode = (int32_t)ringBufferRead(&(pChannel->rxRingBuffer), pData, length);
+            sizeOrErrorCode = (int32_t)uRingBufferRead(&(pChannel->rxRingBuffer), pData, length);
         }
     }
 

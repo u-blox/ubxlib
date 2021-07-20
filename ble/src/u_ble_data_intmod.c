@@ -47,6 +47,7 @@
 #include "u_port_debug.h"
 #include "u_port_event_queue.h"
 #include "u_cfg_os_platform_specific.h"
+#include "u_ringbuffer.h"
 
 #include "u_ble_data.h"
 #include "u_ble_private.h"
@@ -118,7 +119,7 @@ typedef struct {
     uint16_t               mtu;
     uPortSemaphoreHandle_t txCreditsSemaphore;
     char                   rxData[U_BLE_DATA_BUFFER_SIZE];
-    ringBuffer_t           rxRingBuffer;
+    uRingBuffer_t          rxRingBuffer;
     uint32_t               dataSendTimeoutMs;
     spsRole_t              localSpsRole;
     bool                   flowCtrlEnabled;
@@ -316,7 +317,7 @@ static void freeSpsConnection(int32_t spsConnHandle)
 {
     if (validSpsConnHandle(spsConnHandle)) {
         spsConnection_t *pSpsConn = gpSpsConnections[spsConnHandle];
-        ringBufferDelete(&pSpsConn->rxRingBuffer);
+        uRingBufferDelete(&pSpsConn->rxRingBuffer);
         uPortSemaphoreDelete(pSpsConn->txCreditsSemaphore);
         free(pSpsConn);
         gpSpsConnections[spsConnHandle] = NULL;
@@ -359,8 +360,8 @@ static spsConnection_t *initSpsConnection(int32_t spsConnHandle, int32_t gapConn
         pSpsConn->server.creditsClientConf = 0;
         pSpsConn->spsState = SPS_STATE_DISCONNECTED;
         uPortSemaphoreCreate(&(pSpsConn->txCreditsSemaphore), 0, 1);
-        ringBufferCreate(&pSpsConn->rxRingBuffer, pSpsConn->rxData, sizeof(pSpsConn->rxData));
-        ringBufferReset(&pSpsConn->rxRingBuffer);
+        uRingBufferCreate(&pSpsConn->rxRingBuffer, pSpsConn->rxData, sizeof(pSpsConn->rxData));
+        uRingBufferReset(&pSpsConn->rxRingBuffer);
         pSpsConn->dataSendTimeoutMs = U_BLE_DATA_DEFAULT_SEND_TIMEOUT_MS;
         pSpsConn->localSpsRole = localSpsRole;
         pSpsConn->flowCtrlEnabled = true;
@@ -402,7 +403,7 @@ static void addReceivedDataToBuffer(int32_t spsConnHandle, const void *pData, ui
 {
     if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
-        bool bufferWasEmpty = (ringBufferDataSize(&(pSpsConn->rxRingBuffer)) == 0);
+        bool bufferWasEmpty = (uRingBufferDataSize(&(pSpsConn->rxRingBuffer)) == 0);
 
         if (pSpsConn->rxCreditsOnRemote > 0) {
             // Keep track of how many credits the remote has left
@@ -413,7 +414,7 @@ static void addReceivedDataToBuffer(int32_t spsConnHandle, const void *pData, ui
             }
         }
 
-        if (ringBufferAdd(&(pSpsConn->rxRingBuffer), (const char *)pData, length)) {
+        if (uRingBufferAdd(&(pSpsConn->rxRingBuffer), (const char *)pData, length)) {
             if (bufferWasEmpty) {
                 spsEvent_t event;
                 event.type = EVENT_SPS_RX_DATA_AVAILABLE;
@@ -445,7 +446,7 @@ static bool sendDataToRemoteFifo(const spsConnection_t *pSpsConn, const char *pD
 
 static void updateRxCreditsOnRemote(spsConnection_t *pSpsConn)
 {
-    size_t avaibleBufferSize = ringBufferAvailableSize(&(pSpsConn->rxRingBuffer));
+    size_t avaibleBufferSize = uRingBufferAvailableSize(&(pSpsConn->rxRingBuffer));
     uint8_t availableRxCredits = 0;
     size_t maxPacketDataSize = pSpsConn->mtu - U_BLE_PDU_HEADER_SIZE;
     int16_t rxCreditsWeCanSend;
@@ -1304,7 +1305,7 @@ int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t
 
     if (validSpsConnHandle(spsConnHandle)) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
-        sizeOrErrorCode = (int32_t)ringBufferRead(&(pSpsConn->rxRingBuffer), pData, length);
+        sizeOrErrorCode = (int32_t)uRingBufferRead(&(pSpsConn->rxRingBuffer), pData, length);
         if ((sizeOrErrorCode > 0) && (pSpsConn->flowCtrlEnabled)) {
             updateRxCreditsOnRemote(pSpsConn);
         }

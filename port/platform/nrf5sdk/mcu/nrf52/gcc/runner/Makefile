@@ -148,6 +148,7 @@ SRC_FILES += \
   $(UBXLIB_PATH)/common/short_range/src/u_short_range_private.c \
   $(UBXLIB_PATH)/common/short_range/test/u_short_range_test.c \
   $(UBXLIB_PATH)/common/short_range/test/u_short_range_test_private.c \
+  $(UBXLIB_PATH)/common/utils/src/u_ringbuffer.c \
   $(UBXLIB_PATH)/common/mqtt_client/src/u_mqtt_client.c \
   $(UBXLIB_PATH)/port/clib/u_port_clib_mktime64.c \
   $(UBXLIB_PATH)/port/test/u_port_test.c \
@@ -224,6 +225,7 @@ INC_FOLDERS += \
   $(UBXLIB_PATH)/common/short_range/api \
   $(UBXLIB_PATH)/common/short_range/src \
   $(UBXLIB_PATH)/common/short_range/test \
+  $(UBXLIB_PATH)/common/utils/api \
   $(UBXLIB_PATH)/common/mqtt_client/api \
   $(UBXLIB_PATH)/cfg \
   $(UBXLIB_PATH)/port \

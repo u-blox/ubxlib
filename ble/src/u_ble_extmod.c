@@ -42,7 +42,6 @@
 
 #include "u_ble_module_type.h"
 #include "u_ble.h"
-#include "u_port_os.h"
 #include "u_port_gatt.h"
 #include "u_ble_private.h"
 

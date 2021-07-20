@@ -128,6 +128,10 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/src/u_short_range_p
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/test/u_short_range_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/test/u_short_range_test_private.c)
 
+#utils
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/utils/api)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/utils/src/u_ringbuffer.c)
+
 # examples
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/sockets/main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/sockets/main_tls.c)

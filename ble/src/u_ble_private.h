@@ -35,13 +35,6 @@ extern "C" {
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-typedef struct {
-    char *pBuffer;
-    size_t dataIndex;
-    size_t dataSize;
-    size_t size;
-    uPortMutexHandle_t mutex;
-} ringBuffer_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
@@ -57,65 +50,6 @@ void uBleDataPrivateInit(void);
 /** De-Initialize data part of BLE
  */
 void uBleDataPrivateDeinit(void);
-
-/** Create new ring buffer from linear buffer
- *
- * @param pRingBuffer   Pointer to ring buffer
- * @param pLinearBuffer Pointer to linear buffer
- * @param size          Size of linear buffer in bytes
- */
-void ringBufferCreate(ringBuffer_t *pRingBuffer, char *pLinearBuffer, size_t size);
-
-/** Delete ring buffer
- *
- * @param pRingBuffer   Pointer to ring buffer
- */
-void ringBufferDelete(ringBuffer_t *pRingBuffer);
-
-/** Add data to ringbuffer
- *
- * @param pRingBuffer   Handle to ringbuffer
- * @param pData        Pointer to data
- * @param length       Length of data
- *
- * @return             True if data was added
- *                     False if data was not added, which will be
- *                     the case if there is not room enough
- */
-bool ringBufferAdd(ringBuffer_t *pRingBuffer, const char *pData, size_t length);
-
-/** Read data from ringbuffer
- *
- * @param pRingBuffer   Handle to ringbuffer
- * @param pData        Pointer where to put data
- * @param length       Maximum length of data
- *
- * @return             Number of bytes read
- */
-size_t ringBufferRead(ringBuffer_t *pRingBuffer, char *pData, size_t length);
-
-/** Amount of data available
- *
- * @param pRingBuffer   Handle to ringbuffer
- *
- * @return             Number of bytes available for reading
- */
-size_t ringBufferDataSize(const ringBuffer_t *pRingBuffer);
-
-/** Free space available
- *
- * @param pRingBuffer   Handle to ringbuffer
- *
- * @return             Number of bytes available for storing
- */
-size_t ringBufferAvailableSize(const ringBuffer_t *pRingBuffer);
-
-/** Reset ring buffer
- *
- * @param pRingBuffer   Handle to ringbuffer
- */
-void ringBufferReset(ringBuffer_t *pRingBuffer);
-
 
 /** Translate MAC address in byte array to string
  *

@@ -167,6 +167,11 @@
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range_private.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Common/Utils/u_ringbuffer.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/utils/src/u_ringbuffer.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/u_heap_check.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/heap_check/u_heap_check.c</locationURI>
@@ -650,6 +655,11 @@
 			<name>Ubxlib/Inc/U-Blox/common/short_range/test</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/test</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/utils/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/utils/api</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/common/security/api</name>
