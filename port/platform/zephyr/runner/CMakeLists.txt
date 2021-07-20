@@ -162,9 +162,11 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/src/u_wifi.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/src/u_wifi_cfg.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/src/u_wifi_net.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/src/u_wifi_private.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/src/u_wifi_sock.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/test/u_wifi_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/test/u_wifi_cfg_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/test/u_wifi_net_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/test/u_wifi_sock_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/test/u_wifi_test_private.c)
 
 

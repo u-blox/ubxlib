@@ -53,6 +53,7 @@ set(COMPONENT_SRCS            "../../../../../../../../example/sockets/main.c"
                               "../../../../../../../../wifi/test/u_wifi_cfg_test.c"
                               "../../../../../../../../wifi/test/u_wifi_net_test.c"
                               "../../../../../../../../wifi/test/u_wifi_test_private.c"
+                              "../../../../../../../../wifi/test/u_wifi_sock_test.c"
                               "../../../../../../../test/u_port_test.c"
                               "../../../../../../common/test/u_preamble_test.c")
 

@@ -64,3 +64,4 @@ wifi/src/u_wifi.c
 wifi/src/u_wifi_cfg.c
 wifi/src/u_wifi_net.c
 wifi/src/u_wifi_private.c
+wifi/src/u_wifi_sock.c

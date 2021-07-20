@@ -193,10 +193,12 @@ SRC_FILES += \
   ${UBXLIB_PATH}/wifi/src/u_wifi_cfg.c \
   ${UBXLIB_PATH}/wifi/src/u_wifi_net.c \
   ${UBXLIB_PATH}/wifi/src/u_wifi_private.c \
+  ${UBXLIB_PATH}/wifi/src/u_wifi_sock.c \
   ${UBXLIB_PATH}/wifi/test/u_wifi_test.c \
   ${UBXLIB_PATH}/wifi/test/u_wifi_cfg_test.c \
   ${UBXLIB_PATH}/wifi/test/u_wifi_net_test.c \
   ${UBXLIB_PATH}/wifi/test/u_wifi_test_private.c \
+  ${UBXLIB_PATH}/wifi/test/u_wifi_sock_test.c \
   $(NRF5_PORT_PATH)/src/u_port.c \
   $(NRF5_PORT_PATH)/src/u_port_debug.c \
   $(NRF5_PORT_PATH)/src/u_port_gpio.c \

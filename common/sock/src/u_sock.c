@@ -336,9 +336,7 @@
 
 #include "u_cell_sec_tls.h"
 #include "u_cell_sock.h"
-// Commented out until there is a wifi sockets
-// implementation
-//#include "u_wifi_sock.h"
+#include "u_wifi_sock.h"
 
 #include "u_network_handle.h"
 
@@ -472,9 +470,9 @@ static int32_t init()
             // uXxxSockInit returns a negated value of errno
             // from the U_SOCK_Exxx list
             errnoLocal = uCellSockInit();
-            // TODO if (errnoLocal == U_SOCK_ENONE) {
-            //          errnoLocal = uWifiSockInit();
-            //      }
+            if (errnoLocal == U_SOCK_ENONE) {
+                errnoLocal = uWifiSockInit();
+            }
 
             if (errnoLocal == U_SOCK_ENONE) {
                 //  Link the static containers into the start of the container list
@@ -510,7 +508,7 @@ static void deinitButNotMutex()
         // to remain.
 
         uCellSockDeinit();
-        // TODO: call uWifiSockDeinit();
+        uWifiSockDeinit();
 
         gInitialised = false;
     }
@@ -1076,7 +1074,11 @@ static int32_t receive(const uSockContainer_t *pContainer,
                                                       pData,
                                                       dataSizeBytes);
             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                // TODO
+                negErrnoOrSize = uWifiSockReceiveFrom(networkHandle,
+                                                      sockHandle,
+                                                      pRemoteAddress,
+                                                      pData,
+                                                      dataSizeBytes);
             }
         } else {
             // TCP style
@@ -1086,7 +1088,10 @@ static int32_t receive(const uSockContainer_t *pContainer,
                                                pData,
                                                dataSizeBytes);
             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                // TODO
+                negErrnoOrSize = uWifiSockRead(networkHandle,
+                                               sockHandle,
+                                               pData,
+                                               dataSizeBytes);
             }
         }
         if (negErrnoOrSize < 0) {
@@ -1169,7 +1174,7 @@ int32_t uSockCreate(int32_t networkHandle, uSockType_t type,
                     if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
                         errnoLocal = -uCellSockInitInstance(networkHandle);
                     } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                        // TODO
+                        errnoLocal = -uWifiSockInitInstance(networkHandle);
                     }
                 }
                 // Get the underlying cell/wifi socket layer to
@@ -1187,7 +1192,9 @@ int32_t uSockCreate(int32_t networkHandle, uSockType_t type,
                         uCellSockBlockingSet(networkHandle,
                                              sockHandle, false);
                     } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                        // TODO
+                        sockHandle = uWifiSockCreate(networkHandle,
+                                                     type, protocol);
+                        // TODO: Set blocking stuff
                     }
 
                     if (sockHandle >= 0) {
@@ -1269,7 +1276,9 @@ int32_t uSockConnect(uSockDescriptor_t descriptor,
                                                      sockHandle,
                                                      pRemoteAddress);
                     } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                        // TODO
+                        errorCode = uWifiSockConnect(networkHandle,
+                                                     sockHandle,
+                                                     pRemoteAddress);
                     }
 
                     if (errorCode == 0) {
@@ -1357,7 +1366,9 @@ int32_t uSockClose(uSockDescriptor_t descriptor)
                                            sockHandle,
                                            pAsyncClosedCallback);
             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                // TODO
+                errorCode = uWifiSockClose(networkHandle,
+                                           sockHandle,
+                                           pAsyncClosedCallback);
             }
             if (errorCode == 0) {
                 uPortLog("U_SOCK: socket with descriptor %d,"
@@ -1460,7 +1471,7 @@ void uSockCleanUp()
                     if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
                         uCellSockCleanup(networkHandle);
                     } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                        // TODO
+                        uWifiSockCleanup(networkHandle);
                     }
                 }
             } else {
@@ -1505,7 +1516,7 @@ void uSockDeinit()
                 if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
                     uCellSockClose(networkHandle, sockHandle, NULL);
                 } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                    // TODO
+                    uWifiSockClose(networkHandle, sockHandle, NULL);
                 }
             }
 
@@ -1676,7 +1687,11 @@ int32_t uSockOptionSet(uSockDescriptor_t descriptor,
                                                        pOptionValue,
                                                        optionValueLength);
                     } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                        // TODO
+                        errorCode = uWifiSockOptionSet(networkHandle,
+                                                       sockHandle,
+                                                       level, option,
+                                                       pOptionValue,
+                                                       optionValueLength);
                     }
 
                     if (errorCode == 0) {
@@ -1774,7 +1789,11 @@ int32_t uSockOptionGet(uSockDescriptor_t descriptor,
                                                        pOptionValue,
                                                        pOptionValueLength);
                     } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                        // TODO
+                        errorCode = uWifiSockOptionGet(networkHandle,
+                                                       sockHandle,
+                                                       level, option,
+                                                       pOptionValue,
+                                                       pOptionValueLength);
                     }
 
                     if (errorCode == 0) {
@@ -1957,7 +1976,14 @@ int32_t uSockSendTo(uSockDescriptor_t descriptor,
                                     pContainer->socket.bytesSent += errorCodeOrSize;
                                 }
                             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                                // TODO
+                                errorCodeOrSize = uWifiSockSendTo(networkHandle,
+                                                                  sockHandle,
+                                                                  pRemoteAddress,
+                                                                  pData,
+                                                                  dataSizeBytes);
+                                if (errorCodeOrSize > 0) {
+                                    pContainer->socket.bytesSent += errorCodeOrSize;
+                                }
                             }
 
                             if (errorCodeOrSize < 0) {
@@ -2110,7 +2136,13 @@ int32_t uSockWrite(uSockDescriptor_t descriptor,
                                     pContainer->socket.bytesSent += errorCodeOrSize;
                                 }
                             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                                // TODO
+                                errorCodeOrSize = uWifiSockWrite(networkHandle,
+                                                                 sockHandle,
+                                                                 pData,
+                                                                 dataSizeBytes);
+                                if (errorCodeOrSize > 0) {
+                                    pContainer->socket.bytesSent += errorCodeOrSize;
+                                }
                             }
 
                             if (errorCodeOrSize < 0) {
@@ -2300,7 +2332,9 @@ void uSockRegisterCallbackData(uSockDescriptor_t descriptor,
                                               dataCallback);
                 errnoLocal = U_SOCK_ENONE;
             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                // TODO
+                errnoLocal = -uWifiSockRegisterCallbackData(networkHandle,
+                                                            sockHandle,
+                                                            dataCallback);
             }
 
             if (errnoLocal == U_SOCK_ENONE) {
@@ -2353,7 +2387,9 @@ void uSockRegisterCallbackClosed(uSockDescriptor_t descriptor,
                                                 closedCallback);
                 errnoLocal = U_SOCK_ENONE;
             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                // TODO
+                errnoLocal = -uWifiSockRegisterCallbackClosed(networkHandle,
+                                                              sockHandle,
+                                                              closedCallback);
             }
 
             if (errnoLocal == U_SOCK_ENONE) {
@@ -2509,7 +2545,9 @@ int32_t uSockGetLocalAddress(uSockDescriptor_t descriptor,
                                                            sockHandle,
                                                            pLocalAddress);
                 } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                    // TODO
+                    errnoLocal = -uWifiSockGetLocalAddress(networkHandle,
+                                                           sockHandle,
+                                                           pLocalAddress);
                 }
             }
 
@@ -2552,7 +2590,9 @@ int32_t uSockGetHostByName(int32_t networkHandle,
                                                      pHostName,
                                                      pHostIpAddress);
             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-                // TODO
+                errnoLocal = -uWifiSockGetHostByName(networkHandle,
+                                                     pHostName,
+                                                     pHostIpAddress);
             }
 
             U_PORT_MUTEX_UNLOCK(gMutexContainer);

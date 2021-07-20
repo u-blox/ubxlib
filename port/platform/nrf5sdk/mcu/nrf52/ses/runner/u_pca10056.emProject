@@ -183,10 +183,12 @@
       <file file_name="../../../../../../../wifi/src/u_wifi_cfg.c" />
       <file file_name="../../../../../../../wifi/src/u_wifi_net.c" />
       <file file_name="../../../../../../../wifi/src/u_wifi_private.c" />
+      <file file_name="../../../../../../../wifi/src/u_wifi_sock.c" />
       <file file_name="../../../../../../../wifi/test/u_wifi_test.c" />
       <file file_name="../../../../../../../wifi/test/u_wifi_cfg_test.c" />
       <file file_name="../../../../../../../wifi/test/u_wifi_net_test.c" />
       <file file_name="../../../../../../../wifi/test/u_wifi_test_private.c" />
+      <file file_name="../../../../../../../wifi/test/u_wifi_sock_test.c" />
       <file file_name="../../../../../../../gnss/api/u_gnss.h" />
       <file file_name="../../../../../../../gnss/api/u_gnss_pwr.h" />
       <file file_name="../../../../../../../gnss/api/u_gnss_cfg.h" />
