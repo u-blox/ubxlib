@@ -22,12 +22,15 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+//lint -efile(766, ctype.h)
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include "ctype.h"
 
+//lint -efile(766, u_port_debug.h)
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
@@ -35,7 +38,10 @@
 #include "u_port_os.h"
 #include "u_port_event_queue.h"
 #include "u_port_uart.h"
+#include "u_port_debug.h"
 #include "u_at_client.h"
+#include "u_short_range_module_type.h"
+#include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 #include "u_short_range_edm.h"
 
@@ -49,28 +55,77 @@
 #define U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH 500
 #define U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS    9
 
+// Debug logging for EDM activity
+// You can activate debug log output for EDM activity with the defines below
+//
+// U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG:
+// Define to enable EDM debug log
+//
+// U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_COLOR:
+// Define to enable ANSI color for EDM debug log
+//
+// U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA:
+// Define to dump EDM RX/TX data
+//
+//lint -esym(750, uEdmChLogStart) Suppress not reference
+//lint -esym(750, uEdmChLogEnd) Suppress not reference
+//lint -esym(750, uEdmChLogLine) Suppress not reference
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+# ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_COLOR
+#  define ANSI_BLU "\e[0;34m"
+#  define ANSI_CYN "\e[0;36m"
+#  define ANSI_GRN "\e[0;32m"
+#  define ANSI_MAG "\e[0;35m"
+#  define ANSI_YEL "\e[0;33m"
+#  define ANSI_RST "\e[0m"
+# else
+#  define ANSI_BLU
+#  define ANSI_CYN
+#  define ANSI_GRN
+#  define ANSI_MAG
+#  define ANSI_YEL
+#  define ANSI_RST
+# endif
+# define LOG_CH_AT_TX ANSI_CYN "[EDM AT TX]"
+# define LOG_CH_AT_RX ANSI_MAG "[EDM AT RX]"
+# define LOG_CH_IP    ANSI_YEL "[EDM IP   ]"
+# define LOG_CH_BT    ANSI_BLU "[EDM BT   ]"
+# define LOG_CH_DATA  ANSI_GRN "[EDM DATA ]"
+# define uEdmChLogStart(log_ch, format, ...)    uPortLog(log_ch " " format, ##__VA_ARGS__)
+# define uEdmChLogEnd(format, ...)              uPortLog(format ANSI_RST "\n", ##__VA_ARGS__)
+# define uEdmChLogLine(log_ch, format, ...)     uEdmChLogStart(log_ch, format, ##__VA_ARGS__); uEdmChLogEnd("");
+#else /* U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG */
+# undef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA
+# undef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_COLOR
+# define uEdmChLogStart(log_ch, format, ...)
+# define uEdmChLogEnd()
+# define uEdmChLogLine(log_ch, format, ...)
+#endif
+//lint -restore
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
 typedef enum {
-    U_SHORT_RANGE_EDM_STREAM_CONNECTED,
-    U_SHORT_RANGE_EDM_STREAM_DISCONNECTED
-} uShortRangeEdmStreamConnectionEvent_t;
-
-typedef enum {
     U_SHORT_RANGE_EDM_STREAM_EVENT_AT,
     U_SHORT_RANGE_EDM_STREAM_EVENT_BT,
+    U_SHORT_RANGE_EDM_STREAM_EVENT_IP,
+    U_SHORT_RANGE_EDM_STREAM_EVENT_MQTT,
     U_SHORT_RANGE_EDM_STREAM_EVENT_DATA
 } uShortRangeEdmStreamEventType_t;
 
 typedef struct {
-    uShortRangeEdmStreamConnectionEvent_t type;
-    uint32_t channel;
-    bool ble;
-    uint8_t address[U_SHORT_RANGE_EDM_BT_ADDRESS_LENGTH];
-    uint32_t frameSize;
+    uint8_t channel;
+    uShortRangeConnectionEventType_t type;
+    uShortRangeConnectDataBt_t conData;
 } uShortRangeEdmStreamBtEvent_t;
+
+typedef struct {
+    uint8_t channel;
+    uShortRangeConnectionEventType_t type;
+    uShortRangeConnectDataIp_t conData;
+} uShortRangeEdmStreamIpEvent_t;
 
 typedef struct {
     int32_t channel;
@@ -83,14 +138,28 @@ typedef struct {
     union {
         // no content in at event       at;
         uShortRangeEdmStreamBtEvent_t   bt;
+        uShortRangeEdmStreamIpEvent_t   ip;
+        uShortRangeEdmStreamIpEvent_t   mqtt;
         uShortRangeEdmStreamDataEvent_t data;
     };
 } uShortRangeEdmStreamEvent_t;
 
-typedef struct uShortRangeEdmStreamConnections_t {
-    int32_t channel;
-    uShortRangeEdmStreamConnectionType_t type;
+typedef struct {
     int32_t frameSize;
+} uBtConnectionParams_t;
+
+typedef struct {
+    uint16_t localPort;
+    uShortRangeIpProtocol_t protocol;
+} uIpConnectionParams_t;
+
+typedef struct {
+    int32_t channel;
+    uShortRangeConnectionType_t type;
+    union {
+        uBtConnectionParams_t bt;
+        uIpConnectionParams_t ip;
+    };
 } uShortRangeEdmStreamConnections_t;
 
 typedef struct uEdmStreamInstance_t {
@@ -98,16 +167,20 @@ typedef struct uEdmStreamInstance_t {
     int32_t uartHandle;
     void *atHandle;
     int32_t eventQueueHandle;
-    void (*pAtCallback)(int32_t, uint32_t, void *);
+    uEdmAtEventCallback_t pAtCallback;
     void *pAtCallbackParam;
-    void (*pBtEventCallback)(int32_t, uint32_t, uint32_t, bool, int32_t, uint8_t *, void *);
+    uEdmBtConnectionStatusCallback_t pBtEventCallback;
     void *pBtEventCallbackParam;
-    //void (*pWifiEventCallback)(int32_t, uint32_t, void *);
-    //void *pWifiEventCallbackParam;
-    void (*pBtDataCallback)(int32_t, int32_t, int32_t, char *, void *);
+    uEdmIpConnectionStatusCallback_t pIpEventCallback;
+    void *pIpEventCallbackParam;
+    uEdmIpConnectionStatusCallback_t pMqttEventCallback;
+    void *pMqttEventCallbackParam;
+    uEdmDataEventCallback_t pBtDataCallback;
     void *pBtDataCallbackParam;
-    void (*pWifiDataCallback)(int32_t, int32_t, int32_t, char *, void *);
-    void *pWifiDataCallbackParam;
+    uEdmDataEventCallback_t pIpDataCallback;
+    void *pIpDataCallbackParam;
+    uEdmDataEventCallback_t pMqttDataCallback;
+    void *pMqttDataCallbackParam;
     char *pAtCommandBuffer;
     int32_t atCommandCurrent;
     char *pAtResponseBuffer;
@@ -127,6 +200,56 @@ static uShortRangeEdmStreamInstance_t gEdmStream;
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 static void flushUart(int32_t uartHandle);
+
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+static inline void dumpAtData(const char *pBuffer, size_t length)
+{
+    for (int i = 0; i < length; i++) {
+        char ch = pBuffer[i];
+        if (isprint(ch)) {
+            uPortLog("%c", ch);
+        } else if (ch == '\r') {
+            uPortLog("\\r", ch);
+        } else if (ch == '\n') {
+            uPortLog("\\n", ch);
+        } else {
+            uPortLog("\\x%02x", ch);
+        }
+    }
+}
+
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA
+static inline void dumpHexData(const uint8_t *pBuffer, size_t length)
+{
+    for (int i = 0; i < length; i++) {
+        uPortLog("%02x ", pBuffer[i]);
+    }
+}
+#endif
+
+static inline void dumpBdAddr(const uint8_t *pBdAddr)
+{
+    for (int i = 0; i < U_SHORT_RANGE_BT_ADDRESS_LENGTH; i++) {
+        uPortLog("%02x%s", pBdAddr[i], (i < U_SHORT_RANGE_BT_ADDRESS_LENGTH - 1) ? ":" : "");
+    }
+}
+
+static const char *getProtocolText(uShortRangeIpProtocol_t protocol)
+{
+    switch (protocol) {
+        case U_SHORT_RANGE_IP_PROTOCOL_TCP:
+            return "TCP";
+        case U_SHORT_RANGE_IP_PROTOCOL_UDP:
+            return "UDP";
+        case U_SHORT_RANGE_IP_PROTOCOL_MQTT:
+            return "MQTT";
+        default:
+            break;
+    }
+    return "Unknown protocol";
+}
+
+#endif
 
 // Find connection from channel, use -1 to get the first free slot
 static uShortRangeEdmStreamConnections_t *findConnection(int32_t channel)
@@ -161,14 +284,38 @@ static void atEventHandler(void)
     // This event is not fully processed until uShortRangeEdmStreamAtRead has been called
     // and all event data been read out
 }
+
 // Event handler, calls the user's event callback.
 static void btEventHandler(uShortRangeEdmStreamBtEvent_t *pBtEvent)
 {
     if (gEdmStream.pBtEventCallback != NULL) {
-        gEdmStream.pBtEventCallback(gEdmStream.handle, (uint32_t) pBtEvent->type, pBtEvent->channel,
-                                    pBtEvent->ble, (int32_t) pBtEvent->frameSize, pBtEvent->address,
-                                    gEdmStream.pBtEventCallbackParam);
+        gEdmStream.pBtEventCallback(gEdmStream.handle, pBtEvent->channel, pBtEvent->type,
+                                    &pBtEvent->conData, gEdmStream.pBtEventCallbackParam);
     }
+    uEdmChLogLine(LOG_CH_BT, "processed");
+    processedEvent();
+}
+
+// Event handler, calls the user's event callback.
+static void ipEventHandler(uShortRangeEdmStreamIpEvent_t *pIpEvent)
+{
+    if (gEdmStream.pIpEventCallback != NULL) {
+        gEdmStream.pIpEventCallback(gEdmStream.handle, pIpEvent->channel, pIpEvent->type,
+                                    &pIpEvent->conData, gEdmStream.pIpEventCallbackParam);
+    }
+
+    uEdmChLogLine(LOG_CH_IP, "processed");
+    processedEvent();
+}
+
+// Event handler, calls the user's event callback.
+static void mqttEventHandler(uShortRangeEdmStreamIpEvent_t *pMqttEvent)
+{
+    if (gEdmStream.pMqttEventCallback != NULL) {
+        gEdmStream.pMqttEventCallback(gEdmStream.handle, pMqttEvent->channel, pMqttEvent->type,
+                                      &pMqttEvent->conData, gEdmStream.pMqttEventCallbackParam);
+    }
+    uEdmChLogLine(LOG_CH_IP, "processed");
     processedEvent();
 }
 
@@ -182,26 +329,34 @@ static void dataEventHandler(uShortRangeEdmStreamDataEvent_t *pDataEvent)
     if (pConnection != NULL) {
         switch (pConnection->type) {
 
-            case U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT:
+            case U_SHORT_RANGE_CONNECTION_TYPE_BT:
                 if (gEdmStream.pBtDataCallback != NULL) {
                     gEdmStream.pBtDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
                                                pDataEvent->pData, gEdmStream.pBtDataCallbackParam);
                 }
                 break;
 
-            case U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_WIFI:
-                if (gEdmStream.pWifiDataCallback != NULL) {
-                    gEdmStream.pWifiDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
-                                                 pDataEvent->pData, gEdmStream.pWifiDataCallbackParam);
+            case U_SHORT_RANGE_CONNECTION_TYPE_IP:
+                if (gEdmStream.pIpDataCallback != NULL) {
+                    gEdmStream.pIpDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
+                                               pDataEvent->pData, gEdmStream.pIpDataCallbackParam);
                 }
                 break;
 
-            case U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID:
+            case U_SHORT_RANGE_CONNECTION_TYPE_MQTT:
+                if (gEdmStream.pMqttDataCallback != NULL) {
+                    gEdmStream.pMqttDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
+                                                 pDataEvent->pData, gEdmStream.pMqttDataCallbackParam);
+                }
+                break;
+
+            case U_SHORT_RANGE_CONNECTION_TYPE_INVALID:
             default:
                 break;
         }
     }
 
+    uEdmChLogLine(LOG_CH_DATA, "processed");
     processedEvent();
     U_PORT_MUTEX_UNLOCK(gMutex);
 }
@@ -225,6 +380,14 @@ static void eventHandler(void *pParam, size_t paramLength)
             btEventHandler(&(pEvent->bt));
             break;
 
+        case U_SHORT_RANGE_EDM_STREAM_EVENT_IP:
+            ipEventHandler(&(pEvent->ip));
+            break;
+
+        case U_SHORT_RANGE_EDM_STREAM_EVENT_MQTT:
+            mqttEventHandler(&(pEvent->mqtt));
+            break;
+
         case U_SHORT_RANGE_EDM_STREAM_EVENT_DATA:
             dataEventHandler(&(pEvent->data));
             break;
@@ -242,6 +405,12 @@ static void processEdmAtEvent(uShortRangeEdmEvent_t *pEvent)
     gEdmStream.atResponseRead = 0;
     memcpy(gEdmStream.pAtResponseBuffer, pEvent->params.atEvent.pData, gEdmStream.atResponseLength);
 
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+    uEdmChLogStart(LOG_CH_AT_RX, "\"");
+    dumpAtData(gEdmStream.pAtResponseBuffer, gEdmStream.atResponseLength);
+    uEdmChLogEnd("\"");
+#endif
+
     event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_AT;
     uPortEventQueueSend(gEdmStream.eventQueueHandle,
                         &event, sizeof(uShortRangeEdmStreamEvent_t));
@@ -258,39 +427,174 @@ static void processEdmConnectBtEvent(uShortRangeEdmEvent_t *pEvent)
     if (pConnection != NULL) {
         uShortRangeEdmStreamEvent_t event;
         pConnection->channel = pEvent->params.btConnectEvent.channel;
-        pConnection->type = U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT;
-        pConnection->frameSize = pEvent->params.btConnectEvent.framesize;
+        pConnection->type = U_SHORT_RANGE_CONNECTION_TYPE_BT;
+        pConnection->bt.frameSize = pEvent->params.btConnectEvent.connection.framesize;
 
         event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_BT;
-        event.bt.type = U_SHORT_RANGE_EDM_STREAM_CONNECTED;
-        event.bt.ble = (pEvent->params.btConnectEvent.profile == U_SHORT_RANGE_EDM_BT_PROFILE_SPS);
+        event.bt.type = U_SHORT_RANGE_EVENT_CONNECTED;
         event.bt.channel = pEvent->params.btConnectEvent.channel;
-        memcpy(event.bt.address, pEvent->params.btConnectEvent.address,
-               U_SHORT_RANGE_EDM_BT_ADDRESS_LENGTH);
-        event.bt.frameSize = pEvent->params.btConnectEvent.framesize;
+        event.bt.conData = pEvent->params.btConnectEvent.connection;
+
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+        uEdmChLogStart(LOG_CH_BT, "Connected ");
+        dumpBdAddr(event.bt.conData.address);
+        uEdmChLogEnd("");
+#endif
 
         uPortEventQueueSend(gEdmStream.eventQueueHandle,
                             &event, sizeof(uShortRangeEdmStreamEvent_t));
     }
 }
 
+static void processEdmConnectIpv4Event(uShortRangeEdmEvent_t *pEvent)
+{
+    uShortRangeEdmStreamConnections_t *pConnection =
+        findConnection(pEvent->params.ipv4ConnectEvent.channel);
+
+    if (pConnection == NULL) {
+        pConnection = findConnection(-1);
+    }
+    if (pConnection != NULL) {
+        uShortRangeEdmStreamEvent_t event;
+        uShortRangeEdmConnectionEventIpv4_t *ipv4Evt = &pEvent->params.ipv4ConnectEvent;
+        uShortRangeIpProtocol_t protocol = ipv4Evt->connection.protocol;
+        // IPv4 events are generated by TCP, UDP and MQTT connections
+        // Since MQTT and TCP/UDP have separate callbacks we need to
+        // check whether the protocol is MQTT or TCP/UDP here
+        if ((protocol == U_SHORT_RANGE_IP_PROTOCOL_TCP) ||
+            (protocol == U_SHORT_RANGE_IP_PROTOCOL_UDP)) {
+            pConnection->type = U_SHORT_RANGE_CONNECTION_TYPE_IP;
+            event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_IP;
+        } else if (protocol == U_SHORT_RANGE_IP_PROTOCOL_MQTT) {
+            pConnection->type = U_SHORT_RANGE_CONNECTION_TYPE_MQTT;
+            event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_MQTT;
+        } else {
+            pConnection->type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
+        }
+
+        if (pConnection->type != U_SHORT_RANGE_CONNECTION_TYPE_INVALID) {
+            pConnection->channel = ipv4Evt->channel;
+            pConnection->ip.localPort = ipv4Evt->connection.localPort;
+            pConnection->ip.protocol = protocol;
+
+            event.ip.type = U_SHORT_RANGE_EVENT_CONNECTED;
+            event.ip.channel = ipv4Evt->channel;
+            event.ip.conData.ipv4 = ipv4Evt->connection;
+
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+            const char *protocolTxt = getProtocolText(protocol);
+            uint8_t *rIp = event.ip.conData.ipv4.remoteAddress;
+            uint16_t rPort = event.ip.conData.ipv4.remotePort;
+            uint8_t *lIp = event.ip.conData.ipv4.localAddress;
+            uint16_t lPort = event.ip.conData.ipv4.localPort;
+            uEdmChLogLine(LOG_CH_IP, "ch: %d, IPv4 %s connected %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d",
+                          event.ip.channel,
+                          protocolTxt,
+                          lIp[0], lIp[1], lIp[2], lIp[3], lPort,
+                          rIp[0], rIp[1], rIp[2], rIp[3], rPort);
+#endif
+
+            uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                &event, sizeof(uShortRangeEdmStreamEvent_t));
+        }
+    }
+}
+
+static void processEdmConnectIpv6Event(uShortRangeEdmEvent_t *pEvent)
+{
+    uShortRangeEdmStreamConnections_t *pConnection =
+        findConnection(pEvent->params.ipv6ConnectEvent.channel);
+
+    if (pConnection == NULL) {
+        pConnection = findConnection(-1);
+    }
+    if (pConnection != NULL) {
+        uShortRangeEdmStreamEvent_t event;
+        uShortRangeEdmConnectionEventIpv6_t *ipv6Evt = &pEvent->params.ipv6ConnectEvent;
+        uShortRangeIpProtocol_t protocol = ipv6Evt->connection.protocol;
+        // IPv4 events are generated by TCP, UDP and MQTT connections
+        // Since MQTT and TCP/UDP have separate callbacks we need to
+        // check whether the protocol is MQTT or TCP/UDP here
+        if ((protocol == U_SHORT_RANGE_IP_PROTOCOL_TCP) ||
+            (protocol == U_SHORT_RANGE_IP_PROTOCOL_UDP)) {
+            pConnection->type = U_SHORT_RANGE_CONNECTION_TYPE_IP;
+            event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_IP;
+        } else if (protocol == U_SHORT_RANGE_IP_PROTOCOL_MQTT) {
+            pConnection->type = U_SHORT_RANGE_CONNECTION_TYPE_MQTT;
+            event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_MQTT;
+        } else {
+            pConnection->type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
+        }
+
+        if (pConnection->type != U_SHORT_RANGE_CONNECTION_TYPE_INVALID) {
+            pConnection->channel = ipv6Evt->channel;
+            pConnection->ip.localPort = ipv6Evt->connection.localPort;
+            pConnection->ip.protocol = protocol;
+
+            event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_IP;
+            event.ip.type = U_SHORT_RANGE_EVENT_CONNECTED;
+            event.ip.conData.ipv6 = ipv6Evt->connection;
+
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+            const char *protocolTxt = getProtocolText(protocol);
+            uint16_t rPort = event.ip.conData.ipv6.remotePort;
+            uint16_t lPort = event.ip.conData.ipv6.localPort;
+            uEdmChLogLine(LOG_CH_IP, "ch %d, IPv6 %s connected port %d -> %d",
+                          event.ip.channel, protocolTxt, lPort, rPort);
+#endif
+
+            uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                &event, sizeof(uShortRangeEdmStreamEvent_t));
+        }
+    }
+}
+
 static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
 {
-    int32_t channel = (int32_t)pEvent->params.disconnectEvent.channel;
+    uint8_t channel = pEvent->params.disconnectEvent.channel;
     uShortRangeEdmStreamConnections_t *pConnection = findConnection(channel);
 
-    if (pConnection != NULL && pConnection->type == U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT) {
+    if (pConnection != NULL) {
         uShortRangeEdmStreamEvent_t event;
+        switch (pConnection->type) {
+            case U_SHORT_RANGE_CONNECTION_TYPE_BT:
+                event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_BT;
+                event.bt.type = U_SHORT_RANGE_EVENT_DISCONNECTED;
+                event.bt.channel = channel;
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+                uEdmChLogLine(LOG_CH_BT, "ch: %d, disconnect", channel);
+#endif
+                uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                    &event, sizeof(uShortRangeEdmStreamEvent_t));
+                break;
 
+            case U_SHORT_RANGE_CONNECTION_TYPE_MQTT:
+                event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_MQTT;
+                event.mqtt.type = U_SHORT_RANGE_EVENT_DISCONNECTED;
+                event.mqtt.channel = channel;
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+                uEdmChLogLine(LOG_CH_IP, "ch: %d, disconnect", channel);
+#endif
+                uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                    &event, sizeof(uShortRangeEdmStreamEvent_t));
+                break;
+
+            case U_SHORT_RANGE_CONNECTION_TYPE_IP:
+                event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_IP;
+                event.ip.type = U_SHORT_RANGE_EVENT_DISCONNECTED;
+                event.ip.channel = channel;
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+                uEdmChLogLine(LOG_CH_IP, "ch: %d, disconnect", channel);
+#endif
+                uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                    &event, sizeof(uShortRangeEdmStreamEvent_t));
+                break;
+
+            default:
+                break;
+        }
         pConnection->channel = -1;
-        pConnection->type = U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID;
-        pConnection->frameSize = -1;
-        event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_BT;
-        event.bt.type = U_SHORT_RANGE_EDM_STREAM_DISCONNECTED;
-        event.bt.channel = channel;
-
-        uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                            &event, sizeof(uShortRangeEdmStreamEvent_t));
+        pConnection->type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
     }
 }
 
@@ -301,6 +605,16 @@ static void processEdmDataEvent(uShortRangeEdmEvent_t *pEvent)
     event.data.channel = pEvent->params.dataEvent.channel;
     event.data.pData = pEvent->params.dataEvent.pData;
     event.data.length = pEvent->params.dataEvent.length;
+
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+# ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA
+    uEdmChLogStart(LOG_CH_DATA, "RX (%d bytes): ", event.data.length);
+    dumpHexData(event.data.pData, event.data.length);
+    uEdmChLogEnd("");
+# else
+    uEdmChLogLine(LOG_CH_DATA, "RX (%d bytes)", event.data.length);
+# endif
+#endif
 
     uPortEventQueueSend(gEdmStream.eventQueueHandle,
                         &event, sizeof(uShortRangeEdmStreamEvent_t));
@@ -331,7 +645,13 @@ static void processEdmEvent(uShortRangeEdmEvent_t *pEvent)
             break;
 
         case U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv4:
+            processEdmConnectIpv4Event(pEvent);
+            break;
+
         case U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv6:
+            processEdmConnectIpv6Event(pEvent);
+            break;
+
         case U_SHORT_RANGE_EDM_EVENT_INVALID:
             break;
 
@@ -424,6 +744,11 @@ static int32_t edmSend(const uShortRangeEdmStreamInstance_t *pEdmStream)
                                             pEdmStream->atCommandCurrent,
                                             pPacket);
         if (sizeOrError > 0) {
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+            uEdmChLogStart(LOG_CH_AT_TX, "\"");
+            dumpAtData(pEdmStream->pAtCommandBuffer, pEdmStream->atCommandCurrent);
+            uEdmChLogEnd("\"");
+#endif
             while (written < (uint32_t) sizeOrError) {
                 written += uartWrite((void *) (pPacket + written),
                                      (uint32_t) sizeOrError - written);
@@ -570,14 +895,19 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle)
                     gEdmStream.pBtEventCallbackParam = NULL;
                     gEdmStream.pBtDataCallback = NULL;
                     gEdmStream.pBtDataCallbackParam = NULL;
-                    gEdmStream.pWifiDataCallback = NULL;
-                    gEdmStream.pWifiDataCallbackParam = NULL;
+                    gEdmStream.pIpEventCallback = NULL;
+                    gEdmStream.pIpEventCallbackParam = NULL;
+                    gEdmStream.pIpDataCallback = NULL;
+                    gEdmStream.pIpDataCallbackParam = NULL;
+                    gEdmStream.pMqttEventCallback = NULL;
+                    gEdmStream.pMqttEventCallbackParam = NULL;
+                    gEdmStream.pMqttDataCallback = NULL;
+                    gEdmStream.pMqttDataCallbackParam = NULL;
                     gEdmStream.atCommandCurrent = 0;
 
                     for (uint32_t i = 0; i < U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS; i++) {
                         gEdmStream.connections[i].channel = -1;
-                        gEdmStream.connections[i].frameSize = -1;
-                        gEdmStream.connections[i].type = U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID;
+                        gEdmStream.connections[i].type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
                     }
 
                     handleOrErrorCode = (uErrorCode_t)gEdmStream.handle;
@@ -618,16 +948,21 @@ void uShortRangeEdmStreamClose(int32_t handle)
             gEdmStream.pBtEventCallbackParam = NULL;
             gEdmStream.pBtDataCallback = NULL;
             gEdmStream.pBtDataCallbackParam = NULL;
-            gEdmStream.pWifiDataCallback = NULL;
-            gEdmStream.pWifiDataCallbackParam = NULL;
+            gEdmStream.pIpEventCallback = NULL;
+            gEdmStream.pIpEventCallbackParam = NULL;
+            gEdmStream.pIpDataCallback = NULL;
+            gEdmStream.pIpDataCallbackParam = NULL;
+            gEdmStream.pMqttEventCallback = NULL;
+            gEdmStream.pMqttEventCallbackParam = NULL;
+            gEdmStream.pMqttDataCallback = NULL;
+            gEdmStream.pMqttDataCallbackParam = NULL;
             free(gEdmStream.pAtCommandBuffer);
             gEdmStream.pAtCommandBuffer = NULL;
             free(gEdmStream.pAtResponseBuffer);
             gEdmStream.pAtResponseBuffer = NULL;
             for (uint32_t i = 0; i < U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS; i++) {
                 gEdmStream.connections[i].channel = -1;
-                gEdmStream.connections[i].frameSize = -1;
-                gEdmStream.connections[i].type = U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID;
+                gEdmStream.connections[i].type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
             }
         }
 
@@ -638,8 +973,7 @@ void uShortRangeEdmStreamClose(int32_t handle)
 
 //lint -esym(593, pParam) Suppress pParam not being freed here
 int32_t uShortRangeEdmStreamAtCallbackSet(int32_t handle,
-                                          void (*pFunction)(int32_t, uint32_t,
-                                                            void *),
+                                          uEdmAtEventCallback_t pFunction,
                                           void *pParam)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
@@ -661,10 +995,81 @@ int32_t uShortRangeEdmStreamAtCallbackSet(int32_t handle,
     return (int32_t)errorCode;
 }
 
+int32_t uShortRangeEdmStreamIpEventCallbackSet(int32_t handle,
+                                               uEdmIpConnectionStatusCallback_t pFunction,
+                                               void *pParam)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if (handle == gEdmStream.handle) {
+            if (pFunction != NULL && gEdmStream.pIpEventCallback == NULL) {
+                gEdmStream.pIpEventCallback = pFunction;
+                gEdmStream.pIpEventCallbackParam = pParam;
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else if (pFunction == NULL) {
+                gEdmStream.pIpEventCallback = NULL;
+                gEdmStream.pIpEventCallbackParam = NULL;
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return (int32_t)errorCode;
+}
+
+void uShortRangeEdmStreamIpEventCallbackRemove(int32_t handle)
+{
+    uShortRangeEdmStreamIpEventCallbackSet(handle,
+                                           (uEdmIpConnectionStatusCallback_t)NULL,
+                                           NULL);
+}
+
+int32_t uShortRangeEdmStreamMqttEventCallbackSet(int32_t handle,
+                                                 uEdmIpConnectionStatusCallback_t pFunction,
+                                                 void *pParam)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if (handle == gEdmStream.handle) {
+            if (pFunction != NULL && gEdmStream.pMqttEventCallback == NULL) {
+                gEdmStream.pMqttEventCallback = pFunction;
+                gEdmStream.pMqttEventCallbackParam = pParam;
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else if (pFunction == NULL) {
+                gEdmStream.pMqttEventCallback = NULL;
+                gEdmStream.pMqttEventCallbackParam = NULL;
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return (int32_t)errorCode;
+}
+
+void uShortRangeEdmStreamMqttEventCallbackRemove(int32_t handle)
+{
+    uShortRangeEdmStreamMqttEventCallbackSet(handle,
+                                             (uEdmIpConnectionStatusCallback_t)NULL,
+                                             NULL);
+}
+
 //lint -esym(593, pParam) Suppress pParam not being freed here
 int32_t uShortRangeEdmStreamBtEventCallbackSet(int32_t handle,
-                                               void (*pFunction)(int32_t, uint32_t, uint32_t,
-                                                                 bool, int32_t, uint8_t *, void *),
+                                               uEdmBtConnectionStatusCallback_t pFunction,
                                                void *pParam)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
@@ -693,10 +1098,16 @@ int32_t uShortRangeEdmStreamBtEventCallbackSet(int32_t handle,
     return (int32_t)errorCode;
 }
 
+void uShortRangeEdmStreamBtEventCallbackRemove(int32_t handle)
+{
+    uShortRangeEdmStreamBtEventCallbackSet(handle,
+                                           (uEdmBtConnectionStatusCallback_t)NULL,
+                                           NULL);
+}
+
 int32_t uShortRangeEdmStreamDataEventCallbackSet(int32_t handle,
-                                                 int32_t type,
-                                                 void (*pFunction)(int32_t, int32_t, int32_t,
-                                                                   char *, void *),
+                                                 uShortRangeConnectionType_t type,
+                                                 uEdmDataEventCallback_t pFunction,
                                                  void *pParam)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
@@ -709,7 +1120,7 @@ int32_t uShortRangeEdmStreamDataEventCallbackSet(int32_t handle,
         if (handle == gEdmStream.handle) {
             switch (type) {
 
-                case U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT:
+                case U_SHORT_RANGE_CONNECTION_TYPE_BT:
                     if (pFunction != NULL && gEdmStream.pBtDataCallback == NULL) {
                         gEdmStream.pBtDataCallback = pFunction;
                         gEdmStream.pBtDataCallbackParam = pParam;
@@ -721,14 +1132,26 @@ int32_t uShortRangeEdmStreamDataEventCallbackSet(int32_t handle,
                     }
                     break;
 
-                case U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_WIFI:
-                    if (pFunction != NULL && gEdmStream.pWifiDataCallback == NULL) {
-                        gEdmStream.pWifiDataCallback = pFunction;
-                        gEdmStream.pWifiDataCallbackParam = pParam;
+                case U_SHORT_RANGE_CONNECTION_TYPE_IP:
+                    if (pFunction != NULL && gEdmStream.pIpDataCallback == NULL) {
+                        gEdmStream.pIpDataCallback = pFunction;
+                        gEdmStream.pIpDataCallbackParam = pParam;
                         errorCode = U_ERROR_COMMON_SUCCESS;
                     } else if (pFunction == NULL) {
-                        gEdmStream.pWifiDataCallback = NULL;
-                        gEdmStream.pWifiDataCallbackParam = NULL;
+                        gEdmStream.pIpDataCallback = NULL;
+                        gEdmStream.pIpDataCallbackParam = NULL;
+                        errorCode = U_ERROR_COMMON_SUCCESS;
+                    }
+                    break;
+
+                case U_SHORT_RANGE_CONNECTION_TYPE_MQTT:
+                    if (pFunction != NULL && gEdmStream.pMqttDataCallback == NULL) {
+                        gEdmStream.pMqttDataCallback = pFunction;
+                        gEdmStream.pMqttDataCallbackParam = pParam;
+                        errorCode = U_ERROR_COMMON_SUCCESS;
+                    } else if (pFunction == NULL) {
+                        gEdmStream.pMqttDataCallback = NULL;
+                        gEdmStream.pMqttDataCallbackParam = NULL;
                         errorCode = U_ERROR_COMMON_SUCCESS;
                     }
                     break;
@@ -742,6 +1165,15 @@ int32_t uShortRangeEdmStreamDataEventCallbackSet(int32_t handle,
     }
 
     return (int32_t)errorCode;
+}
+
+void uShortRangeEdmStreamDataEventCallbackRemove(int32_t handle,
+                                                 uShortRangeConnectionType_t type)
+{
+    uShortRangeEdmStreamDataEventCallbackSet(handle,
+                                             type,
+                                             (uEdmDataEventCallback_t)NULL,
+                                             NULL);
 }
 
 void uShortRangeEdmStreamSetAtHandle(int32_t handle, void *atHandle)
@@ -806,6 +1238,7 @@ int32_t uShortRangeEdmStreamAtRead(int32_t handle, void *pBuffer,
                 if (gEdmStream.atResponseRead >= gEdmStream.atResponseLength) {
                     gEdmStream.atResponseLength = 0;
                     gEdmStream.atResponseRead = 0;
+                    uEdmChLogLine(LOG_CH_AT_RX, "processed");
                     processedEvent();
                 }
             }
@@ -839,11 +1272,22 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
                 int64_t endTime;
 
                 do {
-                    if (((int32_t)sizeBytes - sizeOrErrorCode) > pConnection->frameSize) {
-                        send = pConnection->frameSize;
-                    } else {
-                        send = ((int32_t)sizeBytes - sizeOrErrorCode);
+                    send = ((int32_t)sizeBytes - sizeOrErrorCode);
+                    if (pConnection->type == U_SHORT_RANGE_CONNECTION_TYPE_BT) {
+                        if (((int32_t)sizeBytes - sizeOrErrorCode) > pConnection->bt.frameSize) {
+                            send = pConnection->bt.frameSize;
+                        }
                     }
+
+#ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
+# ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA
+                    uEdmChLogStart(LOG_CH_DATA, "TX (%d bytes): ", send);
+                    dumpHexData(((const char *)pBuffer + sizeOrErrorCode), send);
+                    uEdmChLogEnd("");
+# else
+                    uEdmChLogLine(LOG_CH_DATA, "TX (%d bytes)", send);
+# endif
+#endif
 
                     (void)uShortRangeEdmZeroCopyHeadData((uint8_t)channel, send, (char *)&head[0]);
                     sent = uartWrite((void *)&head[0], U_SHORT_RANGE_EDM_DATA_HEAD_SIZE);
@@ -964,6 +1408,55 @@ int32_t uShortRangeEdmStreamAtGetReceiveSize(int32_t handle)
     }
 
     return sizeOrErrorCode;
+}
+
+int32_t uShortRangeEdmStreamFindIpConnection(int32_t handle,
+                                             const uShortRangeConnectDataIp_t *pIpConnection)
+{
+    // IMPORTANT NOTE:
+    // Currently this function only search for local port + protocol.
+    // This is fine as long as we only support outgoing sockets.
+    // The reason for this limitation is to save RAM.
+    // If we would store all IP data for each connection that would
+    // consume >400 bytes for a table of 10 entries due to IPv6.
+    // When server sockets are added this needs to be addressed.
+    // One solution would be to use a connection hash value.
+
+    uShortRangeEdmStreamConnections_t *pConnection = NULL;
+
+    if ((handle != -1) && (handle == gEdmStream.handle)) {
+        uint16_t localPort;
+        uShortRangeIpProtocol_t protocol;
+
+        switch (pIpConnection->type) {
+            case U_SHORT_RANGE_CONNECTION_IPv6:
+                localPort = pIpConnection->ipv6.localPort;
+                protocol =  pIpConnection->ipv6.protocol;
+                break;
+            case U_SHORT_RANGE_CONNECTION_IPv4:
+            default:
+                localPort = pIpConnection->ipv4.localPort;
+                protocol =  pIpConnection->ipv4.protocol;
+                break;
+        }
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        for (uint32_t i = 0; i < U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS; i++) {
+            uShortRangeEdmStreamConnections_t *pIter = &gEdmStream.connections[i];
+            if ((pIter->type == U_SHORT_RANGE_CONNECTION_TYPE_IP) ||
+                (pIter->type == U_SHORT_RANGE_CONNECTION_TYPE_MQTT)) {
+                if ((pIter->ip.localPort == localPort) && (pIter->ip.protocol == protocol)) {
+                    pConnection = &gEdmStream.connections[i];
+                    break;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return pConnection ? pConnection->channel : (int)U_ERROR_COMMON_UNKNOWN;
 }
 
 // End of file

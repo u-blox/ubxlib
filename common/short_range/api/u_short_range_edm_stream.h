@@ -47,11 +47,27 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-typedef enum {
-    U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT,
-    U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_WIFI,
-    U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_INVALID
-} uShortRangeEdmStreamConnectionType_t;
+typedef void (*uEdmAtEventCallback_t)(int32_t edmStreamHandle,
+                                      uint32_t eventBitmask,
+                                      void *pCallbackParameter);
+
+typedef void (*uEdmIpConnectionStatusCallback_t)(int32_t edmStreamHandle,
+                                                 int32_t edmChannel,
+                                                 uShortRangeConnectionEventType_t eventType,
+                                                 const uShortRangeConnectDataIp_t *pConnectData,
+                                                 void *pCallbackParameter);
+
+typedef void (*uEdmBtConnectionStatusCallback_t)(int32_t edmStreamHandle,
+                                                 int32_t edmChannel,
+                                                 uShortRangeConnectionEventType_t eventType,
+                                                 const uShortRangeConnectDataBt_t *pConnectData,
+                                                 void *pCallbackParameter);
+
+typedef void (*uEdmDataEventCallback_t)(int32_t edmStreamHandle,
+                                        int32_t edmChannel,
+                                        int32_t length,
+                                        char *pData,
+                                        void *pCallbackParameter);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -149,8 +165,7 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
  * pFunction will be called asynchronously in its own task.
  *
  * @param handle           the handle of the stream instance.
- * @param pFunction        the function to call, cannot be
- *                         NULL.
+ * @param pFunction        the function to call.
  * @param pParam           a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
@@ -159,8 +174,7 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
  *                         code.
  */
 int32_t uShortRangeEdmStreamAtCallbackSet(int32_t handle,
-                                          void (*pFunction)(int32_t, uint32_t,
-                                                            void *),
+                                          uEdmAtEventCallback_t pFunction,
                                           void *pParam);
 
 /** Remove an AT event callback.
@@ -170,37 +184,34 @@ int32_t uShortRangeEdmStreamAtCallbackSet(int32_t handle,
  */
 void uShortRangeEdmStreamAtCallbackRemove(int32_t handle);
 
-/** Set a callback to be called when an wifi event occurs.
+/** Set a callback to be called when an IP connection event occurs.
  * pFunction will be called asynchronously in its own task.
  *
  * @param handle           the handle of the stream instance.
- * @param pFunction        the function to call, cannot be
- *                         NULL.
+ * @param pFunction        the function to call.
  * @param pParam           a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
  * @return                 zero on success else negative error
  *                         code.
  */
-int32_t uShortRangeEdmStreamWifiEventCallbackSet(int32_t handle,
-                                                 void (*pFunction)(int32_t, uint32_t,
-                                                                   void *),
-                                                 void *pParam);
+int32_t uShortRangeEdmStreamIpEventCallbackSet(int32_t handle,
+                                               uEdmIpConnectionStatusCallback_t pFunction,
+                                               void *pParam);
 
-/** Remove a wifi event callback.
+/** Remove a IP event callback.
  *
  * @param handle  the handle of the stream instance for
  *                which the callback is to be removed.
  */
-void uShortRangeEdmStreamWifiEventCallbackRemove(int32_t handle);
+void uShortRangeEdmStreamIpEventCallbackRemove(int32_t handle);
 
 
-/** Set a callback to be called when a bt event occurs.
+/** Set a callback to be called when a Bluetooth event occurs.
  * pFunction will be called asynchronously in its own task.
  *
  * @param handle           the handle of the stream instance.
- * @param pFunction        the function to call, cannot be
- *                         NULL.
+ * @param pFunction        the function to call.
  * @param pParam           a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
@@ -209,24 +220,46 @@ void uShortRangeEdmStreamWifiEventCallbackRemove(int32_t handle);
  *                         code.
  */
 int32_t uShortRangeEdmStreamBtEventCallbackSet(int32_t handle,
-                                               void (*pFunction)(int32_t, uint32_t, uint32_t,
-                                                                 bool, int32_t, uint8_t *, void *),
+                                               uEdmBtConnectionStatusCallback_t pFunction,
                                                void *pParam);
 
-/** Remove a bt event callback.
+/** Remove a Bluetooth event callback.
  *
  * @param handle  the handle of the stream instance for
  *                which the callback is to be removed.
  */
 void uShortRangeEdmStreamBtEventCallbackRemove(int32_t handle);
 
-/** Set a callback to be called when data is available.
+/** Set a callback to be called when a MQTT event occurs.
  * pFunction will be called asynchronously in its own task.
  *
  * @param handle           the handle of the stream instance.
+ * @param pFunction        the function to call.
+ * @param pParam           a parameter which will be passed
+ *                         to pFunction as its last parameter
+ *                         when it is called.
+ *
+ * @return                 zero on success else negative error
+ *                         code.
+ */
+int32_t uShortRangeEdmStreamMqttEventCallbackSet(int32_t handle,
+                                                 uEdmIpConnectionStatusCallback_t pFunction,
+                                                 void *pParam);
+
+/** Remove a MQTT event callback.
+ *
+ * @param handle  the handle of the stream instance for
+ *                which the callback is to be removed.
+ */
+void uShortRangeEdmStreamMqttEventCallbackRemove(int32_t handle);
+
+/** Set a callback to be called when data is available.
+ * pFunction will be called asynchronously in its own task.
+ * There is a separate callback function for each connection type.
+ *
+ * @param handle           the handle of the stream instance.
  * @param type             the type of connection.
- * @param pFunction        the function to call, cannot be
- *                         NULL.
+ * @param pFunction        the function to call.
  * @param pParam           a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
@@ -235,17 +268,19 @@ void uShortRangeEdmStreamBtEventCallbackRemove(int32_t handle);
  *                         code.
  */
 int32_t uShortRangeEdmStreamDataEventCallbackSet(int32_t handle,
-                                                 int32_t type,
-                                                 void (*pFunction)(int32_t, int32_t, int32_t,
-                                                                   char *, void *),
+                                                 uShortRangeConnectionType_t type,
+                                                 uEdmDataEventCallback_t pFunction,
                                                  void *pParam);
 
 /** Remove a data callback.
  *
  * @param handle  the handle of the stream instance for
  *                which the callback is to be removed.
+ * @param type    the connection type for which the callback
+ *                is to be removed.
  */
-void uShortRangeEdmStreamDataCallbackRemove(int32_t handle);
+void uShortRangeEdmStreamDataEventCallbackRemove(int32_t handle,
+                                                 uShortRangeConnectionType_t type);
 
 
 /** Send an event to the callback.  This allows the user to
@@ -283,6 +318,15 @@ int32_t uPortShortRangeEdmStremAtEventStackMinFree(int32_t handle);
  *                callback for this stream, else false.
  */
 bool uShortRangeEdmStreamAtEventIsCallback(int32_t handle);
+
+/** Find EDM channel for an IP connection.
+ *
+ * @param handle  the handle of the edm stream instance.
+ * @param pIpConnection  the IP connection to find.
+ * @return        EDM channel if found else negative value.
+ */
+int32_t uShortRangeEdmStreamFindIpConnection(int32_t handle,
+                                             const uShortRangeConnectDataIp_t *pIpConnection);
 
 #ifdef __cplusplus
 }

@@ -110,12 +110,16 @@ static void deleteSpsChannel(const uShortRangePrivateInstance_t *pInstance,
                              int32_t channel, uBleDataSpsChannel_t **ppListHead);
 static void deleteAllSpsChannels(uBleDataSpsChannel_t **ppListHead) ;
 static void spsEventCallback(uAtClientHandle_t atHandle, void *pParameter);
-//lint -e{818} suppress "address could be declared as pointing to const":
-// need to follow function signature
-static void btEdmConnectionCallback(int32_t streamHandle, uint32_t type,
-                                    uint32_t channel, bool ble, int32_t mtu,
-                                    uint8_t *address, void *pParam);
-static void atConnectionEvent(int32_t connHandle, int32_t type, void *pParameter);
+static void btEdmConnectionCallback(int32_t edmStreamHandle,
+                                    int32_t edmChannel,
+                                    uShortRangeConnectionEventType_t eventType,
+                                    const uShortRangeConnectDataBt_t *pConnectData,
+                                    void *pCallbackParameter);
+static void atConnectionEvent(int32_t shortRangeHandle,
+                              int32_t connHandle,
+                              uShortRangeConnectionEventType_t eventType,
+                              uShortRangeConnectDataBt_t *pConnectData,
+                              void *pCallbackParameter);
 static void dataCallback(int32_t handle, int32_t channel, int32_t length,
                          char *pData, void *pParameters);
 static void onBleDataEvent(void *pParam, size_t eventSize);
@@ -276,12 +280,12 @@ static void spsEventCallback(uAtClientHandle_t atHandle,
             // We have to create the SPS channel info before calling the
             // callback since it will assume that e.g. the rx buffer exists,
             // for the same reason we have to delete it after calling the callback
-            if (pStatus->type == U_SHORT_RANGE_EVENT_CONNECTED) {
+            if (pStatus->type == (int32_t)U_SHORT_RANGE_EVENT_CONNECTED) {
                 createSpsChannel(pStatus->pInstance, pStatus->dataChannel, &gpChannelList);
             }
             pStatus->pCallback(pStatus->connHandle, pStatus->address, pStatus->type,
                                pStatus->dataChannel, pStatus->mtu, pStatus->pCallbackParameter);
-            if (pStatus->type == U_SHORT_RANGE_EVENT_DISCONNECTED) {
+            if (pStatus->type == (int32_t)U_SHORT_RANGE_EVENT_DISCONNECTED) {
                 deleteSpsChannel(pStatus->pInstance, pStatus->dataChannel, &gpChannelList);
             }
         }
@@ -293,16 +297,15 @@ static void spsEventCallback(uAtClientHandle_t atHandle,
     }
 }
 
-//lint -e{818} suppress "address could be declared as pointing to const":
-// need to follow function signature
-static void btEdmConnectionCallback(int32_t streamHandle, uint32_t type,
-                                    uint32_t channel, bool ble, int32_t mtu,
-                                    uint8_t *address, void *pParam)
+static void btEdmConnectionCallback(int32_t edmStreamHandle,
+                                    int32_t edmChannel,
+                                    uShortRangeConnectionEventType_t eventType,
+                                    const uShortRangeConnectDataBt_t *pConnectData,
+                                    void *pCallbackParameter)
 {
-    (void) ble;
-    (void) streamHandle;
-    uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pParam;
-    // Type 0 == connected
+    (void) edmStreamHandle;
+    uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pCallbackParameter;
+
     if (pInstance != NULL && pInstance->atHandle != NULL) {
         uBleDataSpsConnection_t *pStatus = (uBleDataSpsConnection_t *)
                                            pInstance->pPendingSpsConnectionEvent;
@@ -317,10 +320,13 @@ static void btEdmConnectionCallback(int32_t streamHandle, uint32_t type,
 
         if (pStatus != NULL) {
             pStatus->pInstance = pInstance;
-            addrArrayToString(address, U_PORT_BT_LE_ADDRESS_TYPE_UNKNOWN, false, pStatus->address);
-            pStatus->type = (int32_t) type;
-            pStatus->dataChannel = (int32_t) channel;
-            pStatus->mtu = mtu;
+            if (eventType == U_SHORT_RANGE_EVENT_CONNECTED) {
+                pStatus->mtu = pConnectData->framesize;
+                addrArrayToString(pConnectData->address, U_PORT_BT_LE_ADDRESS_TYPE_UNKNOWN, false,
+                                  pStatus->address);
+            }
+            pStatus->type = (int32_t)eventType;
+            pStatus->dataChannel = edmChannel;
             pStatus->pCallback = pInstance->pSpsConnectionCallback;
             pStatus->pCallbackParameter = pInstance->pSpsConnectionCallbackParameter;
         }
@@ -332,10 +338,16 @@ static void btEdmConnectionCallback(int32_t streamHandle, uint32_t type,
     }
 }
 
-static void atConnectionEvent(int32_t connHandle, int32_t type, void *pParameter)
+static void atConnectionEvent(int32_t shortRangeHandle,
+                              int32_t connHandle,
+                              uShortRangeConnectionEventType_t eventType,
+                              uShortRangeConnectDataBt_t *pConnectData,
+                              void *pCallbackParameter)
 {
-    (void)type;
-    uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pParameter;
+    (void)shortRangeHandle;
+    (void)pConnectData;
+    (void)eventType;
+    uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pCallbackParameter;
     bool send = false;
 
     if (pInstance->pSpsConnectionCallback != NULL) {
@@ -433,8 +445,8 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
                 }
 
                 if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                    errorCode = uShortRangeConnectionStatusCallback(bleHandle, U_SHORT_RANGE_CONNECTION_TYPE_BT,
-                                                                    atConnectionEvent, (void *) pInstance);
+                    errorCode = uShortRangeSetBtConnectionStatusCallback(bleHandle, atConnectionEvent,
+                                                                         (void *) pInstance);
                 }
 
                 if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
@@ -454,7 +466,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
             if (cleanUp) {
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLC:");
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLD:");
-                uShortRangeConnectionStatusCallback(bleHandle, U_SHORT_RANGE_CONNECTION_TYPE_BT, NULL, NULL);
+                uShortRangeSetBtConnectionStatusCallback(bleHandle, NULL, NULL);
                 uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, NULL, NULL);
                 pInstance->pSpsConnectionCallback = NULL;
                 pInstance->pSpsConnectionCallbackParameter = NULL;
@@ -609,13 +621,15 @@ int32_t uBleDataSetCallbackData(int32_t bleHandle,
                 pInstance->pBtDataCallback = pCallback;
                 pInstance->pBtDataCallbackParameter = pCallbackParameter;
 
-                errorCode = uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle, 0, dataCallback,
+                errorCode = uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle,
+                                                                     U_SHORT_RANGE_CONNECTION_TYPE_BT, dataCallback,
                                                                      pInstance);
             } else if (pInstance->pBtDataCallback != NULL && pCallback == NULL) {
                 pInstance->pBtDataCallback = NULL;
                 pInstance->pBtDataCallbackParameter = NULL;
 
-                errorCode = uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle, 0, NULL, NULL);
+                errorCode = uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle,
+                                                                     U_SHORT_RANGE_CONNECTION_TYPE_BT, NULL, NULL);
             }
         }
 
@@ -654,7 +668,7 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
 
                 errorCode =
                     uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle,
-                                                             (int32_t)U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT,
+                                                             U_SHORT_RANGE_CONNECTION_TYPE_BT,
                                                              dataCallback, pInstance);
             } else if (pInstance->pBtDataAvailableCallback != NULL && pCallback == NULL) {
                 pInstance->pBtDataAvailableCallback = NULL;
@@ -662,7 +676,7 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
 
                 errorCode =
                     uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle,
-                                                             (int32_t)U_SHORT_RANGE_EDM_STREAM_CONNECTION_TYPE_BT,
+                                                             U_SHORT_RANGE_CONNECTION_TYPE_BT,
                                                              NULL, NULL);
                 if (gBleDataEventQueue != (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
                     uPortEventQueueClose(gBleDataEventQueue);

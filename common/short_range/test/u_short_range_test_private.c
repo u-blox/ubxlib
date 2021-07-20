@@ -45,6 +45,7 @@
 
 #include "u_at_client.h"
 
+//lint -efile(766, u_ble_data.h)
 #include "u_ble_data.h"
 
 #include "u_short_range_module_type.h"

@@ -45,15 +45,15 @@
 #if defined U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 #include "u_port_os.h"
 #endif
+#include "u_at_client.h"
+#include "u_short_range_module_type.h"
+#include "u_short_range.h"
 #if (U_CFG_TEST_UART_A >= 0) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE)
 #include "u_port_uart.h"
 #include "u_port_debug.h"
 #include "u_short_range_edm_stream.h"
 #endif
-#include "u_at_client.h"
 
-#include "u_short_range_module_type.h"
-#include "u_short_range.h"
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 #include "u_ble_data.h"
 #include "u_short_range_private.h"

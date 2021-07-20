@@ -45,9 +45,7 @@
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
-#ifndef U_CFG_BLE_MODULE_INTERNAL
 #include "u_short_range.h"
-#endif
 #include "u_short_range_edm_stream.h"
 
 #include "u_ble_module_type.h"

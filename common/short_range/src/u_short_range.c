@@ -46,8 +46,6 @@
 
 #include "u_at_client.h"
 
-#include "u_ble_data.h"
-
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
@@ -195,6 +193,126 @@ static void dataCallback(int32_t streamHandle, uint32_t eventBitmask,
     }
 }
 
+static int32_t parseUudpcProtocol(int32_t value, uShortRangeIpProtocol_t *pProtocol)
+{
+    switch (value) {
+        case 0:
+            *pProtocol = U_SHORT_RANGE_IP_PROTOCOL_TCP;
+            break;
+        case 1:
+            *pProtocol = U_SHORT_RANGE_IP_PROTOCOL_UDP;
+            break;
+        case 6:
+            *pProtocol = U_SHORT_RANGE_IP_PROTOCOL_MQTT;
+            break;
+        default:
+            return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
+}
+
+static int32_t parseUudpcProfile(int32_t value, uShortRangeBtProfile_t *pProfile)
+{
+    switch (value) {
+        case 1:
+            *pProfile = U_SHORT_RANGE_BT_PROFILE_SPP;
+            break;
+        case 2:
+            *pProfile = U_SHORT_RANGE_BT_PROFILE_DUN;
+            break;
+        case 4:
+            *pProfile = U_SHORT_RANGE_BT_PROFILE_SPS;
+            break;
+        default:
+            return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
+}
+
+static int32_t parseBdAddr(const char *pStr, uint8_t *pDstAddr)
+{
+    // Parse string: "01A0F7101C08p"
+
+    // Basic validation
+    if ((strlen(pStr) != 13) || ((pStr[12] != 'r') && (pStr[12] != 'p'))) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+
+    for (int i = 0; i < U_SHORT_RANGE_BT_ADDRESS_LENGTH; i++) {
+        char buf[3];
+//lint -save -e679
+        memcpy(&buf[0], &pStr[i * 2], 2);
+//lint -restore
+        buf[2] = 0;
+        pDstAddr[i] = (uint8_t)strtol(buf, NULL, 16);
+    }
+
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
+}
+
+
+static int32_t parseIpv4Addr(char *pStr, uint8_t *pDstIp)
+{
+    // Parse string: "192.168.0.1"
+    char *end = pStr + strlen(pStr);
+    for (int i = 0; i < 4; i++) {
+        if (pStr >= end) {
+            return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+        }
+        char *tok = strchr(pStr, '.');
+        if (i < 3) {
+            if (tok == NULL) {
+                // Missing a '.'
+                return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+            }
+            tok[0] = 0;
+            pDstIp[i] = (uint8_t)atoi(pStr);
+            pStr = &tok[1];
+        } else {
+            pDstIp[i] = (uint8_t)atoi(pStr);
+        }
+    }
+
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
+}
+
+static int32_t parseIpv6Addr(char *pStr, uint8_t *pDstIp)
+{
+    // Parse string: "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"
+
+    // Basic validation
+    if ((strlen(pStr) != 41) || (pStr[0] != '[') || (pStr[40] != ']')) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+    char *ptr = &pStr[1];
+    for (int i = 0; i < 8; i++) {
+        // Validate separator
+        if ((i < 7) && (ptr[4] != ':')) {
+            return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+        }
+        ptr[4] = 0;
+        uint32_t value = (uint32_t)strtol(ptr, NULL, 16);
+//lint -save -e679
+        pDstIp[i * 2] = (uint8_t)(value >> 8);
+        pDstIp[(i * 2) + 1] = (uint8_t)(value & 0xFF);
+//lint -restore
+        ptr += 5;
+    }
+
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
+}
+
+static int32_t parseUint16(int32_t value, uint16_t *pDst)
+{
+    if ((value > 0) && (value <= 0xFFFF)) {
+        *pDst = (uint16_t)value;
+        return (int32_t)U_ERROR_COMMON_SUCCESS;
+    }
+    return (int32_t)U_ERROR_COMMON_UNKNOWN;
+}
+
+
 //+UUDPC:<peer_handle>,<type>,<profile>,<address>,<frame_size>
 //lint -esym(818, pParameter) Suppress pParameter could be const, need to
 // follow prototype
@@ -209,25 +327,109 @@ static void UUDPC_urc(uAtClientHandle_t atHandle,
     type = uAtClientReadInt(atHandle);
 
     int32_t id = findFreeConnection(pInstance, -1);
-
-    if (id != -1) {
-        pInstance->connections[id].connHandle = connHandle;
-        pInstance->connections[id].type = type;
+    if (id < 0) {
+        uPortLog("U_SHORT_RANGE: Out of connection entries\n");
+        return;
     }
 
-    if (type == (int32_t)U_SHORT_RANGE_UUDPC_TYPE_BT) {
+    pInstance->connections[id].connHandle = connHandle;
+    // The type will be filled in next section, but default to "invalid"
+    pInstance->connections[id].type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
+
+    if (type == U_SHORT_RANGE_UUDPC_TYPE_BT) {
+        int32_t err = 0;
         char address[U_SHORT_RANGE_BT_ADDRESS_SIZE];
-        (void)uAtClientReadInt(atHandle);
+
+        pInstance->connections[id].type = U_SHORT_RANGE_CONNECTION_TYPE_BT;
+
+        int profile = uAtClientReadInt(atHandle);
         (void)uAtClientReadString(atHandle, address, U_SHORT_RANGE_BT_ADDRESS_SIZE, false);
-        (void)uAtClientReadInt(atHandle);
+        int frameSize = uAtClientReadInt(atHandle);
 
         if (pInstance->pBtConnectionStatusCallback != NULL) {
-            pInstance->pBtConnectionStatusCallback(connHandle, U_SHORT_RANGE_EVENT_CONNECTED,
-                                                   pInstance->pBtConnectionStatusCallbackParameter);
+            uShortRangeConnectDataBt_t conData;
+            err |= parseUint16(frameSize, &conData.framesize);
+            err |= parseBdAddr(address, conData.address);
+            err |= parseUudpcProfile(profile, &conData.profile);
+            if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                pInstance->pBtConnectionStatusCallback(pInstance->handle, connHandle,
+                                                       U_SHORT_RANGE_EVENT_CONNECTED,
+                                                       &conData,
+                                                       pInstance->pBtConnectionStatusCallbackParameter);
+            }
         }
     } else if (type == U_SHORT_RANGE_UUDPC_TYPE_IPv4 ||
                type == U_SHORT_RANGE_UUDPC_TYPE_IPv6) {
+        int32_t err = 0;
+        char buffer[64];
+        uShortRangeConnectDataIp_t conData;
+        uShortRangeIpProtocol_t protocol = U_SHORT_RANGE_IP_PROTOCOL_TCP; // Keep compiler happy
 
+        if (type == U_SHORT_RANGE_UUDPC_TYPE_IPv4) {
+            // Parse remaining IPv4 data:
+            //  <protocol>,<local_ip>,<local_port>,<remote_ip>,<remote_port>
+            // Example: "0,192.168.0.40,54282,142.250.74.100,80"
+            conData.type = U_SHORT_RANGE_CONNECTION_IPv4;
+            // Protocol
+            int value = uAtClientReadInt(atHandle);
+            err |= parseUudpcProtocol(value, &protocol);
+            conData.ipv4.protocol = protocol;
+            // Local IP
+            err |= uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+            err |= parseIpv4Addr(buffer, conData.ipv4.localAddress);
+            // Local port
+            value = uAtClientReadInt(atHandle);
+            err |= parseUint16(value, &conData.ipv4.localPort);
+            // Remote IP
+            err |= uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+            err |= parseIpv4Addr(buffer, conData.ipv4.remoteAddress);
+            // Remote port
+            value = uAtClientReadInt(atHandle);
+            err |= parseUint16(value, &conData.ipv4.remotePort);
+        } else {
+            // Parse remaining IPv6 data:
+            //  <protocol>,<local_ip>,<local_port>,<remote_ip>,<remote_port>
+            // Example: "0,[2001:0db8:85a3:0000:0000:8a2e:0370:7334],54282,[2001:0db8:85a3:0000:0000:8a2e:0370:7334],80"
+            conData.type = U_SHORT_RANGE_CONNECTION_IPv6;
+            int value = uAtClientReadInt(atHandle);
+            err |= parseUudpcProtocol(value, &protocol);
+            conData.ipv6.protocol = protocol;
+            // Local IP
+            err |= uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+            err |= parseIpv6Addr(buffer, conData.ipv6.localAddress);
+            // Local port
+            value = uAtClientReadInt(atHandle);
+            err |= parseUint16(value, &conData.ipv6.localPort);
+            // Remote IP
+            err |= uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+            err |= parseIpv6Addr(buffer, conData.ipv6.remoteAddress);
+            // Remote port
+            value = uAtClientReadInt(atHandle);
+            err |= parseUint16(value, &conData.ipv6.remotePort);
+        }
+
+        if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
+            // There was an error in the parsing
+            uPortLog("U_SHORT_RANGE: Unable to parse UUDPC URC\n");
+            return;
+        }
+
+        if ((protocol == U_SHORT_RANGE_IP_PROTOCOL_TCP) ||
+            (protocol == U_SHORT_RANGE_IP_PROTOCOL_UDP)) {
+            pInstance->connections[id].type = U_SHORT_RANGE_CONNECTION_TYPE_IP;
+            if (pInstance->pIpConnectionStatusCallback != NULL) {
+                pInstance->pIpConnectionStatusCallback(pInstance->handle, connHandle,
+                                                       U_SHORT_RANGE_EVENT_CONNECTED, &conData,
+                                                       pInstance->pIpConnectionStatusCallbackParameter);
+            }
+        } else if (protocol == U_SHORT_RANGE_IP_PROTOCOL_MQTT) {
+            pInstance->connections[id].type = U_SHORT_RANGE_CONNECTION_TYPE_MQTT;
+            if (pInstance->pMqttConnectionStatusCallback != NULL) {
+                pInstance->pMqttConnectionStatusCallback(pInstance->handle, connHandle,
+                                                         U_SHORT_RANGE_EVENT_CONNECTED, &conData,
+                                                         pInstance->pMqttConnectionStatusCallbackParameter);
+            }
+        }
     }
 }
 
@@ -244,18 +446,37 @@ static void UUDPD_urc(uAtClientHandle_t atHandle,
     int32_t id = findFreeConnection(pInstance, connHandle);
 
     if (id != -1) {
-        if (pInstance->connections[id].type == (int32_t)U_SHORT_RANGE_UUDPC_TYPE_BT) {
-            if (pInstance->pBtConnectionStatusCallback != NULL) {
-                pInstance->pBtConnectionStatusCallback(connHandle, U_SHORT_RANGE_EVENT_DISCONNECTED,
-                                                       pInstance->pBtConnectionStatusCallbackParameter);
-            }
-        } else if (pInstance->connections[id].type == U_SHORT_RANGE_UUDPC_TYPE_IPv4 ||
-                   pInstance->connections[id].type == U_SHORT_RANGE_UUDPC_TYPE_IPv6) {
+        switch (pInstance->connections[id].type) {
+            case U_SHORT_RANGE_CONNECTION_TYPE_BT:
+                if (pInstance->pBtConnectionStatusCallback != NULL) {
+                    pInstance->pBtConnectionStatusCallback(pInstance->handle, connHandle,
+                                                           U_SHORT_RANGE_EVENT_DISCONNECTED, NULL,
+                                                           pInstance->pBtConnectionStatusCallbackParameter);
+                }
+                break;
 
+            case U_SHORT_RANGE_CONNECTION_TYPE_IP:
+                if (pInstance->pIpConnectionStatusCallback != NULL) {
+                    pInstance->pIpConnectionStatusCallback(pInstance->handle, connHandle,
+                                                           U_SHORT_RANGE_EVENT_DISCONNECTED, NULL,
+                                                           pInstance->pIpConnectionStatusCallbackParameter);
+                }
+                break;
+
+            case U_SHORT_RANGE_CONNECTION_TYPE_MQTT:
+                if (pInstance->pMqttConnectionStatusCallback != NULL) {
+                    pInstance->pMqttConnectionStatusCallback(pInstance->handle, connHandle,
+                                                             U_SHORT_RANGE_EVENT_DISCONNECTED, NULL,
+                                                             pInstance->pMqttConnectionStatusCallbackParameter);
+                }
+                break;
+
+            default:
+                break;
         }
 
         pInstance->connections[id].connHandle = -1;
-        pInstance->connections[id].type = -1;
+        pInstance->connections[id].type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
     }
 }
 
@@ -330,6 +551,28 @@ static uShortRangeModuleType_t getModule(const uAtClientHandle_t atHandle)
     }
 
     return module;
+}
+
+// This function is called whenever a connection callback is set or cleared
+// The function will check if we need to set or clear the URC connection handlers
+static void configureConnectionUrcHandlers(uShortRangePrivateInstance_t *pInstance)
+{
+    bool connectionCallbackSet =
+        ((pInstance->pBtConnectionStatusCallback != NULL) ||
+         (pInstance->pIpConnectionStatusCallback != NULL) ||
+         (pInstance->pMqttConnectionStatusCallback != NULL));
+
+    if (connectionCallbackSet && !pInstance->urcConHandlerSet) {
+        uAtClientSetUrcHandler(pInstance->atHandle, "+UUDPC:",
+                               UUDPC_urc, pInstance);
+        uAtClientSetUrcHandler(pInstance->atHandle, "+UUDPD:",
+                               UUDPD_urc, pInstance);
+        pInstance->urcConHandlerSet = true;
+    } else if (!connectionCallbackSet && pInstance->urcConHandlerSet) {
+        uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUDPC:");
+        uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUDPD:");
+        pInstance->urcConHandlerSet = false;
+    }
 }
 
 /* ----------------------------------------------------------------
@@ -420,12 +663,13 @@ int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
 
                 for (int32_t i = 0; i < U_SHORT_RANGE_MAX_CONNECTIONS; i++) {
                     pInstance->connections[i].connHandle = -1;
-                    pInstance->connections[i].type = -1;
+                    pInstance->connections[i].type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
                 }
 
                 pInstance->atHandle = atHandle;
                 pInstance->mode = U_SHORT_RANGE_MODE_COMMAND;
                 pInstance->startTimeMs = 500;
+                pInstance->urcConHandlerSet = false;
 
                 streamHandle = uAtClientStreamGet(atHandle, &streamType);
                 pInstance->streamHandle = streamHandle;
@@ -468,9 +712,9 @@ void uShortRangeRemove(int32_t shortRangeHandle)
     }
 }
 
-int32_t uShortRangeConnectionStatusCallback(int32_t shortRangeHandle, int32_t type,
-                                            void (*pCallback) (int32_t, int32_t, void *),
-                                            void *pCallbackParameter)
+int32_t uShortRangeSetIpConnectionStatusCallback(int32_t shortRangeHandle,
+                                                 uShortRangeIpConnectionStatusCallback_t pCallback,
+                                                 void *pCallbackParameter)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
@@ -478,44 +722,66 @@ int32_t uShortRangeConnectionStatusCallback(int32_t shortRangeHandle, int32_t ty
     if (gUShortRangePrivateMutex != NULL) {
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL && pCallback != NULL &&
-            (type >= U_SHORT_RANGE_CONNECTION_TYPE_BT &&
-             type <= U_SHORT_RANGE_CONNECTION_TYPE_WIFI)) {
-            if (type == U_SHORT_RANGE_CONNECTION_TYPE_BT) {
-                pInstance->pBtConnectionStatusCallback = pCallback;
-                pInstance->pBtConnectionStatusCallbackParameter = pCallbackParameter;
-            } else {
-                pInstance->pWifiConnectionStatusCallback = pCallback;
-                pInstance->pWifiConnectionStatusCallbackParameter = pCallbackParameter;
-            }
-
-            // If one type is NULL we are first and need to register the urc checks.
-            if (pInstance->pBtConnectionStatusCallback == NULL ||
-                pInstance->pWifiConnectionStatusCallback == NULL) {
-                uAtClientSetUrcHandler(pInstance->atHandle, "+UUDPC:",
-                                       UUDPC_urc, pInstance);
-                uAtClientSetUrcHandler(pInstance->atHandle, "+UUDPD:",
-                                       UUDPD_urc, pInstance);
-            }
-
+        if (pInstance != NULL && pCallback != NULL) {
+            pInstance->pIpConnectionStatusCallback = pCallback;
+            pInstance->pIpConnectionStatusCallbackParameter = pCallbackParameter;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        } else if (pInstance != NULL && pCallback == NULL &&
-                   (type >= U_SHORT_RANGE_CONNECTION_TYPE_BT &&
-                    type <= U_SHORT_RANGE_CONNECTION_TYPE_WIFI)) {
-            if (type == U_SHORT_RANGE_CONNECTION_TYPE_BT) {
-                pInstance->pBtConnectionStatusCallback = NULL;
-                pInstance->pBtConnectionStatusCallbackParameter = NULL;
-            } else {
-                pInstance->pWifiConnectionStatusCallback = NULL;
-                pInstance->pWifiConnectionStatusCallbackParameter = NULL;
-            }
-
-            if (pInstance->pBtConnectionStatusCallback == NULL &&
-                pInstance->pWifiConnectionStatusCallback == NULL) {
-                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUDPC:");
-                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUDPD:");
-            }
+        } else if (pInstance != NULL && pCallback == NULL) {
+            pInstance->pIpConnectionStatusCallback = NULL;
+            pInstance->pIpConnectionStatusCallbackParameter = NULL;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
+        configureConnectionUrcHandlers(pInstance);
+    }
+
+    return errorCode;
+}
+
+int32_t uShortRangeSetBtConnectionStatusCallback(int32_t shortRangeHandle,
+                                                 uShortRangeBtConnectionStatusCallback_t pCallback,
+                                                 void *pCallbackParameter)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+
+    if (gUShortRangePrivateMutex != NULL) {
+        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL && pCallback != NULL) {
+            pInstance->pBtConnectionStatusCallback = pCallback;
+            pInstance->pBtConnectionStatusCallbackParameter = pCallbackParameter;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        } else if (pInstance != NULL && pCallback == NULL) {
+            pInstance->pBtConnectionStatusCallback = NULL;
+            pInstance->pBtConnectionStatusCallbackParameter = NULL;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+        configureConnectionUrcHandlers(pInstance);
+    }
+
+    return errorCode;
+}
+
+int32_t uShortRangeSetMqttConnectionStatusCallback(int32_t shortRangeHandle,
+                                                   uShortRangeIpConnectionStatusCallback_t pCallback,
+                                                   void *pCallbackParameter)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uShortRangePrivateInstance_t *pInstance;
+
+    if (gUShortRangePrivateMutex != NULL) {
+        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL && pCallback != NULL) {
+            pInstance->pMqttConnectionStatusCallback = pCallback;
+            pInstance->pMqttConnectionStatusCallbackParameter = pCallbackParameter;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        } else if (pInstance != NULL && pCallback == NULL) {
+            pInstance->pMqttConnectionStatusCallback = NULL;
+            pInstance->pMqttConnectionStatusCallbackParameter = NULL;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+        configureConnectionUrcHandlers(pInstance);
     }
 
     return errorCode;

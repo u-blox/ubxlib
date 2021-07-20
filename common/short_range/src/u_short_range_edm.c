@@ -24,6 +24,10 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "u_error_common.h"
+#include "u_short_range_module_type.h"
+#include "u_at_client.h"
+#include "u_short_range.h"
 #include "u_short_range_edm.h"
 
 //lint -e818 skip all "could be declared as const" warnings
@@ -64,8 +68,8 @@ typedef enum {
 /* ----------------------------------------------------------------
  * STATIC PROTOTYPES
  * -------------------------------------------------------------- */
-static uShortRangeEdmBtProfile_t getBtProfile(char value);
-static uShortRangeEdmIpProtocol_t getIpProtocol(char value);
+static int32_t getBtProfile(char value, uShortRangeBtProfile_t *profile);
+static int32_t getIpProtocol(char value, uShortRangeIpProtocol_t *protocol);
 static uShortRangeEdmEvent_t *allocateEdmEvent(void);
 static uShortRangeEdmEvent_t *parseConnectBtEvent(char *buffer, uint16_t payloadLength);
 static uShortRangeEdmEvent_t *parseConnectIpv4Event(char *buffer, uint16_t payloadLength);
@@ -87,45 +91,42 @@ static char *gpPayload = gShortPayloadBuffer;
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-static uShortRangeEdmBtProfile_t getBtProfile(char value)
+static int32_t getBtProfile(char value, uShortRangeBtProfile_t *pProfile)
 {
-    uShortRangeEdmBtProfile_t profile;
-
     switch (value) {
         case 0:
-            profile = U_SHORT_RANGE_EDM_BT_PROFILE_SPP;
+            *pProfile = U_SHORT_RANGE_BT_PROFILE_SPP;
             break;
         case 1:
-            profile = U_SHORT_RANGE_EDM_BT_PROFILE_DUN;
+            *pProfile = U_SHORT_RANGE_BT_PROFILE_DUN;
             break;
         case 14:
-            profile = U_SHORT_RANGE_EDM_BT_PROFILE_SPS;
+            *pProfile = U_SHORT_RANGE_BT_PROFILE_SPS;
             break;
         default:
-            profile = U_SHORT_RANGE_EDM_BT_PROFILE_INVALID;
-            break;
+            return U_SHORT_RANGE_EDM_ERROR;
     }
 
-    return profile;
+    return U_SHORT_RANGE_EDM_OK;
 }
 
-static uShortRangeEdmIpProtocol_t getIpProtocol(char value)
+static int32_t getIpProtocol(char value, uShortRangeIpProtocol_t *pProtocol)
 {
-    uShortRangeEdmIpProtocol_t protocol;
-
     switch (value) {
         case 0x00:
-            protocol = U_SHORT_RANGE_EDM_IP_PROTOCOL_TCP;
+            *pProtocol = U_SHORT_RANGE_IP_PROTOCOL_TCP;
             break;
         case 0x01:
-            protocol = U_SHORT_RANGE_EDM_IP_PROTOCOL_UDP;
+            *pProtocol = U_SHORT_RANGE_IP_PROTOCOL_UDP;
+            break;
+        case 0x06:
+            *pProtocol = U_SHORT_RANGE_IP_PROTOCOL_MQTT;
             break;
         default:
-            protocol = U_SHORT_RANGE_EDM_IP_PROTOCOL_INVALID;
-            break;
+            return U_SHORT_RANGE_EDM_ERROR;
     }
 
-    return protocol;
+    return U_SHORT_RANGE_EDM_OK;
 }
 
 static uShortRangeEdmEvent_t *allocateEdmEvent(void)
@@ -135,89 +136,98 @@ static uShortRangeEdmEvent_t *allocateEdmEvent(void)
     return &gEdmEvent;
 }
 
-static uShortRangeEdmEvent_t *parseConnectBtEvent(char *buffer, uint16_t payloadLength)
+static uShortRangeEdmEvent_t *parseConnectBtEvent(char *pBuffer, uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
-    uShortRangeEdmBtProfile_t profile = getBtProfile(buffer[2]);
+    uShortRangeBtProfile_t profile;
+    int32_t result = getBtProfile(pBuffer[2], &profile);
 
-    if ((payloadLength == 11) && (profile != U_SHORT_RANGE_EDM_BT_PROFILE_INVALID)) {
+    if ((payloadLength == 11) && (result == U_SHORT_RANGE_EDM_OK)) {
+        uShortRangeEdmConnectionEventBt_t *pEvtData;
         pEvent = allocateEdmEvent();
         pEvent->type = U_SHORT_RANGE_EDM_EVENT_CONNECT_BT;
-        pEvent->params.btConnectEvent.profile = profile;
-        pEvent->params.btConnectEvent.channel = buffer[0];
-        memcpy(pEvent->params.btConnectEvent.address, &buffer[3], U_SHORT_RANGE_EDM_BT_ADDRESS_LENGTH);
-        pEvent->params.btConnectEvent.framesize = ((uint16_t)(uint8_t)buffer[9] << 8) |
-                                                  (uint16_t)( uint8_t)buffer[10];
+        pEvtData = &pEvent->params.btConnectEvent;
+        pEvtData->channel = pBuffer[0];
+        pEvtData->connection.profile = profile;
+        memcpy(pEvtData->connection.address, &pBuffer[3], U_SHORT_RANGE_BT_ADDRESS_LENGTH);
+        pEvtData->connection.framesize = ((uint16_t)(uint8_t)pBuffer[9] << 8) |
+                                         (uint16_t)(uint8_t)pBuffer[10];
     }
 
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseConnectIpv4Event(char *buffer, uint16_t payloadLength)
+static uShortRangeEdmEvent_t *parseConnectIpv4Event(char *pBuffer, uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
-    uShortRangeEdmIpProtocol_t protocol = getIpProtocol(buffer[2]);
+    uShortRangeIpProtocol_t protocol;
+    int32_t result = getIpProtocol(pBuffer[2], &protocol);
 
-    if ((payloadLength == 15) && (protocol != U_SHORT_RANGE_EDM_IP_PROTOCOL_INVALID)) {
+    if ((payloadLength == 15) && (result == U_SHORT_RANGE_EDM_OK)) {
+        uShortRangeEdmConnectionEventIpv4_t *pEvtData;
         pEvent = allocateEdmEvent();
         pEvent->type = U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv4;
-        pEvent->params.ipv4ConnectEvent.channel = buffer[0];
-        pEvent->params.ipv4ConnectEvent.protocol = protocol;
-        memcpy(pEvent->params.ipv4ConnectEvent.remoteAddress, &buffer[3],
-               U_SHORT_RANGE_EDM_IPv4_ADDRESS_LENGTH);
-        pEvent->params.ipv4ConnectEvent.remotePort = ((uint16_t)(uint8_t)buffer[7] << 8) |
-                                                     (uint16_t)(uint8_t)buffer[8];
-        memcpy(pEvent->params.ipv4ConnectEvent.localAddress, &buffer[9],
-               U_SHORT_RANGE_EDM_IPv4_ADDRESS_LENGTH);
-        pEvent->params.ipv4ConnectEvent.localPort = ((uint16_t)(uint8_t)buffer[13]) |
-                                                    (uint16_t)(uint8_t)buffer[14];
+        pEvtData = &pEvent->params.ipv4ConnectEvent;
+        pEvtData->channel = pBuffer[0];
+        pEvtData->connection.protocol = protocol;
+        memcpy(pEvtData->connection.remoteAddress, &pBuffer[3],
+               U_SHORT_RANGE_IPv4_ADDRESS_LENGTH);
+        pEvtData->connection.remotePort = ((uint16_t)(uint8_t)pBuffer[7] << 8) |
+                                          (uint16_t)(uint8_t)pBuffer[8];
+        memcpy(pEvtData->connection.localAddress, &pBuffer[9],
+               U_SHORT_RANGE_IPv4_ADDRESS_LENGTH);
+        pEvtData->connection.localPort = ((uint16_t)(uint8_t)pBuffer[13] << 8) |
+                                         (uint16_t)(uint8_t)pBuffer[14];
     }
 
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseConnectIpv6Event(char *buffer, uint16_t payloadLength)
+static uShortRangeEdmEvent_t *parseConnectIpv6Event(char *pBuffer, uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
-    uShortRangeEdmIpProtocol_t protocol = getIpProtocol(buffer[2]);
+    uShortRangeIpProtocol_t protocol;
+    uint32_t result = getIpProtocol(pBuffer[2], &protocol);
 
-    if ((payloadLength == 39) && (protocol != U_SHORT_RANGE_EDM_IP_PROTOCOL_INVALID)) {
+    if ((payloadLength == 39) && (result == U_SHORT_RANGE_EDM_OK)) {
+        uShortRangeEdmConnectionEventIpv6_t *pEvtData;
         pEvent = allocateEdmEvent();
         pEvent->type = U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv6;
-        pEvent->params.ipv6ConnectEvent.channel = buffer[0];
-        pEvent->params.ipv6ConnectEvent.protocol = protocol;
-        memcpy(pEvent->params.ipv6ConnectEvent.remoteAddress, &buffer[3],
-               U_SHORT_RANGE_EDM_IPv6_ADDRESS_LENGTH);
-        pEvent->params.ipv6ConnectEvent.remotePort = ((uint16_t)(uint8_t)buffer[19] << 8) |
-                                                     (uint16_t)(uint8_t)buffer[20];
-        memcpy(pEvent->params.ipv6ConnectEvent.localAddress, &buffer[21],
-               U_SHORT_RANGE_EDM_IPv6_ADDRESS_LENGTH);
-        pEvent->params.ipv6ConnectEvent.localPort = ((uint16_t)(uint8_t)buffer[37] << 8) |
-                                                    (uint16_t)(uint8_t)buffer[38];
+        pEvtData = &pEvent->params.ipv6ConnectEvent;
+        pEvtData->channel = pBuffer[0];
+        pEvtData->connection.protocol = protocol;
+        memcpy(pEvtData->connection.remoteAddress, &pBuffer[3],
+               U_SHORT_RANGE_IPv6_ADDRESS_LENGTH);
+        pEvtData->connection.remotePort = ((uint16_t)(uint8_t)pBuffer[19] << 8) |
+                                          (uint16_t)(uint8_t)pBuffer[20];
+        memcpy(pEvtData->connection.localAddress, &pBuffer[21],
+               U_SHORT_RANGE_IPv6_ADDRESS_LENGTH);
+        pEvtData->connection.localPort = ((uint16_t)(uint8_t)pBuffer[37] << 8) |
+                                         (uint16_t)(uint8_t)pBuffer[38];
     }
 
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseConnectEvent(char *buffer, uint16_t payloadLength)
+static uShortRangeEdmEvent_t *parseConnectEvent(char *pBuffer, uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
 
     if (payloadLength > 2) {
-        uint8_t type = (uint8_t)buffer[1];
+        uint8_t type = (uint8_t)pBuffer[1];
 
         switch (type) {
 
             case U_SHORT_RANGE_EDM_CONNECTION_TYPE_BT:
-                pEvent = parseConnectBtEvent(buffer, payloadLength);
+                pEvent = parseConnectBtEvent(pBuffer, payloadLength);
                 break;
 
             case U_SHORT_RANGE_EDM_CONNECTION_TYPE_IPv4:
-                pEvent = parseConnectIpv4Event(buffer, payloadLength);
+                pEvent = parseConnectIpv4Event(pBuffer, payloadLength);
                 break;
 
             case U_SHORT_RANGE_EDM_CONNECTION_TYPE_IPv6:
-                pEvent = parseConnectIpv6Event(buffer, payloadLength);
+                pEvent = parseConnectIpv6Event(pBuffer, payloadLength);
                 break;
 
             default:
@@ -228,48 +238,48 @@ static uShortRangeEdmEvent_t *parseConnectEvent(char *buffer, uint16_t payloadLe
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseDisconnectEvent(char *buffer, uint16_t payloadLength)
+static uShortRangeEdmEvent_t *parseDisconnectEvent(char *pBuffer, uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
 
     if (payloadLength == 1) {
         pEvent = allocateEdmEvent();
         pEvent->type = U_SHORT_RANGE_EDM_EVENT_DISCONNECT;
-        pEvent->params.disconnectEvent.channel = (uint8_t)buffer[0];
+        pEvent->params.disconnectEvent.channel = (uint8_t)pBuffer[0];
     }
 
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseDataEvent(char *buffer, uint16_t payloadLength)
+static uShortRangeEdmEvent_t *parseDataEvent(char *pBuffer, uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
 
     if (payloadLength > 1) {
         pEvent = allocateEdmEvent();
         pEvent->type = U_SHORT_RANGE_EDM_EVENT_DATA;
-        pEvent->params.dataEvent.channel = (uint8_t)buffer[0];
-        pEvent->params.dataEvent.pData = &buffer[1];
+        pEvent->params.dataEvent.channel = (uint8_t)pBuffer[0];
+        pEvent->params.dataEvent.pData = &pBuffer[1];
         pEvent->params.dataEvent.length = payloadLength - 1;
     }
 
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseAtResponseOrEvent(char *buffer, uint16_t payloadLength)
+static uShortRangeEdmEvent_t *parseAtResponseOrEvent(char *pBuffer, uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = allocateEdmEvent();
     pEvent->type = U_SHORT_RANGE_EDM_EVENT_AT;
-    pEvent->params.atEvent.pData = buffer;
+    pEvent->params.atEvent.pData = pBuffer;
     pEvent->params.atEvent.length = payloadLength;
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseEdmPayload(char *buffer, uint16_t payloadLength)
+static uShortRangeEdmEvent_t *parseEdmPayload(char *pBuffer, uint16_t payloadLength)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
-    uint16_t idAndType = ((uint16_t)(uint8_t)buffer[0] << 8) | (uint16_t)(uint8_t)buffer[1];
-    char *pSubPayload = buffer + 2;
+    uint16_t idAndType = ((uint16_t)(uint8_t)pBuffer[0] << 8) | (uint16_t)(uint8_t)pBuffer[1];
+    char *pSubPayload = pBuffer + 2;
     uint16_t subPayloadLength = payloadLength - 2;
 
     switch (idAndType) {

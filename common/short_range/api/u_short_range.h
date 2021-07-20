@@ -55,11 +55,18 @@ extern "C" {
 # define U_SHORT_RANGE_UART_BAUD_RATE 115200
 #endif
 
-#define U_SHORT_RANGE_EVENT_CONNECTED    0
-#define U_SHORT_RANGE_EVENT_DISCONNECTED 1
 
-#define U_SHORT_RANGE_CONNECTION_TYPE_BT   0
-#define U_SHORT_RANGE_CONNECTION_TYPE_WIFI 0
+/** Bluetooth address length.
+ */
+#define U_SHORT_RANGE_BT_ADDRESS_LENGTH   6
+
+/** IPv4 address length.
+ */
+#define U_SHORT_RANGE_IPv4_ADDRESS_LENGTH 4
+
+/** IPv6 address length.
+ */
+#define U_SHORT_RANGE_IPv6_ADDRESS_LENGTH 16
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -82,6 +89,77 @@ typedef enum {
     U_SHORT_RANGE_SERVER_DISABLED = 0, /**< Disabled status. */
     U_SHORT_RANGE_SERVER_SPS = 6 /**< SPS server. */
 } uShortRangeServerType_t;
+
+typedef enum {
+    U_SHORT_RANGE_EVENT_CONNECTED,
+    U_SHORT_RANGE_EVENT_DISCONNECTED
+} uShortRangeConnectionEventType_t;
+
+typedef enum {
+    U_SHORT_RANGE_CONNECTION_TYPE_INVALID = -1,
+    U_SHORT_RANGE_CONNECTION_TYPE_BT = 0,
+    U_SHORT_RANGE_CONNECTION_TYPE_IP,
+    U_SHORT_RANGE_CONNECTION_TYPE_MQTT
+} uShortRangeConnectionType_t;
+
+typedef enum {
+    U_SHORT_RANGE_IP_PROTOCOL_TCP,
+    U_SHORT_RANGE_IP_PROTOCOL_UDP,
+    U_SHORT_RANGE_IP_PROTOCOL_MQTT
+} uShortRangeIpProtocol_t;
+
+typedef enum {
+    U_SHORT_RANGE_BT_PROFILE_SPP,
+    U_SHORT_RANGE_BT_PROFILE_DUN,
+    U_SHORT_RANGE_BT_PROFILE_SPS
+} uShortRangeBtProfile_t;
+
+typedef struct {
+    uShortRangeIpProtocol_t protocol;
+    uint8_t remoteAddress[U_SHORT_RANGE_IPv4_ADDRESS_LENGTH];
+    uint16_t remotePort;
+    uint8_t localAddress[U_SHORT_RANGE_IPv4_ADDRESS_LENGTH];
+    uint16_t localPort;
+} uShortRangeConnectionIpv4_t;
+
+typedef struct {
+    uShortRangeIpProtocol_t protocol;
+    uint8_t remoteAddress[U_SHORT_RANGE_IPv6_ADDRESS_LENGTH];
+    uint16_t remotePort;
+    uint8_t localAddress[U_SHORT_RANGE_IPv6_ADDRESS_LENGTH];
+    uint16_t localPort;
+} uShortRangeConnectionIpv6_t;
+
+typedef enum {
+    U_SHORT_RANGE_CONNECTION_IPv4,
+    U_SHORT_RANGE_CONNECTION_IPv6
+} uShortRangeIpVersion_t;
+
+typedef struct {
+    uShortRangeIpVersion_t type;
+    union {
+        uShortRangeConnectionIpv4_t ipv4;
+        uShortRangeConnectionIpv6_t ipv6;
+    };
+} uShortRangeConnectDataIp_t;
+
+typedef struct {
+    uShortRangeBtProfile_t profile;
+    uint8_t address[U_SHORT_RANGE_BT_ADDRESS_LENGTH];
+    uint16_t framesize;
+} uShortRangeConnectDataBt_t;
+
+typedef void (*uShortRangeBtConnectionStatusCallback_t)(int32_t shortRangeHandle,
+                                                        int32_t connHandle,
+                                                        uShortRangeConnectionEventType_t eventType,
+                                                        uShortRangeConnectDataBt_t *pConnectData,
+                                                        void *pCallbackParameter);
+
+typedef void (*uShortRangeIpConnectionStatusCallback_t)(int32_t shortRangeHandle,
+                                                        int32_t connHandle,
+                                                        uShortRangeConnectionEventType_t eventType,
+                                                        uShortRangeConnectDataIp_t *pConnectData,
+                                                        void *pCallbackParameter);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -182,19 +260,41 @@ int32_t uShortRangeCommandMode(int32_t shortRangeHandle, uAtClientHandle_t *pAtH
  */
 int32_t uShortRangeDataMode(int32_t shortRangeHandle);
 
-/** Set a callback for connection status.
-  *
+/** Set a callback for Bluetooth connection status.
+*
  * @param shortRangeHandle   the handle of the short range instance.
- * @param type               type of connection, bt or wifi.
  * @param pCallback          callback function.
  * @param pCallbackParameter parameter included with the callback.
  * @return                   zero on success or negative error code
  *                           on failure.
  */
-int32_t uShortRangeConnectionStatusCallback(int32_t shortRangeHandle,
-                                            int32_t type,
-                                            void (*pCallback) (int32_t, int32_t, void *),
-                                            void *pCallbackParameter);
+int32_t uShortRangeSetBtConnectionStatusCallback(int32_t shortRangeHandle,
+                                                 uShortRangeBtConnectionStatusCallback_t pCallback,
+                                                 void *pCallbackParameter);
+
+/** Set a callback for IP connection status.
+ *
+ * @param shortRangeHandle   the handle of the short range instance.
+ * @param pCallback          callback function.
+ * @param pCallbackParameter parameter included with the callback.
+ * @return                   zero on success or negative error code
+ *                           on failure.
+ */
+int32_t uShortRangeSetIpConnectionStatusCallback(int32_t shortRangeHandle,
+                                                 uShortRangeIpConnectionStatusCallback_t pCallback,
+                                                 void *pCallbackParameter);
+
+/** Set a callback for MQTT connection status.
+ *
+ * @param shortRangeHandle   the handle of the short range instance.
+ * @param pCallback          callback function.
+ * @param pCallbackParameter parameter included with the callback.
+ * @return                   zero on success or negative error code
+ *                           on failure.
+ */
+int32_t uShortRangeSetMqttConnectionStatusCallback(int32_t shortRangeHandle,
+                                                   uShortRangeIpConnectionStatusCallback_t pCallback,
+                                                   void *pCallbackParameter);
 
 /** Get the handle of the AT client used by the given
  * short range instance.

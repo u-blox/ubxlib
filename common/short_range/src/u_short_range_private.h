@@ -78,7 +78,7 @@ typedef struct {
 
 typedef struct uShortRangePrivateConnection_t {
     int32_t connHandle;
-    int32_t type;
+    uShortRangeConnectionType_t type;
 } uShortRangePrivateConnection_t;
 
 /** Definition of a ShortRange instance.
@@ -88,6 +88,10 @@ typedef struct uShortRangePrivateConnection_t {
 //lint -esym(768, uShortRangePrivateInstance_t::pPendingSpsConnectionEvent) Suppress not reference, it is
 //lint -esym(768, uShortRangePrivateInstance_t::pBtDataCallback) Suppress not reference, it is
 //lint -esym(768, uShortRangePrivateInstance_t::pBtDataCallbackParameter) Suppress not reference, it is
+//lint -esym(768, uShortRangePrivateInstance_t::pWifiConnectionStatusCallback) Suppress not reference, it is
+//lint -esym(768, uShortRangePrivateInstance_t::pWifiConnectionStatusCallbackParameter) Suppress not reference, it is
+//lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallback) Suppress not reference, it is
+//lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallbackParameter) Suppress not reference, it is
 typedef struct uShortRangePrivateInstance_t {
     int32_t handle; /**< The handle for this instance. */
     uShortRangeModes_t mode;
@@ -97,17 +101,24 @@ typedef struct uShortRangePrivateInstance_t {
     uAtClientStream_t streamType; /**< Stream type. */
     int64_t startTimeMs;     /**< Used while restarting. */
     int64_t ticksLastRestart;
+    bool urcConHandlerSet;
     uShortRangePrivateConnection_t connections[U_SHORT_RANGE_MAX_CONNECTIONS];
-    void (*pBtConnectionStatusCallback) (int32_t, int32_t, void *);
+    uShortRangeBtConnectionStatusCallback_t pBtConnectionStatusCallback;
     void *pBtConnectionStatusCallbackParameter;
-    void (*pWifiConnectionStatusCallback) (int32_t, int32_t, void *);
+    void (*pWifiConnectionStatusCallback) (int32_t, int32_t, int32_t, char *, int32_t, void *);
     void *pWifiConnectionStatusCallbackParameter;
-    uBleDataConnectionStatusCallback_t pSpsConnectionCallback;
+    uShortRangeIpConnectionStatusCallback_t pIpConnectionStatusCallback;
+    void *pIpConnectionStatusCallbackParameter;
+    uShortRangeIpConnectionStatusCallback_t pMqttConnectionStatusCallback;
+    void *pMqttConnectionStatusCallbackParameter;
+    void (*pNetworkStatusCallback) (int32_t, int32_t, void *);
+    void *pNetworkStatusCallbackParameter;
+    void (*pSpsConnectionCallback)(int32_t, char *, int32_t, int32_t, int32_t, void *);
     void *pSpsConnectionCallbackParameter;
     void *pPendingSpsConnectionEvent;
     void (*pBtDataCallback) (int32_t, size_t, char *, void *);
 //lint -esym(768, uShortRangePrivateInstance_t::pBtDataAvailableCallback)
-    uBleDataAvailableCallback_t pBtDataAvailableCallback;
+    void (*pBtDataAvailableCallback)(int32_t, void *);
     void *pBtDataCallbackParameter;
     void (*pDataCallback) (int32_t, size_t, char *, void *);
     void *pDataCallbackParameter;

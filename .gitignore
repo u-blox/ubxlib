@@ -17,3 +17,6 @@ sdkconfig
 doxygen_output
 _jenkins_work
 _work
+U_FLAGS.override
+.override
+_build

@@ -52,9 +52,12 @@
 #include "u_port_os.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue.h"
-#include "u_short_range_edm_stream.h"
 
 #include "u_at_client.h"
+
+#include "u_short_range_module_type.h"
+#include "u_short_range.h"
+#include "u_short_range_edm_stream.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

@@ -22,10 +22,6 @@
 #define U_SHORT_RANGE_EDM_ERROR               -1
 #define U_SHORT_RANGE_EDM_ERROR_PARAM         -2
 
-#define U_SHORT_RANGE_EDM_BT_ADDRESS_LENGTH   6
-#define U_SHORT_RANGE_EDM_IPv4_ADDRESS_LENGTH 4
-#define U_SHORT_RANGE_EDM_IPv6_ADDRESS_LENGTH 16
-
 #define U_SHORT_RANGE_EDM_REQUEST_OVERHEAD    6
 //lint -esym(755, U_SHORT_RANGE_EDM_DATA_OVERHEAD) Suppress lack of a reference
 #define U_SHORT_RANGE_EDM_DATA_OVERHEAD       7
@@ -45,19 +41,6 @@
 
 
 typedef enum {
-    U_SHORT_RANGE_EDM_BT_PROFILE_SPP,
-    U_SHORT_RANGE_EDM_BT_PROFILE_DUN,
-    U_SHORT_RANGE_EDM_BT_PROFILE_SPS,
-    U_SHORT_RANGE_EDM_BT_PROFILE_INVALID
-} uShortRangeEdmBtProfile_t;
-
-typedef enum {
-    U_SHORT_RANGE_EDM_IP_PROTOCOL_TCP,
-    U_SHORT_RANGE_EDM_IP_PROTOCOL_UDP,
-    U_SHORT_RANGE_EDM_IP_PROTOCOL_INVALID
-} uShortRangeEdmIpProtocol_t;
-
-typedef enum {
     U_SHORT_RANGE_EDM_EVENT_CONNECT_BT,
     U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv4,
     U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv6,
@@ -68,30 +51,20 @@ typedef enum {
     U_SHORT_RANGE_EDM_EVENT_INVALID
 } uShortRangeEdmEventType_t;
 
-typedef struct uShortRangeEdmConnectionEventBT_t {
+typedef struct uShortRangeEdmConnectionEventBt_t {
     uint8_t channel;
-    uShortRangeEdmBtProfile_t profile;
-    uint8_t address[U_SHORT_RANGE_EDM_BT_ADDRESS_LENGTH];
-    uint16_t framesize;
-} uShortRangeEdmConnectionEventBT_t;
+    uShortRangeConnectDataBt_t connection;
+} uShortRangeEdmConnectionEventBt_t;
 
-typedef struct uShortRangeEdmConnectionEventIPv4_t {
+typedef struct uShortRangeEdmConnectionEventIpv4_t {
     uint8_t channel;
-    uShortRangeEdmIpProtocol_t protocol;
-    uint8_t remoteAddress[U_SHORT_RANGE_EDM_IPv4_ADDRESS_LENGTH];
-    uint16_t remotePort;
-    uint8_t localAddress[U_SHORT_RANGE_EDM_IPv4_ADDRESS_LENGTH];
-    uint16_t localPort;
-} uShortRangeEdmConnectionEventIPv4_t;
+    uShortRangeConnectionIpv4_t connection;
+} uShortRangeEdmConnectionEventIpv4_t;
 
-typedef struct uShortRangeEdmConnectionEventIPv6_t {
+typedef struct uShortRangeEdmConnectionEventIpv6_t {
     uint8_t channel;
-    uShortRangeEdmIpProtocol_t protocol;
-    uint8_t remoteAddress[U_SHORT_RANGE_EDM_IPv6_ADDRESS_LENGTH];
-    uint16_t remotePort;
-    uint8_t localAddress[U_SHORT_RANGE_EDM_IPv6_ADDRESS_LENGTH];
-    uint16_t localPort;
-} uShortRangeEdmConnectionEventIPv6_t;
+    uShortRangeConnectionIpv6_t connection;
+} uShortRangeEdmConnectionEventIpv6_t;
 
 typedef struct uShortRangeEdmDisconnectEvent_t {
     uint8_t channel;
@@ -108,12 +81,12 @@ typedef struct uShortRangeEdmAtEvent_t {
     char *pData;
 } uShortRangeEdmAtEvent_t;
 
-typedef struct uShortRangeEdmEvent_t {
+typedef struct {
     uShortRangeEdmEventType_t type;
     union {
-        uShortRangeEdmConnectionEventBT_t btConnectEvent;
-        uShortRangeEdmConnectionEventIPv4_t ipv4ConnectEvent;
-        uShortRangeEdmConnectionEventIPv6_t ipv6ConnectEvent;
+        uShortRangeEdmConnectionEventBt_t btConnectEvent;
+        uShortRangeEdmConnectionEventIpv4_t ipv4ConnectEvent;
+        uShortRangeEdmConnectionEventIpv6_t ipv6ConnectEvent;
         uShortRangeEdmDisconnectEvent_t disconnectEvent;
         uShortRangeEdmDataEvent_t dataEvent;
         uShortRangeEdmAtEvent_t atEvent;

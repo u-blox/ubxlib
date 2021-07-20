@@ -39,6 +39,11 @@
 -e732
 -e737
 
+/* Suppress "x not used within defaulted switch".
+ * "default:" looses its purpose with this turned on
+ */
+-e788
+
 /* Don't look for problems inside Unity
  */
 +libm(unity_internals.h)
