@@ -21,10 +21,8 @@
  */
 
 /** @file
- * @brief Implementation of the "general" API for ble.
+ * @brief Implementation of the "general" API for Wifi.
  */
-
-#ifndef U_CFG_BLE_MODULE_INTERNAL
 
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
@@ -40,9 +38,10 @@
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 
-#include "u_ble_module_type.h"
-#include "u_ble.h"
-#include "u_ble_private.h"
+#include "u_wifi_module_type.h"
+#include "u_wifi.h"
+#include "u_wifi_private.h"
+
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -60,107 +59,81 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-uBleModuleType_t shortRangeToBleModule(uShortRangeModuleType_t module)
+uWifiModuleType_t shortRangeToWifiModule(uShortRangeModuleType_t module)
 {
     const uShortRangeModuleInfo_t *pModuleInfo;
     pModuleInfo = uShortRangeGetModuleInfo(module);
-    //lint -e(568) Suppress value never being negative
     if (!pModuleInfo) {
-        return U_BLE_MODULE_TYPE_INVALID;
+        return U_WIFI_MODULE_TYPE_INVALID;
     }
-    if (!pModuleInfo->supportsBle) {
-        return U_BLE_MODULE_TYPE_UNSUPPORTED;
+    if (!pModuleInfo->supportsWifi) {
+        return U_WIFI_MODULE_TYPE_UNSUPPORTED;
     }
-    return (uBleModuleType_t)module;
+    return (uWifiModuleType_t)module;
 }
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Initialise the ble driver.
-int32_t uBleInit()
+// Initialise the wifi driver.
+int32_t uWifiInit()
 {
-    uBleDataPrivateInit();
     return uShortRangeInit();
 }
 
-// Shut-down the ble driver.
-void uBleDeinit()
+// Shut-down the wifi driver.
+void uWifiDeinit()
 {
-    uBleDataPrivateDeinit();
     uShortRangeDeinit();
 }
 
-// Add a ble instance.
-int32_t uBleAdd(uBleModuleType_t moduleType,
-                uAtClientHandle_t atHandle)
+// Add a wifi instance.
+int32_t uWifiAdd(uWifiModuleType_t moduleType,
+                 uAtClientHandle_t atHandle)
 {
-    int32_t errorCode;
+    int32_t handle;
     // First make sure the moduleType value is really valid
-    // If not shortRangeToBleModule() will return a negative value
+    // If not shortRangeToWifiModule() will return a negative value
     // that uShortRangeAdd() will reject
-    moduleType = shortRangeToBleModule((uShortRangeModuleType_t)moduleType);
-
-    errorCode = uShortRangeLock();
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        errorCode = uShortRangeAdd((uShortRangeModuleType_t) moduleType, atHandle);
-        uShortRangeUnlock();
+    moduleType = shortRangeToWifiModule((uShortRangeModuleType_t)moduleType);
+    handle = uShortRangeAdd((uShortRangeModuleType_t)moduleType, atHandle);
+    if (handle >= 0) {
+        // If the module was added successfully we convert the handle to a wifi handle
+        handle = uShoToWifiHandle(handle);
     }
-    if (errorCode >= 0) {
-        // If we successfully added the module we convert the sho handle to a BLE handle
-        errorCode = uShoToBleHandle(errorCode);
-    }
-
-    return errorCode;
+    return handle;
 }
 
-// Remove a ble instance.
-void uBleRemove(int32_t bleHandle)
+// Remove a wifi instance.
+void uWifiRemove(int32_t wifiHandle)
 {
-    int32_t errorCode;
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
-    errorCode = uShortRangeLock();
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        uShortRangeRemove(shoHandle);
-        uShortRangeUnlock();
-    }
+    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
+    uShortRangeRemove(shoHandle);
 }
 
 // Get the handle of the AT client.
-int32_t uBleAtClientHandleGet(int32_t bleHandle,
-                              uAtClientHandle_t *pAtHandle)
+int32_t uWifiAtClientHandleGet(int32_t wifiHandle,
+                               uAtClientHandle_t *pAtHandle)
 {
-    int32_t errorCode;
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
-    errorCode = uShortRangeLock();
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        errorCode = uShortRangeAtClientHandleGet(shoHandle, pAtHandle);
-        uShortRangeUnlock();
-    }
-
-    return errorCode;
+    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
+    return uShortRangeAtClientHandleGet(shoHandle, pAtHandle);
 }
 
-uBleModuleType_t uBleDetectModule(int32_t bleHandle)
+uWifiModuleType_t uWifiDetectModule(int32_t wifiHandle)
 {
     int32_t errorCode;
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
-    uBleModuleType_t bleModule = U_BLE_MODULE_TYPE_INVALID;
+    uWifiModuleType_t wifiModule = U_WIFI_MODULE_TYPE_INVALID;
+    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
     errorCode = uShortRangeLock();
 
     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
         uShortRangeModuleType_t shortRangeModule = uShortRangeDetectModule(shoHandle);
-        bleModule = shortRangeToBleModule(shortRangeModule);
+        wifiModule = shortRangeToWifiModule(shortRangeModule);
         uShortRangeUnlock();
     }
 
-    return bleModule;
+    return wifiModule;
 }
-
-#endif
 
 // End of file

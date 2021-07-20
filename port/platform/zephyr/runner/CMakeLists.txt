@@ -62,6 +62,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_b
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_ble_intmod.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_cell.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_short_range.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/test/u_network_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/test/u_network_test_shared_cfg.c)
@@ -154,6 +155,18 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_cfg_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_data_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/ble/test/u_ble_test_private.c)
+
+#wifi API
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/wifi/api ${UBXLIB_BASE}/wifi/src ${UBXLIB_BASE}/wifi/test)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/src/u_wifi.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/src/u_wifi_cfg.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/src/u_wifi_net.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/src/u_wifi_private.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/test/u_wifi_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/test/u_wifi_cfg_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/test/u_wifi_net_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/wifi/test/u_wifi_test_private.c)
+
 
 #short range
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/short_range/api ${UBXLIB_BASE}/common/short_range/src ${UBXLIB_BASE}/common/short_range/test)

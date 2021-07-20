@@ -24,13 +24,16 @@ set(COMPONENT_ADD_INCLUDEDIRS
                    "../../../../../../../common/short_range/api"
                    "../../../../../../../common/short_range/src"
                    "../../../../../../../common/utils/api"
+# The wifi API
+                   "../../../../../../../wifi/api"
 # The API for the porting layer
                    "../../../../../../api"
 # The private API for the event queue
                    "../../../../../common/event_queue"
 # The platform specific configuration files
                    "../../../.."
-                   "../../cfg")
+                   "../../cfg"
+)
 
 # The implementations of the APIs
 set(COMPONENT_SRCS 
@@ -71,6 +74,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../common/network/src/u_network_private_ble_intmod.c"
                    "../../../../../../../common/network/src/u_network_private_cell.c"
                    "../../../../../../../common/network/src/u_network_private_wifi.c"
+                   "../../../../../../../common/network/src/u_network_private_short_range.c"
                    "../../../../../../../common/network/src/u_network_private_gnss.c"
 # The common sock layer
                    "../../../../../../../common/sock/src/u_sock.c"
@@ -97,6 +101,11 @@ set(COMPONENT_SRCS
                    "../../../../../../../common/utils/src/u_ringbuffer.c"
                    "../../../../../../../common/utils/src/u_hex_bin_convert.c"
                    "../../../../../../../common/utils/src/u_time.c"
+# The wifi API
+                   "../../../../../../../wifi/src/u_wifi.c"
+                   "../../../../../../../wifi/src/u_wifi_cfg.c"
+                   "../../../../../../../wifi/src/u_wifi_net.c"
+                   "../../../../../../../wifi/src/u_wifi_private.c"
 # The porting layer
                    "../../../../../common/mbedtls/u_port_crypto.c"
                    "../../../../../common/event_queue/u_port_event_queue.c"

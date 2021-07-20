@@ -21,7 +21,7 @@
  */
 
 /** @file
- * @brief Tests for the ble "general" API: these should pass on all
+ * @brief Tests for the wifi "general" API: these should pass on all
  * platforms where one UART is available. No short range module is
  * actually used in this set of tests.
  */
@@ -33,12 +33,12 @@
 #include "stdint.h"    // int32_t etc.
 
 // Must always be included before u_short_range_test_selector.h
-//lint -efile(766, u_ble_module_type.h)
-#include "u_ble_module_type.h"
+//lint -efile(766, u_wifi_module_type.h)
+#include "u_wifi_module_type.h"
 
 #include "u_short_range_test_selector.h"
 
-#if U_SHORT_RANGE_TEST_BLE() && defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE)
+#if U_SHORT_RANGE_TEST_WIFI()
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdbool.h"
@@ -55,14 +55,12 @@
 #include "u_port_uart.h"
 
 #include "u_at_client.h"
-
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
-#include "u_ble.h"
+#include "u_wifi.h"
+#include "u_wifi_cfg.h"
 
-#include "u_ble_cfg.h"
-
-#include "u_ble_test_private.h"
+#include "u_wifi_test_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -76,9 +74,7 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-//lint -esym(843, gHandles) Suppress could be const, which will be the case if
-// U_CFG_TEST_SHORT_RANGE_MODULE_TYPE is not defined
-static uBleTestPrivate_t gHandles = { -1, -1, NULL, -1 };
+static uWifiTestPrivate_t gHandles = { -1, -1, NULL, -1 };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -88,29 +84,19 @@ static uBleTestPrivate_t gHandles = { -1, -1, NULL, -1 };
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
+U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgConfigureModule")
 {
     int32_t heapUsed;
-    uBleCfg_t cfg;
+    uWifiCfg_t cfg;
     heapUsed = uPortGetHeapFree();
 
-    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                               &gHandles) == 0);
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &gHandles) == 0);
+    cfg.notUsed = false;
+    U_PORT_TEST_ASSERT(uWifiCfgConfigure(gHandles.wifiHandle, &cfg) == 0);
 
 
-    cfg.role = U_BLE_CFG_ROLE_PERIPHERAL;
-    cfg.spsServer = true;
-    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.bleHandle, &cfg) == 0);
-
-    cfg.role = U_BLE_CFG_ROLE_CENTRAL;
-    cfg.spsServer = true;
-    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.bleHandle, &cfg) == 0);
-
-    cfg.role = U_BLE_CFG_ROLE_PERIPHERAL;
-    cfg.spsServer = true;
-    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.bleHandle, &cfg) == 0);
-
-    uBleTestPrivatePostamble(&gHandles);
+    uWifiTestPrivatePostamble(&gHandles);
 
 #ifndef __XTENSA__
     // Check for memory leaks
@@ -119,7 +105,7 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_BLE_TEST: we have leaked %d byte(s).\n", heapUsed);
+    uPortLog("U_WIFI_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -132,21 +118,21 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
  */
-U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgCleanUp")
+U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgCleanUp")
 {
     int32_t x;
 
-    uBleDeinit();
+    uWifiDeinit();
+    if (gHandles.uartHandle >= 0) {
+        uPortUartClose(gHandles.uartHandle);
+    }
     if (gHandles.edmStreamHandle >= 0) {
         uShortRangeEdmStreamClose(gHandles.edmStreamHandle);
     }
     uAtClientDeinit();
-    if (gHandles.uartHandle >= 0) {
-        uPortUartClose(gHandles.uartHandle);
-    }
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_BLE_TEST: main task stack had a minimum of %d"
+    uPortLog("U_WIFI_CFG_TEST: main task stack had a minimum of %d"
              " byte(s) free at the end of these tests.\n", x);
     U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
@@ -154,12 +140,11 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_BLE_TEST: heap had a minimum of %d"
+        uPortLog("U_WIFI_CFG_TEST: heap had a minimum of %d"
                  " byte(s) free at the end of these tests.\n", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }
 
-#endif // U_SHORT_RANGE_TEST_BLE()
-
+#endif // U_SHORT_RANGE_TEST_WIFI()
 // End of file

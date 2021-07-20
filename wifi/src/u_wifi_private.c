@@ -21,7 +21,7 @@
  */
 
 /** @file
- * @brief Implementation of the "general" API for ble.
+ * @brief Private wifi functions.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -29,11 +29,10 @@
 #endif
 
 #include "string.h"
-#include "stdlib.h"    // malloc() and free()
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
-#include "u_ble_private.h"
+#include "u_wifi_private.h"
 
 #include "u_network_handle.h"
 
@@ -48,7 +47,6 @@
 /* ----------------------------------------------------------------
  * PROTOTYPES
  * -------------------------------------------------------------- */
-static void intToHex(const uint8_t in, char *pOut);
 
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
@@ -57,73 +55,27 @@ static void intToHex(const uint8_t in, char *pOut);
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-static void intToHex(const uint8_t in, char *pOut)
-{
-    uint32_t i;
-
-    for (i = 0; i < 2; i++) {
-        uint8_t nibble = (in >> ((1 - i) * 4)) & 0xf;
-        if (nibble < 10) {
-            *pOut++ = (char)('0' + nibble);
-        } else {
-            *pOut++ = (char)('A' + nibble - 10);
-        }
-    }
-}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uBleToShoHandle(int32_t bleHandle)
+int32_t uWifiToShoHandle(int32_t wifiHandle)
 {
-    if ((bleHandle < (int32_t)U_NETWORK_HANDLE_BLE_MIN) ||
-        (bleHandle > (int32_t)U_NETWORK_HANDLE_BLE_MAX)) {
+    if ((wifiHandle < (int32_t)U_NETWORK_HANDLE_WIFI_MIN) ||
+        (wifiHandle > (int32_t)U_NETWORK_HANDLE_WIFI_MAX)) {
         return -1;
     }
-    return bleHandle - (int32_t)U_NETWORK_HANDLE_BLE_MIN;
+    return wifiHandle - (int32_t)U_NETWORK_HANDLE_WIFI_MIN;
 }
 
-int32_t uShoToBleHandle(int32_t shortRangeHandle)
+int32_t uShoToWifiHandle(int32_t shortRangeHandle)
 {
     if ((shortRangeHandle < 0) ||
         (shortRangeHandle >= (int32_t)U_NETWORK_HANDLE_RANGE)) {
         return -1;
     }
-    return shortRangeHandle + (int32_t)U_NETWORK_HANDLE_BLE_MIN;
-}
-
-
-void addrArrayToString(const uint8_t *pAddrIn, uPortBtLeAddressType_t addrType, bool msbLast,
-                       char *pAddrOut)
-{
-    uint32_t i;
-
-    for (i = 0; i < 6; i++) {
-        uint32_t byteIndex;
-        if (msbLast) {
-            byteIndex = 5 - i;
-        } else {
-            byteIndex = i;
-        }
-        intToHex(*(pAddrIn + byteIndex), pAddrOut);
-        pAddrOut += 2;
-    }
-    switch (addrType) {
-
-        case U_PORT_BT_LE_ADDRESS_TYPE_RANDOM:
-            *pAddrOut++ = 'r';
-            break;
-
-        case U_PORT_BT_LE_ADDRESS_TYPE_PUBLIC:
-            *pAddrOut++ = 'p';
-            break;
-
-        case U_PORT_BT_LE_ADDRESS_TYPE_UNKNOWN:
-            *pAddrOut++ = '\0';
-            break;
-    }
-    *pAddrOut = '\0';
+    return shortRangeHandle + (int32_t)U_NETWORK_HANDLE_WIFI_MIN;
 }
 
 // End of file

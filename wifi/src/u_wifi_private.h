@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _U_BLE_PRIVATE_H_
-#define _U_BLE_PRIVATE_H_
-
-#include "u_port_gatt.h"
+#ifndef _U_WIFI_PRIVATE_H_
+#define _U_WIFI_PRIVATE_H_
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -44,44 +42,27 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Convert a BLE handle to a short range handle
+/** Convert a wifi handle to a short range handle
  *
- * @param bleHandle  the BLE handle to convert
+ * @param wifiHandle  the wifi handle to convert
  * @return           a short range handle on success,
  *                   on failure negative value.
  */
-int32_t uBleToShoHandle(int32_t bleHandle);
+int32_t uWifiToShoHandle(int32_t wifiHandle);
 
-/** Convert a short range handle to a BLE handle
+/** Convert a short range handle to a wifi handle
  *
  * @param shortRangeHandle  the short range handle to convert
- * @return                  a BLE handle on success,
+ * @return                  a wifi handle on success,
  *                          on failure negative value.
  */
-int32_t uShoToBleHandle(int32_t shortRangeHandle);
+int32_t uShoToWifiHandle(int32_t shortRangeHandle);
 
-/** Initialize data part of BLE
- */
-void uBleDataPrivateInit(void);
-
-/** De-Initialize data part of BLE
- */
-void uBleDataPrivateDeinit(void);
-
-/** Translate MAC address in byte array to string
- *
- * @param pAddrIn  pointer to byte array
- * @param addrType Public, Random or Unknown
- * @param msbLast  Last byte in array should be leftmost byte in string
- * @param pAddrOut Output string
- */
-void addrArrayToString(const uint8_t *pAddrIn, uPortBtLeAddressType_t addrType, bool msbLast,
-                       char *pAddrOut);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _U_BLE_PRIVATE_H_
+#endif // _U_WIFI_PRIVATE_H_
 
 // End of file

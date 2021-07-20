@@ -149,6 +149,7 @@ SRC_FILES += \
   $(UBXLIB_PATH)/common/network/src/u_network_private_ble_intmod.c \
   $(UBXLIB_PATH)/common/network/src/u_network_private_cell.c \
   $(UBXLIB_PATH)/common/network/src/u_network_private_wifi.c \
+  $(UBXLIB_PATH)/common/network/src/u_network_private_short_range.c \
   $(UBXLIB_PATH)/common/network/src/u_network_private_gnss.c \
   $(UBXLIB_PATH)/common/network/test/u_network_test.c \
   $(UBXLIB_PATH)/common/network/test/u_network_test_shared_cfg.c \
@@ -188,6 +189,14 @@ SRC_FILES += \
   $(UBXLIB_PATH)/port/platform/common/test/u_preamble_test.c \
   $(UBXLIB_PATH)/port/platform/common/runner/u_runner.c \
   $(UBXLIB_PATH)/port/platform/common/heap_check/u_heap_check.c \
+  ${UBXLIB_PATH}/wifi/src/u_wifi.c \
+  ${UBXLIB_PATH}/wifi/src/u_wifi_cfg.c \
+  ${UBXLIB_PATH}/wifi/src/u_wifi_net.c \
+  ${UBXLIB_PATH}/wifi/src/u_wifi_private.c \
+  ${UBXLIB_PATH}/wifi/test/u_wifi_test.c \
+  ${UBXLIB_PATH}/wifi/test/u_wifi_cfg_test.c \
+  ${UBXLIB_PATH}/wifi/test/u_wifi_net_test.c \
+  ${UBXLIB_PATH}/wifi/test/u_wifi_test_private.c \
   $(NRF5_PORT_PATH)/src/u_port.c \
   $(NRF5_PORT_PATH)/src/u_port_debug.c \
   $(NRF5_PORT_PATH)/src/u_port_gpio.c \
@@ -273,6 +282,8 @@ INC_FOLDERS += \
   $(UBXLIB_PATH)/port/platform/common/event_queue \
   $(UBXLIB_PATH)/port/platform/common/runner \
   $(UBXLIB_PATH)/port/platform/common/heap_check \
+  $(UBXLIB_PATH)/wifi/api \
+  $(UBXLIB_PATH)/wifi/test \
   $(NRF5_PORT_PATH) \
   $(NRF5_PORT_PATH)/src \
   $(NRF5_PORT_PATH)/app \

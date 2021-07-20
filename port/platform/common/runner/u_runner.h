@@ -34,6 +34,7 @@ extern "C" {
 
 /** Macro to map a unit test assertion to Unity.
  */
+//lint --emacro((774), U_PORT_UNITY_TEST_ASSERT) suppress "Boolean within 'if' always evaluates to False"
 #define U_PORT_UNITY_TEST_ASSERT(condition) TEST_ASSERT(condition)
 #define U_PORT_UNITY_TEST_ASSERT_EQUAL(expected, actual) TEST_ASSERT_EQUAL(expected, actual)
 

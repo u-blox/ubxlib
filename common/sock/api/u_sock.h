@@ -215,11 +215,25 @@ extern "C" {
  */
 #define U_SOCK_OPT_TCP_NODELAY  0x0001
 
-/** TCP socket option: turn off Nagle's algorithm.
+/** TCP socket option: send keepidle probes when it is idle
  * The value matches LWIP which matches the BSD sockets API
  * (see Stevens et al).
  */
 #define U_SOCK_OPT_TCP_KEEPIDLE 0x0002
+
+/** TCP socket option: time in seconds between two successive
+ * keepalive retransmissions.
+ * The value matches LWIP which matches the BSD sockets API
+ * (see Stevens et al).
+ */
+#define U_SOCK_OPT_TCP_KEEPINTVL 0x0004
+
+/** TCP socket option: the number of retransmissions to be
+ * sent before disconnecting the remote end.
+ * The value matches LWIP which matches the BSD sockets API
+ * (see Stevens et al).
+ */
+#define U_SOCK_OPT_TCP_KEEPCNT  0x0005
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: MISC

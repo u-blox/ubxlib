@@ -40,6 +40,7 @@
                                               before the other port files if
                                               any print or scan function is used. */
 #include "u_port.h"
+#include "u_port_os.h"
 
 #include "u_runner.h"
 
@@ -321,6 +322,8 @@ void uRunnerPrintAll(const char *pPrefix)
         UNITY_PRINT_EOL();
         pFunction = pFunction->pNext;
         count++;
+        // Add some slack so the RTT buffer doesn't get full
+        uPortTaskBlock(1);
     }
     UNITY_PRINT_EOL();
 }

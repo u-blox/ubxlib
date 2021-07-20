@@ -319,15 +319,6 @@ int32_t uPortShortRangeEdmStremAtEventStackMinFree(int32_t handle);
  */
 bool uShortRangeEdmStreamAtEventIsCallback(int32_t handle);
 
-/** Find EDM channel for an IP connection.
- *
- * @param handle  the handle of the edm stream instance.
- * @param pIpConnection  the IP connection to find.
- * @return        EDM channel if found else negative value.
- */
-int32_t uShortRangeEdmStreamFindIpConnection(int32_t handle,
-                                             const uShortRangeConnectDataIp_t *pIpConnection);
-
 #ifdef __cplusplus
 }
 #endif

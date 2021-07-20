@@ -94,6 +94,10 @@ typedef struct uShortRangePrivateConnection_t {
 //lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallbackParameter) Suppress not reference, it is
 typedef struct uShortRangePrivateInstance_t {
     int32_t handle; /**< The handle for this instance. */
+    int32_t refCounter; /**< Reference counter.
+                             Each time uShortRangeAdd() is called with the same atHandle this counter is incremented.
+                             When user then call uShortRangeRemove() this counter will be decremented and when it reaches 0
+                             the short range instance will be deallocated */
     uShortRangeModes_t mode;
     const uShortRangePrivateModule_t *pModule; /**< Pointer to the module type. */
     uAtClientHandle_t atHandle; /**< The AT client handle to use. */
@@ -105,13 +109,13 @@ typedef struct uShortRangePrivateInstance_t {
     uShortRangePrivateConnection_t connections[U_SHORT_RANGE_MAX_CONNECTIONS];
     uShortRangeBtConnectionStatusCallback_t pBtConnectionStatusCallback;
     void *pBtConnectionStatusCallbackParameter;
-    void (*pWifiConnectionStatusCallback) (int32_t, int32_t, int32_t, char *, int32_t, void *);
+    void (*pWifiConnectionStatusCallback) (int32_t, int32_t, int32_t, int32_t, char *, int32_t, void *);
     void *pWifiConnectionStatusCallbackParameter;
     uShortRangeIpConnectionStatusCallback_t pIpConnectionStatusCallback;
     void *pIpConnectionStatusCallbackParameter;
     uShortRangeIpConnectionStatusCallback_t pMqttConnectionStatusCallback;
     void *pMqttConnectionStatusCallbackParameter;
-    void (*pNetworkStatusCallback) (int32_t, int32_t, void *);
+    void (*pNetworkStatusCallback) (int32_t, int32_t, uint32_t, void *);
     void *pNetworkStatusCallbackParameter;
     void (*pSpsConnectionCallback)(int32_t, char *, int32_t, int32_t, int32_t, void *);
     void *pSpsConnectionCallbackParameter;

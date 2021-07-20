@@ -38,7 +38,6 @@
 
 #include "u_at_client.h"
 #include "u_short_range_module_type.h"
-#include "u_port_gatt.h"
 
 #include "u_ble_module_type.h"
 #include "u_ble.h"

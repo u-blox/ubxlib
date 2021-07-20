@@ -46,6 +46,7 @@
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_ble_cfg.h"
+#include "u_ble_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -243,12 +244,13 @@ int32_t uBleCfgConfigure(int32_t bleHandle,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uShortRangePrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
+    int32_t shoHandle = uBleToShoHandle(bleHandle);
 
     if (pCfg != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
         if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
-            pInstance = pUShortRangePrivateGetInstance(bleHandle);
+            pInstance = pUShortRangePrivateGetInstance(shoHandle);
             if (pInstance != NULL) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 bool restartNeeded = false;

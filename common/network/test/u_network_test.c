@@ -412,6 +412,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
                 // Create a UDP socket
                 descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
                                          U_SOCK_PROTOCOL_UDP);
+                U_PORT_TEST_ASSERT(descriptor >= 0);
 
                 // Send and wait for the UDP echo data, trying a few
                 // times to reduce the chance of internet loss getting

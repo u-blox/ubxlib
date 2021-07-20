@@ -54,7 +54,9 @@ LINT_DIRS = [os.path.join("common","network","src"),
              os.path.join("port","test"),
              os.path.join("port","platform","common","test"),
              os.path.join("port","platform","common","runner"),
-             os.path.join("common","utils","src")]
+             os.path.join("common","utils","src"),
+             os.path.join("wifi","src"),
+             os.path.join("wifi","test")]
 
 # Include directories for ubxlib, off the ubxlib root.
 UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
@@ -89,7 +91,9 @@ UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
                        os.path.join("port","clib"),
                        os.path.join("port","platform","common","event_queue"),
                        os.path.join("port","platform","common","runner"),
-                       os.path.join("port","platform","lint","stubs")]
+                       os.path.join("port","platform","lint","stubs"),
+                       os.path.join("wifi","api"),
+                       os.path.join("wifi","test")]
 
 # Include directories for the C compiler and its C library.
 COMPILER_INCLUDE_DIRS = u_settings.LINT_COMPILER_INCLUDE_DIRS

@@ -61,6 +61,10 @@
 #define U_NETWORK_HANDLE_IS_GNSS(handle) ((handle) >= (int32_t) U_NETWORK_HANDLE_GNSS_MIN && \
                                           (handle) <= (int32_t) U_NETWORK_HANDLE_GNSS_MAX)
 
+/** The total handle range for each network type.
+ */
+#define U_NETWORK_HANDLE_RANGE  256
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -75,13 +79,13 @@ typedef enum {
                                                        * as it can be used as a size
                                                        * also. */
     U_NETWORK_HANDLE_BLE_MIN = U_NETWORK_HANDLE_BASE,
-    U_NETWORK_HANDLE_BLE_MAX = U_NETWORK_HANDLE_BASE + 255,
-    U_NETWORK_HANDLE_CELL_MIN = U_NETWORK_HANDLE_BASE + 256,
-    U_NETWORK_HANDLE_CELL_MAX = U_NETWORK_HANDLE_BASE + 511,
-    U_NETWORK_HANDLE_WIFI_MIN = U_NETWORK_HANDLE_BASE + 512,
-    U_NETWORK_HANDLE_WIFI_MAX = U_NETWORK_HANDLE_BASE + 1024,
-    U_NETWORK_HANDLE_GNSS_MIN = U_NETWORK_HANDLE_BASE + 1025,
-    U_NETWORK_HANDLE_GNSS_MAX = U_NETWORK_HANDLE_BASE + 2048
+    U_NETWORK_HANDLE_BLE_MAX = U_NETWORK_HANDLE_BLE_MIN + (U_NETWORK_HANDLE_RANGE - 1),
+    U_NETWORK_HANDLE_CELL_MIN,
+    U_NETWORK_HANDLE_CELL_MAX = U_NETWORK_HANDLE_CELL_MIN + (U_NETWORK_HANDLE_RANGE - 1),
+    U_NETWORK_HANDLE_WIFI_MIN,
+    U_NETWORK_HANDLE_WIFI_MAX = U_NETWORK_HANDLE_WIFI_MIN + (U_NETWORK_HANDLE_RANGE - 1),
+    U_NETWORK_HANDLE_GNSS_MIN,
+    U_NETWORK_HANDLE_GNSS_MAX = U_NETWORK_HANDLE_GNSS_MIN + (U_NETWORK_HANDLE_RANGE - 1),
 } uNetworkHandle_t;
 
 #endif // _U_NETWORK_HANDLE_H_

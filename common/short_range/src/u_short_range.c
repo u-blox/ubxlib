@@ -51,6 +51,8 @@
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
 
+#include "u_network_handle.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -65,11 +67,6 @@
  * TYPES
  * -------------------------------------------------------------- */
 
-typedef struct {
-    uShortRangeModuleType_t module;
-    const char *pStr;
-} uShortRangeStringToModule_t;
-
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
@@ -78,16 +75,27 @@ typedef struct {
  */
 static int32_t gNextInstanceHandle = 0;
 
-static const uShortRangeStringToModule_t stringToModule[] = {
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_B1, "NINA-B1"},
-    {U_SHORT_RANGE_MODULE_TYPE_ANNA_B1, "ANNA-B1"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_B3, "NINA-B3"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_B4, "NINA-B4"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_B2, "NINA-B2"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_W13, "NINA-W13"},
-    {U_SHORT_RANGE_MODULE_TYPE_NINA_W15, "NINA-W15"},
-    {U_SHORT_RANGE_MODULE_TYPE_ODIN_W2, "ODIN-W2"},
+// Macro magic for gStringToModule
+#define U_YES true
+#define U_NO  false
+#define U_SHORT_RANGE_MODULE(_TYPE_NAME, _GMM_NAME, _BLE, _BT_CLASSIC, _WIFI) \
+    { \
+        .moduleType = U_SHORT_RANGE_MODULE_TYPE_##_TYPE_NAME, \
+        .pName = _GMM_NAME, \
+        .supportsBle = _BLE, \
+        .supportsBtClassic = _BT_CLASSIC, \
+        .supportsWifi = _WIFI, \
+    },
+
+static const uShortRangeModuleInfo_t gModuleInfo[] = {
+    U_SHORT_RANGE_MODULE_LIST
 };
+
+static const size_t gModuleInfoCount = sizeof(gModuleInfo) / sizeof(gModuleInfo[0]);
+
+#undef U_YES
+#undef U_NO
+#undef U_SHORT_RANGE_MODULE
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -521,11 +529,11 @@ static int32_t setEchoOff(const uAtClientHandle_t atHandle, uint8_t retries)
     return errorCode;
 }
 
-static uShortRangeModuleType_t convert(const char *pStr)
+static int32_t convert(const char *pStr)
 {
-    for (uint32_t i = 0;  i < sizeof (stringToModule) / sizeof (stringToModule[0]);  ++i) {
-        if (!strncmp (pStr, stringToModule[i].pStr, strlen(stringToModule[i].pStr))) {
-            return stringToModule[i].module;
+    for (int32_t i = 0;  i < (int32_t)gModuleInfoCount;  ++i) {
+        if (!strncmp (pStr, gModuleInfo[i].pName, strlen(gModuleInfo[i].pName))) {
+            return gModuleInfo[i].moduleType;
         }
     }
     return U_SHORT_RANGE_MODULE_TYPE_INVALID;
@@ -638,61 +646,82 @@ int32_t uShortRangeUnlock()
 int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
                        uAtClientHandle_t atHandle)
 {
-    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uShortRangePrivateInstance_t *pInstance = NULL;
+    int32_t handleOrErrorCode;
+    const uShortRangePrivateModule_t *pModule = NULL;
+    uShortRangePrivateInstance_t *pInstance;
 
-    if (gUShortRangePrivateMutex != NULL) {
-        // Check parameters
-        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (((size_t) moduleType < gUShortRangePrivateModuleListSize) &&
-            (atHandle != NULL) &&
-            (pGetShortRangeInstanceAtHandle(atHandle) == NULL)) {
-            handleOrErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            // Allocate memory for the instance
-            pInstance = (uShortRangePrivateInstance_t *) malloc(sizeof(uShortRangePrivateInstance_t));
-            if (pInstance != NULL) {
-                int32_t streamHandle;
-                uAtClientStream_t streamType;
-                // Fill the values in
-                memset(pInstance, 0, sizeof(*pInstance));
+    if (gUShortRangePrivateMutex == NULL) {
+        return (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    }
+
+    // Check parameters
+    for (size_t i = 0; i < gUShortRangePrivateModuleListSize; i++) {
+        if (gUShortRangePrivateModuleList[i].moduleType == moduleType) {
+            pModule = &gUShortRangePrivateModuleList[i];
+            break;
+        }
+    }
+    if ((uShortRangeGetModuleInfo(moduleType) == NULL) ||
+        (atHandle == NULL) || (pModule == NULL)) {
+        return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+
+    // Check if there is already an instance for the AT client
+    pInstance = pGetShortRangeInstanceAtHandle(atHandle);
+    if (pInstance == NULL) {
+        // Allocate memory for the instance
+        pInstance = (uShortRangePrivateInstance_t *) malloc(sizeof(uShortRangePrivateInstance_t));
+        if (pInstance != NULL) {
+            int32_t streamHandle;
+            uAtClientStream_t streamType;
+            // Fill the values in
+            memset(pInstance, 0, sizeof(*pInstance));
+            // Find a free handle
+            do {
                 pInstance->handle = gNextInstanceHandle;
                 gNextInstanceHandle++;
-                if (gNextInstanceHandle < 0) {
+                if (gNextInstanceHandle > (int32_t) U_NETWORK_HANDLE_RANGE) {
                     gNextInstanceHandle = 0;
                 }
+            } while (pUShortRangePrivateGetInstance(pInstance->handle) != NULL);
 
-                for (int32_t i = 0; i < U_SHORT_RANGE_MAX_CONNECTIONS; i++) {
-                    pInstance->connections[i].connHandle = -1;
-                    pInstance->connections[i].type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
-                }
-
-                pInstance->atHandle = atHandle;
-                pInstance->mode = U_SHORT_RANGE_MODE_COMMAND;
-                pInstance->startTimeMs = 500;
-                pInstance->urcConHandlerSet = false;
-
-                streamHandle = uAtClientStreamGet(atHandle, &streamType);
-                pInstance->streamHandle = streamHandle;
-                pInstance->streamType = streamType;
-
-                if (pInstance->streamType == U_AT_CLIENT_STREAM_TYPE_EDM) {
-                    pInstance->mode = U_SHORT_RANGE_MODE_EDM;
-                }
-
-                pInstance->pModule = &(gUShortRangePrivateModuleList[moduleType]);
-                pInstance->pNext = NULL;
-
-                uAtClientTimeoutSet(atHandle, pInstance->pModule->atTimeoutSeconds * 1000);
-                uAtClientDelaySet(atHandle, pInstance->pModule->commandDelayMs);
-                // ...and finally add it to the list
-                addShortRangeInstance(pInstance);
-                handleOrErrorCode = pInstance->handle;
-
-                uAtClientSetUrcHandler(atHandle, "+STARTUP",
-                                       restarted, pInstance);
-                pInstance->ticksLastRestart = 0;
+            for (int32_t i = 0; i < U_SHORT_RANGE_MAX_CONNECTIONS; i++) {
+                pInstance->connections[i].connHandle = -1;
+                pInstance->connections[i].type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
             }
+
+            pInstance->atHandle = atHandle;
+            pInstance->mode = U_SHORT_RANGE_MODE_COMMAND;
+            pInstance->startTimeMs = 500;
+            pInstance->urcConHandlerSet = false;
+
+            streamHandle = uAtClientStreamGet(atHandle, &streamType);
+            pInstance->streamHandle = streamHandle;
+            pInstance->streamType = streamType;
+
+            if (pInstance->streamType == U_AT_CLIENT_STREAM_TYPE_EDM) {
+                pInstance->mode = U_SHORT_RANGE_MODE_EDM;
+            }
+
+            pInstance->pModule = pModule;
+            pInstance->pNext = NULL;
+
+            uAtClientTimeoutSet(atHandle, pInstance->pModule->atTimeoutSeconds * 1000);
+            uAtClientDelaySet(atHandle, pInstance->pModule->commandDelayMs);
+            // ...and finally add it to the list
+            addShortRangeInstance(pInstance);
+
+            uAtClientSetUrcHandler(atHandle, "+STARTUP",
+                                   restarted, pInstance);
+            pInstance->ticksLastRestart = 0;
         }
+    }
+
+    if (pInstance) {
+        pInstance->refCounter++;
+        handleOrErrorCode = pInstance->handle;
+    } else {
+        handleOrErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     }
 
     return handleOrErrorCode;
@@ -704,7 +733,8 @@ void uShortRangeRemove(int32_t shortRangeHandle)
 
     if (shortRangeHandle != -1 && gUShortRangePrivateMutex != NULL) {
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
-        if (pInstance != NULL) {
+        // There may be several users of the instance so check the reference counter
+        if ((pInstance != NULL) && (--pInstance->refCounter <= 0)) {
             removeShortRangeInstance(pInstance);
             uAtClientRemoveUrcHandler(pInstance->atHandle, "+STARTUP");
             free(pInstance);
@@ -1001,6 +1031,16 @@ int32_t uShortRangeAtClientHandleGet(int32_t shortRangeHandle,
     }
 
     return errorCode;
+}
+
+const uShortRangeModuleInfo_t *uShortRangeGetModuleInfo(int32_t moduleType)
+{
+    for (int32_t i = 0; i < (int32_t)gModuleInfoCount; i++) {
+        if (gModuleInfo[i].moduleType == moduleType) {
+            return &gModuleInfo[i];
+        }
+    }
+    return NULL;
 }
 
 // End of file

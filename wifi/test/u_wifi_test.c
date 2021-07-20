@@ -7,7 +7,7 @@
  *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
+ * Unless required by applicawifi law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
@@ -21,8 +21,8 @@
  */
 
 /** @file
- * @brief Tests for the ble "general" API: these should pass on all
- * platforms where one UART is available. No short range module is
+ * @brief Tests for the wifi "general" API: these should pass on all
+ * platforms where one UART is availawifi. No short range module is
  * actually used in this set of tests.
  */
 
@@ -33,15 +33,13 @@
 #include "stdint.h"    // int32_t etc.
 
 // Must always be included before u_short_range_test_selector.h
-//lint -efile(766, u_ble_module_type.h)
-#include "u_ble_module_type.h"
+//lint -efile(766, u_wifi_module_type.h)
+#include "u_wifi_module_type.h"
 
 #include "u_short_range_test_selector.h"
 
-#if U_SHORT_RANGE_TEST_BLE()
+#if U_SHORT_RANGE_TEST_WIFI()
 
-//lint -efile(537, stddef.h) suppress repeated include
-//lint -efile(451, stddef.h)
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdbool.h"
 
@@ -60,11 +58,10 @@
 
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
-#include "u_ble.h"
 
-//lint -efile(766, u_ble_test_private.h)
-#include "u_ble_test_private.h"
+#include "u_wifi.h"
 
+#include "u_wifi_test_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -91,41 +88,28 @@ static int32_t gEdmStreamHandle = -1;
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Basic test: initialise and then de-initialise ble.
- *
- * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
- * naming rules that must be followed when using the
- * U_PORT_TEST_FUNCTION() macro.
+/** Basic test: initialise and then de-initialise wifi.
  */
-U_PORT_TEST_FUNCTION("[ble]", "bleInitialisation")
+U_PORT_TEST_FUNCTION("[wifi]", "wifiInitialisation")
 {
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uShortRangeEdmStreamInit() == 0);
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
-    U_PORT_TEST_ASSERT(uBleInit() == 0);
-    uBleDeinit();
+    U_PORT_TEST_ASSERT(uWifiInit() == 0);
+    uWifiDeinit();
     uAtClientDeinit();
     uShortRangeEdmStreamDeinit();
     uPortDeinit();
 }
 
-#if (U_CFG_TEST_UART_A >= 0)
-/** Add a ble instance and remove it again.
- * Note: no ble operations are actually carried out and
- * hence this test can be run wherever any UART is
- * defined.
+/** Add a wifi instance and remove it again.
  */
-U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
+U_PORT_TEST_FUNCTION("[wifi]", "wifiAdd")
 {
-    int32_t bleHandle;
+    int32_t wifiHandle;
     uAtClientHandle_t atClientHandle;
     uAtClientHandle_t atClientHandleCheck = (uAtClientHandle_t) -1;
     int32_t heapUsed;
-#ifdef U_CFG_BLE_MODULE_INTERNAL
-    uBleModuleType_t testModuleType = U_BLE_MODULE_TYPE_INTERNAL;
-#else
-    uBleModuleType_t testModuleType = U_BLE_MODULE_TYPE_NINA_B3;
-#endif
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -135,71 +119,62 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    gUartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
-                                U_CFG_TEST_BAUD_RATE,
+    gUartHandle = uPortUartOpen(U_CFG_APP_SHORT_RANGE_UART,
+                                U_SHORT_RANGE_UART_BAUD_RATE,
                                 NULL,
-                                U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                U_CFG_TEST_PIN_UART_A_TXD,
-                                U_CFG_TEST_PIN_UART_A_RXD,
-                                U_CFG_TEST_PIN_UART_A_CTS,
-                                U_CFG_TEST_PIN_UART_A_RTS);
+                                U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES,
+                                U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                U_CFG_APP_PIN_SHORT_RANGE_RTS);
     U_PORT_TEST_ASSERT(gUartHandle >= 0);
 
     U_PORT_TEST_ASSERT(uShortRangeEdmStreamInit() == 0);
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
-    U_PORT_TEST_ASSERT(uBleInit() == 0);
+    U_PORT_TEST_ASSERT(uWifiInit() == 0);
 
     gEdmStreamHandle = uShortRangeEdmStreamOpen(gUartHandle);
     U_PORT_TEST_ASSERT(gEdmStreamHandle >= 0);
 
-    uPortLog("U_BLE_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_A);
+    uPortLog("U_WIFI_TEST: adding an AT client on UART %d...\n",
+             U_CFG_APP_SHORT_RANGE_UART);
     atClientHandle = uAtClientAdd(gEdmStreamHandle, U_AT_CLIENT_STREAM_TYPE_EDM,
                                   NULL, U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
-    uPortLog("U_BLE_TEST: adding a ble instance on that AT client...\n");
-    bleHandle = uBleAdd(testModuleType, (void *)atClientHandle);
-    U_PORT_TEST_ASSERT(bleHandle >= 0);
-#ifdef U_CFG_BLE_MODULE_INTERNAL
-    // In the case of internal Ble module there is not atClient handle
-    // saved in the Ble instance
-    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
-                                             &atClientHandleCheck) < 0);
-#else
-    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
-                                             &atClientHandleCheck) == 0);
+    uPortLog("U_WIFI_TEST: adding a wifi instance on that AT client...\n");
+    wifiHandle = uWifiAdd(U_WIFI_MODULE_TYPE_NINA_W15, atClientHandle);
+    U_PORT_TEST_ASSERT(wifiHandle >= 0);
+    U_PORT_TEST_ASSERT(uWifiAtClientHandleGet(wifiHandle,
+                                              &atClientHandleCheck) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
 
-    uPortLog("U_BLE_TEST: removing ble instance...\n");
-//lint -save -e522 uBleRemove lack side-effects when compiling for internal ble module
-    uBleRemove(bleHandle);
-//lint -restore
+    uPortLog("U_WIFI_TEST: adding another instance on the same AT client,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uWifiAdd(U_WIFI_MODULE_TYPE_NINA_W15, atClientHandle));
 
-    uPortLog("U_BLE_TEST: adding it again...\n");
-    bleHandle = uBleAdd(testModuleType, atClientHandle);
-    U_PORT_TEST_ASSERT(bleHandle >= 0);
-#endif
+    uPortLog("U_WIFI_TEST: removing wifi instance...\n");
+    uWifiRemove(wifiHandle);
+
+    uPortLog("U_WIFI_TEST: adding it again...\n");
+    wifiHandle = uWifiAdd(U_WIFI_MODULE_TYPE_NINA_W15, atClientHandle);
+    U_PORT_TEST_ASSERT(wifiHandle >= 0);
 
     atClientHandleCheck = (uAtClientHandle_t) -1;
-#ifdef U_CFG_BLE_MODULE_INTERNAL
-    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
-                                             &atClientHandleCheck) < 0);
-#else
-    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
-                                             &atClientHandleCheck) == 0);
+    U_PORT_TEST_ASSERT(uWifiAtClientHandleGet(wifiHandle,
+                                              &atClientHandleCheck) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
-#endif
 
-    uPortLog("U_BLE_TEST: deinitialising ble API...\n");
-    uBleDeinit();
+    uPortLog("U_WIFI_TEST: deinitialising wifi API...\n");
+    uWifiDeinit();
 
-    uPortLog("U_BLE_TEST: removing AT client...\n");
     uShortRangeEdmStreamClose(gEdmStreamHandle);
     gEdmStreamHandle = -1;
     uShortRangeEdmStreamDeinit();
 
+    uPortLog("U_WIFI_TEST: removing AT client...\n");
     uAtClientRemove(atClientHandle);
+
     uAtClientDeinit();
 
     uPortUartClose(gUartHandle);
@@ -214,7 +189,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_BLE_TEST: we have leaked %d byte(s).\n", heapUsed);
+    uPortLog("U_WIFI_TEST: we have leaked %d byte(s).\n", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -223,19 +198,17 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
 #endif
 }
 
-#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 
-static uBleTestPrivate_t gHandles;
-
-U_PORT_TEST_FUNCTION("[ble]", "bleDetect")
+U_PORT_TEST_FUNCTION("[wifi]", "wifiDetect")
 {
     int32_t heapUsed;
+    uWifiTestPrivate_t handles;
     heapUsed = uPortGetHeapFree();
 
-    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                               &gHandles) == 0);
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &handles) == 0);
 
-    uBleTestPrivatePostamble(&gHandles);
+    uWifiTestPrivatePostamble(&handles);
 
 #ifndef __XTENSA__
     // Check for memory leaks
@@ -244,7 +217,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleDetect")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_BLE_TEST: we have leaked %d byte(s).\n", heapUsed);
+    uPortLog("U_WIFI_TEST: we have leaked %d byte(s).\n", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -253,28 +226,25 @@ U_PORT_TEST_FUNCTION("[ble]", "bleDetect")
 #endif
 }
 
-#endif
-#endif
-
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
  */
-U_PORT_TEST_FUNCTION("[ble]", "bleCleanUp")
+U_PORT_TEST_FUNCTION("[wifi]", "wifiCleanUp")
 {
     int32_t x;
 
-    uBleDeinit();
+    uWifiDeinit();
+    if (gUartHandle >= 0) {
+        uPortUartClose(gUartHandle);
+    }
     if (gEdmStreamHandle >= 0) {
         uShortRangeEdmStreamClose(gEdmStreamHandle);
     }
     uAtClientDeinit();
-    if (gUartHandle >= 0) {
-        uPortUartClose(gUartHandle);
-    }
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_BLE_TEST: main task stack had a minimum of %d"
+    uPortLog("U_WIFI_TEST: main task stack had a minimum of %d"
              " byte(s) free at the end of these tests.\n", x);
     U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
@@ -282,12 +252,12 @@ U_PORT_TEST_FUNCTION("[ble]", "bleCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_BLE_TEST: heap had a minimum of %d"
+        uPortLog("U_WIFI_TEST: heap had a minimum of %d"
                  " byte(s) free at the end of these tests.\n", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }
 
-#endif // U_SHORT_RANGE_TEST_BLE()
+#endif // U_SHORT_RANGE_TEST_WIFI()
 
 // End of file
