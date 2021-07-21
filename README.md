@@ -75,6 +75,7 @@ In order for u-blox to support multiple platforms with this code there is also a
 ¦   +---short_range            <-- internal API used by the BLE and Wifi APIs (see below)
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wifi APIs
 ¦   +---error                  <-- u_error_common.h: error codes common across APIs
+¦   +---utils                  <-- contains common utilities
 ¦   ...
 +---cell                       <-- API for cellular (if you need more than network provides)
 +---wifi                       <-- API for Wifi (if you need more than network provides)
