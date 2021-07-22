@@ -3,7 +3,7 @@ version: '3.7'
 # Define services
 services:
   ubxlib_agent:
-    image: registry.git-sho-mlm.u-blox.net/sw-emb-sho/devtools/ubxlib-docker/ubxlib_docker:latest
+    image: nexus-de-bln.u-blox.net:18001/ubxlib_docker:latest
     restart: unless-stopped
     device_cgroup_rules:
       - 'c 188:* rmw'
