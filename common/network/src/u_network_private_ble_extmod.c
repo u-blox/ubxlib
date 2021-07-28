@@ -202,8 +202,8 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
 
         if (errorCode < 0) {
             uBleRemove(pInstance->bleHandle);
-            uAtClientRemove(pInstance->atClientHandle);
             uShortRangeEdmStreamClose(pInstance->edmStreamHandle);
+            uAtClientRemove(pInstance->atClientHandle);
             uPortUartClose(pInstance->uartHandle);
             pInstance->uartHandle = -1;
             pInstance->atClientHandle = NULL;
@@ -226,10 +226,10 @@ int32_t uNetworkRemoveBle(int32_t handle)
     if (pInstance != NULL) {
         uBleRemove(pInstance->bleHandle);
         pInstance->bleHandle = -1;
-        uAtClientRemove(pInstance->atClientHandle);
-        pInstance->atClientHandle = NULL;
         uShortRangeEdmStreamClose(pInstance->edmStreamHandle);
         pInstance->edmStreamHandle = -1;
+        uAtClientRemove(pInstance->atClientHandle);
+        pInstance->atClientHandle = NULL;
         uPortUartClose(pInstance->uartHandle);
         pInstance->uartHandle = -1;
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;

@@ -135,12 +135,12 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgCleanUp")
     int32_t x;
 
     uBleDeinit();
+    if (gHandles.edmStreamHandle >= 0) {
+        uShortRangeEdmStreamClose(gHandles.edmStreamHandle);
+    }
     uAtClientDeinit();
     if (gHandles.uartHandle >= 0) {
         uPortUartClose(gHandles.uartHandle);
-    }
-    if (gHandles.edmStreamHandle >= 0) {
-        uShortRangeEdmStreamClose(gHandles.edmStreamHandle);
     }
 
     x = uPortTaskStackMinFree(NULL);

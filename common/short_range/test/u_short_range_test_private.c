@@ -179,15 +179,15 @@ void uShortRangeTestPrivatePostamble(uShortRangeTestPrivate_t *pParameters)
     // Let uShortRangeDeinit() remove the short range handle
     uShortRangeDeinit();
 
-    uPortLog("U_SHORT_RANGE_TEST_PRIVATE: removing AT client...\n");
-    uAtClientRemove(pParameters->atClientHandle);
-    uAtClientDeinit();
-
     if (pParameters->edmStreamHandle >= 0) {
         uShortRangeEdmStreamClose(pParameters->edmStreamHandle);
         uShortRangeEdmStreamDeinit();
         pParameters->edmStreamHandle = -1;
     }
+
+    uPortLog("U_SHORT_RANGE_TEST_PRIVATE: removing AT client...\n");
+    uAtClientRemove(pParameters->atClientHandle);
+    uAtClientDeinit();
 
     uPortUartClose(pParameters->uartHandle);
     pParameters->uartHandle = -1;
@@ -200,13 +200,13 @@ void uShortRangeTestPrivatePostamble(uShortRangeTestPrivate_t *pParameters)
 void uShortRangeTestPrivateCleanup(uShortRangeTestPrivate_t *pParameters)
 {
     uShortRangeDeinit();
-    uAtClientDeinit();
     if (pParameters->edmStreamHandle >= 0) {
         uShortRangeEdmStreamClose(pParameters->edmStreamHandle);
         uShortRangeEdmStreamDeinit();
         pParameters->edmStreamHandle = -1;
     }
 
+    uAtClientDeinit();
     if (pParameters->uartHandle >= 0) {
         uPortUartClose(pParameters->uartHandle);
     }

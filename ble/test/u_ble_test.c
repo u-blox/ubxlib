@@ -190,13 +190,12 @@ U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
     uBleDeinit();
 
     uPortLog("U_BLE_TEST: removing AT client...\n");
-    uAtClientRemove(atClientHandle);
-
-    uAtClientDeinit();
-
     uShortRangeEdmStreamClose(gEdmStreamHandle);
     gEdmStreamHandle = -1;
     uShortRangeEdmStreamDeinit();
+
+    uAtClientRemove(atClientHandle);
+    uAtClientDeinit();
 
     uPortUartClose(gUartHandle);
     gUartHandle = -1;
@@ -261,12 +260,12 @@ U_PORT_TEST_FUNCTION("[ble]", "bleCleanUp")
     int32_t x;
 
     uBleDeinit();
+    if (gEdmStreamHandle >= 0) {
+        uShortRangeEdmStreamClose(gEdmStreamHandle);
+    }
     uAtClientDeinit();
     if (gUartHandle >= 0) {
         uPortUartClose(gUartHandle);
-    }
-    if (gEdmStreamHandle >= 0) {
-        uShortRangeEdmStreamClose(gEdmStreamHandle);
     }
 
     x = uPortTaskStackMinFree(NULL);

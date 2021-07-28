@@ -219,12 +219,12 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddEdm")
     uShortRangeRemove(gHandles.shortRangeHandle);
     uShortRangeDeinit();
 
+    uShortRangeEdmStreamClose(gHandles.edmStreamHandle);
+    uShortRangeEdmStreamDeinit();
+
     uPortLog("U_SHORT_RANGE_TEST: removing AT client...\n");
     uAtClientRemove(gHandles.atClientHandle);
     uAtClientDeinit();
-
-    uShortRangeEdmStreamClose(gHandles.edmStreamHandle);
-    uShortRangeEdmStreamDeinit();
 
     uPortUartClose(gHandles.uartHandle);
     gHandles.uartHandle = -1;
