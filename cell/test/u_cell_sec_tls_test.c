@@ -264,7 +264,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     // Try with password missing
     U_PORT_TEST_ASSERT(uCellSecTlsClientPskSet(pContext, NULL, 0,
                                                "this_is_the_id_for_the_password_again",
-                                               27, false) < 0);
+                                               37, false) < 0);
 
     // Check that the Psk/PskId can be set once more
     uPortLog("U_CELL_SEC_TLS_TEST: checking PSK and PSK ID again...\n");

@@ -170,10 +170,13 @@ static uCellSecTlsContext_t *pNewContext()
 // Free a security context.
 static void freeContext(const uCellSecTlsContext_t *pContext)
 {
-    if (pContext->profileId < sizeof(gpContextList) / sizeof(gpContextList[0])) {
+    uint8_t profileId = pContext->profileId;
+
+    if (profileId < sizeof(gpContextList) / sizeof(gpContextList[0])) {
         // Free the context
-        free(gpContextList[pContext->profileId]);
-        gpContextList[pContext->profileId] = NULL;
+        free(gpContextList[profileId]);
+        // Mark the entry in the list as free
+        gpContextList[profileId] = NULL;
     }
 }
 
