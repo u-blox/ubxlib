@@ -39,6 +39,8 @@
 #include "u_port_os.h"
 #include "u_port_crypto.h"
 
+#include "u_hex_bin_convert.h"
+
 #include "u_at_client.h"
 
 #include "u_security.h"
@@ -288,9 +290,9 @@ int32_t uCellSecGetRootOfTrustUid(int32_t cellHandle,
                         uAtClientResponseStop(atHandle);
                         if ((uAtClientUnlock(atHandle) == 0) &&
                             (sizeOutBytes == sizeof(buffer) - 1)) {
-                            errorCodeOrSize = (int32_t) uCellPrivateHexToBin(buffer,
-                                                                             sizeOutBytes,
-                                                                             pRootOfTrustUid);
+                            errorCodeOrSize = (int32_t) uHexToBin(buffer,
+                                                                  sizeOutBytes,
+                                                                  pRootOfTrustUid);
                         } else {
                             uPortTaskBlock(5000);
                         }
@@ -339,8 +341,7 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
                                     U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+USECC2C=");
                 uAtClientWriteInt(atHandle, 0);
-                uCellPrivateBinToHex(pTESecret, sizeof(buffer) / 2,
-                                     buffer);
+                uBinToHex(pTESecret, sizeof(buffer) / 2, buffer);
                 // Add terminator since the AT write needs a string
                 *(buffer + sizeof(buffer) - 1) = 0;
                 uAtClientWriteString(atHandle, buffer, true);
@@ -354,9 +355,9 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
                     x = uAtClientReadString(atHandle, buffer,
                                             sizeof(buffer), false);
                     if (x == sizeof(buffer) - 1) {
-                        x = (int32_t) uCellPrivateHexToBin(buffer,
-                                                           sizeof(buffer) - 1,
-                                                           pKey);
+                        x = (int32_t) uHexToBin(buffer,
+                                                sizeof(buffer) - 1,
+                                                pKey);
                     }
                     // Try to read the HMAC key, which will
                     // only be present if the module implements
@@ -364,9 +365,9 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
                     y = uAtClientReadString(atHandle, buffer,
                                             sizeof(buffer), false);
                     if (y == sizeof(buffer) - 1) {
-                        y = (int32_t) uCellPrivateHexToBin(buffer,
-                                                           sizeof(buffer) - 1,
-                                                           pHMac);
+                        y = (int32_t) uHexToBin(buffer,
+                                                sizeof(buffer) - 1,
+                                                pHMac);
                     } else {
                         // Zero the HMAC key field so that we know it is
                         // empty, then we know to use the V1 scheme.
@@ -427,8 +428,7 @@ int32_t uCellSecC2cOpen(int32_t cellHandle,
                                         U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
                     uAtClientCommandStart(atHandle, "AT+USECC2C=");
                     uAtClientWriteInt(atHandle, 1);
-                    uCellPrivateBinToHex(pTESecret, sizeof(buffer) / 2,
-                                         buffer);
+                    uBinToHex(pTESecret, sizeof(buffer) / 2, buffer);
                     // Add terminator since the AT write needs a string
                     *(buffer + sizeof(buffer) - 1) = 0;
                     uAtClientWriteString(atHandle, buffer, true);
@@ -747,18 +747,18 @@ int32_t uCellSecPskGenerate(int32_t cellHandle,
                                                    false);
                 if ((sizeOutPskId > 0) &&
                     (sizeOutPskId <= U_SECURITY_PSK_ID_MAX_LENGTH_BYTES * 2)) {
-                    sizeOutPskId = (int32_t) uCellPrivateHexToBin(buffer,
-                                                                  sizeOutPskId,
-                                                                  pPskId);
+                    sizeOutPskId = (int32_t) uHexToBin(buffer,
+                                                       sizeOutPskId,
+                                                       pPskId);
                 }
                 // Read the PSK
                 sizeOutPsk = uAtClientReadString(atHandle, buffer,
                                                  sizeof(buffer),
                                                  false);
                 if (sizeOutPsk > 0) {
-                    sizeOutPsk = (int32_t) uCellPrivateHexToBin(buffer,
-                                                                sizeOutPsk,
-                                                                pPsk);
+                    sizeOutPsk = (int32_t) uHexToBin(buffer,
+                                                     sizeOutPsk,
+                                                     pPsk);
                 }
                 uAtClientResponseStop(atHandle);
                 if ((uAtClientUnlock(atHandle) == 0) &&

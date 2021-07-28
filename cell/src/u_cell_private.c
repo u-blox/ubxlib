@@ -165,12 +165,6 @@ const size_t gUCellPrivateModuleListSize = sizeof(gUCellPrivateModuleList) /
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** For binary/hex conversion.
- */
-static const char gHex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                            '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-                           };
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -361,11 +355,6 @@ int32_t uCellPrivateGetImei(const uCellPrivateInstance_t *pInstance,
     return errorCode;
 }
 
-
-
-
-
-
 // Get whether the given instance is registered with the network.
 // Needs to be in the packet switched domain, circuit switched is
 // no use for this API.
@@ -445,61 +434,6 @@ const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle)
     return pModule;
 }
 
-// Convert a buffer into the ASCII hex equivalent.
-//lint -esym(429, pHex) Suppress Lint getting a bee in its
-// bonnet about pHex not being free()'d when it IS being free()'d.
-size_t uCellPrivateBinToHex(const char *pBin, size_t binLength,
-                            char *pHex)
-{
-    for (size_t x = 0; x < binLength; x++) {
-        *pHex = gHex[((unsigned char) * pBin) >> 4];
-        pHex++;
-        *pHex = gHex[*pBin & 0x0f];
-        pHex++;
-        pBin++;
-    }
-
-    return binLength * 2;
-}
-
-// Convert a buffer of ASCII hex into the binary equivalent.
-size_t uCellPrivateHexToBin(const char *pHex, size_t hexLength,
-                            char *pBin)
-{
-    bool success = true;
-    size_t length;
-    char z[2];
-
-    for (length = 0; (length < hexLength / 2) && success; length++) {
-        z[0] = *pHex - '0';
-        pHex++;
-        z[1] = *pHex - '0';
-        pHex++;
-        for (size_t y = 0; (y < sizeof(z)) && success; y++) {
-            if (z[y] > 9) {
-                // Must be A to F or a to f
-                z[y] -= 'A' - '0';
-                z[y] += 10;
-            }
-            if (z[y] > 15) {
-                // Must be a to f
-                z[y] -= 'a' - 'A';
-            }
-            // Cast here to shut-up a warning under ESP-IDF
-            // which appears to have chars as unsigned and
-            // hence thinks the first condition is always true
-            success = ((signed char) z[y] >= 0) && (z[y] <= 15);
-        }
-        if (success) {
-            *pBin = (char) (((z[0] & 0x0f) << 4) | z[1]);
-            pBin++;
-        }
-    }
-
-    return length;
-}
-
-// Remove the chip to chip security context for the given instance.
 void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance)
 {
     uCellSecC2cContext_t *pContext = (uCellSecC2cContext_t *) pInstance->pSecurityC2cContext;

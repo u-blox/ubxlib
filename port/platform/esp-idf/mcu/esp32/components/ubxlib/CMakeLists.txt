@@ -73,6 +73,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../common/short_range/src/u_short_range_private.c"
 # The common utils
                    "../../../../../../../common/utils/src/u_ringbuffer.c"
+                   "../../../../../../../common/utils/src/u_hex_bin_convert.c"
 # The porting layer
                    "../../../../../common/mbedtls/u_port_crypto.c"
                    "../../../../../common/event_queue/u_port_event_queue.c"

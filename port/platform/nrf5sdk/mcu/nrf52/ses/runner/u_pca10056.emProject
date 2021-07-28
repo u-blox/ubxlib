@@ -99,6 +99,8 @@
       <file file_name="../../../../../../../common/short_range/test/u_short_range_test_private.c" />
       <file file_name="../../../../../../../common/utils/api/u_ringbuffer.h" />
       <file file_name="../../../../../../../common/utils/src/u_ringbuffer.c" />
+      <file file_name="../../../../../../../common/utils/api/u_hex_bin_convert.h" />
+      <file file_name="../../../../../../../common/utils/src/u_hex_bin_convert.c" />
       <file file_name="../../../../../../../ble/api/u_ble.h" />
       <file file_name="../../../../../../../ble/api/u_ble_cfg.h" />
       <file file_name="../../../../../../../ble/api/u_ble_data.h" />

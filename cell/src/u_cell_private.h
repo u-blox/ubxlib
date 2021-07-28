@@ -407,30 +407,6 @@ void uCellPrivateScanFree(uCellPrivateNet_t **ppScanResults);
 //lint -esym(765, pUCellPrivateGetModule) may be compiled-out in various ways
 const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle);
 
-/** Convert a buffer into the ASCII hex equivalent.
- *
- * @param pBin      a pointer to the binary buffer.
- * @param binLength the number of bytes pointed to by pBin.
- * @param pHex      a pointer to a buffer of length twice
- *                  binLength bytes to store the ASCII hex version.
- * @return          the number of bytes at pHex.
- */
-size_t uCellPrivateBinToHex(const char *pBin, size_t binLength,
-                            char *pHex);
-
-/** Convert a buffer of ASCII hex into the binary equivalent.
- * If it is not possible to convert character (e.g. because
- * it is not valid ASCII hex) then conversion stops there.
- *
- * @param pHex      a pointer to the ASCII hex data.
- * @param hexLength the number of bytes pointed to by pHex.
- * @param pBin      a pointer to a buffer of length half hexLength
- *                  bytes to store the binary version.
- * @return          the number of bytes at pBin.
- */
-size_t uCellPrivateHexToBin(const char *pHex, size_t hexLength,
-                            char *pBin);
-
 /** Remove the chip to chip security context for the given instance.
  *
  * @param pInstance   a pointer to the cellular instance.

@@ -49,6 +49,8 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
+#include "u_hex_bin_convert.h"
+
 #include "u_at_client.h"
 
 #include "u_mqtt_common.h"
@@ -1643,7 +1645,7 @@ int32_t uCellMqttSetWill(int32_t cellHandle,
                     pHexMessage = (char *) malloc((messageSizeBytes * 2) + 1);
                     if (pHexMessage != NULL) {
                         // Convert to hex
-                        uCellPrivateBinToHex(pMessage, messageSizeBytes, pHexMessage);
+                        uBinToHex(pMessage, messageSizeBytes, pHexMessage);
                         // Add a terminator to make it a string
                         *(pHexMessage + (messageSizeBytes * 2)) = '\0';
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -1965,7 +1967,7 @@ int32_t uCellMqttPublish(int32_t cellHandle,
                 pHexMessage = (char *) malloc((messageSizeBytes * 2) + 1);
                 if (pHexMessage != NULL) {
                     // Convert to hex
-                    uCellPrivateBinToHex(pMessage, messageSizeBytes, pHexMessage);
+                    uBinToHex(pMessage, messageSizeBytes, pHexMessage);
                     // Add a terminator to make it a string
                     *(pHexMessage + (messageSizeBytes * 2)) = '\0';
                 }

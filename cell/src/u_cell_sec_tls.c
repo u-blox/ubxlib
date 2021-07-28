@@ -40,6 +40,8 @@
 
 #include "u_port_os.h"
 
+#include "u_hex_bin_convert.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"  // Order is
@@ -299,7 +301,7 @@ static int32_t setSequence(const uCellSecTlsContext_t *pContext,
                     pString = (char *) malloc(size * 2 + 1);
                     if (pString != NULL) {
                         // Encode as hex
-                        y = uCellPrivateBinToHex(pBinary, size, pString);
+                        y = uBinToHex(pBinary, size, pString);
                         // Add a terminator
                         *(pString + y) = 0;
                     }
