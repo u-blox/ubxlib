@@ -39,6 +39,7 @@ common/short_range/src/u_short_range_edm_stream.c
 common/short_range/src/u_short_range_private.c
 common/utils/src/u_ringbuffer.c
 common/utils/src/u_hex_bin_convert.c
+common/utils/src/u_time.c
 common/mqtt_client/src/u_mqtt_client.c
 port/platform/common/event_queue/u_port_event_queue.c
 port/platform/static_size/stubs/u_port_stub.c

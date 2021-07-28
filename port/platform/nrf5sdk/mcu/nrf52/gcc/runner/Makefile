@@ -150,6 +150,7 @@ SRC_FILES += \
   $(UBXLIB_PATH)/common/short_range/test/u_short_range_test_private.c \
   $(UBXLIB_PATH)/common/utils/src/u_ringbuffer.c \
   $(UBXLIB_PATH)/common/utils/src/u_hex_bin_convert.c \
+  $(UBXLIB_PATH)/common/utils/src/u_time.c \
   $(UBXLIB_PATH)/common/mqtt_client/src/u_mqtt_client.c \
   $(UBXLIB_PATH)/port/clib/u_port_clib_mktime64.c \
   $(UBXLIB_PATH)/port/test/u_port_test.c \

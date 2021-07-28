@@ -135,6 +135,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/short_range/test/u_short_range_
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/utils/api)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/utils/src/u_ringbuffer.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/utils/src/u_hex_bin_convert.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/utils/src/u_time.c)
 
 # examples
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/sockets/main.c)

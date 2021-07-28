@@ -177,6 +177,11 @@
 			<locationURI>$%7BUBX_PATH%7D/common/utils/src/u_hex_bin_convert.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Common/Utils/u_time.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/utils/src/u_time.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/u_heap_check.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/heap_check/u_heap_check.c</locationURI>

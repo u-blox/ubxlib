@@ -14,8 +14,14 @@
  * limitations under the License.
  */
 
+/* Only #includes of u_* and the C standard library are allowed here,
+ * no platform stuff and no OS stuff.  Anything required from
+ * the platform/OS must be brought in through u_port* to maintain
+ * portability.
+ */
+
 /** @file
- * @brief an implementation of mktime() with a 64-bit return value.
+ * @brief functions to assist with time manipulation.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -24,11 +30,8 @@
 
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "time.h"      // struct tm
 
-#include "u_time.h"    // uTimeMonthsToSecondsUtc()
-
-#include "u_port_clib_mktime64.h"
+#include "u_time.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -39,8 +42,15 @@
  * -------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
- * VARIABLES
+ * STATIC VARIABLES
  * -------------------------------------------------------------- */
+
+static const char gDaysInMonth[] = {31, 28, 31, 30, 31, 30, 31,
+                                    31, 30, 31, 30, 31
+                                   };
+static const char gDaysInMonthLeapYear[] = {31, 29, 31, 30, 31, 30,
+                                            31, 31, 30, 31, 30, 31
+                                           };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -49,35 +59,33 @@
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-// mktime() with a guaranteed 64-bit return value.
-//lint -esym(818, pTm) Suppress could be pointer to
-// const, need to follow function signature.
-int64_t mktime64(struct tm *pTm)
+
+bool uTimeIsLeapYear(int32_t year)
 {
-    int64_t answer = 0;
-    int32_t year;
-    int32_t months;
+    bool isLeapYear = false;
 
-    // TM has years since 1900, so convert to since 1970
-    year = pTm->tm_year - 70;
-    // Months since January 0-11
-    months = pTm->tm_mon;
-    months += year * 12;
-    // Work out the number of seconds due to the year/month count
-    answer += uTimeMonthsToSecondsUtc(months);
-    // Day (1 to 31)
-    answer += (((int64_t) pTm->tm_mday) - 1) * 3600 * 24;
-    // Hours (0 to 23)
-    answer += ((int64_t) pTm->tm_hour) * 3600;
-    // Minutes (0 to 59)
-    answer += ((int64_t) pTm->tm_min) * 60;
-    // Seconds (0 to 59ish)
-    answer += pTm->tm_sec;
-    // Since this function returns local time
-    // the Daylight Saving Time flag has no
-    // effect on the answer.
+    if (year % 400 == 0) {
+        isLeapYear = true;
+    } else if (year % 4 == 0) {
+        isLeapYear = true;
+    }
 
-    return answer;
+    return isLeapYear;
+}
+
+int64_t uTimeMonthsToSecondsUtc(int32_t monthsUtc)
+{
+    int64_t secondsUtc = 0;
+
+    for (int32_t x = 0; x < monthsUtc; x++) {
+        if (uTimeIsLeapYear((x / 12) + 1970)) {
+            secondsUtc += gDaysInMonthLeapYear[x % 12] * 3600 * 24;
+        } else {
+            secondsUtc += gDaysInMonth[x % 12] * 3600 * 24;
+        }
+    }
+
+    return secondsUtc;
 }
 
 // End of file
