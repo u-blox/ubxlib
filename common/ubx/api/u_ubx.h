@@ -48,6 +48,74 @@ extern "C" {
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** The ubx message protocol is natively little endian, hence any
+ * multi-byte values must be little-endian encoded.  Call this
+ * function to confirm that your processor is little endian if you
+ * intend to use multi-byte values in a message body; you must convert
+ * them to little-endian form if it is not since this message codec
+ * has no way of knowing what content you are sending. You can do this
+ * with the uUbxUint16Encode() and uUbxUint32Encode() functions
+ * provided and, likewise, decode received multi-byte values from
+ * a message body with the uUbxUint16Decode() and uUbxUint32Decode()
+ * functions provided. Of course, you can always use this functions
+ * in any case, since they automatically respect endianness, but you
+ * do not need to do so if your processor is already little-endian.
+ *
+ * @return  true if the processor is little-endian, else false.
+ */
+bool uUbxIsLittleEndian();
+
+/** Decode a uint16_t from a pointer to a little-endian uint16_t,
+ * ensuring that the endianness of the decoded value is correct
+ * for this processor.
+ *
+ * @param pByte  a pointer to a uint16_t value to decode; cannot be NULL.
+ * @return       the decoded uint16_t value, endianness respected.
+ */
+uint16_t uUbxUint16Decode(const char *pByte);
+
+/** Decode a uint32_t from a pointer to a little-endian uint32_t,
+ * ensuring that the endianness of the decoded value is correct
+ * for this processor.
+ *
+ * @param pByte  a pointer to a uint32_t value to decode; cannot be NULL.
+ * @return       the decoded uint32_t value, endianness respected.
+ */
+uint32_t uUbxUint32Decode(const char *pByte);
+
+/** Decode a uint64_t from a pointer to a little-endian uint64_t,
+ * ensuring that the endianness of the decoded value is correct
+ * for this processor.
+ *
+ * @param pByte  a pointer to a uint64_t value to decode; cannot be NULL.
+ * @return       the decoded uint64_t value, endianness respected.
+ */
+uint64_t uUbxUint64Decode(const char *pByte);
+
+/** Encode the given uint16_t value with correct endianness for the ubx
+ * protocol.
+ *
+ * @param uint16  the uint16_t value to encode.
+ * @return        the encoded uint16_t value.
+ */
+uint16_t uUbxUint16Encode(uint16_t uint16);
+
+/** Encode the given uint32_t value with correct endianness for the ubx
+ * protocol.
+ *
+ * @param uint32  the uint32_t value to encode.
+ * @return        the encoded uint32_t value.
+ */
+uint32_t uUbxUint32Encode(uint32_t uint32);
+
+/** Encode the given uint64_t value with correct endianness for the ubx
+ * protocol.
+ *
+ * @param uint64  the uint64_t value to encode.
+ * @return        the encoded uint64_t value.
+ */
+uint64_t uUbxUint64Encode(uint64_t uint64);
+
 /** Encode a ubx format message.
  *
  * @param messageClass            the ubx message class.
