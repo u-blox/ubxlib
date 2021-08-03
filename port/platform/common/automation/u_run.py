@@ -4,6 +4,7 @@
 
 import sys # For exit() and stdout
 import argparse
+from os import environ
 from multiprocessing import Process, freeze_support # Needed to make Windows behave
                                                     # when doing multiprocessing,
 from signal import signal, SIGINT                   # For CTRL-C handling
@@ -28,6 +29,10 @@ PROMPT = "u_run: "
 
 # Default BRANCH to use
 BRANCH_DEFAULT = u_settings.BRANCH_DEFAULT #"origin/master"
+
+# The environment variable that may contain some defines
+# we should use
+UBXLIB_DEFINES_VAR = "U_UBXLIB_DEFINES"
 
 def signal_handler(sig, frame):
     '''CTRL-C Handler'''
@@ -129,11 +134,18 @@ def main(database, instance, filter_string, clean,
     # port, you want to notice it first.
     defines.append("U_RUNNER_TOP_STR=port")
 
-    # And finally, when running tests on cellular LTE modules,
-    # so SARA-R4 or SARA-R5, we need to set the RF band we
+    # When running tests on cellular LTE modules, so
+    # SARA-R4 or SARA-R5, we need to set the RF band we
     # are running in to NOT include the public network,
-    # since otherwise we modules can sometimes wander off onto it.
+    # since otherwise we modules can sometimes wander off
+    # onto it.
     defines.append("U_CELL_TEST_CFG_BANDMASK1=0x000010ULL")
+
+    # Finally, defines may be provided via an environment
+    # variable, in a list separated with semicolons, e.g.:
+    # set U_UBXLIB_DEFINES=THING_1;ANOTHER_THING=123;ONE_MORE=boo
+    if UBXLIB_DEFINES_VAR in environ and environ[UBXLIB_DEFINES_VAR].strip():
+        defines.extend(environ[UBXLIB_DEFINES_VAR].strip().split(";"))
 
     # With a reporter
     with u_report.ReportToQueue(report_queue, instance,
