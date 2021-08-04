@@ -92,7 +92,7 @@
 // chosen from the values in gnss/api/u_gnss_module_type.h
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_GNSS,
-                                                    U_GNSS_MODULE_TYPE_M8,
+                                                    U_CFG_TEST_GNSS_MODULE_TYPE,
                                                     /* Note that the pin numbers
                                                        used here are those of the MCU:
                                                        if you are using an MCU inside
@@ -160,10 +160,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 {
     int32_t networkHandle;
     uLocation_t location;
-    // Set an out of range value so that we can test it later
-    location.tickTimeMs = -1;
     int32_t whole;
     int32_t fraction;
+
+    // Set an out of range value so that we can test it later
+    location.timeUtc = -1;
 
     // Initialise the APIs we will need
     uPortInit();
@@ -206,11 +207,9 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 
     uPortLog("Done.\n");
 
-#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-# if 0 // Commenting out for now as the location API is not done yet
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART >= 0)
     // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE(location.tickTimeMs > 0);
-# endif
+    EXAMPLE_FINAL_STATE(location.timeUtc > 0);
 #endif
 }
 

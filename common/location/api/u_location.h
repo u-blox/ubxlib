@@ -22,7 +22,10 @@
 /** @file
  * @brief This header file defines the location API, which is designed
  * to determine location using any u-blox module and potentially a
- * cloud service.  These functions are thread-safe.
+ * cloud service.  These functions are thread-safe with the exception
+ * that the network layer should not be deactivated (i.e. with
+ * uNetworkDeinit()) while an asynchronous location request is
+ * outstanding.
  */
 
 #ifdef __cplusplus
@@ -60,9 +63,12 @@ typedef enum {
                                module. */
     U_LOCATION_TYPE_CLOUD_CELL_LOCATE, /**< supported on cellular network
                                             instances only. */
-    U_LOCATION_TYPE_CLOUD_GOOGLE, /**< supported on short-range network instances only. */
-    U_LOCATION_TYPE_CLOUD_SKYHOOK, /**< supported on short-range network instances only. */
-    U_LOCATION_TYPE_CLOUD_HERE,  /**< supported on short-range network instances only. */
+    U_LOCATION_TYPE_CLOUD_GOOGLE, /**< not currently supported, will be
+                                       supported on Wifi modules in future. */
+    U_LOCATION_TYPE_CLOUD_SKYHOOK, /**< not currently supported, will be
+                                        supported on Wifi modules in future. */
+    U_LOCATION_TYPE_CLOUD_HERE,  /**< not currently supported, will be
+                                      supported on Wifi modules in future. */
     U_LOCATION_TYPE_MAX_NUM
 } uLocationType_t;
 
@@ -83,15 +89,9 @@ typedef struct {
                                         system as to how urgently location
                                         establishment is required. */
     int32_t networkHandleAssist; /**< the network handle to use for
-                                      assistance information, if
-                                      available; when using Cell Locate
-                                      this may be set to the network handle
-                                      of an attached short-range chip (currently
-                                      a short-range Wifi chip only) from
-                                      which information can obtained to give
-                                      a more accurate location fix.  It
-                                      is not [currently] otherwise used and
-                                      may be left at the default of -1. */
+                                      assistance information.  This field
+                                      is not currently used and should be set
+                                      to the default of -1. */
 } uLocationAssist_t;
 
 /** Definition of a location.
@@ -101,23 +101,23 @@ typedef struct {
     int32_t latitudeX1e7; /**< latitude in ten millionths of a degree. */
     int32_t longitudeX1e7; /**< longitude in ten millionths of a degree. */
     int32_t altitudeMillimetres; /**< altitude in millimetres; if the
-                                      altitude is unknown -1 will be
+                                      altitude is unknown INT_MIN will be
                                       returned. */
     int32_t radiusMillimetres; /**< radius of location in millimetres;
-                                    if the radius is unknown -1 will be
-                                    returned. */
+                                    if the radius is unknown -1
+                                    will be returned. */
     int32_t speedMillimetresPerSecond; /**< the speed (in millimetres
                                             per second); if the speed
-                                            is unknown -1 will be
+                                            is unknown INT_MIN will be
                                             returned. */
     int32_t svs;                       /**< the number of space vehicles
                                             used in establishing the
-                                            location. If the number of
+                                            location.  If the number of
                                             space vehicles is unknown or
                                             irrelevant -1 will be
                                             returned. */
-    int32_t tickTimeMs; /**< the tick time at which the location fix
-                             was made. */
+    int64_t timeUtc; /**< the UTC time at which the location fix was made;
+                          if this is not available -1 will be returned. */
 } uLocation_t;
 
 /** The possible states a location establishment
@@ -159,9 +159,11 @@ typedef enum {
  * -------------------------------------------------------------- */
 
 /** Get the current location, returning on success or when
- * pKeepGoingCallback returns false.
+ * pKeepGoingCallback returns false.  uNetworkUp() (see the network
+ * API) must have been called on the given networkHandle for this
+ * function to work.
  *
- * @param networkHandle           the handle of the nework instance
+ * @param networkHandle           the handle of the network instance
  *                                to use.
  * @param type                    the type of location fix to perform;
  *                                how this can be used depends upon the
@@ -177,15 +179,14 @@ typedef enum {
  *                                            pAuthenticationTokenStr must
  *                                            be populated with a valid
  *                                            Cell Locate authentication
- *                                            token. In the latter case, if
- *                                            pLocationAssist includes the
- *                                            handle of a Wifi instance, it
- *                                            will be used to provide improved
- *                                            location accuracy.
- *                                - Wifi:     only U_LOCATION_TYPE_CLOUD_GOOGLE,
+ *                                            token.
+ *                                - Wifi:     none currently supported: the
+ *                                            following location types will be
+ *                                            supported in future:
+ *                                            U_LOCATION_TYPE_CLOUD_GOOGLE,
  *                                            U_LOCATION_TYPE_CLOUD_SKYHOOK and
- *                                            U_LOCATION_TYPE_CLOUD_HERE are
- *                                            supported; pAuthenticationTokenStr
+ *                                            U_LOCATION_TYPE_CLOUD_HERE.
+ *                                            pAuthenticationTokenStr
  *                                            must be populated with a valid
  *                                            authentication token for the
  *                                            chosen service.
@@ -219,12 +220,14 @@ typedef enum {
  *                                on failure.
  */
 int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
-                     uLocationAssist_t *pLocationAssist,
+                     const uLocationAssist_t *pLocationAssist,
                      const char *pAuthenticationTokenStr,
                      uLocation_t *pLocation,
                      bool (*pKeepGoingCallback) (int32_t));
 
-/** Get the current location, non-blocking version.
+/** Get the current location, non-blocking version.  uNetworkUp() (see
+ * the network API) must have been called on the given networkHandle for
+ * this function to work.
  *
  * @param networkHandle           the handle of the network instance to use.
  * @param type                    the type of location fix to perform; the
@@ -242,22 +245,29 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
  * @param pCallback               a callback that will be called when
  *                                location has been determined.  The
  *                                first parameter to the callback is the
- *                                network handle, the second parameter is a
- *                                uLocation_t structure.
+ *                                network handle, the second parameter is the
+ *                                error code from the location establishment
+ *                                process and the thid parameter is a pointer
+ *                                to a uLocation_t structure (which may be NULL
+ *                                if the error code is non-zero), the contents
+ *                                of which must be COPIED as it will be destroyed
+ *                                once the callback returns.
  * @return                        zero on success or negative error code on
  *                                failure.
  */
 int32_t uLocationGetStart(int32_t networkHandle, uLocationType_t type,
-                          uLocationAssist_t *pLocationAssist,
+                          const uLocationAssist_t *pLocationAssist,
                           const char *pAuthenticationTokenStr,
-                          void (*pCallback) (int32_t, uLocation_t));
+                          void (*pCallback) (int32_t networkHandle,
+                                             int32_t errorCode,
+                                             const uLocation_t *pLocation));
 
 /** Get the current status of a location establishment attempt.
  *
  * @param networkHandle  the handle of the network instance.
- * @return               the status.
+ * @return               the status or negative error code.
  */
-uLocationStatus_t uLocationGetStatus(int32_t networkHandle);
+int32_t uLocationGetStatus(int32_t networkHandle);
 
 /** Cancel a uLocationGetStart(); after calling this function the
  * callback passed to uLocationGetStart() will not be called until

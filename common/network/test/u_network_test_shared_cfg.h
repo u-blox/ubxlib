@@ -43,6 +43,11 @@ extern "C" {
 #define U_NETWORK_TEST_TYPE_HAS_MQTT(type) ((type == U_NETWORK_TYPE_CELL) || \
                                             (type == U_NETWORK_TYPE_WIFI))
 
+/** Determine if the given network type supports location operations.
+ */
+#define U_NETWORK_TEST_TYPE_HAS_LOCATION(type) ((type == U_NETWORK_TYPE_CELL) || \
+                                                (type == U_NETWORK_TYPE_GNSS))
+
 /** Determine if the given network and module combination supports
  * credential storage.
  */

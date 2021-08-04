@@ -67,9 +67,11 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/test/u_network_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/network/test/u_network_test_shared_cfg.c)
 
 #location
-target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/location/api ${UBXLIB_BASE}/common/location/test)
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/location/api ${UBXLIB_BASE}/common/location/src ${UBXLIB_BASE}/common/location/test)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/location/src/u_location.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/location/src/u_location_shared.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/location/test/u_location_test.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/location/test/u_location_test_shared_cfg.c)
 
 #sock
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/sock/api ${UBXLIB_BASE}/common/sock/test)

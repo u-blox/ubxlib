@@ -37,6 +37,9 @@
 
 #include "u_port_os.h"
 
+#include "u_location.h"
+#include "u_location_shared.h"
+
 #include "u_network_handle.h"
 #include "u_network.h"
 #include "u_network_config_ble.h"
@@ -193,11 +196,16 @@ int32_t uNetworkInit()
                 }
             }
 
+            if ((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
+                // Initialise the internally shared location API
+                uLocationSharedInit();
+            }
+
             U_PORT_MUTEX_UNLOCK(gMutex);
             // If the any of the underlying
             // layers fail then free our
             // mutex again and mark it as NULL
-            if (!(errorCode == 0 ||  errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
+            if (!((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED))) {
                 uPortMutexDelete(gMutex);
                 gMutex = NULL;
             }
@@ -228,12 +236,15 @@ void uNetworkDeinit()
             removeInstance(*ppNetwork);
         }
 
+        // De-initialise the internally shared location API
+        uLocationSharedDeinit();
+
         // Call the deinit functions in the
         // underlying network layers
-        uNetworkDeinitBle();
-        uNetworkDeinitCell();
-        uNetworkDeinitWifi();
         uNetworkDeinitGnss();
+        uNetworkDeinitWifi();
+        uNetworkDeinitCell();
+        uNetworkDeinitBle();
 
         U_PORT_MUTEX_UNLOCK(gMutex);
         uPortMutexDelete(gMutex);

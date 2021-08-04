@@ -159,7 +159,9 @@ SRC_FILES += \
   $(UBXLIB_PATH)/common/security/test/u_security_credential_test.c \
   $(UBXLIB_PATH)/common/security/test/u_security_credential_test_data.c \
   $(UBXLIB_PATH)/common/location/src/u_location.c \
+  $(UBXLIB_PATH)/common/location/src/u_location_shared.c \
   $(UBXLIB_PATH)/common/location/test/u_location_test.c \
+  $(UBXLIB_PATH)/common/location/test/u_location_test_shared_cfg.c \
   $(UBXLIB_PATH)/common/at_client/src/u_at_client.c \
   $(UBXLIB_PATH)/common/at_client/test/u_at_client_test.c \
   $(UBXLIB_PATH)/common/at_client/test/u_at_client_test_data.c \
@@ -248,6 +250,7 @@ INC_FOLDERS += \
   $(UBXLIB_PATH)/common/security/api \
   $(UBXLIB_PATH)/common/security/test \
   $(UBXLIB_PATH)/common/location/api \
+  $(UBXLIB_PATH)/common/location/src \
   $(UBXLIB_PATH)/common/location/test \
   $(UBXLIB_PATH)/common/at_client/api \
   $(UBXLIB_PATH)/common/at_client/src \

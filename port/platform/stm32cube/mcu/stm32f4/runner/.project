@@ -152,10 +152,14 @@
 			<locationURI>$%7BUBX_PATH%7D/common/mqtt_client/src/u_mqtt_client.c</locationURI>
 		</link>
 		<link>
-
 			<name>Ubxlib/U-Blox/Common/Location/u_location.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/location/src/u_location.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Common/Location/u_location_shared.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/location/src/u_location_shared.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Common/AtClient/u_at_client.c</name>
@@ -403,10 +407,14 @@
 			<locationURI>$%7BUBX_PATH%7D/common/mqtt_client/test/u_mqtt_client_test.c</locationURI>
 		</link>
 		<link>
-
 			<name>Ubxlib/U-Blox/Test/Location/u_location_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/location/test/u_location_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Location/u_location_test_shared_cfg.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/location/test/u_location_test_shared_cfg.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Ble/u_ble_test.c</name>
@@ -778,6 +786,11 @@
 			<name>Ubxlib/Inc/U-Blox/common/location/api</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/common/location/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/common/location/src</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/common/location/src</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/common/location/test</name>

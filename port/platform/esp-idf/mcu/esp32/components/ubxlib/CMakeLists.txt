@@ -18,6 +18,7 @@ set(COMPONENT_ADD_INCLUDEDIRS
                    "../../../../../../../common/security/api"
                    "../../../../../../../common/mqtt_client/api"
                    "../../../../../../../common/location/api"
+                   "../../../../../../../common/location/src"
                    "../../../../../../../common/at_client/api"
                    "../../../../../../../common/ubx/api"
                    "../../../../../../../common/short_range/api"
@@ -53,7 +54,8 @@ set(COMPONENT_SRCS
                    "../../../../../../../cell/src/u_cell_sec_tls.c"
                    "../../../../../../../cell/src/u_cell_mqtt.c"
                    "../../../../../../../cell/src/u_cell_file.c"
-                   "../../../../../../../cell/src/u_cell_loc.c"                   "../../../../../../../cell/src/u_cell_private.c"
+                   "../../../../../../../cell/src/u_cell_loc.c"
+                   "../../../../../../../cell/src/u_cell_private.c"
 # The GNSS API
                    "../../../../../../../gnss/src/u_gnss.c"
                    "../../../../../../../gnss/src/u_gnss_pwr.c"
@@ -79,6 +81,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../common/mqtt_client/src/u_mqtt_client.c"
 # The common location layer
                    "../../../../../../../common/location/src/u_location.c"
+                   "../../../../../../../common/location/src/u_location_shared.c"
 # The common AT client
                    "../../../../../../../common/at_client/src/u_at_client.c"
 # The common ubx layer

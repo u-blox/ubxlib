@@ -23,6 +23,7 @@ common/network/api
 common/network/src
 common/security/api
 common/location/api
+common/location/src
 common/at_client/api
 common/at_client/src
 common/ubx/api

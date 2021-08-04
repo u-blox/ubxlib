@@ -15,7 +15,9 @@
  */
 
 /** @brief This example demonstrates how to bring up a cellular network
- * and then use a GNSS module attached to it to perform a location fix.
+ * and then use a GNSS module attached to the cellular module to perform
+ * a location fix, i.e. this example ONLY applies if your GNSS module is
+ * attached to the cellular module and NOT to this MCU.
  *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
@@ -126,7 +128,7 @@ static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
 // chosen from the values in gnss/api/u_gnss_module_type.h
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 static uNetworkConfigurationGnss_t gConfigGnss = {U_NETWORK_TYPE_GNSS,
-                                                  U_GNSS_MODULE_TYPE_M8,
+                                                  U_CFG_TEST_GNSS_MODULE_TYPE,
                                                   /* Note that the pin numbers
                                                      used here are those of the MCU:
                                                      if you are using an MCU inside
@@ -147,7 +149,7 @@ static uNetworkConfigurationGnss_t gConfigGnss = {U_NETWORK_TYPE_GNSS,
                                                   /* The handle of the cellular interface will
                                                      be filled in later. */
                                                   0,
-                                                  /* The pins of the cellular module
+                                                  /* The pins of the *cellular* *module*
                                                      that are connected to the GNSS chip's
                                                      power and Data Ready lines. */
                                                   U_CFG_APP_CELL_PIN_GNSS_POWER,
@@ -207,7 +209,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
     int32_t fraction;
 
     // Set an out of range value so that we can test it later
-    location.tickTimeMs = -1;
+    location.timeUtc = -1;
 
     // Initialise the APIs we will need
     uPortInit();
@@ -273,11 +275,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
     uPortDeinit();
 
     uPortLog("Done.\n");
-#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-# if 0 // Commenting out for now as the location API is not done yet
-    // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE(location.tickTimeMs > 0);
-# endif
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0)
+    EXAMPLE_FINAL_STATE(location.timeUtc > 0);
 #endif
 }
 

@@ -31,7 +31,6 @@ A simple usage example is given below.  Note that, before calling `app_start()` 
 #include "u_error_common.h"
 
 #include "u_port.h"
-#include "u_port_debug.h"
 #include "u_port_uart.h"
 
 #include "u_gnss_module_type.h"

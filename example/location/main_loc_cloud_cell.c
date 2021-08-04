@@ -166,7 +166,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCloudCell")
     int32_t fraction;
 
     // Set an out of range value so that we can test it later
-    location.tickTimeMs = -1;
+    location.timeUtc = -1;
 
     // Initialise the APIs we will need
     uPortInit();
@@ -213,7 +213,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCloudCell")
 
 #if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined (U_CFG_APP_CELL_LOCATE_AUTHENTICATION_TOKEN)
     // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE(location.tickTimeMs > 0);
+    EXAMPLE_FINAL_STATE(location.timeUtc > 0);
 #endif
 }
 

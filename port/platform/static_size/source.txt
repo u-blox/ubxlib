@@ -41,6 +41,7 @@ common/security/src/u_security.c
 common/security/src/u_security_credential.c
 common/security/src/u_security_tls.c
 common/location/src/u_location.c
+common/location/src/u_location_shared.c
 common/at_client/src/u_at_client.c
 common/ubx/src/u_ubx.c
 common/short_range/src/u_short_range.c

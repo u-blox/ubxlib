@@ -2537,10 +2537,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
 
     osCleanup();
 
-    // The network test configuration is shared
-    // between the network and sockets tests so
-    // must reset the handles here in case the
-    // network API tests are coming next.
+    // The network test configuration is shared between
+    // the network, sockets, security and location tests
+    // so must reset the handles here in case the
+    // tests of one of the other APIs are coming next.
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
     }

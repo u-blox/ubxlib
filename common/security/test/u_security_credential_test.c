@@ -488,10 +488,10 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialCleanUp")
 {
     int32_t y;
 
-    // The network test configuration is shared
-    // between the network, sockets and security tests
+    // The network test configuration is shared between
+    // the network, sockets, security and location tests
     // so must reset the handles here in case the
-    // sockets API tests are coming next.
+    // tests of one of the other APIs are coming next.
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
     }

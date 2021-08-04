@@ -35,6 +35,8 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_cfg_os_platform_specific.h"
+
 #include "u_error_common.h"
 
 #include "u_port_uart.h"
@@ -229,9 +231,12 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
                     }
 
                 }
+#if !U_CFG_OS_CLIB_LEAKS
                 // Set printing of commands sent to the GNSS chip,
-                // which can be useful while debugging.
+                // which can be useful while debugging, but
+                // only if the C library doesn't leak.
                 uGnssSetUbxMessagePrint(pInstance->gnss, true);
+#endif
                 // Power on the GNSS chip
                 x = uGnssPwrOn(errorCodeOrHandle);
                 if (x != 0) {
