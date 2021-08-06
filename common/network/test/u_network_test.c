@@ -238,7 +238,7 @@ static void bleDataCallback(int32_t channel, void *pParameters)
                 }
             }
 
-            uPortLog("U_NETWORK_TEST: received %d bytes (total %d with %d errors)\n", length, gBytesReceived,
+            uPortLog("U_NETWORK_TEST: received %d bytes (total %d with %d errors).\n", length, gBytesReceived,
                      gErrors);
             if (errorOrigDataStartIndex >= 0) {
                 uPortLog("U_NETWORK_TEST: expected:\n");
@@ -293,19 +293,19 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
     gSystemHeapLost += (size_t) (unsigned) (heapClibLoss - uPortGetHeapFree());
 #endif
 }
-#endif
+#endif // #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
  * -------------------------------------------------------------- */
 
-/** Test everything; there isn't much.
+/** Test networks that support sockets.
  *
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
  * naming rules that must be followed when using the
  * U_PORT_TEST_FUNCTION() macro.
  */
-U_PORT_TEST_FUNCTION("[network]", "networkTest")
+U_PORT_TEST_FUNCTION("[network]", "networkSock")
 {
     uNetworkTestCfg_t *pNetworkCfg = NULL;
     int32_t networkHandle;
@@ -325,10 +325,11 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uNetworkInit() == 0);
 
-    // Add each network type
+    // Add the networks that support sockets
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
-        if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
+        if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             uPortLog("U_NETWORK_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
@@ -348,7 +349,6 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
     for (size_t a = 0; a < 2; a++) {
         // Bring up each network type
         for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-
             if (gUNetworkTestCfg[x].handle >= 0) {
                 pNetworkCfg = &(gUNetworkTestCfg[x]);
                 networkHandle = pNetworkCfg->handle;
@@ -357,157 +357,70 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
                          gpUNetworkTestTypeName[pNetworkCfg->type]);
                 U_PORT_TEST_ASSERT(uNetworkUp(networkHandle) == 0);
 
-                if (pNetworkCfg->type == U_NETWORK_TYPE_CELL ||
-                    pNetworkCfg->type == U_NETWORK_TYPE_WIFI) {
+                uPortLog("U_NETWORK_TEST: looking up echo server \"%s\"...\n",
+                         U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
+                // Look up the address of the server we use for UDP echo
+                // The first call to a sockets API needs to
+                // initialise the underlying sockets layer; take
+                // account of that initialisation heap cost here.
+                heapSockInitLoss += uPortGetHeapFree();
+                // Look up the address of the server we use for UDP echo
+                U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
+                                                      U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                                                      &(address.ipAddress)) == 0);
+                heapSockInitLoss -= uPortGetHeapFree();
 
-                    uPortLog("U_NETWORK_TEST: looking up echo server \"%s\"...\n",
-                             U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
-                    // Look up the address of the server we use for UDP echo
-                    // The first call to a sockets API needs to
-                    // initialise the underlying sockets layer; take
-                    // account of that initialisation heap cost here.
-                    heapSockInitLoss += uPortGetHeapFree();
-                    // Look up the address of the server we use for UDP echo
-                    U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                          U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                                                          &(address.ipAddress)) == 0);
-                    heapSockInitLoss -= uPortGetHeapFree();
+                // Add the port number we will use
+                address.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
-                    // Add the port number we will use
-                    address.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
+                // Create a UDP socket
+                descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
+                                         U_SOCK_PROTOCOL_UDP);
 
-                    // Create a UDP socket
-                    descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
-                                             U_SOCK_PROTOCOL_UDP);
-
-                    // Send and wait for the UDP echo data, trying a few
-                    // times to reduce the chance of internet loss getting
-                    // in the way
-                    uPortLog("U_NETWORK_TEST: sending %d byte(s) to %s:%d over"
-                             " %s...\n", sizeof(gTestString) - 1,
-                             U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                             U_SOCK_TEST_ECHO_UDP_SERVER_PORT,
-                             gpUNetworkTestTypeName[pNetworkCfg->type]);
-                    y = 0;
-                    memset(buffer, 0, sizeof(buffer));
-                    for (size_t z = 0; (z < U_SOCK_TEST_UDP_RETRIES) &&
-                         (y != sizeof(gTestString) - 1); z++) {
-                        y = uSockSendTo(descriptor, &address, gTestString,
-                                        sizeof(gTestString) - 1);
-                        if (y == sizeof(gTestString) - 1) {
-                            // Wait for the answer
-                            y = 0;
-                            for (size_t w = 10; (w > 0) &&
-                                 (y != sizeof(gTestString) - 1); w--) {
-                                y = uSockReceiveFrom(descriptor, NULL,
-                                                     buffer, sizeof(buffer));
-                                if (y <= 0) {
-                                    uPortTaskBlock(1000);
-                                }
+                // Send and wait for the UDP echo data, trying a few
+                // times to reduce the chance of internet loss getting
+                // in the way
+                uPortLog("U_NETWORK_TEST: sending %d byte(s) to %s:%d over"
+                         " %s...\n", sizeof(gTestString) - 1,
+                         U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                         U_SOCK_TEST_ECHO_UDP_SERVER_PORT,
+                         gpUNetworkTestTypeName[pNetworkCfg->type]);
+                y = 0;
+                memset(buffer, 0, sizeof(buffer));
+                for (size_t z = 0; (z < U_SOCK_TEST_UDP_RETRIES) &&
+                     (y != sizeof(gTestString) - 1); z++) {
+                    y = uSockSendTo(descriptor, &address, gTestString,
+                                    sizeof(gTestString) - 1);
+                    if (y == sizeof(gTestString) - 1) {
+                        // Wait for the answer
+                        y = 0;
+                        for (size_t w = 10; (w > 0) &&
+                             (y != sizeof(gTestString) - 1); w--) {
+                            y = uSockReceiveFrom(descriptor, NULL,
+                                                 buffer, sizeof(buffer));
+                            if (y <= 0) {
+                                uPortTaskBlock(1000);
                             }
-                            if (y != sizeof(gTestString) - 1) {
-                                uPortLog("U_NETWORK_TEST: failed to receive UDP echo"
-                                         " on try %d.\n", z + 1);
-                            }
-                        } else {
-                            uPortLog("U_NETWORK_TEST: failed to send UDP data on"
-                                     " try %d.\n", z + 1);
                         }
+                        if (y != sizeof(gTestString) - 1) {
+                            uPortLog("U_NETWORK_TEST: failed to receive UDP echo"
+                                     " on try %d.\n", z + 1);
+                        }
+                    } else {
+                        uPortLog("U_NETWORK_TEST: failed to send UDP data on"
+                                 " try %d.\n", z + 1);
                     }
-                    uPortLog("U_NETWORK_TEST: %d byte(s) echoed over UDP on %s.\n",
-                             y, gpUNetworkTestTypeName[pNetworkCfg->type]);
-                    U_PORT_TEST_ASSERT(y == sizeof(gTestString) - 1);
-                    U_PORT_TEST_ASSERT(strcmp(buffer, gTestString) == 0);
-
-                    // Close the socket
-                    U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
-
-                    // Clean up to ensure no memory leaks
-                    uSockCleanUp();
-
-#if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
-                } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
-                    int32_t timeoutCount;
-                    uBleDataSpsHandles_t spsHandles;
-                    memset(&spsHandles, 0x00, sizeof spsHandles);
-
-                    gConnHandle = -1;
-                    gBytesSent = 0;
-                    gBytesReceived = 0;
-                    gIndexInBlock = 0;
-
-                    uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
-                                                        connectionCallback,
-                                                        &gUNetworkTestCfg[x].handle);
-                    uBleDataSetDataAvailableCallback(gUNetworkTestCfg[x].handle, bleDataCallback,
-                                                     &gUNetworkTestCfg[x].handle);
-                    gBleHandle = gUNetworkTestCfg[x].handle;
-
-                    for (int i = 0; i < 3; i++) {
-                        if (i > 0) {
-                            if (uBleDataPresetSpsServerHandles(gUNetworkTestCfg[x].handle, &spsHandles) ==
-                                U_ERROR_COMMON_NOT_IMPLEMENTED) {
-                                continue;
-                            }
-                        }
-                        if (i > 1) {
-                            if (uBleDataDisableFlowCtrlOnNext(gUNetworkTestCfg[x].handle) ==
-                                U_ERROR_COMMON_NOT_IMPLEMENTED) {
-                                continue;
-                            }
-                        }
-                        for (uint32_t tries = 0; tries < 3; tries++) {
-                            uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
-                            U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
-                                                                  gRemoteSpsAddress) == 0);
-
-                            for (timeoutCount = 0; timeoutCount < 50; timeoutCount++) {
-                                // Wait for connection
-                                if (gConnHandle != -1) {
-                                    break;
-                                }
-                                uPortTaskBlock(100);
-                            }
-                            if (gConnHandle != -1) {
-                                break;
-                            }
-                        }
-
-                        if (timeoutCount >= 50) {
-                            uPortLog("U_NETWORK_TEST: All SPS connection attempts failed!\n");
-                        }
-                        U_PORT_TEST_ASSERT(timeoutCount < 50);
-                        if (i == 0) {
-                            uBleDataGetSpsServerHandles(gUNetworkTestCfg[x].handle, gChannel, &spsHandles);
-                        }
-
-                        uBleDataSetSendTimeout(gUNetworkTestCfg[x].handle, gChannel, 100);
-                        uPortTaskBlock(100);
-                        timeoutCount = 0;
-                        sendBleData(gUNetworkTestCfg[x].handle);
-                        while (gBytesReceived < gBytesSent) {
-                            uPortTaskBlock(10);
-                            if (timeoutCount++ > 100) {
-                                break;
-                            }
-                        }
-                        U_PORT_TEST_ASSERT(gBytesSent == gTotalBytes);
-                        U_PORT_TEST_ASSERT(gBytesSent == gBytesReceived);
-                        U_PORT_TEST_ASSERT(gErrors == 0);
-                        // Disconnect
-                        U_PORT_TEST_ASSERT(uBleDataDisconnect(gUNetworkTestCfg[x].handle, gConnHandle) == 0);
-                        for (int32_t i = 0; (i < 40) && (gConnHandle != -1); i++) {
-                            uPortTaskBlock(100);
-                        }
-                        gBytesSent = 0;
-                        gBytesReceived = 0;
-                        U_PORT_TEST_ASSERT(gConnHandle == -1);
-                    }
-
-                    uBleDataSetDataAvailableCallback(gUNetworkTestCfg[x].handle, NULL, NULL);
-                    uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle, NULL, NULL);
-#endif
                 }
+                uPortLog("U_NETWORK_TEST: %d byte(s) echoed over UDP on %s.\n",
+                         y, gpUNetworkTestTypeName[pNetworkCfg->type]);
+                U_PORT_TEST_ASSERT(y == sizeof(gTestString) - 1);
+                U_PORT_TEST_ASSERT(strcmp(buffer, gTestString) == 0);
+
+                // Close the socket
+                U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+
+                // Clean up to ensure no memory leaks
+                uSockCleanUp();
             }
         }
 
@@ -548,6 +461,179 @@ U_PORT_TEST_FUNCTION("[network]", "networkTest")
     (void) heapUsed;
 #endif
 }
+
+#if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
+/** Test BLE.
+ *
+ * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
+ * naming rules that must be followed when using the
+ * U_PORT_TEST_FUNCTION() macro.
+ */
+U_PORT_TEST_FUNCTION("[network]", "networkBle")
+{
+    uNetworkTestCfg_t *pNetworkCfg = NULL;
+    int32_t networkHandle;
+    uSockDescriptor_t descriptor;
+    uSockAddress_t address;
+    char buffer[32];
+    int32_t y;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t timeoutCount;
+    uBleDataSpsHandles_t spsHandles;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+
+    // Add a BLE network
+    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+        gUNetworkTestCfg[x].handle = -1;
+        if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+            (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_BLE)) {
+            uPortLog("U_NETWORK_TEST: adding %s network...\n",
+                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+            gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
+                                                     gUNetworkTestCfg[x].pConfiguration);
+            U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+        }
+    }
+    // Do this twice to prove that we can go from down
+    // back to up again
+    for (size_t a = 0; a < 2; a++) {
+        // Bring up the BLE network
+        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+            if (gUNetworkTestCfg[x].handle >= 0) {
+                pNetworkCfg = &(gUNetworkTestCfg[x]);
+                networkHandle = pNetworkCfg->handle;
+
+                uPortLog("U_NETWORK_TEST: bringing up %s...\n",
+                         gpUNetworkTestTypeName[pNetworkCfg->type]);
+                U_PORT_TEST_ASSERT(uNetworkUp(networkHandle) == 0);
+
+                memset(&spsHandles, 0x00, sizeof spsHandles);
+
+                gConnHandle = -1;
+                gBytesSent = 0;
+                gBytesReceived = 0;
+                gIndexInBlock = 0;
+
+                uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
+                                                    connectionCallback,
+                                                    &gUNetworkTestCfg[x].handle);
+                uBleDataSetDataAvailableCallback(gUNetworkTestCfg[x].handle, bleDataCallback,
+                                                 &gUNetworkTestCfg[x].handle);
+                gBleHandle = gUNetworkTestCfg[x].handle;
+
+                for (int32_t i = 0; i < 3; i++) {
+                    if (i > 0) {
+                        if (uBleDataPresetSpsServerHandles(gUNetworkTestCfg[x].handle, &spsHandles) ==
+                            U_ERROR_COMMON_NOT_IMPLEMENTED) {
+                            continue;
+                        }
+                    }
+                    if (i > 1) {
+                        if (uBleDataDisableFlowCtrlOnNext(gUNetworkTestCfg[x].handle) ==
+                            U_ERROR_COMMON_NOT_IMPLEMENTED) {
+                            continue;
+                        }
+                    }
+                    for (size_t tries = 0; tries < 3; tries++) {
+                        uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
+                        U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                                                              gRemoteSpsAddress) == 0);
+
+                        for (timeoutCount = 0; timeoutCount < 50; timeoutCount++) {
+                            // Wait for connection
+                            if (gConnHandle != -1) {
+                                break;
+                            }
+                            uPortTaskBlock(100);
+                        }
+                        if (gConnHandle != -1) {
+                            break;
+                        }
+                    }
+
+                    if (timeoutCount >= 50) {
+                        uPortLog("U_NETWORK_TEST: All SPS connection attempts failed!\n");
+                    }
+                    U_PORT_TEST_ASSERT(timeoutCount < 50);
+                    if (i == 0) {
+                        uBleDataGetSpsServerHandles(gUNetworkTestCfg[x].handle, gChannel, &spsHandles);
+                    }
+
+                    uBleDataSetSendTimeout(gUNetworkTestCfg[x].handle, gChannel, 100);
+                    uPortTaskBlock(100);
+                    timeoutCount = 0;
+                    sendBleData(gUNetworkTestCfg[x].handle);
+                    while (gBytesReceived < gBytesSent) {
+                        uPortTaskBlock(10);
+                        if (timeoutCount++ > 100) {
+                            break;
+                        }
+                    }
+                    U_PORT_TEST_ASSERT(gBytesSent == gTotalBytes);
+                    U_PORT_TEST_ASSERT(gBytesSent == gBytesReceived);
+                    U_PORT_TEST_ASSERT(gErrors == 0);
+                    // Disconnect
+                    U_PORT_TEST_ASSERT(uBleDataDisconnect(gUNetworkTestCfg[x].handle, gConnHandle) == 0);
+                    for (int32_t i = 0; (i < 40) && (gConnHandle != -1); i++) {
+                        uPortTaskBlock(100);
+                    }
+                    gBytesSent = 0;
+                    gBytesReceived = 0;
+                    U_PORT_TEST_ASSERT(gConnHandle == -1);
+                }
+
+                uBleDataSetDataAvailableCallback(gUNetworkTestCfg[x].handle, NULL, NULL);
+                uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle, NULL, NULL);
+            }
+        }
+
+        // Remove the BLE network
+        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+            if (gUNetworkTestCfg[x].handle >= 0) {
+                uPortLog("U_NETWORK_TEST: taking down %s...\n",
+                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+                U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].handle) == 0);
+            }
+        }
+    }
+
+    uNetworkDeinit();
+    uPortDeinit();
+
+#ifndef __XTENSA__
+    // Check for memory leaks
+    // TODO: this if'defed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test, %d byte(s) were"
+             " lost to sockets initialisation and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost, heapSockInitLoss,
+             heapUsed - (gSystemHeapLost + heapSockInitLoss ));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= (int32_t) (gSystemHeapLost +
+                                               heapSockInitLoss)));
+#else
+    (void) gSystemHeapLost;
+    (void) heapSockInitLoss;
+    (void) heapUsed;
+#endif
+}
+#endif // #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
 
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
