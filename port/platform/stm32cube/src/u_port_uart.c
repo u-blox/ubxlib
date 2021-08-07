@@ -1085,13 +1085,15 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                         // Both transmit and received enabled
                         usartInitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
                         usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
-                        if ((pinRts >= 0) && (pinCts >= 0)) {
-                            usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_RTS_CTS;
-                        } else {
-                            if (pinRts >= 0) {
-                                usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_RTS;
+                        if ((pinRts >= 0) || (pinCts >= 0)) {
+                            if ((pinRts >= 0) && (pinCts >= 0)) {
+                                usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_RTS_CTS;
                             } else {
-                                usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_CTS;
+                                if (pinRts >= 0) {
+                                    usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_RTS;
+                                } else {
+                                    usartInitStruct.HardwareFlowControl = LL_USART_HWCONTROL_CTS;
+                                }
                             }
                         }
                         usartInitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
