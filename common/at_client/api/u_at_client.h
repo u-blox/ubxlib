@@ -639,7 +639,7 @@ void uAtClientWriteUint64(uAtClientHandle_t atHandle,
  * parameter or not and adds delimiters to the outgoing
  * AT command as appropriate.  You can skip a parameter
  * (e.g. AT+BLAH=thing,,next_thing) by pointing pParam at
- * a null terminator (i.e. 0) and setting useQuotes to
+ * an empty string (i.e. "") and setting useQuotes to
  * false.
  *
  * @param atHandle      the handle of the AT client.
