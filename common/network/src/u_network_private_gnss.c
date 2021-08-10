@@ -237,12 +237,18 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
                 // only if the C library doesn't leak.
                 uGnssSetUbxMessagePrint(pInstance->gnss, true);
 #endif
-                // Power on the GNSS chip
-                x = uGnssPwrOn(errorCodeOrHandle);
-                if (x != 0) {
-                    // If we failed to power on, clean up
-                    uNetworkRemoveGnss(errorCodeOrHandle);
-                    errorCodeOrHandle = x;
+                if (pConfiguration->transportType != (int32_t) U_GNSS_TRANSPORT_UBX_AT) {
+                    // Power on the GNSS chip but only if it's not used
+                    // over an AT interface: if it is used over an AT interface
+                    // then we leave the GNSS chip powered off so that Cell Locate
+                    // can use it.  If the GNSS chip is to be used directly then
+                    // uNetworkUpGnss() will power it up and "claim" it.
+                    x = uGnssPwrOn(errorCodeOrHandle);
+                    if (x != 0) {
+                        // If we failed to power on, clean up
+                        uNetworkRemoveGnss(errorCodeOrHandle);
+                        errorCodeOrHandle = x;
+                    }
                 }
             }
         }

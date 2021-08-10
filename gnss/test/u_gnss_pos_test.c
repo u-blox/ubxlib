@@ -75,7 +75,7 @@
 #ifndef U_GNSS_POS_TEST_TIMEOUT_SECONDS
 /** The timeout on position establishment.
  */
-#define U_GNSS_POS_TEST_TIMEOUT_SECONDS 240
+#define U_GNSS_POS_TEST_TIMEOUT_SECONDS 180
 #endif
 
 /* ----------------------------------------------------------------

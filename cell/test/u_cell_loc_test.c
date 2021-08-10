@@ -69,8 +69,9 @@
 
 #ifndef U_CELL_LOC_TEST_TIMEOUT_SECONDS
 /** The position establishment timeout to use during testing, in
- * seconds. */
-# define U_CELL_LOC_TEST_TIMEOUT_SECONDS 240
+ * seconds.
+ */
+# define U_CELL_LOC_TEST_TIMEOUT_SECONDS 180
 #endif
 
 #ifndef U_CELL_LOC_TEST_MIN_UTC_TIME
@@ -83,6 +84,17 @@
 /** The maximum radius we consider valid.
  */
 # define U_CELL_LOC_TEST_MAX_RADIUS_MILLIMETRES (10000 * 1000)
+#endif
+
+#ifndef U_CELL_LOC_TEST_BAD_STATUS_LIMIT
+/** The maximum number of fatal-type location status checks
+ * to tolerate before giving up, as a back-stop for SARA-R4
+ * not giving an answer.  Since we query the status once a
+ * second, should be more than the time we ask Cell Locate
+ * to respond in, which is by default
+ * U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS.
+ */
+#define U_CELL_LOC_TEST_BAD_STATUS_LIMIT (U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS + 30)
 #endif
 
 /* ----------------------------------------------------------------
@@ -334,6 +346,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
     int32_t svs = INT_MIN;
     int64_t timeUtc = LONG_MIN;
     int32_t x;
+    size_t badStatusCount;
     char prefix[2];
     int32_t whole[2];
     int32_t fraction[2];
@@ -448,10 +461,20 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
         U_PORT_TEST_ASSERT(uCellLocGetStart(cellHandle, posCallback) == 0);
         uPortLog("U_CELL_LOC_TEST: waiting up to %d second(s) for results from asynchonous API...\n",
                  U_CELL_LOC_TEST_TIMEOUT_SECONDS);
-        while ((gErrorCode == 0xFFFFFFFF) && (uPortGetTickTimeMs() < gStopTimeMs)) {
+        badStatusCount = 0;
+        while ((gErrorCode == 0xFFFFFFFF) && (uPortGetTickTimeMs() < gStopTimeMs) &&
+               (badStatusCount < U_CELL_LOC_TEST_BAD_STATUS_LIMIT)) {
             x = uCellLocGetStatus(cellHandle);
             U_PORT_TEST_ASSERT((x >= U_LOCATION_STATUS_UNKNOWN) &&
                                (x < U_LOCATION_STATUS_MAX_NUM));
+            // Cope with SARA-R4: it will sometimes return a +UULOCIND URC
+            // indicating "generic error" and then (a) return a +UULOC with a URC
+            // containing at least the time shortly afterwards or (b)
+            // not return a +UULOC at all.  Hence we count the bad
+            // status reports here and give up if there are too many
+            if (x >= U_LOCATION_STATUS_FATAL_ERROR_HERE_AND_BEYOND) {
+                badStatusCount++;
+            }
             uPortTaskBlock(1000);
         }
 
@@ -464,11 +487,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
             if ((radiusMillimetres > 0) &&
                 (radiusMillimetres <= U_CELL_LOC_TEST_MAX_RADIUS_MILLIMETRES)) {
                 x = uCellLocGetStatus(cellHandle);
-                U_PORT_TEST_ASSERT((x == U_LOCATION_STATUS_RECEIVING_DATA_FROM_SERVER) ||
-                                   (x == U_LOCATION_STATUS_SENDING_FEEDBACK_TO_SERVER) ||
-                                   /* Cell Locate seems to return this status even in
-                                      a success case, not sure why */
-                                   (x == U_LOCATION_STATUS_READ_FROM_SOCKET_ERROR));
+                U_PORT_TEST_ASSERT((x >= U_LOCATION_STATUS_UNKNOWN) &&
+                                   (x < U_LOCATION_STATUS_MAX_NUM));
                 uPortLog("U_CELL_LOC_TEST: location establishment took %d second(s).\n",
                          (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
                 U_PORT_TEST_ASSERT(gLatitudeX1e7 > INT_MIN);
@@ -493,6 +513,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
             }
         }
         if ((gErrorCode != 0) && (y >= 1)) {
+            uCellLocGetStop(cellHandle);
             uPortLog("U_CELL_LOC_TEST: failed to get an answer, will retry in 30 seconds...\n");
             uPortTaskBlock(30000);
         }

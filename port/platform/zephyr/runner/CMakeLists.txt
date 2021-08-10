@@ -179,7 +179,7 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/example/security/c2c/c2c_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/mqtt_client/mqtt_main.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/location/main_loc_gnss.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/location/main_loc_gnss_cell.c)
-target_sources(app PRIVATE ${UBXLIB_BASE}/example/location/main_loc_cloud_cell.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/example/location/main_loc_cell_locate.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/example/cell/lte_cfg/lte_cfg_main.c)
 
 # unity

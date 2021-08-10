@@ -19,17 +19,17 @@ The key APIs provided by this repo, and their relationships with each other, are
 
 ![APIs](/readme_images/apis.jpg)
 
-- If you wish to bring up a network and don't care about the details, use the common [network](common/network) API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
-- If you wish to use a socket over that network, use the common [sock](common/sock) API.
-- If you wish to use security, use the common [security](common/security) API.
-- If you wish to contact an MQTT broker over that network, use the common [mqtt_client](common/mqtt_client) API.
+- If you wish to bring up a network and don't care about the details, use the common [network](/common/network) API, which can bring up cellular, BLE or Wifi network(s) at your choosing.
+- If you wish to use a socket over that network, use the common [sock](/common/sock) API.
+- If you wish to use security, use the common [security](/common/security) API.
+- If you wish to contact an MQTT broker over that network, use the common [mqtt_client](/common/mqtt_client) API.
 - If you wish to get a location fix use the common [location](/common/location) API.
-- If you wish to take finer control of your [cellular](cell), [ble](ble), Wifi or [gnss](/gnss), use the respective control API directly.
-- GNSS is used via the gnss API.
-- The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](common/short_range) API.
-- The [at_client](common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
+- If you wish to take finer control of your [cellular](/cell), [ble](/ble), Wifi or [gnss](/gnss), use the respective control API directly.
+- GNSS is used via the [gnss](/gnss) API.
+- The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](/common/short_range) API.
+- The [at_client](/common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
 - The ubx API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
-- The [port](port) API permits all of the above to run on different hosts.
+- The [port](/port) API permits all of the above to run on different hosts.
 
 # Which APIs Are Supported On Which u-blox Modules?
 
@@ -43,26 +43,26 @@ The key APIs provided by this repo, and their relationships with each other, are
 |                         |              |**RTOS / SDK**||||
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|
 | **ubxlib peripherals**   |**API**       |||||
-|SARA-U2 series<br />SARA-R4x series<br />| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](common/security "security API")<br>|Yes|Yes|Yes|Yes|
-|SARA-R4x series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[location*](/common/location "location API")<br />[security](common/security "security API")<br>[mqtt_client](common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
+|SARA-U2 series<br />SARA-R4x series<br />| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>|Yes|Yes|Yes|Yes|
+|SARA-R4x series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[security](/common/security "security API")<br>[mqtt_client](/common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
 |SARA-R510M8S            | [gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
-|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](ble "ble API")<br />[network](common/network "network API")|Yes|Yes|N/A|N/A|
-|NINA-W13|wifi<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q2 2021|N/A|Q2 2021|Q2 2021|
-|NINA-W15|wifi<br />[ble](ble "ble API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q2 2021|N/A|N/A|N/A|
+|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](/ble "ble API")<br />[network](/common/network "network API")|Yes|Yes|N/A|N/A|
+|NINA-W13|wifi<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Q2 2021|N/A|Q2 2021|Q2 2021|
+|NINA-W15|wifi<br />[ble](/ble "ble API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Q2 2021|N/A|N/A|N/A|
 |M8 series|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
 
 \* Through the u-blox Cell Locate service.
 
 # What Is Included
-The APIs for each type of u-blox module can be found in the relevant directory (e.g. `cell` for cellular modules and `ble`/`wifi` for BLE/Wifi modules).  The `common` directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the network API and the sockets API.  All APIs are documented in the API header files.
+The APIs for each type of u-blox module can be found in the relevant directory (e.g. [cell](/cell) for cellular modules and [ble](/ble)/`wifi` for BLE/Wifi modules).  The [common](/common) directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the network API and the sockets API.  All APIs are documented in the API header files.
 
-Examples demonstrating the use of the APIs can be found in the `example` directory.
+Examples demonstrating the use of the APIs can be found in the [example](/example) directory.
 
 Each API includes a `test` sub-directory containing the tests for that API which you may compile and run if you wish.
 
-Build information for each platform can be found in the `platform` sub-directory of `port`; more on this below.
+Build information for each platform can be found in the [platform](/port/platform) sub-directory of [port](/port); more on this below.
 
-In order for u-blox to support multiple platforms with this code there is also a `port` API.  This is not intended to be a generic porting API, it is simply sufficient to support the APIs we require.  If you have not chosen a supported platform you may still be able to use the high level APIs here unchanged by implementing the `port` API for your platform.
+In order for u-blox to support multiple platforms with this code there is also a [port API](/port/api).  This is not intended to be a generic porting API, it is simply sufficient to support the APIs we require.  If you have not chosen a supported platform you may still be able to use the high level APIs here unchanged by implementing the [port API](/port/api) for your platform.
 
 ```
 +---example                    <-- examples that introduce the main features 
@@ -112,7 +112,7 @@ This repo uses Git submodules: make sure that once it has been cloned you do som
 
 ...to obtain the submodules.
 
-The native SDKs for each supported platform are used directly, unchanged, by this code.  To use this repo you must first choose your MCU and associated platform.  For instance, you might choose an STM32F4 MCU, which is supported via ST's STM32Cube IDE.  Instructions for how to install and use each platform can be found in your chosen MCU sub-directory; for an STM32F4 MCU this would be `port/platform/stm32cube/mcu/stm32f4`.
+The native SDKs for each supported platform are used directly, unchanged, by this code.  To use this repo you must first choose your MCU and associated platform.  For instance, you might choose an STM32F4 MCU, which is supported via ST's STM32Cube IDE.  Instructions for how to install and use each platform can be found in your chosen MCU sub-directory; for an STM32F4 MCU this would be [port/platform/stm32cube/mcu/stm32f4](/port/platform/stm32cube/mcu/stm32f4).
 
 Having chosen your MCU and installed the platform tools, navigate to the directories below your chosen MCU directory to find the required build information.  For instance, you may find a `runner` directory, which is a generic build that compiles any or all of the examples and tests that can run on a given platform.  In that directory you will find detailed information on how to perform the build.
 
@@ -122,13 +122,13 @@ Configuration information for the examples and the tests can be found in the `cf
 
 |  Technology  | Example | Availability |
 |--------------|----------|--------------|
-| Cellular     | The [sockets](example/sockets "socket example") example brings up a TCP/UDP socket by using the [network](common/network "network API") and [sock](common/sock "sock API") APIs.  | Q4 2020 / Q1 2021 |
-| Cellular     | The [end-to-end security](example/security/e2e "E2E example") example using the [security](common/security "security API") API. | Q1 2021|
-| Cellular     | The [PSK generation](example/security/psk "PSK example") example using the [security](common/security "security API") API. | Q1 2021|
-| Cellular     | The [chip-to-chip security](example/security/c2c "C2C example") example using the [security](common/security "security API") API. | Q1 2021|
-| Cellular     | A [TLS-secured version](example/sockets "TLS sockets example") of the sockets example. | Q2 2021|
-| Cellular     | An [MQTT client](example/mqtt_client "MQTT example") using the [MQTT client](common/mqtt_client "MQTT client API") API.| Q2 2021|
-| Cellular     | Cell Locate [cloud location](/example/location "cell locate example") example. | Q2 2021|
+| Cellular     | The [sockets](/example/sockets "socket example") example brings up a TCP/UDP socket by using the [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  | Q4 2020 / Q1 2021 |
+| Cellular     | The [end-to-end security](/example/security/e2e "E2E example") example using the [security](/common/security "security API") API. | Q1 2021|
+| Cellular     | The [PSK generation](/example/security/psk "PSK example") example using the [security](/common/security "security API") API. | Q1 2021|
+| Cellular     | The [chip-to-chip security](/example/security/c2c "C2C example") example using the [security](/common/security "security API") API. | Q1 2021|
+| Cellular     | A [TLS-secured version](/example/sockets "TLS sockets example") of the sockets example. | Q2 2021|
+| Cellular     | An [MQTT client](/example/mqtt_client "MQTT example") using the [MQTT client](/common/mqtt_client "MQTT client API") API.| Q2 2021|
+| Cellular     | [Cell Locate](/example/location "Cell Locate example") example. | Q2 2021|
 | Bluetooth    | SPS (serial port service). | Q1 2021|
 | WiFi         | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  | Q2 2021|
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.| Q3 2021|

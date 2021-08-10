@@ -15,7 +15,7 @@
  */
 
 /** @brief This example demonstrates how to perform a location
- * fix using the Cell Locate cloud service.
+ * fix using the Cell Locate service.
  *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
@@ -90,7 +90,7 @@
 // Cellular network configuration:
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_APP_CELL_LOCATE_AUTHENTICATION_TOKEN)
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
 static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
                                                         U_CFG_TEST_CELL_MODULE_TYPE,
                                                         NULL, /* SIM pin */
@@ -158,7 +158,7 @@ static char latLongToBits(int32_t thingX1e7,
 // The entry point, main(): before this is called the system
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
-U_PORT_TEST_FUNCTION("[example]", "exampleLocCloudCell")
+U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
 {
     int32_t networkHandle;
     uLocation_t location;
@@ -185,9 +185,24 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCloudCell")
         // at any time, for example connect and
         // send data etc.
 
+        // If you happen to have a GNSS chip inside your cellular
+        // module (e.g. you have a SARA-R510M8S) then Cell Locate
+        // will make use of GNSS if it can.
+
+        // If you have a separate GNSS chip attached to your
+        // cellular module then you may need to call the
+        // uCellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady()
+        // functions here to tell the cellular module which pins
+        // of the cellular module the GNSS chip is attached on.
+
+        // Of course, there is no need to have a GNSS chip attached
+        // to your cellular module, Cell Locate will work without it,
+        // such a chip simply affords a more precise location fix
+        // (metres versus hundreds of metres).
+
         // Now get location using Cell Locate
         if (uLocationGet(networkHandle, U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
-                         NULL, U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOCATE_AUTHENTICATION_TOKEN),
+                         NULL, U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
                          &location, NULL) == 0) {
             uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d/%c%d.%07d\n",
                      latLongToBits(location.latitudeX1e7, &whole, &fraction),
@@ -211,7 +226,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCloudCell")
 
     uPortLog("Done.\n");
 
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined (U_CFG_APP_CELL_LOCATE_AUTHENTICATION_TOKEN)
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined (U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE(location.timeUtc > 0);
 #endif

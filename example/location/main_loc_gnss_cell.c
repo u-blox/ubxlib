@@ -19,6 +19,11 @@
  * a location fix, i.e. this example ONLY applies if your GNSS module is
  * attached to the cellular module and NOT to this MCU.
  *
+ * Also, it is MUCH EASIER in this case to just use Cell Locate in the
+ * cellular module (see the example main_loc_cell_locate.c) which will use
+ * the GNSS chip for you or will provide a cell-tower-based fix if out
+ * of coverage of GNSS.
+ *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
  * instructions.
@@ -242,6 +247,9 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
         // Bring up the GNSS network layer
         uPortLog("Bringing up GNSS...\n");
         if (uNetworkUp(networkHandleGnss) == 0) {
+
+            // Here you may use the GNSS API with the network handle
+            // if you wish to configure the GNSS chip etc.
 
             // Now get location
             if (uLocationGet(networkHandleGnss, U_LOCATION_TYPE_GNSS,

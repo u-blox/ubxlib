@@ -1,5 +1,5 @@
 # Introduction
-This directory contains the GNSS APIs, designed to configure and read position from a u-blox GNSS chip.  This API is technology (i.e. GNSS) specific; if instead all you want to know is your location and you don't care how it is done (e.g. as well as or instead of using GNSS it could use Cell Locate or in the future BLE beacons), please use the more generic [common/location](common/location) API instead.
+This directory contains the GNSS APIs, designed to configure and read position from a u-blox GNSS chip.  This API is technology (i.e. GNSS) specific; if instead all you want to know is your location and you don't care how it is done (e.g. as well as or instead of using GNSS it could use Cell Locate or in the future BLE beacons), please use the more generic [common/location](/common/location) API instead.
 
 The GNSS APIs are split into the following groups:
 

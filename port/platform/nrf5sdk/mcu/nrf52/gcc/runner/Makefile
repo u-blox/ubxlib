@@ -90,7 +90,7 @@ SRC_FILES += \
   $(UBXLIB_PATH)/example/mqtt_client/mqtt_main.c \
   $(UBXLIB_PATH)/example/location/main_loc_gnss.c \
   $(UBXLIB_PATH)/example/location/main_loc_gnss_cell.c \
-  $(UBXLIB_PATH)/example/location/main_loc_cloud_cell.c \
+  $(UBXLIB_PATH)/example/location/main_loc_cell_locate.c \
   $(UBXLIB_PATH)/example/cell/lte_cfg/lte_cfg_main.c \
   $(UBXLIB_PATH)/ble/src/u_ble_extmod.c \
   $(UBXLIB_PATH)/ble/src/u_ble_intmod.c \

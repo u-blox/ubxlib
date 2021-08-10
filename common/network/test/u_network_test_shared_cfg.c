@@ -169,7 +169,6 @@ uNetworkTestCfg_t gUNetworkTestCfg[] = {
 const size_t gUNetworkTestCfgSize = sizeof (gUNetworkTestCfg) /
                                     sizeof (gUNetworkTestCfg[0]);
 
-
 #if U_CFG_ENABLE_LOGGING
 /** Return a name for a network type.
  */
@@ -179,7 +178,7 @@ const size_t gUNetworkTestCfgSize = sizeof (gUNetworkTestCfg) /
 const char *gpUNetworkTestTypeName[] = {"none",     // U_NETWORK_TYPE_NONE
                                         "BLE",      // U_NETWORK_TYPE_BLE
                                         "cellular", // U_NETWORK_TYPE_CELL
-                                        "Wifi"      // U_NETWORK_TYPE_WIFI
+                                        "Wifi",     // U_NETWORK_TYPE_WIFI
                                         "GNSS"      // U_NETWORK_TYPE_GNSS
                                        };
 #endif

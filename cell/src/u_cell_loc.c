@@ -167,27 +167,6 @@ typedef struct {
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** The result (result, not step) codes from a +UULOCIND URC that
- * should be considered fatal.
- */
-static const uLocationStatus_t gUulocindResultFatal[] = {U_LOCATION_STATUS_WRONG_URL,
-                                                         U_LOCATION_STATUS_HTTP_ERROR,
-                                                         U_LOCATION_STATUS_CREATE_SOCKET_ERROR,
-                                                         U_LOCATION_STATUS_CLOSE_SOCKET_ERROR,
-                                                         U_LOCATION_STATUS_WRITE_TO_SOCKET_ERROR,
-                                                         // Let this one through; it is used by
-                                                         // Cell Locate to indicate that it has
-                                                         // been unable to read from an attached
-                                                         // GNSS chip, which may of course be absent
-                                                         // U_LOCATION_STATUS_READ_FROM_SOCKET_ERROR,
-                                                         U_LOCATION_STATUS_CONNECTION_OR_DNS_ERROR,
-                                                         U_LOCATION_STATUS_BAD_AUTHENTICATION_TOKEN,
-                                                         U_LOCATION_STATUS_GENERIC_ERROR,
-                                                         U_LOCATION_STATUS_USER_TERMINATED,
-                                                         U_LOCATION_STATUS_NO_DATA_FROM_SERVER,
-                                                         U_LOCATION_STATUS_UNKNOWN_COMMS_ERROR
-                                                        };
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: URC RELATED
  * -------------------------------------------------------------- */
@@ -447,15 +426,14 @@ static void UULOC_urc(uAtClientHandle_t atHandle, void *pParam)
 }
 
 // Callback for getting fix status from the +UULOCIND URC.
+// Note: we're meant to always get a +UULOC response so we
+// don't need to do anything as a result of a +UULOCIND.
 static void UULOCIND_urc(uAtClientHandle_t atHandle, void *pParam)
 {
     uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParam;
     uCellPrivateLocContext_t *pContext;
-    uCellLocUrc_t *pUrcStorage;
-    uCellLocFixDataStorageBlock_t *pFixDataStorageBlock;
     int32_t step;
     int32_t result;
-    bool isFatal = false;
 
     if (pInstance != NULL) {
         pContext = pInstance->pLocContext;
@@ -494,42 +472,6 @@ static void UULOCIND_urc(uAtClientHandle_t atHandle, void *pParam)
                     pContext->fixStatus = (int32_t) U_LOCATION_STATUS_UNKNOWN_COMMS_ERROR;
                     if (result <= 11) {
                         pContext->fixStatus = (int32_t) U_LOCATION_STATUS_FATAL_ERROR_HERE_AND_BEYOND + result - 1;
-                    }
-                    // Check if we consider this truly fatal
-                    for (size_t x = 0; (x < sizeof(gUulocindResultFatal) / sizeof(gUulocindResultFatal[0])) &&
-                         !isFatal; x++) {
-                        if (pContext->fixStatus == (int32_t) gUulocindResultFatal[x]) {
-                            isFatal = true;
-                        }
-                    }
-                    if (isFatal) {
-                        // Since this is a fatal error, call the callback to terminate
-                        // the location establishment attempt that was running
-                        // Note: the callback will free the memory allocated here
-                        //lint -esym(593, pUrcStorage) Suppress pUrcStorage not freed,
-                        // the callback does that
-                        pUrcStorage = (uCellLocUrc_t *) malloc(sizeof(*pUrcStorage));
-                        if (pUrcStorage != NULL) {
-                            pUrcStorage->pContext = pContext;
-                            pFixDataStorageBlock = &(pUrcStorage->fixDataStorageBlock);
-                            pFixDataStorageBlock->latitudeX1e7 = INT_MIN;
-                            pFixDataStorageBlock->longitudeX1e7 = INT_MIN;
-                            pFixDataStorageBlock->altitudeMillimetres = INT_MIN;
-                            pFixDataStorageBlock->radiusMillimetres = -1;
-                            pFixDataStorageBlock->speedMillimetresPerSecond = -1;
-                            pFixDataStorageBlock->svs = -1;
-                            pFixDataStorageBlock->timeUtc = -1;
-                            pFixDataStorageBlock->cellHandle = pInstance->handle;
-                            pFixDataStorageBlock->errorCode = (int32_t) U_CELL_ERROR_CELL_LOCATE;
-                            if (pContext->fixStatus == (int32_t) U_LOCATION_STATUS_BAD_AUTHENTICATION_TOKEN) {
-                                // For this specific case, hint to the user that they might
-                                // have got their authentication token wrong
-                                pFixDataStorageBlock->errorCode = (int32_t) U_ERROR_COMMON_AUTHENTICATION_FAILURE;
-                            }
-                            if (uAtClientCallback(atHandle, UULOC_urc_callback, pUrcStorage) != 0) {
-                                free(pUrcStorage);
-                            }
-                        }
                     }
                 }
             }
@@ -630,12 +572,12 @@ static int32_t setModulePin(uAtClientHandle_t atHandle,
 }
 
 // Begin the process of getting a location fix.
-int32_t beginLocationFix(const uCellPrivateInstance_t *pInstance)
+static int32_t beginLocationFix(const uCellPrivateInstance_t *pInstance)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;;
     uCellPrivateLocContext_t *pContext = pInstance->pLocContext;
     uAtClientHandle_t atHandle = pInstance->atHandle;
-    int32_t sensorType = 0x03; // See below
+    int32_t sensorType = U_CELL_LOC_MODULE_HAS_CELL_LOCATE << 1; // See below
 
     uPortLog("U_CELL_LOC: getting location.\n");
 
@@ -648,20 +590,23 @@ int32_t beginLocationFix(const uCellPrivateInstance_t *pInstance)
     // let's get on with it...
     uAtClientUnlock(atHandle);
 
-    // Location request can be rate-limited so try this a few times
-    for (size_t x = 0; (x < 3) && (errorCode < 0) ; x++) {
+    // Sometimes location requests are bounced by the
+    // cellular module if it is busy talking to the
+    // GNSS module so try this a few times
+    for (size_t x = 0; (x < 6) && (errorCode < 0) ; x++) {
         // Send the location request
         uAtClientLock(atHandle);
         // Can take a little while
-        uAtClientTimeoutSet(atHandle, 10000);
+        uAtClientTimeoutSet(atHandle, 5000);
         // Note on the sensor type (second parameter)
         // Every bit is a sensor:
         // bit 0: GNSS
         // bit 1: Cell Locate
-        // So we want binary 11 but disable GNSS if the
-        // user set that.
-        if (!pContext->gnssEnable) {
-            sensorType &= ~0x01;
+        // We will have 10 if U_CELL_LOC_MODULE_HAS_CELL_LOCATE
+        // is at its default value of 1, just need to OR
+        // in bit 0 to add GNSS
+        if (pContext->gnssEnable) {
+            sensorType |= 0x01;
         }
         uAtClientCommandStart(atHandle, "AT+ULOC=");
         uAtClientWriteInt(atHandle, 2); // Single shot position
@@ -673,7 +618,7 @@ int32_t beginLocationFix(const uCellPrivateInstance_t *pInstance)
         errorCode = uAtClientUnlock(atHandle);
         if (errorCode < 0) {
             // Wait before re-trying
-            uPortTaskBlock(5000);
+            uPortTaskBlock(10000);
         }
     }
 
@@ -873,6 +818,7 @@ int32_t uCellLocSetServer(int32_t cellHandle,
 
     if ((errorCode == 0) && (pInstance != NULL)) {
         atHandle = pInstance->atHandle;
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pAuthenticationTokenStr != NULL) {
             // It is not permitted to send AT+UGSRV if there is a
             // GNSS chip  attached to the cellular module and
@@ -960,7 +906,7 @@ bool uCellLocIsGnssPresent(int32_t cellHandle)
             // If the first parameter is not 1, try to switch GNSS on
             uAtClientLock(atHandle);
             uAtClientTimeoutSet(atHandle,
-                                U_CELL_LOC_GNSS_POWER_UP_TIME_MILLISECONDS * 1000);
+                                U_CELL_LOC_GNSS_AT_POWER_UP_TIME_SECONDS * 1000);
             uAtClientCommandStart(atHandle, "AT+UGPS=");
             uAtClientWriteInt(atHandle, x);
             // In case something goes wrong with the power-off

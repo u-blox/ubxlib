@@ -163,6 +163,9 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uLocation_t location;
 
+    // Type is not currently required, will be needed for Wifi
+    (void) type;
+
     if (gULocationMutex != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -171,42 +174,38 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
         if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
         } else if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            switch (type) {
-                case U_LOCATION_TYPE_CLOUD_CELL_LOCATE:
-                    if (pLocationAssist != NULL) {
-                        if (pLocationAssist->desiredAccuracyMillimetres >= 0) {
-                            uCellLocSetDesiredAccuracy(networkHandle,
-                                                       pLocationAssist->desiredAccuracyMillimetres);
-                        }
-                        if (pLocationAssist->desiredTimeoutSeconds >= 0) {
-                            uCellLocSetDesiredFixTimeout(networkHandle,
-                                                         pLocationAssist->desiredTimeoutSeconds);
-                        }
-                    }
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    if (pAuthenticationTokenStr != NULL) {
-                        errorCode = uCellLocSetServer(networkHandle,
-                                                      pAuthenticationTokenStr,
-                                                      NULL, NULL);
-                    }
-                    if (errorCode == 0) {
-                        location.type = U_LOCATION_TYPE_CLOUD_CELL_LOCATE;
-                        errorCode = uCellLocGet(networkHandle,
-                                                &(location.latitudeX1e7),
-                                                &(location.longitudeX1e7),
-                                                &(location.altitudeMillimetres),
-                                                &(location.radiusMillimetres),
-                                                &(location.speedMillimetresPerSecond),
-                                                &(location.svs),
-                                                &(location.timeUtc),
-                                                pKeepGoingCallback);
-                        if (pLocation != NULL) {
-                            *pLocation = location;
-                        }
-                    }
-                    break;
-                default:
-                    break;
+            // type is irrelevant in this case, we use Cell Locate
+            if (pLocationAssist != NULL) {
+                uCellLocSetGnssEnable(networkHandle, !pLocationAssist->disableGnss);
+                if (pLocationAssist->desiredAccuracyMillimetres >= 0) {
+                    uCellLocSetDesiredAccuracy(networkHandle,
+                                               pLocationAssist->desiredAccuracyMillimetres);
+                }
+                if (pLocationAssist->desiredTimeoutSeconds >= 0) {
+                    uCellLocSetDesiredFixTimeout(networkHandle,
+                                                 pLocationAssist->desiredTimeoutSeconds);
+                }
+            }
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pAuthenticationTokenStr != NULL) {
+                errorCode = uCellLocSetServer(networkHandle,
+                                              pAuthenticationTokenStr,
+                                              NULL, NULL);
+            }
+            if (errorCode == 0) {
+                location.type = U_LOCATION_TYPE_CLOUD_CELL_LOCATE;
+                errorCode = uCellLocGet(networkHandle,
+                                        &(location.latitudeX1e7),
+                                        &(location.longitudeX1e7),
+                                        &(location.altitudeMillimetres),
+                                        &(location.radiusMillimetres),
+                                        &(location.speedMillimetresPerSecond),
+                                        &(location.svs),
+                                        &(location.timeUtc),
+                                        pKeepGoingCallback);
+                if (pLocation != NULL) {
+                    *pLocation = location;
+                }
             }
         } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
@@ -244,6 +243,9 @@ int32_t uLocationGetStart(int32_t networkHandle, uLocationType_t type,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
+    // Type is not currently required, will be needed for Wifi
+    (void) type;
+
     if (gULocationMutex != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -252,38 +254,34 @@ int32_t uLocationGetStart(int32_t networkHandle, uLocationType_t type,
         if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
         } else if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            switch (type) {
-                case U_LOCATION_TYPE_CLOUD_CELL_LOCATE:
-                    if (pLocationAssist != NULL) {
-                        if (pLocationAssist->desiredAccuracyMillimetres >= 0) {
-                            uCellLocSetDesiredAccuracy(networkHandle,
-                                                       pLocationAssist->desiredAccuracyMillimetres);
-                        }
-                        if (pLocationAssist->desiredTimeoutSeconds >= 0) {
-                            uCellLocSetDesiredFixTimeout(networkHandle,
-                                                         pLocationAssist->desiredTimeoutSeconds);
-                        }
+            // type is irrelevant in this case, we use Cell Locate
+            if (pLocationAssist != NULL) {
+                uCellLocSetGnssEnable(networkHandle, !pLocationAssist->disableGnss);
+                if (pLocationAssist->desiredAccuracyMillimetres >= 0) {
+                    uCellLocSetDesiredAccuracy(networkHandle,
+                                               pLocationAssist->desiredAccuracyMillimetres);
+                }
+                if (pLocationAssist->desiredTimeoutSeconds >= 0) {
+                    uCellLocSetDesiredFixTimeout(networkHandle,
+                                                 pLocationAssist->desiredTimeoutSeconds);
+                }
+            }
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pAuthenticationTokenStr != NULL) {
+                errorCode = uCellLocSetServer(networkHandle,
+                                              pAuthenticationTokenStr,
+                                              NULL, NULL);
+            }
+            if (errorCode == 0) {
+                errorCode = uLocationSharedRequestPush(networkHandle,
+                                                       type,
+                                                       pCallback);
+                if (errorCode == 0) {
+                    errorCode = uCellLocGetStart(networkHandle, cellLocCallback);
+                    if (errorCode != 0) {
+                        free(pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE));
                     }
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    if (pAuthenticationTokenStr != NULL) {
-                        errorCode = uCellLocSetServer(networkHandle,
-                                                      pAuthenticationTokenStr,
-                                                      NULL, NULL);
-                    }
-                    if (errorCode == 0) {
-                        errorCode = uLocationSharedRequestPush(networkHandle,
-                                                               type,
-                                                               pCallback);
-                        if (errorCode == 0) {
-                            errorCode = uCellLocGetStart(networkHandle, cellLocCallback);
-                            if (errorCode != 0) {
-                                free(pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE));
-                            }
-                        }
-                    }
-                    break;
-                default:
-                    break;
+                }
             }
         } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;

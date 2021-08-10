@@ -80,7 +80,7 @@
 #ifndef U_GNSS_TIME_TEST_TIMEOUT_SECONDS
 /** The timeout on establishing UTC time.
  */
-#define U_GNSS_TIME_TEST_TIMEOUT_SECONDS 240
+#define U_GNSS_TIME_TEST_TIMEOUT_SECONDS 180
 #endif
 
 /* ----------------------------------------------------------------

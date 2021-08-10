@@ -284,6 +284,7 @@ int32_t uGnssPosGet(int32_t gnssHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
+    char message[4]; // Room for the body of a UBX-CFG-ANT message
     int64_t startTime;
 
     if (gUGnssPrivateMutex != NULL) {
@@ -292,6 +293,20 @@ int32_t uGnssPosGet(int32_t gnssHandle,
 
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
+            if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
+                // Temporary change: on old versions of the
+                // SARA-R10M8S module the LNA in the GNSS
+                // chip is not automatically switched on by the
+                // firmware in the cellular module, so we need
+                // to switch it on ourselves by sending UBX-CFG-ANT
+                // with contents 02000f039
+                message[0] = 0x02;
+                message[1] = 0;
+                message[2] = (char) 0xf0;
+                message[3] = 0x39;
+                uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13, message, 4);
+            }
+
             startTime = uPortGetTickTimeMs();
             errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
             while ((errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
@@ -331,6 +346,7 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
     uGnssPrivateInstance_t *pInstance;
     //lint -esym(593, pParameters) Suppress not free'd - posGetTask() does that
     uGnssPosGetTaskParameters_t *pParameters;
+    char message[4]; // Room for the body of a UBX-CFG-ANT message
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -354,6 +370,19 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
                     // once it has started
                     pParameters = (uGnssPosGetTaskParameters_t *) malloc(sizeof(*pParameters));
                     if (pParameters != NULL) {
+                        if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
+                            // Temporary change: on old versions of the
+                            // SARA-R10M8S module the LNA in the GNSS
+                            // chip is not automatically switched on by the
+                            // firmware in the cellular module, so we need
+                            // to switch it on ourselves by sending UBX-CFG-ANT
+                            // with contents 02000f039
+                            message[0] = 0x02;
+                            message[1] = 0;
+                            message[2] = (char) 0xf0;
+                            message[3] = 0x39;
+                            uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13, message, 4);
+                        }
                         // Fill in the callback and start a task
                         // that will establish position (or not)
                         // and call it

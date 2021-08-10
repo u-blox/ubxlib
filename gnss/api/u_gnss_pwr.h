@@ -32,13 +32,30 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_GNSS_POWER_UP_TIME_MILLISECONDS
+#ifndef U_GNSS_POWER_UP_TIME_SECONDS
 /** How long to wait for a GNSS chip to be available after it is
  * powered up.  If you change this and you also use the cell locate
  * API then you might want to change the value of
- * U_CELL_LOCATE_GNSS_POWER_UP_TIME_MILLISECONDS also.
+ * U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS also.
  */
-# define U_GNSS_POWER_UP_TIME_MILLISECONDS 2000
+# define U_GNSS_POWER_UP_TIME_SECONDS 2
+#endif
+
+#ifndef U_GNSS_AT_POWER_UP_TIME_SECONDS
+/** How long to wait for the response to AT+UGPS=1.  If you
+ * change this and you also use the GNSS API then you might
+ * want to change the value of
+ * U_CELL_LOC_GNSS_AT_POWER_UP_TIME_SECONDS also.
+ */
+# define U_GNSS_AT_POWER_UP_TIME_SECONDS 10
+#endif
+
+#ifndef U_GNSS_POWER_DOWN_TIME_SECONDS
+/** How long to wait for a GNSS chip to power down; can be some
+ * time if the GNSS chip is connected via a cellular module which
+ * might be talking to it at the time.
+ */
+# define U_GNSS_POWER_DOWN_TIME_SECONDS 60
 #endif
 
 /* ----------------------------------------------------------------
@@ -52,7 +69,14 @@ extern "C" {
 /** Power a GNSS chip on.  If the transport type for the given GNSS
  * instance is U_GNSS_TRANSPORT_UBX_AT then you must have powered
  * the associated cellular module up (e.g. with a call to uNetworkAdd()
- * or uCellPwrOn()) before calling this function.
+ * or uCellPwrOn()) before calling this function.  Also powering up
+ * a GNSS module which is attached via a cellular module will "claim"
+ * the GNSS module for this GNSS interface and so if you use the cellLoc
+ * API at the same time you MUST either call uGnssPwrOff() first or
+ * you must disable GNSS for Cell Locate (either by setting disableGnss
+ * to true in the pLocationAssist structure when calling the location API
+ * or by calling uCellLocSetGnssEnable() with false) otherwise cellLoc
+ * location establishment will fail.
  *
  * @param gnssHandle  the handle of the GNSS instance to power on.
  */

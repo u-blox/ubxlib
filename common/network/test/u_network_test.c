@@ -672,6 +672,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     uNetworkTestCfg_t *pNetworkCfg = NULL;
     int32_t networkHandle = -1;
     const uLocationTestCfg_t *pLocationCfg;
+    int32_t y;
     uLocation_t location;
     int64_t startTime;
     int32_t heapUsed;
@@ -732,13 +733,14 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
                     uPortLog("U_NETWORK_TEST: getting location using %s.\n",
                              gpULocationTestTypeStr[pLocationCfg->locationType]);
                     gNetworkHandle = networkHandle;
-                    U_PORT_TEST_ASSERT(uLocationGet(networkHandle, pLocationCfg->locationType,
-                                                    pLocationCfg->pLocationAssist,
-                                                    pLocationCfg->pAuthenticationTokenStr,
-                                                    &location,
-                                                    keepGoingCallback) == 0);
-                    uPortLog("U_NETWORK_TEST: location establishment took %d second(s).\n",
-                             (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                    y = uLocationGet(networkHandle, pLocationCfg->locationType,
+                                     pLocationCfg->pLocationAssist,
+                                     pLocationCfg->pAuthenticationTokenStr,
+                                     &location, keepGoingCallback);
+                    if (y == 0) {
+                        uPortLog("U_NETWORK_TEST: location establishment took %d second(s).\n",
+                                 (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                    }
                     // If we are running on a local cellular network we won't get position but
                     // we should always get time
                     if ((location.radiusMillimetres > 0) &&
@@ -746,7 +748,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
                         uLocationTestPrintLocation(&location);
                         U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
                         U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
-                        U_PORT_TEST_ASSERT(location.altitudeMillimetres > INT_MIN);
+                        // Don't check altitude as we might only have a 2D fix
                         U_PORT_TEST_ASSERT(location.radiusMillimetres > INT_MIN);
                         if (pLocationCfg->locationType == U_LOCATION_TYPE_GNSS) {
                             // Only get these for GNSS

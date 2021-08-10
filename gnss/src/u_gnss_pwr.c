@@ -95,7 +95,7 @@ int32_t uGnssPwrOn(int32_t gnssHandle)
                 if (uPortGpioSet(pInstance->pinGnssEnablePower,
                                  U_GNSS_PIN_ENABLE_POWER_ON_STATE) == 0) {
                     // Wait a moment for the device to power up.
-                    uPortTaskBlock(U_GNSS_POWER_UP_TIME_MILLISECONDS);
+                    uPortTaskBlock(U_GNSS_POWER_UP_TIME_SECONDS * 1000);
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
             }
@@ -124,7 +124,7 @@ int32_t uGnssPwrOn(int32_t gnssHandle)
                     // switch GNSS on
                     if (!uGnssPrivateIsInsideCell(pInstance)) {
                         // First, if the GNSS module is not inside
-                        // the cellular module, congigure the GPIOs
+                        // the cellular module, configure the GPIOs
                         if (pInstance->atModulePinPwr >= 0) {
                             uAtClientLock(atHandle);
                             uAtClientCommandStart(atHandle, "AT+UGPIOC=");
@@ -147,7 +147,7 @@ int32_t uGnssPwrOn(int32_t gnssHandle)
                     if (errorCode == 0) {
                         // Now ask the cellular module to switch GNSS on
                         uAtClientLock(atHandle);
-                        uAtClientTimeoutSet(atHandle, U_GNSS_POWER_UP_TIME_MILLISECONDS * 1000);
+                        uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_UP_TIME_SECONDS * 1000);
                         uAtClientCommandStart(atHandle, "AT+UGPS=");
                         uAtClientWriteInt(atHandle, 1);
                         // If you change the aiding types and
@@ -297,6 +297,9 @@ int32_t uGnssPwrOff(int32_t gnssHandle)
                 // to power the GNSS module down
                 atHandle = (uAtClientHandle_t) pInstance->transportHandle.pAt;
                 uAtClientLock(atHandle);
+                // Can take a little while if the cellular module is
+                // busy talking to the GNSS module at the time
+                uAtClientTimeoutSet(atHandle, U_GNSS_POWER_DOWN_TIME_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+UGPS=");
                 uAtClientWriteInt(atHandle, 0);
                 uAtClientCommandStopReadResponse(atHandle);

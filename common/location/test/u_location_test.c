@@ -165,12 +165,12 @@ static void testBlocking(int32_t networkHandle,
     startTime = uPortGetTickTimeMs();
     gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     uLocationTestResetLocation(&location);
-    if ((pLocationCfg != NULL) || (networkType == U_NETWORK_TYPE_GNSS)) {
+    gNetworkHandle = networkHandle;
+    if (pLocationCfg != NULL) {
         uPortLog("U_LOCATION_TEST: blocking API.\n");
         // The location type is supported (a GNSS network always
         // supports location, irrespective of the location type) so it
         // should work
-        gNetworkHandle = networkHandle;
         U_PORT_TEST_ASSERT(uLocationGet(networkHandle, locationType,
                                         pLocationAssist,
                                         pAuthenticationTokenStr,
@@ -185,7 +185,7 @@ static void testBlocking(int32_t networkHandle,
             uLocationTestPrintLocation(&location);
             U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
             U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
-            U_PORT_TEST_ASSERT(location.altitudeMillimetres > INT_MIN);
+            // Don't check altitude as we might only have a 2D fix
             U_PORT_TEST_ASSERT(location.radiusMillimetres > INT_MIN);
             U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond > INT_MIN);
             U_PORT_TEST_ASSERT(location.svs > INT_MIN);
@@ -200,21 +200,21 @@ static void testBlocking(int32_t networkHandle,
         }
         U_PORT_TEST_ASSERT(location.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
     } else {
-        // Not supported, should return an error and not
-        // fiddle with the contents of location
-        U_PORT_TEST_ASSERT(uLocationGet(networkHandle, locationType,
-                                        pLocationAssist, pAuthenticationTokenStr,
-                                        &location,
-                                        keepGoingCallback) < 0);
-        U_PORT_TEST_ASSERT(location.latitudeX1e7 == INT_MIN);
-        U_PORT_TEST_ASSERT(location.longitudeX1e7 == INT_MIN);
-        U_PORT_TEST_ASSERT(location.altitudeMillimetres == INT_MIN);
-        U_PORT_TEST_ASSERT(location.radiusMillimetres == INT_MIN);
-        U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond == INT_MIN);
-        U_PORT_TEST_ASSERT(location.svs == INT_MIN);
-        U_PORT_TEST_ASSERT(location.timeUtc == LONG_MIN);
-        U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond == INT_MIN);
-        U_PORT_TEST_ASSERT(location.svs == INT_MIN);
+        if (!U_NETWORK_TEST_TYPE_HAS_LOCATION(networkType)) {
+            U_PORT_TEST_ASSERT(uLocationGet(networkHandle, locationType,
+                                            pLocationAssist, pAuthenticationTokenStr,
+                                            &location,
+                                            keepGoingCallback) < 0);
+            U_PORT_TEST_ASSERT(location.latitudeX1e7 == INT_MIN);
+            U_PORT_TEST_ASSERT(location.longitudeX1e7 == INT_MIN);
+            U_PORT_TEST_ASSERT(location.altitudeMillimetres == INT_MIN);
+            U_PORT_TEST_ASSERT(location.radiusMillimetres == INT_MIN);
+            U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond == INT_MIN);
+            U_PORT_TEST_ASSERT(location.svs == INT_MIN);
+            U_PORT_TEST_ASSERT(location.timeUtc == LONG_MIN);
+            U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond == INT_MIN);
+            U_PORT_TEST_ASSERT(location.svs == INT_MIN);
+        }
     }
 }
 
@@ -254,11 +254,7 @@ static void testNonBlocking(int32_t networkHandle,
     startTime = uPortGetTickTimeMs();
     gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     uLocationTestResetLocation(&gLocation);
-    if ((pLocationCfg != NULL) || (networkType == U_NETWORK_TYPE_GNSS)) {
-        // The location type is supported (a GNSS network always
-        // supports location, irrespective of the location type) so it
-        // should work.
-
+    if (pLocationCfg != NULL) {
         // Try this a few times as the Cell Locate AT command can sometimes
         // (e.g. on SARA-R412M-02B) return "generic error" if asked to establish
         // location again quickly after returning an answer
@@ -312,23 +308,23 @@ static void testNonBlocking(int32_t networkHandle,
         }
         U_PORT_TEST_ASSERT(gErrorCode == 0);
     } else {
-        // Not supported, should return an error and not
-        // fiddle with the contents of location
-        gNetworkHandle = -1;
-        gErrorCode = INT_MIN;
-        uLocationTestResetLocation(&gLocation);
-        U_PORT_TEST_ASSERT(uLocationGetStart(networkHandle, locationType,
-                                             pLocationAssist, pAuthenticationTokenStr,
-                                             locationCallback) < 0);
-        U_PORT_TEST_ASSERT(gNetworkHandle == -1);
-        U_PORT_TEST_ASSERT(gErrorCode == INT_MIN);
-        U_PORT_TEST_ASSERT(gLocation.latitudeX1e7 == INT_MIN);
-        U_PORT_TEST_ASSERT(gLocation.longitudeX1e7 == INT_MIN);
-        U_PORT_TEST_ASSERT(gLocation.altitudeMillimetres == INT_MIN);
-        U_PORT_TEST_ASSERT(gLocation.radiusMillimetres == INT_MIN);
-        U_PORT_TEST_ASSERT(gLocation.timeUtc == LONG_MIN);
-        U_PORT_TEST_ASSERT(gLocation.speedMillimetresPerSecond == INT_MIN);
-        U_PORT_TEST_ASSERT(gLocation.svs == INT_MIN);
+        if (!U_NETWORK_TEST_TYPE_HAS_LOCATION(networkType)) {
+            gNetworkHandle = -1;
+            gErrorCode = INT_MIN;
+            uLocationTestResetLocation(&gLocation);
+            U_PORT_TEST_ASSERT(uLocationGetStart(networkHandle, locationType,
+                                                 pLocationAssist, pAuthenticationTokenStr,
+                                                 locationCallback) < 0);
+            U_PORT_TEST_ASSERT(gNetworkHandle == -1);
+            U_PORT_TEST_ASSERT(gErrorCode == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.latitudeX1e7 == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.longitudeX1e7 == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.altitudeMillimetres == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.radiusMillimetres == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.timeUtc == LONG_MIN);
+            U_PORT_TEST_ASSERT(gLocation.speedMillimetresPerSecond == INT_MIN);
+            U_PORT_TEST_ASSERT(gLocation.svs == INT_MIN);
+        }
     }
 }
 
@@ -398,6 +394,7 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
                              gpULocationTestTypeStr[locationType],
                              gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
                 }
+
                 // The first time a given location type is called it may allocate
                 // memory (e.g for mutexes) which are only released at deinitialisation
                 // of the location API.  Track that this so as to take account of it in

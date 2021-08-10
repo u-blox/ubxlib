@@ -82,9 +82,9 @@
 			<locationURI>$%7BUBX_PATH%7D/example/location/main_loc_gnss_cell.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Example/Location/main_loc_cloud_cell.c</name>
+			<name>Ubxlib/U-Blox/Example/Location/main_loc_cell_locate.c</name>
 			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/example/location/main_loc_cloud_cell.c</locationURI>
+			<locationURI>$%7BUBX_PATH%7D/example/location/main_loc_cell_locate.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Example/Cell/LTECfg/lte_cfg_main.c</name>

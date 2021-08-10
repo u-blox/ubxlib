@@ -71,6 +71,7 @@ static const uLocationTestCfgList_t gCfgListNone = {0};
  */
 static const uLocationAssist_t gLocationAssistCloudLocate = {500000, // desiredAccuracyMillimetres
                                                              60,     // desiredTimeoutSeconds
+                                                             true,   // disable GNSS so that a GNSS network can use it
                                                              -1
                                                              };    // networkHandleAssist
 

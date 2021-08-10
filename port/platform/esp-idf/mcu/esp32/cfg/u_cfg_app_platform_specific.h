@@ -232,18 +232,6 @@
 # define U_CFG_APP_CELL_PIN_GNSS_DATA_READY  24 // AKA GPIO3
 #endif
 
-#ifndef U_CFG_APP_GNSS_VIA_CELL
-/** Whether the GNSS module is connected via the cellular module.
- * The GNSS module connection will be via I2C and hence it could still
- * be connected to this MCU via its UART port.
- * If we've got the power or data ready pins connected then
- * assume the I2C is connected also
- */
-# if (U_CFG_APP_CELL_PIN_GNSS_POWER >= 0) || (U_CFG_APP_CELL_PIN_GNSS_DATA_READY >= 0)
-#  define U_CFG_APP_GNSS_VIA_CELL
-# endif
-#endif
-
 #endif // _U_PORT_APP_PLATFORM_SPECIFIC_H_
 
 // End of file

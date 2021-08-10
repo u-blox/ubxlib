@@ -89,6 +89,9 @@ extern const size_t gUNetworkTestCfgSize;
 #if U_CFG_ENABLE_LOGGING
 /** Return a name for a network type.
  */
+//lint -esym(843, gpUNetworkTestTypeName) Suppress could be declared
+// as const: this may be used in position independent code
+// and hence can't be const
 extern const char *gpUNetworkTestTypeName[];
 #endif
 

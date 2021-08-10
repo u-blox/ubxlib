@@ -3,7 +3,7 @@ These examples demonstrate how to establish location in three different configur
 
 - locally using a GNSS chip that is attached directly to this MCU (`main_loc_gnss.c`),
 - locally using a GNSS chip that is attached via a cellular module (`main_loc_gnss_cell.c`),
-- using cloud services such as Cell Locate via a cellular \[and in future Wifi\] module (`main_loc_cloud_cell.c`).
+- using cloud services such as Cell Locate via a cellular \[and in future Wifi\] module (`main_loc_cell_locate.c`).
 
 # Usage
 To build and run these examples on a supported platform you need to travel down into the `port/platform/<platform>/mcu/<mcu>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override #defines.  The following #defines are relevant:
@@ -34,11 +34,11 @@ If you have a GNSS chip attached via a cellular module then you can run the `mai
 
 `U_CFG_APP_CELL_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the cellular module.  The default is usually acceptable but if you wish to change it then consult the file `port/platform/<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.
 
-## The Cloud Cellular Example `main_loc_cloud_cell.c`
-If you do not have a GNSS chip you may establish approximate location (e.g. within a kilometre) via a cellular module using the Cell Locate service as shown in the `main_loc_cloud_cell.c` example.  In future, if a Wifi chip is also attached to your MCU, it may be used to improve position accuracy to within around 100 metres.
+## The Cell Locate Example `main_loc_cell_locate.c`
+If you do not have a GNSS chip you may establish approximate location (e.g. within a kilometre) via a cellular module using the Cell Locate service as shown in the `main_loc_cell_locate.c` example.
 
 For this example the settings of the GNSS Cellular Example above must be followed and then in addition:
 
-`U_CFG_APP_CELL_LOCATE_AUTHENTICATION_TOKEN`: must be set to a valid authentication token for the u-blox Cell Locate service (TODO: how to get this), noting that NO quotation marks should be included.
+`U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN`: must be set to a valid authentication token for the u-blox Cell Locate service, obtainable from your [Thingstream portal](https://portal.thingstream.io/app/location-services), noting that NO quotation marks should be included.
 
 You will need a SIM in your board, a cellular antenna connected and you may need to know the APN associated with the SIM (though accepting the network default often works).

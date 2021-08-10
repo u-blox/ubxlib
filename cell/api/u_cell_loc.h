@@ -78,13 +78,27 @@ extern "C" {
 # define U_CELL_LOC_BUFFER_LENGTH_BYTES 1011
 #endif
 
-#ifndef U_CELL_LOC_GNSS_POWER_UP_TIME_MILLISECONDS
-/** How long to wait for a GNSS chip to be available after it is
- * powered up.  If you change this and you also use the GNSS
- * API then you might want to change the value of
- * U_GNSS_POWER_UP_TIME_MILLISECONDS also.
+#ifndef U_CELL_LOC_GNSS_AT_POWER_UP_TIME_SECONDS
+/** How long to wait for the response to AT+UGPS=1.  If you
+ * change this and you also use the GNSS API then you might
+ * want to change the value of U_GNSS_AT_POWER_UP_TIME_SECONDS
+ * also.
  */
-# define U_CELL_LOC_GNSS_POWER_UP_TIME_MILLISECONDS 2000
+# define U_CELL_LOC_GNSS_AT_POWER_UP_TIME_SECONDS 10
+#endif
+
+#ifndef U_CELL_LOC_MODULE_HAS_CELL_LOCATE
+/** Seems a strange define this but some modules, specifically
+ * the SARA-R4xx-x2B-00, SARA-R4xx-x2B-01 and SARA-R4xx-x2B-02
+ * modules, don't support the sensor type "cell locate" (sensor
+ * type 2) on the AT+ULOC AT command, they only respond to AT+ULOC
+ * if a GNSS chip is attached to the cellular module.  Should
+ * you wish to use the Cell Locate API with this module type then
+ * you should define U_CELL_LOC_MODULE_HAS_CELL_LOCATE to be 0
+ * (and of course make sure you have a GNSS chip attached to the
+ * cellular module and don't disable GNSS in this API).
+ */
+# define U_CELL_LOC_MODULE_HAS_CELL_LOCATE 1
 #endif
 
 /* ----------------------------------------------------------------
@@ -145,7 +159,10 @@ int32_t uCellLocGetDesiredFixTimeout(int32_t cellHandle);
 /** Set whether a GNSS chip attached to the cellular module
  * should be used in the location fix or not.  If this is not
  * called then the default U_CELL_LOC_GNSS_ENABLE_DEFAULT
- * is used.
+ * is used.  Call this with false if you have a GNSS chip
+ * attached via the cellular module but you intend to use
+ * the GNSS API to manage it directly rather than letting
+ * Cell Locate use it via this API.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param onNotOff    true if GNSS should be used, else false.
@@ -253,9 +270,7 @@ bool uCellLocGnssInsideCell(int32_t cellHandle);
  * pKeepGoingCallback returns false.  This will ONLY work if
  * the cellular module is currently registered on a network
  * (e.g. as a result of uCellNetConnect() or uCellNetRegister()
- * being called).  Location establishment attempts may
- * be rate-limited; if this is the case U_CELL_ERROR_CELL_LOCATE
- * will be returned and it is worth waiting before trying again.
+ * being called).
  * IMPORTANT: if Cell Locate is unable to establish a location
  * it may still return a valid time and a location of all zeros
  * but with a very large radius (e.g. 200 km), hence it is always
@@ -316,9 +331,7 @@ int32_t uCellLocGet(int32_t cellHandle,
  * work if the cellular module is currently registered on a network
  * (e.g. as a result of uCellNetConnect() or uCellNetRegister() being
  * called). The location establishment attempt will time-out after
- * U_CELL_LOC_TIMEOUT_SECONDS.  Location establishment attempts may
- * be rate-limited; if this is the case U_CELL_ERROR_CELL_LOCATE
- * will be returned and it is worth waiting before trying again.
+ * U_CELL_LOC_TIMEOUT_SECONDS.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pCallback   a callback that will be called when a fix has been

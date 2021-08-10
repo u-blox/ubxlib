@@ -45,7 +45,7 @@ extern "C" {
 #ifndef U_LOCATION_ASSIST_DEFAULTS
 /** Default values for uLocationAssist_t.
  */
-# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, -1}
+# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false, -1}
 #endif
 
 /* ----------------------------------------------------------------
@@ -88,6 +88,14 @@ typedef struct {
                                         simply an indication to the underlying
                                         system as to how urgently location
                                         establishment is required. */
+    bool disableGnss;             /**< in some cases a GNSS chip may be available
+                                       to a network (e.g. attached to a cellular
+                                       module) and it will normally be used by
+                                       that network in location establishment,
+                                       however that can prevent the GNSS chip
+                                       being used directly by this code.  If
+                                       you wish to use the GNSS chip directly
+                                       by this code then set this to true. */
     int32_t networkHandleAssist; /**< the network handle to use for
                                       assistance information.  This field
                                       is not currently used and should be set
@@ -132,19 +140,15 @@ typedef enum {
     U_LOCATION_STATUS_SENDING_FEEDBACK_TO_SERVER = 5,
     U_LOCATION_STATUS_FATAL_ERROR_HERE_AND_BEYOND = 6, /**<! values from here on are
                                                              usually indications of
-                                                             failure but see comment
-                                                             against
-                                                             U_LOCATION_STATUS_READ_FROM_SOCKET_ERROR
-                                                             below. */
+                                                             failure but note that
+                                                             a valid time might still
+                                                             be returned. */
     U_LOCATION_STATUS_WRONG_URL = 6,
     U_LOCATION_STATUS_HTTP_ERROR = 7,
     U_LOCATION_STATUS_CREATE_SOCKET_ERROR = 8,
     U_LOCATION_STATUS_CLOSE_SOCKET_ERROR = 9,
     U_LOCATION_STATUS_WRITE_TO_SOCKET_ERROR = 10,
-    U_LOCATION_STATUS_READ_FROM_SOCKET_ERROR = 11,     /**<! this error is returned by Cell Locate
-                                                             when it has been unable to read from
-                                                             an attached GNSS chip, which may of
-                                                             course be absent. */
+    U_LOCATION_STATUS_READ_FROM_SOCKET_ERROR = 11,
     U_LOCATION_STATUS_CONNECTION_OR_DNS_ERROR = 12,
     U_LOCATION_STATUS_BAD_AUTHENTICATION_TOKEN = 13,
     U_LOCATION_STATUS_GENERIC_ERROR = 14,
@@ -162,6 +166,18 @@ typedef enum {
  * pKeepGoingCallback returns false.  uNetworkUp() (see the network
  * API) must have been called on the given networkHandle for this
  * function to work.
+ * Note that if you have a GNSS chip inside your cellular module
+ * (e.g. you have a SARA-R510M8S) then making a location call on
+ * the cell network will use that GNSS chip, there is no need to
+ * bring up a GNSS network.  If you have a GNSS chip attached to a
+ * cellular module externally the same is true but you may need to call
+ * CellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady() in the
+ * cellular API to tell the cellular module which pins of the
+ * cellular module the GNSS chip is attached on.  If you prefer to
+ * use the GNSS chip directly rater than via Cell Locate you should set
+ * disableGnss in the pLocationAssist when calling this API with the
+ * cellular network handle (as once it is "claimed" by Cell Locate it
+ * won't be available for GNSS calls until the module is power cycled).
  *
  * @param networkHandle           the handle of the network instance
  *                                to use.
@@ -169,13 +185,10 @@ typedef enum {
  *                                how this can be used depends upon the
  *                                type of networkHandle:
  *                                - GNSS:     ignored, U_LOCATION_TYPE_GNSS
- *                                            will always be used,
- *                                - cellular: U_LOCATION_TYPE_GNSS may be
- *                                            used if a GNSS chip is
- *                                            attached to the cellular
- *                                            module, else
- *                                            U_LOCATION_TYPE_CLOUD_CELL_LOCATE
- *                                            may be used and
+ *                                            will always be used.
+ *                                - cellular: ignored,
+                                              U_LOCATION_TYPE_CLOUD_CELL_LOCATE
+ *                                            will always be used and
  *                                            pAuthenticationTokenStr must
  *                                            be populated with a valid
  *                                            Cell Locate authentication
@@ -228,6 +241,18 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
 /** Get the current location, non-blocking version.  uNetworkUp() (see
  * the network API) must have been called on the given networkHandle for
  * this function to work.
+ * Note that if you have a GNSS chip inside your cellular module
+ * (e.g. you have a SARA-R510M8S) then making a location call on
+ * the cell network will use that GNSS chip, there is no need to
+ * bring up a GNSS network.  If you have a GNSS chip attached to a
+ * cellular module externally the same is true but you may need to call
+ * CellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady() in the
+ * cellular API to tell the cellular module which pins of the
+ * cellular module the GNSS chip is attached on.  If you prefer to
+ * use the GNSS chip directly rater than via Cell Locate you should set
+ * disableGnss in the pLocationAssist when calling this API with the
+ * cellular network handle (as once it is "claimed" by Cell Locate it
+ * won't be available for GNSS calls until the module is power cycled).
  *
  * @param networkHandle           the handle of the network instance to use.
  * @param type                    the type of location fix to perform; the
@@ -247,7 +272,7 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
  *                                first parameter to the callback is the
  *                                network handle, the second parameter is the
  *                                error code from the location establishment
- *                                process and the thid parameter is a pointer
+ *                                process and the third parameter is a pointer
  *                                to a uLocation_t structure (which may be NULL
  *                                if the error code is non-zero), the contents
  *                                of which must be COPIED as it will be destroyed
