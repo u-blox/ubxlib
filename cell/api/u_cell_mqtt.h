@@ -51,13 +51,6 @@ extern "C" {
 # define U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES 512
 #endif
 
-#ifndef U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES
-/** The maximum length of an MQTT publish message in bytes,
- * if hex mode has to be used.
- */
-# define U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES 512
-#endif
-
 #ifndef U_CELL_MQTT_PUBLISH_BIN_MAX_LENGTH_BYTES
 /** The maximum length of an MQTT publish message in bytes,
  * if binary mode can be used.
@@ -284,6 +277,9 @@ bool uCellMqttIsRetained(int32_t cellHandle);
  * to uCellMqttInit() e.g. "mybroker.com:8883".
  * IMPORTANT: a re-boot of the module will lose your
  * setting.
+ * Note that SARA-R4 modules do not support changing MQTT
+ * TLS security mode once an MQTT session has been used
+ * without powering the module down and up again.
  *
  * @param cellHandle        the handle of the cellular instance
  *                          to be used.
@@ -299,6 +295,10 @@ int32_t uCellMqttSetSecurityOn(int32_t cellHandle,
                                int32_t securityProfileId);
 
 /** Switch MQTT TLS security off.
+ * Note that SARA-R4 modules do not support switching
+ * MQTT TLS security off again once it has been switched on
+ * for an MQTT session without powering the module down and
+ * up again.
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
@@ -434,6 +434,15 @@ bool uCellMqttIsConnected(int32_t cellHandle);
  *                         pMessage. If pMessage happens to
  *                         be an ASCII string this parameter
  *                         should be set to strlen(pMessage).
+ *                         The maximum message size varies with
+ *                         module type: if binary entry is supported
+ *                         or pMessage contains purely ASCII
+ *                         printable characters (i.e. isprint()
+ *                         returns true) then it is usually 1024
+ *                         characters, else it will likely be
+ *                         512 characters to allow for hex coding;
+ *                         however on some modules (e.g. SARA_R410M_03B)
+ *                         it can be as low as 256 characters.
  * @param qos              the MQTT QoS to use for this message.
  * @param retain           if true the message will be retained
  *                         by the broker across MQTT disconnects/
@@ -527,7 +536,8 @@ int32_t uCellMqttGetUnread(int32_t cellHandle);
  *                            number of bytes of storage at
  *                            pMessage. On return, this will be
  *                            updated to the number of bytes written
- *                            to pMessage.  Ignored if pMessage is NULL.
+ *                            to pMessage.  Ignored if pMessage is
+ *                            NULL.
  * @param pQos                a place to put the QoS of the message;
  *                            may be NULL.
  * @return                    zero on success else negative error

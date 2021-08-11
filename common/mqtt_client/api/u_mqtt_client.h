@@ -186,7 +186,12 @@ typedef struct {
  *                             in uMqttClientConnection_t when
  *                             calling uMqttClientConnect(), e.g.
  *                             setting pBrokerNameStr to something
- *                             like "mybroker.com:8883".
+ *                             like "mybroker.com:8883". Note that
+ *                             some modules (e.g. SARA-R4 cellular
+ *                             modules) do not support switching
+ *                             security mode from off to on and
+ *                             vice-versa without taking the network
+ *                             down and up again.
  * @return                     a pointer to the internal MQTT context
  *                             structure used by this code or NULL on
  *                             failure (in which case

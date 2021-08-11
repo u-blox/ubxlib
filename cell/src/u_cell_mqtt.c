@@ -32,7 +32,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "ctype.h"     // isdigit()
+#include "ctype.h"     // isdigit(), isprint()
 #include "string.h"    // memset(), strcpy(), strtok_r(), strtol()
 #include "stdio.h"     // snprintf()
 #include "assert.h"
@@ -227,8 +227,8 @@ static void UUMQTTC_urc(uAtClientHandle_t atHandle,
             break;
         case 1: // Login
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
-                // In SARA-R412M syntax, 0 means success,
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                // In the old SARA-R4 syntax, 0 means success,
                 // non-zero values are errors
                 if (urcParam1 == 0) {
                     // Connected
@@ -635,7 +635,8 @@ static int32_t atMqttStopCmdGetRespAndUnlock(const uCellPrivateInstance_t *pInst
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t status = 1;
 
-    if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
         uAtClientCommandStop(atHandle);
         uAtClientResponseStart(atHandle, "+UMQTT:");
         // Skip the first parameter, which is just
@@ -742,11 +743,11 @@ static bool checkUrcStatusField(volatile uCellMqttUrcStatus_t *pUrcStatus,
     return filledIn;
 }
 
-// Make AT+UMQTT=x? read happen, SARA-R412M-style.
+// Make AT+UMQTT=x? read happen, old SARA-R4-style.
 // Note: caller MUST lock the mutex before calling this
 // function and unlock it afterwards.
-static int32_t doSaraR412mUmqttQuery(const uCellPrivateInstance_t *pInstance,
-                                     int32_t number)
+static int32_t doSaraR4OldSyntaxUmqttQuery(const uCellPrivateInstance_t *pInstance,
+                                           int32_t number)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
     volatile uCellMqttUrcStatus_t *pUrcStatus = &(((volatile uCellMqttContext_t *)
@@ -756,7 +757,7 @@ static int32_t doSaraR412mUmqttQuery(const uCellPrivateInstance_t *pInstance,
     int32_t status;
     int64_t stopTimeMs;
 
-    // The SARA-R412M MQTT AT interface syntax gets very
+    // The old SARA-R4 MQTT AT interface syntax gets very
     // peculiar here.
     // Have to send in AT+UMQTT=x? and then wait for a URC
 
@@ -801,9 +802,9 @@ static bool isSecured(const uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle;
 
     if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
+                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
         // Run the query, answers come back in pUrcStatus
-        if (doSaraR412mUmqttQuery(pInstance, 11) == 0) {
+        if (doSaraR4OldSyntaxUmqttQuery(pInstance, 11) == 0) {
             // SARA-R4 doesn't report the security status
             // if it is the default of unsecured,
             // so if we got nothing back we are unsecured.
@@ -856,7 +857,7 @@ static int32_t setKeepAlive(int32_t cellHandle, bool onNotOff)
         uAtClientWriteInt(atHandle, 8);
         uAtClientWriteInt(atHandle, (int32_t) onNotOff);
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
+                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
             uAtClientCommandStop(atHandle);
             uAtClientResponseStart(atHandle, "+UMQTTC:");
             // Skip the first parameter, which is just
@@ -963,7 +964,7 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
     // log out is command 1
     uAtClientWriteInt(atHandle, (int32_t) onNotOff);
     if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
+                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
         uAtClientCommandStop(atHandle);
         uAtClientResponseStart(atHandle, "+UMQTTC:");
         // Skip the first parameter, which is just
@@ -1012,6 +1013,21 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
     return errorCode;
 }
 
+// Return true if all of pBuffer is printable.
+static bool isPrint(const char *pBuffer, size_t bufferLength)
+{
+    bool printable = true;
+
+    for (size_t x = 0; (x < bufferLength) && printable; x++) {
+        if (!isprint((int32_t) *pBuffer)) {
+            printable = false;
+        }
+        pBuffer++;
+    }
+
+    return printable;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -1031,7 +1047,6 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
     char *pAddress;
     char *pTmp;
     int32_t port;
-    int32_t status = 1;
     bool keepGoing = true;
     char imei[U_CELL_INFO_IMEI_SIZE + 1];
 
@@ -1159,8 +1174,8 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
 
                             if (keepGoing &&
                                 U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
-                                // If we're dealing with SARA-R412M syntax,
+                                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                                // If we're dealing with old SARA-R4 syntax,
                                 // select verbose message reads
                                 uAtClientLock(atHandle);
                                 uAtClientCommandStart(atHandle, "AT+UMQTTC=");
@@ -1168,15 +1183,7 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                                 uAtClientWriteInt(atHandle, 7);
                                 // Format: verbose
                                 uAtClientWriteInt(atHandle, 2);
-                                uAtClientCommandStop(atHandle);
-                                uAtClientResponseStart(atHandle, "+UMQTTC:");
-                                // Skip the first parameter, which is just
-                                // our UMQTTC command number again
-                                uAtClientSkipParameters(atHandle, 1);
-                                status = uAtClientReadInt(atHandle);
-                                uAtClientResponseStop(atHandle);
-                                keepGoing = (uAtClientUnlock(atHandle) == 0 &&
-                                             (status == 1));
+                                keepGoing = (atMqttStopCmdGetRespAndUnlock(pInstance) == 0);
                             }
 
                             // Almost done
@@ -1277,11 +1284,11 @@ int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
         if (pClientIdStr != NULL) {
             atHandle = pInstance->atHandle;
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                 pUrcStatus->clientId.pContents = pClientIdStr;
                 pUrcStatus->clientId.sizeBytes = sizeBytes;
                 // This will fill in the string
-                errorCode = doSaraR412mUmqttQuery(pInstance, 0);
+                errorCode = doSaraR4OldSyntaxUmqttQuery(pInstance, 0);
             } else {
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 uAtClientLock(atHandle);
@@ -1356,8 +1363,8 @@ int32_t uCellMqttGetLocalPort(int32_t cellHandle)
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)) {
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
-                errorCodeOrPort = doSaraR412mUmqttQuery(pInstance, 1);
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                errorCodeOrPort = doSaraR4OldSyntaxUmqttQuery(pInstance, 1);
                 if ((errorCodeOrPort == 0) &&
                     (pUrcStatus->localPortNumber >= 0)) {
                     errorCodeOrPort = pUrcStatus->localPortNumber;
@@ -1455,8 +1462,8 @@ int32_t uCellMqttGetInactivityTimeout(int32_t cellHandle)
         pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
         pUrcStatus = &(pContext->urcStatus);
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
-            errorCodeOrTimeout = doSaraR412mUmqttQuery(pInstance, 10);
+                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+            errorCodeOrTimeout = doSaraR4OldSyntaxUmqttQuery(pInstance, 10);
             if ((errorCodeOrTimeout == 0) &&
                 (pUrcStatus->inactivityTimeoutSeconds >= 0)) {
                 errorCodeOrTimeout = pUrcStatus->inactivityTimeoutSeconds;
@@ -1549,9 +1556,9 @@ bool uCellMqttIsRetained(int32_t cellHandle)
             pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
             pUrcStatus = &(pContext->urcStatus);
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                 // Run the query, answers come back in pUrcStatus
-                if ((doSaraR412mUmqttQuery(pInstance, 12) == 0) &&
+                if ((doSaraR4OldSyntaxUmqttQuery(pInstance, 12) == 0) &&
                     ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS)) != 0)) {
                     isRetained = true;
                 }
@@ -1936,8 +1943,9 @@ int32_t uCellMqttPublish(int32_t cellHandle,
     volatile uCellMqttContext_t *pContext;
     volatile uCellMqttUrcStatus_t *pUrcStatus;
     uAtClientHandle_t atHandle;
-    char *pHexMessage = NULL;
+    char *pTextMessage = NULL;
     int32_t status = 1;
+    bool isAscii = false;
     bool messageWritten = false;
     int64_t stopTimeMs;
 
@@ -1947,6 +1955,7 @@ int32_t uCellMqttPublish(int32_t cellHandle,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
         pUrcStatus = &(pContext->urcStatus);
+        isAscii = isPrint(pMessage, messageSizeBytes);
         //lint -e(568) Suppress value never being negative, who knows
         // what warnings levels a customer might compile with
         if (((int32_t) qos >= 0) && (qos < U_CELL_MQTT_QOS_MAX_NUM) &&
@@ -1958,21 +1967,32 @@ int32_t uCellMqttPublish(int32_t cellHandle,
               (messageSizeBytes <= U_CELL_MQTT_PUBLISH_BIN_MAX_LENGTH_BYTES)) ||
              (!U_CELL_PRIVATE_HAS(pInstance->pModule,
                                   U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH) &&
-              (messageSizeBytes <= U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES)))) {
+              ((isAscii && (messageSizeBytes <= U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES * 2)) ||
+               (messageSizeBytes <= U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES))))) {
             errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
             if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
                                     U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)) {
                 // If we aren't able to publish a message as a binary
-                // blob, allocate space to publish it as hex
-                pHexMessage = (char *) malloc((messageSizeBytes * 2) + 1);
-                if (pHexMessage != NULL) {
-                    // Convert to hex
-                    uBinToHex(pMessage, messageSizeBytes, pHexMessage);
-                    // Add a terminator to make it a string
-                    *(pHexMessage + (messageSizeBytes * 2)) = '\0';
+                // blob then allocate space to publish it as a string,
+                // either as hex or as ASCII with a terminator added
+                if (isAscii) {
+                    pTextMessage = (char *) malloc(messageSizeBytes + 1);
+                    if (pTextMessage != NULL) {
+                        // Just copy in the text and add a terminator
+                        memcpy(pTextMessage, pMessage, messageSizeBytes);
+                        *(pTextMessage + messageSizeBytes) = '\0';
+                    }
+                } else {
+                    pTextMessage = (char *) malloc((messageSizeBytes * 2) + 1);
+                    if (pTextMessage != NULL) {
+                        // Convert to hex
+                        uBinToHex(pMessage, messageSizeBytes, pTextMessage);
+                        // Add a terminator to make it a string
+                        *(pTextMessage + (messageSizeBytes * 2)) = '\0';
+                    }
                 }
             }
-            if ((pHexMessage != NULL) ||
+            if ((pTextMessage != NULL) ||
                 U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)) {
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
@@ -1980,8 +2000,8 @@ int32_t uCellMqttPublish(int32_t cellHandle,
                 uAtClientLock(atHandle);
                 pUrcStatus->flagsBitmap = 0;
                 if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
-                    // In SARA-R412M syntax there's no URC
+                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                    // In the old SARA-R4 syntax there's no URC
                     // for a publish, so the timeout is that
                     // of the AT command
                     uAtClientTimeoutSet(atHandle,
@@ -1989,24 +2009,30 @@ int32_t uCellMqttPublish(int32_t cellHandle,
                 }
                 uAtClientCommandStart(atHandle, "AT+UMQTTC=");
                 // Publish the message
-                if (pHexMessage == NULL) {
+                if (pTextMessage != NULL) {
+                    // ASCII or hex mode
+                    uAtClientWriteInt(atHandle, 2);
+                } else {
                     // Binary mode
                     uAtClientWriteInt(atHandle, 9);
-                } else {
-                    // Hex mode
-                    uAtClientWriteInt(atHandle, 2);
                 }
                 // QoS
                 uAtClientWriteInt(atHandle, (int32_t) qos);
                 // Retention
                 uAtClientWriteInt(atHandle, (int32_t) retain);
-                if (pHexMessage != NULL) {
-                    // Hex mode
-                    uAtClientWriteInt(atHandle, 1);
+                if (pTextMessage != NULL) {
+                    // If we aren't doing binary mode...
+                    if (isAscii) {
+                        // ASCII mode
+                        uAtClientWriteInt(atHandle, 0);
+                    } else {
+                        // Hex mode
+                        uAtClientWriteInt(atHandle, 1);
+                    }
                 }
                 // Topic
                 uAtClientWriteString(atHandle, pTopicNameStr, true);
-                if (pHexMessage == NULL) {
+                if (pTextMessage == NULL) {
                     // The length of the binary message
                     uAtClientWriteInt(atHandle, (int32_t) messageSizeBytes);
                     uAtClientCommandStop(atHandle);
@@ -2017,24 +2043,24 @@ int32_t uCellMqttPublish(int32_t cellHandle,
                         // Wait for it...
                         uPortTaskBlock(50);
                         // Write the binary message
-                        messageWritten = uAtClientWriteBytes(atHandle,
-                                                             pMessage,
-                                                             messageSizeBytes,
-                                                             true) == messageSizeBytes;
+                        messageWritten = (uAtClientWriteBytes(atHandle,
+                                                              pMessage,
+                                                              messageSizeBytes,
+                                                              true) == messageSizeBytes);
                     }
                 } else {
-                    // Hex message
-                    uAtClientWriteString(atHandle, pHexMessage, true);
+                    // ASCII or hex message
+                    uAtClientWriteString(atHandle, pTextMessage, true);
                     messageWritten = true;
                     uAtClientCommandStop(atHandle);
                 }
 
                 // Free memory (it is legal C to free a NULL pointer)
-                free(pHexMessage);
+                free(pTextMessage);
 
                 if (messageWritten) {
                     if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
+                                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                         uAtClientResponseStart(atHandle, "+UMQTTC:");
                         // Skip the first parameter, which is just
                         // our UMQTTC command number again
@@ -2050,8 +2076,8 @@ int32_t uCellMqttPublish(int32_t cellHandle,
 
                 if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
                     if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
-                        // For SARA-R412M syntax, that's it
+                                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                        // For the old SARA-R4 syntax, that's it
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                     } else {
                         // Wait for a URC to say that the publish
@@ -2120,7 +2146,7 @@ int32_t uCellMqttSubscribe(int32_t cellHandle,
             // Topic
             uAtClientWriteString(atHandle, pTopicFilterStr, true);
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                 uAtClientCommandStop(atHandle);
                 uAtClientResponseStart(atHandle, "+UMQTTC:");
                 // Skip the first parameter, which is just
@@ -2190,7 +2216,7 @@ int32_t uCellMqttUnsubscribe(int32_t cellHandle,
             // Topic
             uAtClientWriteString(atHandle, pTopicFilterStr, true);
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)) {
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                 uAtClientCommandStop(atHandle);
                 uAtClientResponseStart(atHandle, "+UMQTTC:");
                 // Skip the first parameter, which is just
@@ -2301,8 +2327,10 @@ int32_t uCellMqttMessageRead(int32_t cellHandle, char *pTopicNameStr,
                 messageSizeBytes = *pMessageSizeBytes;
             }
             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            if (pUrcMessage != NULL) {
-                // Must be SARA-R4, which needs a URC capture
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                assert (pUrcMessage != NULL);
+                // For the old-style SARA-R4 interface we need a URC capture
                 assert(U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType));
                 pUrcMessage->messageRead = false;
                 pUrcMessage->pTopicNameStr = pTopicNameStr;
@@ -2315,11 +2343,12 @@ int32_t uCellMqttMessageRead(int32_t cellHandle, char *pTopicNameStr,
             uAtClientCommandStart(atHandle, "AT+UMQTTC=");
             // Read a message
             uAtClientWriteInt(atHandle, 6);
-            if (pUrcMessage != NULL) {
-                // For SARA-R4 we get a standard
-                // indication of success here
-                // then we need to wait for a
-                // URC to receive the message
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                // We get a standard indication
+                // of success here then we need
+                // to wait for a URC to get the
+                // message
                 uAtClientCommandStop(atHandle);
                 uAtClientResponseStart(atHandle, "+UMQTTC:");
                 // Skip the first parameter, which is just

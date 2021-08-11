@@ -94,7 +94,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // Support for MQTT on this module flavour is present in the code
          // but has not yet been tested, hence this feature is currently
          // commented out.
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                     |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)
         ) /* features */
     },
     {
@@ -109,11 +110,11 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)                       |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)
          // Support for MQTT on this module flavour is present in the code
-         // but has not yet been tested, hence these features are currently
+         // but has not yet been tested, hence this feature is currently
          // commented out.
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                   |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)                 |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                    |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)             |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                 |
          // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)
         ) /* features */
     },
@@ -131,7 +132,7 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // but has not yet been tested, hence these features are currently
          // commented out.
          // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R412M_SYNTAX)              |
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)             |
          // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                 |
          // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)
         ) /* features */
@@ -158,9 +159,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         100 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 4 /* radioOffCfun */, 2 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                          |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                                |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)  |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT) /* features */
         )
     }
 };

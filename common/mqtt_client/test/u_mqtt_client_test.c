@@ -91,9 +91,12 @@
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES
-/** Maximum length for publishing a message to the broker.
+/** Maximum length for publishing a message to the broker;
+ * this number should be 512 or 1024 but the limit on
+ * SARA_R412M_03B is lower, somewhere less than 512,
+ * hence the choice of 256 bytes.
  */
-# define U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES 1024
+# define U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES 256
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES
@@ -125,26 +128,8 @@ static char gSerialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
 
 /** Data to send over MQTT.
  */
-static const char gSendData[] =  "_____0000:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0100:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0200:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0300:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0400:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0500:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0600:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0700:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0800:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789"
-                                 "_____0900:0123456789012345678901234567890123456789"
-                                 "01234567890123456789012345678901234567890123456789";
+static const char gSendData[] =  "______000:0123456789012345678901234567890123456789"
+                                 "______050:0123456789012345678901234567890123456789";
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -170,7 +155,8 @@ static void stdPreamble()
 
     // Add each network type if its not already been added
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (gUNetworkTestCfg[x].handle < 0) {
+        if ((gUNetworkTestCfg[x].handle < 0) &&
+            U_NETWORK_TEST_TYPE_HAS_MQTT(gUNetworkTestCfg[x].type)) {
             if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
                 uPortLog("U_MQTT_CLIENT_TEST: adding %s network...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -188,15 +174,6 @@ static void stdPreamble()
     if (gpMqttContextA != NULL) {
         uMqttClientClose(gpMqttContextA);
         gpMqttContextA = NULL;
-    }
-
-    // Bring up each network type
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (gUNetworkTestCfg[x].handle >= 0) {
-            uPortLog("U_MQTT_CLIENT_TEST: bringing up %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkUp(gUNetworkTestCfg[x].handle) == 0);
-        }
     }
 }
 
@@ -218,7 +195,8 @@ static void messageIndicationCallback(int32_t numUnread, void *pParam)
  * PUBLIC FUNCTIONS: TESTS
  * -------------------------------------------------------------- */
 
-/** Test MQTT connectivity with deliberately minimal option set.
+/** Test MQTT connectivity with deliberately minimal option set,
+ * unsecure.
  * TODO: limits checking.
  * TODO: when we have a public u-blox MQTT test server, do some more
  * thrash tests.
@@ -241,15 +219,16 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
     char *pMessageIn;
     uMqttQos_t qos;
 
-    // Do the standard preamble to make sure there is
-    // a network underneath us
+    // Do the standard preamble, which in this case
+    // only adds the networks, doesn't bring them up,
+    // since SARA-R4 will not connect with a different
+    // security mode without being taken down first
     stdPreamble();
 
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         networkHandle = gUNetworkTestCfg[x].handle;
-        if ((networkHandle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_MQTT(gUNetworkTestCfg[x].type)) {
+        if (networkHandle >= 0) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 
@@ -270,8 +249,14 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
             U_PORT_TEST_ASSERT(pMessageIn != NULL);
 
             // Do the entire sequence twice, once without TLS security
-            // and once with TLS security
+            // and once with TLS security, taking the network down between
+            // attempts because SARA-R4 cellular modules do not support
+            // changing security mode without power-cycling the module
             for (size_t run = 0; run < 2; run++) {
+                uPortLog("U_MQTT_CLIENT_TEST: bringing up %s...\n",
+                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+                U_PORT_TEST_ASSERT(uNetworkUp(gUNetworkTestCfg[x].handle) == 0);
+
                 // Make a unique topic name to stop different boards colliding
                 snprintf(pTopicOut, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                          "ubx_test/%s", gSerialNumber);
@@ -482,8 +467,10 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     // Close the entire context
                     uMqttClientClose(gpMqttContextA);
                     gpMqttContextA = NULL;
-                } else {
-                    uPortLog("U_MQTT_CLIENT_TEST: MQTT not supported, skipping...\n");
+
+                    uPortLog("U_MQTT_CLIENT_TEST: taking down %s...\n",
+                             gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+                    U_PORT_TEST_ASSERT(uNetworkDown(networkHandle) == 0);
                 }
             }
 
@@ -500,6 +487,8 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                      heapXxxSecurityInitLoss,
                      heapUsed - heapXxxSecurityInitLoss);
             U_PORT_TEST_ASSERT(heapUsed <= heapXxxSecurityInitLoss);
+        } else {
+            uPortLog("U_MQTT_CLIENT_TEST: MQTT not supported, skipping...\n");
         }
     }
 }
