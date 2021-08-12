@@ -77,7 +77,7 @@
 
 #ifndef U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED
 /** Server to use for MQTT testing on a secured connection,
- * can'tbe hivemq as that doesn't support security.
+ * can't be hivemq as that doesn't support security.
  */
 # define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED  test.mosquitto.org:8883
 #endif
@@ -190,11 +190,16 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
 #endif
                                            keepGoingCallback) == 0);
 
-        if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType)) {
+        if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) &&
+            U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) &&
+            (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R412M_02B)) {
             // If the module does not permit us to switch off TLS security once it
             // has been switched on then we need to use the secured server IP address
             // since we will have tested switching security on by the time we do
             // the connect
+            // SARA-R412M will only let security be switched on if all of a root
+            // CA, private key and certificate have been defined, hence we don't
+            // test that here.
             pServerAddress = U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED);
         }
 
@@ -219,6 +224,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         memset(buffer1, 0, sizeof(buffer1));
         x = uCellMqttGetClientId(cellHandle, buffer1, sizeof(buffer1));
         U_PORT_TEST_ASSERT(x > 0);
+        uPortLog("U_CELL_MQTT_TEST: client ID is \"%.*s\"...\n", x, buffer1);
         U_PORT_TEST_ASSERT(x == strlen(buffer1));
 
         // Set/get the local port number
@@ -231,6 +237,12 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             U_PORT_TEST_ASSERT(uCellMqttSetLocalPort(cellHandle, 666) == 0);
             x = uCellMqttGetLocalPort(cellHandle);
             U_PORT_TEST_ASSERT(x == 666);
+            // Set it back to something sensible
+            x = 1883;
+            if (uCellMqttIsSecured(cellHandle, NULL)) {
+                x = 8883;
+            }
+            U_PORT_TEST_ASSERT(uCellMqttSetLocalPort(cellHandle, x) == 0);
         } else {
             x = uCellMqttGetLocalPort(cellHandle);
             if (uCellMqttIsSecured(cellHandle, NULL)) {
@@ -254,15 +266,23 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         // (AKA ping) you get +UUMQTTC: 8,0 poured at you forever
 
         // Set/get retention
-        uPortLog("U_CELL_MQTT_TEST: testing getting/setting session retention...\n");
+        uPortLog("U_CELL_MQTT_TEST: testing getting/setting retention...\n");
         if (U_CELL_PRIVATE_HAS(pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)) {
-            if (uCellMqttIsRetained(cellHandle)) {
-                U_PORT_TEST_ASSERT(uCellMqttSetRetainOn(cellHandle) == 0);
-                U_PORT_TEST_ASSERT(!uCellMqttIsRetained(cellHandle));
-            } else {
-                U_PORT_TEST_ASSERT(uCellMqttSetRetainOff(cellHandle) == 0);
-                U_PORT_TEST_ASSERT(uCellMqttIsRetained(cellHandle));
+            for (z = 0; z < 2; z++) {
+                if (uCellMqttIsRetained(cellHandle)) {
+                    uPortLog("U_CELL_MQTT_TEST: retention is on, switching it off...\n");
+                    U_PORT_TEST_ASSERT(uCellMqttSetRetainOff(cellHandle) == 0);
+                    x = uCellMqttIsRetained(cellHandle);
+                    uPortLog("U_CELL_MQTT_TEST: retention is now %s.\n", x ? "on" : "off");
+                    U_PORT_TEST_ASSERT(!x);
+                } else {
+                    uPortLog("U_CELL_MQTT_TEST: retention is off, switching it on...\n");
+                    U_PORT_TEST_ASSERT(uCellMqttSetRetainOn(cellHandle) == 0);
+                    x = uCellMqttIsRetained(cellHandle);
+                    uPortLog("U_CELL_MQTT_TEST: retention is now %s.\n", x ? "on" : "off");
+                    U_PORT_TEST_ASSERT(x);
+                }
             }
         } else {
             U_PORT_TEST_ASSERT(!uCellMqttIsRetained(cellHandle));
@@ -280,16 +300,32 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
                 U_PORT_TEST_ASSERT(x == -1);
             }
         } else {
-            U_PORT_TEST_ASSERT(uCellMqttSetSecurityOn(cellHandle, 0) == 0);
-            x = -1;
-            U_PORT_TEST_ASSERT(uCellMqttIsSecured(cellHandle, &x));
-            U_PORT_TEST_ASSERT(x == 0);
+            // Only switch on security if it is supported and if this is
+            // not SARA-R412M, since SARA-R412M will only let security
+            // be switched on if all of a root CA, private key and
+            // certificate have been defined
+            if (U_CELL_PRIVATE_HAS(pModule,
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) &&
+                (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R412M_02B)) {
+                x = 0;
+                uPortLog("U_CELL_MQTT_TEST: security is off, switching it on"
+                         " with profile %d...\n", x);
+                U_PORT_TEST_ASSERT(uCellMqttSetSecurityOn(cellHandle, x) == 0);
+                x = -1;
+                y = uCellMqttIsSecured(cellHandle, &x);
+                uPortLog("U_CELL_MQTT_TEST: security is now %s, profile is"
+                         "%d.\n", y ? "on" : "off", x);
+                U_PORT_TEST_ASSERT(y);
+                U_PORT_TEST_ASSERT(x == 0);
+            }
         }
 
         if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType)) {
             // Switch security off again before we continue
             U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
-            U_PORT_TEST_ASSERT(uCellMqttIsSecured(cellHandle, &x) == 0);
+            y = uCellMqttIsSecured(cellHandle, &x);
+            uPortLog("U_CELL_MQTT_TEST: security is now %s.\n", y ? "on" : "off");
+            U_PORT_TEST_ASSERT(!y);
         }
 
         // Set/get a "will" message
@@ -322,14 +358,20 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         uPortLog("U_CELL_MQTT_TEST: connecting to broker \"%s\"...\n", pServerAddress);
         U_PORT_TEST_ASSERT(uCellMqttConnect(cellHandle) == 0);
 
-        // Set/get keep-alive
-        uPortLog("U_CELL_MQTT_TEST: testing getting/setting keep-alive...\n");
-        if (uCellMqttIsKeptAlive(cellHandle)) {
-            U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOff(cellHandle) == 0);
-            U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
+        if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)) {
+            // Set/get keep-alive
+            uPortLog("U_CELL_MQTT_TEST: testing getting/setting keep-alive...\n");
+            if (uCellMqttIsKeptAlive(cellHandle)) {
+                U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOff(cellHandle) == 0);
+                U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
+            } else {
+                U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) == 0);
+                U_PORT_TEST_ASSERT(uCellMqttIsKeptAlive(cellHandle));
+            }
         } else {
-            U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) == 0);
-            U_PORT_TEST_ASSERT(uCellMqttIsKeptAlive(cellHandle));
+            uPortLog("U_CELL_MQTT_TEST: keep-alive is not supported.\n");
+            U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) < 0);
+            U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
         }
 
         // Disconnect

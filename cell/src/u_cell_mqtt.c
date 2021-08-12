@@ -33,7 +33,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "ctype.h"     // isdigit(), isprint()
-#include "string.h"    // memset(), strcpy(), strtok_r(), strtol()
+#include "string.h"    // memset(), strcpy(), strtok_r(), strtol(), strncmp()
 #include "stdio.h"     // snprintf()
 #include "assert.h"
 
@@ -103,6 +103,8 @@
 #define U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED 7
 #define U_CELL_MQTT_URC_FLAG_SECURED                 8  // Only required for SARA-R4
 #define U_CELL_MQTT_URC_FLAG_RETAINED                9  // Only required for SARA-R4
+#define U_CELL_MQTT_URC_FLAG_SECURED_FILLED_IN       10 // Only required for SARA-R4
+#define U_CELL_MQTT_URC_FLAG_RETAINED_FILLED_IN      11 // Only required for SARA-R4
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -120,7 +122,7 @@ typedef struct {
 /** Struct to hold all the things an MQTT URC might tell us.
  */
 typedef struct {
-    int32_t flagsBitmap;
+    uint32_t flagsBitmap;
     uCellMqttQos_t subscribeQoS;
     // The remaining parameters are only
     // required for SARA-R4 which sends
@@ -146,24 +148,25 @@ typedef struct {
 /** Struct bringing all of the above together.
  */
 typedef struct {
-    bool (*pKeepGoingCallback)(void); /**< Callback to be called while
+    bool (*pKeepGoingCallback)(void); /**< callback to be called while
                                            in a function which may have
                                            to wait for a broker's response.*/
-    void (*pMessageIndicationCallback) (int32_t, void *); /**< Callback to
+    void (*pMessageIndicationCallback) (int32_t, void *); /**< callback to
                                                                be called when
                                                                an indication
                                                                of messages
                                                                waiting to be
                                                                read has been
                                                                received. */
-    void *pMessageIndicationCallbackParam; /**< User parameter to be
+    void *pMessageIndicationCallbackParam; /**< user parameter to be
                                                 passed to the message
                                                 indication callback. */
-    bool keptAlive;  /**< Keep track of whether "keep alive" is on or not. */
-    bool connected;  /**< Keep track of whether we are connected or not. */
-    size_t numUnreadMessages; /**< Keep track of the number of unread messages. */
-    volatile uCellMqttUrcStatus_t urcStatus; /**< Store the status values from a URC. */
-    volatile uCellMqttUrcMessage_t *pUrcMessage; /**< Storage for an MQTT message
+    bool keptAlive;  /**< keep track of whether "keep alive" is on or not. */
+    bool connected;  /**< keep track of whether we are connected or not. */
+    size_t numUnreadMessages; /**< keep track of the number of unread messages. */
+    char *pBrokerNameStr; /**< broker name string, required for SARA-R4 only. */
+    volatile uCellMqttUrcStatus_t urcStatus; /**< store the status values from a URC. */
+    volatile uCellMqttUrcMessage_t *pUrcMessage; /**< storage for an MQTT message
                                                       received in a URC, only
                                                       required for SARA-R4. */
 } uCellMqttContext_t;
@@ -308,7 +311,7 @@ static void UUMQTTC_urc(uAtClientHandle_t atHandle,
     }
 }
 
-// "+UUMQTTx:" URC handler, for SARA-R4 only,
+// "+UUMQTTx:" URC handler, for SARA-R4 (old style) only,
 // called by the UUMQTT_urc() URC handler.
 // The switch statement here needs to match those in
 // resetUrcStatusField() and checkUrcStatusField()
@@ -318,22 +321,34 @@ static void UUMQTTx_urc(uAtClientHandle_t atHandle,
 {
     volatile uCellMqttUrcStatus_t *pUrcStatus = &(pContext->urcStatus);
     char delimiter = uAtClientDelimiterGet(atHandle);
+    char buffer[10]; // Enough room for a number as a string
+    int32_t y;
 
     // All these parameters are delimited by
     // a carriage return
     uAtClientDelimiterSet(atHandle, '\r');
+
     switch (x) {
         case 0: // Client name
-            if (!pUrcStatus->clientId.filledIn &&
-                (uAtClientReadString(atHandle,
-                                     pUrcStatus->clientId.pContents,
-                                     pUrcStatus->clientId.sizeBytes,
-                                     false) > 0)) {
-                pUrcStatus->clientId.filledIn = true;
+            if (!pUrcStatus->clientId.filledIn) {
+                y = uAtClientReadString(atHandle,
+                                        pUrcStatus->clientId.pContents,
+                                        pUrcStatus->clientId.sizeBytes,
+                                        false);
+                if (y > 0) {
+                    pUrcStatus->clientId.filledIn = true;
+                    pUrcStatus->clientId.sizeBytes = (size_t) (unsigned) y;
+                }
             }
             break;
         case 1: // Local port number
-            pUrcStatus->localPortNumber = uAtClientReadInt(atHandle);
+            // If the local port number has not been set then what we
+            // get is an empty string and not an integer at all, so
+            // need to read it as a string and convert it
+            y = uAtClientReadString(atHandle, buffer, sizeof(buffer), false);
+            if (y >= 0) {
+                pUrcStatus->localPortNumber = strtol(buffer, NULL, 10);
+            }
             break;
         case 2: // Server name
         case 3: // Server IP address
@@ -351,14 +366,22 @@ static void UUMQTTx_urc(uAtClientHandle_t atHandle,
             pUrcStatus->inactivityTimeoutSeconds = uAtClientReadInt(atHandle);
             break;
         case 11: // TLS secured
-            if (uAtClientReadInt(atHandle) == 1) {
-                pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_SECURED;
-                pUrcStatus->securityProfileId = uAtClientReadInt(atHandle);
+            y = uAtClientReadInt(atHandle);
+            if (y >= 0) {
+                pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_SECURED_FILLED_IN;
+                if (y == 1) {
+                    pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_SECURED;
+                    pUrcStatus->securityProfileId = uAtClientReadInt(atHandle);
+                }
             }
             break;
-        case 12: // Session retained
-            if (uAtClientReadInt(atHandle) == 0) {
-                pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_RETAINED;
+        case 12: // Session retained (actually session cleaned, hence the inversion)
+            y = uAtClientReadInt(atHandle);
+            if (y >= 0) {
+                pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_RETAINED_FILLED_IN;
+                if (y == 0) {
+                    pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_RETAINED;
+                }
             }
             break;
         default:
@@ -385,8 +408,12 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
 
     // Skip the op code
     uAtClientSkipParameters(atHandle, 1);
-    // Set the delimiter to '\'r to make this stop after the integer
+    // Set the delimiter to '\r' so that we stop after
+    // reading number of unread messages
     uAtClientDelimiterSet(atHandle, '\r');
+    // Switch off the stop tag also; the format here
+    // is way too wacky, we just have to knife-and-fork it
+    uAtClientIgnoreStopTag(atHandle);
     // Read the new number of unread messages
     x = uAtClientReadInt(atHandle);
     if (x >= 0) {
@@ -400,17 +427,17 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
     // Msg:blah\r\n
     // ...noting no quotations marks around anything
     // Carry on with a delimiter of '\r' to wend our
-    // way through this maze.
+    // way through this merry maze.
 
-    // Switch off the stop tag and read
-    // in the next 8 bytes and to see if they are "\r\nTopic:"
-    uAtClientIgnoreStopTag(atHandle);
-    x = uAtClientReadBytes(atHandle, buffer, 8, false);
+    // Read the next 8 bytes and to see if they are
+    // "\r\nTopic:"
+    x = uAtClientReadBytes(atHandle, buffer, 8, true);
     if ((x == 8) &&
         (memcmp(buffer, "\r\nTopic:", 8) == 0)) {
         if (pUrcMessage != NULL) {
             if (pUrcMessage->pTopicNameStr != NULL) {
                 // Read the rest of this line, which will be the topic
+                // the delimiter will stop us
                 topicNameBytesRead = uAtClientReadString(atHandle,
                                                          pUrcMessage->pTopicNameStr,
                                                          pUrcMessage->topicNameSizeBytes,
@@ -418,37 +445,31 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
             }
             if (topicNameBytesRead >= 0) {
                 pUrcMessage->topicNameSizeBytes = topicNameBytesRead;
-                // Skip the additional '\r\n'
+                // Skip the "\r\n"
                 uAtClientSkipBytes(atHandle, 2);
                 // Read the next line and find the length of the message
-                // and the QoS from it
+                // and the QoS from it; again the delimiter will stop us
                 x = uAtClientReadString(atHandle, buffer, sizeof(buffer) - 1, false);
                 if (x >= 0) {
                     buffer[x] = '\0';
                     pStr = strtok_r(buffer, " ", &pSaved);
-                    if ((pStr != NULL) && (strcmp(pStr, "Len:") == 0)) {
+                    if ((pStr != NULL) && (strncmp(pStr, "Len:", 4) == 0)) {
                         messageBytesAvailable = strtol(pStr + 4, NULL, 10);
                     }
                     pStr = strtok_r(NULL, " ", &pSaved);
-                    if ((pStr != NULL) && (strcmp(pStr, "QoS:") == 0)) {
+                    if ((pStr != NULL) && (strncmp(pStr, "QoS:", 4) == 0)) {
                         pUrcMessage->qos = (uCellMqttQos_t) strtol(pStr + 4, NULL, 10);
                         gotLengthAndQos = true;
                     }
                     if (gotLengthAndQos && (messageBytesAvailable >= 0)) {
-                        // Finally, read the next messageBytesAvailable bytes
-                        // Skip the additional '\r\n'
-                        uAtClientSkipBytes(atHandle, 2);
-                        // Throw away the "Msg:" bit
-                        uAtClientReadBytes(atHandle, NULL, 4, false);
-                        // Now read the exact length of message
-                        // bytes, being careful to not look for
-                        // delimiters or the like as this can be
-                        // a binary message
+                        // Skip the "\r\nMsg:" bit
+                        uAtClientSkipBytes(atHandle, 6);
+                        // Now read the exact number of message
+                        // bytes, ignoring delimiters
                         x = messageBytesAvailable;
                         if (x > pUrcMessage->messageSizeBytes) {
                             x = pUrcMessage->messageSizeBytes;
                         }
-                        uAtClientIgnoreStopTag(atHandle);
                         pUrcMessage->messageSizeBytes = 0;
                         pUrcMessage->messageSizeBytes = uAtClientReadBytes(atHandle,
                                                                            pUrcMessage->pMessage,
@@ -464,7 +485,6 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
                                                    true);
                             }
                         }
-                        uAtClientRestoreStopTag(atHandle);
                     }
                 }
             }
@@ -490,6 +510,7 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
 #pragma GCC diagnostic pop
         }
     }
+    uAtClientRestoreStopTag(atHandle);
     uAtClientDelimiterSet(atHandle, delimiter);
 }
 
@@ -521,7 +542,7 @@ static void UUMQTT_urc(uAtClientHandle_t atHandle,
                     }
                 } else {
                     // Probably "+UUMQTTx:"
-                    // Derive x as an integer, noting
+                    // Derive x as a string, noting
                     // that it can be two digits
                     if (isdigit((int32_t) bytes[0])) {
                         if (isdigit((int32_t) bytes[1])) {
@@ -581,7 +602,15 @@ static void entryFunction(int32_t cellHandle,
                 if (!mustBeInitialised || (pInstance->pMqttContext != NULL)) {
                     *ppInstance = pInstance;
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else {
+                    // NULL pInstance in case the caller isn't checkiing
+                    // pErrorCode
+                    pInstance = NULL;
                 }
+            } else {
+                // NULL pInstance in case the caller isn't checkiing
+                // pErrorCode
+                pInstance = NULL;
             }
         }
     }
@@ -687,10 +716,12 @@ static void resetUrcStatusField(volatile uCellMqttUrcStatus_t *pUrcStatus,
             break;
         case 11: // TLS secured
             pUrcStatus->flagsBitmap &= ~(1 << U_CELL_MQTT_URC_FLAG_SECURED);
+            pUrcStatus->flagsBitmap &= ~(1 << U_CELL_MQTT_URC_FLAG_SECURED_FILLED_IN);
             pUrcStatus->securityProfileId = -1;
             break;
         case 12: // Session retained
             pUrcStatus->flagsBitmap &= ~(1 << U_CELL_MQTT_URC_FLAG_RETAINED);
+            pUrcStatus->flagsBitmap &= ~(1 << U_CELL_MQTT_URC_FLAG_RETAINED_FILLED_IN);
             break;
         default:
             // Do nothing
@@ -700,10 +731,11 @@ static void resetUrcStatusField(volatile uCellMqttUrcStatus_t *pUrcStatus,
 
 // Check if the given pUrcStatus item has been filled in.
 // The switch statement here should match that in UUMQTTx_urc()
+//lint -esym(818, pUrcStatus) Suppress could be declared as const
 static bool checkUrcStatusField(volatile uCellMqttUrcStatus_t *pUrcStatus,
                                 int32_t number)
 {
-    bool filledIn = false;
+    volatile bool filledIn = false;
 
     switch (number) {
         case 0: // Client name
@@ -730,10 +762,10 @@ static bool checkUrcStatusField(volatile uCellMqttUrcStatus_t *pUrcStatus,
             filledIn = (pUrcStatus->inactivityTimeoutSeconds >= 0);
             break;
         case 11: // TLS secured
-            filledIn = (pUrcStatus->flagsBitmap &= (1 << U_CELL_MQTT_URC_FLAG_SECURED)) != 0;
+            filledIn = (pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SECURED_FILLED_IN)) != 0;
             break;
         case 12: // Session retained
-            filledIn = (pUrcStatus->flagsBitmap &= (1 << U_CELL_MQTT_URC_FLAG_RETAINED)) != 0;
+            filledIn = (pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_RETAINED_FILLED_IN)) != 0;
             break;
         default:
             // Do nothing
@@ -802,35 +834,38 @@ static bool isSecured(const uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle;
 
     if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-        // Run the query, answers come back in pUrcStatus
-        if (doSaraR4OldSyntaxUmqttQuery(pInstance, 11) == 0) {
-            // SARA-R4 doesn't report the security status
-            // if it is the default of unsecured,
-            // so if we got nothing back we are unsecured.
-            if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SECURED)) != 0) {
-                secured = true;
-                if (pSecurityProfileId != NULL) {
-                    *pSecurityProfileId = pUrcStatus->securityProfileId;
+                           U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)) {
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+            // Run the query, answers come back in pUrcStatus
+            if (doSaraR4OldSyntaxUmqttQuery(pInstance, 11) == 0) {
+                // SARA-R4 doesn't report the security status
+                // if it is the default of unsecured,
+                // so if we got nothing back we are unsecured.
+                if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SECURED)) != 0) {
+                    secured = true;
+                    if (pSecurityProfileId != NULL) {
+                        *pSecurityProfileId = pUrcStatus->securityProfileId;
+                    }
                 }
             }
+        } else {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UMQTT=");
+            uAtClientWriteInt(atHandle, 11);
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+UMQTT:");
+            // Skip the first parameter, which is just
+            // our UMQTT command number again
+            uAtClientSkipParameters(atHandle, 1);
+            secured = uAtClientReadInt(atHandle) == 1;
+            if (secured && (pSecurityProfileId != NULL)) {
+                *pSecurityProfileId = uAtClientReadInt(atHandle);
+            }
+            uAtClientResponseStop(atHandle);
+            uAtClientUnlock(atHandle);
         }
-    } else {
-        atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UMQTT=");
-        uAtClientWriteInt(atHandle, 11);
-        uAtClientCommandStop(atHandle);
-        uAtClientResponseStart(atHandle, "+UMQTT:");
-        // Skip the first parameter, which is just
-        // our UMQTT command number again
-        uAtClientSkipParameters(atHandle, 1);
-        secured = uAtClientReadInt(atHandle) == 1;
-        if (secured && (pSecurityProfileId != NULL)) {
-            *pSecurityProfileId = uAtClientReadInt(atHandle);
-        }
-        uAtClientResponseStop(atHandle);
-        uAtClientUnlock(atHandle);
     }
 
     return secured;
@@ -848,33 +883,47 @@ static int32_t setKeepAlive(int32_t cellHandle, bool onNotOff)
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
     if ((errorCode == 0) && (pInstance != NULL)) {
-        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
-        errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-        atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UMQTTC=");
-        // Set ping
-        uAtClientWriteInt(atHandle, 8);
-        uAtClientWriteInt(atHandle, (int32_t) onNotOff);
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-            uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+UMQTTC:");
-            // Skip the first parameter, which is just
-            // our UMQTT command number again
-            uAtClientSkipParameters(atHandle, 1);
-            status = uAtClientReadInt(atHandle);
-            uAtClientResponseStop(atHandle);
+                               U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)) {
+            pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+            errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UMQTTC=");
+            // Set ping
+            uAtClientWriteInt(atHandle, 8);
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                // Somewhat bizzarely, for the SARA-R4 old
+                // syntax, the server name has to be included
+                // here (maybe it is going to ping an arbitrary
+                // server?)
+                uAtClientWriteString(atHandle, pContext->pBrokerNameStr, true);
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+UMQTTC:");
+                // Skip the first parameter, which is just
+                // our UMQTT command number again
+                uAtClientSkipParameters(atHandle, 1);
+                status = uAtClientReadInt(atHandle);
+                uAtClientResponseStop(atHandle);
+            } else {
+                // Just set ping on or off
+                uAtClientWriteInt(atHandle, (int32_t) onNotOff);
+                uAtClientCommandStopReadResponse(atHandle);
+            }
+            if ((uAtClientUnlock(atHandle) == 0) &&
+                (status == 1)) {
+                // This has no URCness to it, that's it
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                pContext->keptAlive = onNotOff;
+            } else {
+                printErrorCodes(atHandle);
+            }
         } else {
-            uAtClientCommandStopReadResponse(atHandle);
-        }
-        if ((uAtClientUnlock(atHandle) == 0) &&
-            (status == 1)) {
-            // This has no URCness to it, that's it
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            pContext->keptAlive = onNotOff;
-        } else {
-            printErrorCodes(atHandle);
+            if (!onNotOff) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
         }
     }
 
@@ -899,9 +948,10 @@ static int32_t setSessionRetain(int32_t cellHandle, bool onNotOff)
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
             uAtClientCommandStart(atHandle, "AT+UMQTT=");
-            // Set retention
+            // Set retention (actually it's "session cleaned",
+            // hence the inversion)
             uAtClientWriteInt(atHandle, 12);
-            uAtClientWriteInt(atHandle, (int32_t) onNotOff);
+            uAtClientWriteInt(atHandle, (int32_t) !onNotOff);
             errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
         }
     }
@@ -922,16 +972,24 @@ static int32_t setSecurity(int32_t cellHandle, bool onNotOff,
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
     if ((errorCode == 0) && (pInstance != NULL)) {
-        atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UMQTT=");
-        // Set security
-        uAtClientWriteInt(atHandle, 11);
-        uAtClientWriteInt(atHandle, (int32_t) onNotOff);
-        if (onNotOff && (securityProfileId >= 0)) {
-            uAtClientWriteInt(atHandle, securityProfileId);
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UMQTT=");
+            // Set security
+            uAtClientWriteInt(atHandle, 11);
+            uAtClientWriteInt(atHandle, (int32_t) onNotOff);
+            if (onNotOff && (securityProfileId >= 0)) {
+                uAtClientWriteInt(atHandle, securityProfileId);
+            }
+            errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
+        } else {
+            if (!onNotOff) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
         }
-        errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
     }
 
     U_CELL_MQTT_EXIT_FUNCTION();
@@ -1044,9 +1102,9 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
     volatile uCellMqttContext_t *pContext;
     uAtClientHandle_t atHandle;
     uSockAddress_t address;
-    char *pAddress;
     char *pTmp;
     int32_t port;
+    int32_t status = 1;
     bool keepGoing = true;
     char imei[U_CELL_INFO_IMEI_SIZE + 1];
 
@@ -1070,6 +1128,7 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                     pContext->keptAlive = false;
                     pContext->connected = false;
                     pContext->numUnreadMessages = 0;
+                    pContext->pBrokerNameStr = NULL;
                     pContext->pUrcMessage = NULL;
                     pInstance->pMqttContext = pContext;
                     if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
@@ -1082,8 +1141,8 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                         // Deal with the broker name string
                         // Allocate space to fiddle with the
                         // server address, +1 for terminator
-                        pAddress = (char *) malloc(U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES + 1);
-                        if (pAddress != NULL) {
+                        pContext->pBrokerNameStr = (char *) malloc(U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES + 1);
+                        if (pContext->pBrokerNameStr != NULL) {
                             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                             // Determine if the server name given
                             // is an IP address or a domain name
@@ -1095,13 +1154,13 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                                 // Convert the bit that isn't a port
                                 // number back into a string
                                 if (uSockIpAddressToString(&(address.ipAddress),
-                                                           pAddress,
+                                                           pContext->pBrokerNameStr,
                                                            U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES) > 0) {
                                     uAtClientLock(atHandle);
                                     uAtClientCommandStart(atHandle, "AT+UMQTT=");
                                     // Set the broker IP address
                                     uAtClientWriteInt(atHandle, 3);
-                                    uAtClientWriteString(atHandle, pAddress, true);
+                                    uAtClientWriteString(atHandle, pContext->pBrokerNameStr, true);
                                     // If there was a port number, write
                                     // that also
                                     if (address.port > 0) {
@@ -1113,11 +1172,11 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                                 // We must have a domain name,
                                 // make a copy of it as we need to
                                 // manipulate it
-                                strcpy(pAddress, pBrokerNameStr);
+                                strcpy(pContext->pBrokerNameStr, pBrokerNameStr);
                                 // Grab any port number off the end
                                 // and then remove it from the string
-                                port = uSockDomainGetPort(pAddress);
-                                pTmp = pUSockDomainRemovePort(pAddress);
+                                port = uSockDomainGetPort(pContext->pBrokerNameStr);
+                                pTmp = pUSockDomainRemovePort(pContext->pBrokerNameStr);
                                 uAtClientLock(atHandle);
                                 uAtClientCommandStart(atHandle, "AT+UMQTT=");
                                 // Set the broker URL
@@ -1131,8 +1190,14 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                                 keepGoing = (atMqttStopCmdGetRespAndUnlock(pInstance) == 0);
                             }
 
-                            // Free memory
-                            free(pAddress);
+                            if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                                    U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                                // We only need to  keep hold of the broker string
+                                // if we're using the old SARA-R4 syntax (since
+                                // the keep alive AT command needs it)
+                                free(pContext->pBrokerNameStr);
+                                pContext->pBrokerNameStr = NULL;
+                            }
 
                             // Now deal with the credentials
                             if (keepGoing && (pUserNameStr != NULL)) {
@@ -1183,7 +1248,15 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                                 uAtClientWriteInt(atHandle, 7);
                                 // Format: verbose
                                 uAtClientWriteInt(atHandle, 2);
-                                keepGoing = (atMqttStopCmdGetRespAndUnlock(pInstance) == 0);
+                                uAtClientCommandStop(atHandle);
+                                uAtClientResponseStart(atHandle, "+UMQTTC:");
+                                // Skip the first parameter, which is just
+                                // our UMQTTC command number again
+                                uAtClientSkipParameters(atHandle, 1);
+                                status = uAtClientReadInt(atHandle);
+                                uAtClientResponseStop(atHandle);
+                                keepGoing = (uAtClientUnlock(atHandle) == 0 &&
+                                             (status == 1));
                             }
 
                             // Almost done
@@ -1243,8 +1316,8 @@ void uCellMqttDeinit(int32_t cellHandle)
             connect(pInstance, false);
         }
 
-        uAtClientRemoveUrcHandler(pInstance->atHandle,
-                                  "+UUMQTT");
+        uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUMQTT");
+        free(pContext->pBrokerNameStr);
         // GCC can complain here that
         // we're discarding volatile
         // from the pointers when freeing
@@ -1287,8 +1360,12 @@ int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
                                    U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                 pUrcStatus->clientId.pContents = pClientIdStr;
                 pUrcStatus->clientId.sizeBytes = sizeBytes;
-                // This will fill in the string
+                // This will fill in the string and populate
+                // clientId.sizeBytes with the number of bytes read
                 errorCode = doSaraR4OldSyntaxUmqttQuery(pInstance, 0);
+                if (errorCode == 0) {
+                    errorCode = (int32_t) pUrcStatus->clientId.sizeBytes;
+                }
             } else {
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 uAtClientLock(atHandle);
@@ -1559,7 +1636,7 @@ bool uCellMqttIsRetained(int32_t cellHandle)
                                    U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                 // Run the query, answers come back in pUrcStatus
                 if ((doSaraR4OldSyntaxUmqttQuery(pInstance, 12) == 0) &&
-                    ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS)) != 0)) {
+                    ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_RETAINED)) != 0)) {
                     isRetained = true;
                 }
             } else {
@@ -2229,21 +2306,26 @@ int32_t uCellMqttUnsubscribe(int32_t cellHandle,
             }
 
             if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
-                // On all platforms need to wait for a URC to
-                // say that the subscribe has succeeded
-                errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                stopTimeMs = uPortGetTickTimeMs() +
-                             (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED)) == 0) &&
-                       (uPortGetTickTimeMs() < stopTimeMs) &&
-                       ((pContext->pKeepGoingCallback == NULL) ||
-                        pContext->pKeepGoingCallback())) {
-                    uPortTaskBlock(1000);
-                }
-                if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS)) != 0) {
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 } else {
-                    printErrorCodes(atHandle);
+                    // If this is the new syntax we need to wait
+                    // for a URC to say that the unsubscribe has succeeded
+                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    stopTimeMs = uPortGetTickTimeMs() +
+                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED)) == 0) &&
+                           (uPortGetTickTimeMs() < stopTimeMs) &&
+                           ((pContext->pKeepGoingCallback == NULL) ||
+                            pContext->pKeepGoingCallback())) {
+                        uPortTaskBlock(1000);
+                    }
+                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS)) != 0) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    } else {
+                        printErrorCodes(atHandle);
+                    }
                 }
             } else {
                 printErrorCodes(atHandle);

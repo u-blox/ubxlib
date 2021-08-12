@@ -124,8 +124,8 @@ typedef struct {
                                             asked to send on an uncommanded
                                             disconnect of the MQTT client;
                                             specify NULL for none (the default).
-                                            SARA-R4 cellular modules do not
-                                            support MQTT "will"s. */
+                                            "will"s are not supported on SARA-R4
+                                            cellular modules. */
     bool (*pKeepGoingCallback) (void); /**< certain of the MQTT API functions
                                             need to wait for the broker to
                                             respond and this may take some
@@ -187,11 +187,9 @@ typedef struct {
  *                             calling uMqttClientConnect(), e.g.
  *                             setting pBrokerNameStr to something
  *                             like "mybroker.com:8883". Note that
- *                             some modules (e.g. SARA-R4 cellular
- *                             modules) do not support switching
- *                             security mode from off to on and
- *                             vice-versa without taking the network
- *                             down and up again.
+ *                             some modules (e.g. SARA-R4xx-02B cellular
+ *                             modules) do not support MQTT TLS
+ *                             security.
  * @return                     a pointer to the internal MQTT context
  *                             structure used by this code or NULL on
  *                             failure (in which case

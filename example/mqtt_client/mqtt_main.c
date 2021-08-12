@@ -70,11 +70,12 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-// MQTT broker URL: this broker supports a secure
-// connection, hence the port number ":8883" on the end.
-// If you edit this code to remove TLS security you
-// must remove the ":8883" also.
-#define MY_BROKER_NAME "test.mosquitto.org:8883"
+// MQTT broker URL: there is no port number on the end of this URL,
+// and hence, conventionally, it does not include TLS security.  You
+// may make a secure TLS connection on test.mosquitto.org instead
+// by editing this code to add TLS security (see below) and changing
+// MY_BROKER_NAME to have ":8883" on the end.
+#define MY_BROKER_NAME "test.mosquitto.org"
 
 #ifndef U_CFG_ENABLE_LOGGING
 # define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
@@ -191,32 +192,33 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
         // as follows
 
         // Create an MQTT instance.  Here we
-        // are using the default TLS security
-        // settings. You may change them to,
-        // for instance, add certificate checking,
-        // by modifying the values in the
-        // uSecurityTlsSettings_t passed to
-        // pUMqttClientOpen(): see the sockets
-        // TLS example for how to do that. If
-        // you wish to remove TLS security then
-        // replace &tlsSettings with NULL and
-        // remove the ":8883" port number from
-        // the end of MY_BROKER_NAME
-        pContext = pUMqttClientOpen(networkHandle, &tlsSettings);
+        // are using a non-secure MQTT connection
+        // and hence the TLS parameter is NULL.
+        // If you have edited MY_BROKER_NAME above
+        // to connect on the ":8883" secure port
+        // then you must change the TLS parameter
+        // to be &tlsSettings, which will apply the
+        // default TLS security settings. You may
+        // change the TLS security settings
+        // structure to, for instance, add certificate
+        // checking: see the sockets TLS example for
+        // how to do that.
+        pContext = pUMqttClientOpen(networkHandle, NULL);
         if (pContext != NULL) {
             // Set the URL for the connection; everything
-            // else can be left at defaults for this
-            // public test broker
+            // else can be left at defaults for the
+            // public test.mosquitto.org broker
             connection.pBrokerNameStr = MY_BROKER_NAME;
 
             // If you wish to use the Thingstream
             // MQTT Now service, you would set the
-            // following values instead:
+            // following values in the uMqttClientConnection_t
+            // structure instead:
             //
             // pBrokerNameStr to "mqtt.thingstream.io"
-            // pClientIdStr to your Thingstream Client ID, something like "device:521b5a33-2374-4547-8edc-50743c144509"
-            // pUserNameStr to your Thingstream username, something like "WF592TTWUQ18512KLU6L"
-            // pPasswordStr to your Thingstream password, something like "nsd8hsK/NSDFdgdblfmbQVXbx7jeZ/8vnsiltgty"
+            // pClientIdStr to the Thingstream Client ID of your thing, something like "device:521b5a33-2374-4547-8edc-50743c144509"
+            // pUserNameStr to the Thingstream username of your thing, something like "WF592TTWUQ18512KLU6L"
+            // pPasswordStr to the Thingstream password of your thing, something like "nsd8hsK/NSDFdgdblfmbQVXbx7jeZ/8vnsiltgty"
 
             // Connect to the MQTT broker
             uPortLog("Connecting to MQTT broker \"%s\"...\n", MY_BROKER_NAME);
@@ -269,18 +271,18 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                             }
                         }
                     } else {
-                        uPortLog("Unable to publish our message \"%s\"!.\n",
+                        uPortLog("Unable to publish our message \"%s\"!\n",
                                  message);
                     }
                 } else {
-                    uPortLog("Unable to subscribe to topic \"%s\"!.\n", topic);
+                    uPortLog("Unable to subscribe to topic \"%s\"!\n", topic);
                 }
 
                 // Disconnect from the MQTT broker
                 uMqttClientDisconnect(pContext);
 
             } else {
-                uPortLog("Unable to connect to MQTT broker \"%s\"!.\n", MY_BROKER_NAME);
+                uPortLog("Unable to connect to MQTT broker \"%s\"!\n", MY_BROKER_NAME);
             }
         } else {
             uPortLog("Unable to create MQTT instance!\n");
@@ -308,6 +310,9 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
     uPortDeinit();
 
     uPortLog("Done.\n");
+
+    // Stop the compiler warning about tlsSettings being unused
+    (void) tlsSettings;
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
     // For u-blox internal testing only

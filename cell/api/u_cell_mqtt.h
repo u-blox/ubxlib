@@ -280,6 +280,7 @@ bool uCellMqttIsRetained(int32_t cellHandle);
  * Note that SARA-R4 modules do not support changing MQTT
  * TLS security mode once an MQTT session has been used
  * without powering the module down and up again.
+ * Note that SARA-R4xxx-02B doesn't support MQTT TLS security.
  *
  * @param cellHandle        the handle of the cellular instance
  *                          to be used.

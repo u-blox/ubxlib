@@ -89,14 +89,15 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 2 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)
-         // Support for MQTT on this module flavour is present in the code
-         // but has not yet been tested, hence this feature is currently
-         // commented out.
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                     |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)
-        ) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)        |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)   |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)               |
+         // In theory SARA-R410M does support keep alive but I have been
+         // unable to make it work (always returns error) and hence this is
+         // not marked as supported for now
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)    |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX) /* features */
+        )
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -108,15 +109,16 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                            |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                                  |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)
-         // Support for MQTT on this module flavour is present in the code
-         // but has not yet been tested, hence this feature is currently
-         // commented out.
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)             |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                 |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)
-        ) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)    |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)             |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                 |
+         // In theory SARA-R412M does support keep alive but I have been
+         // unable to make it work (always returns error) and hence this is
+         // not marked as supported for now
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                  |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN) /* features */
+        )
     },
     {
         U_CELL_MODULE_TYPE_SARA_R412M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -127,15 +129,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)
-         // Support for MQTT on this module flavour is present in the code
-         // but has not yet been tested, hence these features are currently
-         // commented out.
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)             |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)                 |
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)
-        ) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) /* features */
+        )
     },
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -151,7 +146,10 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) /* features */
+        )
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -162,7 +160,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                          |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                                |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)  |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                 |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                      |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) /* features */
         )
     }
 };

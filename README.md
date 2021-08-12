@@ -43,7 +43,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|
 | **ubxlib peripherals**   |**API**       |||||
 | SARA-U2 series<br />SARA-R4x series<br />| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[tls&nbsp;security](common/security "security API")<br>|Yes|Yes|Yes|Yes|
-| SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[security](common/security "security API")<br>[mqtt_client](common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
+| SARA-R4x series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](cell "cell API")<br />[network](common/network "network API")<br />[sock](common/sock "sock API")<br />[security](common/security "security API")<br>[mqtt_client](common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
 | SARA-R510M8S            | gnss|TBD|TBD|TBD|TBD|
 |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](ble "ble API")<br />[network](common/network "network API")|Yes|Yes|N/A|N/A|
 |NINA-W13|wifi<br />[network](common/network "network API")<br />[sock](common/sock "sock API")|Q2 2021|N/A|Q2 2021|Q2 2021|
