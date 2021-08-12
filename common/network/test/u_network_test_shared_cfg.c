@@ -144,11 +144,14 @@ const size_t gUNetworkTestCfgSize = sizeof(gUNetworkTestCfg) /
 #if U_CFG_ENABLE_LOGGING
 /** Return a name for a network type.
  */
-const char *const gpUNetworkTestTypeName[] = {"none",     // U_NETWORK_TYPE_NONE
-                                              "BLE",      // U_NETWORK_TYPE_BLE
-                                              "cellular", // U_NETWORK_TYPE_CELL
-                                              "Wifi"      // U_NETWORK_TYPE_WIFI
-                                             };
+//lint -esym(843, gpUNetworkTestTypeName) Suppress could be declared
+// as const: this may be used in position independent code
+// and hence can't be const
+const char *gpUNetworkTestTypeName[] = {"none",     // U_NETWORK_TYPE_NONE
+                                        "BLE",      // U_NETWORK_TYPE_BLE
+                                        "cellular", // U_NETWORK_TYPE_CELL
+                                        "Wifi"      // U_NETWORK_TYPE_WIFI
+                                       };
 #endif
 
 // End of file

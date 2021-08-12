@@ -74,7 +74,7 @@ extern const size_t gUNetworkTestCfgSize;
 #if U_CFG_ENABLE_LOGGING
 /** Return a name for a network type.
  */
-extern const char *const gpUNetworkTestTypeName[];
+extern const char *gpUNetworkTestTypeName[];
 #endif
 
 #ifdef __cplusplus
