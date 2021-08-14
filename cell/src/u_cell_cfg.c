@@ -76,8 +76,8 @@ static const int8_t gCellRatToModuleRatU201[] = {
         -1,  // U_CELL_NET_RAT_LTE
         -1,  // U_CELL_NET_RAT_EC_GSM
         -1,  // U_CELL_NET_RAT_CATM1
-        -1
-    }; // U_CELL_NET_RAT_NB1
+        -1   // U_CELL_NET_RAT_NB1
+    };
 
 /** Table to convert uCellNetRat_t to the value used in
  * CONFIGURING the module, SARA-R4/R5 form.
@@ -94,8 +94,8 @@ static const int8_t gCellRatToModuleRatR4R5[] = {
         -1, // U_CELL_NET_RAT_LTE
         -1, // U_CELL_NET_RAT_EC_GSM
         7,  // U_CELL_NET_RAT_CATM1
-        8
-    }; // U_CELL_NET_RAT_NB1
+        8   // U_CELL_NET_RAT_NB1
+    };
 
 /** Table to convert the RAT values used in the module to
  * uCellNetRat_t, U201 version.  As well as being used when reading
@@ -115,8 +115,8 @@ static const uCellNetRat_t gModuleRatToCellRatU201[] = {
     U_CELL_NET_RAT_HSDPA_HSUPA,          // 6: UTRAN with HSDPA and HSUPA
     U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,  // 7: LTE cat-M1
     U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,  // 8: LTE NB1
-    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-}; // 9: 2G again
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED   // 9: 2G again
+};
 
 /** Table to convert the RAT values used in the
  * module to uCellNetRat_t, R4/R5 version.
@@ -131,8 +131,8 @@ static const uCellNetRat_t gModuleRatToCellRatR4R5[] = {
     U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 6: UTRAN with HSDPA and HSUPA
     U_CELL_NET_RAT_CATM1,               // 7: LTE cat-M1
     U_CELL_NET_RAT_NB1,                 // 8: LTE NB1
-    U_CELL_NET_RAT_GSM_GPRS_EGPRS
-};     // 9: 2G again
+    U_CELL_NET_RAT_GSM_GPRS_EGPRS       // 9: 2G again
+};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: SARA-U2 RAT SETTING/GETTING BEHAVIOUR
