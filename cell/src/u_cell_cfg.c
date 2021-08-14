@@ -62,50 +62,109 @@
  * -------------------------------------------------------------- */
 
 /** Table to convert uCellNetRat_t to the value used in
- * CONFIGURING the module.  Unfortunately the table differs
- * between modules, hence the 2D array.
+ * CONFIGURING the module, SARA_U201 form
  */
-static const int8_t gCellRatToModuleRat[][5] = {
-    /* U201 */ /* R410M_02B */ /* R412M_02B */ /* R412M_03B */ /* R5 */
-    { -1,           -1,              -1,              -1,          -1},  // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
-    {  0,           -1,               9,               9,          -1},  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
-    { -1,           -1,              -1,              -1,          -1},  // U_CELL_NET_RAT_GSM_COMPACT
-    {  2,           -1,              -1,              -1,          -1},  // U_CELL_NET_RAT_UTRAN: 3G
-    { -1,           -1,              -1,              -1,          -1},  // U_CELL_NET_RAT_EGPRS
-    { -1,           -1,              -1,              -1,          -1},  // U_CELL_NET_RAT_HSDPA
-    { -1,           -1,              -1,              -1,          -1},  // U_CELL_NET_RAT_HSUPA
-    { -1,           -1,              -1,              -1,          -1},  // U_CELL_NET_RAT_HSDPA_HSUPA
-    { -1,           -1,              -1,              -1,          -1},  // U_CELL_NET_RAT_LTE
-    { -1,           -1,              -1,              -1,          -1},  // U_CELL_NET_RAT_EC_GSM
-    { -1,            7,               7,               7,           7},  // U_CELL_NET_RAT_CATM1
-    { -1,            8,               8,               8,          -1}   // U_CELL_NET_RAT_NB1
-};
+static const int8_t gCellRatToModuleRatU201[] = {
+    -1,  // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
+        0,   // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+        -1,  // U_CELL_NET_RAT_GSM_COMPACT
+        2,   // U_CELL_NET_RAT_UTRAN: 3G
+        -1,  // U_CELL_NET_RAT_EGPRS
+        -1,  // U_CELL_NET_RAT_HSDPA
+        -1,  // U_CELL_NET_RAT_HSUPA
+        -1,  // U_CELL_NET_RAT_HSDPA_HSUPA
+        -1,  // U_CELL_NET_RAT_LTE
+        -1,  // U_CELL_NET_RAT_EC_GSM
+        -1,  // U_CELL_NET_RAT_CATM1
+        -1
+    }; // U_CELL_NET_RAT_NB1
+
+/** Table to convert uCellNetRat_t to the value used in
+ * CONFIGURING the module, SARA-R4/R5 form.
+ */
+static const int8_t gCellRatToModuleRatR4R5[] = {
+    -1, // Dummy value for U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
+        9,  // U_CELL_NET_RAT_GSM_GPRS_EGPRS: 2G
+        -1, // U_CELL_NET_RAT_GSM_COMPACT
+        -1, // U_CELL_NET_RAT_UTRAN: 3G
+        -1, // U_CELL_NET_RAT_EGPRS
+        -1, // U_CELL_NET_RAT_HSDPA
+        -1, // U_CELL_NET_RAT_HSUPA
+        -1, // U_CELL_NET_RAT_HSDPA_HSUPA
+        -1, // U_CELL_NET_RAT_LTE
+        -1, // U_CELL_NET_RAT_EC_GSM
+        7,  // U_CELL_NET_RAT_CATM1
+        8
+    }; // U_CELL_NET_RAT_NB1
 
 /** Table to convert the RAT values used in the module to
- * uCellNetRat_t.  As well as being used when reading the
- * RAT configuration this is also used when the module has read
+ * uCellNetRat_t, U201 version.  As well as being used when reading
+ * the RAT configuration this is also used when the module has read
  * the active RAT (AT+COPS) and hence has more nuance than the
  * table going in the other direction: for instance the module
  * could determine that it has EDGE coverage but EDGE is not
  * a RAT that can be configured by itself.
  */
-static const uCellNetRat_t gModuleRatToCellRat[][5] = {
-    /* U201 */                           /* R410M_02B */                     /* R412M_02B */                     /* R412M_03B */                     /* R5 */
-    {U_CELL_NET_RAT_GSM_GPRS_EGPRS,      U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED}, // 0: 2G
-    {U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED}, // 1: GSM compact
-    {U_CELL_NET_RAT_UTRAN,               U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED}, // 2: UTRAN
-    {U_CELL_NET_RAT_EGPRS,               U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED}, // 3: EDGE
-    {U_CELL_NET_RAT_HSDPA,               U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED}, // 4: UTRAN with HSDPA
-    {U_CELL_NET_RAT_HSUPA,               U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED}, // 5: UTRAN with HSUPA
-    {U_CELL_NET_RAT_HSDPA_HSUPA,         U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED}, // 6: UTRAN with HSDPA and HSUPA
-    {U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_CATM1,               U_CELL_NET_RAT_CATM1,               U_CELL_NET_RAT_CATM1,               U_CELL_NET_RAT_CATM1},               // 7: LTE cat-M1
-    {U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_NB1,                 U_CELL_NET_RAT_NB1,                 U_CELL_NET_RAT_NB1,                 U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED}, // 8: LTE NB1
-    {U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, U_CELL_NET_RAT_GSM_GPRS_EGPRS,      U_CELL_NET_RAT_GSM_GPRS_EGPRS,      U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED}  // 9: 2G again (needed for SARA-R4 only)
-};
+static const uCellNetRat_t gModuleRatToCellRatU201[] = {
+    U_CELL_NET_RAT_GSM_GPRS_EGPRS,       // 0: 2G
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,  // 1: GSM compact
+    U_CELL_NET_RAT_UTRAN,                // 2: UTRAN
+    U_CELL_NET_RAT_EGPRS,                // 3: EDGE
+    U_CELL_NET_RAT_HSDPA,                // 4: UTRAN with HSDPA
+    U_CELL_NET_RAT_HSUPA,                // 5: UTRAN with HSUPA
+    U_CELL_NET_RAT_HSDPA_HSUPA,          // 6: UTRAN with HSDPA and HSUPA
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,  // 7: LTE cat-M1
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,  // 8: LTE NB1
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
+}; // 9: 2G again
+
+/** Table to convert the RAT values used in the
+ * module to uCellNetRat_t, R4/R5 version.
+ */
+static const uCellNetRat_t gModuleRatToCellRatR4R5[] = {
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 0: 2G
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 1: GSM compact
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 2: UTRAN
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 3: EDGE
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 4: UTRAN with HSDPA
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 5: UTRAN with HSUPA
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 6: UTRAN with HSDPA and HSUPA
+    U_CELL_NET_RAT_CATM1,               // 7: LTE cat-M1
+    U_CELL_NET_RAT_NB1,                 // 8: LTE NB1
+    U_CELL_NET_RAT_GSM_GPRS_EGPRS
+};     // 9: 2G again
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: SARA-U2 RAT SETTING/GETTING BEHAVIOUR
  * -------------------------------------------------------------- */
+
+// Convert our RAT to module RAT.
+int8_t cellRatToModuleRat(uCellModuleType_t moduleType, uCellNetRat_t rat)
+{
+    int8_t moduleRat = -1;
+
+    if (moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
+        moduleRat = gCellRatToModuleRatU201[(int32_t) rat];
+    } else {
+        moduleRat = gCellRatToModuleRatR4R5[(int32_t) rat];
+    }
+
+    return moduleRat;
+}
+
+// Convert module RAT to our RAT.
+uCellNetRat_t moduleRatToCellRat(uCellModuleType_t moduleType, int32_t rat)
+{
+    uCellNetRat_t cellRat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
+
+    if (moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
+        cellRat = gModuleRatToCellRatU201[rat];
+    } else {
+        cellRat = gModuleRatToCellRatR4R5[rat];
+    }
+
+    return cellRat;
+}
 
 // Set the given COPS if it's not already the given one, returning
 // the one it was, if you see what I mean.
@@ -181,7 +240,7 @@ static uCellNetRat_t getRatSaraU2(uCellPrivateInstance_t *pInstance,
         if (rank == 0) {
             // If we were being asked for the RAT at rank 0, this is it
             // as there is no other rank
-            errorOrRat = (int32_t) gModuleRatToCellRat[modes[0]][pInstance->pModule->moduleType];
+            errorOrRat = (int32_t) moduleRatToCellRat(pInstance->pModule->moduleType, modes[0]);
         }
         uPortLog("U_CELL_CFG: RAT is %d (in module terms %d).\n",
                  errorOrRat, modes[0]);
@@ -191,14 +250,14 @@ static uCellNetRat_t getRatSaraU2(uCellPrivateInstance_t *pInstance,
         // number and that indicates the preference
         if (rank == 0) {
             // If we were being asked for the RAT at rank 0, this is it
-            errorOrRat = (int32_t) gModuleRatToCellRat[modes[1]][pInstance->pModule->moduleType];
+            errorOrRat = (int32_t) moduleRatToCellRat(pInstance->pModule->moduleType, modes[1]);
         } else if (rank == 1) {
             // If we were being asked for the RAT at rank 1, it is
             // the OTHER one, the non-preferred RAT, that we must report
             if (modes[1] ==
-                gCellRatToModuleRat[U_CELL_NET_RAT_GSM_GPRS_EGPRS][pInstance->pModule->moduleType]) {
+                cellRatToModuleRat(pInstance->pModule->moduleType, U_CELL_NET_RAT_GSM_GPRS_EGPRS)) {
                 errorOrRat = (int32_t)U_CELL_NET_RAT_UTRAN;
-            } else if (modes[1] == gCellRatToModuleRat[U_CELL_NET_RAT_UTRAN][pInstance->pModule->moduleType]) {
+            } else if (modes[1] == cellRatToModuleRat(pInstance->pModule->moduleType, U_CELL_NET_RAT_UTRAN)) {
                 errorOrRat = (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS;
             }
         }
@@ -256,7 +315,7 @@ static int32_t getRatRankSaraU2(uCellPrivateInstance_t *pInstance,
         // If the first mode is 0 (2G mode) or 2 (3G mode) then we are in
         // single mode operation and so can check for the indicated
         // RAT here
-        if (rat == gModuleRatToCellRat[modes[0]][pInstance->pModule->moduleType]) {
+        if (rat == moduleRatToCellRat(pInstance->pModule->moduleType, modes[0])) {
             errorCodeOrRank = 0;
         }
     } else if ((modes[0] == 1) && (modes[1] >= 0)) {
@@ -268,7 +327,7 @@ static int32_t getRatRankSaraU2(uCellPrivateInstance_t *pInstance,
         // be at rank 1
         if ((rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) || (rat == U_CELL_NET_RAT_UTRAN)) {
             errorCodeOrRank = 1;
-            if (rat == gModuleRatToCellRat[modes[1]][pInstance->pModule->moduleType]) {
+            if (rat == moduleRatToCellRat(pInstance->pModule->moduleType, modes[1])) {
                 errorCodeOrRank = 0;
             }
         }
@@ -297,11 +356,11 @@ static int32_t setRatSaraU2(uCellPrivateInstance_t *pInstance,
     cops = setCops(atHandle, 2);
 
     uPortLog("U_CELL_CFG: setting sole RAT to %d (in module terms %d).\n",
-             rat, gCellRatToModuleRat[rat][pInstance->pModule->moduleType]);
+             rat, cellRatToModuleRat(pInstance->pModule->moduleType, rat));
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+URAT=");
     uAtClientWriteInt(atHandle,
-                      gCellRatToModuleRat[rat][pInstance->pModule->moduleType]);
+                      cellRatToModuleRat(pInstance->pModule->moduleType, rat));
     uAtClientCommandStopReadResponse(atHandle);
     errorCode = uAtClientUnlock(atHandle);
 
@@ -367,7 +426,7 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
             if (rank == 0) {
                 // ...and we are setting the first rank,
                 // then set the preference in the second number
-                modes[1] = gCellRatToModuleRat[rat][pInstance->pModule->moduleType];
+                modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType, rat);
                 validOperation = true;
             } else if (rank == 1) {
                 // ...otherwise if we are setting the second
@@ -376,10 +435,12 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
                 // In other words, to put 2G at rank 1, we
                 // need to set 3G as our preferred RAT.
                 if (rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) {
-                    modes[1] = gCellRatToModuleRat[U_CELL_NET_RAT_UTRAN][pInstance->pModule->moduleType];
+                    modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                  U_CELL_NET_RAT_UTRAN);
                     validOperation = true;
                 } else if (rat == U_CELL_NET_RAT_UTRAN) {
-                    modes[1] = gCellRatToModuleRat[U_CELL_NET_RAT_GSM_GPRS_EGPRS][pInstance->pModule->moduleType];
+                    modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                  U_CELL_NET_RAT_GSM_GPRS_EGPRS);
                     validOperation = true;
                 }
             }
@@ -387,22 +448,24 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
             // ...and we are in single mode...
             if (rank == 0) {
                 // ...then if we are setting rank 0 just set it
-                modes[0] = gCellRatToModuleRat[rat][pInstance->pModule->moduleType];
+                modes[0] = cellRatToModuleRat(pInstance->pModule->moduleType, rat);
                 validOperation = true;
             } else if (rank == 1) {
                 // ...or if we're setting rank 1, then if it
                 // is different from the existing RAT...
-                if (rat != gModuleRatToCellRat[modes[0]][pInstance->pModule->moduleType]) {
+                if (rat != moduleRatToCellRat(pInstance->pModule->moduleType, modes[0])) {
                     // ...then switch to dual mode and, as above, set
                     // the opposite of the desired RAT in the second
                     // number.
                     if (rat == U_CELL_NET_RAT_GSM_GPRS_EGPRS) {
                         modes[0] = 1;
-                        modes[1] = gCellRatToModuleRat[U_CELL_NET_RAT_UTRAN][pInstance->pModule->moduleType];
+                        modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                      U_CELL_NET_RAT_UTRAN);
                         validOperation = true;
                     } else if (rat == U_CELL_NET_RAT_UTRAN) {
                         modes[0] = 1;
-                        modes[1] = gCellRatToModuleRat[U_CELL_NET_RAT_GSM_GPRS_EGPRS][pInstance->pModule->moduleType];
+                        modes[1] = cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                      U_CELL_NET_RAT_GSM_GPRS_EGPRS);
                         validOperation = true;
                     }
                 } else {
@@ -421,13 +484,15 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
                 // then we set the single mode to be
                 // the opposite of the currently
                 // preferred RAT
-                if (gModuleRatToCellRat[modes[1]][pInstance->pModule->moduleType] ==
+                if (moduleRatToCellRat(pInstance->pModule->moduleType, modes[1]) ==
                     U_CELL_NET_RAT_GSM_GPRS_EGPRS) {
-                    modes[0] = gCellRatToModuleRat[U_CELL_NET_RAT_UTRAN][pInstance->pModule->moduleType];
+                    modes[0] = cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                  U_CELL_NET_RAT_UTRAN);
                     modes[1] = -1;
                     validOperation = true;
-                } else if (gModuleRatToCellRat[modes[1]][pInstance->pModule->moduleType] == U_CELL_NET_RAT_UTRAN) {
-                    modes[0] = gCellRatToModuleRat[U_CELL_NET_RAT_GSM_GPRS_EGPRS][pInstance->pModule->moduleType];
+                } else if (moduleRatToCellRat(pInstance->pModule->moduleType, modes[1]) == U_CELL_NET_RAT_UTRAN) {
+                    modes[0] = cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                  U_CELL_NET_RAT_GSM_GPRS_EGPRS);
                     modes[1] = -1;
                     validOperation = true;
                 }
@@ -448,7 +513,7 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
         for (size_t x = 0; (x < sizeof(modes) / sizeof(modes[0])); x++) {
             if (modes[x] >= 0) {
                 uPortLog("  rank[%d]: %d (in module terms %d).\n", x,
-                         gModuleRatToCellRat[modes[x]][pInstance->pModule->moduleType],
+                         moduleRatToCellRat(pInstance->pModule->moduleType, modes[x]),
                          modes[x]);
             } else {
                 uPortLog("  rank[%d]: %d (in module terms %d).\n", x,
@@ -467,7 +532,7 @@ static int32_t setRatRankSaraU2(uCellPrivateInstance_t *pInstance,
     } else {
         uPortLog("U_CELL_CFG: setting RAT %d (in module terms %d) at rank %d"
                  " is not a valid thing to do.\n", rat,
-                 gCellRatToModuleRat[rat][pInstance->pModule->moduleType], rank);
+                 cellRatToModuleRat(pInstance->pModule->moduleType, rat), rank);
     }
 
     // Put AT+COPS back
@@ -510,11 +575,7 @@ static uCellNetRat_t getRatSaraR4R5(const uCellPrivateInstance_t *pInstance,
     // Read up to N integers representing the RATs
     for (size_t x = 0; x < pInstance->pModule->maxNumSimultaneousRats; x++) {
         rat = uAtClientReadInt(atHandle);
-        if ((rat >= 0) &&
-            (rat < (int32_t) (sizeof(gModuleRatToCellRat) /
-                              sizeof(gModuleRatToCellRat[0])))) {
-            rats[x] = gModuleRatToCellRat[rat][pInstance->pModule->moduleType];
-        }
+        rats[x] = moduleRatToCellRat(pInstance->pModule->moduleType, rat);
     }
     uAtClientResponseStop(atHandle);
     if (uAtClientUnlock(atHandle) == 0) {
@@ -523,7 +584,7 @@ static uCellNetRat_t getRatSaraR4R5(const uCellPrivateInstance_t *pInstance,
     uPortLog("U_CELL_CFG: RATs are:\n");
     for (size_t x = 0; x < sizeof(rats) / sizeof(rats[0]); x++) {
         uPortLog("  rank[%d]: %d (in module terms %d).\n",
-                 x, rats[x], gCellRatToModuleRat[rats[x]][pInstance->pModule->moduleType]);
+                 x, rats[x], cellRatToModuleRat(pInstance->pModule->moduleType, rats[x]));
     }
 
     return (uCellNetRat_t) errorOrRat;
@@ -547,12 +608,8 @@ static int32_t getRatRankSaraR4R5(const uCellPrivateInstance_t *pInstance,
     for (size_t x = 0; (errorCodeOrRank < 0) &&
          (x < pInstance->pModule->maxNumSimultaneousRats); x++) {
         y = uAtClientReadInt(atHandle);
-        if ((y >= 0) &&
-            (y < (int32_t) (sizeof(gModuleRatToCellRat) /
-                            sizeof(gModuleRatToCellRat[0])))) {
-            if (rat == gModuleRatToCellRat[y][pInstance->pModule->moduleType]) {
-                errorCodeOrRank = (int32_t) x;
-            }
+        if (rat == moduleRatToCellRat(pInstance->pModule->moduleType, y)) {
+            errorCodeOrRank = (int32_t) x;
         }
     }
     uAtClientResponseStop(atHandle);
@@ -570,10 +627,10 @@ static int32_t setRatSaraR4R5(const uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle = pInstance->atHandle;
 
     uPortLog("U_CELL_CFG: setting sole RAT to %d (in module terms %d).\n",
-             rat, gCellRatToModuleRat[rat][pInstance->pModule->moduleType]);
+             rat, cellRatToModuleRat(pInstance->pModule->moduleType, rat));
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+URAT=");
-    uAtClientWriteInt(atHandle, gCellRatToModuleRat[rat][pInstance->pModule->moduleType]);
+    uAtClientWriteInt(atHandle, cellRatToModuleRat(pInstance->pModule->moduleType, rat));
     uAtClientCommandStopReadResponse(atHandle);
     errorCode = uAtClientUnlock(atHandle);
 
@@ -606,7 +663,7 @@ static int32_t setRatRankSaraR4R5(const uCellPrivateInstance_t *pInstance,
 
     uPortLog("U_CELL_CFG: setting the RAT at rank %d to"
              " %d (in module terms %d).\n",
-             rank, rat, gCellRatToModuleRat[rat][pInstance->pModule->moduleType]);
+             rank, rat, cellRatToModuleRat(pInstance->pModule->moduleType, rat));
     // Remove duplicates
     for (size_t x = 0; x < sizeof(rats) / sizeof(rats[0]); x++) {
         for (size_t y = x + 1; y < sizeof(rats) / sizeof(rats[0]); y++) {
@@ -621,14 +678,16 @@ static int32_t setRatRankSaraR4R5(const uCellPrivateInstance_t *pInstance,
     uPortLog("U_CELL_CFG: RATs (removing duplicates) become:\n");
     for (size_t x = 0; x < sizeof(rats) / sizeof(rats[0]); x++) {
         uPortLog("  rank[%d]: %d (in module terms %d).\n",
-                 x, rats[x], gCellRatToModuleRat[rats[x]][pInstance->pModule->moduleType]);
+                 x, rats[x], cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                (uCellNetRat_t) rats[x]));
     }
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+URAT=");
     for (size_t x = 0; x < sizeof(rats) / sizeof(rats[0]); x++) {
         if (rats[x] != (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) {
             uAtClientWriteInt(atHandle,
-                              gCellRatToModuleRat[rats[x]][pInstance->pModule->moduleType]);
+                              cellRatToModuleRat(pInstance->pModule->moduleType,
+                                                 (uCellNetRat_t) rats[x]));
         }
     }
     uAtClientCommandStopReadResponse(atHandle);
@@ -665,8 +724,8 @@ int32_t uCellCfgSetBandMask(int32_t cellHandle,
                 atHandle = pInstance->atHandle;
                 uPortLog("U_CELL_CFG: setting band mask for RAT %d (in module"
                          " terms %d) to 0x%08x%08x %08x%08x.\n",
-                         rat, gCellRatToModuleRat[rat][pInstance->pModule->moduleType] -
-                         gCellRatToModuleRat[U_CELL_NET_RAT_CATM1][pInstance->pModule->moduleType],
+                         rat, cellRatToModuleRat(pInstance->pModule->moduleType, rat) -
+                         cellRatToModuleRat(pInstance->pModule->moduleType, U_CELL_NET_RAT_CATM1),
                          (uint32_t) (bandMask2 >> 32), (uint32_t) bandMask2,
                          (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
                 // Note: the RAT numbering for this AT command is NOT the same
@@ -674,8 +733,8 @@ int32_t uCellCfgSetBandMask(int32_t cellHandle,
                 // here U_CELL_NET_RAT_CATM1 is 0 and U_CEU_CELL_NET_RAT_NB1 1
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UBANDMASK=");
-                uAtClientWriteInt(atHandle, gCellRatToModuleRat[rat][pInstance->pModule->moduleType] -
-                                  gCellRatToModuleRat[U_CELL_NET_RAT_CATM1][pInstance->pModule->moduleType]);
+                uAtClientWriteInt(atHandle, cellRatToModuleRat(pInstance->pModule->moduleType, rat) -
+                                  cellRatToModuleRat(pInstance->pModule->moduleType, U_CELL_NET_RAT_CATM1));
                 uAtClientWriteUint64(atHandle, bandMask1);
                 uAtClientWriteUint64(atHandle, bandMask2);
                 uAtClientCommandStopReadResponse(atHandle);
@@ -733,8 +792,8 @@ int32_t uCellCfgGetBandMask(int32_t cellHandle,
 
             atHandle = pInstance->atHandle;
             uPortLog("U_CELL_CFG: getting band mask for RAT %d (in module terms %d).\n",
-                     rat, gCellRatToModuleRat[rat][pInstance->pModule->moduleType] -
-                     gCellRatToModuleRat[U_CELL_NET_RAT_CATM1][pInstance->pModule->moduleType]);
+                     rat, cellRatToModuleRat(pInstance->pModule->moduleType, rat) -
+                     cellRatToModuleRat(pInstance->pModule->moduleType, U_CELL_NET_RAT_CATM1));
             uAtClientLock(atHandle);
             uAtClientCommandStart(atHandle, "AT+UBANDMASK?");
             uAtClientCommandStop(atHandle);
@@ -813,11 +872,8 @@ int32_t uCellCfgGetBandMask(int32_t cellHandle,
             // here U_CELL_NET_RAT_CATM1 is 0 and U_CELL_NET_RAT_NB1 is 1
             // Convert the RAT numbering to keep things simple on the brain
             for (size_t x = 0; x < sizeof(rats) / sizeof(rats[0]); x++) {
-                y = rats[x] + (int32_t) gCellRatToModuleRat[U_CELL_NET_RAT_CATM1][pInstance->pModule->moduleType];
-                if ((rats[x] >= 0) &&
-                    (y < (int32_t) ((sizeof(gModuleRatToCellRat) / sizeof(gModuleRatToCellRat[0]))))) {
-                    rats[x] = (int32_t) gModuleRatToCellRat[y][pInstance->pModule->moduleType];
-                }
+                y = rats[x] + (int32_t) cellRatToModuleRat(pInstance->pModule->moduleType, U_CELL_NET_RAT_CATM1);
+                rats[x] = (int32_t) moduleRatToCellRat(pInstance->pModule->moduleType, y);
             }
 
             // Fill in the answers
@@ -827,8 +883,8 @@ int32_t uCellCfgGetBandMask(int32_t cellHandle,
                     *pBandMask2 = masks[x][1];
                     uPortLog("U_CELL_CFG: band mask for RAT %d (in module terms %d)"
                              " is 0x%08x%08x %08x%08x.\n",
-                             rat, gCellRatToModuleRat[rat][pInstance->pModule->moduleType] -
-                             gCellRatToModuleRat[U_CELL_NET_RAT_CATM1][pInstance->pModule->moduleType],
+                             rat, cellRatToModuleRat(pInstance->pModule->moduleType, rat) -
+                             cellRatToModuleRat(pInstance->pModule->moduleType, U_CELL_NET_RAT_CATM1),
                              (uint32_t) (*pBandMask2 >> 32), (uint32_t) (*pBandMask2),
                              (uint32_t) (*pBandMask1 >> 32), (uint32_t) (*pBandMask1));
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -993,11 +1049,11 @@ int32_t uCellCfgGetRatRank(int32_t cellHandle,
 
             if (errorCodeOrRank >= 0) {
                 uPortLog("U_CELL_CFG: rank of RAT %d (in module terms"
-                         " %d) is %d.\n", rat, gCellRatToModuleRat[rat][pInstance->pModule->moduleType],
+                         " %d) is %d.\n", rat, cellRatToModuleRat(pInstance->pModule->moduleType, rat),
                          errorCodeOrRank);
             } else {
                 uPortLog("U_CELL_CFG: RAT %d (in module terms %d) "
-                         " is not ranked.\n", rat, gCellRatToModuleRat[rat][pInstance->pModule->moduleType]);
+                         " is not ranked.\n", rat, cellRatToModuleRat(pInstance->pModule->moduleType, rat));
             }
         }
 

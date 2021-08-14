@@ -73,7 +73,8 @@ extern "C" {
 #define U_CELL_PRIVATE_MODULE_IS_SARA_R4(moduleType)      \
     (((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_02B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_02B) || \
-     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B))
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B) || \
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B))
 
 /** Return true if the given module type supports 3GPP power saving.
  */
@@ -81,6 +82,7 @@ extern "C" {
     (((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||      \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_02B) ||      \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B) ||      \
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B) ||      \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R5))
 
 /** Return true if the supported RATS bitmap includes LTE.

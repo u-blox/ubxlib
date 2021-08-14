@@ -151,6 +151,17 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)) /* features */
+    },
+    {
+        U_CELL_MODULE_TYPE_SARA_R410M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
+        6 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
+        100 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 4 /* radioOffCfun */, 2 /* Simultaneous RATs */,
+        ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
+         (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) /* features */
+        )
     }
 };
 

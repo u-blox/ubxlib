@@ -242,13 +242,15 @@ static uCellSockTestOption_t gSupportedOptions[] = {
     {
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_02B) |  /* Not SARA-R4 */
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_02B) |
-        (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B),
+        (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
+        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_BROADCAST, sizeof(int32_t), compareInt32, changeMod2
     },
     {
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_02B) |  /* Not SARA-R4 */
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_02B) |
-        (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B),
+        (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
+        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_REUSEPORT, sizeof(int32_t), compareInt32, changeMod2
     },
     // This next one removed for SARA-R4, SARA-R5 and SARA-U201 as none will let me switch linger off, i.e.
@@ -258,6 +260,7 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_02B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_02B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
+        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R5),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_LINGER, sizeof(uSockLinger_t), compareLinger, changeLinger
     },
@@ -276,7 +279,8 @@ static uCellSockTestOption_t gSupportedOptions[] = {
     {
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_02B) | /* Not SARA-R4 */
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_02B) |
-        (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B),
+        (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
+        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B),
         U_SOCK_OPT_LEVEL_TCP, U_SOCK_OPT_TCP_KEEPIDLE, sizeof(int32_t), compareInt32, changeInt32Positive
     },
 };
@@ -302,7 +306,7 @@ static void checkOptionGet(int32_t cellHandle, int32_t sockHandle,
     U_PORT_TEST_ASSERT(pValueAgain != NULL);
 
     uPortLog("U_CELL_SOCK_TEST: testing uCellSockOptionGet()"
-             " with level %d, option %0x%04x (%d):\n", level,
+             " with level %d, option 0x%04x (%d):\n", level,
              option, option);
     memset(pValue, 0xFF, valueLength);
     errorCode = uCellSockOptionGet(cellHandle, sockHandle,
