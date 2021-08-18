@@ -47,6 +47,16 @@
 
 #include "string.h" // For memcpy()
 
+// To enable anonymous unions inclusion for
+// ARM compiler
+#ifdef __arm__
+// Stop GCC complaining
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#pragma anon_unions
+#pragma GCC diagnostic pop
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
