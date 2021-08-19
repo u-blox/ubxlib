@@ -679,6 +679,35 @@ size_t uAtClientWriteBytes(uAtClientHandle_t atHandle,
                            size_t lengthBytes,
                            bool standalone);
 
+
+/** Write a part of a string argument to AT command sequence.
+ * Used after uAtClientCommandStart() has been called to
+ * start the AT command sequence.
+ * This function can be used to break up writing of a long
+ * string argument into smaller fragments. On the first call
+ * set isFirst to true and to append text to the same string
+ * argument call the function again but with isFirst set to
+ * false.
+ *
+ * Example:
+ *
+ * String argument to write: "tcp://www.google.com:80"
+ * Can be written like this:
+ * uAtClientWritePartialString(atHandle, true, "tcp://");
+ * uAtClientWritePartialString(atHandle, false, "www.google.com");
+ * uAtClientWritePartialString(atHandle, false, ":");
+ * uAtClientWritePartialString(atHandle, false, "80");
+ *
+ * @param atHandle  the handle of the AT client.
+ * @param isFirst   set to true when starting a new string argument
+ *                  (only when isFirst is set to true a delimiter
+ *                   will be added if needed).
+ * @param pParam    the partial string to be written.
+ */
+void uAtClientWritePartialString(uAtClientHandle_t atHandle,
+                                 bool isFirst,
+                                 const char *pParam);
+
 /** Stop the outgoing AT command by writing the
  * command terminator.  Should be called after
  * uAtClientCommandStart() and any uAtClientWritexxx()
