@@ -33,7 +33,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // For strstr() and strcmp()
+#include "string.h"    // strcmp() and strncmp()
 #include "stdio.h"     // snprintf()
 
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
@@ -137,11 +137,12 @@ static bool compareFunctionFileName(const uRunnerFunctionDescription_t *pFunctio
                                     const char *pName)
 {
     bool swap = false;
+    size_t x = strlen(pName);
 
     if (strcmp(pFunction1->pFile, pFunction2->pFile) != 0) {
-        // File are different, check the name
-        swap = (strstr(pFunction1->pName, pName) != pFunction1->pName) &&
-               (strstr(pFunction2->pName, pName) == pFunction2->pName);
+        // Files are different, check the name
+        swap = (strncmp(pName, pFunction1->pName, x) != 0) &&
+               (strncmp(pName, pFunction2->pName, x) == 0);
     }
 
     return swap;
@@ -162,6 +163,42 @@ static void swap(uRunnerFunctionDescription_t **ppFunction)
     (*ppFunction)->pNext->pNext = pTmp;
 }
 
+// Bring the things that start with pPrefixStr to the top of
+// returning the number of items that begin with pPrefixStr.
+static size_t bringToTopFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
+                                     const char *pPrefixStr)
+{
+    size_t movedCount = 0;
+    uRunnerFunctionDescription_t **ppFunction = ppFunctionList;
+    size_t x = strlen(pPrefixStr);
+
+    while ((*ppFunction != NULL) && ((*ppFunction)->pNext != NULL)) {
+        // If the next entry begins with pPrefixStr and this
+        // one doesn't, swap them
+        if (compareFunctionFileName(*ppFunction, (*ppFunction)->pNext, pPrefixStr)) {
+            // Yup, swap 'em.
+            swap(ppFunction);
+            // Start again
+            ppFunction = ppFunctionList;
+        } else {
+            // Just move on
+            ppFunction = &((*ppFunction)->pNext);
+        }
+    }
+    // Count how many of them we moved
+    ppFunction = ppFunctionList;
+    while ((ppFunction != NULL) && (*ppFunction != NULL)) {
+        if ((strncmp((*ppFunction)->pName, pPrefixStr, x) == 0)) {
+            movedCount++;
+            ppFunction = &((*ppFunction)->pNext);
+        } else {
+            ppFunction = NULL;
+        }
+    }
+
+    return movedCount;
+}
+
 // Sort the function list.  The sort order is as follows:
 //
 // 1.  Puts any function beginning with pPreambleStr at the top.
@@ -172,9 +209,28 @@ static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
                              const char *pPreambleStr,
                              const char *pTopStr)
 {
-    uRunnerFunctionDescription_t **ppFunction = ppFunctionList;
+    uRunnerFunctionDescription_t **ppFunctionStart = ppFunctionList;
+    uRunnerFunctionDescription_t **ppFunction;
+    size_t ignoreCount;
 
-    // First sort everything alphabetically
+    // Bring everything that begins with pPreambleStr
+    // up to the top
+    ignoreCount = bringToTopFunctionList(ppFunctionStart, pPreambleStr);
+
+    // Then, ignoring those we just moved, bring everything that begins
+    // with pTopStr up to the top
+    for (size_t x = 0; (x < ignoreCount) && (*ppFunctionStart != NULL); x++) {
+        ppFunctionStart = &((*ppFunctionStart)->pNext);
+    }
+    ignoreCount += bringToTopFunctionList(ppFunctionStart, pTopStr);
+
+    // Then ignoring all of the ones we've moved, sort the
+    // rest alphabetically
+    ppFunctionStart = ppFunctionList;
+    for (size_t x = 0; (x < ignoreCount) && (*ppFunctionStart != NULL); x++) {
+        ppFunctionStart = &((*ppFunctionStart)->pNext);
+    }
+    ppFunction = ppFunctionStart;
     while ((*ppFunction != NULL) && ((*ppFunction)->pNext != NULL)) {
         // Compare the current entry with the next
         // to see if they need to be swapped
@@ -183,42 +239,7 @@ static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
             // Yup, swap 'em.
             swap(ppFunction);
             // Start again
-            ppFunction = ppFunctionList;
-        } else {
-            // Just move on
-            ppFunction = &((*ppFunction)->pNext);
-        }
-    }
-
-    // Then bring everything that begins with pTopStr
-    // up to the top
-    ppFunction = ppFunctionList;
-    while ((*ppFunction != NULL) && ((*ppFunction)->pNext != NULL)) {
-        // If the next entry begins with pTopStr and this
-        // one doesn't, swap them
-        if (compareFunctionFileName(*ppFunction, (*ppFunction)->pNext,
-                                    pTopStr)) {
-            // Yup, swap 'em.
-            swap(ppFunction);
-            // Start again
-            ppFunction = ppFunctionList;
-        } else {
-            // Just move on
-            ppFunction = &((*ppFunction)->pNext);
-        }
-    }
-
-    // Then bring everything that begins with pPreambleStr
-    // up to the top
-    ppFunction = ppFunctionList;
-    while ((*ppFunction != NULL) && ((*ppFunction)->pNext != NULL)) {
-        // If the next entry begins with pPreambleStr and this
-        // one doesn't, swap them
-        if (compareFunctionFileName(*ppFunction, (*ppFunction)->pNext, pPreambleStr)) {
-            // Yup, swap 'em.
-            swap(ppFunction);
-            // Start again
-            ppFunction = ppFunctionList;
+            ppFunction = ppFunctionStart;
         } else {
             // Just move on
             ppFunction = &((*ppFunction)->pNext);
@@ -291,10 +312,11 @@ void uRunnerRunFiltered(const char *pFilter,
 
     while (pFunction != NULL) {
         if ((pFilter == NULL) ||
-            (strstr(pFunction->pName, pFilter) == pFunction->pName)
+            (strncmp(pFilter, pFunction->pName, strlen(pFilter)) == 0)
 #ifdef U_RUNNER_PREAMBLE_STR
-            || (strstr(pFunction->pName,
-                       U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR)) == pFunction->pName)
+            || (strncmp(U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR),
+                        pFunction->pName,
+                        strlen(U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR))) == 0)
 #endif
            ) {
             runFunction(pFunction, pPrefix);
