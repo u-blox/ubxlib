@@ -615,6 +615,9 @@ static void printAt(const uAtClientInstance_t *pClient,
         for (size_t x = 0; x < length; x++) {
             c = *pAt++;
             if (!isprint((int32_t) c)) {
+#ifdef U_AT_CLIENT_PRINT_CONTROL_CHARACTERS
+                uPortLog("[%02x]", c);
+#else
                 if (c == '\r') {
                     // Convert \r\n into \n
                     uPortLog("%c", '\n');
@@ -624,6 +627,7 @@ static void printAt(const uAtClientInstance_t *pClient,
                     // Print the hex
                     uPortLog("[%02x]", c);
                 }
+#endif
             } else {
                 // Print the ASCII character
                 uPortLog("%c", c);
@@ -1320,10 +1324,19 @@ static int32_t readString(uAtClientInstance_t *pClient,
             inQuotes = !inQuotes;
         } else {
             if (!inQuotes && !ignoreStopTag &&
-                (pStopTag->pTagDef->length > 0) &&
-                (c == *(pStopTag->pTagDef->pString + matchPos))) {
+                (pStopTag->pTagDef->length > 0)) {
                 // It could be a stop tag
-                matchPos++;
+                if (c == *(pStopTag->pTagDef->pString + matchPos)) {
+                    matchPos++;
+                } else {
+                    // If it wasn't a stop tag, reset
+                    // the match position and check again
+                    // in case it is the start of a new stop tag
+                    matchPos = 0;
+                    if (c == *(pStopTag->pTagDef->pString)) {
+                        matchPos++;
+                    }
+                }
                 if (matchPos == (int32_t) pStopTag->pTagDef->length) {
                     pStopTag->found = true;
                     // Remove tag from string if it was matched
