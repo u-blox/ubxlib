@@ -98,6 +98,9 @@ RUN_INACTIVITY_TIME_SECONDS = u_settings.RUN_INACTIVITY_TIME_SECONDS #60 * 5
 # for which tests to run
 FILTER_MACRO_NAME = u_settings.FILTER_MACRO_NAME #"U_CFG_APP_FILTER"
 
+# The name of the environment variable that indicates we're running under automation
+ENV_UBXLIB_AUTO = "U_UBXLIB_AUTO"
+
 # The time for which to wait for something from the
 # queue in exe_run().  If this is too short, in a
 # multiprocessing world or on a slow machine, it is

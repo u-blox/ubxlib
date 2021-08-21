@@ -1,6 +1,4 @@
-# For this platform we can simply bring in the generic test
-# source code and map it to the unity framework used by
-# Espressif through the macros in u_port_test.h
+# Bring in the test code
 set(COMPONENT_SRCS            "../../../../../../../../example/sockets/main.c"
                               "../../../../../../../../example/sockets/main_tls.c"
                               "../../../../../../../../example/sockets/credentials_tls.c"
@@ -38,6 +36,12 @@ set(COMPONENT_SRCS            "../../../../../../../../example/sockets/main.c"
                               "../../../../../../../../common/mqtt_client/test/u_mqtt_client_test.c"
                               "../../../../../../../test/u_port_test.c"
                               "../../../../../../common/test/u_preamble_test.c")
+
+if (DEFINED ENV{U_UBXLIB_AUTO})
+# If we're running under automation, bring in u_runner
+set(COMPONENT_SRCS            ${COMPONENT_SRCS} "../../../../../../common/runner/u_runner.c")
+endif()
+
 set(COMPONENT_ADD_INCLUDEDIRS "../../../../../app"
                               "../../../../../../../../ble/api"
                               "../../../../../../../../ble/src"
@@ -67,6 +71,12 @@ set(COMPONENT_ADD_INCLUDEDIRS "../../../../../app"
                               "../../../cfg"
                               "../../../../../src"
                               "../../../../../../../clib")
+
+if (DEFINED ENV{U_UBXLIB_AUTO})
+# If we're running under automation, bring in u_runner
+set(COMPONENT_ADD_INCLUDEDIRS ${COMPONENT_ADD_INCLUDEDIRS} "../../../../../../common/runner")
+endif()
+
 set(COMPONENT_REQUIRES "esp32" "esptool_py" "unity")
 
 register_component()

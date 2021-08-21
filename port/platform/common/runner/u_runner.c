@@ -254,12 +254,22 @@ static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
 // Add a function to the list.
 void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription)
 {
+#ifdef __XTENSA__
+    uRunnerFunctionDescription_t *pFunction = gpFunctionList;
+
+    // For ESP-IDF (xtensa compiler) the constructors are
+    // found in reverse order so need to add them on the
+    // front here to get them the right way around
+    gpFunctionList = pDescription;
+    pDescription->pNext = pFunction;
+#else
     uRunnerFunctionDescription_t **ppFunction = &gpFunctionList;
 
     while (*ppFunction != NULL) {
         ppFunction = &((*ppFunction)->pNext);
     }
     *ppFunction = pDescription;
+#endif
 
     // Re-sort the function list with U_RUNNER_PREAMBLE_STR at the top,
     // then U_RUNNER_TOP_STR
@@ -325,7 +335,7 @@ void uRunnerRunFiltered(const char *pFilter,
     }
 }
 
-// Run all of the function in a group.
+// Run all of the functions in a group.
 void uRunnerRunGroup(const char *pGroup,
                      const char *pPrefix)
 {

@@ -27,10 +27,15 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 #include "u_port.h"
 #include "u_port_debug.h"
+
+#ifdef U_RUNNER_TOP_STR
+# include "u_runner.h"
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -53,7 +58,43 @@ static void appTask(void *pParam)
 {
     (void) pParam;
 
+#ifdef U_RUNNER_TOP_STR
+    // If U_RUNNER_TOP_STR is defined we must be running inside the
+    // test automation system (since the definition is added by
+    // u_run.py) so run the tests through u_runner as that allows us
+    // to do filtering
+
+    uPortInit();
+
+    UNITY_BEGIN();
+
+    uPortLog("U_APP: functions available:\n\n");
+    uRunnerPrintAll("U_APP: ");
+# ifdef U_CFG_APP_FILTER
+    uPortLog("U_APP: running functions that begin with \"%s\".\n",
+             U_PORT_STRINGIFY_QUOTED(U_CFG_APP_FILTER));
+    uRunnerRunFiltered(U_PORT_STRINGIFY_QUOTED(U_CFG_APP_FILTER),
+                       "U_APP: ");
+# else
+    uPortLog("U_APP: running all functions.\n");
+    uRunnerRunAll("U_APP: ");
+# endif
+
+    // The things that we have run may have
+    // called deinit so call init again here.
+    uPortInit();
+
+    UNITY_END();
+
+    uPortDeinit();
+
+    while (1) {}
+#else
+    // If U_RUNNER_TOP_STR is not defined we must be running outside
+    // the test automation environment so call the normal ESP32
+    // menu system
     unity_run_menu();
+#endif
 }
 
 /* ----------------------------------------------------------------

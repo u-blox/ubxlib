@@ -60,4 +60,4 @@ Here's the test menu, pick your combo:
 Enter test for running.
 ```
 
-Press `1` followed by ENTER to run example or test number 1, `\*` to run all, `[example]` to run just the items in the port category, etc.
+Press `1` followed by ENTER to run example or test number 1, `\*` to run all, `[example]` to run just the items in the example category, etc.

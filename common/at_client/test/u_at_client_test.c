@@ -1504,7 +1504,12 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     U_PORT_TEST_ASSERT(checkUrc.passIndex == U_AT_CLIENT_TEST_NUM_URCS_SET_1);
     U_PORT_TEST_ASSERT(gConsecutiveTimeout == 0);
 
+#ifndef __XTENSA__
     // Check for memory leaks
+    // TODO: this if'ed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
     heapUsed -= uPortGetHeapFree();
     uPortLog("U_AT_CLIENT_TEST: %d byte(s) of heap were lost to"
              " the C library during this test and we have"
@@ -1515,6 +1520,10 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+#else
+    (void) heapUsed;
+    (void) heapClibLossOffset;
+#endif
 }
 
 /** Add an AT client and use an AT echo responder to bounce-back

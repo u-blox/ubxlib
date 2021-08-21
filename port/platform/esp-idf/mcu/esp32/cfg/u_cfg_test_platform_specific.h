@@ -34,10 +34,17 @@
  * COMPILE-TIME MACROS: UNITY RELATED
  * -------------------------------------------------------------- */
 
-/** Macro to wrap a test assertion and map it to unity.
+#ifdef U_RUNNER_TOP_STR
+/** Macro to wrap a test assertion and map it to our Unity port.
  */
-#define U_PORT_TEST_ASSERT(condition) TEST_ASSERT(condition)
-#define U_PORT_TEST_ASSERT_EQUAL(expected, actual) TEST_ASSERT_EQUAL(expected, actual)
+# define U_PORT_TEST_ASSERT(condition) U_PORT_UNITY_TEST_ASSERT(condition)
+# define U_PORT_TEST_ASSERT_EQUAL(expected, actual) U_PORT_UNITY_TEST_ASSERT_EQUAL(expected, actual)
+#else
+/** Macro to wrap a test assertion to the ESP32 Unity port.
+ */
+# define U_PORT_TEST_ASSERT(condition) TEST_ASSERT(condition)
+# define U_PORT_TEST_ASSERT_EQUAL(expected, actual) TEST_ASSERT_EQUAL(expected, actual)
+#endif
 
 /** Macro to wrap the definition of a test function and
  * map it to unity.
@@ -56,8 +63,12 @@
  *   for example be "shortRangeParticularTest" or
  *   "shortRangeSubset1ParticularTest" respectively.
  */
-#define U_PORT_TEST_FUNCTION(group, name) TEST_CASE(name, \
-                                                    group)
+#ifdef U_RUNNER_TOP_STR
+# define U_PORT_TEST_FUNCTION(group, name) U_PORT_UNITY_TEST_FUNCTION(group,  \
+                                                                      name)
+#else
+# define U_PORT_TEST_FUNCTION(group, name) TEST_CASE(name, group)
+#endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: HEAP RELATED

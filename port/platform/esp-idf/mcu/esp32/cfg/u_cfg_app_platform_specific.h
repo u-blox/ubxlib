@@ -19,6 +19,10 @@
 
 /* Only bring in #includes specifically related to running applications. */
 
+#ifdef U_RUNNER_TOP_STR
+# include "u_runner.h"
+#endif
+
 /** @file
  * @brief This header file contains configuration information for
  * an ESP32 platform that is fed in at application level.  You should

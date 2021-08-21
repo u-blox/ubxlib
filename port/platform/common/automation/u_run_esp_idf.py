@@ -351,26 +351,6 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                            u_report.EVENT_COMPLETE)
                             reporter.event(u_report.EVENT_TYPE_TEST,
                                            u_report.EVENT_START)
-                            # Search the defines list to see if it includes a
-                            # "U_CFG_APP_FILTER=blah" item.  On ESP32 the tests
-                            # that are run are not selected at compile time,
-                            # so we can't do this filtering, just print a warning
-                            # that the filter is being ignored.
-                            for define in defines:
-                                tmp = u_utils.FILTER_MACRO_NAME + "="
-                                if define.startswith(tmp):
-                                    filter_string = define[len(tmp):]
-                                    reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_INFORMATION,
-                                                   "filter string \"" +
-                                                   filter_string + "\" ignored")
-                                    printer.string("{} filter string \"{}\""         \
-                                                   " was specified but ESP-IDF uses" \
-                                                   " its own test wrapper which"     \
-                                                   " does not support filtering"     \
-                                                   " hence it will be ignored.".     \
-                                                   format(prompt, filter_string))
-                                    break
                             # Open the COM port to get debug output
                             serial_handle = u_utils.open_serial(connection["serial_port"],
                                                                 115200, printer, prompt)

@@ -34,6 +34,10 @@ BRANCH_DEFAULT = u_settings.BRANCH_DEFAULT #"origin/master"
 # we should use
 UBXLIB_DEFINES_VAR = "U_UBXLIB_DEFINES"
 
+# The environment variable to define to indicate that
+# things are being built/run under automation
+ENV_UBXLIB_AUTO = u_utils.ENV_UBXLIB_AUTO
+
 def signal_handler(sig, frame):
     '''CTRL-C Handler'''
     del sig
@@ -146,6 +150,11 @@ def main(database, instance, filter_string, clean,
     # set U_UBXLIB_DEFINES=THING_1;ANOTHER_THING=123;ONE_MORE=boo
     if UBXLIB_DEFINES_VAR in environ and environ[UBXLIB_DEFINES_VAR].strip():
         defines.extend(environ[UBXLIB_DEFINES_VAR].strip().split(";"))
+
+    # It is sometimes useful for the platforms to know that they
+    # are running under test automation.  For this purpose we
+    # add ENV_UBXLIB_AUTO to the environment
+    environ[ENV_UBXLIB_AUTO] = "1"
 
     # With a reporter
     with u_report.ReportToQueue(report_queue, instance,
