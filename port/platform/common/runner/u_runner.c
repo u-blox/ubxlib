@@ -247,6 +247,33 @@ static void sortFunctionList(uRunnerFunctionDescription_t **ppFunctionList,
     }
 }
 
+// Determine if the given name is included in the filter.
+bool nameInFilter(const char *pName, const char *pFilter)
+{
+    bool inFilter = false;
+    char buffer[U_RUNNER_NAME_MAX_LENGTH_BYTES + 1]; // +1 for terminator
+    size_t filterLengthWithTerminator = strlen(pFilter) + 1;
+    size_t y = 0;
+
+    for (size_t x = 0; (x < filterLengthWithTerminator) && !inFilter; x++) {
+        if ((*(pFilter + x) != '.') && (*(pFilter + x) != 0) && (y < sizeof(buffer) - 1)) {
+            buffer[y] = *(pFilter + x);
+            y++;
+        } else {
+            if (y < sizeof(buffer) - 1) {
+                y++;
+                buffer[y] = 0;
+                if (strncmp(buffer, pName, y - 1) == 0) {
+                    inFilter = true;
+                }
+                y = 0;
+            }
+        }
+    }
+
+    return inFilter;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -321,8 +348,7 @@ void uRunnerRunFiltered(const char *pFilter,
     const uRunnerFunctionDescription_t *pFunction = gpFunctionList;
 
     while (pFunction != NULL) {
-        if ((pFilter == NULL) ||
-            (strncmp(pFilter, pFunction->pName, strlen(pFilter)) == 0)
+        if ((pFilter == NULL) || nameInFilter(pFunction->pName, pFilter)
 #ifdef U_RUNNER_PREAMBLE_STR
             || (strncmp(U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR),
                         pFunction->pName,

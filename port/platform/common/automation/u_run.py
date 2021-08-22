@@ -34,6 +34,10 @@ BRANCH_DEFAULT = u_settings.BRANCH_DEFAULT #"origin/master"
 # we should use
 UBXLIB_DEFINES_VAR = "U_UBXLIB_DEFINES"
 
+# The name of the macro that we use to pass around the
+# filter string
+FILTER_MACRO_NAME = u_utils.FILTER_MACRO_NAME
+
 # The environment variable to define to indicate that
 # things are being built/run under automation
 ENV_UBXLIB_AUTO = u_utils.ENV_UBXLIB_AUTO
@@ -45,6 +49,40 @@ def signal_handler(sig, frame):
     sys.stdout.write('\n')
     print("{}CTRL-C received, EXITING.".format(PROMPT))
     sys.exit(-1)
+
+def merge_filter(defines, filter_string):
+    '''Merge the given filter string into defines'''
+    defines_returned = []
+    filter_list = []
+
+    if filter_string:
+        filter_list = filter_string.split(".")
+    if defines:
+        for define in defines:
+            if define.startswith(FILTER_MACRO_NAME):
+                # Find the bit after "U_CFG_APP_FILTER=" if it's there
+                parts = define.split("=")
+                if parts and len(parts) > 1:
+                    # Find the individual parts of the filter "thinga.thingb"
+                    filters = parts[1].split(".")
+                    if filters and len(filters) > 0:
+                        # Add them to our filter list
+                        filter_list.extend(filters)
+            else:
+                # If it's not "U_CFG_APP_FILTER" then just add it
+                defines_returned.append(define)
+
+    # Now add the filter list back into the defines
+    if len(filter_list) > 0:
+        new_filter_string = ""
+        for idx, item in enumerate(filter_list):
+            if idx > 0:
+                new_filter_string += "."
+            new_filter_string += item.strip()
+        defines_returned.append(FILTER_MACRO_NAME + "=" + \
+                                new_filter_string)
+
+    return defines_returned
 
 def main(database, instance, filter_string, clean,
          ubxlib_dir, working_dir, connection_lock,
@@ -116,11 +154,7 @@ def main(database, instance, filter_string, clean,
     defines = u_data.get_defines_for_instance(database, instance)
     if not defines:
         defines = []
-    if filter_string:
-        # The filter_string is just another #define so
-        # add it to the list
-        defines.append(u_utils.FILTER_MACRO_NAME + "=" + \
-                       filter_string)
+
     # If there is a cellular module on this instance, add its
     # name to the defines list
     cellular_module_name = u_data.get_cellular_module_for_instance(database, instance)
@@ -136,24 +170,32 @@ def main(database, instance, filter_string, clean,
     # Also, when running testing it is best to run the
     # the "port" tests first as, if there's a problem with the
     # port, you want to notice it first.
+    # This also acts as a flag to indicate that we're running
+    # under u_runner automation
     defines.append("U_RUNNER_TOP_STR=port")
 
     # When running tests on cellular LTE modules, so
     # SARA-R4 or SARA-R5, we need to set the RF band we
     # are running in to NOT include the public network,
-    # since otherwise we modules can sometimes wander off
+    # since otherwise the modules can sometimes wander off
     # onto it.
     defines.append("U_CELL_TEST_CFG_BANDMASK1=0x000010ULL")
 
-    # Finally, defines may be provided via an environment
+    # Defines may be provided via an environment
     # variable, in a list separated with semicolons, e.g.:
     # set U_UBXLIB_DEFINES=THING_1;ANOTHER_THING=123;ONE_MORE=boo
+    # Add these in.
     if UBXLIB_DEFINES_VAR in environ and environ[UBXLIB_DEFINES_VAR].strip():
         defines.extend(environ[UBXLIB_DEFINES_VAR].strip().split(";"))
 
-    # It is sometimes useful for the platforms to know that they
-    # are running under test automation.  For this purpose we
-    # add ENV_UBXLIB_AUTO to the environment
+    # Merge in any filter string we might have
+    defines = merge_filter(defines, filter_string)
+
+    # It is sometimes useful for the platform tools to be able
+    # to detect that they are running under automation (e.g. this
+    # is used to switch ESP-IDF to using u_runner rather than the
+    # usual ESP-IDF unit test menu system).
+    # For this purpose we add ENV_UBXLIB_AUTO to the environment
     environ[ENV_UBXLIB_AUTO] = "1"
 
     # With a reporter

@@ -49,6 +49,10 @@ extern "C" {
  */
 #define U_RUNNER_NAME_UID(x) U_RUNNER_NAME_EXPAND(x, __LINE__)
 
+/** The maximum length of pName (see uRunnerFunctionDescription_t below).
+ */
+#define U_RUNNER_NAME_MAX_LENGTH_BYTES 64
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -154,7 +158,10 @@ void uRunnerRunNamed(const char *pName,
                      const char *pPrefix);
 
 /** Run all of the functions whose names begin with the
- * given filter string.
+ * given filter string.  The filter string can include
+ * multiple entries separated with a full stop
+ * character (but no spaces), e.g "thinga.thingb"; think
+ * of the full stop as an "or".
  * NOTE: in addition, if U_RUNNER_PREAMBLE_STR is defined,
  * then functions beginning with that string will also
  * be run.
