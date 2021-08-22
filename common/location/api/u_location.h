@@ -95,7 +95,7 @@ typedef struct {
                                        however that can prevent the GNSS chip
                                        being used directly by this code.  If
                                        you wish to use the GNSS chip directly
-                                       by this code then set this to true. */
+                                       from this code then set this to true. */
     int32_t networkHandleAssist; /**< the network handle to use for
                                       assistance information.  This field
                                       is not currently used and should be set
@@ -171,11 +171,11 @@ typedef enum {
  * the cell network will use that GNSS chip, there is no need to
  * bring up a GNSS network.  If you have a GNSS chip attached to a
  * cellular module externally the same is true but you may need to call
- * CellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady() in the
+ * uCellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady() in the
  * cellular API to tell the cellular module which pins of the
  * cellular module the GNSS chip is attached on.  If you prefer to
- * use the GNSS chip directly rater than via Cell Locate you should set
- * disableGnss in the pLocationAssist when calling this API with the
+ * use the GNSS chip directly rather than via Cell Locate you should set
+ * disableGnss in the pLocationAssist structure when calling this API with the
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
@@ -246,11 +246,11 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
  * the cell network will use that GNSS chip, there is no need to
  * bring up a GNSS network.  If you have a GNSS chip attached to a
  * cellular module externally the same is true but you may need to call
- * CellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady() in the
+ * uCellLocSetPinGnssPwr() and uCellLocSetPinGnssDataReady() in the
  * cellular API to tell the cellular module which pins of the
  * cellular module the GNSS chip is attached on.  If you prefer to
- * use the GNSS chip directly rater than via Cell Locate you should set
- * disableGnss in the pLocationAssist when calling this API with the
+ * use the GNSS chip directly rather than via Cell Locate you should set
+ * disableGnss in the pLocationAssist structure when calling this API with the
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *

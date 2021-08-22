@@ -40,7 +40,7 @@
 
 #include "u_at_client.h"
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -188,7 +188,7 @@ int32_t uGnssPwrOn(int32_t gnssHandle)
                                                       message,
                                                       sizeof(message)) == sizeof(message)) {
                     // Get the number of messages received on the port
-                    y = uUbxUint64Decode(message + ((size_t) (unsigned) pInstance->portNumber * 16));
+                    y = uUbxProtocolUint64Decode(message + ((size_t) (unsigned) pInstance->portNumber * 16));
                     // Now poll the GNSS chip for UBX-CFG-PRT to get the
                     // existing configuration for the port we are connected on
                     message[0] = (char) pInstance->portNumber;
@@ -213,7 +213,7 @@ int32_t uGnssPwrOn(int32_t gnssHandle)
                                                               NULL, 0,
                                                               message,
                                                               sizeof(message)) == sizeof(message)) {
-                            y = uUbxUint64Decode(message + ((size_t) (unsigned) pInstance->portNumber * 16)) - y;
+                            y = uUbxProtocolUint64Decode(message + ((size_t) (unsigned) pInstance->portNumber * 16)) - y;
                             // Should be three: UBX-MON-MSGPP, the poll for UBX-CFG-PRT
                             // and then the UBX-CFG-PRT setting command itself.
                             if (y == 3) {

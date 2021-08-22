@@ -191,7 +191,7 @@ static int32_t numberToX1e7(const char *pNumber)
 
     // Find out how many digits there are before the first
     // non-digit thing (which might be a decimal point).
-    while (isdigit((int32_t) * (pNumber + x))) {
+    while (isdigit((int32_t) *(pNumber + x))) { // *NOPAD* stop AStyle making * look like a multiply
         x++;
     }
 
@@ -214,7 +214,7 @@ static int32_t numberToX1e7(const char *pNumber)
         // deal with the fractional part of up to 7 digits
         pNumber++;
         x = 7;
-        while (isdigit((int32_t) * (pNumber)) && (x > 0)) {
+        while (isdigit((int32_t) *pNumber) && (x > 0)) { // *NOPAD*
             y = *pNumber - '0';
             for (int32_t z = 1; z < x; z++) {
                 y *= 10;

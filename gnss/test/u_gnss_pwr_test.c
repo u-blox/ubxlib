@@ -53,7 +53,7 @@
 
 #include "u_cell_module_type.h"
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"

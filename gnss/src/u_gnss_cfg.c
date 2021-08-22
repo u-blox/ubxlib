@@ -38,7 +38,7 @@
 #include "u_port.h"
 #include "u_port_os.h"  // Required by u_gnss_private.h
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -111,7 +111,7 @@ static int32_t uGnssCfgSetUbxCfgNav5(int32_t gnssHandle,
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             // Set the mask bytes at the start of the message
-            *((uint16_t *) message) = uUbxUint16Encode(mask);
+            *((uint16_t *) message) = uUbxProtocolUint16Encode(mask);
             // Copy in the contents, which must have already
             // been correctly encoded
             memcpy(message + offset, pBuffer, size);

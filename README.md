@@ -28,7 +28,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 - GNSS is used via the [gnss](/gnss) API.
 - The BLE and Wifi APIs are internally common within u-blox and so they both use the common [short_range](/common/short_range) API.
 - The [at_client](/common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
-- The ubx API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
+- The [ubx_protocol](/common/ubx_protocol) API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
 - The [port](/port) API permits all of the above to run on different hosts.
 
 # Which APIs Are Supported On Which u-blox Modules?
@@ -68,17 +68,17 @@ In order for u-blox to support multiple platforms with this code there is also a
 +---example                    <-- examples that introduce the main features 
 +---cfg                        <-- global configuration header files
 +---common                     <-- APIs that are common across u-blox modules
-¦   +---network                <-- the simple network API for BLE, cell and Wifi
+¦   +---network                <-- the simple network API for BLE, cell, Wifi and GNSS
 ¦   ¦   +---api                <-- all folders, in general, have an API directory
 ¦   ¦   +---src                    containing public headers, a source directory with
 ¦   ¦   +---test                   the implementation and a test directory with the tests
 ¦   +---sock                   <-- the sockets API for cell, Wifi (and in the future BLE)
 ¦   +---security               <-- common API for u-blox security and TLS security/credential storage
 ¦   +---mqtt_client            <-- common MQTT client API for cell (and in the future Wifi)
-¦   +---location               <-- common location API, can use GNSS, Cell Locate, Wifi/BLE stations, etc.
+¦   +---location               <-- common location API, can use GNSS, Cell Locate and in the future Wifi/BLE stations, etc.
 ¦   +---short_range            <-- internal API used by the BLE and Wifi APIs (see below)
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wifi APIs
-¦   +---ubx                    <-- internal API used by the GNSS API
+¦   +---ubx_protocol           <-- internal API used by the GNSS API
 ¦   +---error                  <-- u_error_common.h: error codes common across APIs
 ¦   +---utils                  <-- contains common utilities
 ¦   ...

@@ -44,10 +44,10 @@ target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/src/u_at_client.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/at_client/test/u_at_client_test_data.c)
 
-#ubx
-target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/ubx/api)
-target_sources(app PRIVATE ${UBXLIB_BASE}/common/ubx/src/u_ubx.c)
-target_sources(app PRIVATE ${UBXLIB_BASE}/common/ubx/test/u_ubx_test.c)
+#ubx protocol
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/ubx_protocol/api)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/ubx_protocol/src/u_ubx_protocol.c)
+target_sources(app PRIVATE ${UBXLIB_BASE}/common/ubx_protocol/test/u_ubx_protocol_test.c)
 
 #lib-common
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/lib_common/api ${UBXLIB_BASE}/common/lib_common/test)

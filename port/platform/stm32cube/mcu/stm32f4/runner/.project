@@ -167,9 +167,9 @@
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/src/u_at_client.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Common/ubx/u_ubx.c</name>
+			<name>Ubxlib/U-Blox/Common/ubx_protocol/u_ubx_protocol.c</name>
 			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/common/ubx/src/u_ubx.c</locationURI>
+			<locationURI>$%7BUBX_PATH%7D/common/ubx_protocol/src/u_ubx_protocol.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Common/u_runner.c</name>
@@ -548,9 +548,9 @@
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/test/u_at_client_test_data.c</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/U-Blox/Test/ubx/u_ubx_test.c</name>
+			<name>Ubxlib/U-Blox/Test/ubx_protocol/u_ubx_protocol_test.c</name>
 			<type>1</type>
-			<locationURI>$%7BUBX_PATH%7D/common/ubx/test/u_ubx_test.c</locationURI>
+			<locationURI>$%7BUBX_PATH%7D/common/ubx_protocol/test/u_ubx_protocol_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Port/u_port.c</name>
@@ -878,9 +878,9 @@
 			<locationURI>$%7BUBX_PATH%7D/common/at_client/api</locationURI>
 		</link>
 		<link>
-			<name>Ubxlib/Inc/U-Blox/common/ubx/api</name>
+			<name>Ubxlib/Inc/U-Blox/common/ubx_protocol/api</name>
 			<type>2</type>
-			<locationURI>$%7BUBX_PATH%7D/common/ubx/api</locationURI>
+			<locationURI>$%7BUBX_PATH%7D/common/ubx_protocol/api</locationURI>
 		</link>
 		<link>
 			<name>Drivers/Inc/CMSIS/Include</name>

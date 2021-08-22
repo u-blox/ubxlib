@@ -56,7 +56,7 @@
 /** The drive mode for the GNSS ENABLE_POWER pin.
  */
 #ifndef U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE
-# define U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN
+# define U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_NORMAL
 #endif
 
 /* ----------------------------------------------------------------

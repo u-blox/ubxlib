@@ -72,6 +72,8 @@ size_t uBinToHex(const char *pBin, size_t binLength, char *pHex)
     return binLength * 2;
 }
 
+//lint -esym(429, pBin) Suppress Lint getting a bee in its
+// bonnet about pBin not being free()'d when it IS being free()'d.
 size_t uHexToBin(const char *pHex, size_t hexLength, char *pBin)
 {
     bool success = true;

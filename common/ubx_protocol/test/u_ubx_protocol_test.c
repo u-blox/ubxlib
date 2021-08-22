@@ -46,16 +46,16 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef UBX_TEST_MAX_BODY_SIZE
-/** The maximum UBX message body size to test with.
+#ifndef U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE
+/** The maximum ubx protocol message body size to test with.
  */
-# define UBX_TEST_MAX_BODY_SIZE 1024
+# define U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE 1024
 #endif
 
 /* ----------------------------------------------------------------
@@ -74,9 +74,9 @@
  * PUBLIC FUNCTIONS: TESTS
  * -------------------------------------------------------------- */
 
-/** Back-to-back testing of the ubx encoder/decoder.
+/** Back-to-back testing of the ubx protocol encoder/decoder.
  */
-U_PORT_TEST_FUNCTION("[ubx]", "ubxBackToBack")
+U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
 {
     int32_t classIn;
     int32_t idIn;
@@ -89,14 +89,14 @@ U_PORT_TEST_FUNCTION("[ubx]", "ubxBackToBack")
     uint64_t z = 0xf0f1f2f3f4f5f6f7ULL;
     uint64_t intBuffer;
 
-    pBodyIn = (char *) malloc(UBX_TEST_MAX_BODY_SIZE);
+    pBodyIn = (char *) malloc(U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE);
     U_PORT_TEST_ASSERT(pBodyIn != NULL);
-    pBodyOut = (char *) malloc(UBX_TEST_MAX_BODY_SIZE);
+    pBodyOut = (char *) malloc(U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE);
     U_PORT_TEST_ASSERT(pBodyOut != NULL);
-    pBuffer = (char *) malloc(UBX_TEST_MAX_BODY_SIZE + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+    pBuffer = (char *) malloc(U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
-    for (size_t x = 0; x < UBX_TEST_MAX_BODY_SIZE; x += 10) {
+    for (size_t x = 0; x < U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE; x += 10) {
         // For each message size in steps of 10 perform an
         // encode and a decode
         for (size_t y = 0; y < x; y++) {
@@ -105,8 +105,8 @@ U_PORT_TEST_FUNCTION("[ubx]", "ubxBackToBack")
         }
         classIn = (char) x;
         idIn = (char) (x + 16);
-        U_PORT_TEST_ASSERT(uUbxEncode(classIn, idIn, pBodyIn, x,
-                                      pBuffer) == x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+        U_PORT_TEST_ASSERT(uUbxProtocolEncode(classIn, idIn, pBodyIn, x,
+                                              pBuffer) == x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         //lint -e(650) Suppress constant out of range; it isn't
         U_PORT_TEST_ASSERT(*pBuffer == 0xb5);
         U_PORT_TEST_ASSERT(*(pBuffer + 1) == 0x62);
@@ -115,30 +115,32 @@ U_PORT_TEST_FUNCTION("[ubx]", "ubxBackToBack")
         U_PORT_TEST_ASSERT(*(pBuffer + 4) == (char) x);
         U_PORT_TEST_ASSERT(*(pBuffer + 5) == (char) (x >> 8));
         //lint -e(668) Suppress possible nullness in pBodyOut, it is checked above
-        memset(pBodyOut, 0xff, UBX_TEST_MAX_BODY_SIZE);
-        U_PORT_TEST_ASSERT(uUbxDecode(pBuffer, x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES,
-                                      &classOut, &idOut, pBodyOut, UBX_TEST_MAX_BODY_SIZE, &pTmp) == x);
+        memset(pBodyOut, 0xff, U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE);
+        U_PORT_TEST_ASSERT(uUbxProtocolDecode(pBuffer, x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES,
+                                              &classOut, &idOut, pBodyOut,
+                                              U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE, &pTmp) == x);
         U_PORT_TEST_ASSERT(classOut == classIn);
         U_PORT_TEST_ASSERT(idOut == idIn);
         U_PORT_TEST_ASSERT(pTmp == pBuffer + x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         //lint -e(668) Suppress possible nullness in pBodyIn, it is checked above
         U_PORT_TEST_ASSERT(memcmp(pBodyOut, pBodyIn, x) == 0);
-        for (size_t y = x; y < UBX_TEST_MAX_BODY_SIZE; y++) {
+        for (size_t y = x; y < U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE; y++) {
             //lint -e(650) Suppress constant out of range; it isn't
             U_PORT_TEST_ASSERT(*(pBodyOut + y) == 0xff);
         }
         // No very good way to test CRC here but check that changing it
         // in the encoded message causes a decode failure
         (*(pBuffer + x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES - 1))++;
-        U_PORT_TEST_ASSERT(uUbxDecode(pBuffer, x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES,
-                                      &classOut, &idOut, pBodyOut, UBX_TEST_MAX_BODY_SIZE, &pTmp) < 0);
+        U_PORT_TEST_ASSERT(uUbxProtocolDecode(pBuffer, x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES,
+                                              &classOut, &idOut, pBodyOut,
+                                              U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE, &pTmp) < 0);
     }
 
     // Test that the pointer parameters can be NULL
-    U_PORT_TEST_ASSERT(uUbxEncode(classIn, idIn, pBodyIn, 10,
-                                  pBuffer) == 10 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
-    U_PORT_TEST_ASSERT(uUbxDecode(pBuffer, 10 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES,
-                                  NULL, NULL, NULL, 0, NULL) == 10);
+    U_PORT_TEST_ASSERT(uUbxProtocolEncode(classIn, idIn, pBodyIn, 10,
+                                          pBuffer) == 10 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
+    U_PORT_TEST_ASSERT(uUbxProtocolDecode(pBuffer, 10 + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES,
+                                          NULL, NULL, NULL, 0, NULL) == 10);
 
     // Test the integer encode/decode functions
     // There is a bug in Zephyr (https://github.com/zephyrproject-rtos/zephyr/issues/30723)
@@ -146,12 +148,12 @@ U_PORT_TEST_FUNCTION("[ubx]", "ubxBackToBack")
     // access (i.e. to an 8-byte boundary) so here we use intBuffer,
     // which is just a 64-bit variable, instead of using the more
     // obvious pBuffer.
-    intBuffer = uUbxUint16Encode((uint16_t) z);
-    U_PORT_TEST_ASSERT(uUbxUint16Decode((char *) &intBuffer) == (uint16_t) z);
-    intBuffer = uUbxUint32Encode((uint32_t) z);
-    U_PORT_TEST_ASSERT(uUbxUint32Decode((char *) &intBuffer) == (uint32_t) z);
-    intBuffer = uUbxUint64Encode((uint64_t) z);
-    U_PORT_TEST_ASSERT(uUbxUint64Decode((char *) &intBuffer) == z);
+    intBuffer = uUbxProtocolUint16Encode((uint16_t) z);
+    U_PORT_TEST_ASSERT(uUbxProtocolUint16Decode((char *) &intBuffer) == (uint16_t) z);
+    intBuffer = uUbxProtocolUint32Encode((uint32_t) z);
+    U_PORT_TEST_ASSERT(uUbxProtocolUint32Decode((char *) &intBuffer) == (uint32_t) z);
+    intBuffer = uUbxProtocolUint64Encode((uint64_t) z);
+    U_PORT_TEST_ASSERT(uUbxProtocolUint64Decode((char *) &intBuffer) == z);
 
     // Free memory
     free(pBodyIn);
@@ -163,12 +165,12 @@ U_PORT_TEST_FUNCTION("[ubx]", "ubxBackToBack")
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
  */
-U_PORT_TEST_FUNCTION("[ubx]", "ubxCleanUp")
+U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolCleanUp")
 {
     int32_t x;
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_UBX_TEST: main task stack had a minimum of %d"
+    uPortLog("U_UBX_PROTOCOL_TEST: main task stack had a minimum of %d"
              " byte(s) free at the end of these tests.\n", x);
     U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
 
@@ -176,7 +178,7 @@ U_PORT_TEST_FUNCTION("[ubx]", "ubxCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_UBX_TEST: heap had a minimum of %d"
+        uPortLog("U_UBX_PROTOCOL_TEST: heap had a minimum of %d"
                  " byte(s) free at the end of these tests.\n", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }

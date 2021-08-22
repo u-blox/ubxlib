@@ -43,7 +43,7 @@ common/security/src/u_security_tls.c
 common/location/src/u_location.c
 common/location/src/u_location_shared.c
 common/at_client/src/u_at_client.c
-common/ubx/src/u_ubx.c
+common/ubx_protocol/src/u_ubx_protocol.c
 common/short_range/src/u_short_range.c
 common/short_range/src/u_short_range_sec_tls.c
 common/short_range/src/u_short_range_edm.c

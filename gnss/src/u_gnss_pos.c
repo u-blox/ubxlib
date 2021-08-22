@@ -46,7 +46,7 @@
 
 #include "u_time.h"
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -130,7 +130,7 @@ static int32_t posGet(const uGnssPrivateInstance_t *pInstance,
             // if it is valid
             t = 0;
             // Year is 1999-2099, so need to adjust to get year since 1970
-            year = ((int32_t) uUbxUint16Decode(message + 4) - 1999) + 29;
+            year = ((int32_t) uUbxProtocolUint16Decode(message + 4) - 1999) + 29;
             // Month (1 to 12), so take away 1 to make it zero-based
             months = message[6] - 1;
             months += year * 12;
@@ -167,14 +167,14 @@ static int32_t posGet(const uGnssPrivateInstance_t *pInstance,
             if (pSvs != NULL) {
                 *pSvs = y;
             }
-            y = (int32_t) uUbxUint32Decode(message + 24);
+            y = (int32_t) uUbxProtocolUint32Decode(message + 24);
             if (printIt) {
                 uPortLog("U_GNSS_POS: longitude = %d (degrees * 10^7).\n", y);
             }
             if (pLongitudeX1e7 != NULL) {
                 *pLongitudeX1e7 = y;
             }
-            y = (int32_t) uUbxUint32Decode(message + 28);
+            y = (int32_t) uUbxProtocolUint32Decode(message + 28);
             if (printIt) {
                 uPortLog("U_GNSS_POS: latitude = %d (degrees * 10^7).\n", y);
             }
@@ -183,7 +183,7 @@ static int32_t posGet(const uGnssPrivateInstance_t *pInstance,
             }
             y = INT_MIN;
             if (message[20] == 0x03) {
-                y = (int32_t) uUbxUint32Decode(message + 36);
+                y = (int32_t) uUbxProtocolUint32Decode(message + 36);
                 if (printIt) {
                     uPortLog("U_GNSS_POS: altitude = %d (mm).\n", y);
                 }
@@ -191,14 +191,14 @@ static int32_t posGet(const uGnssPrivateInstance_t *pInstance,
             if (pAltitudeMillimetres != NULL) {
                 *pAltitudeMillimetres = y;
             }
-            y = (int32_t) uUbxUint32Decode(message + 40);
+            y = (int32_t) uUbxProtocolUint32Decode(message + 40);
             if (printIt) {
                 uPortLog("U_GNSS_POS: radius = %d (mm).\n", y);
             }
             if (pRadiusMillimetres != NULL) {
                 *pRadiusMillimetres = y;
             }
-            y = (int32_t) uUbxUint32Decode(message + 60);
+            y = (int32_t) uUbxProtocolUint32Decode(message + 60);
             if (printIt) {
                 uPortLog("U_GNSS_POS: speed = %d (mm/s).\n", y);
             }

@@ -71,9 +71,8 @@ void uGnssDeinit();
  * @param pinGnssEnablePower the pin of the MCU that enables power to the
  *                           GNSS module; use -1 if there is no such connection.
  * @param leavePowerAlone    set this to true if initialisation should
- *                           not modify the state of pinGnssEnablePower, else it
- *                           will ensure that pinGnssEnablePower is floating so that
- *                           it can be pulled low to power the module on.
+ *                           not modify the state of pinGnssEnablePower, else
+ *                           pinGnssEnablePower will be set to its "off" state.
  * @return                   on success the handle of the GNSS instance,
  *                           else negative error code.
  */

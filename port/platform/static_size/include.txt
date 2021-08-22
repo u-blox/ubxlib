@@ -26,7 +26,7 @@ common/location/api
 common/location/src
 common/at_client/api
 common/at_client/src
-common/ubx/api
+common/ubx_protocol/api
 common/short_range/api
 common/short_range/src
 common/utils/api

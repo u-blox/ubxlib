@@ -48,7 +48,7 @@
 
 #include "u_at_client.h"
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -69,7 +69,7 @@
  * This is also the amount we need to store a hex-encoded ubx-format
  * message when receiving responses over an AT interface.
  */
-# define U_GNSS_TEMPORARY_BUFFER_LENGTH_BYTES ((U_GNSS_MAX_UBX_MESSAGE_BODY_LENGTH_BYTES + \
+# define U_GNSS_TEMPORARY_BUFFER_LENGTH_BYTES ((U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES + \
                                                 U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) * 2)
 #endif
 
@@ -144,6 +144,14 @@ static int32_t sendUbxMessageUart(int32_t uartHandle, const char *pMessage,
 // should be set to the message class and ID of the expected response,
 // so that other random ubx messages can be filtered out; set to -1
 // for "don't care"
+// Note that this message handling is good for the request-response
+// style usage of the ubx protocol employed here, where we are looking
+// for a particular response and are happy to throw away anything else
+// that happens to be read into the buffer beyond that.  Should we,
+// in the future, expect to handle asynchronous ubx messages coming from
+// the GNSS chip this would need to be revisited with some form of
+// rolling buffer mechanism in which store any residual stuff from the
+// uPortUartRead() after the wanted message.
 static int32_t receiveUbxMessageUart(int32_t uartHandle,
                                      uGnssPrivateUbxMessage_t *pResponse,
                                      int32_t timeoutMs, bool printIt)
@@ -172,7 +180,7 @@ static int32_t receiveUbxMessageUart(int32_t uartHandle,
             startTime = uPortGetTickTimeMs();
             // Wait for something to start coming back
             while ((errorCodeOrResponseBodyLength < 0) &&
-                   (uPortGetTickTimeMs() < startTime + timeoutMs)) {
+                   (uPortGetTickTimeMs() - startTime < timeoutMs)) {
                 if (uPortUartGetReceiveSize(uartHandle) > 0) {
                     // Got something, read what we can in and check if
                     // it contains the ubx message we want (could also
@@ -192,13 +200,13 @@ static int32_t receiveUbxMessageUart(int32_t uartHandle,
                         while (y > 0) {
                             // Try to decode the new + kept buffer contents to see if
                             // the ubx message we want is now contained within it
-                            errorCodeOrResponseBodyLength = uUbxDecode(pTmpStart, y,
-                                                                       &cls, &id,
-                                                                       pResponse->pBody,
-                                                                       pResponse->bodyMaxLengthBytes,
-                                                                       //lint -e(1773) Suppress attempt to cast
-                                                                       // away const: I'm doing exactly the opposite...
-                                                                       (const char **) &pTmpEnd);
+                            errorCodeOrResponseBodyLength = uUbxProtocolDecode(pTmpStart, y,
+                                                                               &cls, &id,
+                                                                               pResponse->pBody,
+                                                                               pResponse->bodyMaxLengthBytes,
+                                                                               //lint -e(1773) Suppress attempt to cast
+                                                                               // away const: I'm doing exactly the opposite...
+                                                                               (const char **) &pTmpEnd);
                             if (errorCodeOrResponseBodyLength >= 0) {
                                 if (errorCodeOrResponseBodyLength > (int32_t) pResponse->bodyMaxLengthBytes) {
                                     errorCodeOrResponseBodyLength = (int32_t) pResponse->bodyMaxLengthBytes;
@@ -230,9 +238,8 @@ static int32_t receiveUbxMessageUart(int32_t uartHandle,
                                 // Not a ubx message, or not a complete one anyway
                                 if (errorCodeOrResponseBodyLength == (int32_t) U_ERROR_COMMON_TIMEOUT) {
                                     // We've got back a "timeout" response
-                                    // from uUbxDecode(): a ubx format message
-                                    // has begun but we need to get for more data
-                                    // to complete it.
+                                    // from uUbxProtocolDecode(): a ubx format message
+                                    // has begun but we need more data to complete it.
                                     //
                                     // pBuffer looks like this:
                                     //
@@ -247,11 +254,11 @@ static int32_t receiveUbxMessageUart(int32_t uartHandle,
                                     // more than the maximal length of response then get
                                     // rid of the excess to stop the buffer clogging up
                                     bytesKept = y;
-                                    if (bytesKept > U_GNSS_MAX_UBX_MESSAGE_BODY_LENGTH_BYTES +
+                                    if (bytesKept > U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES +
                                         U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) {
-                                        bytesKept -= U_GNSS_MAX_UBX_MESSAGE_BODY_LENGTH_BYTES +
+                                        bytesKept -= U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES +
                                                      U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
-                                        memmove(pBuffer, pBuffer + U_GNSS_MAX_UBX_MESSAGE_BODY_LENGTH_BYTES +
+                                        memmove(pBuffer, pBuffer + U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES +
                                                 U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES,
                                                 bytesKept);
                                     }
@@ -295,7 +302,6 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
     int32_t x;
     size_t bytesToSend;
     char *pBuffer;
-    char *pTmp = NULL;
     int32_t bytesRead;
 
     assert(pResponse != NULL);
@@ -324,23 +330,20 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
             uPortLog(".\n");
         }
         uAtClientResponseStart(atHandle, "+UGUBX:");
-        pTmp = pBuffer;
-        // Read the hex-coded response back into pTmp
-        // (which may be NULL to throw the response away)
-        bytesRead = uAtClientReadString(atHandle, pTmp, x, false);
+        // Read the hex-coded response back into pBuffer
+        bytesRead = uAtClientReadString(atHandle, pBuffer, x, false);
         uAtClientResponseStop(atHandle);
         if ((uAtClientUnlock(atHandle) == 0) && (bytesRead >= 0)) {
-            errorCodeOrResponseBodyLength = (int32_t) U_ERROR_COMMON_SUCCESS;
             // Decode the hex into the same buffer
-            x = (int32_t) uHexToBin(pTmp, bytesRead, pTmp);
+            x = (int32_t) uHexToBin(pBuffer, bytesRead, pBuffer);
             if (x > 0) {
                 // Decode the ubx message into pResponse
-                errorCodeOrResponseBodyLength = uUbxDecode(pTmp, x,
-                                                           &(pResponse->cls),
-                                                           &(pResponse->id),
-                                                           pResponse->pBody,
-                                                           pResponse->bodyMaxLengthBytes,
-                                                           NULL);
+                errorCodeOrResponseBodyLength = uUbxProtocolDecode(pBuffer, x,
+                                                                   &(pResponse->cls),
+                                                                   &(pResponse->id),
+                                                                   pResponse->pBody,
+                                                                   pResponse->bodyMaxLengthBytes,
+                                                                   NULL);
                 if (errorCodeOrResponseBodyLength >= 0) {
                     if (errorCodeOrResponseBodyLength > (int32_t) pResponse->bodyMaxLengthBytes) {
                         errorCodeOrResponseBodyLength = (int32_t) pResponse->bodyMaxLengthBytes;
@@ -387,9 +390,9 @@ static int32_t sendReceiveUbxMessage(const uGnssPrivateInstance_t *pInstance,
         pBuffer = (char *) malloc(messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         if (pBuffer != NULL) {
             errorCodeOrResponseBodyLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
-            bytesToSend = uUbxEncode(messageClass, messageId,
-                                     pMessageBody, messageBodyLengthBytes,
-                                     pBuffer);
+            bytesToSend = uUbxProtocolEncode(messageClass, messageId,
+                                             pMessageBody, messageBodyLengthBytes,
+                                             pBuffer);
             if (bytesToSend > 0) {
 
                 U_PORT_MUTEX_LOCK(pInstance->transportMutex);
@@ -501,9 +504,9 @@ int32_t uGnssPrivateSendOnlyUartUbxMessage(const uGnssPrivateInstance_t *pInstan
         // Allocate a buffer big enough to encode the outgoing message
         pBuffer = (char *) malloc(messageBodyLengthBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         if (pBuffer != NULL) {
-            bytesToSend = uUbxEncode(messageClass, messageId,
-                                     pMessageBody, messageBodyLengthBytes,
-                                     pBuffer);
+            bytesToSend = uUbxProtocolEncode(messageClass, messageId,
+                                             pMessageBody, messageBodyLengthBytes,
+                                             pBuffer);
 
             U_PORT_MUTEX_LOCK(pInstance->transportMutex);
 

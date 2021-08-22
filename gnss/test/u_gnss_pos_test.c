@@ -52,7 +52,7 @@
 #include "u_port_os.h"   // Required by u_gnss_private.h
 #include "u_port_uart.h"
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"

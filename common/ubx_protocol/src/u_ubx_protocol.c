@@ -22,7 +22,7 @@
  */
 
 /** @file
- * @brief Implementation of the ubx message encode/decode API.
+ * @brief Implementation of the ubx protocol message encode/decode API.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -36,7 +36,7 @@
 
 #include "u_error_common.h"
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -59,7 +59,7 @@
  * -------------------------------------------------------------- */
 
 // Wot it says it does.
-bool uUbxIsLittleEndian()
+bool uUbxProtocolIsLittleEndian()
 {
     int32_t x = 1;
 
@@ -67,7 +67,7 @@ bool uUbxIsLittleEndian()
 }
 
 // Return a uint16_t from a pointer to a little-endian uint16_t.
-uint16_t uUbxUint16Decode(const char *pByte)
+uint16_t uUbxProtocolUint16Decode(const char *pByte)
 {
     uint16_t retValue;
 
@@ -79,7 +79,7 @@ uint16_t uUbxUint16Decode(const char *pByte)
 }
 
 // Return a uint32_t from a pointer to a little-endian uint32_t.
-uint32_t uUbxUint32Decode(const char *pByte)
+uint32_t uUbxProtocolUint32Decode(const char *pByte)
 {
     uint32_t retValue;
 
@@ -93,7 +93,7 @@ uint32_t uUbxUint32Decode(const char *pByte)
 }
 
 // Return a uint64_t from a pointer to a little-endian uint64_t.
-uint64_t uUbxUint64Decode(const char *pByte)
+uint64_t uUbxProtocolUint64Decode(const char *pByte)
 {
     uint64_t retValue;
 
@@ -111,11 +111,11 @@ uint64_t uUbxUint64Decode(const char *pByte)
 }
 
 // Return a little-endian uint16_t from the given uint16_t.
-uint16_t uUbxUint16Encode(uint16_t uint16)
+uint16_t uUbxProtocolUint16Encode(uint16_t uint16)
 {
     uint16_t retValue = uint16;
 
-    if (!uUbxIsLittleEndian()) {
+    if (!uUbxProtocolIsLittleEndian()) {
         retValue  = (uint16 & 0xFF00) >> 8;
         retValue += (uint16 & 0x00FF) << 8;
     }
@@ -124,11 +124,11 @@ uint16_t uUbxUint16Encode(uint16_t uint16)
 }
 
 // Return a little-endian uint32_t from the given uint32_t.
-uint32_t uUbxUint32Encode(uint32_t uint32)
+uint32_t uUbxProtocolUint32Encode(uint32_t uint32)
 {
     uint32_t retValue = uint32;
 
-    if (!uUbxIsLittleEndian()) {
+    if (!uUbxProtocolIsLittleEndian()) {
         retValue  = (uint32 & 0xFF000000) >> 24;
         retValue += (uint32 & 0x00FF0000) >> 8;
         retValue += (uint32 & 0x0000FF00) << 8;
@@ -139,11 +139,11 @@ uint32_t uUbxUint32Encode(uint32_t uint32)
 }
 
 // Return a little-endian uint64_t from the given uint64_t.
-uint64_t uUbxUint64Encode(uint64_t uint64)
+uint64_t uUbxProtocolUint64Encode(uint64_t uint64)
 {
     uint64_t retValue = uint64;
 
-    if (!uUbxIsLittleEndian()) {
+    if (!uUbxProtocolIsLittleEndian()) {
         retValue  = (uint64 & 0xFF00000000000000) >> 56;
         retValue += (uint64 & 0x00FF000000000000) >> 40;
         retValue += (uint64 & 0x0000FF0000000000) >> 24;
@@ -157,10 +157,10 @@ uint64_t uUbxUint64Encode(uint64_t uint64)
     return  retValue;
 }
 
-// Encode a ubx format message.
-int32_t uUbxEncode(int32_t messageClass, int32_t messageId,
-                   const char *pMessage, size_t messageBodyLengthBytes,
-                   char *pBuffer)
+// Encode a ubx protocol message.
+int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
+                           const char *pMessage, size_t messageBodyLengthBytes,
+                           char *pBuffer)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     char *pWrite = pBuffer;
@@ -203,11 +203,11 @@ int32_t uUbxEncode(int32_t messageClass, int32_t messageId,
     return errorCodeOrLength;
 }
 
-// Decode a ubx format message.
-int32_t uUbxDecode(const char *pBufferIn, size_t bufferLengthBytes,
-                   int32_t *pMessageClass, int32_t *pMessageId,
-                   char *pMessage, size_t maxMessageLengthBytes,
-                   const char **ppBufferOut)
+// Decode a ubx protocol message.
+int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
+                           int32_t *pMessageClass, int32_t *pMessageId,
+                           char *pMessage, size_t maxMessageLengthBytes,
+                           const char **ppBufferOut)
 {
     int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
     int32_t overheadByteCount = 0;

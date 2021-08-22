@@ -53,7 +53,7 @@
 #include "u_port_os.h"   // Required by u_gnss_private.h
 #include "u_port_uart.h"
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -148,7 +148,7 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             // Now manually encode a request for the version string using the
             // message class and ID of the UBX-MON-VER command
             memset(pBuffer2, 0x66, U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
-            x = uUbxEncode(0x0a, 0x04, NULL, 0, command);
+            x = uUbxProtocolEncode(0x0a, 0x04, NULL, 0, command);
             U_PORT_TEST_ASSERT(x == sizeof(command));
             uPortLog("U_GNSS_UTIL_TEST: getting the version string using transparent API...\n");
             x = uGnssUtilUbxTransparentSendReceive(gnssHandle,
@@ -164,7 +164,7 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             U_PORT_TEST_ASSERT(*(pBuffer2 + 1) == 0x62);
             U_PORT_TEST_ASSERT(*(pBuffer2 + 2) == 0x0a);
             U_PORT_TEST_ASSERT(*(pBuffer2 + 3) == 0x04);
-            x = uUbxUint16Decode(pBuffer2 + 4);
+            x = uUbxProtocolUint16Decode(pBuffer2 + 4);
             U_PORT_TEST_ASSERT(x == y);
 
             // The string returned contains multiple lines separated by more than one
@@ -186,7 +186,7 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
                                       x - U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES) == 0);
 
             // Repeat but throw the body away this time
-            x = uUbxEncode(0x0a, 0x04, NULL, 0, command);
+            x = uUbxProtocolEncode(0x0a, 0x04, NULL, 0, command);
             U_PORT_TEST_ASSERT(x == sizeof(command));
             uPortLog("U_GNSS_UTIL_TEST: get version string and throw it away with"
                      " the transparent API...\n");

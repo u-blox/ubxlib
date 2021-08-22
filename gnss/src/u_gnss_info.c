@@ -45,7 +45,7 @@
 
 #include "u_time.h"
 
-#include "u_ubx.h"
+#include "u_ubx_protocol.h"
 
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
@@ -128,7 +128,7 @@ int32_t uGnssInfoGetIdStr(int32_t gnssHandle,
                                                                   sizeof(message));
             if (errorCodeOrLength >= (int32_t) sizeof(message)) {
                 // The first byte of the first uint32_t should indicate version 1
-                if ((uUbxUint32Decode(message) & 0xFF) == 1) {
+                if ((uUbxProtocolUint32Decode(message) & 0xFF) == 1) {
                     // The remaining bytes are the chip ID
                     errorCodeOrLength -= 4;
                     // Copy them in and add a terminator
@@ -183,7 +183,7 @@ int64_t uGnssInfoGetTimeUtc(int32_t gnssHandle)
                 if (message[19] & 0x04) {
                     errorCodeOrTime = 0;
                     // Year is 1999-2099, so need to adjust to get year since 1970
-                    year = (uUbxUint16Decode(message + 12) - 1999) + 29;
+                    year = (uUbxProtocolUint16Decode(message + 12) - 1999) + 29;
                     // Month (1 to 12), so take away 1 to make it zero-based
                     months = message[14] - 1;
                     months += year * 12;

@@ -165,8 +165,8 @@ SRC_FILES += \
   $(UBXLIB_PATH)/common/at_client/src/u_at_client.c \
   $(UBXLIB_PATH)/common/at_client/test/u_at_client_test.c \
   $(UBXLIB_PATH)/common/at_client/test/u_at_client_test_data.c \
-  $(UBXLIB_PATH)/common/ubx/src/u_ubx.c \
-  $(UBXLIB_PATH)/common/ubx/test/u_ubx_test.c \
+  $(UBXLIB_PATH)/common/ubx_protocol/src/u_ubx_protocol.c \
+  $(UBXLIB_PATH)/common/ubx_protocol/test/u_ubx_protocol_test.c \
   $(UBXLIB_PATH)/common/short_range/src/u_short_range.c \
   $(UBXLIB_PATH)/common/short_range/src/u_short_range_edm.c \
   $(UBXLIB_PATH)/common/short_range/src/u_short_range_edm_stream.c \
@@ -255,7 +255,7 @@ INC_FOLDERS += \
   $(UBXLIB_PATH)/common/at_client/api \
   $(UBXLIB_PATH)/common/at_client/src \
   $(UBXLIB_PATH)/common/at_client/test \
-  $(UBXLIB_PATH)/common/ubx/api \
+  $(UBXLIB_PATH)/common/ubx_protocol/api \
   $(UBXLIB_PATH)/common/error/api \
   $(UBXLIB_PATH)/common/short_range/api \
   $(UBXLIB_PATH)/common/short_range/src \

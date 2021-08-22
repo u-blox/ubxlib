@@ -160,6 +160,7 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
     pInstance = pGetFree();
     if (pInstance != NULL) {
         errorCodeOrHandle = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance->transportHandle.uart = -1;
         switch (pConfiguration->transportType) {
             case U_GNSS_TRANSPORT_UBX_UART:
             //lint -fallthrough
@@ -249,6 +250,11 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
                         uNetworkRemoveGnss(errorCodeOrHandle);
                         errorCodeOrHandle = x;
                     }
+                }
+            } else {
+                if (pInstance->transportHandle.uart >= 0) {
+                    // If we failed to add, close the UART again
+                    uPortUartClose(pInstance->transportHandle.uart);
                 }
             }
         }

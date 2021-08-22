@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef _U_UBX_H_
-#define _U_UBX_H_
+#ifndef _U_UBX_PROTOCOL_H_
+#define _U_UBX_PROTOCOL_H_
 
 /* No #includes allowed here */
 
 /** @file
- * @brief This header file defines the ubx API, intended to perform
- * u-blox ubx format message encode/decode when communicating with a
- * u-blox GNSS module.
+ * @brief This header file defines the ubx protocol API, intended to
+ * encode/decode ubx format message when communicating with a u-blox
+ * GNSS module.
  */
 
 #ifdef __cplusplus
@@ -54,16 +54,17 @@ extern "C" {
  * intend to use multi-byte values in a message body; you must convert
  * them to little-endian form if it is not since this message codec
  * has no way of knowing what content you are sending. You can do this
- * with the uUbxUint16Encode() and uUbxUint32Encode() functions
- * provided and, likewise, decode received multi-byte values from
- * a message body with the uUbxUint16Decode() and uUbxUint32Decode()
- * functions provided. Of course, you can always use this functions
- * in any case, since they automatically respect endianness, but you
- * do not need to do so if your processor is already little-endian.
+ * with the uUbxProtocolUint16Encode() and uUbxProtocolUint32Encode()
+ * functions provided and, likewise, decode received multi-byte values
+ * from a message body with the uUbxProtocolUint16Decode() and
+ * uUbxProtocolUint32Decode() functions provided. Of course, you can
+ * always use this functions in any case, since they automatically
+ * respect endianness, but you do not need to do so if your processor
+ * is already little-endian.
  *
  * @return  true if the processor is little-endian, else false.
  */
-bool uUbxIsLittleEndian();
+bool uUbxProtocolIsLittleEndian();
 
 /** Decode a uint16_t from a pointer to a little-endian uint16_t,
  * ensuring that the endianness of the decoded value is correct
@@ -72,7 +73,7 @@ bool uUbxIsLittleEndian();
  * @param pByte  a pointer to a uint16_t value to decode; cannot be NULL.
  * @return       the decoded uint16_t value, endianness respected.
  */
-uint16_t uUbxUint16Decode(const char *pByte);
+uint16_t uUbxProtocolUint16Decode(const char *pByte);
 
 /** Decode a uint32_t from a pointer to a little-endian uint32_t,
  * ensuring that the endianness of the decoded value is correct
@@ -81,7 +82,7 @@ uint16_t uUbxUint16Decode(const char *pByte);
  * @param pByte  a pointer to a uint32_t value to decode; cannot be NULL.
  * @return       the decoded uint32_t value, endianness respected.
  */
-uint32_t uUbxUint32Decode(const char *pByte);
+uint32_t uUbxProtocolUint32Decode(const char *pByte);
 
 /** Decode a uint64_t from a pointer to a little-endian uint64_t,
  * ensuring that the endianness of the decoded value is correct
@@ -90,7 +91,7 @@ uint32_t uUbxUint32Decode(const char *pByte);
  * @param pByte  a pointer to a uint64_t value to decode; cannot be NULL.
  * @return       the decoded uint64_t value, endianness respected.
  */
-uint64_t uUbxUint64Decode(const char *pByte);
+uint64_t uUbxProtocolUint64Decode(const char *pByte);
 
 /** Encode the given uint16_t value with correct endianness for the ubx
  * protocol.
@@ -98,7 +99,7 @@ uint64_t uUbxUint64Decode(const char *pByte);
  * @param uint16  the uint16_t value to encode.
  * @return        the encoded uint16_t value.
  */
-uint16_t uUbxUint16Encode(uint16_t uint16);
+uint16_t uUbxProtocolUint16Encode(uint16_t uint16);
 
 /** Encode the given uint32_t value with correct endianness for the ubx
  * protocol.
@@ -106,7 +107,7 @@ uint16_t uUbxUint16Encode(uint16_t uint16);
  * @param uint32  the uint32_t value to encode.
  * @return        the encoded uint32_t value.
  */
-uint32_t uUbxUint32Encode(uint32_t uint32);
+uint32_t uUbxProtocolUint32Encode(uint32_t uint32);
 
 /** Encode the given uint64_t value with correct endianness for the ubx
  * protocol.
@@ -114,12 +115,12 @@ uint32_t uUbxUint32Encode(uint32_t uint32);
  * @param uint64  the uint64_t value to encode.
  * @return        the encoded uint64_t value.
  */
-uint64_t uUbxUint64Encode(uint64_t uint64);
+uint64_t uUbxProtocolUint64Encode(uint64_t uint64);
 
-/** Encode a ubx format message.
+/** Encode a ubx protocol message.
  *
- * @param messageClass            the ubx message class.
- * @param messageId               the ubx message ID.
+ * @param messageClass            the ubx protocol message class.
+ * @param messageId               the ubx protocol message ID.
  * @param pMessageBody            the message body to be encoded,
  *                                may be NULL if the message has no
  *                                body.
@@ -134,11 +135,11 @@ uint64_t uUbxUint64Encode(uint64_t uint64);
  * @return                        on success the number of bytes written
  *                                to pBuffer, else negative error code.
  */
-int32_t uUbxEncode(int32_t messageClass, int32_t messageId,
-                   const char *pMessageBody, size_t messageBodyLengthBytes,
-                   char *pBuffer);
+int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
+                           const char *pMessageBody, size_t messageBodyLengthBytes,
+                           char *pBuffer);
 
-/** Decode a ubx format message.  Call this function with a buffer
+/** Decode a ubx protocol message.  Call this function with a buffer
  * and it will return the first valid ubx format message it finds
  * in the buffer. ppBufferOut will be set to the first position in
  * the buffer after any message is found, or will point one byte
@@ -152,15 +153,15 @@ int32_t uUbxEncode(int32_t messageClass, int32_t messageId,
  * int32_t messageId;
  * char messageBody[128];
  *
- * for (int32_t x = uUbxDecode(pBufferStart, bufferLength,
+ * for (int32_t x = uUbxProtocolDecode(pBufferStart, bufferLength,
+ *                                     &messageClass, &messageId,
+ *                                     messageBody, sizeof(messageBody),
+ *                                     &pBufferEnd);
+ *      x > 0;
+ *      x = uUbxProtocolDecode(pBufferStart, bufferLength,
  *                             &messageClass, &messageId,
  *                             messageBody, sizeof(messageBody),
- *                             &pBufferEnd);
- *      x > 0;
- *      x = uUbxDecode(pBufferStart, bufferLength,
- *                     &messageClass, &messageId,
- *                     messageBody, sizeof(messageBody),
- *                     &pBufferEnd)) {
+ *                             &pBufferEnd)) {
  *    printf("Message class 0x%02x, message ID 0x%02x, "
  *           " message body length %d byte(s).\n", messageClass,
  *           messageId, x);
@@ -206,15 +207,15 @@ int32_t uUbxEncode(int32_t messageClass, int32_t messageId,
  *                                   pBufferIn contains a partial message
  *                                   U_ERROR_COMMON_TIMEOUT will be returned.
  */
-int32_t uUbxDecode(const char *pBufferIn, size_t bufferLengthBytes,
-                   int32_t *pMessageClass, int32_t *pMessageId,
-                   char *pMessageBody, size_t maxMessageBodyLengthBytes,
-                   const char **ppBufferOut);
+int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
+                           int32_t *pMessageClass, int32_t *pMessageId,
+                           char *pMessageBody, size_t maxMessageBodyLengthBytes,
+                           const char **ppBufferOut);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _U_UBX_H_
+#endif // _U_UBX_PROTOCOL_H_
 
 // End of file

@@ -32,11 +32,11 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_GNSS_MAX_UBX_MESSAGE_BODY_LENGTH_BYTES
+#ifndef U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES
 /** The maximum size of ubx-format message body to be read using
  * these functions.
  */
-# define U_GNSS_MAX_UBX_MESSAGE_BODY_LENGTH_BYTES 256
+# define U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES 256
 #endif
 
 /** Determine if the given feature is supported or not

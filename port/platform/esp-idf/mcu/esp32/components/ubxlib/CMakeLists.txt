@@ -20,7 +20,7 @@ set(COMPONENT_ADD_INCLUDEDIRS
                    "../../../../../../../common/location/api"
                    "../../../../../../../common/location/src"
                    "../../../../../../../common/at_client/api"
-                   "../../../../../../../common/ubx/api"
+                   "../../../../../../../common/ubx_protocol/api"
                    "../../../../../../../common/short_range/api"
                    "../../../../../../../common/short_range/src"
                    "../../../../../../../common/utils/api"
@@ -84,8 +84,8 @@ set(COMPONENT_SRCS
                    "../../../../../../../common/location/src/u_location_shared.c"
 # The common AT client
                    "../../../../../../../common/at_client/src/u_at_client.c"
-# The common ubx layer
-                   "../../../../../../../common/ubx/src/u_ubx.c"
+# The common ubx protocol layer
+                   "../../../../../../../common/ubx_protocol/src/u_ubx_protocol.c"
 # The common short range layer
                    "../../../../../../../common/short_range/src/u_short_range.c"
                    "../../../../../../../common/short_range/src/u_short_range_edm.c"
