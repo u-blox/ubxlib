@@ -176,6 +176,8 @@ uMqttClientContext_t *pUMqttClientOpen(int32_t networkHandle,
             pContext->networkHandle = networkHandle;
             pContext->mutexHandle = NULL;
             pContext->pSecurityContext = NULL;
+            pContext->totalMessagesSent = 0;
+            pContext->totalMessagesReceived = 0;
             if (uPortMutexCreate((uPortMutexHandle_t *) & (pContext->mutexHandle)) == 0) {
                 gLastOpenError = U_ERROR_COMMON_SUCCESS;
                 if (pSecurityTlsSettings != NULL) {
@@ -307,7 +309,7 @@ bool uMqttClientIsConnected(const uMqttClientContext_t *pContext)
 }
 
 // Publish an MQTT message.
-int32_t uMqttClientPublish(const uMqttClientContext_t *pContext,
+int32_t uMqttClientPublish(uMqttClientContext_t *pContext,
                            const char *pTopicNameStr,
                            const char *pMessage,
                            size_t messageSizeBytes,
@@ -326,6 +328,9 @@ int32_t uMqttClientPublish(const uMqttClientContext_t *pContext,
                                          pTopicNameStr,
                                          pMessage, messageSizeBytes,
                                          (uCellMqttQos_t) qos, retain);
+            if (errorCode == 0) {
+                pContext->totalMessagesSent++;
+            }
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -425,7 +430,7 @@ int32_t uMqttClientGetUnread(const uMqttClientContext_t *pContext)
 }
 
 // Read an MQTT message.
-int32_t uMqttClientMessageRead(const uMqttClientContext_t *pContext,
+int32_t uMqttClientMessageRead(uMqttClientContext_t *pContext,
                                char *pTopicNameStr,
                                size_t topicNameSizeBytes,
                                char *pMessage,
@@ -448,6 +453,9 @@ int32_t uMqttClientMessageRead(const uMqttClientContext_t *pContext,
                                              pMessage,
                                              pMessageSizeBytes,
                                              (uCellMqttQos_t *) pQos);
+            if (errorCode == 0) {
+                pContext->totalMessagesReceived++;
+            }
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -474,6 +482,28 @@ int32_t uMqttClientGetLastErrorCode(const uMqttClientContext_t *pContext)
     }
 
     return errorCode;
+}
+
+int32_t uMqttClientGetTotalMessagesSent(const uMqttClientContext_t *pContext)
+{
+    int32_t errorCodeOrSentMessages = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (pContext != NULL) {
+        errorCodeOrSentMessages = pContext->totalMessagesSent;
+    }
+
+    return errorCodeOrSentMessages;
+}
+
+int32_t uMqttClientGetTotalMessagesReceived(const uMqttClientContext_t *pContext)
+{
+    int32_t errorCodeOrReceivedMessages = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (pContext != NULL) {
+        errorCodeOrReceivedMessages = pContext->totalMessagesReceived;
+    }
+
+    return errorCodeOrReceivedMessages;
 }
 
 // End of file
