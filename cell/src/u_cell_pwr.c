@@ -393,7 +393,8 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                 // pin for safety sake
                 if (((pInstance->pinVInt >= 0) &&
                      (uPortGpioGet(pInstance->pinVInt) == U_CELL_VINT_PIN_ON_STATE)) ||
-                    (moduleIsAlive(pInstance, 1) == 0)) {
+                    ((pInstance->pinVInt < 0) &&
+                     (moduleIsAlive(pInstance, 1) == 0))) {
                     uPortLog("U_CELL_PWR: powering on, module is already on.\n");
                     // Configure the module.  Since it was already
                     // powered on we might have been called from
