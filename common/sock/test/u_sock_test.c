@@ -1072,7 +1072,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
                 // Show how many bytes are sent during the UDP test
                 U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) > 0);
                 uPortLog("U_SOCK_TEST: Total bytes sent during the test are: %d\n",
-                                                uSockGetTotalBytesSent(descriptor));
+                         uSockGetTotalBytesSent(descriptor));
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
                 uSockCleanUp();
