@@ -111,8 +111,13 @@
 
 #ifndef U_CFG_HW_UART6_AVAILABLE
 /** Whether USART6 is available to the UART driver or not.
+ * This is set to 1 because the GNSS chip on a C030 board
+ * is connected to pins PC_6/PC_7 (see
+ * u_cfg_test_platform_specific.h), which are USART6.  If
+ * you are not going to use this arrangement the value
+ * may be set to 0.
  */
-# define U_CFG_HW_UART6_AVAILABLE  0
+# define U_CFG_HW_UART6_AVAILABLE  1
 #endif
 
 #ifndef U_CFG_HW_UART7_AVAILABLE
@@ -130,7 +135,7 @@
 /** For the UART driver to operate it needs a DMA
  * channel (0 to 7) on a DMA stream (0 to 7) on a
  * DMA engine (1 or 2) for each UART that it is
- * requested to use through the cellular port UART API.
+ * requested to use through the port UART API.
  *
  * The choice of DMA engine/stream/channel for
  * a given peripheral is fixed in the STM32F4 chip,

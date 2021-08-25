@@ -12,10 +12,11 @@ The cellular APIs are split into the following groups:
 - `sec_tls`: TLS security features.
 - `sock`: sockets, for exchanging data (but see the `common/sock` component for the best way to do this).
 - `mqtt`: MQTT client (but see the `common/mqtt_client` component for the best way to do this).
+- `loc`: getting a location fix using the Cell Locate service (but see the `common/location` component for the best way to do this); you will need an authentication token from the [Location Services section](https://portal.thingstream.io/app/location-services) of your [Thingstream portal](https://portal.thingstream.io/app/dashboard). If you have a GNSS chip attached via a cellular module and want to control it directly from your MCU, see the `gnss` API.
 
 The module types supported by this implementation are listed in `api/u_cell_module_type.h`.
 
-HOWEVER, this is the detailed API; if all you would like to do is bring up a bearer as simply as possible and then get on with exchanging data, please consider using the `common/network` API, along with the `common/sock`, `common/mqtt_client` and `common/security` APIs.  You may still dip down into this API from the network level as the handles used at the network level are the ones generated here.
+HOWEVER, this is the detailed API; if all you would like to do is bring up a bearer as simply as possible and then get on with exchanging data or establishing location, please consider using the `common/network` API, along with the `common/sock` API, the `common/security` API and the `common/location` API.  You may still dip down into this API from the network level as the handles used at the network level are the ones generated here.
 
 This API relies upon the `at_client` common component to send commands to and parse responses received from a cellular module.
 

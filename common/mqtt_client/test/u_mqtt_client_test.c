@@ -149,6 +149,10 @@ static bool keepGoingCallback()
 // Do this before every test to ensure there is a usable network.
 static void stdPreamble()
 {
+#if (U_CFG_APP_GNSS_UART < 0)
+    int32_t networkHandle = -1;
+#endif
+
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uNetworkInit() == 0);
 
@@ -159,9 +163,23 @@ static void stdPreamble()
             if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
                 uPortLog("U_MQTT_CLIENT_TEST: adding %s network...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+#if (U_CFG_APP_GNSS_UART < 0)
+                // If there is no GNSS UART then any GNSS chip must
+                // be connected via the cellular module's AT interface
+                // hence we capture the cellular network handle here and
+                // modify the GNSS configuration to use it before we add
+                // the GNSS network
+                uNetworkTestGnssAtConfiguration(networkHandle,
+                                                gUNetworkTestCfg[x].pConfiguration);
+#endif
                 gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
                                                          gUNetworkTestCfg[x].pConfiguration);
                 U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+#if (U_CFG_APP_GNSS_UART < 0)
+                if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
+                    networkHandle = gUNetworkTestCfg[x].handle;
+                }
+#endif
             }
         }
     }
@@ -509,10 +527,10 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientCleanUp")
         gpMqttContextA = NULL;
     }
 
-    // The network test configuration is shared
-    // between the network and sockets tests so
-    // must reset the handles here in case the
-    // sockets API tests are coming next.
+    // The network test configuration is shared between
+    // the network, sockets, security and location tests
+    // so must reset the handles here in case the
+    // tests of one of the other APIs are coming next.
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
     }

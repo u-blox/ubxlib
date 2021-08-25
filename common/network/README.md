@@ -1,12 +1,12 @@
 # Introduction
-These directories provide a very simple network API.  Its purpose is to allow an application which purely performs data-plane operations, e.g. using the `sock` API, to bring up a network connection and tear it down again without knowing in detail about the processes required to do so.  The connection may be over cellular, Wifi or BLE, though note that BLE does not currently support sockets.
+These directories provide a very simple network API.  Its purpose is to allow an application which purely performs data-plane operations, e.g. using the `sock` API or using the `location` API for positioning, to bring up a network connection and tear it down again without knowing in detail about the processes required to do so.  The connection may be over cellular, Wifi, BLE or GNSS (which is obviously downlink only).
 
-For any other operations the same handle as returned by the network API may be used to call the underlying network layer so that the `cell`, `wifi` or `ble` APIs can also be called in the normal way.
+For any other operations the same handle as returned by the network API may be used to call the underlying network layer so that the `cell`, `wifi`, `ble` or `gnss` APIs can also be called in the normal way.
 
-This is not a "manager", it is not smart, it solely exists to allow data-plane-oriented applications to obtain a connection without caring about the details of the connection other than making a choice between cellular, Wifi etc.  Note that the configuration structure provided to this API by the underlying APIs may be limited to keep things simple, e.g. it may not be possible to chose the interface speed or to provide static data buffers etc.
+This is not a "manager", it is not smart, it solely exists to allow applications to obtain a connection without caring about the details of the connection other than making a choice between cellular, Wifi etc.  Note that the configuration structure provided to this API by the underlying APIs may be limited to keep things simple, e.g. it may not be possible to chose the interface speed or to provide static data buffers etc.
 
 # Usage
-The directories include the API and the C source files necessary to call into the underlying `cell`, `wifi` and `ble` APIs.  The `test` directory contains a small number of generic tests for the `network` API; for comprehensive tests of networking please refer to the test directory of the underlying APIs.
+The directories include the API and the C source files necessary to call into the underlying `cell`, `wifi`, `ble` and `gnss` APIs.  The `test` directory contains a small number of generic tests for the `network` API; for comprehensive tests of networking please refer to the test directory of the underlying APIs.
 
 A simple usage example, sending data over a TCP socket, is shown below.  Note that, before calling `app_start()` the platform must be initialised (clocks started, heap available, RTOS running), in other words `app_task()` can be thought of as a task entry point.  If you open the `u_main.c` file in the `app` directory of your platform you will see how we do this, with `main()` calling a porting API `uPortPlatformStart()` to sort that all out; you could paste the example code into `app_start()` there (and add the inclusions) as a quick and dirty test (`runner` will build it).
 

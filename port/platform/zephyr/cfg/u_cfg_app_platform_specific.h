@@ -134,6 +134,77 @@
 # define U_CFG_APP_PIN_CELL_RTS               -1
 #endif
 
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A GNSS MODULE ON ZEPHYR/NRF5x: MISC
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_APP_GNSS_UART
+/** The UARTE HW block to use inside the NRF5x chip when
+ * to communicate with a GNSS module.
+ */
+# define U_CFG_APP_GNSS_UART                  -1
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR ZEPHYR/NRF5x: PINS FOR GNSS
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_APP_PIN_GNSS_ENABLE_POWER
+/** The NRF5x GPIO output that that enables power to the GNSS
+ * module, use -1 if there is no such control.
+ */
+# define U_CFG_APP_PIN_GNSS_ENABLE_POWER       -1
+#endif
+
+/* IMPORTANT: the UART pins given here are required for compilation
+ * but make NO DIFFERENCE WHATSOEVER to how the world works.  On this
+ * platform the Zephyr device tree dictates what pins are used
+ * by the UART.
+ */
+
+#ifndef U_CFG_APP_PIN_GNSS_TXD
+# define U_CFG_APP_PIN_GNSS_TXD               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_RXD
+# define U_CFG_APP_PIN_GNSS_RXD               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_CTS
+/* u-blox GNSS modules do not use UART HW flow control. */
+# define U_CFG_APP_PIN_GNSS_CTS               -1
+#endif
+
+#ifndef U_CFG_APP_PIN_GNSS_RTS
+/* u-blox GNSS modules do not use UART HW flow control. */
+# define U_CFG_APP_PIN_GNSS_RTS               -1
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR A GNSS MODULE ON  ZEPHYR/NRF5x: CELLULAR MODULE PINS
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_APP_CELL_PIN_GNSS_POWER
+/** Only relevant when a GNSS chip is connected via a cellular module:
+ * this is the the cellular module pin (i.e. not the pin of this MCU,
+ * the pin of the cellular module which this MCU is using) which controls
+ * power to GNSS. This is the cellular module pin number NOT the cellular
+ * module GPIO number.  Use -1 if there is no such connection.
+ */
+# define U_CFG_APP_CELL_PIN_GNSS_POWER  -1
+#endif
+
+#ifndef U_CFG_APP_CELL_PIN_GNSS_DATA_READY
+/** Only relevant when a GNSS chip is connected via a cellular module:
+ * this is the the cellular module pin (i.e. not the pin of this MCU,
+ * the pin of the cellular module which this MCU is using) which is
+ * connected to the Data Ready signal from the GNSS chip. This is the
+ * cellular module pin number NOT the cellular module GPIO number.
+ * Use -1 if there is no such connection.
+ */
+# define U_CFG_APP_CELL_PIN_GNSS_DATA_READY  -1
+#endif
+
 #endif // _U_CFG_APP_PLATFORM_SPECIFIC_H_
 
 // End of file

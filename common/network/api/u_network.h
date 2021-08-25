@@ -70,6 +70,7 @@ typedef enum {
     U_NETWORK_TYPE_BLE,
     U_NETWORK_TYPE_CELL,
     U_NETWORK_TYPE_WIFI,
+    U_NETWORK_TYPE_GNSS,
     U_NETWORK_TYPE_MAX_NUM
 } uNetworkType_t;
 

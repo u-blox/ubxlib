@@ -473,4 +473,25 @@ void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance)
     }
 }
 
+void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance)
+{
+    uCellPrivateLocContext_t *pContext;
+
+    if (pInstance != NULL) {
+        // Free all Wifi APs
+        pContext = pInstance->pLocContext;
+        if (pContext != NULL) {
+            uAtClientRemoveUrcHandler(pInstance->atHandle, "+UULOC:");
+            uAtClientRemoveUrcHandler(pInstance->atHandle, "+UULOCIND:");
+            U_PORT_MUTEX_LOCK(pContext->fixDataStorageMutex);
+            U_PORT_MUTEX_UNLOCK(pContext->fixDataStorageMutex);
+            uPortMutexDelete(pContext->fixDataStorageMutex);
+            pContext->fixDataStorageMutex = NULL;
+        }
+        // Free the context
+        free(pContext);
+        pInstance->pLocContext = NULL;
+    }
+}
+
 // End of file

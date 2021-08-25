@@ -167,6 +167,12 @@ def main(database, instance, filter_string, clean,
     if short_range_module_name:
         defines.append("U_CFG_TEST_SHORT_RANGE_MODULE_TYPE=" + short_range_module_name)
 
+    # If there is a GNSS module on this instance, add its
+    # name to the defines list
+    gnss_module_name = u_data.get_gnss_module_for_instance(database, instance)
+    if gnss_module_name:
+        defines.append("U_CFG_TEST_GNSS_MODULE_TYPE=" + gnss_module_name)
+
     # Also, when running testing it is best to run the
     # the "port" tests first as, if there's a problem with the
     # port, you want to notice it first.

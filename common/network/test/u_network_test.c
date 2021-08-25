@@ -66,9 +66,11 @@
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
 
-#include "u_sock.h"           // In order to prove that we can do
-#include "u_sock_test_shared_cfg.h"  // something with an "up" network
+#include "u_sock.h"                  // In order to prove that we can do something
+#include "u_sock_test_shared_cfg.h"  // with an "up" network that can support sockets
 
+#include "u_location.h"                  // In order to prove that we can do something
+#include "u_location_test_shared_cfg.h"  // with an "up" network that supports location
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -142,6 +144,15 @@ static volatile int32_t gBytesSent;
 static volatile int32_t gChannel;
 static volatile size_t gBleHandle;
 #endif
+
+/** Used for keepGoingCallback() timeout.
+ */
+static int64_t gStopTimeMs;
+
+/** Keep track of the current network handle so that the
+ * keepGoingCallback() can check it.
+ */
+static int32_t gNetworkHandle = -1;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -295,6 +306,19 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
 }
 #endif // #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
 
+// Callback function for location establishment process.
+static bool keepGoingCallback(int32_t networkHandle)
+{
+    bool keepGoing = true;
+
+    U_PORT_TEST_ASSERT(networkHandle == gNetworkHandle);
+    if (uPortGetTickTimeMs() > gStopTimeMs) {
+        keepGoing = false;
+    }
+
+    return keepGoing;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
  * -------------------------------------------------------------- */
@@ -308,7 +332,7 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
 U_PORT_TEST_FUNCTION("[network]", "networkSock")
 {
     uNetworkTestCfg_t *pNetworkCfg = NULL;
-    int32_t networkHandle;
+    int32_t networkHandle = -1;
     uSockDescriptor_t descriptor;
     uSockAddress_t address;
     char buffer[32];
@@ -328,13 +352,25 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     // Add the networks that support sockets
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
-        if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+        if ((*((uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
             U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             uPortLog("U_NETWORK_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+#if (U_CFG_APP_GNSS_UART < 0)
+            // If there is no GNSS UART then any GNSS chip must
+            // be connected via the cellular module's AT interface
+            // hence we capture the cellular network handle here and
+            // modify the GNSS configuration to use it before we add
+            // the GNSS network
+            uNetworkTestGnssAtConfiguration(networkHandle,
+                                            gUNetworkTestCfg[x].pConfiguration);
+#endif
             gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
                                                      gUNetworkTestCfg[x].pConfiguration);
             U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+            if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
+                networkHandle = gUNetworkTestCfg[x].handle;
+            }
         }
     }
 
@@ -424,8 +460,10 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
             }
         }
 
-        // Remove each network type
-        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+        // Remove each network type, in reverse order so
+        // that GNSS (which might be connected via a cellular
+        // module) is taken down before cellular
+        for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
             if (gUNetworkTestCfg[x].handle >= 0) {
                 uPortLog("U_NETWORK_TEST: taking down %s...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -463,20 +501,12 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
 }
 
 #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
-/** Test BLE.
- *
- * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the
- * naming rules that must be followed when using the
- * U_PORT_TEST_FUNCTION() macro.
+/** Test BLE network.
  */
 U_PORT_TEST_FUNCTION("[network]", "networkBle")
 {
     uNetworkTestCfg_t *pNetworkCfg = NULL;
     int32_t networkHandle;
-    uSockDescriptor_t descriptor;
-    uSockAddress_t address;
-    char buffer[32];
-    int32_t y;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t timeoutCount;
@@ -494,7 +524,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
     // Add a BLE network
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
-        if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+        if ((*((uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
             (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_BLE)) {
             uPortLog("U_NETWORK_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -635,6 +665,145 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
 }
 #endif // #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
 
+/** Test networks that support location.
+ */
+U_PORT_TEST_FUNCTION("[network]", "networkLoc")
+{
+    uNetworkTestCfg_t *pNetworkCfg = NULL;
+    int32_t networkHandle = -1;
+    const uLocationTestCfg_t *pLocationCfg;
+    int32_t y;
+    uLocation_t location;
+    int64_t startTime;
+    int32_t heapUsed;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+
+    // Add the networks that support location
+    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+        gUNetworkTestCfg[x].handle = -1;
+        if ((*((uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+            U_NETWORK_TEST_TYPE_HAS_LOCATION(gUNetworkTestCfg[x].type)) {
+            uPortLog("U_NETWORK_TEST: adding %s network...\n",
+                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+#if (U_CFG_APP_GNSS_UART < 0)
+            // If there is no GNSS UART then any GNSS chip must
+            // be connected via the cellular module's AT interface
+            // hence we capture the cellular network handle here and
+            // modify the GNSS configuration to use it before we add
+            // the GNSS network
+            uNetworkTestGnssAtConfiguration(networkHandle,
+                                            gUNetworkTestCfg[x].pConfiguration);
+#endif
+            gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
+                                                     gUNetworkTestCfg[x].pConfiguration);
+            U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+            if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
+                networkHandle = gUNetworkTestCfg[x].handle;
+            }
+        }
+    }
+
+    // Do this twice to prove that we can go from down
+    // back to up again
+    for (size_t a = 0; a < 2; a++) {
+        // Bring up each network type
+        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+            if (gUNetworkTestCfg[x].handle >= 0) {
+                pNetworkCfg = &(gUNetworkTestCfg[x]);
+                networkHandle = pNetworkCfg->handle;
+
+                uPortLog("U_NETWORK_TEST: bringing up %s...\n",
+                         gpUNetworkTestTypeName[pNetworkCfg->type]);
+                U_PORT_TEST_ASSERT(uNetworkUp(networkHandle) == 0);
+                if (gpULocationTestCfg[gUNetworkTestCfg[x].type]->numEntries > 0) {
+                    // Just take the first one, we don't care which as this
+                    // is a network test not a location test
+                    pLocationCfg = (gpULocationTestCfg[gUNetworkTestCfg[x].type])->pCfgData;
+                    startTime = uPortGetTickTimeMs();
+                    gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
+                    uLocationTestResetLocation(&location);
+                    uPortLog("U_NETWORK_TEST: getting location using %s.\n",
+                             gpULocationTestTypeStr[pLocationCfg->locationType]);
+                    gNetworkHandle = networkHandle;
+                    y = uLocationGet(networkHandle, pLocationCfg->locationType,
+                                     pLocationCfg->pLocationAssist,
+                                     pLocationCfg->pAuthenticationTokenStr,
+                                     &location, keepGoingCallback);
+                    if (y == 0) {
+                        uPortLog("U_NETWORK_TEST: location establishment took %d second(s).\n",
+                                 (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                    }
+                    // If we are running on a local cellular network we won't get position but
+                    // we should always get time
+                    if ((location.radiusMillimetres > 0) &&
+                        (location.radiusMillimetres <= U_LOCATION_TEST_MAX_RADIUS_MILLIMETRES)) {
+                        uLocationTestPrintLocation(&location);
+                        U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
+                        U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
+                        // Don't check altitude as we might only have a 2D fix
+                        U_PORT_TEST_ASSERT(location.radiusMillimetres > INT_MIN);
+                        if (pLocationCfg->locationType == U_LOCATION_TYPE_GNSS) {
+                            // Only get these for GNSS
+                            U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond > INT_MIN);
+                            U_PORT_TEST_ASSERT(location.svs > 0);
+                        }
+                    } else {
+                        uPortLog("U_NETWORK_TEST: only able to get time (%d).\n",
+                                 (int32_t) location.timeUtc);
+                    }
+                    U_PORT_TEST_ASSERT(location.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
+                } else {
+                    uPortLog("U_NETWORK_TEST: not testing %s for location as we have"
+                             " no location configuration information for it.\n",
+                             gpUNetworkTestTypeName[pNetworkCfg->type]);
+                }
+            }
+        }
+
+        // Remove each network type, in reverse order so
+        // that GNSS (which might be connected via a cellular
+        // module) is taken down before cellular
+        for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
+            if (gUNetworkTestCfg[x].handle >= 0) {
+                uPortLog("U_NETWORK_TEST: taking down %s...\n",
+                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+                U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].handle) == 0);
+            }
+        }
+    }
+
+    uNetworkDeinit();
+    uPortDeinit();
+
+#ifndef __XTENSA__
+    // Check for memory leaks
+    // TODO: this if'defed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost, heapUsed - gSystemHeapLost);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= (int32_t) gSystemHeapLost));
+#else
+    (void) gSystemHeapLost;
+    (void) heapUsed;
+#endif
+}
+
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
@@ -643,10 +812,10 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
 {
     int32_t y;
 
-    // The network test configuration is shared
-    // between the network and sockets tests so
-    // must reset the handles here in case the
-    // sockets API tests are coming next.
+    // The network test configuration is shared between
+    // the network, sockets, security and location tests
+    // so must reset the handles here in case the
+    // tests of one of the other APIs are coming next.
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
     }

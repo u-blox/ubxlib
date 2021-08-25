@@ -21,7 +21,7 @@ import u_settings
 # platform          is the name of the platform, e.g. ESP-IDF or STM32Cube,
 # toolchain         is the name of a toolchain for that platform, e.g. SES or GCC for nRF5,
 # module(s)         are the modules connected to the MCU on that platform,
-#                   e.g. SARA-R412M-03B, NINA-B3, ZOE-M8; where there is more
+#                   e.g. SARA-R412M-03B, NINA-B3, M8; where there is more
 #                   than one spaces should be used as separators,
 # APIs supported    are the APIs that should run on that platform separated by
 #                   spaces, e.g. port net mqtt
@@ -33,6 +33,12 @@ import u_settings
 # Prefix to put at the start of all prints
 PROMPT = "u_data: "
 
+# The prefix(es) that identify a cellular module
+CELLULAR_MODULE_STARTS_WITH = ["SARA"]
+
+# The prefix(es) that identify a short-range module
+SHORT_RANGE_MODULE_STARTS_WITH = ["NINA", "ANNA", "ODIN"]
+
 # The file that contains the instance data as a table
 # in Markdown format
 DATA_FILE = u_settings.DATA_FILE #DATABASE.md
@@ -42,6 +48,9 @@ CELLULAR_MODULE_TYPE_PREFIX = u_settings.CELLULAR_MODULE_TYPE_PREFIX
 
 # The prefix to add to a short range module
 SHORT_RANGE_MODULE_TYPE_PREFIX = u_settings.SHORT_RANGE_MODULE_TYPE_PREFIX
+
+# The prefix to add to a GNSS module
+GNSS_MODULE_TYPE_PREFIX = u_settings.GNSS_MODULE_TYPE_PREFIX
 
 def get(filename):
     '''Read the instance database from a table in a .md file'''
@@ -265,11 +274,12 @@ def get_cellular_module_for_instance(database, instance):
         if instance == row["instance"]:
             if row["modules"]:
                 for module in row["modules"]:
-                    # SARA is assumed to be a cellular module
-                    if module.startswith("SARA"):
-                        module_name = CELLULAR_MODULE_TYPE_PREFIX + module
+                    for starts_with in CELLULAR_MODULE_STARTS_WITH:
+                        if module.startswith(starts_with):
+                            module_name = CELLULAR_MODULE_TYPE_PREFIX + module
+                            break
+                    if module_name:
                         break
-
     return module_name
 
 def get_short_range_module_for_instance(database, instance):
@@ -280,12 +290,35 @@ def get_short_range_module_for_instance(database, instance):
         if instance == row["instance"]:
             if row["modules"]:
                 for module in row["modules"]:
-                    # NINA, ANNA and ODIN are assumed to be short-range modules
-                    if module.startswith("NINA") or module.startswith("ANNA") or \
-                       module.startswith("ODIN"):
-                        module_name = SHORT_RANGE_MODULE_TYPE_PREFIX + module
+                    for starts_with in SHORT_RANGE_MODULE_STARTS_WITH:
+                        if module.startswith(starts_with):
+                            module_name = SHORT_RANGE_MODULE_TYPE_PREFIX + module
+                            break
+                    if module_name:
                         break
+    return module_name
 
+def get_gnss_module_for_instance(database, instance):
+    '''Return the GNSS module that is used in the given instance'''
+    module_name = None
+
+    for row in database:
+        if instance == row["instance"]:
+            if row["modules"]:
+                for module in row["modules"]:
+                    could_be_gnss = True
+                    for starts_with in CELLULAR_MODULE_STARTS_WITH:
+                        if module.startswith(starts_with):
+                            could_be_gnss = False
+                            break
+                    if could_be_gnss:
+                        for starts_with in SHORT_RANGE_MODULE_STARTS_WITH:
+                            if module.startswith(starts_with):
+                                could_be_gnss = False
+                                break
+                    if could_be_gnss:
+                        module_name = GNSS_MODULE_TYPE_PREFIX + module
+                        break
     return module_name
 
 def get_defines_for_instance(database, instance):

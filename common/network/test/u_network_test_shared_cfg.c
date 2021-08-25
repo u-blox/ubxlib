@@ -51,10 +51,16 @@
 #include "u_short_range_module_type.h"
 #endif
 
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+#include "u_gnss_module_type.h"
+#include "u_gnss_type.h"
+#endif
+
 #include "u_network.h"
 #include "u_network_config_ble.h"
 #include "u_network_config_cell.h"
 #include "u_network_config_wifi.h"
+#include "u_network_config_gnss.h"
 
 #include "u_network_test_shared_cfg.h"
 
@@ -73,10 +79,10 @@
 /** The network configuration for BLE.
  */
 #if defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)
-static const uNetworkConfigurationBle_t gConfigurationBle = {
+static uNetworkConfigurationBle_t gConfigurationBle = {
     U_NETWORK_TYPE_BLE,
 #ifdef U_CFG_BLE_MODULE_INTERNAL
-    (int32_t)U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
+    (int32_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
 #else
     U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
 #endif
@@ -89,13 +95,13 @@ static const uNetworkConfigurationBle_t gConfigurationBle = {
     true // Enable sps server
 };
 #else
-static const uNetworkConfigurationBle_t gConfigurationBle = {U_NETWORK_TYPE_NONE};
+static uNetworkConfigurationBle_t gConfigurationBle = {U_NETWORK_TYPE_NONE};
 #endif
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 /** The network configuration for cellular.
  */
-static const uNetworkConfigurationCell_t gConfigurationCell = {
+static uNetworkConfigurationCell_t gConfigurationCell = {
     U_NETWORK_TYPE_CELL,
     U_CFG_TEST_CELL_MODULE_TYPE,
     U_CELL_TEST_CFG_SIM_PIN,
@@ -115,31 +121,53 @@ static const uNetworkConfigurationCell_t gConfigurationCell = {
     U_CFG_APP_PIN_CELL_VINT
 };
 #else
-static const uNetworkConfigurationCell_t gConfigurationCell = {U_NETWORK_TYPE_NONE};
+static uNetworkConfigurationCell_t gConfigurationCell = {U_NETWORK_TYPE_NONE};
 #endif
 
 /** The network configuration for Wifi.
  */
-static const uNetworkConfigurationWifi_t gConfigurationWifi = {
+static uNetworkConfigurationWifi_t gConfigurationWifi = {
     U_NETWORK_TYPE_NONE /* TODO: replace this with Wifi config info. */
 };
 
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+/** The network configuration for GNSS.
+ */
+static uNetworkConfigurationGnss_t gConfigurationGnss = {
+    U_NETWORK_TYPE_GNSS,
+    U_CFG_TEST_GNSS_MODULE_TYPE,
+    U_CFG_APP_PIN_GNSS_ENABLE_POWER,
+    U_GNSS_TRANSPORT_NMEA_UART,
+    U_CFG_APP_GNSS_UART,
+    U_CFG_APP_PIN_GNSS_TXD,
+    U_CFG_APP_PIN_GNSS_RXD,
+    U_CFG_APP_PIN_GNSS_CTS,
+    U_CFG_APP_PIN_GNSS_RTS,
+    0,
+    U_CFG_APP_CELL_PIN_GNSS_POWER,
+    U_CFG_APP_CELL_PIN_GNSS_DATA_READY
+};
+#else
+static uNetworkConfigurationGnss_t gConfigurationGnss = {U_NETWORK_TYPE_NONE};
+#endif
+
 /** All of the information for the underlying network
- * types as an array.
+ * types as an array.  Order is important: CELL must come before
+ * GNSS so that the cellular handle can be passed on to GNSS.
  */
 uNetworkTestCfg_t gUNetworkTestCfg[] = {
-    {-1, U_NETWORK_TYPE_BLE, (const void *) &gConfigurationBle},
-    {-1, U_NETWORK_TYPE_CELL, (const void *) &gConfigurationCell},
-    {-1, U_NETWORK_TYPE_WIFI, (const void *) &gConfigurationWifi}
+    {-1, U_NETWORK_TYPE_BLE, (void *) &gConfigurationBle},
+    {-1, U_NETWORK_TYPE_CELL, (void *) &gConfigurationCell},
+    {-1, U_NETWORK_TYPE_WIFI, (void *) &gConfigurationWifi},
+    {-1, U_NETWORK_TYPE_GNSS, (void *) &gConfigurationGnss}
 };
 
 /** Number of items in the gNetwork array, has to be
  * done in this file and externed or GCC complains about asking
  * for the size of a partially defined type.
  */
-const size_t gUNetworkTestCfgSize = sizeof(gUNetworkTestCfg) /
+const size_t gUNetworkTestCfgSize = sizeof (gUNetworkTestCfg) /
                                     sizeof (gUNetworkTestCfg[0]);
-
 
 #if U_CFG_ENABLE_LOGGING
 /** Return a name for a network type.
@@ -150,8 +178,33 @@ const size_t gUNetworkTestCfgSize = sizeof(gUNetworkTestCfg) /
 const char *gpUNetworkTestTypeName[] = {"none",     // U_NETWORK_TYPE_NONE
                                         "BLE",      // U_NETWORK_TYPE_BLE
                                         "cellular", // U_NETWORK_TYPE_CELL
-                                        "Wifi"      // U_NETWORK_TYPE_WIFI
+                                        "Wifi",     // U_NETWORK_TYPE_WIFI
+                                        "GNSS"      // U_NETWORK_TYPE_GNSS
                                        };
 #endif
+
+/* ----------------------------------------------------------------
+ * STATIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
+// Update a GNSS network configuration for use with the AT interface.
+void uNetworkTestGnssAtConfiguration(int32_t networkHandleAt,
+                                     void *pGnssConfiguration)
+{
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+    if ((networkHandleAt >= 0) &&
+        (*((uNetworkType_t *) (pGnssConfiguration)) == U_NETWORK_TYPE_GNSS)) {
+        ((uNetworkConfigurationGnss_t *) pGnssConfiguration)->transportType = U_GNSS_TRANSPORT_UBX_AT;
+        ((uNetworkConfigurationGnss_t *) pGnssConfiguration)->networkHandleAt = networkHandleAt;
+    }
+#else
+    (void) networkHandleAt;
+    (void) pGnssConfiguration;
+#endif
+}
 
 // End of file

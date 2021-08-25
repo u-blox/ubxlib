@@ -223,6 +223,20 @@ typedef struct uCellPrivateNet_t {
     struct uCellPrivateNet_t *pNext;
 } uCellPrivateNet_t;
 
+/** Context for the cell loc API.
+ */
+typedef struct {
+    int32_t desiredAccuracyMillimetres;  /**< the accuracy we'd like. */
+    int32_t desiredFixTimeoutSeconds;    /**< the timeout on a fix we'd like. */
+    bool gnssEnable;                     /**< whether a GNSS chip attached
+                                              to the cellular module should
+                                              be used in the fix or not. */
+    uPortMutexHandle_t
+    fixDataStorageMutex;  /**< mutex to protect manipulation of the fix data storage. */
+    void *pFixDataStorage;                   /**< pointer to data storage used when establishing a fix. */
+    int32_t fixStatus;                       /**< status of a location fix. */
+} uCellPrivateLocContext_t;
+
 /** Definition of a cellular instance.
  */
 typedef struct uCellPrivateInstance_t {
@@ -260,6 +274,7 @@ typedef struct uCellPrivateInstance_t {
     void *pSecurityC2cContext;  /**< Hook for a chip to chip security context. */
     volatile void *pMqttContext; /**< Hook for MQTT context, volatile as it
                                       can be populared by a URC in a different thread. */
+    uCellPrivateLocContext_t *pLocContext; /**< Hook for a location context. **/
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 
@@ -416,6 +431,12 @@ const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle);
  * @param pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance);
+
+/** Remove the location context for the given instance.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ */
+void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance);
 
 #ifdef __cplusplus
 }

@@ -226,7 +226,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
 {
     int32_t errorCode;
     uNetworkTestCfg_t *pNetworkCfg = NULL;
-    int32_t networkHandle;
+    int32_t networkHandle = -1;
     uSockDescriptor_t descriptor = -1;
     uSockAddress_t remoteAddress;
     char *pDataReceived;
@@ -252,12 +252,25 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     // Add each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
-        if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
+        if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+            (U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type))) {
             uPortLog("U_SECURITY_TLS_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+#if (U_CFG_APP_GNSS_UART < 0)
+            // If there is no GNSS UART then any GNSS chip must
+            // be connected via the cellular module's AT interface
+            // hence we capture the cellular network handle here and
+            // modify the GNSS configuration to use it before we add
+            // the GNSS network
+            uNetworkTestGnssAtConfiguration(networkHandle,
+                                            gUNetworkTestCfg[x].pConfiguration);
+#endif
             gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
                                                      gUNetworkTestCfg[x].pConfiguration);
             U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+            if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
+                networkHandle = gUNetworkTestCfg[x].handle;
+            }
         }
     }
 
@@ -270,8 +283,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     // Bring up each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         pNetworkCfg = &(gUNetworkTestCfg[x]);
-        if ((pNetworkCfg->handle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(pNetworkCfg->type)) {
+        if (pNetworkCfg->handle >= 0) {
             networkHandle = pNetworkCfg->handle;
 
             uPortLog("U_SECURITY_TLS_TEST: bringing up %s...\n",
@@ -445,8 +457,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         }
     }
 
-    // Remove each network type
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+    // Remove each network type, in reverse order so
+    // that GNSS (which might be connected via a cellular
+    // module) is taken down before cellular
+    for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
         if (gUNetworkTestCfg[x].handle >= 0) {
             uPortLog("U_SECURITY_TLS_TEST: taking down %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -484,10 +498,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
 {
     int32_t y;
 
-    // The network test configuration is shared
-    // between the network, sockets and security tests
+    // The network test configuration is shared between
+    // the network, sockets, security and location tests
     // so must reset the handles here in case the
-    // sockets API tests are coming next.
+    // tests of one of the other APIs are coming next.
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
     }

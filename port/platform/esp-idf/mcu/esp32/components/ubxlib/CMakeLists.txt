@@ -8,13 +8,19 @@ set(COMPONENT_ADD_INCLUDEDIRS
 # The cell API
                    "../../../../../../../cell/api"
                    "../../../../../../../cell/src"
+# The GNSS API
+                   "../../../../../../../gnss/api"
+                   "../../../../../../../gnss/src"
 # Common component APIs
                    "../../../../../../../common/error/api"
                    "../../../../../../../common/sock/api"
                    "../../../../../../../common/network/api"
                    "../../../../../../../common/security/api"
                    "../../../../../../../common/mqtt_client/api"
+                   "../../../../../../../common/location/api"
+                   "../../../../../../../common/location/src"
                    "../../../../../../../common/at_client/api"
+                   "../../../../../../../common/ubx_protocol/api"
                    "../../../../../../../common/short_range/api"
                    "../../../../../../../common/short_range/src"
                    "../../../../../../../common/utils/api"
@@ -48,13 +54,23 @@ set(COMPONENT_SRCS
                    "../../../../../../../cell/src/u_cell_sec_tls.c"
                    "../../../../../../../cell/src/u_cell_mqtt.c"
                    "../../../../../../../cell/src/u_cell_file.c"
+                   "../../../../../../../cell/src/u_cell_loc.c"
                    "../../../../../../../cell/src/u_cell_private.c"
+# The GNSS API
+                   "../../../../../../../gnss/src/u_gnss.c"
+                   "../../../../../../../gnss/src/u_gnss_pwr.c"
+                   "../../../../../../../gnss/src/u_gnss_cfg.c"
+                   "../../../../../../../gnss/src/u_gnss_info.c"
+                   "../../../../../../../gnss/src/u_gnss_pos.c"
+                   "../../../../../../../gnss/src/u_gnss_util.c"
+                   "../../../../../../../gnss/src/u_gnss_private.c"
 # The common network layer
                    "../../../../../../../common/network/src/u_network.c"
                    "../../../../../../../common/network/src/u_network_private_ble_extmod.c"
                    "../../../../../../../common/network/src/u_network_private_ble_intmod.c"
                    "../../../../../../../common/network/src/u_network_private_cell.c"
                    "../../../../../../../common/network/src/u_network_private_wifi.c"
+                   "../../../../../../../common/network/src/u_network_private_gnss.c"
 # The common sock layer
                    "../../../../../../../common/sock/src/u_sock.c"
 # The common security layer
@@ -63,8 +79,13 @@ set(COMPONENT_SRCS
                    "../../../../../../../common/security/src/u_security_credential.c"
 # The common MQTT layer
                    "../../../../../../../common/mqtt_client/src/u_mqtt_client.c"
+# The common location layer
+                   "../../../../../../../common/location/src/u_location.c"
+                   "../../../../../../../common/location/src/u_location_shared.c"
 # The common AT client
                    "../../../../../../../common/at_client/src/u_at_client.c"
+# The common ubx protocol layer
+                   "../../../../../../../common/ubx_protocol/src/u_ubx_protocol.c"
 # The common short range layer
                    "../../../../../../../common/short_range/src/u_short_range.c"
                    "../../../../../../../common/short_range/src/u_short_range_edm.c"

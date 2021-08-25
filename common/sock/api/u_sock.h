@@ -19,7 +19,8 @@
 
 /* No #includes allowed here */
 
-/* This header file defines the sockets API. These functions are
+/** @file
+ * @brief This header file defines the sockets API. These functions are
  * thread-safe.
  */
 

@@ -7,7 +7,7 @@ import u_utils
 import u_settings
 
 # The default guard time for waiting for a connection lock in seconds
-CONNECTION_LOCK_GUARD_TIME_SECONDS = (60 * 30)
+CONNECTION_LOCK_GUARD_TIME_SECONDS = (60 * 45)
 
 # The connection for each instance
 CONNECTION_LIST = [
