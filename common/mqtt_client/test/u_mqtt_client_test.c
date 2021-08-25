@@ -74,14 +74,14 @@
 #ifndef U_MQTT_CLIENT_TEST_MQTT_BROKER_URL
 /** Server to use for MQTT client testing, non secure.
  */
-# define U_MQTT_CLIENT_TEST_MQTT_BROKER_URL  test.mosquitto.org
+# define U_MQTT_CLIENT_TEST_MQTT_BROKER_URL  broker.emqx.io
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL
 /** Server to use for MQTT client testing: must support TLS
  * security.
  */
-# define U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL  test.mosquitto.org:8883
+# define U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL  broker.emqx.io:8883
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES

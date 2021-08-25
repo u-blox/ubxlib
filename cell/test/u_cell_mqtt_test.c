@@ -79,7 +79,7 @@
 /** Server to use for MQTT testing on a secured connection,
  * can't be hivemq as that doesn't support security.
  */
-# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED  test.mosquitto.org:8883
+# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED  broker.emqx.io:8883
 #endif
 
 /* ----------------------------------------------------------------

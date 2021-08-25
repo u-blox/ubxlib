@@ -72,10 +72,10 @@
 
 // MQTT broker URL: there is no port number on the end of this URL,
 // and hence, conventionally, it does not include TLS security.  You
-// may make a secure TLS connection on test.mosquitto.org instead
+// may make a secure TLS connection on broker.emqx.io instead
 // by editing this code to add TLS security (see below) and changing
 // MY_BROKER_NAME to have ":8883" on the end.
-#define MY_BROKER_NAME "test.mosquitto.org"
+#define MY_BROKER_NAME "broker.emqx.io"
 
 #ifndef U_CFG_ENABLE_LOGGING
 # define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
@@ -207,7 +207,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
         if (pContext != NULL) {
             // Set the URL for the connection; everything
             // else can be left at defaults for the
-            // public test.mosquitto.org broker
+            // public broker.emqx.io broker
             connection.pBrokerNameStr = MY_BROKER_NAME;
 
             // If you wish to use the Thingstream
