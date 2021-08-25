@@ -57,10 +57,7 @@ extern "C" {
  */
 typedef enum {
     U_LOCATION_TYPE_NONE,
-    U_LOCATION_TYPE_GNSS, /**< supported on GNSS network instances and
-                               also on cellular network instances if a
-                               GNSS module is attached to the cellular
-                               module. */
+    U_LOCATION_TYPE_GNSS, /**< supported on GNSS network instances only. */
     U_LOCATION_TYPE_CLOUD_CELL_LOCATE, /**< supported on cellular network
                                             instances only. */
     U_LOCATION_TYPE_CLOUD_GOOGLE, /**< not currently supported, will be
