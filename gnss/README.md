@@ -12,7 +12,7 @@ The GNSS APIs are split into the following groups:
 
 The module types supported by this implementation are listed in [u_gnss_module_type.h](api/u_gnss_module_type.h).
 
-This API relies upon the [common/ubx](/common/ubx) common component to encode commands for and decode responses from a u-blox GNSS module and the `at_client` common component when an intermediate AT (e.g. cellular) module is employed between this MCU and the GNSS module.
+This API relies upon the [common/ubx_protocol](/common/ubx_protocol) common component to encode commands for and decode responses from a u-blox GNSS module and the `at_client` common component when an intermediate AT (e.g. cellular) module is employed between this MCU and the GNSS module.
 
 # Usage
 The `api` directory contains the files that define the GNSS APIs, each API function documented in its header file.  In the `src` directory you will find the implementation of the APIs and in the `test` directory the tests for the APIs that can be run on any platform.
