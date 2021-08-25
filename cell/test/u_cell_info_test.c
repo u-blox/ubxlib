@@ -68,6 +68,12 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_CELL_INFO_TEST_MIN_UTC_TIME
+/** A minimum value for UTC time to test against (21 July 2021 13:40:36).
+ */
+# define U_CELL_INFO_TEST_MIN_UTC_TIME 1626874836
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -295,6 +301,50 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
         }
         U_PORT_TEST_ASSERT((x == 0) || (x == U_CELL_ERROR_VALUE_OUT_OF_RANGE));
     }
+
+    // Disconnect
+    U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_INFO_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heap < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test fetching the time.
+ */
+U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoTime")
+{
+    int32_t cellHandle;
+    int64_t x;
+    int32_t heapUsed;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+    cellHandle = gHandles.cellHandle;
+
+    uPortLog("U_CELL_INFO_TEST: registering to check the time...\n");
+    gStopTimeMs = uPortGetTickTimeMs() +
+                  (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
+    U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL, keepGoingCallback) == 0);
+
+    uPortLog("U_CELL_INFO_TEST: fetching the time...\n");
+    x = uCellInfoGetTimeUtc(cellHandle);
+    uPortLog("U_CELL_INFO_TEST: UTC time is %d.\n", (int32_t) x);
+    U_PORT_TEST_ASSERT(x > U_CELL_INFO_TEST_MIN_UTC_TIME);
 
     // Disconnect
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);

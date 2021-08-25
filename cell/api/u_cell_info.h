@@ -273,7 +273,7 @@ int32_t uCellInfoGetFirmwareVersionStr(int32_t cellHandle,
  * @return            on success the Unix UTC time, else negative
  *                    error code.
  */
-int32_t uCellInfoGetTimeUtc(int32_t cellHandle);
+int64_t uCellInfoGetTimeUtc(int32_t cellHandle);
 
 #ifdef __cplusplus
 }

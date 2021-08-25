@@ -35,13 +35,14 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // strlen()
-#include "time.h"      // mktime(), struct tm
+#include "time.h"      // struct tm
 
 #include "u_cfg_sw.h"
 
 #include "u_error_common.h"
 
-#include "u_port_clib_platform_specific.h" // strtok_r() and, in some cases, isblank() and mktime()
+#include "u_port_clib_platform_specific.h" // strtok_r() and, in some cases, isblank()
+#include "u_port_clib_mktime64.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 
@@ -749,12 +750,12 @@ int32_t uCellInfoGetFirmwareVersionStr(int32_t cellHandle,
 }
 
 // Get the UTC time according to cellular.
-int32_t uCellInfoGetTimeUtc(int32_t cellHandle)
+int64_t uCellInfoGetTimeUtc(int32_t cellHandle)
 {
-    int32_t errorCodeOrValue = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    int64_t errorCodeOrValue = (int64_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
-    int32_t timeUtc;
+    int64_t timeUtc;
     char buffer[32];
     struct tm timeInfo;
     int32_t bytesRead;
@@ -765,7 +766,7 @@ int32_t uCellInfoGetTimeUtc(int32_t cellHandle)
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
         pInstance = pUCellPrivateGetInstance(cellHandle);
-        errorCodeOrValue = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        errorCodeOrValue = (int64_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
@@ -777,7 +778,7 @@ int32_t uCellInfoGetTimeUtc(int32_t cellHandle)
             uAtClientResponseStop(atHandle);
             errorCodeOrValue = uAtClientUnlock(atHandle);
             if ((bytesRead >= 17) && (errorCodeOrValue == 0)) {
-                errorCodeOrValue = (int32_t) U_ERROR_COMMON_UNKNOWN;
+                errorCodeOrValue = (int64_t) U_ERROR_COMMON_UNKNOWN;
                 uPortLog("U_CELL_INFO: time is %s.\n", buffer);
                 // The format of the returned string is
                 // "yy/MM/dd,hh:mm:ss+TZ" but the +TZ may be omitted
@@ -807,23 +808,23 @@ int32_t uCellInfoGetTimeUtc(int32_t cellHandle)
                 buffer[offset + 2] = 0;
                 timeInfo.tm_sec = atoi(&(buffer[offset]));
                 // Get the time in seconds from this
-                timeUtc = (int32_t) mktime(&timeInfo);
+                timeUtc = mktime64(&timeInfo);
                 if ((timeUtc >= 0) && (bytesRead >= 20)) {
                     // There's a timezone, expressed in 15 minute intervals,
                     // subtract it to get UTC
                     offset = 18;
                     buffer[offset + 2] = 0;
-                    timeUtc -= atoi(&(buffer[offset])) * 15 * 60;
+                    timeUtc -= ((int64_t) atoi(&(buffer[offset]))) * 15 * 60;
                 }
 
                 if (timeUtc >= 0) {
-                    errorCodeOrValue = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    uPortLog("U_CELL_INFO: UTC time is %d.\n", timeUtc);
+                    errorCodeOrValue = timeUtc;
+                    uPortLog("U_CELL_INFO: UTC time is %d.\n", (int32_t) errorCodeOrValue);
                 } else {
                     uPortLog("U_CELL_INFO: unable to calculate UTC time.\n");
                 }
             } else {
-                errorCodeOrValue = (int32_t) U_CELL_ERROR_AT;
+                errorCodeOrValue = (int64_t) U_CELL_ERROR_AT;
                 uPortLog("U_CELL_INFO: unable to read time with AT+CCLK.\n");
             }
         }
