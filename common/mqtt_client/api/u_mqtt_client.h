@@ -165,6 +165,8 @@ typedef struct {
                           not using actual type to avoid customer having to drag
                           more headers in for what is an internal structure. */
     uSecurityTlsContext_t *pSecurityContext;
+    int32_t totalMessagesSent;      /* Total messages sent from MQTT client */
+    int32_t totalMessagesReceived;  /* Total messages received by MQTT client */
 } uMqttClientContext_t;
 
 /* ----------------------------------------------------------------
@@ -275,7 +277,7 @@ bool uMqttClientIsConnected(const uMqttClientContext_t *pContext);
  * @return                 zero on success else negative error
  *                         code.
  */
-int32_t uMqttClientPublish(const uMqttClientContext_t *pContext,
+int32_t uMqttClientPublish(uMqttClientContext_t *pContext,
                            const char *pTopicNameStr,
                            const char *pMessage,
                            size_t messageSizeBytes,
@@ -376,7 +378,7 @@ int32_t uMqttClientGetUnread(const uMqttClientContext_t *pContext);
  * @return                    zero on success else negative error
  *                            code.
  */
-int32_t uMqttClientMessageRead(const uMqttClientContext_t *pContext,
+int32_t uMqttClientMessageRead(uMqttClientContext_t *pContext,
                                char *pTopicNameStr,
                                size_t topicNameSizeBytes,
                                char *pMessage,
@@ -392,6 +394,24 @@ int32_t uMqttClientMessageRead(const uMqttClientContext_t *pContext,
  *                      utterly module specific.
  */
 int32_t uMqttClientGetLastErrorCode(const uMqttClientContext_t *pContext);
+
+/** Get the total number of message sent by MQTT client
+ *
+ * @param pContext      a pointer to the internal MQTT context
+ *
+ * @return              total number of messages published,
+ *                      or negative error code.
+ */
+int32_t uMqttClientGetTotalMessagesSent(const uMqttClientContext_t *pContext);
+
+/** Get the total number of messages received and read by MQTT client
+ *
+ * @param pContext      a pointer to the internal MQTT context
+ *
+ * @return              total number of messages received and read,
+ *                      or negative error code.
+ */
+int32_t uMqttClientGetTotalMessagesReceived(const uMqttClientContext_t *pContext);
 
 #ifdef __cplusplus
 }

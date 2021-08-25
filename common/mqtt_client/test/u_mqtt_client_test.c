@@ -384,6 +384,8 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                         if (y == 0) {
                             uPortLog("U_MQTT_CLIENT_TEST: publish successful after %d ms.\n",
                                      (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                            // We've just sent a message
+                            U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(gpMqttContextA) > 0);
                         } else {
                             uPortLog("U_MQTT_CLIENT_TEST: publish returned error %d after %d ms, module"
                                      " error %d.\n",
@@ -427,6 +429,8 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                         // they are checked above
                         U_PORT_TEST_ASSERT(strcmp(pTopicIn, pTopicOut) == 0);
                         U_PORT_TEST_ASSERT(s == U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES);
+                        // Total message received must be non-zero
+                        U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesReceived(gpMqttContextA) > 0);
                         //lint -e(668, 802) Suppress possible use of NULL pointers,
                         // they are checked above
                         U_PORT_TEST_ASSERT(memcmp(pMessageIn, pMessageOut, s) == 0);

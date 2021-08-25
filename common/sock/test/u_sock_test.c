@@ -1069,6 +1069,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
                     success = false;
                 }
 
+                // Show how many bytes are sent during the UDP test
+                U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) > 0);
+                uPortLog("U_SOCK_TEST: Total bytes sent during the test are: %d\n",
+                         uSockGetTotalBytesSent(descriptor));
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
                 uSockCleanUp();
@@ -1223,6 +1227,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
             uPortLog("U_SOCK_TEST: %d byte(s) sent via TCP @%d ms,"
                      " now receiving...\n", sizeBytes,
                      (int32_t) uPortGetTickTimeMs());
+
+            // Check if the uSockTotalBytesSent() matches value of sizeBytes
+            U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) == sizeBytes);
 
             // ...and capture them all again afterwards
             pDataReceived = (char *) malloc((sizeof(gSendData) - 1) +

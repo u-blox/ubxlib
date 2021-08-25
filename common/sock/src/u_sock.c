@@ -398,6 +398,7 @@ typedef struct {
     uSockState_t state;
     uSockAddress_t remoteAddress;
     int64_t receiveTimeoutMs;
+    int32_t bytesSent;
     uSecurityTlsContext_t *pSecurityContext;
     void (*pDataCallback) (void *);
     void *pDataCallbackParameter;
@@ -1194,6 +1195,7 @@ int32_t uSockCreate(int32_t networkHandle, uSockType_t type,
                         // as it was already set above
                         pContainer->socket.sockHandle = sockHandle;
                         pContainer->socket.networkHandle = networkHandle;
+                        pContainer->socket.bytesSent = 0;
                         uPortLog("U_SOCK: socket created, descriptor %d,"
                                  " network handle %d, socket handle %d.\n",
                                  descriptorOrError, networkHandle, sockHandle);
@@ -1951,6 +1953,9 @@ int32_t uSockSendTo(uSockDescriptor_t descriptor,
                                                                   pRemoteAddress,
                                                                   pData,
                                                                   dataSizeBytes);
+                                if (errorCodeOrSize > 0) {
+                                    pContainer->socket.bytesSent += errorCodeOrSize;
+                                }
                             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
                                 // TODO
                             }
@@ -1975,6 +1980,20 @@ int32_t uSockSendTo(uSockDescriptor_t descriptor,
     }
 
     return errorCodeOrSize;
+}
+
+int32_t uSockGetTotalBytesSent(uSockDescriptor_t descriptor)
+{
+    int32_t errorCodeOrTotalBytesSent = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uSockContainer_t *pContainer;
+
+    pContainer = pContainerFindByDescriptor(descriptor);
+
+    if (pContainer != NULL) {
+        errorCodeOrTotalBytesSent = pContainer->socket.bytesSent;
+    }
+
+    return errorCodeOrTotalBytesSent;
 }
 
 // Receive a single datagram from the given host.
@@ -2087,6 +2106,9 @@ int32_t uSockWrite(uSockDescriptor_t descriptor,
                                                                  sockHandle,
                                                                  pData,
                                                                  dataSizeBytes);
+                                if (errorCodeOrSize > 0) {
+                                    pContainer->socket.bytesSent += errorCodeOrSize;
+                                }
                             } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
                                 // TODO
                             }
