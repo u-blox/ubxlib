@@ -62,7 +62,7 @@ Each API includes a `test` sub-directory containing the tests for that API which
 
 Build information for each platform can be found in the [platform](/port/platform) sub-directory of [port](/port); more on this below.
 
-In order for u-blox to support multiple platforms with this code there is also a [port API](/port/api).  This is not intended to be a generic porting API, it is simply sufficient to support the APIs we require.  If you have not chosen a supported platform you may still be able to use the high level APIs here unchanged by implementing the [port API](/port/api) for your platform.
+In order for u-blox to support multiple platforms with this code there is also a [port API](/port/api).  This is not intended to be a generic porting API, it is simply sufficient to support the APIs we require.  If you have not chosen a supported platform you may still be able to use the high level APIs here unchanged by implementing the [port](/port) API for your platform.
 
 ```
 +---example                    <-- examples that introduce the main features 
