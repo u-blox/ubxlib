@@ -47,8 +47,8 @@ The key APIs provided by this repo, and their relationships with each other, are
 |SARA-R4x series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[security](/common/security "security API")<br>[mqtt_client](/common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
 |SARA-R510M8S            | [gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
 |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](/ble "ble API")<br />[network](/common/network "network API")|Yes|Yes|N/A|N/A|
-|NINA-W13|wifi<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Q2 2021|N/A|Q2 2021|Q2 2021|
-|NINA-W15|wifi<br />[ble](/ble "ble API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Q2 2021|N/A|N/A|N/A|
+|NINA-W13|wifi<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Q4 2021|N/A|Q4 2021|Q4 2021|
+|NINA-W15|wifi<br />[ble](/ble "ble API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Q4 2021|N/A|N/A|N/A|
 |M8 series|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
 
 \* Through the u-blox Cell Locate service.
@@ -130,7 +130,7 @@ Configuration information for the examples and the tests can be found in the `cf
 | Cellular     | An [MQTT client](/example/mqtt_client "MQTT example") using the [MQTT client](/common/mqtt_client "MQTT client API") API.| Q2 2021|
 | Cellular     | [Cell Locate](/example/location "Cell Locate example") example. | Q2 2021|
 | Bluetooth    | SPS (serial port service). | Q1 2021|
-| WiFi         | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  | Q2 2021|
+| WiFi         | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  | Q4 2021|
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.| Q3 2021|
 
 # Feature request and roadmap
