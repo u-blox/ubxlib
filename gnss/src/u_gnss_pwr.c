@@ -57,6 +57,20 @@
 # define U_GNSS_PWR_IS_ALIVE_TIMEOUT_MS 2500
 #endif
 
+#ifndef U_GNSS_PWR_AIDING_TYPES
+/** The aiding types to request when switching-on a GNSS
+ * chip  (all of them).
+ */
+#define U_GNSS_PWR_AIDING_TYPES 15
+#endif
+
+#ifndef U_GNSS_PWR_SYSTEM_TYPES
+/** The system types to request when switching-on a GNSS
+ * chip (all of them).
+ */
+#define U_GNSS_PWR_SYSTEM_TYPES 0x7f
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -146,18 +160,18 @@ int32_t uGnssPwrOn(int32_t gnssHandle)
                     }
                     if (errorCode == 0) {
                         // Now ask the cellular module to switch GNSS on
+                        uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
                         uAtClientLock(atHandle);
                         uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_UP_TIME_SECONDS * 1000);
                         uAtClientCommandStart(atHandle, "AT+UGPS=");
                         uAtClientWriteInt(atHandle, 1);
                         // If you change the aiding types and
                         // GNSS system types below you may wish
-                        // to change them in uCellLocIsGnssPresent()
-                        // also.
+                        // to change them in u_cell_loc.c also.
                         // All aiding types allowed
-                        uAtClientWriteInt(atHandle, 15);
+                        uAtClientWriteInt(atHandle, U_GNSS_PWR_AIDING_TYPES);
                         // All GNSS system types enabled
-                        uAtClientWriteInt(atHandle, 0x7f);
+                        uAtClientWriteInt(atHandle, U_GNSS_PWR_SYSTEM_TYPES);
                         uAtClientCommandStopReadResponse(atHandle);
                         errorCode = uAtClientUnlock(atHandle);
                     }
@@ -296,10 +310,11 @@ int32_t uGnssPwrOff(int32_t gnssHandle)
                 // For the AT interface, need to ask the cellular module
                 // to power the GNSS module down
                 atHandle = (uAtClientHandle_t) pInstance->transportHandle.pAt;
+                uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
                 uAtClientLock(atHandle);
                 // Can take a little while if the cellular module is
                 // busy talking to the GNSS module at the time
-                uAtClientTimeoutSet(atHandle, U_GNSS_POWER_DOWN_TIME_SECONDS * 1000);
+                uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_DOWN_TIME_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+UGPS=");
                 uAtClientWriteInt(atHandle, 0);
                 uAtClientCommandStopReadResponse(atHandle);

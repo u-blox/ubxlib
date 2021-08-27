@@ -78,13 +78,33 @@ extern "C" {
 # define U_CELL_LOC_BUFFER_LENGTH_BYTES 1011
 #endif
 
-#ifndef U_CELL_LOC_GNSS_AT_POWER_UP_TIME_SECONDS
+#ifndef U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS
 /** How long to wait for the response to AT+UGPS=1.  If you
  * change this and you also use the GNSS API then you might
  * want to change the value of U_GNSS_AT_POWER_UP_TIME_SECONDS
  * also.
  */
-# define U_CELL_LOC_GNSS_AT_POWER_UP_TIME_SECONDS 10
+# define U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS 30
+#endif
+
+#ifndef U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS
+/** How long to wait for the response to AT+UGPS=0.  If you
+ * change this and you also use the GNSS API then you might
+ * want to change the value of U_GNSS_AT_POWER_DOWN_TIME_SECONDS
+ * also.
+ */
+# define U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS 30
+#endif
+
+#ifndef U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS
+/** Some intermediate modules (e.g. SARA-R4) can be touchy
+ * about a power-up or power-down request occurring close
+ * on the heels of a previous GNSS-related command  If you
+ * change this and you also use the cell locate API then you
+ * might want to change the value of
+ * U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS also.
+ */
+# define U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS 500
 #endif
 
 #ifndef U_CELL_LOC_MODULE_HAS_CELL_LOCATE

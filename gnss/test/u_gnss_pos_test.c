@@ -274,7 +274,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosBasic")
 
         U_PORT_TEST_ASSERT(latitudeX1e7 > INT_MIN);
         U_PORT_TEST_ASSERT(longitudeX1e7 > INT_MIN);
-        U_PORT_TEST_ASSERT(altitudeMillimetres > INT_MIN);
+        // Don't test altitude as we may only have a 2D fix
         U_PORT_TEST_ASSERT(radiusMillimetres > INT_MIN);
         U_PORT_TEST_ASSERT(speedMillimetresPerSecond > INT_MIN);
         U_PORT_TEST_ASSERT(svs > 0);
@@ -316,7 +316,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosBasic")
                  (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
         U_PORT_TEST_ASSERT(gLatitudeX1e7 > INT_MIN);
         U_PORT_TEST_ASSERT(gLongitudeX1e7 > INT_MIN);
-        U_PORT_TEST_ASSERT(gAltitudeMillimetres > INT_MIN);
+        // Don't test altitude as we may only have a 2D fix
         U_PORT_TEST_ASSERT(gRadiusMillimetres > INT_MIN);
         U_PORT_TEST_ASSERT(gSpeedMillimetresPerSecond > INT_MIN);
         U_PORT_TEST_ASSERT(gSvs > 0);

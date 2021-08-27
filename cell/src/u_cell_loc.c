@@ -836,6 +836,7 @@ int32_t uCellLocSetServer(int32_t cellHandle,
                 // The GNSS chip is on: remember that and switch
                 // it off
                 gnssOn = true;
+                uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UGPS=");
                 uAtClientWriteInt(atHandle, 0);
@@ -862,6 +863,7 @@ int32_t uCellLocSetServer(int32_t cellHandle,
             errorCode = uAtClientUnlock(atHandle);
             if (gnssOn) {
                 // Switch the GNSS chip back on again
+                uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UGPS=");
                 uAtClientWriteInt(atHandle, 1);
@@ -905,8 +907,9 @@ bool uCellLocIsGnssPresent(int32_t cellHandle)
             x = 1;
             // If the first parameter is not 1, try to switch GNSS on
             uAtClientLock(atHandle);
+            uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
             uAtClientTimeoutSet(atHandle,
-                                U_CELL_LOC_GNSS_AT_POWER_UP_TIME_SECONDS * 1000);
+                                U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS * 1000);
             uAtClientCommandStart(atHandle, "AT+UGPS=");
             uAtClientWriteInt(atHandle, x);
             // In case something goes wrong with the power-off
@@ -922,6 +925,9 @@ bool uCellLocIsGnssPresent(int32_t cellHandle)
             if (errorCode == 0) {
                 // Power it off again
                 uAtClientLock(atHandle);
+                uPortTaskBlock(U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS);
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS * 1000);
                 uAtClientCommandStart(atHandle, "AT+UGPS=");
                 uAtClientWriteInt(atHandle, 0);
                 uAtClientCommandStopReadResponse(atHandle);
