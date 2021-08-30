@@ -54,7 +54,13 @@ CONNECTION_LIST = [
      "swo_port": u_utils.JLINK_SWO_PORT + 3},
     # Instance 19, C030-R5 board (STM32F4), cat-M1
     {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_19.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_19.get("debugger")}]
+     "debugger": u_settings.CONNECTION_INSTANCE_19.get("debugger")},
+    # Instance 20, WHRE board
+    {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_20.get("serial_port"),
+     "debugger": u_settings.CONNECTION_INSTANCE_20.get("debugger")},
+    # Instance 21, WHRE board
+    {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_21.get("serial_port"),
+     "debugger": u_settings.CONNECTION_INSTANCE_21.get("debugger")}]
 
 def init_locks(manager):
     '''Create locks'''
