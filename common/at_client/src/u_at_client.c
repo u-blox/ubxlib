@@ -1373,9 +1373,19 @@ static int32_t readString(uAtClientInstance_t *pClient,
             if (c == -1) {
                 setError(pClient,
                          U_ERROR_COMMON_DEVICE_ERROR);
-            } else if ((pStopTag->pTagDef->length > 0) &&
-                       (c == *(pStopTag->pTagDef->pString + matchPos))) {
-                matchPos++;
+            } else if (pStopTag->pTagDef->length > 0) {
+                // It could be a stop tag
+                if (c == *(pStopTag->pTagDef->pString + matchPos)) {
+                    matchPos++;
+                } else {
+                    // If it wasn't a stop tag, reset
+                    // the match position and check again
+                    // in case it is the start of a new stop tag
+                    matchPos = 0;
+                    if (c == *(pStopTag->pTagDef->pString)) {
+                        matchPos++;
+                    }
+                }
                 if (matchPos == (int32_t) pStopTag->pTagDef->length) {
                     pStopTag->found = true;
                 }
@@ -2562,10 +2572,19 @@ int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
             // Error
             setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
         } else {
-            if ((pStopTag->pTagDef->length > 0) &&
-                (c == *(pStopTag->pTagDef->pString + matchPos))) {
+            if (pStopTag->pTagDef->length > 0) {
                 // It could be a stop tag
-                matchPos++;
+                if (c == *(pStopTag->pTagDef->pString + matchPos)) {
+                    matchPos++;
+                } else {
+                    // If it wasn't a stop tag, reset
+                    // the match position and check again
+                    // in case it is the start of a new stop tag
+                    matchPos = 0;
+                    if (c == *(pStopTag->pTagDef->pString)) {
+                        matchPos++;
+                    }
+                }
                 if (matchPos == (int32_t) pStopTag->pTagDef->length) {
                     pStopTag->found = true;
                     // Remove tag from string if it was matched
@@ -2597,9 +2616,19 @@ int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
             c = bufferReadChar(pClient);
             if (c == -1) {
                 setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
-            } else if ((pStopTag->pTagDef->length > 0) &&
-                       (c == *(pStopTag->pTagDef->pString + matchPos))) {
-                matchPos++;
+            } else if (pStopTag->pTagDef->length > 0) {
+                // It could be a stop tag
+                if (c == *(pStopTag->pTagDef->pString + matchPos)) {
+                    matchPos++;
+                } else {
+                    // If it wasn't a stop tag, reset
+                    // the match position and check again
+                    // in case it is the start of a new stop tag
+                    matchPos = 0;
+                    if (c == *(pStopTag->pTagDef->pString)) {
+                        matchPos++;
+                    }
+                }
                 if (matchPos == (int32_t) pStopTag->pTagDef->length) {
                     pStopTag->found = true;
                 }
@@ -2694,10 +2723,19 @@ void uAtClientSkipParameters(uAtClientHandle_t atHandle,
                 matchPos = 0;
                 inQuotes = !inQuotes;
             } else if (!inQuotes &&
-                       (pStopTag->pTagDef->length > 0) &&
-                       (c == *(pStopTag->pTagDef->pString + matchPos))) {
+                       (pStopTag->pTagDef->length > 0)) {
                 // It could be a stop tag
-                matchPos++;
+                if (c == *(pStopTag->pTagDef->pString + matchPos)) {
+                    matchPos++;
+                } else {
+                    // If it wasn't a stop tag, reset
+                    // the match position and check again
+                    // in case it is the start of a new stop tag
+                    matchPos = 0;
+                    if (c == *(pStopTag->pTagDef->pString)) {
+                        matchPos++;
+                    }
+                }
                 if (matchPos == pStopTag->pTagDef->length) {
                     pStopTag->found = true;
                 }
