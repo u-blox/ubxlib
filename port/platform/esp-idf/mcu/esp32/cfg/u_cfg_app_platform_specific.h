@@ -31,6 +31,14 @@
  * are using an MCU inside a u-blox module the IO pin numbering for
  * the module is likely different to that from the MCU: check the data
  * sheet for the module to determine the mapping.
+ *
+ * Also, note that the convention used by each platform SDK for pin
+ * numbering is different: some platform SDKs use physical pin numbers,
+ * others a bit-position in a register bank, or sometimes a bit-position
+ * in a register bank plus an index to that bank: expect no commonality!
+ *
+ * In the ESP-IDF case the number refers to the physical pin number
+ * of the ESP32 chip.
  */
 
 /* ----------------------------------------------------------------

@@ -29,6 +29,30 @@
  * are using an MCU inside a u-blox module the IO pin numbering for
  * the module is likely different to that from the MCU: check the data
  * sheet for the module to determine the mapping.
+ *
+ * Also, note that the convention used by each platform SDK for pin
+ * numbering is different: some platform SDKs use physical pin numbers,
+ * others a bit-position in a register bank, or sometimes a bit-position
+ * in a register bank plus an index to that bank: expect no commonality!
+ *
+ * In the NRF5 SDK the number refers to a bit-position in a register
+ * bank plus the index of that register bank; you must refer to the
+ * data sheet for your chip to determine which physical pin number that
+ * logical GPIO comes out on (and then, if your chip is inside a u-blox
+ * module, the data sheet for the u-blox module to determine what module
+ * pin number it comes out on).  This is not simple!
+ *
+ * Specifically, there are 32 GPIO lines on each register bank,
+ * referred to as a "port", and two ports, so bit 0 of port 0 is GPIO0
+ * and you would refer to it as 0, bit 31 of port 0 is GPIO31 and you
+ * would refer to it as 31, bit 0 of port 1 is GPIO32 and you would
+ * refer to it as 32 and bit 15 of port 1 is GPIO 47 (the second port
+ * is only half used), referred to as 47.
+ *
+ * Also, if you are using the NRF52 DK board from Nordic, a load of
+ * the pins have pre-assigned functions so you have to read the back of
+ * the PCB _very_ carefully to find any that are free.  In
+ * general, port 1 is freer than port 0, hence the choices below.
  */
 
 /* ----------------------------------------------------------------
@@ -52,15 +76,6 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR NRF52: PINS FOR BLE/WIFI (SHORT_RANGE)
  * -------------------------------------------------------------- */
-
-/* NRF52 uses a port numbering scheme with 32 GPIO lines
- * on each port and two ports, so GPIO 0 you will see written as
- * 0.00, GPIO 31 as 0.31, GPIO 32 as 1.00 and GPIO 48 as 1.15.
- * Also, if you are using the NRF52 DK board a load of these
- * have pre-assigned functions so you have to read the back of
- * the PCB _very_ carefully to find any that are free.  In
- * general, port 1 is freer than port 0, hence the choices below.
- */
 
 /** Tx pin for UART connected to short range module.
  * -1 is used where there is no such connection.

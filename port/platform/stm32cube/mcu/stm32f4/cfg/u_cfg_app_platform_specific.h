@@ -29,6 +29,21 @@
  * are using an MCU inside a u-blox module the IO pin numbering for
  * the module is likely different to that from the MCU: check the data
  * sheet for the module to determine the mapping.
+ *
+ * Also, note that the convention used by each platform SDK for pin
+ * numbering is different: some platform SDKs use physical pin numbers,
+ * others a bit-position in a register bank, or sometimes a bit-position
+ * in a register bank plus an index to that bank: expect no commonality!
+ *
+ * In the case the STM32F4 SDK the number refers to a bit-position in a
+ * register bank plus the index of that register bank; you must refer to
+ * the data sheet for your chip to determine which physical pin number
+ * that logical GPIO comes out on.
+ *
+ * Specifically, the pin numbering has the bank number in the upper nibble
+ * and the pin number in the lower nibble, so pin 15, also known as PA_15,
+ * would be referred to as 0x0f and pin 16, also known as PB_0, would be
+ * referred to as 0x10, etc.
  */
 
 /* ----------------------------------------------------------------
@@ -110,10 +125,6 @@
 /** The pins defined below are correct for the u-blox C030-R412M
  * board.  If you are using a C030-U201 board or any other board
  * you should configure the values yourself.
- * Note: on an STM32F4 chip the pin numbering has the bank number
- * in the upper nibble and the pin number in the lower nibble, so
- * pin 15, also known as PA_15, has the value 0x0f and pin 16,
- * also known as PB_0, has value 0x10, etc.
  */
 
 #ifndef U_CFG_APP_PIN_C030_ENABLE_3V3
