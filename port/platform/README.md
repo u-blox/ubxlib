@@ -1,17 +1,17 @@
 IMPORTANT: the directory structure under platform remains subject to change as we add new platforms.  We aim to settle this structure as `ubxlib` approaches release 1.0.0, likely towards the end of 2021.
 
 # Introduction
-These directories provide the implementation of the porting layer on supported SDKs/MCUs from various vendors.  The `common` directory contains anything that is common across platforms e.g. the `runner` source code which allows any or all of the examples/tests to be run.
+These directories provide the implementation of the porting layer on supported SDKs/MCUs from various vendors.  The [platform/common](common) directory contains anything that is common across platforms e.g. the [platform/common/runner](common/runner) source code which allows any or all of the examples/tests to be run.
 
-Also provided are `lint` and `static_size` "platforms": both include stubs for the porting layer and dummy configuration files in order that all of the `ubxlib` platform independent code can be passed through Lint and measured for \[static\] flash/RAM size.
+Also provided are [lint](lint) and [static_size](static_size) "platforms": both include stubs for the porting layer and dummy configuration files in order that all of the `ubxlib` platform independent code can be passed through Lint and measured for \[static\] flash/RAM size.
 
 # Supported MCUs
 The MCUs supported by the platforms are as follows:
 
-- Espressif `esp-idf`: ESP32.
-- ST Microelectronics' `STM32Cube` IDE: STM32F4.
-- Nordic `nRF5 SDK`: NRF52.
-- `zephyr`: NRF53 and NRF52.
+- Espressif [ESP-IDF](esp-idf): ESP32.
+- ST Microelectronics' [STM32Cube IDE](stm32cube): STM32F4.
+- Nordic [nRF5 SDK](nrf5sdk): NRF52.
+- [zephyr](zephyr): NRF52 and NRF53.
 
 # Structure
 Each platform sub-directory includes the following items:

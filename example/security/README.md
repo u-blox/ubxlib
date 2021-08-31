@@ -52,7 +52,7 @@ Under each example folder you will find an `xxx_main.c` file and one or more Pyt
 Note that some of these examples assume that the module in use has already been security sealed, a once-only process of claiming ownership which you would normally carry out as part of your production process: where this is the case the comments in `xxx_main.c` describe how to do it.
 
 ## Building
-To build and run these examples on a supported platform you need to travel down into the `port/platform/<vendor>/<chipset>/<sdk>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override #defines.  The following #defines are relevant:
+To build and run these examples on a supported platform you need to travel down into the [port/platform](/port/platform)`/<platform>/<chipset>/<sdk>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override #defines.  The following #defines are relevant:
 
 `U_CFG_APP_FILTER`: set this to the name of the example you want to run (noting that NO quotation marks should be included) to run *just* that example (as opposed to all the examples and unit tests): use `exampleSecE2e` for the end to end data protection example.
 
@@ -61,11 +61,11 @@ For the remainder of the #defines you may either override their values in the sa
 ## Using A Cellular Module
 u-blox security is currently only supported on cellular, on the SARA-R5 cellular module.
 
-`U_CFG_TEST_CELL_MODULE_TYPE`: consult the `cell/api/u_cell_module_type.h` file to determine the type name for the cellular module you intend to use.  Since only SARA-R5 is supported you must set `U_CFG_TEST_CELL_MODULE_TYPE` to `U_CELL_MODULE_TYPE_SARA_R5`.
+`U_CFG_TEST_CELL_MODULE_TYPE`: consult the [u_cell_module_type.h](/cell/api/u_cell_module_type.h) file to determine the type name for the cellular module you intend to use.  Since only SARA-R5 is supported you must set `U_CFG_TEST_CELL_MODULE_TYPE` to `U_CELL_MODULE_TYPE_SARA_R5`.
 
-`U_CFG_APP_PIN_CELL_xxx`: the default values for the MCU pins connecting your cellular module to your MCU are #defined in the file `port/platform/<vendor>/<chipset>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the #defines (where -1 means "not connected").
+`U_CFG_APP_PIN_CELL_xxx`: the default values for the MCU pins connecting your cellular module to your MCU are #defined in the file [port/platform](/port/platform)`/<platform>/<chipset>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the #defines (where -1 means "not connected").
 
-`U_CFG_APP_CELL_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the cellular module.  The default is usually acceptable but if you wish to change it then consult the file `port/platform/<vendor>/<chipset>/cfg/cfg_hw_platform_specific.h` for other options.
+`U_CFG_APP_CELL_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the cellular module.  The default is usually acceptable but if you wish to change it then consult the file [port/platform](/port/platform)`/<platform>/<chipset>/cfg/cfg_hw_platform_specific.h` for other options.
 
 Obviously you will need a SIM in your board, an antenna connected and you may need to know the APN associated with the SIM (though accepting the network default often works).
 
@@ -97,7 +97,7 @@ To create the device profile, and get the `DeviceProfileUID` required for device
 
 A wizard will guide you through the steps to select the features and services linked to the profile. You can always change these at a later stage. You will also need to select a price plan to be used by devices that are provisioned using the profile. To get started, you can use the free Developer plan which allows you to manage up to 10 active devices. Find out more about the available price plans here.
 
-Once you have created the device profile you need to seal the `DeviceProfileUID` in the device using the `ubxlib` API `uSecuritySealSet()` (see [u_security.h](../../common/security/api/u_security.h), also explained in the "Claim Ownership" section of the [IoT Security-as-a-Service Application Note](https://www.u-blox.com/en/docs/UBX-20013561)).
+Once you have created the device profile you need to seal the `DeviceProfileUID` in the device using the `ubxlib` API `uSecuritySealSet()` (see [u_security.h](/common/security/api/u_security.h), also explained in the "Claim Ownership" section of the [IoT Security-as-a-Service Application Note](https://www.u-blox.com/en/docs/UBX-20013561)).
 
 Once you have completed these steps, the device will automatically appear in your account in the "Things" section of the management console with the selected service and features enabled. You can use the same device profile for all the devices that need the same set of features and services and you can make changes for individual devices via the management console.
 

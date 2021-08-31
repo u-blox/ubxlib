@@ -58,7 +58,7 @@ Alternatively, if you just want to run the target without the debugger and simpl
     </link>
     ```
     
-    If your new API is not under `common`, instead it is under a new and distinct category of APIs, e.g. `wifi`, that you want to appear as a new and distinct folder in the STM32Cube IDE view then create a new `<name />` for it, e.g:
+    If your new API is not under `common`, instead it is under a new and distinct category of APIs, e.g. [wifi](/wifi), that you want to appear as a new and distinct folder in the STM32Cube IDE view then create a new `<name />` for it, e.g:
     
     ```
     <link>

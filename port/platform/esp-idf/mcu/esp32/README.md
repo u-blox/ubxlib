@@ -1,5 +1,5 @@
 # Introduction
-This directory contains the build/configuration information for the ESP32 MCU under the Espressif ESP-IDF platform.  The configuration here is sufficient to run the ubxlib tests and examples, no attempt is made to optimise the MCU RAM/flash etc. sizes, you need to know how to do that yourself.
+This directory contains the build/configuration information for the ESP32 MCU under the Espressif ESP-IDF platform.  The configuration here is sufficient to run the `ubxlib` tests and examples, no attempt is made to optimise the MCU RAM/flash etc. sizes, you need to know how to do that yourself.
 
 # SDK Installation
 Follow the instructions to build for the ESP-IDF platform:

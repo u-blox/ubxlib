@@ -1,6 +1,6 @@
 # libfibonacci application example
 
-This is an application showing some simple use of the ubxlib library example, `libfibonacci`.
+This is an application showing some simple use of the `ubxlib` library example, `libfibonacci`.
 
 To build and flash from the current folder for an Nordic nRF5340 board:
 ```

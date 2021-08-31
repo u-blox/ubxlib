@@ -1,11 +1,11 @@
-# libfibonacci - ubxlib library example
+# libfibonacci - `ubxlib` library example
 
-This is a trivial ubxlib library which can do three things:
+This is a trivial `ubxlib` library which can do three things:
 * calculate a number from the fibonacci series
 * return last calculated number
 * return a hello world string
 
-It serves the purpose of showing how a ubxlib library can be implemented.
+It serves the purpose of showing how a `ubxlib` library can be implemented.
 
 # File structure
 

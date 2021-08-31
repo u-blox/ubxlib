@@ -1,8 +1,8 @@
-# ubxlib libraries
+# `ubxlib` libraries
 
 ## General
 
-Libraries in ubxlib sense simply consists of a header and some code. The header contains some metainfo on the library as such, like name, version, etc. It also contains a function table describing the functions and where they are placed. This latter part is the actual dynamic link information.
+Libraries in `ubxlib` sense simply consists of a header and some code. The header contains some metainfo on the library as such, like name, version, etc. It also contains a function table describing the functions and where they are placed. This latter part is the actual dynamic link information.
 
 Libraries are position independent. They can be replaced during runtime if necessary. The code part can be encrypted.
 
@@ -148,7 +148,7 @@ When the library is not needed anymore, it should be closed. If the library impl
 # Writing a library
 How to write a new library.
 
-*There is an example library in `common/lib_common/example`, libfibonacci, which is used as reference in following paragraphs.*
+*There is an example library in [common/lib_common/example](example), libfibonacci, which is used as reference in following paragraphs.*
 
 ## Three golden rules
 
@@ -244,7 +244,7 @@ int libFooInitFunctions(
 ...
 ```
 
-*The example library `common/lib_common/example` keeps a state struct, which is malloced on open and freed on close.*
+*The example library [common/lib_common/example](example) keeps a state struct, which is malloced on open and freed on close.*
 
 ## Building the library
 
@@ -276,7 +276,7 @@ Following environment variables are expected to be set:
 * `NAME` - name of the library, defaults to `undefined`
 * `LIB_VERSION` - library version, defaults to `1`
 * `LIB_FLAGS` - library flags, defaults to `0`
-* `UBXLIB_PATH` - path to ubxlib, defaults to `../../`
+* `UBXLIB_PATH` - path to `ubxlib`, defaults to `../../`
 * `TRANSFORM` - tool to transform library code (e.g. for encryption), defaults to `cp`
 
 ### Configure the build for your library
@@ -308,5 +308,4 @@ include $(UBXLIB_PATH)/common/lib_common/makelib.mk
 
 `makelib.mk` uses ordinary environment variables such as `CC`, `PREFIX`, `CFLAGS`, etc which makes it reconfigurable for different build systems (e.g. CMake) and cross-compiling. 
 
-*If you try running `make` in the example library directory `common/lib_common/example`, the default environment will be used. This will compile the library for your current platform, probably x86-64, given you have a build environment.*
-
+*If you try running `make` in the example library directory [common/lib_common/example](example), the default environment will be used. This will compile the library for your current platform, probably x86-64, given you have a build environment.*

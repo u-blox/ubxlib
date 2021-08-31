@@ -12,10 +12,10 @@ The GNSS APIs are split into the following groups:
 
 The module types supported by this implementation are listed in [u_gnss_module_type.h](api/u_gnss_module_type.h).
 
-This API relies upon the [common/ubx_protocol](/common/ubx_protocol) common component to encode commands for and decode responses from a u-blox GNSS module and the `at_client` common component when an intermediate AT (e.g. cellular) module is employed between this MCU and the GNSS module.
+This API relies upon the [common/ubx_protocol](/common/ubx_protocol) component to encode commands for and decode responses from a u-blox GNSS module and the [common/at_client](/common/at_client) component when an intermediate AT (e.g. cellular) module is employed between this MCU and the GNSS module.
 
 # Usage
-The `api` directory contains the files that define the GNSS APIs, each API function documented in its header file.  In the `src` directory you will find the implementation of the APIs and in the `test` directory the tests for the APIs that can be run on any platform.
+The [api](api) directory contains the files that define the GNSS APIs, each API function documented in its header file.  In the [src](src) directory you will find the implementation of the APIs and in the [test](test) directory the tests for the APIs that can be run on any platform.
 
 A simple usage example is given below.  Note that, before calling `app_start()` the platform must be initialised (clocks started, heap available, RTOS running), in other words `app_task()` can be thought of as a task entry point.  If you open the `u_main.c` file in the `app` directory of your platform you will see how we do this, with `main()` calling a porting API `uPortPlatformStart()` to sort that all out; you could paste the example code into `app_start()` there (and add the inclusions) as a quick and dirty test (`runner` will build it).
 

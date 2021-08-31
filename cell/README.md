@@ -10,18 +10,18 @@ The cellular APIs are split into the following groups:
 - `info`: obtaining information about the cellular module.
 - `sec`: u-blox security features.
 - `sec_tls`: TLS security features.
-- `sock`: sockets, for exchanging data (but see the `common/sock` component for the best way to do this).
-- `mqtt`: MQTT client (but see the `common/mqtt_client` component for the best way to do this).
-- `loc`: getting a location fix using the Cell Locate service (but see the `common/location` component for the best way to do this); you will need an authentication token from the [Location Services section](https://portal.thingstream.io/app/location-services) of your [Thingstream portal](https://portal.thingstream.io/app/dashboard). If you have a GNSS chip attached via a cellular module and want to control it directly from your MCU, see the `gnss` API.
+- `sock`: sockets, for exchanging data (but see the [common/sock](/common/sock) component for the best way to do this).
+- `mqtt`: MQTT client (but see the [common/mqtt_client](/common/mqtt_client) component for the best way to do this).
+- `loc`: getting a location fix using the Cell Locate service (but see the [common/location](/common/location) component for the best way to do this); you will need an authentication token from the [Location Services section](https://portal.thingstream.io/app/location-services) of your [Thingstream portal](https://portal.thingstream.io/app/dashboard). If you have a GNSS chip attached via a cellular module and want to control it directly from your MCU see the [gnss](/gnss) API but note that the `loc` API here will make use of a such a GNSS chip where that in any case.
 
-The module types supported by this implementation are listed in `api/u_cell_module_type.h`.
+The module types supported by this implementation are listed in [u_cell_module_type.h](api/u_cell_module_type.h).
 
-HOWEVER, this is the detailed API; if all you would like to do is bring up a bearer as simply as possible and then get on with exchanging data or establishing location, please consider using the `common/network` API, along with the `common/sock` API, the `common/security` API and the `common/location` API.  You may still dip down into this API from the network level as the handles used at the network level are the ones generated here.
+HOWEVER, this is the detailed API; if all you would like to do is bring up a bearer as simply as possible and then get on with exchanging data or establishing location, please consider using the [common/network](/common/network) API, along with the [common/sock](/common/sock) API, the [common/security](/common/security) API and the [common/location](/common/location) API.  You may still dip down into this API from the network level as the handles used at the network level are the ones generated here.
 
-This API relies upon the `at_client` common component to send commands to and parse responses received from a cellular module.
+This API relies upon the [common/at_client](/common/at_client) component to send commands to and parse responses received from a cellular module.
 
 # Usage
-The `api` directory contains the files that define the cellular APIs, each API function documented in its header file.  In the `src` directory you will find the implementation of the APIs and in the `test` directory the tests for the APIs that can be run on any platform.
+The [api](api) directory contains the files that define the cellular APIs, each API function documented in its header file.  In the [src](src) directory you will find the implementation of the APIs and in the [test](test) directory the tests for the APIs that can be run on any platform.
 
 A simple usage example is given below.  Note that, before calling `app_start()` the platform must be initialised (clocks started, heap available, RTOS running), in other words `app_task()` can be thought of as a task entry point.  If you open the `u_main.c` file in the `app` directory of your platform you will see how we do this, with `main()` calling a porting API `uPortPlatformStart()` to sort that all out; you could paste the example code into `app_start()` there (and add the inclusions) as a quick and dirty test (`runner` will build it).
 

@@ -1,6 +1,6 @@
 Agent Host Setup
 ================
-The files here are used for preparing a Ubuntu machine for running ubxlib agent docker container.
+The files here are used for preparing a Ubuntu machine for running `ubxlib` agent docker container.
 The steps needed are:
 1. Install Ubuntu
 2. Generate a new SSH key using:
@@ -13,7 +13,7 @@ The steps needed are:
     ```
 4. Add the public key `~/.ssh/id_ed25519.pub` as a *readonly* *deploy* key here:<br>
 https://github.com/u-blox/ubxlib_priv/settings/keys
-5. Clone the ubxlib repo preferably to your home folder:
+5. Clone the `ubxlib` repo preferably to your home folder:
     ```
     $ git clone git@github.com:u-blox/ubxlib_priv.git ~/ubxlib
     ```

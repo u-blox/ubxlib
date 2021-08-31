@@ -1,2 +1,2 @@
 # Introduction
-Many platform use mbedTLS for all of their cryptographic functions.  This directory wraps the mbedTLS functions to meet the API defined in `u_port_crypto.h`.
+Many platform use [mbedTLS](https://www.trustedfirmware.org/projects/mbed-tls/) for all of their cryptographic functions.  This directory wraps the [mbedTLS](https://www.trustedfirmware.org/projects/mbed-tls/) functions to meet the API defined in [u_port_crypto.h](/port/api/u_port_crypto.h).

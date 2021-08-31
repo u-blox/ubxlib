@@ -8,4 +8,4 @@ To use these functions, as well as including them in the build, the following op
 -Wl,--wrap=malloc -Wl,--wrap=_malloc_r -Wl,--wrap=calloc -Wl,--wrap=_calloc_r -Wl,--wrap=realloc -Wl,--wrap=_realloc_r
 ```
 
-Note that the platform must provide a function `uPortInternalGetSbrkFreeBytes()`.  The way the heap works is that `newlib` will ask the ultimate heap owner, a function named `_sbrk()`, for memory as it requires.  So the heap size is the sum of the amount of free memory in `newlib` plus the amount of memory left in `_sbrk()`.  Hence `uPortInternalGetSbrkFreeBytes()` is called to determine what this is.
+Note that the platform must provide a function `uPortInternalGetSbrkFreeBytes()`.  The way the heap works is that [newlib](https://sourceware.org/newlib/libc.html) will ask the ultimate heap owner, a function named `_sbrk()`, for memory as it requires.  So the heap size is the sum of the amount of free memory in [newlib](https://sourceware.org/newlib/libc.html) plus the amount of memory left in `_sbrk()`.  Hence `uPortInternalGetSbrkFreeBytes()` is called to determine what this is.

@@ -3,8 +3,8 @@ This directory provides a means to measure the static flash and RAM consumption 
 
 The following data is required:
 
-- `source.txt` paths to all of the files built as part of `ubxlib` that are NOT related to a platform or to testing or to examples, i.e. the core functionality.
-- `include.txt` paths to the include directories required to build those source files.
+- [source.txt](source.txt) paths to all of the files built as part of `ubxlib` that are NOT related to a platform or to testing or to examples, i.e. the core functionality.
+- [include.txt](include.txt) paths to the include directories required to build those source files.
 
 # A Note On Dynamic RAM
 Of course this build only measures the statically allocated RAM consumption of the core `ubxlib` implementation, it does not measure the RAM or flash consumption of the porting layer and does not measure the heap/stack RAM usage when `ubxlib` is in use.  The porting layer is generally a pretty thin wrapper over the platform-specific OS/SDK, so maybe a few kbytes of flash and very little statically-allocated RAM.  For a measure of the dynamic RAM usage, which will obviously also have a platform-dependent aspect, use `runner` to compile all of the unit tests for your platform, run them capturing the trace output and look in the trace output at the end of every test suite where you will find a trace print from a function named `xxxCleanUp()` (where `xxx` is the test suite name, e.g. `sock` for the sockets tests):
@@ -21,10 +21,10 @@ You will need a version of GCC for ARM (the builds here have been tested with ve
 
 https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads
 
-You will also need Python 3.4 to run the script.
+You will also need Python 3.4 or later to run the script.
 
 # Usage
-Run the `static_size.py` script with parameter `--h` for command-line help.
+Run the [static_size.py](static_size.py) script with parameter `--h` for command-line help.
 
 An example might be:
 
@@ -33,5 +33,5 @@ python static_size.py -p "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2
 ```
 
 # Maintenance
-- When adding a new platform-independent, non-test, non-example source file update `source.txt` and, if necessary, `include.txt` with the relevant source files and headers, ignoring any related only to tests or examples or to  platform code.
-- If new stuff is added to the `port` API or to the `cfg` files for all platforms, you may need to add new stubs for those things also.
+- When adding a new platform-independent, non-test, non-example source file update [source.txt](source.txt) and, if necessary, [include.txt](include.txt) with the relevant source files and headers, ignoring any related only to tests or examples or to  platform code.
+- If new stuff is added to the [port](/port) API or to the `cfg` files for all platforms, you may need to add new stubs for those things also.

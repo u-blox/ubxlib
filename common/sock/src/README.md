@@ -1,2 +1,2 @@
 # Integration With the Cell and Sho Sockets APIs
-This implementation of the `u_sock` API is a management layer only, implementing state checking, error checking and re-entrancy.  It  subsequently calls into the underlying socket implementations for cellular and Wifi (and in future BLE).  The requirements for the underlying sockets APIs are described at the top of `u_sock.c`.
+This implementation of the `u_sock` API is a management layer only, implementing state checking, error checking and re-entrancy.  It  subsequently calls into the underlying socket implementations for cellular and Wi-Fi (and in future BLE).  The requirements for the underlying sockets APIs are described at the top of `u_sock.c`.

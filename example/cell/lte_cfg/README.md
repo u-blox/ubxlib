@@ -1,5 +1,5 @@
 # Introduction
-Configuring a cellular module is more complex than configuring a Wifi or BLE module.  For any cellular module the APN (Access Point Name) field may be required but for an LTE cellular module (Cat-M1 and NB1 are both types of LTE) the following additional parameters come into play:
+Configuring a cellular module is more complex than configuring a Wi-Fi or BLE module.  For any cellular module the APN (Access Point Name) field may be required but for an LTE cellular module (Cat-M1 and NB1 are both types of LTE) the following additional parameters come into play:
 
 - choice of Radio Access Technology (RAT) or technologies,
 - choice of RF bands,
@@ -16,9 +16,9 @@ For the remainder of the #defines you may either override their values in the sa
 
 `U_CFG_TEST_CELL_MODULE_TYPE`: consult [u_cell_module_type.h](/cell/api/u_cell_module_type.h) to determine the type name for the cellular module you intend to use.  For instance, to use SARA-R5 you would set `U_CFG_TEST_CELL_MODULE_TYPE` to `U_CELL_MODULE_TYPE_SARA_R5`.
 
-`U_CFG_APP_PIN_CELL_xxx`: the default values for the MCU pins connecting your cellular module to your MCU are #defined in the file `port/platform/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the #defines (where -1 means "not connected").
+`U_CFG_APP_PIN_CELL_xxx`: the default values for the MCU pins connecting your cellular module to your MCU are #defined in the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the #defines (where -1 means "not connected").
 
-`U_CFG_APP_CELL_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the cellular module.  The default is usually acceptable but if you wish to change it then consult the file `port/platform/<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.
+`U_CFG_APP_CELL_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the cellular module.  The default is usually acceptable but if you wish to change it then consult the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.
 
 And then, for the specifics of this example:
 

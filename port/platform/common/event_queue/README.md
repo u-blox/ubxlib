@@ -1,1 +1,1 @@
-This folder contains the implementation of the event queue API defined in `port/api/u_port_event_queue.h`.  The implementation is common to all platforms.
+This folder contains the implementation of the event queue API defined in [u_port_event_queue.h](/port/api/u_port_event_queue.h).  The implementation is common to all platforms.

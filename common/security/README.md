@@ -13,4 +13,4 @@ This directory contains the security API for certificate/key storage, TLS securi
 | SARA-R5        |             Y           |   Y    |   Y   |      Y      |        Y       |      Y       |
 
 # Usage
-The `api` directory defines the security APIs.  The `test` directory contains tests for that API that can be run on any platform.
+The [api](api) directory defines the security APIs.  The [test](test) directory contains tests for that API that can be run on any platform.

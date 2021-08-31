@@ -11,7 +11,7 @@ The [test](test) directory contains tests for this API that can be run on any pl
 # DIY
 If your platform is not currently supported you may be able to port it yourself, something like this:
 - provide implementations of the functions in the port [api](api); use the existing platform implementations for guidance (e.g. [platform/nrf5sdk/src](platform/nrf5sdk/src)):
-  - the [initialisation](api/u_port.h) and [OS](api/u_port_os.h) interfaces are probably the simplest: you will need task creation/deletion and an entry point into task-land, plain-old non-recursive mutexes, a way to queue things, a way to block a task for x milliseconds, a way to obtain a count of \[64-bit\] milliseconds since boot and also semaphores (the latter currently used only in the [common/short_range](/common/short_range) (i.e. Wifi and BLE) APIs),
+  - the [initialisation](api/u_port.h) and [OS](api/u_port_os.h) interfaces are probably the simplest: you will need task creation/deletion and an entry point into task-land, plain-old non-recursive mutexes, a way to queue things, a way to block a task for x milliseconds, a way to obtain a count of \[64-bit\] milliseconds since boot and also semaphores (the latter currently used only in the [common/short_range](/common/short_range) (i.e. Wi-Fi and BLE) APIs),
   - the common [platform/common/event_queue](platform/common/event_queue) code will likely form most of your implementation of the [u_port_event_queue.h](api/u_port_event_queue.h) API,
   - you will need a way to get [debug](api/u_port_debug.h) strings off the platform, i.e. \[non-floating point\] `printf()` to somewhere,
   - the [GPIO API](api/u_port_gpio.h) will require some plumbing into the specifics of your MCU,
