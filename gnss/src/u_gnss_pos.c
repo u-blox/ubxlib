@@ -284,7 +284,9 @@ int32_t uGnssPosGet(int32_t gnssHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
+#ifdef U_CFG_SARA_R5_M8_WORKAROUND
     char message[4]; // Room for the body of a UBX-CFG-ANT message
+#endif
     int64_t startTime;
 
     if (gUGnssPrivateMutex != NULL) {
@@ -293,6 +295,7 @@ int32_t uGnssPosGet(int32_t gnssHandle,
 
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
+#ifdef U_CFG_SARA_R5_M8_WORKAROUND
             if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
                 // Temporary change: on old versions of the
                 // SARA-R10M8S module the LNA in the GNSS
@@ -306,7 +309,7 @@ int32_t uGnssPosGet(int32_t gnssHandle,
                 message[3] = 0x39;
                 uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13, message, 4);
             }
-
+#endif
             startTime = uPortGetTickTimeMs();
             errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
             while ((errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
@@ -346,7 +349,9 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
     uGnssPrivateInstance_t *pInstance;
     //lint -esym(593, pParameters) Suppress not free'd - posGetTask() does that
     uGnssPosGetTaskParameters_t *pParameters;
+#ifdef U_CFG_SARA_R5_M8_WORKAROUND
     char message[4]; // Room for the body of a UBX-CFG-ANT message
+#endif
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -370,6 +375,7 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
                     // once it has started
                     pParameters = (uGnssPosGetTaskParameters_t *) malloc(sizeof(*pParameters));
                     if (pParameters != NULL) {
+#ifdef U_CFG_SARA_R5_M8_WORKAROUND
                         if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
                             // Temporary change: on old versions of the
                             // SARA-R10M8S module the LNA in the GNSS
@@ -383,6 +389,7 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
                             message[3] = 0x39;
                             uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13, message, 4);
                         }
+#endif
                         // Fill in the callback and start a task
                         // that will establish position (or not)
                         // and call it
