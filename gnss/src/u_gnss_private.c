@@ -303,6 +303,8 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
     size_t bytesToSend;
     char *pBuffer;
     int32_t bytesRead;
+    bool atPrintOn = uAtClientPrintAtGet(atHandle);
+    bool atDebugPrintOn = uAtClientDebugGet(atHandle);
 
     assert(pResponse != NULL);
 
@@ -316,6 +318,15 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
     if (pBuffer != NULL) {
         errorCodeOrResponseBodyLength = (int32_t) U_GNSS_ERROR_TRANSPORT;
         bytesToSend = uBinToHex(pSend, sendLengthBytes, pBuffer);
+        if (!printIt) {
+            // Switch off the AT command printing if we've been
+            // told not to print stuff; particularly important
+            // on platforms where the C library leaks memory
+            // when called from dynamically created tasks and this
+            // is being called for the GNSS asynchronous API
+            uAtClientPrintAtSet(atHandle, false);
+            uAtClientDebugSet(atHandle, false);
+        }
         // Add terminator
         *(pBuffer + bytesToSend) = 0;
         uAtClientLock(atHandle);
@@ -360,6 +371,9 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
                 }
             }
         }
+
+        uAtClientPrintAtSet(atHandle, atPrintOn);
+        uAtClientDebugSet(atHandle, atDebugPrintOn);
 
         // Free memory
         free(pBuffer);
