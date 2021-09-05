@@ -692,16 +692,14 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
     return sentSizeBytes;
 }
 
-// Open a socket and use it
+// Open a socket and use it; currently only UDP is supported.
 static uSockDescriptor_t openSocketAndUseIt(int32_t networkHandle,
                                             const uSockAddress_t *pRemoteAddress,
                                             uSockType_t type,
                                             uSockProtocol_t protocol,
                                             int32_t *pHeapXxxSockInitLoss)
 {
-    int32_t errorCode = -1;
     uSockDescriptor_t descriptor;
-    uSockAddress_t address;
 
     uPortLog("U_SOCK_TEST: creating socket...\n");
     // Creating a socket may use heap in the underlying
@@ -717,34 +715,19 @@ static uSockDescriptor_t openSocketAndUseIt(int32_t networkHandle,
     if (descriptor >= 0) {
         U_PORT_TEST_ASSERT(errno == 0);
 
-        uPortLog("U_SOCK_TEST: connecting socket to ");
+        // UDP because of the 30 second TCP socket close
+        // time on celular SARA-R4 modules
+
+        // Note: we used to connect the socket here to give
+        // the option of using TCP as well as UDP but some
+        // modules (e.g. SARA-R422) have a bug where they won't
+        // let datagrams be sent over a connected socket and
+        // hence the connect step had to be removed
+
+        uPortLog("U_SOCK_TEST: testing that we can send and receive to ");
         printAddress(pRemoteAddress, true);
         uPortLog("...\n");
-
-        // Connections can fail so allow this a few goes
-        for (size_t x = 2; (x > 0) && (errorCode < 0); x--) {
-            errorCode = uSockConnect(descriptor, pRemoteAddress);
-            uPortLog("U_SOCK_TEST: uSockConnect() returned %d, errno %d.\n",
-                     errorCode, errno);
-            if (errorCode < 0) {
-                U_PORT_TEST_ASSERT(errno != 0);
-                errno = 0;
-            }
-        }
-        U_PORT_TEST_ASSERT(errorCode == 0);
-
-        uPortLog("U_SOCK_TEST: check that uSockGetRemoteAddress()"
-                 " works...\n");
-        U_PORT_TEST_ASSERT(uSockGetRemoteAddress(descriptor,
-                                                 &address) == 0);
-        addressAssert(pRemoteAddress, &address, true);
-        U_PORT_TEST_ASSERT(errno == 0);
-
-        // UDP because of the 30 second TCP socket close
-        // time on celular SARA-R4 module
-        uPortLog("U_SOCK_TEST: testing that we can send and"
-                 " receive to server...\n");
-        U_PORT_TEST_ASSERT(doUdpEchoBasic(descriptor, NULL, gAllChars,
+        U_PORT_TEST_ASSERT(doUdpEchoBasic(descriptor, pRemoteAddress, gAllChars,
                                           sizeof(gAllChars)) == sizeof(gAllChars));
     }
 
@@ -1069,23 +1052,10 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
                 addressAssert(&remoteAddress, &address, true);
                 U_PORT_TEST_ASSERT(errno == 0);
 
-                uPortLog("U_SOCK_TEST: second run after connect()...\n");
-                // Test min and max
-                if (doUdpEchoBasic(descriptor, NULL,
-                                   gSendData, 1) != 1) {
-                    success = false;
-                }
-                if (doUdpEchoBasic(descriptor, NULL, gSendData,
-                                   U_SOCK_TEST_MAX_UDP_PACKET_SIZE) != U_SOCK_TEST_MAX_UDP_PACKET_SIZE) {
-                    success = false;
-                }
-
-                uPortLog("U_SOCK_TEST: testing that we can send and receive all"
-                         " possible characters...\n");
-                if (doUdpEchoBasic(descriptor, NULL,
-                                   gSendData, sizeof(gAllChars)) != sizeof(gAllChars)) {
-                    success = false;
-                }
+                // Note: we used to test here that datagrams
+                // could be sent over a connected socket however
+                // some modules (e.g. SARA-R422) have a bug which
+                // prevents that and hence it is no longer tested
 
                 // Show how many bytes are sent during the UDP test
                 U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) > 0);
