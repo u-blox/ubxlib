@@ -47,6 +47,10 @@
 #include "u_cfg_sw.h"
 #include "u_port_debug.h"
 
+#ifdef U_CFG_SECURITY_DEVICE_PROFILE_UID
+# include "u_port_os.h"  // Only required when doing security sealing
+#endif
+
 // For default values for U_CFG_APP_xxx
 #include "u_cfg_app_platform_specific.h"
 
@@ -263,8 +267,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
         uPortLog("Unable to bring up the network!\n");
     }
 
+#ifndef U_CFG_SECURITY_DEVICE_PROFILE_UID
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE((rxSize == sizeof(buffer)) || !uSecurityIsSupported(networkHandle));
+#endif
 
     // Calling these will also deallocate the network handle
     uNetworkDeinit();
