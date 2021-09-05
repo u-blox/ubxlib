@@ -27,6 +27,7 @@ IoT Security-as-a-Service is available on SARA-R4 and SARA-R5 series modules, th
 * EVK-R500S - evaluation kit for SARA-R500S
 * EVK-R510S - evaluation kit for SARA-R510S
 * EVK-R510M8S - evaluation kit for SARA-R510M8S
+* EVK-R422M8S - evaluation kit for SARA-R422M8S
 * EVK-R410-8-00 - evaluation kit including LTE module for multi-regional use; Cat M1, NB1 bands: 3, 5, 8, 20, 28
 * EVK-R410-7-00 - evaluation kit including LTE module for Korea; Cat M1 deployed bands 3, 5, 26
 * EVK-R410-6-00 - evaluation kit including LTE module for Japan; Cat M1 deployed bands 1, 8, 19

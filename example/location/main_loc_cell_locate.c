@@ -186,8 +186,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
         // send data etc.
 
         // If you happen to have a GNSS chip inside your cellular
-        // module (e.g. you have a SARA-R510M8S) then Cell Locate
-        // will make use of GNSS if it can.
+        // module (e.g. you have a SARA-R510M8S or SARA-R422M8S)
+        // then Cell Locate will make use of GNSS if it can.
 
         // If you have a separate GNSS chip attached to your
         // cellular module then you may need to call the

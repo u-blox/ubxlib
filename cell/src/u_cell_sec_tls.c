@@ -400,6 +400,18 @@ static int32_t cipherSuiteSet(const uCellSecTlsContext_t *pContext,
                     if (addNotRemove) {
                         y = getLegacy(ianaNumber);
                     }
+                } else {
+                    if (!U_CELL_PRIVATE_HAS(pModule,
+                                            U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)) {
+                        // If we have IANA numbering but not in list form
+                        // we can use the IANA numbers given directly but
+                        // we still use zero to remove and the value of
+                        // y becomes 99
+                        y = 0;
+                        if (addNotRemove) {
+                            y = 99;
+                        }
+                    }
                 }
                 if (y >= 0) {
                     atHandle = pInstance->atHandle;
@@ -411,9 +423,9 @@ static int32_t cipherSuiteSet(const uCellSecTlsContext_t *pContext,
                     uAtClientWriteInt(atHandle, pContext->profileId);
                     // The cipher suite operation
                     uAtClientWriteInt(atHandle, 2);
-                    // Legacy number or IANA format indicator (100)
+                    // Legacy number or IANA format indicator (100 or 99)
                     uAtClientWriteInt(atHandle, y);
-                    if (y == 100) {
+                    if (y >= 99) {
                         // The next parameter is the upper-byte of the
                         // IANA number as a two-character string
                         snprintf(buffer, sizeof(buffer), "%02x", (int) ((((uint32_t) ianaNumber) >> 8) & 0xFF));
@@ -422,12 +434,15 @@ static int32_t cipherSuiteSet(const uCellSecTlsContext_t *pContext,
                         // IANA number as a two-character string
                         snprintf(buffer, sizeof(buffer), "%02x", (int) (ianaNumber & 0xFF));
                         uAtClientWriteString(atHandle, buffer, true);
-                        if (addNotRemove) {
-                            // "Add" operation
-                            uAtClientWriteInt(atHandle, 0);
-                        } else {
-                            // "Remove" operation
-                            uAtClientWriteInt(atHandle, 1);
+                        if (y == 100) {
+                            // We have a list
+                            if (addNotRemove) {
+                                // "Add" operation
+                                uAtClientWriteInt(atHandle, 0);
+                            } else {
+                                // "Remove" operation
+                                uAtClientWriteInt(atHandle, 1);
+                            }
                         }
                     }
                     uAtClientCommandStopReadResponse(atHandle);
@@ -783,7 +798,9 @@ int32_t uCellSecTlsCipherSuiteListFirst(uCellSecTlsContext_t *pContext)
                         // The cipher suite operation
                         uAtClientWriteInt(atHandle, 2);
                         uAtClientCommandStop(atHandle);
-                        // The response is +USECPRF: 0,2,100,"C02A;C02C..."
+                        // If a list is supported the response is
+                        // +USECPRF: 0,2,100,"C02A;C02C...", else it
+                        // is +USECPRF: 0,2,99,"C02A"
                         uAtClientResponseStart(atHandle, "+USECPRF:");
                         // Skip the first three parameters
                         uAtClientSkipParameters(atHandle, 3);

@@ -74,7 +74,8 @@ extern "C" {
     (((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_02B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_02B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B) || \
-     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B))
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B) || \
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R422))
 
 /** Return true if the given module type supports 3GPP power saving.
  */
@@ -83,6 +84,7 @@ extern "C" {
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_02B) ||      \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B) ||      \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B) ||      \
+     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R422)      ||      \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R5))
 
 /** Return true if the supported RATS bitmap includes LTE.
@@ -148,7 +150,10 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH,
     U_CELL_PRIVATE_FEATURE_MQTT_WILL,
     U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE,
-    U_CELL_PRIVATE_FEATURE_MQTT_SECURITY
+    U_CELL_PRIVATE_FEATURE_MQTT_SECURITY,
+    U_CELL_PRIVATE_FEATURE_UCGED5,
+    U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED,
+    U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.

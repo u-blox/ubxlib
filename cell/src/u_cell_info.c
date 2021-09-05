@@ -187,9 +187,9 @@ static int32_t getRadioParamsCsq(uAtClientHandle_t atHandle,
     return errorCode;
 }
 
-// Fill in the radio parameters the AT+UCGED=2 way
-static int32_t getRadioParamsUcged2(uAtClientHandle_t atHandle,
-                                    uCellPrivateRadioParameters_t *pRadioParameters)
+// Fill in the radio parameters the AT+UCGED=2 way, SARA-R5 flavour
+static int32_t getRadioParamsUcged2SaraR5(uAtClientHandle_t atHandle,
+                                          uCellPrivateRadioParameters_t *pRadioParameters)
 {
     int32_t x;
 
@@ -228,6 +228,53 @@ static int32_t getRadioParamsUcged2(uAtClientHandle_t atHandle,
         // what might be a negative error code with a
         // negative return value.
         pRadioParameters->rsrqDb = rsrqToDb(x);
+    }
+    uAtClientResponseStop(atHandle);
+
+    return uAtClientUnlock(atHandle);
+}
+
+// Fill in the radio parameters the AT+UCGED=2 way, SARA-R422 flavour
+static int32_t getRadioParamsUcged2SaraR422(uAtClientHandle_t atHandle,
+                                            uCellPrivateRadioParameters_t *pRadioParameters)
+{
+    int32_t x;
+    int32_t y;
+
+    // +UCGED: 2
+    // <rat>,<MCC>,<MNC>
+    // <EARFCN>,<Lband>,<ul_BW>,<dl_BW>,<TAC>,<P-CID>,<RSRP_value>,<RSRQ_value>,<NBMsinr>,<esm_cause>,<emm_state>,<tx_pwr>,<drx_cycle_len>,<tmsi>
+    // e.g.
+    // 6,310,410
+    // 5110,12,10,10,830e,162,-86,-14,131,-1,3,255,128,"FB306E02"
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UCGED?");
+    uAtClientCommandStop(atHandle);
+    // The line with just "+UCGED: 2" on it
+    uAtClientResponseStart(atHandle, "+UCGED:");
+    uAtClientSkipParameters(atHandle, 1);
+    // Don't want anything from the next line
+    uAtClientResponseStart(atHandle, NULL);
+    uAtClientSkipParameters(atHandle, 3);
+    // Now the line of interest
+    uAtClientResponseStart(atHandle, NULL);
+    // EARFCN is the first integer
+    pRadioParameters->earfcn = uAtClientReadInt(atHandle);
+    // Skip <Lband>, <ul_BW>, <dl_BW> and <TAC>
+    uAtClientSkipParameters(atHandle, 4);
+    // Read <P-CID>
+    pRadioParameters->cellId = uAtClientReadInt(atHandle);
+    // RSRP is element 7, as a plain-old dBm value
+    x = uAtClientReadInt(atHandle);
+    // RSRQ is element 8, as a plain-old dB value.
+    y = uAtClientReadInt(atHandle);
+    if (uAtClientErrorGet(atHandle) == 0) {
+        // Note that these last two are usually negative
+        // integers, hence we check for errors here so as
+        // not to mix up what might be a negative error
+        // code with a negative return value.
+        pRadioParameters->rsrpDbm = x;
+        pRadioParameters->rsrqDb = y;
     }
     uAtClientResponseStop(atHandle);
 
@@ -315,19 +362,11 @@ int32_t uCellInfoRefreshRadioParameters(int32_t cellHandle)
                 // Note that AT+UCGED is used next rather than AT+CESQ
                 // as, in my experience, it is more reliable in
                 // reporting answers.
-                if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
-                    // Allow a little sleepy-byes here, don't want to overtask
-                    // the module if this is being called repeatedly
-                    // to get an answr to AT+CSQ.
-                    uPortTaskBlock(500);
-                    // SARA-R5 supports UCGED=2
-                    errorCode = getRadioParamsUcged2(atHandle, pRadioParameters);
-                } else if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-                    // Allow a little sleepy-byes here, don't want to overtask
-                    // the module if this is being called repeatedly
-                    // to get an answr to AT+CSQ.
-                    uPortTaskBlock(500);
-                    // SARA-R4 only supports UCGED=5, and it only
+                // Allow a little sleepy-byes here, don't want to overtask
+                // the module if this is being called repeatedly
+                uPortTaskBlock(500);
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED5)) {
+                    // SARA-R4 (except 422) only supports UCGED=5, and it only
                     // supports it in EUTRAN mode
                     rat = uCellPrivateGetActiveRat(pInstance);
                     if (U_CELL_PRIVATE_RAT_IS_EUTRAN(rat)) {
@@ -335,6 +374,18 @@ int32_t uCellInfoRefreshRadioParameters(int32_t cellHandle)
                     } else {
                         // Can't use AT+UCGED, that's all we can get
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
+                } else {
+                    // The AT+UCGED=2 formats are module-specific
+                    switch (pInstance->pModule->moduleType) {
+                        case U_CELL_MODULE_TYPE_SARA_R5:
+                            errorCode = getRadioParamsUcged2SaraR5(atHandle, pRadioParameters);
+                            break;
+                        case U_CELL_MODULE_TYPE_SARA_R422:
+                            errorCode = getRadioParamsUcged2SaraR422(atHandle, pRadioParameters);
+                            break;
+                        default:
+                            break;
                     }
                 }
             }

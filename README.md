@@ -43,9 +43,9 @@ The key APIs provided by this repo, and their relationships with each other, are
 |                         |              |**RTOS/SDK**||||
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|
 | **`ubxlib` peripherals**   |**API**       |||||
-|SARA-U2 series<br />SARA-R4x series<br />| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>|Yes|Yes|Yes|Yes|
-|SARA-R4x series<br />SARA-R500S<br />SARA-R510S<br />SARA-R510M8S| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[security](/common/security "security API")<br>[mqtt_client](/common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
-|SARA-R510M8S            | [gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
+|SARA-U2 series<br />| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>|Yes|Yes|Yes|Yes|
+|SARA-R4 series<br />SARA-R5 series<br />| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[security](/common/security "security API")<br>[mqtt_client](/common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
+|SARA-R510M8S<br />SARA-R422M8S|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
 |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](/ble "ble API")<br />[network](/common/network "network API")|Yes|Yes|N/A|N/A|
 |NINA-W13|[wifi](/wifi)<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Q4 2021|N/A|Q4 2021|Q4 2021|
 |NINA-W15|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Q4 2021|N/A|N/A|N/A|
