@@ -101,7 +101,8 @@ SRC_FILES += \
   $(UBXLIB_PATH)/ble/src/u_ble_private.c \
   $(UBXLIB_PATH)/ble/test/u_ble_test.c \
   $(UBXLIB_PATH)/ble/test/u_ble_cfg_test.c \
-  $(UBXLIB_PATH)/ble/test/u_ble_data_test.c\
+  $(UBXLIB_PATH)/ble/test/u_ble_data_test.c \
+  $(UBXLIB_PATH)/ble/test/u_ble_test_private.c \
   $(UBXLIB_PATH)/cell/src/u_cell.c \
   $(UBXLIB_PATH)/cell/src/u_cell_pwr.c \
   $(UBXLIB_PATH)/cell/src/u_cell_cfg.c \
