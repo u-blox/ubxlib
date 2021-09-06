@@ -3,7 +3,9 @@ These examples demonstrate how to establish location in three different configur
 
 - locally using a GNSS chip that is attached directly to this MCU ([main_loc_gnss.c](main_loc_gnss.c)),
 - locally using a GNSS chip that is attached via a cellular module ([main_loc_gnss_cell.c](main_loc_gnss_cell.c)),
-- using cloud services such as Cell Locate via a cellular \[and in future Wi-Fi\] module ([main_loc_cell_locate.c](main_loc_cell_locate.c)).
+- using cloud services such as Cell Locate via a cellular \[and in future Wi-Fi\] module ([main_loc_cell_locate.c](main_loc_cell_locate.c), [main_loc_gnss_cloud_locate.c](main_loc_gnss_cloud_locate.c)); the latter Cloud Locate service is focussed on applications where the cloud needs to know the position of the device but the device itself does not.
+
+IMPORTANT: there will likely be modifications to this API as we introduce more location-type services, beware!
 
 # Usage
 To build and run these examples on a supported platform you need to travel down into the [port/platform](/port/platform)`/<platform>/mcu/<mcu>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override #defines.  The following #defines are relevant:
@@ -40,5 +42,14 @@ If you do not have a GNSS chip you may establish approximate location (e.g. with
 For this example the settings of the GNSS Cellular Example above must be followed and then in addition:
 
 `U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN`: must be set to a valid authentication token for the u-blox Cell Locate service, obtainable from your [Thingstream portal](https://portal.thingstream.io/app/location-services), noting that NO quotation marks should be included.
+
+You will need a SIM in your board, a cellular antenna connected and you may need to know the APN associated with the SIM (though accepting the network default often works).
+
+## The GNSS Cloud Locate Example `main_loc_gnss_cloud_locate.c`
+You may take advantage of positioning assistance information known to u-blox servers by using the u-blox Cloud Locate service with your GNSS chip, as shown in the [main_loc_gnss_cloud_locate.c](main_loc_cloud_locate.c) example.  This is currently only supported through cellular modules.
+
+First, you must log-in to your Thingstream accoud and, under Location Services, add a Cloud Locate thing (if you don't already have one).  The thing will have a set of credentials associated with it; client ID, username and password.  Edit [main_loc_gnss_cloud_locate.c](main_loc_gnss_cloud_locate.c) to put these credentials into the `MY_THINGSTREAM_CLIENT_ID`, `MY_THINGSTREAM_USERNAME` and `MY_THINGSTREAM_PASSWORD` fields respectively.
+
+Then perform the settings of the GNSS Cellular Example above.
 
 You will need a SIM in your board, a cellular antenna connected and you may need to know the APN associated with the SIM (though accepting the network default often works).

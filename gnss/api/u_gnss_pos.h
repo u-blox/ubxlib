@@ -153,6 +153,57 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
  */
 void uGnssPosGetStop(int32_t gnssHandle);
 
+/** Get the binary RRLP information directly from the GNSS chip i.e.
+ * as returned by the UBX-RXM-MEASX command of the UBX protocol.  This
+ * is more efficient, both in terms of power and time, than asking
+ * for position: several seconds of RRLP information may be sent to
+ * the u-blox Cloud Locate service where the exact position of the
+ * device can be determined and made available, e.g. for trackers.
+ *
+ * @param gnssHandle           the handle of the GNSS instance to use.
+ * @param pBuffer              a place to store the binary RRLP information;
+ *                             cannot be NULL.  The storage required for
+ *                             each RRLP data set is:
+ *                             8 + 44 + 24 * [number of satellites] so for,
+ *                             e.g. 32 satellites, 812 bytes would be sufficient.
+ *                             Note that what is written to pBuffer includes
+ *                             the six bytes of message header of the UBX
+ *                             protocol, i.e. 0xB5 62 02 14 AA BB, where
+ *                             0xAA BB is the [little-endian coded] 16-bit
+                               length of the RRLP data that follows;
+ *                             the two CRC bytes from the UBX protocol are ALSO
+ *                             written to pBuffer because cloud locate not
+ *                             only expects them it requires them AND it
+ *                             checks them.
+ * @param sizeBytes            the number of bytes of storage at pBuffer.
+ * @param svsThreshold         the minimum number of satellites that must be
+ *                             visible to return the RRLP information; specify
+ *                             -1 for "don't care".
+ * @param cNoThreshold         the minimum carrier to noise value that must be
+ *                             met to return the RRLP information, range 0 to
+ *                             63; specify -1 for "don't care".
+ * @param multipathIndexLimit  the minimum carrier to noise value that must be
+ *                             met to return the RRLP information, 1 = low,
+ *                             2 = medium, 3 = high; specify -1 for "don't care".
+ * @param pKeepGoingCallback   a callback function that governs to wait. This
+ *                             This function is called while waiting for RRLP
+ *                             data that meets the criterie; the API will
+ *                             only continue to wait while the function returns
+ *                             true.  This allows the caller to terminate the
+ *                             process at their convenience. The function may
+ *                             also be used to feed any watchdog timer that
+ *                             might be running. May be NULL, in which case
+ *                             this function will stop when
+ *                             U_GNSS_POS_TIMEOUT_SECONDS have elapsed.  The
+ *                             single int32_t parameter is the GNSS handle.
+ * @return                     on success the number of bytes returned, else
+ *                             negative error code.
+ */
+int32_t uGnssPosGetRrlp(int32_t gnssHandle, char *pBuffer, size_t sizeBytes,
+                        int32_t svsThreshold, int32_t cNoThreshold,
+                        int32_t multipathIndexLimit,
+                        bool (*pKeepGoingCallback) (int32_t));
+
 #ifdef __cplusplus
 }
 #endif

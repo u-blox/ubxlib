@@ -104,7 +104,24 @@ typedef struct {
                                             cellular modules *setting* a value
                                             of 0 is not permitted, *leaving*
                                             the value at the default of 0 is
-                                            permitted. */
+                                            permitted. Note also that it is
+                                            STRONGLY advised to set an inactivity
+                                            timeout, e.g. one of about 1.5 times
+                                            your expected publish interval. The
+                                            reason for this is that the MQTT
+                                            specification requires a broker to
+                                            reject a connection from a device which
+                                            is already connected.  With no
+                                            inactivity timer at all, if, for some
+                                            reason, your device becomes disconnected
+                                            (e.g. powers off or loses cellular
+                                            connectivity in a tunnel etc.) then when
+                                            you next connect the server may well
+                                            reject that connection attempt because,
+                                            as far as it is concerned, the device
+                                            is still connected. Setting an inactivity
+                                            timeout reduces that chances of this
+                                            problem happening. */
     bool keepAlive;                    /**< whether MQTT ping or "keep alive"
                                             is on or off.  If this is true
                                             then an MQTT ping message will be
@@ -223,6 +240,17 @@ void uMqttClientClose(uMqttClientContext_t *pContext);
 /** Connect an MQTT session.  If pKeepGoingCallback()
  * inside pConnection is non-NULL then it will called while
  * this function is waiting for a connection to be made.
+ * Note that the MQTT specification requires a broker to
+ * reject a connection from a device which is already
+ * connected.  So if, for some reason, your device was
+ * previously disconnected but became disconnected without
+ * a proper uMqttClientDisconnect() then when you next
+ * connect the server may well reject that connection
+ * attempt because, as far as it is concerned, the device
+ * is still connected.  Setting a non-zero inactivity timeout
+ * in uMqttClientContext_t can reduce the chances of this
+ * problem happening but otherwise it may be worth simply
+ * trying again on a failure.
  *
  * @param pContext     a pointer to the internal MQTT context
  *                     structure that was originally returned by
