@@ -629,6 +629,59 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
     U_PORT_TEST_ASSERT(heapUsed <= 0);
 }
 
+/** Test UDCONF.
+ */
+U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgUdconf")
+{
+    int32_t cellHandle;
+    int32_t udconfOriginal;
+    int32_t x;
+    int32_t setUdconf = 0;
+    int32_t heapUsed;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+    cellHandle = gHandles.cellHandle;
+
+    // All modules support AT+UDCONF=1 so we can test that safely
+    uPortLog("U_CELL_CFG_TEST: getting UDCONF=1...\n");
+    udconfOriginal = uCellCfgGetUdconf(cellHandle, 1, -1);
+    uPortLog("U_CELL_CFG_TEST: UDCONF=1 is %d.\n", udconfOriginal);
+    U_PORT_TEST_ASSERT((udconfOriginal == 0) || (udconfOriginal == 1));
+
+    if (udconfOriginal == 0) {
+        setUdconf = 1;
+    }
+
+    uPortLog("U_CELL_CFG_TEST: setting UDCONF=1,%d...\n", setUdconf);
+    U_PORT_TEST_ASSERT(uCellCfgSetUdconf(cellHandle, 1, setUdconf, -1) == 0);
+    x = uCellCfgGetUdconf(cellHandle, 1, -1);
+    uPortLog("U_CELL_CFG_TEST: UDCONF=1 is now %d.\n", x);
+    U_PORT_TEST_ASSERT(x == setUdconf);
+    U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
+
+    uPortLog("U_CELL_CFG_TEST: putting UDCONF=1 back to what it was...\n");
+    U_PORT_TEST_ASSERT(uCellCfgSetUdconf(cellHandle, 1, udconfOriginal, -1) == 0);
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.

@@ -214,6 +214,36 @@ int32_t uCellCfgSetMnoProfile(int32_t cellHandle,
  */
 int32_t uCellCfgGetMnoProfile(int32_t cellHandle);
 
+/** Some cellular modules support an "AT+UDCONF" command which
+ * allows details of specific features to be configured inside the
+ * module, thereafter stored as a non-volatile setting and so
+ * only used once.  This allows a UDCONF command to be sent to the
+ * module with up to three integer parameters.  A reboot is usually
+ * required afterwards to write the setting to non-volatile memory.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param param1      the first parameter, a positive integer.
+ * @param param2      the second parameter, a positive integer.
+ * @param param3      the optional third parameter, a positive integer
+ *                    or negative to indicate that it is not present.
+ * @return            zero on success or negative error code on
+ *                    failure.
+ */
+int32_t uCellCfgSetUdconf(int32_t cellHandle, int32_t param1,
+                          int32_t param2,  int32_t param3);
+
+/** Get the given "AT+UDCONF" setting.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param param1      the first parameter, a positive integer.
+ * @param param2      the optional second parameter, a positive integer.
+ *                    or negative to indicate that it is not present.
+ * @return            the positive integer setting value or negative
+ *                    error code on failure.
+ */
+int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
+                          int32_t param2);
+
 #ifdef __cplusplus
 }
 #endif

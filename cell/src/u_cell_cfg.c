@@ -1143,4 +1143,87 @@ int32_t uCellCfgGetMnoProfile(int32_t cellHandle)
     return errorCodeOrMnoProfile;
 }
 
+// Set "AT+UDCONF".
+int32_t uCellCfgSetUdconf(int32_t cellHandle, int32_t param1,
+                          int32_t param2,  int32_t param3)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pInstance != NULL) && (param1 >= 0) && (param2 >= 0)) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UDCONF=");
+            uAtClientWriteInt(atHandle, param1);
+            uAtClientWriteInt(atHandle, param2);
+            if (param3 >= 0) {
+                uAtClientWriteInt(atHandle, param3);
+            }
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+            if (errorCode == 0) {
+                pInstance->rebootIsRequired = true;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get "AT+UDCONF".
+int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
+                          int32_t param2)
+{
+    int32_t errorCodeOrUdconf = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    size_t skip = 1;
+    int32_t udconf;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCodeOrUdconf = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pInstance != NULL) && (param1 >= 0)) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UDCONF=");
+            uAtClientWriteInt(atHandle, param1);
+            if (param2 >= 0) {
+                uAtClientWriteInt(atHandle, param2);
+                // If we're writing a second parameter it
+                // will be echoed back at us so we need to
+                // skip it there
+                skip++;
+            }
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+UDCONF:");
+            // Skip the first and potentially second integers in
+            // the response
+            uAtClientSkipParameters(atHandle, skip);
+            udconf = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
+            errorCodeOrUdconf = uAtClientUnlock(atHandle);
+            if ((errorCodeOrUdconf == 0) && (udconf >= 0)) {
+                errorCodeOrUdconf = udconf;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrUdconf;
+}
+
 // End of file
