@@ -181,15 +181,17 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     }
     uPortLog("U_CELL_SEC_TLS_TEST: %d cipher(s) found.\n", numCiphers);
     U_PORT_TEST_ASSERT(numCiphers == 0);
-    // SARA-5 has the default of 1.2
+    // SARA-R5 and SARA-R422 have the default of 1.2
     U_PORT_TEST_ASSERT((uCellSecTlsVersionGet(pContext) == 0) ||
                        (uCellSecTlsVersionGet(pContext) == 12));
-    if (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R5) {
-        U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==
-                           (int32_t) U_CELL_SEC_TLS_CERTIFICATE_CHECK_NONE);
-    } else {
+    // SARA-R5 and SARA-R422 have the default of root CA checking
+    if ((pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) ||
+        (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422))  {
         U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==
                            (int32_t) U_CELL_SEC_TLS_CERTIFICATE_CHECK_ROOT_CA);
+    } else {
+        U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==
+                           (int32_t) U_CELL_SEC_TLS_CERTIFICATE_CHECK_NONE);
     }
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) {
         U_PORT_TEST_ASSERT(uCellSecTlsSniGet(pContext, pBuffer,
@@ -283,8 +285,8 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     uPortLog("U_CELL_SEC_TLS_TEST: checking manipulation of cipher list...\n");
 
     if (U_CELL_PRIVATE_HAS(pModule,
-                           U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)) {
-        // For modules which support IANA numbering, add a cipher that we
+                           U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)) {
+        // For modules which support a list of ciphers, add a cipher that we
         // know all cellular modules support
         U_PORT_TEST_ASSERT(uCellSecTlsCipherSuiteAdd(pContext,
                                                      U_CELL_SEC_TLS_TEST_CIPHER_1) == 0);
@@ -342,8 +344,6 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
         // Should still be able to add and remove one cipher
         U_PORT_TEST_ASSERT(uCellSecTlsCipherSuiteAdd(pContext,
                                                      U_CELL_SEC_TLS_TEST_CIPHER_1) == 0);
-        U_PORT_TEST_ASSERT(uCellSecTlsCipherSuiteAdd(pContext,
-                                                     U_CELL_SEC_TLS_TEST_CIPHER_2) < 0);
         U_PORT_TEST_ASSERT(uCellSecTlsCipherSuiteRemove(pContext,
                                                         U_CELL_SEC_TLS_TEST_CIPHER_1) == 0);
         U_PORT_TEST_ASSERT(uCellSecTlsCipherSuiteListFirst(pContext) < 0);
@@ -425,15 +425,17 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     }
     uPortLog("U_CELL_SEC_TLS_TEST: %d cipher(s) found.\n", y);
     U_PORT_TEST_ASSERT(y == numCiphers);
-    // SARA-5 has the default of 1.2
+    // SARA-R5 and SARA-R422 have the default of 1.2
     U_PORT_TEST_ASSERT((uCellSecTlsVersionGet(pContext) == 0) ||
                        (uCellSecTlsVersionGet(pContext) == 12));
-    if (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R5) {
-        U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==
-                           (int32_t) U_CELL_SEC_TLS_CERTIFICATE_CHECK_NONE);
-    } else {
+    // SARA-R5 and SARA-R422 have the default of root CA checking
+    if ((pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) ||
+        (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422))  {
         U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==
                            (int32_t) U_CELL_SEC_TLS_CERTIFICATE_CHECK_ROOT_CA);
+    } else {
+        U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckGet(pContext, NULL, 0) ==
+                           (int32_t) U_CELL_SEC_TLS_CERTIFICATE_CHECK_NONE);
     }
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) {
         U_PORT_TEST_ASSERT(uCellSecTlsSniGet(pContext, pBuffer,

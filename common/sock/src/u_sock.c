@@ -1291,7 +1291,7 @@ int32_t uSockConnect(uSockDescriptor_t descriptor,
                         errnoLocal = -errorCode;
                         uPortLog("U_SOCK: underlying layer errno %d on"
                                  " address \"%.*s\", descriptor/"
-                                 "/network/socket %d/%d/%d.\n", errnoLocal,
+                                 "network/socket %d/%d/%d.\n", errnoLocal,
                                  addressToString(pRemoteAddress, true,
                                                  buffer, sizeof(buffer)),
                                  buffer, descriptor, networkHandle,

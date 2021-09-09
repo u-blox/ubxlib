@@ -578,12 +578,18 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
     }
     // Need to be careful here as changing the
     // MNO profile changes the RAT and the BAND
-    // as well.  0 is the default one, which should
-    // work and 100 is Europe.
+    // as well.  0 is usually the default one and 100
+    // is Europe.
     if (readMnoProfile != 100) {
         mnoProfile = 100;
     } else {
-        mnoProfile = 0;
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
+            // Just to be awkward, SARA-R422 doesn't support setting
+            // MNO profile 0 so in this case use 90 (global)
+            mnoProfile = 90;
+        } else {
+            mnoProfile = 0;
+        }
     }
 
     if (U_CELL_PRIVATE_HAS(pModule,

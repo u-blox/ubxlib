@@ -1202,20 +1202,10 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
         // didn't come.
         uAtClientUnlock(atHandle);
         if (activated) {
-            if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-                // Note: SARA-R4 only supports a single context at any
-                // one time and so doesn't require/support AT+UPSD.
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-            } else {
-                // SARA-R5 pattern: use AT+UPSD to map the
-                // context to an internal modem profile
-                // e.g. AT+UPSD=0,100,1, then
-                // activate that profile e.g. AT+UPSDA=0,3.
-                // The context is not actually activated until
-                // the +UUPSDA URC comes back, so set a URC
-                // handler to capture that
-                uAtClientSetUrcHandler(atHandle, "+UUPSDA:", UUPSDA_urc,
-                                       &uupsdaUrcResult);
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)) {
+                // Need to map the context to an internal modem profile
+                // e.g. AT+UPSD=0,100,1
                 uAtClientLock(atHandle);
                 // The IP type used here must be the same as
                 // that used by AT+CGDCONT, hence set it to IP
@@ -1231,23 +1221,40 @@ static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
                 uAtClientWriteInt(atHandle, 100);
                 uAtClientWriteInt(atHandle, contextId);
                 uAtClientCommandStopReadResponse(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UPSDA=");
-                uAtClientWriteInt(atHandle, profileId);
-                uAtClientWriteInt(atHandle, 3);
-                uAtClientCommandStopReadResponse(atHandle);
-                if (uAtClientUnlock(atHandle) == 0) {
-                    // Wait for the URC to arrive
-                    for (size_t y = 3;
-                         (y > 0) && (uupsdaUrcResult < 0) &&
-                         keepGoingLocalCb(pInstance);
-                         y--) {
-                        uPortTaskBlock(1000);
+                errorCode = uAtClientUnlock(atHandle);
+                if ((errorCode == 0) &&
+                    (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5)) {
+                    errorCode = (int32_t) U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE;
+                    // SARA-R5 pattern: the context also has to be
+                    // activated and we're not actually done
+                    // until the +UUPSDA URC comes back,
+                    // so set a URC handler to capture that
+                    uAtClientSetUrcHandler(atHandle, "+UUPSDA:", UUPSDA_urc,
+                                           &uupsdaUrcResult);
+                    uAtClientLock(atHandle);
+                    uAtClientCommandStart(atHandle, "AT+UPSDA=");
+                    uAtClientWriteInt(atHandle, profileId);
+                    uAtClientWriteInt(atHandle, 3);
+                    uAtClientCommandStopReadResponse(atHandle);
+                    if (uAtClientUnlock(atHandle) == 0) {
+                        // Wait for the URC to arrive
+                        for (size_t y = 3;
+                             (y > 0) && (uupsdaUrcResult < 0) &&
+                             keepGoingLocalCb(pInstance);
+                             y--) {
+                            uPortTaskBlock(1000);
+                        }
+                        if (uupsdaUrcResult == 0) {
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
                     }
-                    if (uupsdaUrcResult == 0) {
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    }
+                    uAtClientRemoveUrcHandler(atHandle, "+UUPSDA:");
                 }
-                uAtClientRemoveUrcHandler(atHandle, "+UUPSDA:");
+            } else {
+                // Modules such as SARA-R4 (non-422) only support a
+                // single context at any one time and so don't
+                // require/support AT+UPSD.
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
         } else {
             uPortTaskBlock(2000);

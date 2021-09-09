@@ -190,13 +190,15 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
 #endif
                                            keepGoingCallback) == 0);
 
-        if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) &&
-            U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) &&
+        if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) &&
+            U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) &&
+            (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R422) &&
             (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R412M_02B)) {
             // If the module does not permit us to switch off TLS security once it
-            // has been switched on then we need to use the secured server IP address
-            // since we will have tested switching security on by the time we do
-            // the connect
+            // has been switched on (which is the case for SARA-R10M-02B and
+            // SARA_R410M-03B but not SARA-R422 or SARA-R5) then we need to use
+            // the secured server IP address since we will have tested switching
+            // security on by the time we do the connect
             // SARA-R412M will only let security be switched on if all of a root
             // CA, private key and certificate have been defined, hence we don't
             // test that here.
@@ -291,9 +293,10 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         // Set/get security
         uPortLog("U_CELL_MQTT_TEST: testing getting/setting security...\n");
         if (uCellMqttIsSecured(cellHandle, NULL)) {
-            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType)) {
-                // On SARA-R4 modules TLS security cannot be disabled once
-                // it is disabled without power-cycling the module.
+            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) ||
+                (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422)) {
+                // On SARA-R4 modules (excepting SARA-R422) TLS security cannot
+                // be disabled once it is enabled without power-cycling the module.
                 U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
                 x = -1;
                 U_PORT_TEST_ASSERT(!uCellMqttIsSecured(cellHandle, &x));
@@ -314,13 +317,14 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
                 x = -1;
                 y = uCellMqttIsSecured(cellHandle, &x);
                 uPortLog("U_CELL_MQTT_TEST: security is now %s, profile is"
-                         "%d.\n", y ? "on" : "off", x);
+                         " %d.\n", y ? "on" : "off", x);
                 U_PORT_TEST_ASSERT(y);
                 U_PORT_TEST_ASSERT(x == 0);
             }
         }
 
-        if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType)) {
+        if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) ||
+            (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422)) {
             // Switch security off again before we continue
             U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
             y = uCellMqttIsSecured(cellHandle, &x);

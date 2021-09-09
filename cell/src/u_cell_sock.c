@@ -1252,7 +1252,7 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
                                                dataSizeBytes, true);
                         }
                     }
-                    // Make sure to wait for the top tag before
+                    // Make sure to wait for the stop tag before
                     // we finish
                     uAtClientRestoreStopTag(atHandle);
                     uAtClientResponseStop(atHandle);
@@ -1479,7 +1479,7 @@ int32_t uCellSockRead(int32_t cellHandle,
                                                totalReceivedSize,
                                                thisActualReceiveSize, true);
                         }
-                        // Make sure we wait for the top tag before
+                        // Make sure we wait for the stop tag before
                         // going around again
                         uAtClientRestoreStopTag(atHandle);
                         uAtClientResponseStop(atHandle);

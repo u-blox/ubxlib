@@ -477,7 +477,9 @@ int32_t uSockOptionGet(uSockDescriptor_t descriptor,
  * FUNCTIONS: UDP ONLY
  * -------------------------------------------------------------- */
 
-/** Send a datagram to the given host.
+/** Send a datagram to the given host.  Note the some modules,
+ * e.g. SARA-R422, do not allow datagrams to be sent over a connected
+ * socket.
  *
  * @param descriptor     the descriptor of the socket.
  * @param pRemoteAddress the address of the remote host to send to;

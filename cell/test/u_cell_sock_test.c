@@ -232,7 +232,7 @@ void changeLinger(void *p)
 // Table of supported socket options.
 static uCellSockTestOption_t gSupportedOptions[] = {
     {
-        0, /* All modules */
+        (1UL << U_CELL_MODULE_TYPE_SARA_R422), /* Not SARA-R422 */
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_REUSEADDR, sizeof(int32_t), compareInt32, changeMod2
     },
     {
@@ -243,24 +243,27 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_02B) |  /* Not SARA-R4 */
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_02B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
-        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B),
+        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
+        (1UL << U_CELL_MODULE_TYPE_SARA_R422),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_BROADCAST, sizeof(int32_t), compareInt32, changeMod2
     },
     {
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_02B) |  /* Not SARA-R4 */
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_02B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
-        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B),
+        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
+        (1UL << U_CELL_MODULE_TYPE_SARA_R422),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_REUSEPORT, sizeof(int32_t), compareInt32, changeMod2
     },
     // This next one removed for SARA-R4, SARA-R5 and SARA-U201 as none will let me switch linger off, i.e.
     // "AT+USOSO=0,65535,128,0" returns "+CME ERROR: Operation not permitted/allowed"
     {
-        (1UL << U_CELL_MODULE_TYPE_SARA_U201) |      /* Not SARA_U201 or SARA-R4 or SARA-R5 */
+        (1UL << U_CELL_MODULE_TYPE_SARA_U201)      | /* Not SARA_U201 or SARA-R4 or SARA-R5 */
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_02B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_02B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
+        (1UL << U_CELL_MODULE_TYPE_SARA_R422)      |
         (1UL << U_CELL_MODULE_TYPE_SARA_R5),
         U_SOCK_OPT_LEVEL_SOCK, U_SOCK_OPT_LINGER, sizeof(uSockLinger_t), compareLinger, changeLinger
     },
@@ -280,7 +283,8 @@ static uCellSockTestOption_t gSupportedOptions[] = {
         (1UL << U_CELL_MODULE_TYPE_SARA_R410M_02B) | /* Not SARA-R4 */
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_02B) |
         (1UL << U_CELL_MODULE_TYPE_SARA_R412M_03B) |
-        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B),
+        (1UL << U_CELL_MODULE_TYPE_SARA_R410M_03B) |
+        (1UL << U_CELL_MODULE_TYPE_SARA_R422),
         U_SOCK_OPT_LEVEL_TCP, U_SOCK_OPT_TCP_KEEPIDLE, sizeof(int32_t), compareInt32, changeInt32Positive
     },
 };

@@ -81,7 +81,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         50 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 0 /* radioOffCfun */, 2 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_UTRAN)) /* RATs */,
-        (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED) /* features */
+        )
     },
     {
         U_CELL_MODULE_TYPE_SARA_R410M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
@@ -95,8 +97,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // In theory SARA-R410M does support keep alive but I have been
          // unable to make it work (always returns error) and hence this is
          // not marked as supported for now
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)    |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX) /* features */
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5) /* features */
         )
     },
     {
@@ -116,8 +119,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // In theory SARA-R412M does support keep alive but I have been
          // unable to make it work (always returns error) and hence this is
          // not marked as supported for now
-         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                  |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN) /* features */
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)                 |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5) /* features */
         )
     },
     {
@@ -129,7 +133,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5) /* features */
         )
     },
     {
@@ -143,12 +148,14 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_C2C)                        |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)                       |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)            |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED) /* features */
         )
     },
     {
@@ -162,7 +169,29 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)  |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                 |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                      |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                        |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5) /* features */
+        )
+    },
+    {
+        U_CELL_MODULE_TYPE_SARA_R422, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
+        5 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 10 /* Reboot wait */, 10 /* AT timeout */,
+        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 3 /* Simultaneous RATs */,
+        ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
+         (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
+         (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)                       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_ASYNC_SOCK_CLOSE)                    |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_IANA_NUMBERING)         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)                 |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED) /* features */
         )
     }
 };

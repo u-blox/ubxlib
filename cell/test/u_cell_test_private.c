@@ -245,6 +245,21 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
             uPortLog("U_CELL_TEST_PRIVATE: powering on...\n");
             errorCode = uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN, NULL);
             if (errorCode == 0) {
+                // Note: if this is a SARA-R422 module, which supports only
+                // 1.8V SIMs, the SIM cards we happen to use in the ubxlib test farm
+                // send an ATR which indicates they do NOT support 1.8V operation,
+                // even though they do, and this will cause power-on to fail since
+                // "+CME ERROR: SIM not inserted" is spat out by the module from
+                // quite early on, in response to even non-SIM related AT commands
+                // (e.g. AT&C1).
+                // This is fixed with an AT+UDCONF=92,1,1 command which
+                // can be sent with uCellCfgSetUdconf() however unfortunately we
+                // can't send it here since even power on will have failed because
+                // of the CME ERRORs: you will need to just hack "AT+UDCONF=92,1,1"
+                // into the gpConfigCommand[] list in u_cell_pwr.c, just after "ATI9",
+                // and then make sure you reboot afterwards to write the setting to
+                // non-volatile memory.  Once this is done the hack can be removed.
+
                 // Give the module time to read its SIM before we continue
                 // or it might refuse to answer some commands (e.g. AT+URAT?)
                 errorCode = uCellInfoGetImsi(cellHandle, imsi);

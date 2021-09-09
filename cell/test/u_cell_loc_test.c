@@ -105,13 +105,15 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Used for keepGoingCallback() timeout.
- */
-static int64_t gStopTimeMs;
-
 /** Handles.
  */
 static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
+
+#ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+
+/** Used for keepGoingCallback() timeout.
+ */
+static int64_t gStopTimeMs;
 
 /** Cell handle as seen by posCallback().
  */
@@ -149,10 +151,13 @@ static int32_t gSvs = INT_MIN;
  */
 static int64_t gTimeUtc = LONG_MIN;
 
+#endif //U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+#ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
 // Callback function for the cellular connection process
 static bool keepGoingCallback()
 {
@@ -217,6 +222,8 @@ static char latLongToBits(int32_t thingX1e7,
 
     return prefix;
 }
+
+#endif //U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS

@@ -331,7 +331,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
             // stored on the module (SARA-R5, for instance, will
             // check against this by default)
             if ((uSecurityCredentialGetHash(networkHandle,
-                                            U_SECURITY_CREDENTIAL_CLIENT_X509,
+                                            U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                             "ubxlib_test_server_cert",
                                             hash) != 0) ||
                 (memcmp(hash, U_SECURITY_TLS_TEST_SERVER_CERT_HASH, sizeof(hash)) != 0)) {

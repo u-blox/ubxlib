@@ -260,7 +260,8 @@ int32_t uCellSecTlsClientPskSet(const uCellSecTlsContext_t *pContext,
  * support all cipher suites, consult the security section of your
  * u-blox module AT manual for further information.
  * Note that the SARA-U201 and SARA-R4xx modules support only a
- * single configurable cipher suite.
+ * single configurable cipher suite and adding a new one will
+ * overwrite the previous.
  *
  * @param pContext    a pointer to the security context.
  * @param ianaNumber  the IANA number of the cipher suite to add.
@@ -357,8 +358,10 @@ int32_t uCellSecTlsVersionSet(const uCellSecTlsContext_t *pContext,
 int32_t uCellSecTlsVersionGet(const uCellSecTlsContext_t *pContext);
 
 /** Set the type of checking to perform on certificates
- * received from the server. If this is not called no
- * certificate checking will be carried out.
+ * received from the server. If this is not called the certificate
+ * checking carried out will depend upon the module: for SARA-R5
+ * and SARA-R422 root CA checking is conducted, on all other cellular
+ * modules no checking is conducted.
  *
  * @param pContext    a pointer to the security context.
  * @param check       the certificate checks to perform.

@@ -47,9 +47,9 @@ extern "C" {
 #endif
 
 #ifndef U_CELL_NET_PROFILE_ID
-/** The module profile ID to use.
+/** The module profile ID to use: has to be zero for SARA-R4.
  */
-# define U_CELL_NET_PROFILE_ID 1
+# define U_CELL_NET_PROFILE_ID 0
 #endif
 
 /** The maximum number of PDP contexts that can be exist

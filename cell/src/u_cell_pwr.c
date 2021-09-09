@@ -88,6 +88,12 @@ static const char *const gpConfigCommand[] = {"ATE0",      // Echo off
 // to true.
                                               "AT+CMEE=2", // Extended errors on, verbose/text format
 #endif
+#ifdef U_CFG_1V8_SIM_WORKAROUND
+// This can be used to tell a SARA-R422 module that a 1.8V
+// SIM which does NOT include 1.8V in its answer-to-reset
+// really is a good 1.8V SIM.
+                                              "AT+UDCONF=92,1,1",
+#endif
                                               "ATI9",      // Firmware version
                                               "AT&C1",     // DCD circuit (109) changes with the carrier
                                               "AT&D0"      // Ignore changes to DTR
@@ -159,15 +165,20 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
 
     // First send all the commands that everyone gets
     for (size_t x = 0;
-         x < sizeof(gpConfigCommand) / sizeof(gpConfigCommand[0]) &&
+         (x < sizeof(gpConfigCommand) / sizeof(gpConfigCommand[0])) &&
          success; x++) {
         success = moduleConfigureOne(atHandle, gpConfigCommand[x]);
     }
 
     if (success &&
         U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-        // SARA-R4 only: switch on channel and environment reporting for EUTRAN
-        success = moduleConfigureOne(atHandle, "AT+UCGED=5");
+        // SARA-R4 only: switch on the right UCGED mode
+        // (SARA-R5 and SARA-U201 have a single mode and require no setting)
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED5)) {
+            success = moduleConfigureOne(atHandle, "AT+UCGED=5");
+        } else {
+            success = moduleConfigureOne(atHandle, "AT+UCGED=2");
+        }
     }
 
     if (success &&
