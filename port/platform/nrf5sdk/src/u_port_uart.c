@@ -771,6 +771,9 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                 sizeBytes = gUartData[handle].rxBufferSizeBytes;
             }
 
+            // Before reading anything we re-enable RX events from UART
+            gUartData[handle].userNeedsNotify = true;
+
             // Get the number of bytes available to read
             totalRead = uartGetRxBytes(&(gUartData[handle]));
             if (totalRead > sizeBytes) {
@@ -806,13 +809,6 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
 
             // Set the return value
             sizeOrErrorCode = totalRead;
-
-            // Set the notify flag if we were unable
-            // to read anything
-            gUartData[handle].userNeedsNotify = false;
-            if (sizeOrErrorCode == 0) {
-                gUartData[handle].userNeedsNotify = true;
-            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
