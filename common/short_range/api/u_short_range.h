@@ -46,7 +46,7 @@ extern "C" {
 /** UART buffer length. UART characters are placed in this buffer
  * on arrival. EDM parser then consumes from this buffer.
  */
-# define U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES 512
+# define U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES 1024
 #endif
 
 #ifndef U_SHORT_RANGE_UART_BAUD_RATE
