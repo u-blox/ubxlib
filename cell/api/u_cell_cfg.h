@@ -244,6 +244,32 @@ int32_t uCellCfgSetUdconf(int32_t cellHandle, int32_t param1,
 int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
                           int32_t param2);
 
+/** Restores factory configurations for FS and/or NVM. The module must be
+ * re-booted afterwards (with a call to uCellPwrReboot()) for it to
+ * take effect.
+ * Note: not all restore types are supported by all modules, an error
+ * will be returned in case of an invalid restore type.  Check the AT
+ * commands manual for your module for further information.
+ *
+ *  @param cellHandle    the handle of the cellular instance.
+ *  @param fsRestoreType the file system factory restore type. Valid options
+ *                       are 0, 1 and 2.
+ *                       0: no factory restore.
+ *                       1: Check datasheet, if this option is
+ *                          supported by your module.
+ *                       2: all files stored in FS deleted.
+ * @param nvmRestoreType the file system factory restore type. Valid options
+ *                       are 0, 1 and 2.
+ *                       0: no factory restore.
+ *                       1: NVM flash sectors erased.
+ *                       2: Check datasheet, if this option is
+ *                          supported by your module.
+ * @return               zero on success or negative error code on
+ *                       failure.
+ */
+int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType,
+                             int32_t nvmRestoreType);
+
 #ifdef __cplusplus
 }
 #endif

@@ -171,6 +171,12 @@ static void testBandMask(int32_t cellHandle,
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+/* Note: we don't test the uCellCfgFactoryReset() here since
+ * it is a relatively simple function and performing a factory
+ * reset before each test run on the modules in our test farm
+ * probably isn't good use of their flash wear reserves.
+ */
+
 /** Test band masks.
  *
  * IMPORTANT: see notes in u_cfg_test_platform_specific.h for the

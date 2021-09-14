@@ -1226,4 +1226,44 @@ int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
     return errorCodeOrUdconf;
 }
 
+// Perform a factory reset: note that this function is not
+// tested, so if you make changes please be sure to get them
+// right!
+int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType, int32_t nvmRestoreType)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            // Lock mutex before using AT client.
+            uAtClientLock(atHandle);
+            // Send AT command.
+            uAtClientCommandStart(atHandle, "AT+UFACTORY=");
+            // Write file system restore type.
+            uAtClientWriteInt(atHandle, fsRestoreType);
+            // Write NVM restore type.
+            uAtClientWriteInt(atHandle, nvmRestoreType);
+            // Terminate the entire AT command sequence by looking for the
+            // `OK` or `ERROR` response.
+            uAtClientCommandStopReadResponse(atHandle);
+            // Unlock mutex after using AT client.
+            errorCode = uAtClientUnlock(atHandle);
+            if (errorCode == 0) {
+                pInstance->rebootIsRequired = true;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
 // End of file
