@@ -114,6 +114,7 @@ SRC_FILES += \
   $(UBXLIB_PATH)/cell/src/u_cell_mqtt.c \
   $(UBXLIB_PATH)/cell/src/u_cell_file.c \
   $(UBXLIB_PATH)/cell/src/u_cell_loc.c \
+  $(UBXLIB_PATH)/cell/src/u_cell_gpio.c \
   $(UBXLIB_PATH)/cell/src/u_cell_private.c \
   $(UBXLIB_PATH)/cell/test/u_cell_pwr_test.c \
   $(UBXLIB_PATH)/cell/test/u_cell_cfg_test.c \
@@ -125,6 +126,7 @@ SRC_FILES += \
   $(UBXLIB_PATH)/cell/test/u_cell_mqtt_test.c \
   $(UBXLIB_PATH)/cell/test/u_cell_file_test.c \
   $(UBXLIB_PATH)/cell/test/u_cell_loc_test.c \
+  $(UBXLIB_PATH)/cell/test/u_cell_gpio_test.c \
   $(UBXLIB_PATH)/cell/test/u_cell_test_preamble.c \
   $(UBXLIB_PATH)/cell/test/u_cell_test_private.c \
   $(UBXLIB_PATH)/gnss/src/u_gnss.c \

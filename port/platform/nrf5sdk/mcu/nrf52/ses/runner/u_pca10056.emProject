@@ -145,6 +145,7 @@
       <file file_name="../../../../../../../cell/api/u_cell_mqtt.h" />
       <file file_name="../../../../../../../cell/api/u_cell_file.h" />
       <file file_name="../../../../../../../cell/api/u_cell_loc.h" />
+      <file file_name="../../../../../../../cell/api/u_cell_gpio.h" />
       <file file_name="../../../../../../../cell/src/u_cell.c" />
       <file file_name="../../../../../../../cell/src/u_cell_pwr.c" />
       <file file_name="../../../../../../../cell/src/u_cell_cfg.c" />
@@ -157,6 +158,7 @@
       <file file_name="../../../../../../../cell/src/u_cell_mqtt.c" />
       <file file_name="../../../../../../../cell/src/u_cell_file.c" />
       <file file_name="../../../../../../../cell/src/u_cell_loc.c" />
+      <file file_name="../../../../../../../cell/src/u_cell_gpio.c" />
       <file file_name="../../../../../../../cell/src/u_cell_private.c" />
       <file file_name="../../../../../../../cell/src/u_cell_private.h" />
       <file file_name="../../../../../../../cell/src/u_cell_apn_db.h" />
@@ -170,6 +172,7 @@
       <file file_name="../../../../../../../cell/test/u_cell_mqtt_test.c" />
       <file file_name="../../../../../../../cell/test/u_cell_file_test.c" />
       <file file_name="../../../../../../../cell/test/u_cell_loc_test.c" />
+      <file file_name="../../../../../../../cell/test/u_cell_gpio_test.c" />
       <file file_name="../../../../../../../cell/test/u_cell_test_preamble.c" />
       <file file_name="../../../../../../../cell/test/u_cell_test_preamble.h" />
       <file file_name="../../../../../../../cell/test/u_cell_test_private.c" />

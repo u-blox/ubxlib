@@ -55,6 +55,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../cell/src/u_cell_mqtt.c"
                    "../../../../../../../cell/src/u_cell_file.c"
                    "../../../../../../../cell/src/u_cell_loc.c"
+                   "../../../../../../../cell/src/u_cell_gpio.c"
                    "../../../../../../../cell/src/u_cell_private.c"
 # The GNSS API
                    "../../../../../../../gnss/src/u_gnss.c"

@@ -13,6 +13,7 @@ The cellular APIs are split into the following groups:
 - `sock`: sockets, for exchanging data (but see the [common/sock](/common/sock) component for the best way to do this).
 - `mqtt`: MQTT client (but see the [common/mqtt_client](/common/mqtt_client) component for the best way to do this).
 - `loc`: getting a location fix using the Cell Locate service (but see the [common/location](/common/location) component for the best way to do this); you will need an authentication token from the [Location Services section](https://portal.thingstream.io/app/location-services) of your [Thingstream portal](https://portal.thingstream.io/app/dashboard). If you have a GNSS chip attached via a cellular module and want to control it directly from your MCU see the [gnss](/gnss) API but note that the `loc` API here will make use of a such a GNSS chip where that in any case.
+- `gpio`: configure and set the state of GPIO lines that are on the cellular module.
 
 The module types supported by this implementation are listed in [u_cell_module_type.h](api/u_cell_module_type.h).
 

@@ -317,6 +317,11 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_loc.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Cell/u_cell_gpio.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_gpio.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Cell/u_cell_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_private.c</locationURI>
@@ -487,10 +492,14 @@
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_file_test.c</locationURI>
 		</link>
 		<link>
-
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_loc_test.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_loc_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Cell/u_cell_gpio_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/cell/test/u_cell_gpio_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Cell/u_cell_test_preamble.c</name>
