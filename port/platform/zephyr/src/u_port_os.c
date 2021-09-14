@@ -44,9 +44,6 @@
 #define portMAX_DELAY K_FOREVER
 #endif
 
-#ifndef U_PORT_STACK_GUARD_SIZE
-#define U_PORT_STACK_GUARD_SIZE 50
-#endif
 static uint8_t __aligned(U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE)
 exe_chunk_0[U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE];
 // make this ram part executable
@@ -60,6 +57,7 @@ K_MEM_PARTITION_DEFINE(chunk0_reloc, exe_chunk_0, sizeof(exe_chunk_0),
 typedef struct {
     struct k_thread *pThread;
     k_thread_stack_t *pStack;
+    void *pStackAllocation;
     size_t stackSize;
     bool isAllocated;
 } uPortOsThreadInstance_t;
@@ -72,6 +70,7 @@ static uPortOsThreadInstance_t gThreadInstances[U_CFG_OS_MAX_THREADS];
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
 static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
 {
     uPortOsThreadInstance_t *threadPtr = NULL;
@@ -82,14 +81,47 @@ static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
             //Free if previously used instance
             if (threadPtr->stackSize > 0) {
                 k_free(threadPtr->pThread);
-                k_free(threadPtr->pStack);
+                k_free(threadPtr->pStackAllocation);
             }
+
             threadPtr->pThread = (struct k_thread *)k_malloc(sizeof(struct k_thread));
-            threadPtr->pStack = (k_thread_stack_t *)k_malloc(stackSizeBytes + U_PORT_STACK_GUARD_SIZE);
-            memset(threadPtr->pThread, 0, sizeof(struct k_thread));
-            memset(threadPtr->pStack, 0, stackSizeBytes + U_PORT_STACK_GUARD_SIZE);
-            threadPtr->stackSize = stackSizeBytes;
-            threadPtr->isAllocated = true;
+
+            // Zephyr doesn't officially support dynamically allocated stack memory.
+            // For this reason we need to do some alignment hacks here.
+            // When CONFIG_USERSPACE is enabled Zephyr will check if the stack is
+            // "user capable" and then decide whether to use kernel or user space hosted
+            // threads. When we pass it a stack pointer from the heap Zephyr will
+            // decide to use kernel hosted thread. This is very important at least for
+            // 32 bit ARM arch where MPU is enabled. For user space hosted threads
+            // the stack alignment requirement is the nearest 2^x of the stack size.
+            // Since the only way to align dynamically allocated memory is to adjust the
+            // pointer after allocation we would in this case need to allocate the double
+            // stack size which of course isn't a solution.
+            // Luckily when the thread is kernel hosted the stack alignment is much lower
+            // since then only a small MPU guard region is added at the top of the stack.
+            // This decreases the stack alignment requirement to 32 bytes.
+            //
+            // For the above reason the code below will use the Z_KERNEL_STACK_xx defines
+            // instead of Z_THREAD_STACK_xx.
+
+            size_t stackAllocSize;
+            // Other architectures may have other alignment requirements so just add
+            // a simple check that we don't waste a huge amount dynamic memory due to
+            // aligment.
+            assert(Z_KERNEL_STACK_OBJ_ALIGN <= 512);
+            // Z_KERNEL_STACK_SIZE_ADJUST() will add extra space that Zephyr may require and
+            // to make sure correct allignment we allocate Z_KERNEL_STACK_OBJ_ALIGN extra.
+            stackAllocSize = Z_KERNEL_STACK_OBJ_ALIGN + Z_KERNEL_STACK_SIZE_ADJUST(stackSizeBytes);
+            threadPtr->pStackAllocation = k_malloc(stackAllocSize);
+            // Do the stack alignment
+            threadPtr->pStack = (k_thread_stack_t *)ROUND_UP(threadPtr->pStackAllocation,
+                                                             Z_KERNEL_STACK_OBJ_ALIGN);
+
+            if (threadPtr->pThread && threadPtr->pStackAllocation) {
+                memset(threadPtr->pThread, 0, sizeof(struct k_thread));
+                threadPtr->stackSize = stackSizeBytes;
+                threadPtr->isAllocated = true;
+            }
             break;
         }
     }
@@ -98,7 +130,9 @@ static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
     } else if (threadPtr->pThread == NULL || threadPtr->pStack == NULL) {
         uPortLogF("Unable to allocate memory for thread with stack size %d\n", stackSizeBytes);
         k_free(threadPtr->pThread);
-        k_free(threadPtr->pStack);
+        k_free(threadPtr->pStackAllocation);
+        threadPtr->pThread = NULL;
+        threadPtr->pStackAllocation = NULL;
         threadPtr = NULL;
     }
     return threadPtr;
@@ -127,6 +161,7 @@ void uPortOsPrivateInit()
     for (i = 0; i < U_CFG_OS_MAX_THREADS; i++) {
         gThreadInstances[i].pThread = NULL;
         gThreadInstances[i].pStack = NULL;
+        gThreadInstances[i].pStackAllocation = NULL;
         gThreadInstances[i].stackSize = 0;
         gThreadInstances[i].isAllocated = false;
     }
@@ -138,7 +173,8 @@ void uPortOsPrivateDeinit()
         if (gThreadInstances[i].stackSize > 0) {
             k_free(gThreadInstances[i].pThread);
             gThreadInstances[i].pThread = NULL;
-            k_free(gThreadInstances[i].pStack);
+            k_free(gThreadInstances[i].pStackAllocation);
+            gThreadInstances[i].pStackAllocation = NULL;
             gThreadInstances[i].pStack = NULL;
             gThreadInstances[i].stackSize = 0;
             gThreadInstances[i].isAllocated = false;
