@@ -5,6 +5,9 @@ For any other operations the same handle as returned by the network API may be u
 
 This is not a "manager", it is not smart, it solely exists to allow applications to obtain a connection without caring about the details of the connection other than making a choice between cellular, Wi-Fi etc.  Note that the configuration structure provided to this API by the underlying APIs may be limited to keep things simple, e.g. it may not be possible to chose the interface speed or to provide static data buffers etc.
 
+# Leaving Things Out
+You will notice that there are `_stub.c` files in the [src](src) directory; if you are only interested in, say, cellular, and want to leave out Wi-Fi/BLE/GNSS functionality, you can simply replace, for instance, [u_network_private_wifi.c](src/u_network_private_wifi.c) with [u_network_private_wifi_stub.c](src/u_network_private_wifi_stub.c), etc. in your build metadata and your linker should then drop the unwanted things from your build.
+
 # Usage
 The directories include the API and the C source files necessary to call into the underlying [cell](/cell), [wifi](/wifi), [ble](/ble) and [gnss](/gnss) APIs.  The [test](test) directory contains a small number of generic tests for the [common/network](/common/network) API; for comprehensive tests of networking please refer to the test directory of the underlying APIs.
 
