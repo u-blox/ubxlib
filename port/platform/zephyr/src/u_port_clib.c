@@ -25,6 +25,8 @@
 #endif
 
 #include "random/rand32.h"
+#include "assert.h"
+#include "string.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -34,6 +36,18 @@
 #define RAND_MAX 0x7fffffff
 #endif
 
+// The define below can be used for detecting heap buffer overflow.
+// When enabled a extra field is added in the beginning and end for each
+// allocation (hidden from the caller) which is then verified on free()
+//#define U_MALLOC_FENCE
+
+#ifdef U_MALLOC_FENCE
+# define U_MALLOC_FENCE_HEADER_SIZE  (4+4) // 4 byte magic, 4 byte size of alloc
+# define U_MALLOC_FENCE_TRAILER_SIZE 4
+# define U_MALLOC_FENCE_HEADER_MAGIC 0xBEEFBEEF
+# define U_MALLOC_FENCE_TRAILER_MAGIC 0xCAFECAFE
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -41,6 +55,13 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+#ifdef U_MALLOC_FENCE
+// When U_MALLOC_FENCE is enabled this variable will contain
+// the current total amount of allocated memory. Could potentially
+// be used for finding memory leaks.
+atomic_t gTotAllocSize = ATOMIC_INIT(0);
+#endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -67,12 +88,47 @@ int rand()
 // libc RAM with CONFIG_MINIMAL_LIBC_MALLOC=n.
 void *malloc(size_t size)
 {
-    return k_malloc(size);
+#ifndef U_MALLOC_FENCE
+    char *ptr = k_malloc(size);
+#else
+    size_t allocSize = size + U_MALLOC_FENCE_HEADER_SIZE + U_MALLOC_FENCE_TRAILER_SIZE;
+    char *ptr = k_malloc(allocSize);
+    if (ptr != NULL) {
+        // Keep track of total amount of allocations
+        atomic_add(&gTotAllocSize, allocSize);
+        // Add the header (magic + allocation size)
+        *((uint32_t *)&ptr[0]) = U_MALLOC_FENCE_HEADER_MAGIC;
+        *((uint32_t *)&ptr[4]) = size;
+        // Add trailer magic
+        ptr += U_MALLOC_FENCE_HEADER_SIZE;
+        *((uint32_t *)&ptr[size]) = U_MALLOC_FENCE_TRAILER_MAGIC;
+    }
+#endif
+    return ptr;
 }
 
 void free(void *p)
 {
-    k_free(p);
+    char *ptr = p;
+
+#ifdef U_MALLOC_FENCE
+    if (ptr != NULL) {
+        ptr -= U_MALLOC_FENCE_HEADER_SIZE;
+        // Check header magic
+        assert(*((uint32_t *)&ptr[0]) == U_MALLOC_FENCE_HEADER_MAGIC);
+        uint32_t *pSize = (uint32_t *)&ptr[4];
+        uint32_t trailerOffset = *pSize + U_MALLOC_FENCE_HEADER_SIZE;
+        // Check trailer magic
+        assert(*((uint32_t *)&ptr[trailerOffset]) == U_MALLOC_FENCE_TRAILER_MAGIC);
+        // Keep track of total amount of allocations
+        size_t allocSize = *pSize + U_MALLOC_FENCE_HEADER_SIZE + U_MALLOC_FENCE_TRAILER_SIZE;
+        atomic_sub(&gTotAllocSize, allocSize);
+        // Clear the memory region to detect double free etc
+        memset(ptr, 0xFF, *pSize);
+    }
+#endif
+
+    k_free(ptr);
 }
 
 // End of file
