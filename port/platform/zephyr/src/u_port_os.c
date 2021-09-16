@@ -157,8 +157,15 @@ static void freeThreadInstance(struct k_thread *threadPtr)
 // Initialise thread pool.
 void uPortOsPrivateInit()
 {
-    int32_t i = 0;
-    for (i = 0; i < U_CFG_OS_MAX_THREADS; i++) {
+    // There is a bug in Zephyr where main thread.resource_pool
+    // contains an uninitilized value. This results in crashes
+    // when using some of the Zephyr API that allocates memory
+    // using the resource pool (such as k_msgq_alloc_init()).
+    // Below is a workaround until this is fixed.
+    extern struct k_thread z_main_thread;
+    k_thread_system_pool_assign(&z_main_thread);
+
+    for (int32_t i = 0; i < U_CFG_OS_MAX_THREADS; i++) {
         gThreadInstances[i].pThread = NULL;
         gThreadInstances[i].pStack = NULL;
         gThreadInstances[i].pStackAllocation = NULL;
@@ -212,6 +219,7 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
                                K_PRIO_COOP(priority), 0, K_NO_WAIT);
 
             if (*pTaskHandle != NULL) {
+                k_thread_system_pool_assign(newThread->pThread);
                 if (pName != NULL) {
                     k_thread_name_set((k_tid_t)*pTaskHandle, pName);
                 }
@@ -284,15 +292,13 @@ int32_t uPortQueueCreate(size_t queueLength,
     if (pQueueHandle != NULL) {
         errorCode = U_ERROR_COMMON_NO_MEMORY;
         // Actually create the queue
-        *pQueueHandle = (uPortQueueHandle_t) k_malloc(sizeof(struct k_msgq));
-        if (*pQueueHandle != NULL) {
-            char *buffer = (char *) k_malloc(itemSizeBytes * queueLength);
-            if (buffer) {
-                k_msgq_init((struct k_msgq *)*pQueueHandle, buffer, itemSizeBytes, queueLength);
+        struct k_msgq *pMsgQ = (struct k_msgq *) k_malloc(sizeof(struct k_msgq));
+        if (pMsgQ != NULL) {
+            if (k_msgq_alloc_init(pMsgQ, itemSizeBytes, queueLength) == 0) {
+                *pQueueHandle = (uPortQueueHandle_t) pMsgQ;
                 errorCode = U_ERROR_COMMON_SUCCESS;
             }
         }
-
     }
 
     return (int32_t) errorCode;
@@ -301,13 +307,14 @@ int32_t uPortQueueCreate(size_t queueLength,
 // Delete the given queue.
 int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle)
 {
+    struct k_msgq *pMsgQ = (struct k_msgq *)queueHandle;
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (queueHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
-        k_msgq_purge((struct k_msgq *) queueHandle);
-        if (0 == k_msgq_cleanup((struct k_msgq *) queueHandle)) {
-            k_free((struct k_msgq *) queueHandle);
+        k_msgq_purge(pMsgQ);
+        if (0 == k_msgq_cleanup(pMsgQ)) {
+            k_free(pMsgQ);
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
