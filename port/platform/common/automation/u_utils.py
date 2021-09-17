@@ -677,7 +677,7 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
             'stderr': subprocess.STDOUT,
             'shell': shell_cmd,
             'env': set_env,
-            'executable': "bin/bash" if bash_cmd else None
+            'executable': "/bin/bash" if bash_cmd else None
         }
         # Call the thang
         # Note: used to have bufsize=1 here but it turns out
