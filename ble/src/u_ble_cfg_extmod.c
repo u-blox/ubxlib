@@ -88,7 +88,6 @@ static int32_t setStartupMode(const uAtClientHandle_t atHandle, int32_t mode)
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+UMSM=");
     uAtClientWriteInt(atHandle, mode);
-    uAtClientCommandStop(atHandle);
     uAtClientCommandStopReadResponse(atHandle);
     error = uAtClientUnlock(atHandle);
 
@@ -116,7 +115,6 @@ static int32_t setBleRole(const uAtClientHandle_t atHandle, int32_t role)
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, "AT+UBTLE=");
     uAtClientWriteInt(atHandle, role);
-    uAtClientCommandStop(atHandle);
     uAtClientCommandStopReadResponse(atHandle);
     error = uAtClientUnlock(atHandle);
 
@@ -167,7 +165,6 @@ static int32_t disableServer(const uAtClientHandle_t atHandle, int32_t serverId)
     uAtClientCommandStart(atHandle, "AT+UDSC=");
     uAtClientWriteInt(atHandle, serverId);
     uAtClientWriteInt(atHandle, 0);
-    uAtClientCommandStop(atHandle);
     uAtClientCommandStopReadResponse(atHandle);
 
     error = uAtClientUnlock(atHandle);
@@ -203,7 +200,6 @@ static int32_t setServer(const uAtClientHandle_t atHandle, uShortRangeServerType
         uAtClientCommandStart(atHandle, "AT+UDSC=");
         uAtClientWriteInt(atHandle, id);
         uAtClientWriteInt(atHandle, (int32_t) type);
-        uAtClientCommandStop(atHandle);
         uAtClientCommandStopReadResponse(atHandle);
         error = uAtClientUnlock(atHandle);
     }
@@ -218,7 +214,6 @@ static int32_t restart(const uAtClientHandle_t atHandle, bool store)
     if (store) {
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, "AT&W");
-        uAtClientCommandStop(atHandle);
         uAtClientCommandStopReadResponse(atHandle);
         error = (int32_t)uAtClientUnlock(atHandle);
     }
@@ -226,7 +221,6 @@ static int32_t restart(const uAtClientHandle_t atHandle, bool store)
     if (error == (int32_t)U_ERROR_COMMON_SUCCESS) {
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, "AT+CPWROFF");
-        uAtClientCommandStop(atHandle);
         uAtClientCommandStopReadResponse(atHandle);
         error = (int32_t)uAtClientUnlock(atHandle);
 
