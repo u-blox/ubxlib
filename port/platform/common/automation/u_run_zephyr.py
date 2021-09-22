@@ -206,26 +206,50 @@ def download_nrf53(connection, guard_time_seconds, build_dir, env, printer, prom
     '''Download the given hex file(s) on NRF53'''
     cpunet_hex_path = os.path.join(build_dir, "hci_rpmsg", "zephyr", "merged_CPUNET.hex")
     success = True
+    nrfjprog_cmd = [NRFJPROG, "-f", "NRF53"]
+    if connection and "debugger" in connection and connection["debugger"]:
+        nrfjprog_cmd.extend(["-s", connection["debugger"]])
+
+    # Disable read protection first
     if os.path.exists(cpunet_hex_path):
-        printer.string("{}download NETCPU".format(prompt))
-        call_list = [NRFJPROG, "-f", "NRF53", "--coprocessor", "CP_NETWORK",
-                     "--chiperase", "--program", cpunet_hex_path]
-        if connection and "debugger" in connection and connection["debugger"]:
-            call_list.extend(["-s", connection["debugger"]])
+        printer.string("{}---- recover NETCPU ----".format(prompt))
+
+        call_list = nrfjprog_cmd + ["--coprocessor", "CP_NETWORK", "--recover"]
         print_call_list(call_list, printer, prompt)
         success = u_utils.exe_run(call_list, guard_time_seconds, printer,
                                   prompt, shell_cmd=True, set_env=env)
+
     if success:
         # Give nrfjprog some time to relax
-        sleep(10)
-        app_hex_path = os.path.join(build_dir, "zephyr", "merged.hex")
-        printer.string("{}download APP".format(prompt))
-        call_list = [NRFJPROG, "-f", "NRF53", "--chiperase", "--program", app_hex_path]
-        if connection and "debugger" in connection and connection["debugger"]:
-            call_list.extend(["-s", connection["debugger"]])
+        sleep(1)
+        printer.string("{}--- recover APP ----".format(prompt))
+        call_list = nrfjprog_cmd + ["--coprocessor", "CP_APPLICATION", "--recover"]
         print_call_list(call_list, printer, prompt)
         success = u_utils.exe_run(call_list, guard_time_seconds, printer,
                                   prompt, shell_cmd=True, set_env=env)
+
+
+    if success and os.path.exists(cpunet_hex_path):
+        # Now flash network core
+        # Give nrfjprog some time to relax
+        sleep(1)
+        printer.string("{}---- download NETCPU ----".format(prompt))
+        call_list = nrfjprog_cmd + ["--coprocessor", "CP_NETWORK", "--chiperase", "--program", cpunet_hex_path]
+        print_call_list(call_list, printer, prompt)
+        success = u_utils.exe_run(call_list, guard_time_seconds, printer,
+                                  prompt, shell_cmd=True, set_env=env)
+
+    if success:
+        # Give nrfjprog some time to relax
+        sleep(1)
+        app_hex_path = os.path.join(build_dir, "zephyr", "merged.hex")
+        printer.string("{}---- download APP ----".format(prompt))
+
+        call_list = nrfjprog_cmd + ["--coprocessor", "CP_APPLICATION", "--chiperase", "--program", app_hex_path]
+        print_call_list(call_list, printer, prompt)
+        success = u_utils.exe_run(call_list, guard_time_seconds, printer,
+                                  prompt, shell_cmd=True, set_env=env)
+
     return success
 
 def download(connection, jlink_device_name, guard_time_seconds,
