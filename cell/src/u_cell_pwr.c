@@ -96,7 +96,8 @@ static const char *const gpConfigCommand[] = {"ATE0",      // Echo off
 #endif
                                               "ATI9",      // Firmware version
                                               "AT&C1",     // DCD circuit (109) changes with the carrier
-                                              "AT&D0"      // Ignore changes to DTR
+                                              "AT&D0",     // Ignore changes to DTR
+                                              "AT+UPSV=0"  // Switch off UART power saving initially
                                              };
 
 /* ----------------------------------------------------------------
