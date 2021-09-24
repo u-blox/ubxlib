@@ -52,7 +52,7 @@
  * -------------------------------------------------------------- */
 
 #define U_BLE_CFG_SERVER_TYPE_SPS 6
-#define U_BLE_CFG_MAX_NUM_SERVERS 6
+#define U_BLE_CFG_MAX_NUM_SERVERS 7
 #define U_BLE_CFG_STARTUP_MODE_EDM 2
 
 /* ----------------------------------------------------------------
