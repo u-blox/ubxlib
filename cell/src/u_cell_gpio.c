@@ -136,6 +136,7 @@ int32_t uCellGpioSet(int32_t cellHandle, uCellGpioName_t gpioId,
     return errorCode;
 }
 
+// Get the state of a GPIO.
 int32_t uCellGpioGet(int32_t cellHandle, uCellGpioName_t gpioId)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -166,6 +167,76 @@ int32_t uCellGpioGet(int32_t cellHandle, uCellGpioName_t gpioId)
             errorCode = uAtClientUnlock(atHandle);
             if ((errorCode == 0) && (level >= 0)) {
                 errorCode = level ? 1 : 0;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Set the state of the CTS line.
+int32_t uCellGpioSetCts(int32_t cellHandle, int32_t level)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            // SARA-R4 doesn't support this
+            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UCTS=");
+                // Write output level
+                uAtClientWriteInt(atHandle, level);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the state of the CTS line.
+int32_t uCellGpioGetCts(int32_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t level;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            // SARA-R4 doesn't support this
+            if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UCTS?");
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+UCTS:");
+                // Read the level
+                level = uAtClientReadInt(atHandle);
+                uAtClientResponseStop(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+                if ((errorCode == 0) && (level >= 0)) {
+                    errorCode = level ? 1 : 0;
+                }
             }
         }
 

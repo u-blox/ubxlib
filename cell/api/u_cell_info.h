@@ -275,6 +275,26 @@ int32_t uCellInfoGetFirmwareVersionStr(int32_t cellHandle,
  */
 int64_t uCellInfoGetTimeUtc(int32_t cellHandle);
 
+/** Determine if RTS flow control, i.e. a signal from
+ * the cellular module to this software that the module is
+ * ready to receive data, is enabled.
+ *
+ * @param cellHandle the handle of the cellular instance.
+ * @return           true if RTS flow control is enabled,
+ *                   else false.
+ */
+bool uCellInfoIsRtsFlowControlEnabled(int32_t cellHandle);
+
+/** Determine if CTS flow control, i.e. a signal from
+ * this software to the cellular module that this sofware is
+ * ready to accept data, is enabled.
+ *
+ * @param cellHandle the handle of the cellular instance.
+ * @return           true if CTS flow control is enabled,
+ *                   else false.
+ */
+bool uCellInfoIsCtsFlowControlEnabled(int32_t cellHandle);
+
 #ifdef __cplusplus
 }
 #endif

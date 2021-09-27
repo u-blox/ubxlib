@@ -21,6 +21,11 @@
 
 #include "u_runner.h"
 
+/* Thes inclusion is required to get the UART CTS/RTS pin assignments
+ * from the Zephyr device tree.
+ */
+#include "devicetree.h"
+
 /** @file
  * @brief This header file contains configuration information for
  * a Zephyr platform that is fed in at application level.  It assumes
@@ -56,6 +61,14 @@
  * the PCB _very_ carefully to find any that are free.  In
  * general, port 1 is freer than port 0, hence the choices below.
  */
+
+/** Required for Zephyr device tree query:
+ * Since U_CFG_APP_CELL_UART is a macro, DT_CAT() won't work on it
+ * directly, it needs this intermediate to cause U_CFG_TEST_UART_A
+ * to be expand first, e.g. if U_CFG_APP_CELL_UART is defined as 1
+ * then U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART) spits out uart1.
+ */
+#define U_CFG_APP_CAT(a, b) DT_CAT(a, b)
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A BLE/WIFI MODULE ON ZEPHYR/NRF5x: MISC
@@ -157,6 +170,38 @@
 
 #ifndef U_CFG_APP_PIN_CELL_RTS
 # define U_CFG_APP_PIN_CELL_RTS               -1
+#endif
+
+/** Macro to return the CTS pin for cellular: note that dashes
+ * in the DTS node name must be converted to underscores.
+ * 0xffffffff is a magic value in nRF speak, mapping to
+ * NRF_UARTE_PSEL_DISCONNECTED.
+ */
+#if (U_CFG_APP_CELL_UART < 0)
+# define U_CFG_TEST_PIN_UART_A_CTS_GET -1
+#else
+# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), cts_pin) &&    \
+    (DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), cts_pin) < 0xffffffff)
+#  define U_CFG_APP_PIN_CELL_CTS_GET DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), cts_pin)
+# else
+#  define U_CFG_APP_PIN_CELL_CTS_GET -1
+# endif
+#endif
+
+/** Macro to return the RTS pin for cellular: note that dashes
+ * in the DTS node name must be converted to underscores.
+ * 0xffffffff is a magic value in nRF speak, mapping to
+ * NRF_UARTE_PSEL_DISCONNECTED.
+ */
+#if (U_CFG_APP_CELL_UART < 0)
+# define U_CFG_TEST_PIN_UART_A_RTS_GET -1
+#else
+# if DT_NODE_HAS_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), rts_pin) &&    \
+    (DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), rts_pin) < 0xffffffff)
+#  define U_CFG_APP_PIN_CELL_RTS_GET DT_PROP(DT_NODELABEL(U_CFG_APP_CAT(uart, U_CFG_APP_CELL_UART)), rts_pin)
+# else
+#  define U_CFG_APP_PIN_CELL_RTS_GET -1
+# endif
 #endif
 
 /* ----------------------------------------------------------------

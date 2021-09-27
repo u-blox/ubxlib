@@ -57,6 +57,7 @@
 #include "u_cell.h"
 #include "u_cell_net.h"     // Required by u_cell_private.h
 #include "u_cell_private.h" // So that we can get at some innards
+#include "u_cell_info.h"    // Required for uCellInfoIsxxxFlowControlEnabled()
 #include "u_cell_gpio.h"
 
 #include "u_cell_test_cfg.h"
@@ -101,8 +102,10 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
 U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
 {
     int32_t cellHandle;
+    const uCellPrivateInstance_t *pInstance;
     int32_t heapUsed;
     int32_t x;
+    int32_t y;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -115,19 +118,45 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
+    // Get the private module instance data as we need it for testing
+    pInstance = pUCellPrivateGetInstance(cellHandle);
+    U_PORT_TEST_ASSERT(pInstance != NULL);
+    //lint -esym(613, pInstance) Suppress possible use of NULL pointer
+    // for pInstance from now on
+
     uPortLog("U_CELL_GPIO_TEST: setting GPIO ID %d to an output and 1.\n",
              U_CFG_TEST_GPIO_NAME);
     U_PORT_TEST_ASSERT(uCellGpioConfig(cellHandle, U_CFG_TEST_GPIO_NAME,
                                        true, 1) == 0);
     x = uCellGpioGet(cellHandle, U_CFG_TEST_GPIO_NAME);
-    uPortLog("U_CELL_GPIO_TEST: GPIO ID %d is %d.\n", x);
+    uPortLog("U_CELL_GPIO_TEST: GPIO ID %d is %d.\n", U_CFG_TEST_GPIO_NAME, x);
     U_PORT_TEST_ASSERT(x == 1);
     uPortLog("U_CELL_GPIO_TEST: setting GPIO ID %d to 0.\n",
              U_CFG_TEST_GPIO_NAME);
     U_PORT_TEST_ASSERT(uCellGpioSet(cellHandle, U_CFG_TEST_GPIO_NAME, 0) == 0);
     x = uCellGpioGet(cellHandle, U_CFG_TEST_GPIO_NAME);
-    uPortLog("U_CELL_GPIO_TEST: GPIO ID %d is %d.\n", x);
+    uPortLog("U_CELL_GPIO_TEST: GPIO ID %d is %d.\n", U_CFG_TEST_GPIO_NAME, x);
     U_PORT_TEST_ASSERT(x == 0);
+
+    // For toggling the CTS pin we need to know that it is not
+    // already in use for flow control and this command is also not
+    // supported on SARA-R4
+    if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
+        !uCellInfoIsCtsFlowControlEnabled(cellHandle)) {
+        uPortLog("U_CELL_GPIO_TEST: getting CTS...\n");
+        x = uCellGpioGetCts(cellHandle);
+        uPortLog("U_CELL_GPIO_TEST: CTS is %d.\n", x);
+        U_PORT_TEST_ASSERT((x == 0) || (x == 1));
+        uPortLog("U_CELL_GPIO_TEST: setting CTS to %d.\n", !((bool) x));
+        U_PORT_TEST_ASSERT(uCellGpioSetCts(cellHandle, !x) == 0);
+        y = uCellGpioGetCts(cellHandle);
+        uPortLog("U_CELL_GPIO_TEST: CTS is now %d.\n", y);
+        U_PORT_TEST_ASSERT(y == !((bool) x));
+        uPortLog("U_CELL_GPIO_TEST: putting CTS back again...\n");
+        U_PORT_TEST_ASSERT(uCellGpioSetCts(cellHandle, x) == 0);
+    } else {
+        uPortLog("U_CELL_GPIO_TEST: not testing setting of the CTS pin.\n");
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

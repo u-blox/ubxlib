@@ -131,10 +131,38 @@ int32_t uCellGpioSet(int32_t cellHandle, uCellGpioName_t gpioId,
  *
  * @param cellHandle    the handle of the cellular instance.
  * @param gpioId        the GPIO ID to get the state of.
- * @return              on success the level 0(low) or 1(high)
+ * @return              on success the level 0 (low) or 1 (high)
  *                      else negative error code.
  */
 int32_t uCellGpioGet(int32_t cellHandle, uCellGpioName_t gpioId);
+
+/** Set the state of the CTS line: this may be used if the
+ * serial handshaking lines are NOT being used (i.e. they are both
+ * -1 in the uNetworkConfigurationCell_t structure or the
+ * call to uPortUartOpen(), or you may call
+ * uCellInfoIsCtsFlowControlEnabled() to determine the truth).
+ * Note that NOT all modules support this feature (e.g. SARA-R4
+ * modules do not).
+ *
+ * @param cellHandle    the handle of the cellular instance.
+ * @param level         the level to set, 0 for low or non-zero for high.
+ * @return              zero on success else negative error code.
+ */
+int32_t uCellGpioSetCts(int32_t cellHandle, int32_t level);
+
+/** Get the state of the CTS line: this may be used if the
+ * serial handshaking lines are NOT being used (i.e. they are both
+ * -1 in the uNetworkConfigurationCell_t structure or the
+ * call to uPortUartOpen(), or you may call
+ * uCellInfoIsCtsFlowControlEnabled() to determine the truth).
+ * Note that NOT all modules support this feature (e.g. SARA-R4
+ * modules do not).
+ *
+ * @param cellHandle    the handle of the cellular instance.
+ * @return              on success the level 0 (low) or 1 (high)
+ *                      else negative error code.
+ */
+int32_t uCellGpioGetCts(int32_t cellHandle);
 
 #ifdef __cplusplus
 }

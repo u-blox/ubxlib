@@ -45,6 +45,7 @@
 #include "u_port_clib_mktime64.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
+#include "u_port_uart.h"
 
 #include "u_at_client.h"
 
@@ -884,6 +885,58 @@ int64_t uCellInfoGetTimeUtc(int32_t cellHandle)
     }
 
     return errorCodeOrValue;
+}
+
+// Determine if RTS flow control is enabled.
+bool uCellInfoIsRtsFlowControlEnabled(int32_t cellHandle)
+{
+    bool isEnabled = false;
+    uCellPrivateInstance_t *pInstance;
+    int32_t atStreamHandle;
+    uAtClientStream_t atStreamType;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atStreamHandle = uAtClientStreamGet(pInstance->atHandle, &atStreamType);
+            if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
+                isEnabled = uPortUartIsRtsFlowControlEnabled(atStreamHandle);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return isEnabled;
+}
+
+// Determine if CTS flow control is enabled.
+bool uCellInfoIsCtsFlowControlEnabled(int32_t cellHandle)
+{
+    bool isEnabled = false;
+    uCellPrivateInstance_t *pInstance;
+    int32_t atStreamHandle;
+    uAtClientStream_t atStreamType;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atStreamHandle = uAtClientStreamGet(pInstance->atHandle, &atStreamType);
+            if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
+                isEnabled = uPortUartIsCtsFlowControlEnabled(atStreamHandle);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return isEnabled;
 }
 
 // End of file

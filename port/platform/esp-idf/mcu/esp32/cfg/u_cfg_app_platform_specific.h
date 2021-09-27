@@ -159,6 +159,16 @@
 # define U_CFG_APP_PIN_CELL_RTS              -1
 #endif
 
+/** Macro to return the CTS pin for cellular: on some
+ * platforms this is not a simple define.
+ */
+#define U_CFG_APP_PIN_CELL_CTS_GET U_CFG_APP_PIN_CELL_CTS
+
+/** Macro to return the RTS pin for cellular: on some
+ * platforms this is not a simple define.
+ */
+#define U_CFG_APP_PIN_CELL_RTS_GET U_CFG_APP_PIN_CELL_RTS
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR A GNSS MODULE ON ESP32: MISC
  * -------------------------------------------------------------- */

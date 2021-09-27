@@ -43,6 +43,8 @@
 #define U_CFG_APP_PIN_CELL_RXD              0
 #define U_CFG_APP_PIN_CELL_CTS              0
 #define U_CFG_APP_PIN_CELL_RTS              0
+#define U_CFG_APP_PIN_CELL_CTS_GET U_CFG_APP_PIN_CELL_CTS
+#define U_CFG_APP_PIN_CELL_RTS_GET U_CFG_APP_PIN_CELL_RTS
 #define U_CFG_APP_PIN_SHORT_RANGE_TXD       0
 #define U_CFG_APP_PIN_SHORT_RANGE_RXD       0
 #define U_CFG_APP_PIN_SHORT_RANGE_CTS       0
