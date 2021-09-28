@@ -953,7 +953,14 @@ void uShortRangeEdmStreamClose(int32_t handle)
             }
             gEdmStream.uartHandle = -1;
             if (gEdmStream.eventQueueHandle >= 0) {
+                // Not so pretty workaround:
+                // Temporarily release the lock to prevent potential deadlock.
+                // This can happen if an URC is received at the same time EDM is closing down.
+                // URC will then try to lock gMutex while uPortEventQueueClose will try to take
+                // the queue lock for eventQueueHandle now held by URC handler.
+                U_PORT_MUTEX_UNLOCK(gMutex);
                 uPortEventQueueClose(gEdmStream.eventQueueHandle);
+                U_PORT_MUTEX_LOCK(gMutex);
             }
             gEdmStream.eventQueueHandle = -1;
             if (gEdmStream.atHandle != NULL) {
