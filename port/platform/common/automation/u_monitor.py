@@ -25,6 +25,13 @@ CONNECTION_TELNET = 2
 CONNECTION_PIPE = 3
 CONNECTION_RTT = 4
 
+def delayed_finish(*args):
+    '''Function to set "finished" after a time delay'''
+
+    # We will have been passed the "results" list as the
+    # single entry in the args array.
+    args[0]["finished"] = True
+
 def reboot_callback(match, results, printer, prompt, reporter):
     '''Handler for reboots occuring unexpectedly'''
     del match
@@ -35,7 +42,11 @@ def reboot_callback(match, results, printer, prompt, reporter):
                        u_report.EVENT_ERROR,
                        "target has rebooted")
     results["reboots"] += 1
-    results["finished"] = True
+    # After one of these messages the target can often spit-out
+    # useful information so wait a second or two before stopping
+    # capture
+    finish_timer = threading.Timer(2, delayed_finish, args=[results])
+    finish_timer.start()
 
 def run_callback(match, results, printer, prompt, reporter):
     '''Handler for an item beginning to run'''
