@@ -253,7 +253,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
         if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
-            (U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type))) {
+            (U_NETWORK_TEST_TYPE_HAS_SECURE_SOCK(gUNetworkTestCfg[x].type))) {
             uPortLog("U_SECURITY_TLS_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)

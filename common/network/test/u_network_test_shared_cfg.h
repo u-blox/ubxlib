@@ -38,6 +38,10 @@ extern "C" {
 #define U_NETWORK_TEST_TYPE_HAS_SOCK(type) ((type == U_NETWORK_TYPE_CELL) || \
                                             (type == U_NETWORK_TYPE_WIFI))
 
+/** Determine if the given network type supports secure sockets operations.
+ */
+#define U_NETWORK_TEST_TYPE_HAS_SECURE_SOCK(type) (type == U_NETWORK_TYPE_CELL)
+
 /** Determine if the given network type supports MQTT operations.
  */
 #define U_NETWORK_TEST_TYPE_HAS_MQTT(type) (type == U_NETWORK_TYPE_CELL)
