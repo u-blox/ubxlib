@@ -1881,6 +1881,8 @@ int32_t uSockSecurity(uSockDescriptor_t descriptor,
                     errnoLocal = -uCellSockSecure(networkHandle,
                                                   sockHandle,
                                                   ((uCellSecTlsContext_t *) (pContainer->socket.pSecurityContext->pNetworkSpecific))->profileId);
+                } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
+                    // TODO
                 }
             }
         }
