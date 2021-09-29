@@ -1520,6 +1520,12 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
             U_PORT_TEST_ASSERT(descriptor >= 0);
             U_PORT_TEST_ASSERT(errno == 0);
 
+            // This is a workaround for short range modules that requires
+            // calling uSockSendTo before uSockReceiveFrom can be used
+            pData[0] = 0;
+            uSockSendTo(descriptor, &remoteAddress, pData, 1);
+            uSockReceiveFrom(descriptor, NULL, pData, sizeof(pData));
+
             // Test that setting the socket receive timeout
             // option has an effect
             uPortLog("U_SOCK_TEST: check that receive timeout has an effect"
