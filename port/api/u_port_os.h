@@ -222,6 +222,14 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
 int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
                              int32_t waitMs, void *pEventData);
 
+/** Get the number of free spaces in the given queue.
+ *
+ * @param queueHandle the handle of the queue.
+ * @return            on success the number of spaces available,
+ *                    else negative error code.
+ */
+int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle);
+
 /* ----------------------------------------------------------------
  * FUNCTIONS: MUTEXES
  * -------------------------------------------------------------- */

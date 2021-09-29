@@ -225,6 +225,17 @@ int32_t uPortEventQueueStackMinFree(int32_t handle);
  */
 int32_t uPortEventQueueClose(int32_t handle);
 
+/** Get the number of entries free on the given event queue.
+ * It is NOT a requirement that this API is implemented:
+ * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * should be returned.
+ *
+ * @param handle  the handle of the event queue.
+ * @return        on success the number of entries free, else
+ *                negative error code.
+ */
+int32_t uPortEventQueueGetFree(int32_t handle);
+
 #ifdef __cplusplus
 }
 #endif

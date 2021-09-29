@@ -250,6 +250,18 @@ int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
     return (int32_t) errorCode;
 }
 
+// Get the number of free spaces in the given queue.
+int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle)
+{
+    int32_t errorCodeOrFree = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (queueHandle != NULL) {
+        errorCodeOrFree = (int32_t) uxQueueSpacesAvailable((QueueHandle_t) queueHandle);
+    }
+
+    return errorCodeOrFree;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MUTEXES
  * -------------------------------------------------------------- */

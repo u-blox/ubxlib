@@ -479,4 +479,25 @@ int32_t uPortEventQueueClose(int32_t handle)
     return (int32_t) errorCode;
 }
 
+// Get the number of entries free on the given event queue.
+int32_t uPortEventQueueGetFree(int32_t handle)
+{
+    int32_t errorCodeOrFree = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uEventQueue_t *pEventQueue;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        pEventQueue = pEventQueueGet(handle);
+        if (pEventQueue != NULL) {
+            errorCodeOrFree = uPortQueueGetFree(pEventQueue->queue);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCodeOrFree;
+}
+
 // End of file

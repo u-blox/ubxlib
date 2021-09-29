@@ -1096,6 +1096,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
              " 0x%08x.\n", errorCode, gQueueHandleData);
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gQueueHandleData != NULL);
+    errorCode = uPortQueueGetFree(gQueueHandleData);
+    uPortLog("U_PORT_TEST: %d entries free on data queue.\n", errorCode);
+    U_PORT_TEST_ASSERT((errorCode == U_PORT_TEST_QUEUE_LENGTH) ||
+                       (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
 
     uPortLog("U_PORT_TEST: creating a control queue...\n");
     errorCode = uPortQueueCreate(U_PORT_TEST_QUEUE_LENGTH,
@@ -1105,6 +1109,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
              " 0x%08x.\n", errorCode, gQueueHandleControl);
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gQueueHandleControl != NULL);
+    errorCode = uPortQueueGetFree(gQueueHandleControl);
+    uPortLog("U_PORT_TEST: %d entries free on control queue.\n", errorCode);
+    U_PORT_TEST_ASSERT((errorCode == U_PORT_TEST_QUEUE_LENGTH) ||
+                       (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
     uPortLog("U_PORT_TEST: locking mutex, preventing task from executing\n");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) == 0);
 
@@ -1365,7 +1373,6 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
-
 #if (U_CFG_TEST_UART_A >= 0)
 /** Some ports, e.g. the Nordic one, use the tick time somewhat
  * differently when the UART is running so initialise that
@@ -1490,6 +1497,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     uint8_t *pParam;
     uint8_t fill;
     size_t x;
+    int32_t y;
     int32_t stackMinFreeBytes;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
@@ -1518,11 +1526,19 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                                U_CFG_TEST_OS_TASK_PRIORITY,
                                                U_PORT_TEST_QUEUE_LENGTH);
     U_PORT_TEST_ASSERT(gEventQueueMaxHandle >= 0);
+    y = uPortEventQueueGetFree(gEventQueueMaxHandle);
+    uPortLog("U_PORT_TEST: %d entries free on \"event queue max\".\n", y);
+    U_PORT_TEST_ASSERT((y == U_PORT_TEST_QUEUE_LENGTH) ||
+                       (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
     gEventQueueMinHandle = uPortEventQueueOpen(eventQueueMinFunction, "blah", 1,
                                                U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES,
                                                U_CFG_TEST_OS_TASK_PRIORITY,
                                                U_PORT_TEST_QUEUE_LENGTH);
     U_PORT_TEST_ASSERT(gEventQueueMinHandle >= 0);
+    y = uPortEventQueueGetFree(gEventQueueMinHandle);
+    uPortLog("U_PORT_TEST: %d entries free on \"event queue min\".\n", y);
+    U_PORT_TEST_ASSERT((y == U_PORT_TEST_QUEUE_LENGTH) ||
+                       (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
 
     // Generate a block with a known test pattern, 0xFF to 0 repeated.
     //lint -esym(613, pParam) Suppress possible use of NULL pointer: it is checked

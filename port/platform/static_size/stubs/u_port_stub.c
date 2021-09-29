@@ -149,6 +149,11 @@ int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
     (void) pEventData;
     return 0;
 }
+int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle)
+{
+    (void) queueHandle;
+    return 0;
+}
 int32_t uPortMutexCreate(uPortMutexHandle_t *pMutexHandle)
 {
     (void) pMutexHandle;
