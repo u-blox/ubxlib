@@ -362,7 +362,6 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                                               RUN_INACTIVITY_TIME_SECONDS,
                                                               "\r", instance, printer,
                                                               reporter, test_report_handle,
-                                                              send_string="*\r\n",
                                                               keep_going_flag=keep_going_flag)
                                 serial_handle.close()
                             else:
