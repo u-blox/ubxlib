@@ -1669,6 +1669,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
                      U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                      U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
             // Connections can fail so allow this a few goes
+            errorCode = -1;
             for (int32_t y = 2; (y > 0) && (errorCode < 0); y--) {
                 errorCode = uSockConnect(descriptor, &remoteAddress);
                 uPortLog("U_SOCK_TEST: uSockConnect() returned %d,"
