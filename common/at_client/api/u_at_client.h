@@ -339,7 +339,7 @@ extern "C" {
  * which seems to require around twice the stack of NRF52
  * or STM32F4.
  */
-# define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 1536
+# define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 2048
 #endif
 
 #ifndef U_AT_CLIENT_CALLBACK_TASK_PRIORITY
