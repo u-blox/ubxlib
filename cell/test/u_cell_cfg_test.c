@@ -69,6 +69,12 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_CELL_CFG_TEST_GREETING_STR
+/** The greeting message to use during testing.
+ */
+#define U_CELL_CFG_TEST_GREETING_STR "beeble"
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -681,6 +687,61 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgUdconf")
 
     uPortLog("U_CELL_CFG_TEST: putting UDCONF=1 back to what it was...\n");
     U_PORT_TEST_ASSERT(uCellCfgSetUdconf(cellHandle, 1, udconfOriginal, -1) == 0);
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test greeting message.
+ */
+U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
+{
+    int32_t cellHandle;
+    char bufferOriginal[64];
+    char buffer[64];
+    int32_t x;
+    int32_t y;
+    int32_t heapUsed;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+    cellHandle = gHandles.cellHandle;
+
+    uPortLog("U_CELL_CFG_TEST: getting greeting...\n");
+    x = uCellCfgGetGreeting(cellHandle, bufferOriginal, sizeof(bufferOriginal));
+    uPortLog("U_CELL_CFG_TEST: greeting is \"%s\".\n", bufferOriginal);
+
+    uPortLog("U_CELL_CFG_TEST: setting greeting to \"%s\"...\n",
+             U_CELL_CFG_TEST_GREETING_STR);
+    U_PORT_TEST_ASSERT(uCellCfgSetGreeting(cellHandle,
+                                           U_CELL_CFG_TEST_GREETING_STR) == 0);
+
+    y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
+    uPortLog("U_CELL_CFG_TEST: greeting is now \"%s\".\n", buffer);
+    U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_TEST_GREETING_STR) == 0);
+    U_PORT_TEST_ASSERT(y == strlen(buffer));
+
+    uPortLog("U_CELL_CFG_TEST: putting greeting back to what it was...\n");
+    if (x > 0) {
+        U_PORT_TEST_ASSERT(uCellCfgSetGreeting(cellHandle, bufferOriginal) == 0);
+    } else {
+        U_PORT_TEST_ASSERT(uCellCfgSetGreeting(cellHandle, NULL) == 0);
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

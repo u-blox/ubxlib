@@ -265,6 +265,9 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                 errorCode = uCellInfoGetImsi(cellHandle, imsi);
                 if (errorCode == 0) {
                     errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+                    // Set a greeting message so that we can see spot if the module
+                    // has rebooted underneath us
+                    uCellCfgSetGreeting(cellHandle, U_CELL_PRIVATE_GREETING_STR);
                     pModule = pUCellPrivateGetModule(cellHandle);
                     if (pModule != NULL) {
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;

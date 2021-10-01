@@ -1298,4 +1298,84 @@ int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType, int32_t 
     return errorCode;
 }
 
+// Set a greeting message.
+int32_t uCellCfgSetGreeting(int32_t cellHandle, const char *pStr)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t mode = 0;
+
+    if (pStr != NULL) {
+        mode = 1;
+    }
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+CSGT=");
+            uAtClientWriteInt(atHandle, mode);
+            if (pStr != NULL) {
+                uAtClientWriteString(atHandle, pStr, true);
+            }
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the current greeting message.
+int32_t uCellCfgGetGreeting(int32_t cellHandle, char *pStr, size_t size)
+{
+    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t mode;
+    int32_t bytesRead;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) && (pStr != NULL)) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+CSGT?");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+CSGT:");
+            bytesRead = uAtClientReadString(atHandle, pStr, size, false);
+            mode = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
+            errorCodeOrSize = uAtClientUnlock(atHandle);
+            if (errorCodeOrSize == 0) {
+                if (mode == 0) {
+                    bytesRead = 0;
+                }
+                errorCodeOrSize = bytesRead;
+                if (bytesRead > 0) {
+                    uPortLog("U_CELL_CFG: greeting message is \"%s\".\n", pStr);
+                } else {
+                    uPortLog("U_CELL_CFG: no greeting message is set.\n");
+                }
+            } else {
+                uPortLog("U_CELL_CFG: unable to read greeting message.\n");
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrSize;
+}
+
 // End of file

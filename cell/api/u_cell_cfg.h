@@ -270,6 +270,33 @@ int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
 int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType,
                              int32_t nvmRestoreType);
 
+/** Set a greeting message, which will be emitted by the module at boot.
+ *
+ * @param cellHandle   the handle of the cellular instance.
+ * @param pStr         the null-terminated greeting message; use NULL
+ *                     to remove an existing greeting message.
+ * @return             zero on success or negative error code on
+ *                     failure.
+ */
+int32_t uCellCfgSetGreeting(int32_t cellHandle, const char *pStr);
+
+/** Get the current greeting message.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param pStr        a place to put the greeting message.  Room
+ *                    should be allowed for a null terminator, which
+ *                    will be added to terminate the string.  This
+ *                    pointer cannot be NULL.
+ * @param size        the number of bytes available at pStr,
+ *                    including room for a null terminator.
+ * @return            on success, the number of characters copied into
+ *                    pStr NOT including the terminator (i.e. as
+ *                    strlen() would return), on failure negative
+ *                    error code.  If there is no greeting message
+ *                    zero will be returned.
+ */
+int32_t uCellCfgGetGreeting(int32_t cellHandle, char *pStr, size_t size);
+
 #ifdef __cplusplus
 }
 #endif

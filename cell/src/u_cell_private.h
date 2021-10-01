@@ -123,6 +123,13 @@ extern "C" {
 #define U_CELL_PRIVATE_HAS(pModule, feature) \
     ((pModule != NULL) && ((pModule->featuresBitmap) & (1UL << (int32_t) (feature))))
 
+#ifndef U_CELL_PRIVATE_GREETING_STR
+/** A greeting string, a useful indication that the module
+ * rebooted underneath us unexpectedly.
+ */
+#define U_CELL_PRIVATE_GREETING_STR "Module has booted."
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
