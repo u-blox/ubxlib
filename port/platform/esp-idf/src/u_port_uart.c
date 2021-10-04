@@ -190,7 +190,7 @@ static void eventTask(void *pParam)
 // Initialise the UART driver.
 int32_t uPortUartInit()
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_SUCCESS;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
 
     if (gMutex == NULL) {
         errorCode = uPortMutexCreate(&gMutex);
@@ -200,7 +200,7 @@ int32_t uPortUartInit()
         }
     }
 
-    return (int32_t) errorCode;
+    return errorCode;
 }
 
 // Deinitialise the UART driver.
@@ -243,7 +243,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                       int32_t pinCts, int32_t pinRts)
 {
 
-    uErrorCode_t handleOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uart_config_t config;
     esp_err_t espError;
 
@@ -251,7 +251,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((uart >= 0) &&
             (uart < sizeof(gUartData) / sizeof(gUartData[0])) &&
             (baudRate > 0) && (pReceiveBuffer == NULL) &&
@@ -259,7 +259,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
             (pinRx >= 0) && (pinTx >= 0) &&
             (gUartData[uart].queue == NULL)) {
 
-            handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
+            handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
 
             gUartData[uart].markedForDeletion = false;
             gUartData[uart].eventTaskHandle = NULL;
@@ -323,7 +323,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
-    return (int32_t) handleOrErrorCode;
+    return handleOrErrorCode;
 }
 
 // Close a UART instance.
@@ -358,18 +358,18 @@ void uPortUartClose(int32_t handle)
 // Get the number of bytes waiting in the receive buffer.
 int32_t uPortUartGetReceiveSize(int32_t handle)
 {
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     size_t receiveSize;
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
             !gUartData[handle].markedForDeletion) {
-            sizeOrErrorCode = U_ERROR_COMMON_PLATFORM;
+            sizeOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
 
             // Will get back either size or -1
             if (uart_get_buffered_data_len(handle, &receiveSize) == 0) {
@@ -380,20 +380,20 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
-    return (int32_t) sizeOrErrorCode;
+    return sizeOrErrorCode;
 }
 
 // Read from the given UART interface.
 int32_t uPortUartRead(int32_t handle, void *pBuffer,
                       size_t sizeBytes)
 {
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pBuffer != NULL) && (sizeBytes > 0) && (handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
             !gUartData[handle].markedForDeletion) {
@@ -403,14 +403,14 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                                               (uint8_t *) pBuffer,
                                               sizeBytes, 0);
             if (sizeOrErrorCode < 0) {
-                sizeOrErrorCode = U_ERROR_COMMON_PLATFORM;
+                sizeOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
-    return (int32_t) sizeOrErrorCode;
+    return sizeOrErrorCode;
 }
 
 // Write to the given UART interface.
@@ -418,13 +418,13 @@ int32_t uPortUartWrite(int32_t handle,
                        const void *pBuffer,
                        size_t sizeBytes)
 {
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pBuffer != NULL) && (handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
             !gUartData[handle].markedForDeletion) {
@@ -442,14 +442,14 @@ int32_t uPortUartWrite(int32_t handle,
                                                (const char *) pBuffer,
                                                sizeBytes);
             if (sizeOrErrorCode < 0) {
-                sizeOrErrorCode = U_ERROR_COMMON_PLATFORM;
+                sizeOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
-    return (int32_t) sizeOrErrorCode;
+    return sizeOrErrorCode;
 }
 
 // Set an event callback.
@@ -462,13 +462,13 @@ int32_t uPortUartEventCallbackSet(int32_t handle,
                                   size_t stackSizeBytes,
                                   int32_t priority)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
             !gUartData[handle].markedForDeletion &&
@@ -487,14 +487,14 @@ int32_t uPortUartEventCallbackSet(int32_t handle,
             // instantiate a task to read from the queue
             // and a mutex to manage the task
             errorCode = uPortMutexCreate(&(gUartData[handle].eventTaskRunningMutex));
-            if (errorCode == U_ERROR_COMMON_SUCCESS) {
+            if (errorCode == 0) {
                 errorCode = uPortTaskCreate(eventTask,
                                             "eventTask",
                                             stackSizeBytes,
                                             (void *) handle,
                                             priority,
                                             &(gUartData[handle].eventTaskHandle));
-                if (errorCode == U_ERROR_COMMON_SUCCESS) {
+                if (errorCode == 0) {
                     // Pause to allow the task to run
                     uPortTaskBlock(U_CFG_OS_YIELD_MS);
                 } else {
@@ -562,20 +562,20 @@ uint32_t uPortUartEventCallbackFilterGet(int32_t handle)
 int32_t uPortUartEventCallbackFilterSet(int32_t handle,
                                         uint32_t filter)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
             !gUartData[handle].markedForDeletion &&
             (gUartData[handle].eventTaskRunningMutex != NULL)  &&
             (filter != 0)) {
             gUartData[handle].eventFilter = filter;
-            errorCode = U_ERROR_COMMON_SUCCESS;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -587,13 +587,13 @@ int32_t uPortUartEventCallbackFilterSet(int32_t handle,
 // Send an event to the callback.
 int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uart_event_t event;
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
-        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         // The eventBitMap needs to be translated into the
         // event types known to the ESP32 platform (not a
         // bitmap unfortunately) as they send to the queue

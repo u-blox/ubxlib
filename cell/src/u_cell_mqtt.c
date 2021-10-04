@@ -294,13 +294,17 @@ static void UUMQTTC_urc(uAtClientHandle_t atHandle,
                     // we're discarding volatile
                     // from the pointer: just need to follow
                     // the function signature guys...
+#ifndef __cplusplus
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+#endif
                     //lint -e(1773) Suppress complaints about
                     // passing the pointer as non-volatile
                     uAtClientCallback(atHandle, messageIndicationCallback,
                                       (void *) pContext);
+#ifndef __cplusplus
 #pragma GCC diagnostic pop
+#endif
                 }
             }
             pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED;
@@ -501,13 +505,17 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
             // we're discarding volatile
             // from the pointer: just need to follow
             // the function signature guys...
+#ifndef __cplusplus
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+#endif
             //lint -e(1773) Suppress complaints about
             // passing the pointer as non-volatile
             uAtClientCallback(atHandle, messageIndicationCallback,
                               (void *) pContext);
+#ifndef __cplusplus
 #pragma GCC diagnostic pop
+#endif
         }
     }
     uAtClientRestoreStopTag(atHandle);
@@ -1280,8 +1288,10 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                             // we're discarding volatile
                             // from the pointers when freeing
                             // them
+#ifndef __cplusplus
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+#endif
                             //lint -e(605) Suppress complaints about
                             // freeing a volatile pointer as well
                             free(((volatile uCellMqttContext_t *) pInstance->pMqttContext)->pUrcMessage);
@@ -1289,7 +1299,9 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                         //lint -e(605) Suppress complaints about
                         // freeing this volatile pointer as well
                         free(pInstance->pMqttContext);
+#ifndef __cplusplus
 #pragma GCC diagnostic pop
+#endif
                         pInstance->pMqttContext = NULL;
                     }
                 }
@@ -1322,15 +1334,19 @@ void uCellMqttDeinit(int32_t cellHandle)
         // we're discarding volatile
         // from the pointers when freeing
         // them
+#ifndef __cplusplus
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+#endif
         //lint -e(605) Suppress complaints about
         // freeing a volatile pointer as well
         free(pContext->pUrcMessage);
         //lint -e(605) Suppress complaints about
         // freeing this volatile pointer as well
         free(pContext);
+#ifndef __cplusplus
 #pragma GCC diagnostic pop
+#endif
         pInstance->pMqttContext = NULL;
     }
 

@@ -312,7 +312,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
         uPortLog("Closing socket...\n");
         uSockShutdown(sock, U_SOCK_SHUTDOWN_READ_WRITE);
         uSockClose(sock);
-        uSockCleanUp(sock);
+        uSockCleanUp();
 
         // When finished with the network layer
         uPortLog("Taking down network...\n");

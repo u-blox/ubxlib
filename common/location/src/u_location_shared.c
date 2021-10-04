@@ -99,10 +99,10 @@ void uLocationSharedDeinit()
     if (gULocationMutex != NULL) {
         // Free anything in any FIFO
         U_PORT_MUTEX_LOCK(gULocationMutex);
-        for (uLocationType_t x = U_LOCATION_TYPE_GNSS;
-             x < U_LOCATION_TYPE_MAX_NUM;
+        for (int32_t x = (int32_t) U_LOCATION_TYPE_GNSS;
+             x < (int32_t) U_LOCATION_TYPE_MAX_NUM;
              x++) {
-            while ((pEntry = pULocationSharedRequestPop(x)) != NULL) {
+            while ((pEntry = pULocationSharedRequestPop((uLocationType_t) x)) != NULL) {
                 free(pEntry);
             }
         }

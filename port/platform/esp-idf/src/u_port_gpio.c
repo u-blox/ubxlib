@@ -61,7 +61,7 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
 
     if (pConfig != NULL) {
         // Set the things that won't change
-        config.intr_type = GPIO_PIN_INTR_DISABLE;
+        config.intr_type = GPIO_INTR_DISABLE;
 
         // Set the direction and drive mode
         switch (pConfig->direction) {
@@ -91,16 +91,16 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
         // Set the pull up/down:
         // Note that pulling both up and down is apparently
         // valid for ESP32
-        config.pull_down_en = 0;
-        config.pull_up_en = 0;
+        config.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        config.pull_up_en = GPIO_PULLUP_DISABLE;
         switch (pConfig->pullMode) {
             case U_PORT_GPIO_PULL_MODE_NONE:
                 break;
             case U_PORT_GPIO_PULL_MODE_PULL_UP:
-                config.pull_up_en = 1;
+                config.pull_up_en = GPIO_PULLUP_ENABLE;
                 break;
             case U_PORT_GPIO_PULL_MODE_PULL_DOWN:
-                config.pull_down_en = 1;
+                config.pull_down_en = GPIO_PULLDOWN_ENABLE;
                 break;
             default:
                 badConfig = true;
@@ -117,8 +117,8 @@ int32_t uPortGpioConfig(uPortGpioConfig_t *pConfig)
                 // If it's an output pin, set the drive capability
                 if (((pConfig->direction == U_PORT_GPIO_DIRECTION_OUTPUT) ||
                      (pConfig->direction == U_PORT_GPIO_DIRECTION_INPUT_OUTPUT)) &&
-                    (gpio_set_drive_capability(pConfig->pin,
-                                               pConfig->driveCapability) == ESP_OK)) {
+                    (gpio_set_drive_capability((gpio_num_t) pConfig->pin,
+                                               (gpio_drive_cap_t) pConfig->driveCapability) == ESP_OK)) {
                     errorCode = U_ERROR_COMMON_SUCCESS;
                 } else {
                     // It's not an output pin so we're done
@@ -143,7 +143,7 @@ int32_t uPortGpioSet(int32_t pin, int32_t level)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
-    if (gpio_set_level(pin, level) == ESP_OK) {
+    if (gpio_set_level((gpio_num_t) pin, level) == ESP_OK) {
         errorCode = U_ERROR_COMMON_SUCCESS;
     }
 
@@ -153,7 +153,7 @@ int32_t uPortGpioSet(int32_t pin, int32_t level)
 // Get the state of a GPIO.
 int32_t uPortGpioGet(int32_t pin)
 {
-    return gpio_get_level(pin);
+    return gpio_get_level((gpio_num_t) pin);
 }
 
 // End of file
