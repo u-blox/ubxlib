@@ -58,9 +58,11 @@
  * -------------------------------------------------------------- */
 
 #ifndef U_GNSS_POS_CALLBACK_TASK_STACK_SIZE_BYTES
-/** The stack size for the position establishment task.
+/** The stack size for the position establishment task.  The limiting
+ * factor is ESP-IDF, and in particular on Arduino, which seems to
+ * require the most stack.
  */
-# define U_GNSS_POS_CALLBACK_TASK_STACK_SIZE_BYTES 2048
+# define U_GNSS_POS_CALLBACK_TASK_STACK_SIZE_BYTES 2304
 #endif
 
 #ifndef U_GNSS_POS_CALLBACK_TASK_PRIORITY

@@ -806,6 +806,8 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     // Close the UDP socket
     U_PORT_TEST_ASSERT(uCellSockClose(cellHandle, gSockHandleUdp,
                                       NULL) == 0);
+    // Allow a task switch to let the close callback be called
+    uPortTaskBlock(U_CFG_OS_YIELD_MS);
     U_PORT_TEST_ASSERT(gClosedCallbackCalledUdp);
     uPortLog("U_CELL_SOCK_TEST: waiting up to %d second(s) for TCP"
              " socket to close...\n",
@@ -1000,6 +1002,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     U_PORT_TEST_ASSERT(uCellSockClose(cellHandle,
                                       gSockHandleTcp,
                                       NULL) == 0);
+    uPortTaskBlock(U_CFG_OS_YIELD_MS);
     U_PORT_TEST_ASSERT(gClosedCallbackCalledTcp);
     U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
 

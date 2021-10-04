@@ -77,7 +77,7 @@
 /** The minimum free heap space permitted, i.e. what's left for
  * user code.
  */
-#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 210)
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 200)
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED
@@ -85,7 +85,7 @@
 
 /** The stack size to use for the test task created during OS testing.
  */
-#define U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES 1536
+#define U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES 1782
 
 /** The task priority to use for the task created during OS
  * testing: make sure that the priority of the task RUNNING

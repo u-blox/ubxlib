@@ -1,0 +1,35 @@
+# This file should contain the paths to all header files that are
+# required for ubxlib on the Arduino platform.  Do not include
+# test or example directories.
+# Paths are relative to the ubxlib root directory, forward-slashes
+# must be used.
+
+cfg
+ble/api
+ble/src
+cell/api
+cell/src
+gnss/api
+gnss/src
+common/error/api
+common/sock/api
+common/network/api
+common/network/src
+common/security/api
+common/location/api
+common/location/src
+common/at_client/api
+common/at_client/src
+common/ubx_protocol/api
+common/short_range/api
+common/short_range/src
+common/utils/api
+common/mqtt_client/api
+port/platform/common/runner
+port/api
+port/clib
+port/platform/common/event_queue
+port/platform/common/mbedtls
+port/platform/esp-idf/mcu/esp32/cfg
+port/platform/esp-idf/src
+port/platform/esp-idf

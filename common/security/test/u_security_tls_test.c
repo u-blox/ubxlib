@@ -471,10 +471,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     uNetworkDeinit();
     uPortDeinit();
 
-#ifndef __XTENSA__
+#if !defined(__XTENSA__) && !defined(ARDUINO)
     // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
+    // TODO: this if'ed out for ESP32 (xtensa compiler or Arduino)
+    // at the moment as there is an issue with ESP32 hanging
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
