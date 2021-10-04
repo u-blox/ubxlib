@@ -628,9 +628,13 @@ static uPortGattIter_t gattNotifyFunc(int32_t connHandle,
     notify->connHandle = connHandle;
     notify->length = length;
     notify->pParams = pParams;
-    uPortLog("U_PORT_TEST: Notified with %d bytes of data\n", length);
-    if (length <= sizeof(notify->data)) {
-        memcpy(notify->data, (const uint8_t *)pData, sizeof(notify->data));
+    if (pData) {
+        uPortLog("U_PORT_TEST: Notified with %d bytes of data\n", length);
+        if (length <= sizeof(notify->data)) {
+            memcpy(notify->data, (const uint8_t *)pData, sizeof(notify->data));
+        }
+    } else {
+        uPortLog("U_PORT_TEST: Notification removed\n");
     }
 
     if (!enqueueEvt(&evt)) {
