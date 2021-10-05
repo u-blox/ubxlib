@@ -578,7 +578,7 @@ static uPortGattIter_t onCreditsNotified(int32_t gapConnHandle,
     (void)pParams;
     (void)length;
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if ((spsConnHandle != U_BLE_DATA_INVALID_HANDLE) && pData && (length > 0)) {
         addLocalTxCredits(spsConnHandle, *(const uint8_t *)pData);
     }
 
@@ -591,7 +591,7 @@ static uPortGattIter_t onFifoNotified(int32_t gapConnHandle,
                                       const void *pData, uint16_t length)
 {
     (void)pParams;
-    if (length > 0) {
+    if (pData && (length > 0)) {
         addReceivedDataToBuffer(findSpsConnHandle(gapConnHandle), pData, length);
     }
 
