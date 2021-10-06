@@ -162,19 +162,26 @@ def copy_files(source_list, include_list, ubxlib_dir, forced, include_files):
             ubxlib_file_path = os.path.join(ubxlib_dir, file_path)
             ubxlib_files = []
             destination_files = []
-            for file_name in os.listdir(ubxlib_file_path):
-                item = os.path.join(ubxlib_file_path, file_name)
-                if os.path.isfile(item) and item.endswith(".h"):
-                    ubxlib_files.append(item)
-                    destination_files.append(os.path.join("src", file_name))
-                    add_to_includes = False
-                    if include_files is not None:
-                        for public_indicator in PUBLIC_INCLUDE_INDICATOR:
-                            if public_indicator in item:
-                                add_to_includes = True
-                                break
-                        if add_to_includes:
-                            include_files.append(file_name)
+            if os.path.isfile(ubxlib_file_path) and ubxlib_file_path not in ubxlib_files:
+                # An explicitly included file: just add it
+                ubxlib_files.append(ubxlib_file_path)
+                destination_files.append(os.path.join("src", ubxlib_file_path))
+                include_files.append(os.path.basename(ubxlib_file_path))
+            else:
+                for file_name in os.listdir(ubxlib_file_path):
+                    # A directory, go through the files
+                    item = os.path.join(ubxlib_file_path, file_name)
+                    if os.path.isfile(item) and item.endswith(".h") and item not in ubxlib_files:
+                        ubxlib_files.append(item)
+                        destination_files.append(os.path.join("src", file_name))
+                        add_to_includes = False
+                        if include_files is not None:
+                            for public_indicator in PUBLIC_INCLUDE_INDICATOR:
+                                if public_indicator in item:
+                                    add_to_includes = True
+                                    break
+                            if add_to_includes:
+                                include_files.append(file_name)
             for idx, ubxlib_file in enumerate(ubxlib_files):
                 copied = copy_file(ubxlib_file, destination_files[idx], forced)
                 if copied < 0:

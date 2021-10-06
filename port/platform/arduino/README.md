@@ -51,5 +51,5 @@ With that done load the [app.ino](app/app.ino) sketch into the Arduino IDE and s
 
 # Maintenance
 - When a new source file or header search path is added for the ESP-IDF platform, update [source.txt](source.txt) and, if necessary, [include.txt](include.txt).
-- Otherwise, when a new non-test, non-example source file or header search path is added, update [source.txt](source.txt) and, if necessary, [include.txt](include.txt), ignoring any files related only to tests/examples or to platform code.  If a new header file requires that some form of new wide-spread type is defined it may be necessary to tweak the header file sort order in the generated `ubxlib.h` header file written by the [u_arduino.py](u_arduino.py) script to make the header file containing the new type appear sufficiently high up the include list.
+- Otherwise, when a new non-test, non-example source file or header search path is added, update [source.txt](source.txt) and, if necessary, [include.txt](include.txt), ignoring any files related only to tests/examples or to platform code.
 - Finally, when a new test or example source file is added, update [source_test.txt](source_test.txt) and, if necessary, [include_test.txt](include_test.txt).

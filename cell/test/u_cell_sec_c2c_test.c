@@ -117,6 +117,13 @@
 # define U_CELL_SEC_C2C_TEST_TASK_STACK_SIZE_BYTES  2048
 #endif
 
+#ifndef U_CELL_SEC_C2C_TEST_TASK_PRIORITY
+/** The priority for the C2C test task, re-using the
+ * URC task priority for convenience.
+ */
+# define U_CELL_SEC_C2C_TEST_TASK_PRIORITY U_AT_CLIENT_URC_TASK_PRIORITY
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -1411,15 +1418,14 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
     uPortLog("U_CELL_SEC_C2C_TEST: make sure these pins are"
              " cross-connected.\n");
 
-    // Set up an AT server event handler on UART B, running
-    // at URC priority for convenience
+    // Set up an AT server event handler on UART B
     // This event handler receives our encrypted chunks, decrypts
     // them and sends back an encrypted response for us to decrypt.
     U_PORT_TEST_ASSERT(uPortUartEventCallbackSet(gUartBHandle,
                                                  U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
                                                  atServerCallback, (void *) &pTestAt,
                                                  U_CELL_SEC_C2C_TEST_TASK_STACK_SIZE_BYTES,
-                                                 U_AT_CLIENT_URC_TASK_PRIORITY) == 0);
+                                                 U_CELL_SEC_C2C_TEST_TASK_PRIORITY) == 0);
 
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
