@@ -417,9 +417,20 @@ def run(instance, mcu, board, toolchain, connection, connection_lock,
                                 # Do the download
                                 reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                u_report.EVENT_START)
-                                if download(connection, jlink_device_name,
-                                            DOWNLOAD_GUARD_TIME_SECONDS,
-                                            build_dir, returned_env, printer, prompt):
+                                retries = 0
+                                downloaded = False
+                                while u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                                      not downloaded and (retries < 3):
+                                    downloaded = download(connection, jlink_device_name,
+                                                          DOWNLOAD_GUARD_TIME_SECONDS,
+                                                          build_dir, returned_env, printer, prompt)
+                                    if not downloaded:
+                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                       u_report.EVENT_WARNING,
+                                                       "unable to download, will retry...")
+                                        retries += 1
+                                        sleep(5)
+                                if downloaded:
                                     reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
                                                    u_report.EVENT_COMPLETE)
                                     # Now the target can be reset
