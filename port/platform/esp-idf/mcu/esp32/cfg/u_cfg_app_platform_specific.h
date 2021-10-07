@@ -114,10 +114,18 @@
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_PWR_ON
-/** The ESP32 GPIO output that that is connected to the PWR_ON
+/** The ESP32 GPIO output that is connected to the PWR_ON
  * pin of the cellular module.
  */
 # define U_CFG_APP_PIN_CELL_PWR_ON            25
+#endif
+
+#ifndef U_CFG_APP_PIN_CELL_RESET
+/** The ESP32 GPIO output that is connected to the reset
+ * pin of the cellular module; use -1 where there is no such
+ * connection.
+ */
+# define U_CFG_APP_PIN_CELL_RESET             -1
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_VINT

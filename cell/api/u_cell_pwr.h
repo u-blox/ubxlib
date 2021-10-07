@@ -34,6 +34,34 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** There can be an inverter in-line between the MCU pin
+ * that is connected to the cellular module's RESET_N pin;
+ * this allows the sense to be switched easily.
+ */
+#ifndef U_CELL_RESET_PIN_INVERTED
+# define U_CELL_RESET_PIN_TOGGLE_TO_STATE 0
+#else
+# define U_CELL_RESET_PIN_TOGGLE_TO_STATE 1
+#endif
+
+/** The drive mode for the cellular module reset pin.
+ */
+#ifndef U_CELL_RESET_PIN_DRIVE_MODE
+# if U_CELL_RESET_PIN_TOGGLE_TO_STATE == 0
+/* Open drain so that we can pull RESET_N low and then
+ * let it float afterwards since it is pulled-up by the
+ * cellular module.
+ */
+#  define U_CELL_RESET_PIN_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN
+# else
+/* Normal mode since we're only driving the inverter that
+ * must have been inserted between the MCU pin and the
+ * cellular module RESET_N pin.
+ */
+#  define U_CELL_RESET_PIN_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_NORMAL
+# endif
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -238,6 +266,24 @@ bool uCellPwrRebootIsRequired(int32_t cellHandle);
  */
 int32_t uCellPwrReboot(int32_t cellHandle,
                        bool (*pKeepGoingCallback) (int32_t));
+
+/** Reset the cellular module using the given MCU pin, which should
+ * be connected to the reset pin of the cellular module, e.g.
+ * U_CFG_APP_PIN_CELL_RESET could be used.  Note that NO organised
+ * network detach is carried out; this is a hard reset and hence
+ * should be used only in emergencies if, for some reason,
+ * AT communication with the cellular module has totally failed.
+ * Note also that for some modules this function may not return for
+ * some considerable time (e.g. the reset line has to be held for
+ * 16 seconds to reset a SARA-R4 series module).
+ *
+ * @param cellHandle the handle of the cellular instance.
+ * @param pinReset   the pin of the MCU that is connected to the
+ *                   reset pin of the cellular module.
+ * @return           zero on success or negative error
+ *                   code on failure.
+ */
+int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset);
 
 #ifdef __cplusplus
 }

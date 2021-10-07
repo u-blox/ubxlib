@@ -719,4 +719,86 @@ int32_t uCellPwrReboot(int32_t cellHandle,
     return errorCode;
 }
 
+// Perform a hard reset of the cellular module.
+int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    int32_t platformError;
+    uPortGpioConfig_t gpioConfig;
+    int64_t startTime;
+    int32_t resetHoldMilliseconds;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pInstance != NULL) && (pinReset >= 0)) {
+            errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+            resetHoldMilliseconds = pInstance->pModule->resetHoldMilliseconds;
+            uPortLog("U_CELL_PWR: performing hard reset, this will take"
+                     " at least %d milliseconds...\n", resetHoldMilliseconds + 
+                     (pInstance->pModule->rebootCommandWaitSeconds * 1000));
+            // Set the RESET pin to the "reset" state
+            platformError = uPortGpioSet(pinReset,
+                                         (int32_t) U_CELL_RESET_PIN_TOGGLE_TO_STATE);
+            if (platformError == 0) {
+                // Configure the GPIO to go to this state
+                U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
+                gpioConfig.pin = pinReset;
+                gpioConfig.driveMode = U_CELL_RESET_PIN_DRIVE_MODE;
+                gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+                platformError = uPortGpioConfig(&gpioConfig);
+                if (platformError == 0) {
+                    // Remove any security context as these disappear
+                    // at reboot
+                    uCellPrivateC2cRemoveContext(pInstance);
+                    // We have rebooted
+                    pInstance->rebootIsRequired = false;
+                    startTime = uPortGetTickTimeMs();
+                    while (uPortGetTickTimeMs() < startTime + resetHoldMilliseconds) {
+                        uPortTaskBlock(100);
+                    }
+                    // Set the pin back to the "non RESET" state
+                    // Note: not checking for errors here, it would have
+                    // barfed above if there were a problem and there's
+                    // nothing we can do about it anyway
+                    uPortGpioSet(pinReset, (int32_t) !U_CELL_RESET_PIN_TOGGLE_TO_STATE);
+                    // Wait for the module to boot
+                    uPortTaskBlock(pInstance->pModule->rebootCommandWaitSeconds * 1000);
+                    if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+                        // SARA-R5 chucks out a load of stuff after
+                        // boot at the moment: flush it away
+                        // TODO: do we still need this?
+                        uAtClientFlush(pInstance->atHandle);
+                    }
+                    // Wait for the module to return to life
+                    // and configure it
+                    pInstance->lastCfunFlipTimeMs = uPortGetTickTimeMs();
+                    errorCode = moduleIsAlive(pInstance,
+                                              U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON);
+                    if (errorCode == 0) {
+                        // Configure the module
+                        errorCode = moduleConfigure(pInstance, true);
+                    }
+                } else {
+                    uPortLog("U_CELL_PWR: uPortGpioConfig() for RESET pin %d"
+                             " (0x%02x) returned error code %d.\n",
+                             pinReset, pinReset, platformError);
+                }
+            } else {
+                uPortLog("U_CELL_PWR: uPortGpioSet() for RESET pin %d (0x%02x)"
+                         " returned error code %d.\n",
+                         pinReset, pinReset, platformError);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
 // End of file

@@ -195,6 +195,9 @@ typedef struct {
     int32_t radioOffCfun; /**< The type of AT+CFUN state to use to switch
                                the radio off: either 0 for truly off or
                                4 for "airplane" mode. */
+    int32_t resetHoldMilliseconds; /**< How long the reset line has to
+                                        be held for to reset the cellular
+                                        module. */
     size_t maxNumSimultaneousRats; /**< The maximum number of
                                         simultaneous RATs that are
                                         supported by the cellular

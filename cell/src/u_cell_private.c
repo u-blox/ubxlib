@@ -78,7 +78,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
         U_CELL_MODULE_TYPE_SARA_U201, 1 /* Pwr On pull ms */, 1500 /* Pwr off pull ms */,
         5 /* Boot wait */, 5 /* Min awake */, 5 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
-        50 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 0 /* radioOffCfun */, 2 /* Simultaneous RATs */,
+        50 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 0 /* radioOffCfun */, 75 /* resetHoldMilliseconds */,
+        2 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_UTRAN)) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) |
@@ -88,7 +89,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
         U_CELL_MODULE_TYPE_SARA_R410M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         6 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
-        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 2 /* Simultaneous RATs */,
+        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 16500 /* resetHoldMilliseconds */,
+        2 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)        |
@@ -105,7 +107,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
         U_CELL_MODULE_TYPE_SARA_R412M_02B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         5 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 10 /* Reboot wait */, 10 /* AT timeout */,
-        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 3 /* Simultaneous RATs */,
+        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 16500 /* resetHoldMilliseconds */,
+        3 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
@@ -127,7 +130,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
         U_CELL_MODULE_TYPE_SARA_R412M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         6 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
-        100 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 4 /* radioOffCfun */, 3 /* Simultaneous RATs */,
+        100 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 4 /* radioOffCfun */, 16500 /* resetHoldMilliseconds */,
+        3 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
@@ -140,7 +144,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         5 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
-        20 /* Cmd wait ms */, 5000 /* Resp max wait ms */, 0 /* radioOffCfun */, 1 /* Simultaneous RATs */,
+        20 /* Cmd wait ms */, 5000 /* Resp max wait ms */, 0 /* radioOffCfun */, 150 /* resetHoldMilliseconds */,
+        1 /* Simultaneous RATs */,
         (1UL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
@@ -161,7 +166,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
         U_CELL_MODULE_TYPE_SARA_R410M_03B, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         6 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 5 /* Reboot wait */, 10 /* AT timeout */,
-        100 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 4 /* radioOffCfun */, 2 /* Simultaneous RATs */,
+        100 /* Cmd wait ms */, 2000 /* Resp max wait ms */, 4 /* radioOffCfun */,  16500 /* resetHoldMilliseconds */,
+        2 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                          |
@@ -176,7 +182,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     {
         U_CELL_MODULE_TYPE_SARA_R422, 300 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         5 /* Boot wait */, 30 /* Min awake */, 35 /* Pwr down wait */, 10 /* Reboot wait */, 10 /* AT timeout */,
-        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 3 /* Simultaneous RATs */,
+        100 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */,  16500 /* resetHoldMilliseconds */,
+        3 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,

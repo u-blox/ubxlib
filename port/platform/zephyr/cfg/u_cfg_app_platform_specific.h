@@ -136,10 +136,18 @@
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_PWR_ON
-/** The NRF5x GPIO output that that is connected to the PWR_ON
+/** The NRF5x GPIO output that is connected to the PWR_ON
  * pin of the cellular module.
  */
 # define U_CFG_APP_PIN_CELL_PWR_ON            33 // AKA 1.01
+#endif
+
+#ifndef U_CFG_APP_PIN_CELL_RESET
+/** The NRF5x GPIO output that is connected to the reset
+ * pin of the cellular module; use -1 where there is no such
+ * connection.
+ */
+# define U_CFG_APP_PIN_CELL_RESET             -1
 #endif
 
 #ifndef U_CFG_APP_PIN_CELL_VINT

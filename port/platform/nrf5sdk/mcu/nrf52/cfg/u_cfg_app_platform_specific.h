@@ -139,6 +139,14 @@
 # define U_CFG_APP_PIN_CELL_PWR_ON            33 // AKA 1.01
 #endif
 
+#ifndef U_CFG_APP_PIN_CELL_RESET
+/** The NRF52 GPIO output that is connected to the reset
+ * pin of the cellular module; use -1 where there is no such
+ * connection.
+ */
+# define U_CFG_APP_PIN_CELL_RESET             -1
+#endif
+
 #ifndef U_CFG_APP_PIN_CELL_VINT
 /** The NRF52 GPIO input that is connected to the VInt pin of
  * the cellular module.

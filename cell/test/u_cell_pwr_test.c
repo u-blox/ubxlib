@@ -392,6 +392,51 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
+/** Test reset
+ */
+U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
+{
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t x;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+
+    uPortLog("U_CELL_PWR_TEST: resetting cellular...\n");
+    x = uCellPwrResetHard(gHandles.cellHandle, U_CFG_APP_PIN_CELL_RESET);
+#if U_CFG_APP_PIN_CELL_RESET >= 0
+    U_PORT_TEST_ASSERT(x == 0);
+#else
+    U_PORT_TEST_ASSERT(x < 0);
+#endif
+
+    U_PORT_TEST_ASSERT(uCellPwrIsAlive(gHandles.cellHandle));
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+}
+
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
