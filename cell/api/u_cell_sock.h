@@ -275,7 +275,9 @@ int32_t uCellSockSecure(int32_t cellHandle,
 /** Send a datagram.  The maximum length of datagram
  * that can be transmitted is U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES:
  * if dataSizeBytes is longer than this nothing will be
- * transmitted and an error will be returned.
+ * transmitted and an error will be returned.  Note that not all
+ * modules support use of uCellSockSendTo() on a connected socket
+ * (e.g. SARA-R422 does not).
  *
  * @param cellHandle     the handle of the cellular instance.
  * @param sockHandle     the handle of the socket.
@@ -471,6 +473,44 @@ int32_t uCellSockGetHostByName(int32_t cellHandle,
 int32_t uCellSockGetLocalAddress(int32_t cellHandle,
                                  int32_t sockHandle,
                                  uSockAddress_t *pLocalAddress);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: INFORMATION
+ * -------------------------------------------------------------- */
+
+/** Get the last error on the given socket.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param sockHandle  the handle of the socket.
+ * @return            if a positive value then this is the last error
+ *                    code (refer to the "Internal TCP/UDP/IP stack
+ *                    class error codes" appendix of the AT manual
+ *                    for your module to determine what this means);
+ *                    if a negative value then the last error code
+ *                    could not be obtained.
+ */
+int32_t uCellSockGetLastError(int32_t cellHandle,
+                              int32_t sockHandle);
+
+/** Get the number of bytes sent on the given socket.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param sockHandle  the handle of the socket.
+ * @return            the number of bytes sent, else negated value
+ *                    of U_SOCK_Exxx from u_sock_errno.h.
+ */
+int32_t uCellSockGetBytesSent(int32_t cellHandle,
+                              int32_t sockHandle);
+
+/** Get the number of bytes received on the given socket.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param sockHandle  the handle of the socket.
+ * @return            the number of bytes received, else negated value
+ *                    of U_SOCK_Exxx from u_sock_errno.h.
+ */
+int32_t uCellSockGetBytesReceived(int32_t cellHandle,
+                                  int32_t sockHandle);
 
 #ifdef __cplusplus
 }

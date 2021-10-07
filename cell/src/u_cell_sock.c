@@ -556,6 +556,53 @@ static int32_t getOptionLinger(const uCellSockSocket_t *pSocket,
 }
 
 /* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: MISC
+ * -------------------------------------------------------------- */
+
+// Do AT+USOCTL for an operation with an integer return value.
+static int32_t doUsoctl(int32_t cellHandle, int32_t sockHandle,
+                        int32_t operation)
+{
+    int32_t negErrnoLocallOrValue = -U_SOCK_EINVAL;
+    uCellPrivateInstance_t *pInstance;
+    uCellSockSocket_t *pSocket;
+    uAtClientHandle_t atHandle;
+    int32_t x;
+
+    // Find the instance
+    pInstance = pUCellPrivateGetInstance(cellHandle);
+    if (pInstance != NULL) {
+        atHandle = pInstance->atHandle;
+        // Find the entry
+        if (sockHandle >= 0) {
+            pSocket = pFindBySockHandle(sockHandle);
+            if (pSocket != NULL) {
+                negErrnoLocallOrValue = -U_SOCK_EIO;
+                // Do USOCTL 1 to get the last error code
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+USOCTL=");
+                uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
+                uAtClientWriteInt(atHandle, operation);
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+USOCTL:");
+                // Skip the first two integers, which
+                // are just the socket ID and our operation number
+                // coming back
+                uAtClientSkipParameters(atHandle, 2);
+                // Now read the integer we actually want
+                x = uAtClientReadInt(atHandle);
+                uAtClientResponseStop(atHandle);
+                if ((uAtClientUnlock(atHandle) == 0) && (x >= 0)) {
+                    negErrnoLocallOrValue = x;
+                }
+            }
+        }
+    }
+
+    return negErrnoLocallOrValue;
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: INIT/DEINIT
  * -------------------------------------------------------------- */
 
@@ -1734,6 +1781,34 @@ int32_t uCellSockGetLocalAddress(int32_t cellHandle,
     }
 
     return -errnoLocal;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: INFORMATION
+ * -------------------------------------------------------------- */
+
+// Get the last error code for the given socket.
+int32_t uCellSockGetLastError(int32_t cellHandle,
+                              int32_t sockHandle)
+{
+    // Do USOCTL 1 to return the last error code
+    return doUsoctl(cellHandle, sockHandle, 1);
+}
+
+// Get the number of bytes sent on the given socket
+int32_t uCellSockGetBytesSent(int32_t cellHandle,
+                              int32_t sockHandle)
+{
+    // Do USOCTL 2 to return the number of bytes sent
+    return doUsoctl(cellHandle, sockHandle, 2);
+}
+
+// Get the number of bytes received on the given socket
+int32_t uCellSockGetBytesReceived(int32_t cellHandle,
+                                  int32_t sockHandle)
+{
+    // Do USOCTL 3 to return the number of bytes received
+    return doUsoctl(cellHandle, sockHandle, 3);
 }
 
 // End of file

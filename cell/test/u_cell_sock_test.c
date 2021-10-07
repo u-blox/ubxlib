@@ -319,6 +319,7 @@ static void checkOptionGet(int32_t cellHandle, int32_t sockHandle,
     uPortLog("U_CELL_SOCK_TEST: ...with NULL value pointer,"
              " error code %d, length %d.\n", errorCode, *pLength);
     U_PORT_TEST_ASSERT(errorCode >= 0);
+    U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
     U_PORT_TEST_ASSERT(*pLength == valueLength);
     errorCode = uCellSockOptionGet(cellHandle, sockHandle,
                                    level, option,
@@ -327,6 +328,7 @@ static void checkOptionGet(int32_t cellHandle, int32_t sockHandle,
              " pointer, error code %d, length %d.\n",
              errorCode, *pLength);
     U_PORT_TEST_ASSERT(errorCode >= 0);
+    U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
     U_PORT_TEST_ASSERT(*pLength == valueLength);
     (*pLength)++;
     memset(pValueAgain, 0xFF, valueLength);
@@ -337,6 +339,7 @@ static void checkOptionGet(int32_t cellHandle, int32_t sockHandle,
     uPortLog("U_CELL_SOCK_TEST: with excess length, error"
              " code %d, length %d.\n", errorCode, *pLength);
     U_PORT_TEST_ASSERT(errorCode >= 0);
+    U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
     U_PORT_TEST_ASSERT(pComparer(pValue, pValueAgain));
     U_PORT_TEST_ASSERT(*pLength == valueLength);
 
@@ -369,6 +372,7 @@ static void checkOptionSet(int32_t cellHandle, int32_t sockHandle,
     uPortLog("U_CELL_SOCK_TEST: ...returned error code %d.\n",
              errorCode);
     U_PORT_TEST_ASSERT(errorCode >= 0);
+    U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
 
     if (pComparer != NULL) {
         memset(pValueRead, 0xFF, valueLength);
@@ -379,6 +383,7 @@ static void checkOptionSet(int32_t cellHandle, int32_t sockHandle,
                  " error code %d, length %d.\n", errorCode,
                  *pLength);
         U_PORT_TEST_ASSERT(errorCode >= 0);
+        U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
         U_PORT_TEST_ASSERT(*pLength == valueLength);
         if (pComparer(pValue, pValueRead)) {
             uPortLog("U_CELL_SOCK_TEST: ...and the same value.\n");
@@ -658,6 +663,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
         } else {
             uPortLog("U_CELL_SOCK_TEST: failed to send UDP data on"
                      " try %d.\n", x + 1);
+            U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, gSockHandleUdp) > 0);
         }
     }
     uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over UDP.\n", y);
@@ -760,6 +766,13 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     U_PORT_TEST_ASSERT(uCellSockGetLocalAddress(cellHandle,
                                                 gSockHandleTcp,
                                                 &address) == 0);
+
+    // Check that the byte counts have incremented
+    // Note: not checking exact values as there may have been retries
+    U_PORT_TEST_ASSERT(uCellSockGetBytesSent(cellHandle, gSockHandleUdp) > 0);
+    U_PORT_TEST_ASSERT(uCellSockGetBytesReceived(cellHandle, gSockHandleUdp) > 0);
+    U_PORT_TEST_ASSERT(uCellSockGetBytesSent(cellHandle, gSockHandleTcp) > 0);
+    U_PORT_TEST_ASSERT(uCellSockGetBytesReceived(cellHandle, gSockHandleTcp) > 0);
 
     // Close TCP socket with asynchronous callback
     uPortLog("U_CELL_SOCK_TEST: closing sockets...\n");
