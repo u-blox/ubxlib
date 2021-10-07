@@ -143,8 +143,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
     },
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
-        5 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
-        20 /* Cmd wait ms */, 5000 /* Resp max wait ms */, 0 /* radioOffCfun */, 150 /* resetHoldMilliseconds */,
+        6 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
+        20 /* Cmd wait ms */, 5000 /* Resp max wait ms */, 4 /* radioOffCfun */, 150 /* resetHoldMilliseconds */,
         1 /* Simultaneous RATs */,
         (1UL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
@@ -273,6 +273,27 @@ void uCellPrivateClearDynamicParameters(uCellPrivateInstance_t *pInstance)
         pInstance->rat[x] = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
     }
     uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
+}
+
+// Get the current CFUN mode.
+int32_t uCellPrivateCFunGet(const uCellPrivateInstance_t *pInstance)
+{
+    int32_t errorCodeOrMode;
+    int32_t x;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+CFUN?");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+CFUN:");
+    x = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    errorCodeOrMode = uAtClientUnlock(atHandle);
+    if ((errorCodeOrMode == 0) && (x >= 0)) {
+        errorCodeOrMode = x;
+    }
+
+    return errorCodeOrMode;
 }
 
 // Ensure that a module is powered up.

@@ -739,7 +739,7 @@ int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset)
             errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
             resetHoldMilliseconds = pInstance->pModule->resetHoldMilliseconds;
             uPortLog("U_CELL_PWR: performing hard reset, this will take"
-                     " at least %d milliseconds...\n", resetHoldMilliseconds + 
+                     " at least %d milliseconds...\n", resetHoldMilliseconds +
                      (pInstance->pModule->rebootCommandWaitSeconds * 1000));
             // Set the RESET pin to the "reset" state
             platformError = uPortGpioSet(pinReset,

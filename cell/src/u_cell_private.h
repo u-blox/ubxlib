@@ -343,6 +343,13 @@ void uCellPrivateClearRadioParameters(uCellPrivateRadioParameters_t *pParameters
  */
 void uCellPrivateClearDynamicParameters(uCellPrivateInstance_t *pInstance);
 
+/** Get the current AT+CFUN mode of the module.
+ *
+ * @param pInstance  pointer to the cellular instance.
+ * @return           the AT+CFUN mode or negative error code.
+ */
+int32_t uCellPrivateCFunGet(const uCellPrivateInstance_t *pInstance);
+
 /** Ensure that a module is powerered up if it isn't already
  * and return the AT+CFUN mode it was originally in so that
  * uCellPrivateCFunMode() can be called subseqently to put it
@@ -351,15 +358,15 @@ void uCellPrivateClearDynamicParameters(uCellPrivateInstance_t *pInstance);
  * @param pInstance  pointer to the cellular instance.
  * @return           the previous mode or negative error code.
  */
-int32_t  uCellPrivateCFunOne(uCellPrivateInstance_t *pInstance);
+int32_t uCellPrivateCFunOne(uCellPrivateInstance_t *pInstance);
 
 /** Do the opposite of uCellPrivateCFunOne(), put the mode back.
  *
  * @param pInstance  pointer to the cellular instance.
  * @param mode       the AT+CFUN mode to set.
  */
-void  uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
-                           int32_t mode);
+void uCellPrivateCFunMode(uCellPrivateInstance_t *pInstance,
+                          int32_t mode);
 
 /** Get the IMSI of the SIM.
  * Note: gUCellPrivateMutex should be locked before this is called.

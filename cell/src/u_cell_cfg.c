@@ -620,12 +620,22 @@ static int32_t getRatRankSaraR4R5(const uCellPrivateInstance_t *pInstance,
 
 // Set RAT SARA-R4/R5 stylee.
 // Note: gUCellPrivateMutex should be locked before this is called.
-static int32_t setRatSaraR4R5(const uCellPrivateInstance_t *pInstance,
+static int32_t setRatSaraR4R5(uCellPrivateInstance_t *pInstance,
                               uCellNetRat_t rat)
 {
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
+    int32_t cFunMode = -1;
 
+    if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+        // For SARA-R5 the module has to be in state AT+CFUN=0
+        cFunMode = uCellPrivateCFunGet(pInstance);
+        if (cFunMode != 0) {
+            uCellPrivateCFunMode(pInstance, 0);
+        }
+    }
+
+    // Do the mode change
     uPortLog("U_CELL_CFG: setting sole RAT to %d (in module terms %d).\n",
              rat, cellRatToModuleRat(pInstance->pModule->moduleType, rat));
     uAtClientLock(atHandle);
@@ -634,17 +644,23 @@ static int32_t setRatSaraR4R5(const uCellPrivateInstance_t *pInstance,
     uAtClientCommandStopReadResponse(atHandle);
     errorCode = uAtClientUnlock(atHandle);
 
+    // Put the AT+CFUN mode back to what it was if necessary
+    if (cFunMode > 0) {
+        uCellPrivateCFunMode(pInstance, cFunMode);
+    }
+
     return errorCode;
 }
 
 // Set RAT rank SARA-R4/R5 stylee.
 // Note: gUCellPrivateMutex should be locked before this is called.
-static int32_t setRatRankSaraR4R5(const uCellPrivateInstance_t *pInstance,
+static int32_t setRatRankSaraR4R5(uCellPrivateInstance_t *pInstance,
                                   uCellNetRat_t rat, int32_t rank)
 {
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t rats[U_CELL_PRIVATE_MAX_NUM_SIMULTANEOUS_RATS];
+    int32_t cFunMode = -1;
 
     // Assume there are no RATs
     for (size_t x = 0; x < sizeof(rats) / sizeof(rats[0]); x++) {
@@ -674,6 +690,14 @@ static int32_t setRatRankSaraR4R5(const uCellPrivateInstance_t *pInstance,
         }
     }
 
+    if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
+        // For SARA-R5 the module has to be in state AT+CFUN=0
+        cFunMode = uCellPrivateCFunGet(pInstance);
+        if (cFunMode != 0) {
+            uCellPrivateCFunMode(pInstance, 0);
+        }
+    }
+
     // Send the AT command
     uPortLog("U_CELL_CFG: RATs (removing duplicates) become:\n");
     for (size_t x = 0; x < sizeof(rats) / sizeof(rats[0]); x++) {
@@ -692,6 +716,11 @@ static int32_t setRatRankSaraR4R5(const uCellPrivateInstance_t *pInstance,
     }
     uAtClientCommandStopReadResponse(atHandle);
     errorCode = uAtClientUnlock(atHandle);
+
+    // Put the AT+CFUN mode back to what it was if necessary
+    if (cFunMode > 0) {
+        uCellPrivateCFunMode(pInstance, cFunMode);
+    }
 
     return errorCode;
 }
@@ -924,6 +953,7 @@ int32_t uCellCfgSetRat(int32_t cellHandle,
                 if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
                     errorCode = setRatSaraU2(pInstance, rat);
                 } else {
+                    // Do the mode change
                     errorCode = setRatSaraR4R5(pInstance, rat);
                 }
                 if (errorCode == 0) {
