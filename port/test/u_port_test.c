@@ -1605,9 +1605,13 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                  x, gEventQueueMinErrorFlag);
     }
 
+    uPortLog("U_PORT_TEST: event queue min received %d message(s).\n",
+             gEventQueueMinCounter);
+    uPortLog("U_PORT_TEST: event queue max received %d message(s).\n",
+             gEventQueueMaxCounter);
     U_PORT_TEST_ASSERT(gEventQueueMaxErrorFlag == 0);
     U_PORT_TEST_ASSERT(gEventQueueMaxCounter == U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS + 1);
-    U_PORT_TEST_ASSERT(gEventQueueMaxErrorFlag == 0);
+    U_PORT_TEST_ASSERT(gEventQueueMinErrorFlag == 0);
     U_PORT_TEST_ASSERT(gEventQueueMinCounter == U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS + 1);
 
     // Check that the uPortEventQueueIsTask() gives a negative

@@ -92,7 +92,7 @@
  * the tests is lower than this.  In FreeRTOS, as used on this
  * platform, low numbers indicate lower priority.
  */
-#define U_CFG_TEST_OS_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 5)
+#define U_CFG_TEST_OS_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 6)
 
 /** The minimum free stack space permitted for the main task,
  * basically what's left as a margin for user code.
