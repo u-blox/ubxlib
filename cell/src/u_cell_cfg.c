@@ -157,10 +157,12 @@ uCellNetRat_t moduleRatToCellRat(uCellModuleType_t moduleType, int32_t rat)
 {
     uCellNetRat_t cellRat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
 
-    if (moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
-        cellRat = gModuleRatToCellRatU201[rat];
-    } else {
-        cellRat = gModuleRatToCellRatR4R5[rat];
+    if (rat >= 0) {
+        if (moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
+            cellRat = gModuleRatToCellRatU201[rat];
+        } else {
+            cellRat = gModuleRatToCellRatR4R5[rat];
+        }
     }
 
     return cellRat;
