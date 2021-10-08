@@ -67,15 +67,6 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Array to convert the LTE RSSI number from AT+CSQ into a
- * dBm value rounded up to the nearest whole number.
- */
-static const int32_t gRssiConvertLte[] = {-118, -115, -113, -110, -108, -105, -103, -100,  /* 0 - 7   */
-                                          -98,  -95,  -93,  -90,  -88,  -85,  -83,  -80,   /* 8 - 15  */
-                                          -78,  -76,  -74,  -73,  -71,  -69,  -68,  -65,   /* 16 - 23 */
-                                          -63,  -61,  -60,  -59,  -58,  -55,  -53,  -48
-                                          };  /* 24 - 31 */
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -178,9 +169,8 @@ static int32_t getRadioParamsCsq(uAtClientHandle_t atHandle,
     errorCode = uAtClientUnlock(atHandle);
 
     if (errorCode == 0) {
-        if ((x >= 0) &&
-            (x < (int32_t) (sizeof(gRssiConvertLte) / sizeof(gRssiConvertLte[0])))) {
-            pRadioParameters->rssiDbm = gRssiConvertLte[x];
+        if ((x >= 0) && (x <= 31)) {
+            pRadioParameters->rssiDbm =  -(113 - (x * 2));
         }
         pRadioParameters->rxQual = y;
     }
