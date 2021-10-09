@@ -29,4 +29,8 @@ Obviously you will need a SIM in your board, an antenna connected and you may ne
 
 ## Using A Wi-Fi Module
 
-TBD
+`U_CFG_TEST_SHORT_RANGE_MODULE_TYPE`: consult [u_short_range_module_type.h](/common/short_range/api/u_short_range_module_type.h) to determine the type name for the short range module module you intend to use.  For instance, to use NINA-W13 you would set `U_CFG_TEST_SHORT_RANGE_MODULE_TYPE` to `U_SHORT_RANGE_MODULE_TYPE_NINA_W13`.
+
+`U_CFG_APP_PIN_SHORT_RANGE_xxx`: the default values for the MCU pins connecting your short range module to your MCU are #defined in the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the #defines (where -1 means "not connected").
+
+`U_CFG_APP_SHORT_RANGE_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the cellular module.  The default is usually acceptable but if you wish to change it then consult the file [port/platform](/port/platform)`<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.

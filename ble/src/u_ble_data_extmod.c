@@ -41,7 +41,6 @@
 #include "u_cfg_sw.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
-#include "u_port_gatt.h"
 #include "u_port_event_queue.h"
 #include "u_cfg_os_platform_specific.h"
 
@@ -425,10 +424,11 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
+    int32_t shoHandle = uBleToShoHandle(bleHandle);
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(bleHandle);
+        pInstance = pUShortRangePrivateGetInstance(shoHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             bool cleanUp = false;
@@ -445,7 +445,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
                 }
 
                 if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                    errorCode = uShortRangeSetBtConnectionStatusCallback(bleHandle, atConnectionEvent,
+                    errorCode = uShortRangeSetBtConnectionStatusCallback(shoHandle, atConnectionEvent,
                                                                          (void *) pInstance);
                 }
 
@@ -466,7 +466,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
             if (cleanUp) {
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLC:");
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLD:");
-                uShortRangeSetBtConnectionStatusCallback(bleHandle, NULL, NULL);
+                uShortRangeSetBtConnectionStatusCallback(shoHandle, NULL, NULL);
                 uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, NULL, NULL);
                 pInstance->pSpsConnectionCallback = NULL;
                 pInstance->pSpsConnectionCallbackParameter = NULL;
@@ -481,13 +481,14 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
 
 int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress)
 {
+    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(bleHandle);
+        pInstance = pUShortRangePrivateGetInstance(shoHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
@@ -520,12 +521,13 @@ int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress)
 
 int32_t uBleDataDisconnect(int32_t bleHandle, int32_t connHandle)
 {
+    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(bleHandle);
+        pInstance = pUShortRangePrivateGetInstance(shoHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -546,7 +548,8 @@ int32_t uBleDataDisconnect(int32_t bleHandle, int32_t connHandle)
 
 int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t length)
 {
-    uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(bleHandle);
+    int32_t shoHandle = uBleToShoHandle(bleHandle);
+    uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(shoHandle);
     int32_t sizeOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (pInstance != NULL) {
@@ -562,12 +565,13 @@ int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t
 
 int32_t uBleDataSend(int32_t bleHandle, int32_t channel, const char *pData, int32_t length)
 {
+    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(bleHandle);
+        pInstance = pUShortRangePrivateGetInstance(shoHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
@@ -583,12 +587,13 @@ int32_t uBleDataSend(int32_t bleHandle, int32_t channel, const char *pData, int3
 
 int32_t uBleDataSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeout)
 {
+    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t returnValue = (int32_t)U_ERROR_COMMON_UNKNOWN;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
         uShortRangePrivateInstance_t *pInstance;
 
-        pInstance = pUShortRangePrivateGetInstance(bleHandle);
+        pInstance = pUShortRangePrivateGetInstance(shoHandle);
         if (pInstance != NULL) {
             uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
 
@@ -609,12 +614,13 @@ int32_t uBleDataSetCallbackData(int32_t bleHandle,
                                 void (*pCallback) (int32_t, size_t, char *, void *),
                                 void *pCallbackParameter)
 {
+    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(bleHandle);
+        pInstance = pUShortRangePrivateGetInstance(shoHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             if (pInstance->pBtDataCallback == NULL && pCallback != NULL) {
@@ -643,12 +649,13 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
                                          uBleDataAvailableCallback_t pCallback,
                                          void *pCallbackParameter)
 {
+    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(bleHandle);
+        pInstance = pUShortRangePrivateGetInstance(shoHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             if (pInstance->pBtDataAvailableCallback == NULL && pCallback != NULL) {

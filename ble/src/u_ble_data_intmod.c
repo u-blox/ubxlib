@@ -43,7 +43,6 @@
 #include "u_cfg_sw.h"
 #include "u_port.h"
 #include "u_port_os.h"
-#include "u_port_gatt.h"
 #include "u_port_debug.h"
 #include "u_port_event_queue.h"
 #include "u_cfg_os_platform_specific.h"

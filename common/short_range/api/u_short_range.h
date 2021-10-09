@@ -46,7 +46,7 @@ extern "C" {
 /** UART buffer length. UART characters are placed in this buffer
  * on arrival. EDM parser then consumes from this buffer.
  */
-# define U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES 512
+# define U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES 1024
 #endif
 
 #ifndef U_SHORT_RANGE_UART_BAUD_RATE
@@ -160,6 +160,15 @@ typedef void (*uShortRangeIpConnectionStatusCallback_t)(int32_t shortRangeHandle
                                                         uShortRangeConnectionEventType_t eventType,
                                                         uShortRangeConnectDataIp_t *pConnectData,
                                                         void *pCallbackParameter);
+
+//lint -esym(754, uShortRangeModuleInfo_t::supportsBtClassic) Suppress not referenced
+typedef struct {
+    int32_t moduleType;
+    const char *pName;
+    bool supportsBle;
+    bool supportsBtClassic;
+    bool supportsWifi;
+} uShortRangeModuleInfo_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -305,6 +314,23 @@ int32_t uShortRangeSetMqttConnectionStatusCallback(int32_t shortRangeHandle,
  */
 int32_t uShortRangeAtClientHandleGet(int32_t shortRangeHandle,
                                      uAtClientHandle_t *pAtHandle);
+
+
+const uShortRangeModuleInfo_t *uShortRangeGetModuleInfo(int32_t moduleId);
+
+/** Check if a module type supports BLE
+ *
+ * @param moduleType       the short range module type.
+ * @return                 true if moduleType supports BLE, false otherwise.
+ */
+bool uShortRangeSupportsBle(uShortRangeModuleType_t moduleType);
+
+/** Check if a module type supports WiFi
+ *
+ * @param moduleType       the short range module type.
+ * @return                 true if moduleType supports WiFi, false otherwise.
+ */
+bool uShortRangeSupportsWifi(uShortRangeModuleType_t moduleType);
 
 #ifdef __cplusplus
 }

@@ -140,16 +140,19 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddUart")
     U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
 
     uPortLog("U_SHORT_RANGE_TEST: adding another instance on the same AT client,"
-             " should fail...\n");
-    U_PORT_TEST_ASSERT(uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1, gHandles.atClientHandle));
+             " should return same handle...\n");
+    U_PORT_TEST_ASSERT_EQUAL(uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1, gHandles.atClientHandle),
+                             gHandles.shortRangeHandle);
 
-    uPortLog("U_SHORT_RANGE_TEST: removing first short range instance...\n");
+    uPortLog("U_SHORT_RANGE_TEST: removing the two short range instances...\n");
+    uShortRangeRemove(gHandles.shortRangeHandle);
     uShortRangeRemove(gHandles.shortRangeHandle);
 
     uPortLog("U_SHORT_RANGE_TEST: adding it again...\n");
     gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
                                                gHandles.atClientHandle);
     U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
+    uShortRangeRemove(gHandles.shortRangeHandle);
 
     uPortLog("U_SHORT_RANGE_TEST: deinitialising short range API...\n");
     uShortRangeDeinit();

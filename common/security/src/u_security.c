@@ -141,6 +141,9 @@ bool uSecurityIsSupported(int32_t networkHandle)
 
     if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
         isSupported = uCellSecIsSupported(networkHandle);
+    } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
+        // Not implemented yet
+        isSupported = false;
     }
 
     return isSupported;

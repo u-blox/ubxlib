@@ -181,6 +181,44 @@ int32_t uPortMutexUnlock(const uPortMutexHandle_t mutexHandle)
     (void) mutexHandle;
     return 0;
 }
+
+int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
+                             uint32_t initialCount,
+                             uint32_t limit)
+{
+    (void)pSemaphoreHandle;
+    (void)initialCount;
+    (void)limit;
+    return 0;
+}
+int32_t uPortSemaphoreDelete(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    (void)semaphoreHandle;
+    return 0;
+}
+int32_t uPortSemaphoreTake(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    (void)semaphoreHandle;
+    return 0;
+}
+int32_t uPortSemaphoreTryTake(const uPortSemaphoreHandle_t semaphoreHandle,
+                              int32_t delayMs)
+{
+    (void)semaphoreHandle;
+    (void)delayMs;
+    return 0;
+}
+int32_t uPortSemaphoreGive(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    (void)semaphoreHandle;
+    return 0;
+}
+int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
+{
+    (void)semaphoreHandle;
+    return 0;
+}
+
 void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
                                   size_t *pSize,
                                   uPortExeChunkFlags_t flags,

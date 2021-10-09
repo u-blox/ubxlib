@@ -88,7 +88,7 @@ static const char gData[] =  "_____0000:0123456789012345678901234567890123456789
 /** This is the client_cert.pem file from the
  * common/sock/test/echo_server/certs directory.
  */
-static const char *const gpEchoServerClientCertPem = "-----BEGIN CERTIFICATE-----"
+static const char *const gpEchoServerClientCertPem = "-----BEGIN CERTIFICATE-----\n"
                                                      "MIIDiDCCAnACCQC8IOP+9fCfSTANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC"
                                                      "VVMxCzAJBgNVBAgMAldBMRAwDgYDVQQHDAdUaGFsd2lsMQ8wDQYDVQQKDAZ1LWJs"
                                                      "b3gxCzAJBgNVBAsMAklUMRcwFQYDVQQDDA53d3cudS1ibG94LmNvbTEgMB4GCSqG"
@@ -107,13 +107,13 @@ static const char *const gpEchoServerClientCertPem = "-----BEGIN CERTIFICATE----
                                                      "t7vXGM1EG1t/EBrEreyMXJKmLItnuO1btxhQXcU619x1SY65NeqX4Gv7X2r14Ij5"
                                                      "1IwueTuzXT+iWD89eIxrNWPFI+6Xwxcm05smdukuX1Hiq2VVoqDbJKRN4FfPowFy"
                                                      "2MLsDlw0bYZGNyaIBweb2NJH2zU/qPHLVKrMf3LAx35sv+nq4vDnZS/Nn/vI2MD7"
-                                                     "mVbRICHB7Zg8UoNnPToqy1o8xqqUB4h3KKIgHtw4tLtPZlaM3AiDSdkZQ6g="
-                                                     "-----END CERTIFICATE-----";
+                                                     "mVbRICHB7Zg8UoNnPToqy1o8xqqUB4h3KKIgHtw4tLtPZlaM3AiDSdkZQ6g=\n"
+                                                     "-----END CERTIFICATE-----\n";
 
 /** This is the client_key.pem file from the
  * common/sock/test/echo_server/certs directory.
  */
-static const char *const gpEchoServerClientKeyPem = "-----BEGIN RSA PRIVATE KEY-----"
+static const char *const gpEchoServerClientKeyPem = "-----BEGIN RSA PRIVATE KEY-----\n"
                                                     "MIIEpQIBAAKCAQEA+VvDJ2RAPQ85ff3RhDm1wtd2ZymVXY4keP6cgxBs8zM0vCXS"
                                                     "SjDROxoXMzaC2PKWWM1nXy4ncICZufYWdqI+HXaqnl7GucDGNs2VyAsoDaUXSPBy"
                                                     "f+fbcqCGMuBUfMsVBwznzNgfn6m8NNPhEVARhL25BeBd8cYXkNIxO+0D7BKtMY/q"
@@ -138,13 +138,13 @@ static const char *const gpEchoServerClientKeyPem = "-----BEGIN RSA PRIVATE KEY-
                                                     "FnPH5GNVzqOsoAQIOqCC0BZbysxncOA7Q7ifjfKSmb7G//kDdmO+790BqFOI0uMX"
                                                     "8LBAow0CgYEA3qNhRhNxrg25kM+wqlkjJ+fo3jQ68r5VB8u/KLQ/Di6WnzNwOQlx"
                                                     "QuSxkmMtDPNzhxMhm+IMMwzT1Z8ZyTcWhacMptXXcKrO0gboBIknRlVzSykUqpf/"
-                                                    "YH1TkviZaurGrrpZHWXN4/z91wqISl/B6SPoom/4ribwGB7+c3e398M="
-                                                    "-----END RSA PRIVATE KEY-----";
+                                                    "YH1TkviZaurGrrpZHWXN4/z91wqISl/B6SPoom/4ribwGB7+c3e398M=\n"
+                                                    "-----END RSA PRIVATE KEY-----\n";
 
 /** This is the server_cert.pem file from the
  * common/sock/test/echo_server/certs directory.
  */
-static const char *const gpEchoServerServerCertPem = "-----BEGIN CERTIFICATE-----"
+static const char *const gpEchoServerServerCertPem = "-----BEGIN CERTIFICATE-----\n"
                                                      "MIID3zCCAsegAwIBAgIJAINm5Mhtj3MbMA0GCSqGSIb3DQEBCwUAMIGFMQswCQYD"
                                                      "VQQGEwJVUzELMAkGA1UECAwCV0ExEDAOBgNVBAcMB1RoYWx3aWwxDzANBgNVBAoM"
                                                      "BnUtYmxveDELMAkGA1UECwwCSVQxFzAVBgNVBAMMDnd3dy51LWJsb3guY29tMSAw"
@@ -165,8 +165,8 @@ static const char *const gpEchoServerServerCertPem = "-----BEGIN CERTIFICATE----
                                                      "nVIhRK/ZJIrc1z6ni0qoFFtsbY82qYCVHKqxuqhV7eyZ+drPfESqoSoFWH9Wex5H"
                                                      "u1VLJeTXrhc1MqH+bUTOoRR+2qEDBSBULfw3HqXIWOAu3CLoIWr/5PGjPN6ycooD"
                                                      "0UR0BU1vwQCPdntMFY6C3mgL60ZO5DjmtXI/msh+4bGgXBY8Pl1sBlhk+ya6eKJ5"
-                                                     "jYvoxIWq4c8DlH1+jW5/gf8QOMdZA/3CNcvs6w2ccDhh9l4="
-                                                     "-----END CERTIFICATE-----";
+                                                     "jYvoxIWq4c8DlH1+jW5/gf8QOMdZA/3CNcvs6w2ccDhh9l4=\n"
+                                                     "-----END CERTIFICATE-----\n";
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -253,7 +253,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].handle = -1;
         if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
-            (U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type))) {
+            (U_NETWORK_TEST_TYPE_HAS_SECURE_SOCK(gUNetworkTestCfg[x].type))) {
             uPortLog("U_SECURITY_TLS_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)

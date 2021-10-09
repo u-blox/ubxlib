@@ -47,9 +47,15 @@
 #include "u_cell_test_cfg.h" // For the cellular test macros
 #endif
 
-#if defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)
-#include "u_short_range_module_type.h"
+//lint -efile(766, u_wifi_test_cfg.h)
+#include "u_short_range_test_selector.h"
+#if U_SHORT_RANGE_TEST_WIFI()
+//# include "u_short_range_test_private.h"
+//# include "u_short_range_module_type.h"
+//# if U_CFG_TEST_SHORT_RANGE_MODULE_HAS_WIFI()
+# include "u_wifi_test_cfg.h"
 #endif
+//#endif*/
 
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 #include "u_gnss_module_type.h"
@@ -73,26 +79,27 @@
  * -------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
- * VARIABLES
+ * STATIC VARIABLES
  * -------------------------------------------------------------- */
 
 /** The network configuration for BLE.
  */
-#if defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)
+#if U_SHORT_RANGE_TEST_BLE()
 static uNetworkConfigurationBle_t gConfigurationBle = {
-    U_NETWORK_TYPE_BLE,
-#ifdef U_CFG_BLE_MODULE_INTERNAL
-    (int32_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
-#else
-    U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-#endif
-    U_CFG_APP_SHORT_RANGE_UART,
-    U_CFG_APP_PIN_SHORT_RANGE_TXD,
-    U_CFG_APP_PIN_SHORT_RANGE_RXD,
-    U_CFG_APP_PIN_SHORT_RANGE_CTS,
-    U_CFG_APP_PIN_SHORT_RANGE_RTS,
-    U_CFG_APP_SHORT_RANGE_ROLE, // Peripheral
-    true // Enable sps server
+# ifdef U_CFG_BLE_MODULE_INTERNAL
+    .type = U_NETWORK_TYPE_BLE,
+    .module = (int32_t)U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
+# else
+    .type = U_NETWORK_TYPE_BLE,
+    .module = U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+# endif
+    .uart = U_CFG_APP_SHORT_RANGE_UART,
+    .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+    .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+    .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+    .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+    .role = U_CFG_APP_SHORT_RANGE_ROLE, // Peripheral
+    .spsServer = true // Enable sps server
 };
 #else
 static uNetworkConfigurationBle_t gConfigurationBle = {U_NETWORK_TYPE_NONE};
@@ -102,23 +109,23 @@ static uNetworkConfigurationBle_t gConfigurationBle = {U_NETWORK_TYPE_NONE};
 /** The network configuration for cellular.
  */
 static uNetworkConfigurationCell_t gConfigurationCell = {
-    U_NETWORK_TYPE_CELL,
-    U_CFG_TEST_CELL_MODULE_TYPE,
-    U_CELL_TEST_CFG_SIM_PIN,
-#ifdef U_CELL_TEST_CFG_APN
-    U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
-#else
-    NULL,
-#endif
-    U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS,
-    U_CFG_APP_CELL_UART,
-    U_CFG_APP_PIN_CELL_TXD,
-    U_CFG_APP_PIN_CELL_RXD,
-    U_CFG_APP_PIN_CELL_CTS,
-    U_CFG_APP_PIN_CELL_RTS,
-    U_CFG_APP_PIN_CELL_ENABLE_POWER,
-    U_CFG_APP_PIN_CELL_PWR_ON,
-    U_CFG_APP_PIN_CELL_VINT
+    .type = U_NETWORK_TYPE_CELL,
+    .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+    .pPin = U_CELL_TEST_CFG_SIM_PIN,
+# ifdef U_CELL_TEST_CFG_APN
+    .pApn = U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+# else
+    .pApn = NULL,
+# endif
+    .timeoutSeconds = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS,
+    .uart = U_CFG_APP_CELL_UART,
+    .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+    .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+    .pinCts = U_CFG_APP_PIN_CELL_CTS,
+    .pinRts = U_CFG_APP_PIN_CELL_RTS,
+    .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+    .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+    .pinVInt = U_CFG_APP_PIN_CELL_VINT
 };
 #else
 static uNetworkConfigurationCell_t gConfigurationCell = {U_NETWORK_TYPE_NONE};
@@ -126,9 +133,26 @@ static uNetworkConfigurationCell_t gConfigurationCell = {U_NETWORK_TYPE_NONE};
 
 /** The network configuration for Wifi.
  */
+#if U_SHORT_RANGE_TEST_WIFI()
 static uNetworkConfigurationWifi_t gConfigurationWifi = {
-    U_NETWORK_TYPE_NONE /* TODO: replace this with Wifi config info. */
+    .type = U_NETWORK_TYPE_WIFI,
+    .module = U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    .uart = U_CFG_APP_SHORT_RANGE_UART,
+    .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+    .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+    .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+    .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+    .pSsid = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
+    .authentication = U_WIFI_TEST_CFG_AUTHENTICATION,
+    .pPassPhrase = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE)
 };
+#else
+static uNetworkConfigurationWifi_t gConfigurationWifi = {U_NETWORK_TYPE_NONE};
+#endif
+
+/* ----------------------------------------------------------------
+ * VARIABLES
+ * -------------------------------------------------------------- */
 
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 /** The network configuration for GNSS.

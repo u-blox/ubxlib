@@ -159,16 +159,10 @@ typedef struct {
 } uBtConnectionParams_t;
 
 typedef struct {
-    uint16_t localPort;
-    uShortRangeIpProtocol_t protocol;
-} uIpConnectionParams_t;
-
-typedef struct {
     int32_t channel;
     uShortRangeConnectionType_t type;
     union {
         uBtConnectionParams_t bt;
-        uIpConnectionParams_t ip;
     };
 } uShortRangeEdmStreamConnections_t;
 
@@ -422,8 +416,10 @@ static void processEdmAtEvent(uShortRangeEdmEvent_t *pEvent)
 #endif
 
     event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_AT;
-    uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                        &event, sizeof(uShortRangeEdmStreamEvent_t));
+    if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                            &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+        uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
+    }
 }
 
 static void processEdmConnectBtEvent(uShortRangeEdmEvent_t *pEvent)
@@ -451,8 +447,10 @@ static void processEdmConnectBtEvent(uShortRangeEdmEvent_t *pEvent)
         uEdmChLogEnd("");
 #endif
 
-        uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                            &event, sizeof(uShortRangeEdmStreamEvent_t));
+        if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+            uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
+        }
     }
 }
 
@@ -484,11 +482,10 @@ static void processEdmConnectIpv4Event(uShortRangeEdmEvent_t *pEvent)
 
         if (pConnection->type != U_SHORT_RANGE_CONNECTION_TYPE_INVALID) {
             pConnection->channel = ipv4Evt->channel;
-            pConnection->ip.localPort = ipv4Evt->connection.localPort;
-            pConnection->ip.protocol = protocol;
 
             event.ip.type = U_SHORT_RANGE_EVENT_CONNECTED;
             event.ip.channel = ipv4Evt->channel;
+            event.ip.conData.type = U_SHORT_RANGE_CONNECTION_IPv4;
             event.ip.conData.ipv4 = ipv4Evt->connection;
 
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
@@ -504,8 +501,10 @@ static void processEdmConnectIpv4Event(uShortRangeEdmEvent_t *pEvent)
                           rIp[0], rIp[1], rIp[2], rIp[3], rPort);
 #endif
 
-            uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                &event, sizeof(uShortRangeEdmStreamEvent_t));
+            if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                    &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
+            }
         }
     }
 }
@@ -538,11 +537,10 @@ static void processEdmConnectIpv6Event(uShortRangeEdmEvent_t *pEvent)
 
         if (pConnection->type != U_SHORT_RANGE_CONNECTION_TYPE_INVALID) {
             pConnection->channel = ipv6Evt->channel;
-            pConnection->ip.localPort = ipv6Evt->connection.localPort;
-            pConnection->ip.protocol = protocol;
 
             event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_IP;
             event.ip.type = U_SHORT_RANGE_EVENT_CONNECTED;
+            event.ip.conData.type = U_SHORT_RANGE_CONNECTION_IPv6;
             event.ip.conData.ipv6 = ipv6Evt->connection;
 
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
@@ -553,8 +551,10 @@ static void processEdmConnectIpv6Event(uShortRangeEdmEvent_t *pEvent)
                           event.ip.channel, protocolTxt, lPort, rPort);
 #endif
 
-            uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                &event, sizeof(uShortRangeEdmStreamEvent_t));
+            if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                    &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
+            }
         }
     }
 }
@@ -574,8 +574,10 @@ static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
                 uEdmChLogLine(LOG_CH_BT, "ch: %d, disconnect", channel);
 #endif
-                uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                    &event, sizeof(uShortRangeEdmStreamEvent_t));
+                if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                        &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                    uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
+                }
                 break;
 
             case U_SHORT_RANGE_CONNECTION_TYPE_MQTT:
@@ -585,8 +587,10 @@ static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
                 uEdmChLogLine(LOG_CH_IP, "ch: %d, disconnect", channel);
 #endif
-                uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                    &event, sizeof(uShortRangeEdmStreamEvent_t));
+                if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                        &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                    uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
+                }
                 break;
 
             case U_SHORT_RANGE_CONNECTION_TYPE_IP:
@@ -596,8 +600,10 @@ static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
                 uEdmChLogLine(LOG_CH_IP, "ch: %d, disconnect", channel);
 #endif
-                uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                    &event, sizeof(uShortRangeEdmStreamEvent_t));
+                if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                                        &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                    uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
+                }
                 break;
 
             default:
@@ -626,8 +632,10 @@ static void processEdmDataEvent(uShortRangeEdmEvent_t *pEvent)
 # endif
 #endif
 
-    uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                        &event, sizeof(uShortRangeEdmStreamEvent_t));
+    if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
+                            &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+        uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
+    }
 }
 
 static void processEdmEvent(uShortRangeEdmEvent_t *pEvent)
@@ -945,7 +953,14 @@ void uShortRangeEdmStreamClose(int32_t handle)
             }
             gEdmStream.uartHandle = -1;
             if (gEdmStream.eventQueueHandle >= 0) {
+                // Not so pretty workaround:
+                // Temporarily release the lock to prevent potential deadlock.
+                // This can happen if an URC is received at the same time EDM is closing down.
+                // URC will then try to lock gMutex while uPortEventQueueClose will try to take
+                // the queue lock for eventQueueHandle now held by URC handler.
+                U_PORT_MUTEX_UNLOCK(gMutex);
                 uPortEventQueueClose(gEdmStream.eventQueueHandle);
+                U_PORT_MUTEX_LOCK(gMutex);
             }
             gEdmStream.eventQueueHandle = -1;
             if (gEdmStream.atHandle != NULL) {
@@ -1339,6 +1354,9 @@ int32_t uShortRangeEdmStreamAtEventSend(int32_t handle, uint32_t eventBitMap)
             event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_AT;
             errorCode = uPortEventQueueSend(gEdmStream.eventQueueHandle,
                                             &event, sizeof(uShortRangeEdmStreamEvent_t));
+            if (errorCode != 0) {
+                uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
+            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
@@ -1418,55 +1436,6 @@ int32_t uShortRangeEdmStreamAtGetReceiveSize(int32_t handle)
     }
 
     return sizeOrErrorCode;
-}
-
-int32_t uShortRangeEdmStreamFindIpConnection(int32_t handle,
-                                             const uShortRangeConnectDataIp_t *pIpConnection)
-{
-    // IMPORTANT NOTE:
-    // Currently this function only search for local port + protocol.
-    // This is fine as long as we only support outgoing sockets.
-    // The reason for this limitation is to save RAM.
-    // If we would store all IP data for each connection that would
-    // consume >400 bytes for a table of 10 entries due to IPv6.
-    // When server sockets are added this needs to be addressed.
-    // One solution would be to use a connection hash value.
-
-    uShortRangeEdmStreamConnections_t *pConnection = NULL;
-
-    if ((handle != -1) && (handle == gEdmStream.handle)) {
-        uint16_t localPort;
-        uShortRangeIpProtocol_t protocol;
-
-        switch (pIpConnection->type) {
-            case U_SHORT_RANGE_CONNECTION_IPv6:
-                localPort = pIpConnection->ipv6.localPort;
-                protocol =  pIpConnection->ipv6.protocol;
-                break;
-            case U_SHORT_RANGE_CONNECTION_IPv4:
-            default:
-                localPort = pIpConnection->ipv4.localPort;
-                protocol =  pIpConnection->ipv4.protocol;
-                break;
-        }
-
-        U_PORT_MUTEX_LOCK(gMutex);
-
-        for (uint32_t i = 0; i < U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS; i++) {
-            uShortRangeEdmStreamConnections_t *pIter = &gEdmStream.connections[i];
-            if ((pIter->type == U_SHORT_RANGE_CONNECTION_TYPE_IP) ||
-                (pIter->type == U_SHORT_RANGE_CONNECTION_TYPE_MQTT)) {
-                if ((pIter->ip.localPort == localPort) && (pIter->ip.protocol == protocol)) {
-                    pConnection = &gEdmStream.connections[i];
-                    break;
-                }
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gMutex);
-    }
-
-    return pConnection ? pConnection->channel : (int)U_ERROR_COMMON_UNKNOWN;
 }
 
 // End of file

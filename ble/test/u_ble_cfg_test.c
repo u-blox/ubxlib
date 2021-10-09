@@ -30,8 +30,17 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
+
+// Must always be included before u_short_range_test_selector.h
+//lint -efile(766, u_ble_module_type.h)
+#include "u_ble_module_type.h"
+
+#include "u_short_range_test_selector.h"
+
+#if U_SHORT_RANGE_TEST_BLE() && defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE)
+
+#include "stddef.h"    // NULL, size_t etc.
 #include "stdbool.h"
 
 #include "u_cfg_sw.h"
@@ -47,14 +56,11 @@
 
 #include "u_at_client.h"
 
-#include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
-#include "u_ble_module_type.h"
 #include "u_ble.h"
-#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+
 #include "u_ble_cfg.h"
-#endif
 
 #include "u_ble_test_private.h"
 
@@ -81,8 +87,6 @@ static uBleTestPrivate_t gHandles = { -1, -1, NULL, -1 };
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-
-#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 
 U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
 {
@@ -124,8 +128,6 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
 #endif
 }
 
-#endif
-
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
@@ -157,5 +159,7 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgCleanUp")
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }
+
+#endif // U_SHORT_RANGE_TEST_BLE()
 
 // End of file

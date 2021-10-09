@@ -2429,6 +2429,22 @@ size_t uAtClientWriteBytes(uAtClientHandle_t atHandle,
     return writeLength;
 }
 
+void uAtClientWritePartialString(uAtClientHandle_t atHandle,
+                                 bool isFirst,
+                                 const char *pParam)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_PORT_MUTEX_LOCK(pClient->mutex);
+
+
+    if (!isFirst || writeCheckAndDelimit(pClient)) {
+        write(pClient, pParam, strlen(pParam), false);
+    }
+
+    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+}
+
 // Stop the outgoing part of an AT command sequence.
 void uAtClientCommandStop(uAtClientHandle_t atHandle)
 {

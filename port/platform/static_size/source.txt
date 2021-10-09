@@ -36,6 +36,7 @@ common/network/src/u_network_private_ble_extmod.c
 common/network/src/u_network_private_ble_intmod.c
 common/network/src/u_network_private_cell.c
 common/network/src/u_network_private_wifi.c
+common/network/src/u_network_private_short_range.c
 common/network/src/u_network_private_gnss.c
 common/sock/src/u_sock.c
 common/security/src/u_security.c
@@ -59,3 +60,8 @@ port/platform/static_size/stubs/u_port_stub.c
 port/platform/static_size/stubs/u_lib_stub.c
 port/platform/static_size/stubs/u_main_stub.c
 port/clib/u_port_clib_mktime64.c
+wifi/src/u_wifi.c
+wifi/src/u_wifi_cfg.c
+wifi/src/u_wifi_net.c
+wifi/src/u_wifi_private.c
+wifi/src/u_wifi_sock.c

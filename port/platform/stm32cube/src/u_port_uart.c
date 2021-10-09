@@ -1219,6 +1219,9 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
         sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         pUartData = pGetUartDataByHandle(handle);
         if (pUartData != NULL) {
+            // Right before we take a sample of pRxBufferWrite we need to re-enable
+            // UART receive events
+            pUartData->userNeedsNotify = true;
             pRxBufferWrite = pUartData->pRxBufferWrite;
             if (pUartData->pRxBufferRead < pRxBufferWrite) {
                 // Read pointer is behind write, just take as much
@@ -1268,11 +1271,6 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                 sizeOrErrorCode = 0;
             }
 
-            // If everything has been read, a notification
-            // is needed for the next one
-            if (pUartData->pRxBufferRead == pRxBufferWrite) {
-                pUartData->userNeedsNotify = true;
-            }
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

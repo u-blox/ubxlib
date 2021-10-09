@@ -220,7 +220,7 @@ def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
         # is passed in as one array entry is sufficient
 
         # Assemble the whole call list
-        call_list += ["make", "-f", makefile]
+        call_list += ["make", "-j8", "-f", makefile]
         call_list.append("NRF5_PATH=" + NRF5SDK_PATH)
         call_list.append("UNITY_PATH=" + unity_dir.replace("\\", "/"))
         if defines:

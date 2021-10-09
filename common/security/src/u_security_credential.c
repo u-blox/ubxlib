@@ -55,9 +55,10 @@
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"
-
-#include "u_short_range_module_type.h"
-#include "u_short_range.h"
+#include "u_ble_module_type.h"
+#include "u_ble.h"
+#include "u_wifi_module_type.h"
+#include "u_wifi.h"
 
 #include "u_security_credential.h"
 
@@ -129,9 +130,10 @@ static int32_t getAtClient(int32_t networkHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
-    if (U_NETWORK_HANDLE_IS_BLE(networkHandle) ||
-        U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-        errorCode = uShortRangeAtClientHandleGet(networkHandle, pAtHandle);
+    if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
+        errorCode = uBleAtClientHandleGet(networkHandle, pAtHandle);
+    } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
+        errorCode = uWifiAtClientHandleGet(networkHandle, pAtHandle);
     } else if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
         errorCode = uCellAtClientHandleGet(networkHandle, pAtHandle);
     }

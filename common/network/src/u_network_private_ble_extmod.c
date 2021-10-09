@@ -39,19 +39,17 @@
 
 #include "u_error_common.h"
 
-#include "u_port_uart.h"
-
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
-#include "u_short_range_edm_stream.h"
 
 #include "u_ble_module_type.h"
 #include "u_ble.h"
 #include "u_ble_cfg.h"
 
 #include "u_network.h"
+#include "u_network_private_short_range.h"
 #include "u_network_config_ble.h"
 #include "u_network_private_ble.h"
 
@@ -67,9 +65,7 @@
  * -------------------------------------------------------------- */
 
 typedef struct {
-    int32_t uartHandle; /**< The handle returned by uPortUartOpen(). */
-    int32_t edmStreamHandle; /**< The handle returned by uPorrEdmStreamOpen(). */
-    uAtClientHandle_t atClientHandle; /**< The handle returned by uAtClientAdd(). */
+    int32_t netShoHandle;  /**< The handle returned by uNetworkAddShortRange(). */
     int32_t bleHandle;  /**< The handle returned by uBleAdd(). */
 } uNetworkPrivateBleInstance_t;
 
@@ -93,7 +89,7 @@ static uNetworkPrivateBleInstance_t *pGetFree()
 
     for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
          (pFree == NULL); x++) {
-        if (gInstance[x].uartHandle < 0) {
+        if (gInstance[x].netShoHandle < 0) {
             pFree = &(gInstance[x]);
         }
     }
@@ -117,6 +113,12 @@ static uNetworkPrivateBleInstance_t *pGetInstance(int32_t bleHandle)
     return pInstance;
 }
 
+static void clearInstance(uNetworkPrivateBleInstance_t *pInstance)
+{
+    pInstance->bleHandle = -1;
+    pInstance->netShoHandle = -1;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -124,26 +126,23 @@ static uNetworkPrivateBleInstance_t *pGetInstance(int32_t bleHandle)
 // Initialise the network API for BLE.
 int32_t uNetworkInitBle()
 {
-    uShortRangeEdmStreamInit();
-    uAtClientInit();
-    uBleInit();
-
-    for (size_t x = 0; x < sizeof(gInstance) / sizeof(gInstance[0]); x++) {
-        gInstance[x].uartHandle = -1;
-        gInstance[x].atClientHandle = NULL;
-        gInstance[x].edmStreamHandle = -1;
-        gInstance[x].bleHandle = -1;
+    int32_t errorCode = uNetworkInitShortRange();
+    if (errorCode >= 0) {
+        errorCode = uBleInit();
     }
 
-    return (int32_t) U_ERROR_COMMON_SUCCESS;
+    for (size_t x = 0; x < sizeof(gInstance) / sizeof(gInstance[0]); x++) {
+        clearInstance(&gInstance[x]);
+    }
+
+    return errorCode;
 }
 
 // Deinitialise the sho network API.
 void uNetworkDeinitBle()
 {
-    uAtClientDeinit();
-    uShortRangeEdmStreamDeinit();
     uBleDeinit();
+    uNetworkDeinitShortRange();
 }
 
 // Add a BLE network instance.
@@ -151,64 +150,48 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     uNetworkPrivateBleInstance_t *pInstance;
+    const uShortRangeConfig_t shoConfig = {
+        .module = pConfiguration->module,
+        .uart = pConfiguration->uart,
+        .pinTxd = pConfiguration->pinTxd,
+        .pinRxd = pConfiguration->pinRxd,
+        .pinCts = pConfiguration->pinCts,
+        .pinRts = pConfiguration->pinRts
+    };
+
+    // Check that the module supports BLE
+    const uShortRangeModuleInfo_t *pModuleInfo;
+    pModuleInfo = uShortRangeGetModuleInfo(pConfiguration->module);
+    if (!pModuleInfo) {
+        return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+    if (!pModuleInfo->supportsBle) {
+        return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+    }
 
     pInstance = pGetFree();
     if (pInstance != NULL) {
-        // Open a UART with the recommended buffer length
-        // and default baud rate.
-        errorCode = uPortUartOpen(pConfiguration->uart,
-                                  U_SHORT_RANGE_UART_BAUD_RATE, NULL,
-                                  U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES,
-                                  pConfiguration->pinTxd,
-                                  pConfiguration->pinRxd,
-                                  pConfiguration->pinCts,
-                                  pConfiguration->pinRts);
+        errorCode = uNetworkAddShortRange(&shoConfig);
+        pInstance->netShoHandle = errorCode;
+
         if (errorCode >= 0) {
-            pInstance->uartHandle = errorCode;
-            errorCode = (int32_t) U_SHORT_RANGE_ERROR_AT;
-
-            pInstance->edmStreamHandle = uShortRangeEdmStreamOpen(pInstance->uartHandle);
-
-            if (pInstance->edmStreamHandle >= 0) {
-                // Add an AT client on the UART with the recommended
-                // default buffer size.
-                pInstance->atClientHandle = uAtClientAdd(pInstance->edmStreamHandle,
-                                                         U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                         NULL,
-                                                         U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
-                if (pInstance->atClientHandle != NULL) {
-                    uShortRangeEdmStreamSetAtHandle(pInstance->edmStreamHandle, pInstance->atClientHandle);
-
-                    // Set printing of AT commands by the short range driver,
-                    // which can be useful while debugging.
-                    uAtClientPrintAtSet(pInstance->atClientHandle, true);
-
-                    errorCode = uBleAdd((uBleModuleType_t) pConfiguration->module,
-                                        pInstance->atClientHandle);
-
-                    if (errorCode >= 0) {
-                        pInstance->bleHandle = errorCode;
-                        uBleModuleType_t module = uBleDetectModule(pInstance->bleHandle);
-
-                        if (module == U_BLE_MODULE_TYPE_INVALID) {
-                            errorCode = (int32_t)  U_SHORT_RANGE_ERROR_NOT_DETECTED;
-                        } else if ((int32_t) module != pConfiguration->module) {
-                            errorCode = (int32_t) U_SHORT_RANGE_ERROR_WRONG_TYPE;
-                        }
-                    }
-                }
-            }
+            uAtClientHandle_t atHandle = uNetworkGetAtClientShortRange(pInstance->netShoHandle);
+            errorCode = uBleAdd((uBleModuleType_t) pConfiguration->module, atHandle);
+            pInstance->bleHandle = errorCode;
         }
 
-        if (errorCode < 0) {
-            uBleRemove(pInstance->bleHandle);
-            uShortRangeEdmStreamClose(pInstance->edmStreamHandle);
-            uAtClientRemove(pInstance->atClientHandle);
-            uPortUartClose(pInstance->uartHandle);
-            pInstance->uartHandle = -1;
-            pInstance->atClientHandle = NULL;
-            pInstance->edmStreamHandle = -1;
-            pInstance->bleHandle = -1;
+        if (errorCode >= 0) {
+            errorCode = pInstance->bleHandle;
+        } else {
+            // Something went wrong - cleanup...
+            if (pInstance->bleHandle >= 0) {
+                uBleRemove(pInstance->bleHandle);
+            }
+
+            if (pInstance->netShoHandle >= 0) {
+                uNetworkRemoveShortRange(pInstance->netShoHandle);
+            }
+            clearInstance(pInstance);
         }
     }
 
@@ -225,13 +208,8 @@ int32_t uNetworkRemoveBle(int32_t handle)
     pInstance = pGetInstance(handle);
     if (pInstance != NULL) {
         uBleRemove(pInstance->bleHandle);
-        pInstance->bleHandle = -1;
-        uShortRangeEdmStreamClose(pInstance->edmStreamHandle);
-        pInstance->edmStreamHandle = -1;
-        uAtClientRemove(pInstance->atClientHandle);
-        pInstance->atClientHandle = NULL;
-        uPortUartClose(pInstance->uartHandle);
-        pInstance->uartHandle = -1;
+        uNetworkRemoveShortRange(pInstance->netShoHandle);
+        clearInstance(pInstance);
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     }
 

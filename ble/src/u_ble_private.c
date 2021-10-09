@@ -33,8 +33,9 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
-#include "u_port_gatt.h"
 #include "u_ble_private.h"
+
+#include "u_network_handle.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -73,6 +74,25 @@ static void intToHex(const uint8_t in, char *pOut)
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+int32_t uBleToShoHandle(int32_t bleHandle)
+{
+    if ((bleHandle < (int32_t)U_NETWORK_HANDLE_BLE_MIN) ||
+        (bleHandle > (int32_t)U_NETWORK_HANDLE_BLE_MAX)) {
+        return -1;
+    }
+    return bleHandle - (int32_t)U_NETWORK_HANDLE_BLE_MIN;
+}
+
+int32_t uShoToBleHandle(int32_t shortRangeHandle)
+{
+    if ((shortRangeHandle < 0) ||
+        (shortRangeHandle >= (int32_t)U_NETWORK_HANDLE_RANGE)) {
+        return -1;
+    }
+    return shortRangeHandle + (int32_t)U_NETWORK_HANDLE_BLE_MIN;
+}
+
 
 void addrArrayToString(const uint8_t *pAddrIn, uPortBtLeAddressType_t addrType, bool msbLast,
                        char *pAddrOut)

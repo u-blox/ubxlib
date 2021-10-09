@@ -17,7 +17,7 @@
 #ifndef _U_BLE_PRIVATE_H_
 #define _U_BLE_PRIVATE_H_
 
-/* No #includes allowed here */
+#include "u_port_gatt.h"
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -43,6 +43,23 @@ extern "C" {
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
+
+/** Convert a BLE handle to a short range handle
+ *
+ * @param bleHandle  the BLE handle to convert
+ * @return           a short range handle on success,
+ *                   on failure negative value.
+ */
+int32_t uBleToShoHandle(int32_t bleHandle);
+
+/** Convert a short range handle to a BLE handle
+ *
+ * @param shortRangeHandle  the short range handle to convert
+ * @return                  a BLE handle on success,
+ *                          on failure negative value.
+ */
+int32_t uShoToBleHandle(int32_t shortRangeHandle);
+
 /** Initialize data part of BLE
  */
 void uBleDataPrivateInit(void);

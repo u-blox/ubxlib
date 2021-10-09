@@ -17,7 +17,7 @@
 #ifndef _U_BLE_MODULE_TYPE_H_
 #define _U_BLE_MODULE_TYPE_H_
 
-/* No #includes allowed here */
+#include "u_short_range_module_type.h"
 
 /** @file
  * @brief This header file defines the module types for ble.
@@ -31,20 +31,36 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+// Macro magic for uBleModuleType_t
+#define U_NO(_TYPE_NAME)
+#define U_YES(_TYPE_NAME) \
+    U_BLE_MODULE_TYPE_##_TYPE_NAME = U_SHORT_RANGE_MODULE_TYPE_##_TYPE_NAME,
+#define U_SHORT_RANGE_MODULE(_TYPE_NAME, _GMM_NAME, _BLE, _BT_CLASSIC, _WIFI) \
+    _BLE(_TYPE_NAME)
+
 /** The possible types of BLE module.
  */
 typedef enum {
-    U_BLE_MODULE_TYPE_NINA_B1 = U_SHORT_RANGE_MODULE_TYPE_NINA_B1,   /**< Modules NINA-B1. BLE only*/
-    U_BLE_MODULE_TYPE_ANNA_B1 = U_SHORT_RANGE_MODULE_TYPE_ANNA_B1,   /**< Modules ANNA-B1. BLE only */
-    U_BLE_MODULE_TYPE_NINA_B3 = U_SHORT_RANGE_MODULE_TYPE_NINA_B3,   /**< Modules NINA-B3. BLE only */
-    U_BLE_MODULE_TYPE_NINA_B4 = U_SHORT_RANGE_MODULE_TYPE_NINA_B4,   /**< Modules NINA-B4. BLE only */
-    U_BLE_MODULE_TYPE_NINA_B2 = U_SHORT_RANGE_MODULE_TYPE_NINA_B2,   /**< Modules NINA-B2. BLE and Classic */
-    U_BLE_MODULE_TYPE_NINA_W15 = U_SHORT_RANGE_MODULE_TYPE_NINA_W15, /**< Modules NINA-W15. Wifi, BLE and Classic */
-    U_BLE_MODULE_TYPE_ODIN_W2 = U_SHORT_RANGE_MODULE_TYPE_ODIN_W2,   /**< Modules NINA-B1. Wifi, BLE and Classic */
+// X macro is used to generate this enum from U_SHORT_RANGE_MODULE_LIST
+// for all entries with field "BLE" set to U_YES.
+// It will prefix the "Module" field from U_SHORT_RANGE_MODULE_LIST with
+// U_BLE_MODULE_TYPE_, thus creating the enum values below:
+//    U_BLE_MODULE_TYPE_NINA_B1  < Modules NINA-B1. BLE only
+//    U_BLE_MODULE_TYPE_ANNA_B1  < Modules ANNA-B1. BLE only
+//    U_BLE_MODULE_TYPE_NINA_B3  < Modules NINA-B3. BLE only
+//    U_BLE_MODULE_TYPE_NINA_B4  < Modules NINA-B4. BLE only
+//    U_BLE_MODULE_TYPE_NINA_B2  < Modules NINA-B2. BLE and Classic
+//    U_BLE_MODULE_TYPE_NINA_W15 < Modules NINA-W15. Wifi, BLE and Classic
+//    U_BLE_MODULE_TYPE_ODIN_W2  < Modules NINA-B1. Wifi, BLE and Classic
+    U_SHORT_RANGE_MODULE_LIST
+
     U_BLE_MODULE_TYPE_INVALID = U_SHORT_RANGE_MODULE_TYPE_INVALID,   /**< Invalid */
     U_BLE_MODULE_TYPE_INTERNAL = U_SHORT_RANGE_MODULE_TYPE_INTERNAL, /**< Internal module */
-    U_BLE_MODULE_TYPE_UNSUPPORTED                                    /**< Valid module, but not supporting BLE */
+    U_BLE_MODULE_TYPE_UNSUPPORTED = U_SHORT_RANGE_MODULE_TYPE_UNSUPPORTED /**< Valid module, but not supporting BLE */
 } uBleModuleType_t;
+#undef U_NO
+#undef U_YES
+#undef U_SHORT_RANGE_MODULE
 
 #endif // _U_BLE_MODULE_TYPE_H_
 

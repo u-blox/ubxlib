@@ -36,3 +36,4 @@ port/clib
 port/platform/common/event_queue
 port/platform/common/runner
 port/platform/static_size/stubs
+wifi/api

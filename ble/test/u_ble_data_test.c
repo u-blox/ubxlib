@@ -33,8 +33,23 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
+
+// Must always be included before u_short_range_test_selector.h
+//lint -efile(766, u_ble_module_type.h)
+#include "u_ble_module_type.h"
+
+// Looks like we have hit a Lint bug here...
+// u_short_range_test_selector.h is ONLY included in .c files and it is
+// therefore impossible for this file to be previously included.
+//lint -efile(537, u_short_range_test_selector.h) suppress repeated include
+#include "u_short_range_test_selector.h"
+
+#if U_SHORT_RANGE_TEST_BLE()
+
+//lint -efile(537, stddef.h) suppress repeated include - Lint bug?
+//lint -efile(451, stddef.h)
+#include "stddef.h"    // NULL, size_t etc.
 #include "stdbool.h"
 
 #include "u_cfg_sw.h"
@@ -50,14 +65,13 @@
 
 #include "u_at_client.h"
 
-#include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
-#include "u_ble_module_type.h"
 #include "u_ble.h"
-#if defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE) || defined(U_CFG_BLE_MODULE_INTERNAL)
+
+#include "u_short_range_test_selector.h"
+
 #include "u_ble_data.h"
-#endif
 #include "u_ble_test_private.h"
 
 /* ----------------------------------------------------------------
@@ -196,5 +210,7 @@ U_PORT_TEST_FUNCTION("[bleData]", "bleDataCleanUp")
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }
+
+#endif // U_SHORT_RANGE_TEST_BLE()
 
 // End of file

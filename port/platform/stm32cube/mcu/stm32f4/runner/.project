@@ -127,6 +127,11 @@
 			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_gnss.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Common/Network/u_network_private_short_range.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/common/network/src/u_network_private_short_range.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/Sock/u_sock.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/sock/src/u_sock.c</locationURI>
@@ -326,6 +331,27 @@
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/cell/src/u_cell_private.c</locationURI>
 		</link>
+
+		<link>
+			<name>Ubxlib/U-Blox/Wifi/u_wifi.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/src/u_wifi.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Wifi/u_wifi_cfg.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/src/u_wifi_cfg.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Wifi/u_wifi_net.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/src/u_wifi_net.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Wifi/u_wifi_private.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/src/u_wifi_private.c</locationURI>
+		</link>
 		<link>
 			<name>Ubxlib/U-Blox/GNSS/u_gnss.c</name>
 			<type>1</type>
@@ -360,6 +386,11 @@
 			<name>Ubxlib/U-Blox/GNSS/u_gnss_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/gnss/src/u_gnss_private.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Wifi/u_wifi_sock.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/src/u_wifi_sock.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/Network/u_network_test.c</name>
@@ -545,6 +576,31 @@
 			<name>Ubxlib/U-Blox/Test/GNSS/u_gnss_test_private.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/gnss/test/u_gnss_test_private.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Wifi/u_wifi_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/test/u_wifi_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Wifi/u_wifi_cfg_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/test/u_wifi_cfg_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Wifi/u_wifi_net_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/test/u_wifi_net_test.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Wifi/u_wifi_test_private.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/test/u_wifi_test_private.c</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/U-Blox/Test/Wifi/u_wifi_sock_test.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/test/u_wifi_sock_test.c</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/U-Blox/Test/AtClient/u_at_client_test.c</name>
@@ -880,6 +936,16 @@
 			<name>Ubxlib/Inc/U-Blox/gnss/test</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/gnss/test</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/wifi/api</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/api</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/wifi/test</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/wifi/test</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/common/at_client/api</name>
