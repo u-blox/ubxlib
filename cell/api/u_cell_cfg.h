@@ -270,7 +270,16 @@ int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
 int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType,
                              int32_t nvmRestoreType);
 
-/** Set a greeting message, which will be emitted by the module at boot.
+/** Set a greeting message, which will be emitted by the module
+ * at boot.  Note that when a module is set to auto-baud (the
+ * default setting for SARA-R5 and SARA-U201) the greeting message
+ * will only be emitted after the module has been sent the first
+ * AT command (since the module does not know what baud rate to
+ * use when sending the greeting message otherwise).  In order
+ * for the greeting message to be sent as soon as the module has
+ * booted the baud-rate used by the module must be fixed, e.g.
+ * with a call to uCellCfgSetAutoBaudOff() in the case of SARA-R5
+ * and SARA-U201.
  *
  * @param cellHandle   the handle of the cellular instance.
  * @param pStr         the null-terminated greeting message; use NULL
@@ -296,6 +305,49 @@ int32_t uCellCfgSetGreeting(int32_t cellHandle, const char *pStr);
  *                    zero will be returned.
  */
 int32_t uCellCfgGetGreeting(int32_t cellHandle, char *pStr, size_t size);
+
+/** Switch off auto-bauding in the cellular module.  This will fix
+ * the baud rate of the cellular module to the current baud rate,
+ * storing the change in non-volatile memory in the cellular module.
+ * It is useful where a module supports auto-bauding (e.g. SARA-U201
+ * and SARA-R5) and yet you wish the module to emit a greeting message
+ * the moment it boots, see uCellCfgSetGreeting() for details.  For
+ * the setting to persist the module must be powered off with a call
+ * to uCellPwrOff() (rather than a reboot or a hard power off).
+ *
+ * IMPORTANT: once this function has returned successfully, to change
+ * the baud rate you must first call uCellCfgSetAutoBaudOn(), power the
+ * cellular module off, remove the AT client/close this MCU's UART,
+ * open the MCU's UART/add an AT client with the new baud rate and add
+ * the cellular module once more.  You may then call this function again
+ * to fix the new baud rate in the cellular module if you wish.
+ *
+ * @param cellHandle   the handle of the cellular instance.
+ * @return             zero on success or negative error code on
+ *                     failure.
+ */
+int32_t uCellCfgSetAutoBaudOff(int32_t cellHandle);
+
+/** Switch auto-bauding on in the cellular module.  Auto-bauding
+ * is not supported by all modules (e.g. the SARA-R4 series do not
+ * support auto-bauding, they simply default to 115200); if
+ * auto-bauding is supported by a module then it will be the default
+ * and there is usually no need to call this function.  For the
+ * auto-baud setting to persist the module must be powered off with
+ * a call to uCellPwrOff() (rather than a reboot or a hard power off).
+ *
+ * @param cellHandle   the handle of the cellular instance.
+ * @return             zero on success or negative error code on
+ *                     failure.
+ */
+int32_t uCellCfgSetAutoBaudOn(int32_t cellHandle);
+
+/** Determine whether auto-bauding is on in the cellular module.
+ *
+ * @param cellHandle   the handle of the cellular instance.
+ * @return             true if auto-bauding is on, else false.
+ */
+bool uCellCfgAutoBaudIsOn(int32_t cellHandle);
 
 #ifdef __cplusplus
 }
