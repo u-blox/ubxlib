@@ -68,9 +68,6 @@ static const uNetworkConfigurationCell_t configCell = {U_NETWORK_TYPE_CELL,
 static const uNetworkConfigurationCell_t configCell = {U_NETWORK_TYPE_NONE};
 #endif
 
-// TODO: Wifi network configuration.
-// static const uNetworkConfigurationWifi_t configWifi = {U_NETWORK_TYPE_NONE};
-
 // The network handle
 static int32_t networkHandle;
 

@@ -6,6 +6,7 @@
 ble/test
 cell/test
 gnss/test
+wifi/test
 common/sock/test
 common/network/test
 common/security/test

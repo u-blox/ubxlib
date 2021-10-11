@@ -32,7 +32,13 @@ gnss/src/u_gnss_info.c
 gnss/src/u_gnss_pos.c
 gnss/src/u_gnss_util.c
 gnss/src/u_gnss_private.c
+wifi/src/u_wifi.c
+wifi/src/u_wifi_cfg.c
+wifi/src/u_wifi_net.c
+wifi/src/u_wifi_private.c
+wifi/src/u_wifi_sock.c
 common/network/src/u_network.c
+common/network/src/u_network_private_short_range.c
 common/network/src/u_network_private_ble_extmod.c
 common/network/src/u_network_private_ble_intmod.c
 common/network/src/u_network_private_cell.c

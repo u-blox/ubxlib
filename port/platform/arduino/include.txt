@@ -26,6 +26,7 @@ common/short_range/api/u_short_range_module_type.h
 ble/api/u_ble_module_type.h
 cell/api/u_cell_module_type.h
 gnss/api/u_gnss_module_type.h
+wifi/api/u_wifi_module_type.h
 common/network/api
 common/network/src
 common/security/api
@@ -52,3 +53,5 @@ cell/src
 gnss/api/u_gnss_type.h
 gnss/api
 gnss/src
+wifi/api
+wifi/src
