@@ -275,6 +275,27 @@ int32_t uCellInfoGetFirmwareVersionStr(int32_t cellHandle,
  */
 int64_t uCellInfoGetTimeUtc(int32_t cellHandle);
 
+/** Get the UTC time string according to cellular. This feature requires
+ * a connection to have been activated and support for this feature
+ * is optional in the cellular network.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param pStr        a pointer to size bytes of storage into which
+ *                    the UTC time string will be copied.
+ *                    Room should be allowed for a null terminator,
+ *                    which will be added to terminate the string.
+ *                    This pointer cannot be NULL.
+ * @param size        the number of bytes available at pStr, including
+ *                    room for a null terminator. Must be greater or equal
+ *                    to 32 bytes.
+ * @return            on success, the number of characters copied into
+ *                    pStr NOT include the terminator (i.e. as
+ *                    strlen() would return), on failure negative
+ *                    error code.
+ */
+int32_t uCellInfoGetTimeUtcStr(int32_t cellHandle,
+                               char *pStr, size_t size);
+
 /** Determine if RTS flow control, i.e. a signal from
  * the cellular module to this software that the module is
  * ready to receive data, is enabled.

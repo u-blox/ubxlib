@@ -339,6 +339,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoTime")
     int32_t cellHandle;
     int64_t x;
     int32_t heapUsed;
+    char buffer[32] = {0};
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -360,6 +361,10 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoTime")
     x = uCellInfoGetTimeUtc(cellHandle);
     uPortLog("U_CELL_INFO_TEST: UTC time is %d.\n", (int32_t) x);
     U_PORT_TEST_ASSERT(x > U_CELL_INFO_TEST_MIN_UTC_TIME);
+
+    uPortLog("U_CELL_INFO_TEST: fetching the time string...\n");
+    U_PORT_TEST_ASSERT(uCellInfoGetTimeUtcStr(cellHandle, buffer, sizeof(buffer)) >= 0);
+    uPortLog("U_CELL_INFO_TEST: UTC time: %s.\n", buffer);
 
     // Disconnect
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);

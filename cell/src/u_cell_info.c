@@ -877,6 +877,52 @@ int64_t uCellInfoGetTimeUtc(int32_t cellHandle)
     return errorCodeOrValue;
 }
 
+/* Get the UTC time string according to cellular */
+int32_t uCellInfoGetTimeUtcStr(int32_t cellHandle, char *pStr, size_t size)
+{
+    int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t bytesRead;
+    const size_t minBufferSize = 32;
+    const int32_t timeStrMinLen = 17;
+
+    if (pStr == NULL || size < minBufferSize) {
+        sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+
+    if (gUCellPrivateMutex != NULL && sizeOrErrorCode == 0) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+CCLK?");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+CCLK:");
+            bytesRead = uAtClientReadString(atHandle, pStr,
+                                            size, false);
+
+            uAtClientResponseStop(atHandle);
+            sizeOrErrorCode = uAtClientUnlock(atHandle);
+            if ((bytesRead >= timeStrMinLen) && (sizeOrErrorCode == 0)) {
+                sizeOrErrorCode = bytesRead;
+                uPortLog("U_CELL_INFO: time is %s.\n", pStr);
+            } else {
+                sizeOrErrorCode = (int32_t) U_CELL_ERROR_AT;
+                uPortLog("U_CELL_INFO: unable to read time with AT+CCLK.\n");
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return sizeOrErrorCode;
+}
+
 // Determine if RTS flow control is enabled.
 bool uCellInfoIsRtsFlowControlEnabled(int32_t cellHandle)
 {
