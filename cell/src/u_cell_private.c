@@ -83,7 +83,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1UL << (int32_t) U_CELL_NET_RAT_GSM_GPRS_EGPRS) |
          (1UL << (int32_t) U_CELL_NET_RAT_UTRAN)) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)    |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES) /* features */
         )
     },
     {
@@ -160,7 +162,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)            |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                        |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)  /* features */
         )
     },
     {

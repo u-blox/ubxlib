@@ -204,7 +204,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                  U_CFG_APP_CELL_UART);
         // Open a UART with the standard parameters
         pParameters->uartHandle = uPortUartOpen(U_CFG_APP_CELL_UART,
-                                                115200, NULL,
+                                                U_CELL_UART_BAUD_RATE, NULL,
                                                 U_CELL_UART_BUFFER_LENGTH_BYTES,
                                                 U_CFG_APP_PIN_CELL_TXD,
                                                 U_CFG_APP_PIN_CELL_RXD,
@@ -265,6 +265,9 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                 errorCode = uCellInfoGetImsi(cellHandle, imsi);
                 if (errorCode == 0) {
                     errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+                    // Set a greeting message so that we can see spot if the module
+                    // has rebooted underneath us
+                    uCellCfgSetGreeting(cellHandle, U_CELL_PRIVATE_GREETING_STR);
                     pModule = pUCellPrivateGetModule(cellHandle);
                     if (pModule != NULL) {
                         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;

@@ -123,6 +123,13 @@ extern "C" {
 #define U_CELL_PRIVATE_HAS(pModule, feature) \
     ((pModule != NULL) && ((pModule->featuresBitmap) & (1UL << (int32_t) (feature))))
 
+#ifndef U_CELL_PRIVATE_GREETING_STR
+/** A greeting string, a useful indication that the module
+ * rebooted underneath us unexpectedly.
+ */
+#define U_CELL_PRIVATE_GREETING_STR "Module has booted."
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -153,7 +160,9 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_MQTT_SECURITY,
     U_CELL_PRIVATE_FEATURE_UCGED5,
     U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED,
-    U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST
+    U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST,
+    U_CELL_PRIVATE_FEATURE_AUTO_BAUDING,
+    U_CELL_PRIVATE_FEATURE_AT_PROFILES
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.

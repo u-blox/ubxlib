@@ -728,6 +728,38 @@ static int32_t setRatRankSaraR4R5(uCellPrivateInstance_t *pInstance,
 }
 
 /* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: GENERAL
+ * -------------------------------------------------------------- */
+
+// Set the baud rate in the cellular module and store it in NVM.
+int32_t setAndStoreBaudRate(const uCellPrivateInstance_t *pInstance,
+                            int32_t baudRate)
+{
+    int32_t errorCode;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+
+    // Set the baud rate
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+IPR=");
+    uAtClientWriteInt(atHandle, baudRate);
+    uAtClientCommandStopReadResponse(atHandle);
+    errorCode = uAtClientUnlock(atHandle);
+    if ((errorCode == 0) &&
+        U_CELL_PRIVATE_HAS(pInstance->pModule,
+                           U_CELL_PRIVATE_FEATURE_AT_PROFILES)) {
+        // Make sure it is stored in an NVM profile,
+        // where supported
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT&W");
+        uAtClientCommandStopReadResponse(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+    }
+
+    return errorCode;
+}
+
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
@@ -1296,6 +1328,213 @@ int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType, int32_t 
     }
 
     return errorCode;
+}
+
+// Set a greeting message.
+int32_t uCellCfgSetGreeting(int32_t cellHandle, const char *pStr)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t mode = 0;
+
+    if (pStr != NULL) {
+        mode = 1;
+    }
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+CSGT=");
+            uAtClientWriteInt(atHandle, mode);
+            if (pStr != NULL) {
+                uAtClientWriteString(atHandle, pStr, true);
+            }
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the current greeting message.
+int32_t uCellCfgGetGreeting(int32_t cellHandle, char *pStr, size_t size)
+{
+    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t mode;
+    int32_t bytesRead;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) && (pStr != NULL)) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+CSGT?");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+CSGT:");
+            bytesRead = uAtClientReadString(atHandle, pStr, size, false);
+            mode = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
+            errorCodeOrSize = uAtClientUnlock(atHandle);
+            if (errorCodeOrSize == 0) {
+                if (mode == 0) {
+                    bytesRead = 0;
+                }
+                errorCodeOrSize = bytesRead;
+                if (bytesRead > 0) {
+                    uPortLog("U_CELL_CFG: greeting message is \"%s\".\n", pStr);
+                } else {
+                    uPortLog("U_CELL_CFG: no greeting message is set.\n");
+                }
+            } else {
+                uPortLog("U_CELL_CFG: unable to read greeting message.\n");
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrSize;
+}
+
+// Switch off auto-bauding in the cellular module.
+int32_t uCellCfgSetAutoBaudOff(int32_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t baudRate;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)) {
+                errorCode = (int32_t) U_CELL_ERROR_AT;
+                atHandle = pInstance->atHandle;
+                // Get the current baud rate
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+IPR?");
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+IPR:");
+                baudRate = uAtClientReadInt(atHandle);
+                uAtClientResponseStop(atHandle);
+                if ((uAtClientUnlock(atHandle) == 0) && (baudRate > 0)) {
+                    // Fix the baud rate to this value
+                    errorCode = setAndStoreBaudRate(pInstance, baudRate);
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Switch auto-bauding on in the cellular module.
+int32_t uCellCfgSetAutoBaudOn(int32_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)) {
+                // Switch auto-bauding on
+                errorCode = setAndStoreBaudRate(pInstance, 0);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Check if auto-bauding is on in the cellular module.
+bool uCellCfgAutoBaudIsOn(int32_t cellHandle)
+{
+    bool autoBaudOn = false;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t x;
+    char buffer[16]; // enough room for "+IPR:115200"
+    char *pStr;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) &&
+            U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)) {
+            atHandle = pInstance->atHandle;
+            // Whether autobauding is on or off is a stored
+            // value in the AT&V set.  This contains multiple
+            // values, all we're interested in is the first set,
+            // the ACTIVE PROFILE, and whether there is an entry
+            // "+IPR:0" in it
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT&V");
+            uAtClientCommandStop(atHandle);
+            // The AT&V output appears on discrete lines
+            // "ACTIVE PROFILE:" is on a line of its own
+            uAtClientResponseStart(atHandle, "ACTIVE PROFILE:");
+            // The next line has the S value settings etc.
+            // e.g. &C1, &D0, &K0, &S1, E0, Q0, V1, S2:043, S3:013, S4:010, S5:008,
+            uAtClientResponseStart(atHandle, NULL);
+            // Then the next line includes the +IPR setting, e.g.
+            // +ICF:3,1, +IFC:0,0, +IPR:0,
+            uAtClientResponseStart(atHandle, NULL);
+            while (((x = uAtClientReadString(atHandle, buffer,
+                                             sizeof(buffer), false)) > 0) &&
+                   !autoBaudOn) {
+                // Remove any leading spaces from buffer (this AT
+                // command differs from all the others as it seems
+                // to have them)
+                pStr = buffer;
+                for (int32_t y = 0; y < x; y++) {
+                    if (*pStr == ' ') {
+                        pStr++;
+                    }
+                }
+                autoBaudOn = (strcmp(pStr, "+IPR:0") == 0);
+            }
+            uAtClientResponseStop(atHandle);
+            uAtClientUnlock(atHandle);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return autoBaudOn;
 }
 
 // End of file
