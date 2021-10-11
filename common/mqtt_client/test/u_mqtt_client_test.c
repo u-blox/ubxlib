@@ -130,6 +130,11 @@ static char gSerialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
 static const char gSendData[] =  "______000:0123456789012345678901234567890123456789"
                                  "______050:0123456789012345678901234567890123456789";
 
+/** Flag to indicate that the disconnect callback
+ * has been called.
+ */
+static bool gDisconnectCallbackCalled;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -208,6 +213,23 @@ static void messageIndicationCallback(int32_t numUnread, void *pParam)
     *pNumUnread = numUnread;
 }
 
+// Callback for disconnects.
+//lint -e{818} suppress "could be declared as pointing to const":
+// need to follow the callback function signature.
+static void disconnectCallback(int32_t errorCode, void *pParam)
+{
+    (void) pParam;
+
+#if !U_CFG_OS_CLIB_LEAKS
+    // Only print stuff if the C library isn't going to leak
+    uPortLog("U_MQTT_CLIENT_TEST: disconnectCallback() called.\n");
+    uPortLog("U_MQTT_CLIENT_TEST: last MQTT error code %d.\n", errorCode);
+#else
+    (void) errorCode;
+#endif
+
+    gDisconnectCallbackCalled = true;
+}
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
  * -------------------------------------------------------------- */
@@ -300,6 +322,11 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client"
                              " returned %d.\n", y);
                     U_PORT_TEST_ASSERT(y == 0);
+                    // Set a disconnect callback
+                    gDisconnectCallbackCalled = false;
+                    uMqttClientSetDisconnectCallback(gpMqttContextA, disconnectCallback, NULL);
+                    U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
+
                     U_PORT_TEST_ASSERT(!uMqttClientIsConnected(gpMqttContextA));
 
                     if (run == 0) {
@@ -338,6 +365,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                         // doesn't bring the roof down
                         uMqttClientGetLastErrorCode(gpMqttContextA);
                         U_PORT_TEST_ASSERT(uMqttClientIsConnected(gpMqttContextA));
+                        U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
 
                         // Set the message indication callback
                         U_PORT_TEST_ASSERT(uMqttClientSetMessageCallback(gpMqttContextA,
@@ -469,8 +497,11 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                         // Disconnect MQTT
                         uPortLog("U_MQTT_CLIENT_TEST: disconnecting from \"%s\"...\n",
                                  connection.pBrokerNameStr);
+                        U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
                         U_PORT_TEST_ASSERT(uMqttClientDisconnect(gpMqttContextA) == 0);
                         U_PORT_TEST_ASSERT(!uMqttClientIsConnected(gpMqttContextA));
+                        uPortTaskBlock(U_CFG_OS_YIELD_MS);
+                        U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
                     } else {
                         if (run == 0) {
                             uPortLog("U_MQTT_CLIENT_TEST: connection failed after %d ms,"

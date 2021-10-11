@@ -395,23 +395,42 @@ int32_t uMqttClientMessageRead(uMqttClientContext_t *pContext,
  */
 int32_t uMqttClientGetLastErrorCode(const uMqttClientContext_t *pContext);
 
-/** Get the total number of message sent by MQTT client
+/** Get the total number of message sent by the MQTT client.
  *
- * @param pContext      a pointer to the internal MQTT context
+ * @param pContext      a pointer to the internal MQTT context.
  *
  * @return              total number of messages published,
  *                      or negative error code.
  */
 int32_t uMqttClientGetTotalMessagesSent(const uMqttClientContext_t *pContext);
 
-/** Get the total number of messages received and read by MQTT client
+/** Get the total number of messages received and read by the MQTT client.
  *
- * @param pContext      a pointer to the internal MQTT context
+ * @param pContext      a pointer to the internal MQTT context.
  *
  * @return              total number of messages received and read,
  *                      or negative error code.
  */
 int32_t uMqttClientGetTotalMessagesReceived(const uMqttClientContext_t *pContext);
+
+/** Set a callback to be called if the broker drops the MQTT
+ * connection.
+ *
+ * @param pContext       a pointer to the internal MQTT context
+ *                       structure that was originally returned
+ *                       by pUMqttClientOpen().
+ * @param pCallback      the callback. The first parameter is the
+ *                       error code, as would be returned by
+ *                       uCellMqttClientGetLastErrorCode(), the
+ *                       second parameter is pCallbackParam. Use
+ *                       NULL to deregister a previous callback.
+ * @param pCallbackParam this value will be passed to pCallback.
+ * @return               zero on success else negative error
+ *                       code.
+ */
+int32_t uMqttClientSetDisconnectCallback(const uMqttClientContext_t *pContext,
+                                         void (*pCallback) (int32_t, void *),
+                                         void *pCallbackParam);
 
 #ifdef __cplusplus
 }

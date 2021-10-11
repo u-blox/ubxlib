@@ -563,6 +563,25 @@ int32_t uCellMqttGetLastErrorCode(int32_t cellHandle);
  */
 bool uCellMqttIsSupported(int32_t cellHandle);
 
+/** Set a callback to be called if the MQTT connection
+ * is disconnected, either locally or by the broker.
+ *
+ * @param cellHandle     the handle of the cellular instance
+ *                       to be used.
+ * @param pCallback      the callback. The first parameter is the
+ *                       error code, as would be returned by
+ *                       uCellMqttGetLastErrorCode(), the second
+ *                       parameter is pCallbackParam. Use NULL to
+ *                       deregister a previous callback.
+ * @param pCallbackParam this value will be passed to pCallback
+ *                       as the second parameter.
+ * @return               zero on success else negative error
+ *                       code.
+ */
+int32_t uCellMqttSetDisconnectCallback(int32_t cellHandle,
+                                       void (*pCallback) (int32_t, void *),
+                                       void *pCallbackParam);
+
 #ifdef __cplusplus
 }
 #endif

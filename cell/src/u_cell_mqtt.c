@@ -161,6 +161,13 @@ typedef struct {
     void *pMessageIndicationCallbackParam; /**< user parameter to be
                                                 passed to the message
                                                 indication callback. */
+    void (*pDisconnectCallback) (int32_t, void *); /**< callback to
+                                                        be called when
+                                                        the connection
+                                                        is dropped. */
+    void *pDisconnectCallbackParam; /**< user parameter to be
+                                         passed to the disconnect
+                                         callback. */
     bool keptAlive;  /**< keep track of whether "keep alive" is on or not. */
     bool connected;  /**< keep track of whether we are connected or not. */
     size_t numUnreadMessages; /**< keep track of the number of unread messages. */
@@ -179,8 +186,30 @@ typedef struct {
  * STATIC FUNCTIONS: URCS AND RELATED FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Get the last MQTT error code.
+static int32_t getLastMqttErrorCode(uAtClientHandle_t atHandle)
+{
+    int32_t errorCode;
+    int32_t x;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UMQTTER");
+    uAtClientCommandStop(atHandle);
+    uAtClientResponseStart(atHandle, "+UMQTTER:");
+    // Skip the first error code, which is a generic thing
+    uAtClientSkipParameters(atHandle, 1);
+    x = uAtClientReadInt(atHandle);
+    uAtClientResponseStop(atHandle);
+    errorCode = uAtClientUnlock(atHandle);
+    if (errorCode == 0) {
+        errorCode = x;
+    }
+
+    return errorCode;
+}
+
 // A local "trampoline" for the message indication callback,
-// here so so that it can call pMessageIndicationCallback
+// here so that it can call pMessageIndicationCallback
 // in a separate task.
 static void messageIndicationCallback(uAtClientHandle_t atHandle,
                                       void *pParam)
@@ -204,6 +233,29 @@ static void messageIndicationCallback(uAtClientHandle_t atHandle,
     U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
 }
 
+// A local "trampoline" for the disconnect callback,
+// here so that it can call pDisconnectCallback
+// in a separate task.
+static void disconnectCallback(uAtClientHandle_t atHandle,
+                               void *pParam)
+{
+//lint -e(507) Suppress size incompatibility due to the compiler
+// we use for Linting being a 64 bit one where the pointer
+// is 64 bit.
+    volatile uCellMqttContext_t *pContext = (volatile uCellMqttContext_t *) pParam;
+
+    // This task can lock the mutex to ensure we are thread-safe
+    // for the call below
+    U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+    if ((pContext != NULL) && (pContext->pDisconnectCallback != NULL)) {
+        pContext->pDisconnectCallback(getLastMqttErrorCode(atHandle),
+                                      pContext->pDisconnectCallbackParam);
+    }
+
+    U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+}
+
 // "+UUMQTTC:" URC handler, called by the UUMQTT_urc()
 // URC handler..
 static void UUMQTTC_urc(uAtClientHandle_t atHandle,
@@ -221,9 +273,22 @@ static void UUMQTTC_urc(uAtClientHandle_t atHandle,
     switch (urcType) {
         case 0: // Logout, 1 means success
             if ((urcParam1 == 1) ||
-                (urcParam1 == 100) || // SARA-R5, inactivity
-                (urcParam1 == 101)) { // SARA-R5, connection lost
+                (urcParam1 == 100) || // SARA-R5/R422, inactivity
+                (urcParam1 == 101) || // SARA-R5/R422, connection lost
+                (urcParam1 == 102)) { // SARA-R5/R422, connection lost due to procotol violation
                 // Disconnected
+                if (pContext->connected &&
+                    (pContext->pDisconnectCallback != NULL)) {
+                    // Launch the local callback via the AT
+                    // parser's callback facility.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+                    //lint -e(1773) Suppress complaints about
+                    // passing the pointer as non-volatile
+                    uAtClientCallback(atHandle, disconnectCallback,
+                                      (void *) pContext);
+#pragma GCC diagnostic pop
+                }
                 pContext->connected = false;
             }
             pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED;
@@ -289,7 +354,7 @@ static void UUMQTTC_urc(uAtClientHandle_t atHandle,
                 pContext->numUnreadMessages = urcParam1;
                 if (pContext->pMessageIndicationCallback != NULL) {
                     // Launch our local callback via the AT
-                    // parser's callback facility
+                    // parser's callback facility.
                     // GCC can complain here that
                     // we're discarding volatile
                     // from the pointer: just need to follow
@@ -1125,6 +1190,8 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                     pContext->pKeepGoingCallback = pKeepGoingCallback;
                     pContext->pMessageIndicationCallback = NULL;
                     pContext->pMessageIndicationCallbackParam = NULL;
+                    pContext->pDisconnectCallback = NULL;
+                    pContext->pDisconnectCallbackParam = NULL;
                     pContext->keptAlive = false;
                     pContext->connected = false;
                     pContext->numUnreadMessages = 0;
@@ -2555,25 +2622,11 @@ int32_t uCellMqttGetLastErrorCode(int32_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
-    uAtClientHandle_t atHandle;
-    int32_t x;
 
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
     if ((errorCode == 0) && (pInstance != NULL)) {
-        atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UMQTTER");
-        uAtClientCommandStop(atHandle);
-        uAtClientResponseStart(atHandle, "+UMQTTER:");
-        // Skip the first error code, which is a generic thing
-        uAtClientSkipParameters(atHandle, 1);
-        x = uAtClientReadInt(atHandle);
-        uAtClientResponseStop(atHandle);
-        errorCode = uAtClientUnlock(atHandle);
-        if (errorCode == 0) {
-            errorCode = x;
-        }
+        errorCode = getLastMqttErrorCode(pInstance->atHandle);
     }
 
     U_CELL_MQTT_EXIT_FUNCTION();
@@ -2591,6 +2644,27 @@ bool uCellMqttIsSupported(int32_t cellHandle)
     U_CELL_MQTT_EXIT_FUNCTION();
 
     return (errorCode == 0);
+}
+
+// Set a callback for when the MQTT connection is dropped.
+int32_t uCellMqttSetDisconnectCallback(int32_t cellHandle,
+                                       void (*pCallback) (int32_t, void *),
+                                       void *pCallbackParam)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        ((volatile uCellMqttContext_t *) pInstance->pMqttContext)->pDisconnectCallback = pCallback;
+        ((volatile uCellMqttContext_t *) pInstance->pMqttContext)->pDisconnectCallbackParam =
+            pCallbackParam;
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
 }
 
 // End of file

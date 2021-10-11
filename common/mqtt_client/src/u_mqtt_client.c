@@ -484,6 +484,7 @@ int32_t uMqttClientGetLastErrorCode(const uMqttClientContext_t *pContext)
     return errorCode;
 }
 
+// Get the total number of message sent by yhe MQTT client.
 int32_t uMqttClientGetTotalMessagesSent(const uMqttClientContext_t *pContext)
 {
     int32_t errorCodeOrSentMessages = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -495,6 +496,7 @@ int32_t uMqttClientGetTotalMessagesSent(const uMqttClientContext_t *pContext)
     return errorCodeOrSentMessages;
 }
 
+// Get the total number of messages received and read by the MQTT client.
 int32_t uMqttClientGetTotalMessagesReceived(const uMqttClientContext_t *pContext)
 {
     int32_t errorCodeOrReceivedMessages = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -504,6 +506,30 @@ int32_t uMqttClientGetTotalMessagesReceived(const uMqttClientContext_t *pContext
     }
 
     return errorCodeOrReceivedMessages;
+}
+
+// Set a callback for when the MQTT connection is dropped.
+int32_t uMqttClientSetDisconnectCallback(const uMqttClientContext_t *pContext,
+                                         void (*pCallback) (int32_t, void *),
+                                         void *pCallbackParam)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (pContext != NULL) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+
+        U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
+
+        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
+            errorCode = uCellMqttSetDisconnectCallback(pContext->networkHandle,
+                                                       pCallback,
+                                                       pCallbackParam);
+        }
+
+        U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
+    }
+
+    return errorCode;
 }
 
 // End of file

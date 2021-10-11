@@ -41,7 +41,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // memset()
+#include "string.h"    // memset(), strncpy()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -111,7 +111,7 @@ static const char gAllChars[] = "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Callback function for the cellular connection process
+// Callback function for the cellular connection process.
 static bool keepGoingCallback()
 {
     bool keepGoing = true;
@@ -147,6 +147,9 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
     uCellMqttQos_t qos = U_CELL_MQTT_QOS_MAX_NUM;
     bool retained = false;
     const char *pServerAddress = U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS);
+    char param[5]; // Enough room for "bim!"
+
+    strncpy(param, "bim!", sizeof(param));
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -220,6 +223,10 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
                                          NULL,
 #endif
                                          NULL, false) == 0);
+
+        // Note: deliberately not setting a disconnect callback
+        // here, here we test having none, testing with a disconnect
+        // callback is done at the MQTT client layer above
 
         // Get the client ID
         uPortLog("U_CELL_MQTT_TEST: testing getting client ID...\n");
@@ -381,6 +388,8 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         // Disconnect
         uPortLog("U_CELL_MQTT_TEST: disconnecting from broker...\n");
         U_PORT_TEST_ASSERT(uCellMqttDisconnect(cellHandle) == 0);
+        uPortTaskBlock(U_CFG_OS_YIELD_MS);
+
         U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
 
         if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType)) {
