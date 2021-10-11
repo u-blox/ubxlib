@@ -20,3 +20,4 @@ _work
 U_FLAGS.override
 .override
 _build
+/port/platform/arduino/ubxlib

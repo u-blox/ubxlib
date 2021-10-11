@@ -57,21 +57,39 @@
 #endif
 
 #ifndef U_CFG_OS_YIELD_MS
+# ifndef ARDUINO
 /** The amount of time to block for to ensure that a yield
- * occurs. This set to 20 ms as the ESP32 platform has a
+ * occurs. This set to 20 ms as the ESP-IDF platform has a
  * 10 ms tick.
  */
-# define U_CFG_OS_YIELD_MS 20
+#  define U_CFG_OS_YIELD_MS 20
+# else
+/** The amount of time to block for to ensure that a yield
+ * occurs, just 2 ms on Arduino as they set a 1 ms tick.
+ */
+#  define U_CFG_OS_YIELD_MS 2
+# endif
 #endif
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR ESP32: PRIORITIES
  * -------------------------------------------------------------- */
 
+#ifndef ARDUINO
 /** How much stack the task running all the examples and tests needs
- * in bytes.
+ * in bytes, taking the value from our sdkconfig.defaults file.
  */
-#define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES CONFIG_MAIN_TASK_STACK_SIZE
+# define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES CONFIG_MAIN_TASK_STACK_SIZE
+#else
+/** When built under Arduino it is not possible to provide a
+ * sketch-specific sdkconfig with the correct CONFIG_MAIN_TASK_STACK_SIZE
+ * for the application which runs the examples and tests so, since we
+ * have to start if off in a task of its own anyway, we specify the
+ * task stack size explicitly here and end the main task after
+ * kicking the new one off.
+ */
+# define U_CFG_OS_APP_TASK_STACK_SIZE_BYTES 8192
+#endif
 
 /** The priority of the task running the examples and tests: should
  * be low but must be higher than the minimum.

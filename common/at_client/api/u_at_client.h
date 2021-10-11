@@ -321,9 +321,10 @@ extern "C" {
 /** The stack size for the URC task.  This is chosen to
  * work for all platforms, the governing factor being ESP32,
  * which seems to require around twice the stack of NRF52
- * or STM32F4.
+ * or STM32F4 and more again in the version pre-built for
+ * Arduino.
  */
-# define U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES  1536
+# define U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES  2048
 #endif
 
 #ifndef U_AT_CLIENT_URC_TASK_PRIORITY
@@ -337,7 +338,8 @@ extern "C" {
  * via uAtClientCallback() will run.  This is chosen to
  * work for all platforms, the governing factor being ESP32,
  * which seems to require around twice the stack of NRF52
- * or STM32F4.
+ * or STM32F4 and more again in the version pre-built for
+ * Arduino.
  */
 # define U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES 2048
 #endif

@@ -10,14 +10,17 @@ TLS security can be applied in at least three different ways, all of which can b
 
 There are many other configurable items to play with, depending on how tight your TLS security requirements are: [u_security_tls.h](/common/security/api/u_security_tls.h) is the place to find all the options.  Remember that, as with any security system, when it doesn't work you will get very little feedback as to why; be patient and explore all the variables when debugging.
 
-# Usage
+# Usage (C Examples)
 To build and run these examples on a supported platform you need to travel down into the [port/platform](/port/platform)`/<platform>/mcu/<mcu>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override #defines.  The following #defines are relevant:
 
 `U_CFG_APP_FILTER`: set this to `exampleSockets` (noting that NO quotation marks should be included) to run *just* these example, as opposed to all the examples and unit tests.
 
-For the remainder of the #defines you may either override their values in the same way or, if you are only running these examples, you may edit the values directly in [main.c](main.c) and [main_tls.c](main_tls.c) before compiling.
+For the remainder of the #defines (see "Using A xxx Module" below) you may either override their values in the same way or, if you are only running these examples, you may edit the values directly in [main.c](main.c) and [main_tls.c](main_tls.c) before compiling.
 
-## Using A Cellular Module
+# Usage (Arduino Example)
+Follow the instructions in the [port/platform/arduino](/port/platform/arduino) directory to create the Arduino library version of `ubxlib`, which will include the example here.
+
+# Using A Cellular Module
 
 `U_CFG_TEST_CELL_MODULE_TYPE`: consult [u_cell_module_type.h](/cell/api/u_cell_module_type.h) to determine the type name for the cellular module you intend to use.  For instance, to use SARA-R5 you would set `U_CFG_TEST_CELL_MODULE_TYPE` to `U_CELL_MODULE_TYPE_SARA_R5`.
 
@@ -27,7 +30,7 @@ For the remainder of the #defines you may either override their values in the sa
 
 Obviously you will need a SIM in your board, an antenna connected and you may need to know the APN associated with the SIM (though accepting the network default often works).
 
-## Using A Wi-Fi Module
+# Using A Wi-Fi Module
 
 `U_CFG_TEST_SHORT_RANGE_MODULE_TYPE`: consult [u_short_range_module_type.h](/common/short_range/api/u_short_range_module_type.h) to determine the type name for the short range module module you intend to use.  For instance, to use NINA-W13 you would set `U_CFG_TEST_SHORT_RANGE_MODULE_TYPE` to `U_SHORT_RANGE_MODULE_TYPE_NINA_W13`.
 

@@ -114,9 +114,25 @@ EXE_RUN_QUEUE_WAIT_SECONDS = u_settings.EXE_RUN_QUEUE_WAIT_SECONDS #1
 # a KMTronic box are switched off for
 HW_RESET_DURATION_SECONDS = u_settings.HW_RESET_DURATION_SECONDS # e.g. 5
 
+# A marker to use to indicate that DTR/RTS should be held
+# off when monitoring the serial output, required if the
+# host is a NINA-W1 board
+MONITOR_DTR_RTS_OFF_MARKER = "U_CFG_MONITOR_DTR_RTS_OFF"
+
 # Executable file extension. This will be "" for Linux
 # and ".exe" for Windows
 EXE_EXT = pick_by_os(linux="", other=".exe")
+
+def safe_print(string):
+    '''Print a string avoiding pesky code-page decode errors'''
+    try:
+        print(string)
+    except UnicodeEncodeError:
+        for item in string:
+            try:
+                print(item, end='')
+            except UnicodeEncodeError:
+                print('?', end='')
 
 def keep_going(flag, printer=None, prompt=None):
     '''Check a keep_going flag'''
@@ -126,7 +142,6 @@ def keep_going(flag, printer=None, prompt=None):
         if printer and prompt:
             printer.string("{}aborting as requested.".format(prompt))
     return do_not_stop
-
 
 # subprocess arguments behaves a little differently on Linux and Windows
 # depending if a shell is used or not, which can be read here:
@@ -321,7 +336,7 @@ def usb_reset(device_description, printer, prompt):
                                            stderr=subprocess.STDOUT,
                                            shell=False) # Has to be False or devcon won't work
             for line in text.splitlines():
-                printer.string("{}{}".format(prompt, line.decode()))
+                printer.string("{}{}".format(prompt, line))
             success = True
         else:
             printer.string("{}device with description \"{}\" not found.".   \
@@ -332,13 +347,32 @@ def usb_reset(device_description, printer, prompt):
     return success
 
 # Open the required serial port.
-def open_serial(serial_name, speed, printer, prompt):
+def open_serial(serial_name, speed, printer, prompt, dtr_set_on=None, rts_set_on=None):
     '''Open serial port'''
     serial_handle = None
-    text = "{}: trying to open \"{}\" as a serial port...".    \
+    text = "{}: trying to open \"{}\" as a serial port".    \
            format(prompt, serial_name)
+    if dtr_set_on is not None:
+        text += ", DTR forced"
+        if dtr_set_on:
+            text += " on"
+        else:
+            text += " off"
+    if rts_set_on is not None:
+        text += ", RTS forced"
+        if rts_set_on:
+            text += " on"
+        else:
+            text += " off"
+    text += "..."
     try:
-        return_value = serial.Serial(serial_name, speed, timeout=0.05)
+        return_value = serial.Serial(baudrate=speed, timeout=0.05)
+        if dtr_set_on is not None:
+            return_value.dtr = dtr_set_on
+        if rts_set_on is not None:
+            return_value.rts = rts_set_on
+        return_value.port = serial_name
+        return_value.open()
         serial_handle = return_value
         printer.string("{} opened.".format(text))
     except (ValueError, serial.SerialException) as ex:
@@ -444,7 +478,7 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
                                                    shell=True) # Jenkins hangs without this
                     for line in text.splitlines():
                         if printer and prompt:
-                            printer.string("{}{}".format(prompt, line.decode()))
+                            printer.string("{}{}".format(prompt, line))
                     got_code = True
                 except subprocess.CalledProcessError as error:
                     if printer and prompt:
@@ -465,7 +499,7 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
                                                            shell=True) # Jenkins hangs without this
                             for line in text.splitlines():
                                 if printer and prompt:
-                                    printer.string("{}{}".format(prompt, line.decode()))
+                                    printer.string("{}{}".format(prompt, line))
                         except subprocess.CalledProcessError as error:
                             if printer and prompt:
                                 printer.string("{}git returned error {}: \"{}\"".
@@ -489,7 +523,7 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
                                            shell=True) # Jenkins hangs without this
             for line in text.splitlines():
                 if printer and prompt:
-                    printer.string("{}{}".format(prompt, line.decode()))
+                    printer.string("{}{}".format(prompt, line))
             got_code = True
         except subprocess.CalledProcessError as error:
             if printer and prompt:
@@ -529,7 +563,7 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
                                                shell=True) # Jenkins hangs without this
                 for line in text.splitlines():
                     if printer and prompt:
-                        printer.string("{}{}".format(prompt, line.decode()))
+                        printer.string("{}{}".format(prompt, line))
                 success = True
             except subprocess.CalledProcessError as error:
                 if printer and prompt:
@@ -560,8 +594,7 @@ def exe_where(exe_name, help_text, printer, prompt):
                                        stderr=subprocess.STDOUT,
                                        shell=True) # Jenkins hangs without this
         for line in text.splitlines():
-            printer.string("{}{} found in {}".format(prompt, exe_name,
-                                                     line.decode()))
+            printer.string("{}{} found in {}".format(prompt, exe_name, line))
         success = True
     except subprocess.CalledProcessError:
         if help_text:
@@ -584,7 +617,7 @@ def exe_version(exe_name, version_switch, printer, prompt):
                                        stderr=subprocess.STDOUT,
                                        shell=True)  # Jenkins hangs without this
         for line in text.splitlines():
-            printer.string("{}{}".format(prompt, line.decode()))
+            printer.string("{}{}".format(prompt, line))
         success = True
     except subprocess.CalledProcessError:
         printer.string("{}ERROR {} either not found or didn't like {}". \
@@ -602,12 +635,11 @@ def exe_terminate(process_pid):
 def read_from_process_and_queue(process, read_queue):
     '''Read from a process, non-blocking'''
     while process.poll() is None:
-        string = process.stdout.readline().decode()
+        string = process.stdout.readline().decode().encode("ascii", errors="replace").decode()
         if string and string != "":
             read_queue.put(string)
         else:
             sleep(0.1)
-
 
 def queue_get_no_exception(the_queue, block=True, timeout=None):
     '''A version of queue.get() that doesn't throw an Empty exception'''
@@ -757,7 +789,7 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
         # There may still be stuff in the buffer after
         # the application has finished running so flush that
         # out here
-        line = process.stdout.readline().decode()
+        line = process.stdout.readline().decode().encode("ascii", errors="replace").decode()
         while line:
             line = line.rstrip()
             if flibbling:
@@ -767,7 +799,7 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
                     flibbling = True
                 else:
                     printer.string("{}{}".format(prompt, line))
-            line = process.stdout.readline().decode()
+            line = process.stdout.readline().decode().encode("ascii", errors="replace").decode()
 
         if (process.poll() == 0) and kill_time is None:
             success = True
@@ -1117,7 +1149,7 @@ class PrintToQueue():
                 for idx in queue_idxes_to_remove:
                     self._queues.pop(idx)
             else:
-                print(string)
+                safe_print(string)
             self._lock.release()
         if self._file_handle:
             self._file_handle.write(string + "\n")

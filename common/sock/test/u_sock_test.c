@@ -80,9 +80,11 @@
 
 #ifndef U_SOCK_TEST_TASK_STACK_SIZE_BYTES
 /** The stack size to use for the test task created during
- * sockets testing.
+ * sockets testing, the limiting factor being ESP-IDF and,
+ * in particular, the version compiled for Arduino which
+ * seems to need rather more stack.
  */
-# define U_SOCK_TEST_TASK_STACK_SIZE_BYTES 2048
+# define U_SOCK_TEST_TASK_STACK_SIZE_BYTES 2560
 #endif
 
 #ifndef U_SOCK_TEST_TASK_PRIORITY

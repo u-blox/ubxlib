@@ -132,6 +132,16 @@
 /** The ESP32 GPIO input that is connected to the VInt pin of the
  * cellular module. -1 should be used where there is no such
  * connection.
+ * Note for Arduino users: we use this as the default pin for
+ * VInt because it happens to be how some of our own-made
+ * internal boards are wired but pin 36 is, optionally, an RTC
+ * input pin when using an external oscillator on ESP32 and the
+ * SDKCONFIG used when building the ESP-IDF library that comes
+ * with Arduino appears to set that RTC functionality and hence,
+ * in the Arduino case, you probably need to override this default
+ * (i.e. wire the module's VInt output to a different ESP32 pin
+ * and change this value to match), otherwise this code will
+ * think that the cellular module is on when in fact it is not.
  */
 # define U_CFG_APP_PIN_CELL_VINT              36
 #endif
@@ -239,7 +249,7 @@
 
 #ifndef U_CFG_APP_CELL_PIN_GNSS_POWER
 /** Only relevant when a GNSS chip is connected via a cellular module:
- * this is the the cellular module pin (i.e. not the pin of this MCU,
+ * this is the cellular module pin (i.e. not the pin of this MCU,
  * the pin of the cellular module which this MCU is using) which controls
  * power to GNSS. This is the cellular module pin number NOT the cellular
  * module GPIO number.  Use -1 if there is no such connection.
@@ -249,7 +259,7 @@
 
 #ifndef U_CFG_APP_CELL_PIN_GNSS_DATA_READY
 /** Only relevant when a GNSS chip is connected via a cellular module:
- * this is the the cellular module pin (i.e. not the pin of this MCU,
+ * this is the cellular module pin (i.e. not the pin of this MCU,
  * the pin of the cellular module which this MCU is using) which is
  * connected to the Data Ready signal from the GNSS chip. This is the
  * cellular module pin number NOT the cellular module GPIO number.

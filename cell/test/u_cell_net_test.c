@@ -38,7 +38,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // memset()
+#include "string.h"    // memset(), strncpy()
 #include "stdio.h"     // snprintf()
 
 #include "u_cfg_sw.h"
@@ -190,9 +190,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     char buffer[U_CELL_NET_IP_ADDRESS_SIZE * 2];
     int32_t mcc = 0;
     int32_t mnc = 0;
-    char *pParameter1 = "Boo!";
-    char *pParameter2 = "Bah!";
+    char parameter1[5]; // enough room for "Boo!"
+    char parameter2[5]; // enough room for "Bah!"
     int32_t heapUsed;
+
+    strncpy(parameter1, "Boo!", sizeof(parameter1));
+    strncpy(parameter2, "Bah!", sizeof(parameter2));
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -214,13 +217,13 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     // Set a registration status calback
     U_PORT_TEST_ASSERT(uCellNetSetRegistrationStatusCallback(cellHandle,
                                                              registerCallback,
-                                                             (void *) pParameter1) == 0);
+                                                             (void *) parameter1) == 0);
 
     // Set a connection status callback, if possible
     gCallbackErrorCode = 0;
     x = uCellNetSetBaseStationConnectionStatusCallback(cellHandle,
                                                        connectCallback,
-                                                       (void *) pParameter2);
+                                                       (void *) parameter2);
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_CSCON)) {
         U_PORT_TEST_ASSERT(x == 0);
     } else {

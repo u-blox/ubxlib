@@ -34,6 +34,12 @@ BUILD_SUBDIR = u_settings.ESP_IDF_BUILD_SUBDIR # e.g. "build"
 # ubxlib esp32 port sub-directory
 ESP32_PORT_SUBDIR = "port/platform/esp-idf/mcu/esp32".replace("/", os.sep)
 
+# The #define which means that DTR and RTS should be switched
+# off while monitoring the serial output, needed when the
+# host is a NINA-W1 board (which must, of course, not have
+# the flow control lines connected on that serial port)
+MONITOR_DTR_RTS_OFF_MARKER = u_utils.MONITOR_DTR_RTS_OFF_MARKER
+
 # The guard time for the install in seconds:
 # this can take ages when tools first have to be installed
 INSTALL_GUARD_TIME_SECONDS = u_settings.ESP_IDF_INSTALL_GUARD_TIME_SECONDS # e.g. 60 * 60
@@ -264,6 +270,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
         keep_going_flag=None):
     '''Build/run on ESP-IDF'''
     return_value = -1
+    monitor_dtr_rts_on = None
     instance_text = u_utils.get_instance_text(instance)
 
     # No issues with running in parallel on ESP-IDF
@@ -274,7 +281,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
 
     prompt = PROMPT + instance_text + ": "
 
-    # Print out what we've been told to do
+    # Print out what we've been told to do and at the
+    # same time check for the DTR/RTS off marker
     text = "running ESP-IDF for " + mcu
     if connection and connection["serial_port"]:
         text += ", on serial port " + connection["serial_port"]
@@ -283,6 +291,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     if defines:
         text += ", with #define(s)"
         for idx, define in enumerate(defines):
+            if define == MONITOR_DTR_RTS_OFF_MARKER:
+                monitor_dtr_rts_on = False
             if idx == 0:
                 text += " \"" + define + "\""
             else:
@@ -353,7 +363,11 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                            u_report.EVENT_START)
                             # Open the COM port to get debug output
                             serial_handle = u_utils.open_serial(connection["serial_port"],
-                                                                115200, printer, prompt)
+                                                                115200,
+                                                                printer,
+                                                                prompt,
+                                                                dtr_set_on=monitor_dtr_rts_on,
+                                                                rts_set_on=monitor_dtr_rts_on)
                             if serial_handle is not None:
                                 # Monitor progress
                                 return_value = u_monitor.main(serial_handle,

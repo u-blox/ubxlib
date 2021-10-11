@@ -37,9 +37,9 @@ The key APIs provided by this repo, and their relationships with each other, are
 |-----------|:-----------:|--------------|-----|-----|-----|
 |                         |              |C030 board|NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B10 series|
 |                         |              |**MCU**||||
-|                         |              |ST-Micro STM32F4|Espressif ESP32|Nordic nRF52|Nordic nRF53|
+|                         |              |ST-Micro STM32F4|Espressif ESP32<br />|Nordic nRF52|Nordic nRF53|
 |                         |              |**Toolchain**||||
-|                         |              |Cube|ESP-IDF|GCC<br />SES (nRF5)<br />nRF Connect|nRF Connect|
+|                         |              |Cube|ESP-IDF<br />Arduino-ESP32|GCC<br />SES (nRF5)<br />nRF Connect|nRF Connect|
 |                         |              |**RTOS/SDK**||||
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|
 | **`ubxlib` peripherals**   |**API**       |||||

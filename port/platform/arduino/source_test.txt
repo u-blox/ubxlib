@@ -1,0 +1,69 @@
+# This file should contain the paths to all source files that are
+# required for testing (which includes the examples since we test them)
+# the ubxlib library on Arduino.
+# Paths are relative to the ubxlib root directory, forward-slashes must be used.
+
+example/sockets/main.c
+example/sockets/main_tls.c
+example/sockets/credentials_tls.c
+example/security/e2e/e2e_main.c
+example/security/psk/psk_main.c
+example/mqtt_client/mqtt_main.c
+example/location/main_loc_gnss.c
+example/location/main_loc_gnss_cell.c
+example/location/main_loc_cell_locate.c
+example/cell/lte_cfg/lte_cfg_main.c
+ble/test/u_ble_test.c
+ble/test/u_ble_cfg_test.c
+ble/test/u_ble_data_test.c
+ble/test/u_ble_test_private.c
+cell/test/u_cell_test.c
+cell/test/u_cell_pwr_test.c
+cell/test/u_cell_cfg_test.c
+cell/test/u_cell_info_test.c
+cell/test/u_cell_net_test.c
+cell/test/u_cell_sock_test.c
+cell/test/u_cell_sec_c2c_test.c
+cell/test/u_cell_sec_tls_test.c
+cell/test/u_cell_mqtt_test.c
+cell/test/u_cell_file_test.c
+cell/test/u_cell_loc_test.c
+cell/test/u_cell_test_preamble.c
+cell/test/u_cell_test_private.c
+gnss/test/u_gnss_test.c
+gnss/test/u_gnss_pwr_test.c
+gnss/test/u_gnss_cfg_test.c
+gnss/test/u_gnss_info_test.c
+gnss/test/u_gnss_pos_test.c
+gnss/test/u_gnss_util_test.c
+gnss/test/u_gnss_test_private.c
+wifi/test/u_wifi_test.c
+wifi/test/u_wifi_cfg_test.c
+wifi/test/u_wifi_net_test.c
+wifi/test/u_wifi_sock_test.c
+wifi/test/u_wifi_test_private.c
+common/network/test/u_network_test.c
+common/network/test/u_network_test_shared_cfg.c
+common/sock/test/u_sock_test.c
+common/security/test/u_security_test.c
+common/security/test/u_security_tls_test.c
+common/security/test/u_security_credential_test.c
+common/security/test/u_security_credential_test_data.c
+common/location/test/u_location_test.c
+common/location/test/u_location_test_shared_cfg.c
+common/at_client/test/u_at_client_test.c
+common/at_client/test/u_at_client_test_data.c
+common/ubx_protocol/test/u_ubx_protocol_test.c
+common/short_range/test/u_short_range_test.c
+common/short_range/test/u_short_range_test_private.c
+common/mqtt_client/test/u_mqtt_client_test.c
+port/test/u_port_test.c
+port/platform/common/test/u_preamble_test.c
+# Note: it is deliberate that u_runner.c is here but 
+# port/platform/common/runner is in "include.txt"
+# and NOT just in "include_test.txt": the header file
+# gets included in "u_cfg_app_platform_specific.h" and
+# so ubxlib needs it but the _implementation_ is only
+# called by the test code and hence "u_runner.c" only
+# need to be brought in here
+port/platform/common/runner/u_runner.c

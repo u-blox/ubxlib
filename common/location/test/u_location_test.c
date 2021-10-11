@@ -341,7 +341,7 @@ static void testNonBlocking(int32_t networkHandle,
 U_PORT_TEST_FUNCTION("[location]", "locationBasic")
 {
     int32_t networkHandle;
-    uLocationType_t locationType;
+    int32_t locationType;
     const uLocationTestCfgList_t *pLocationCfgList;
     const uLocationTestCfg_t *pLocationCfg;
     int32_t heapUsed;
@@ -372,8 +372,8 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 
             // Do this for all location types
-            for (locationType = U_LOCATION_TYPE_GNSS;
-                 locationType < U_LOCATION_TYPE_MAX_NUM;
+            for (locationType = (int32_t) U_LOCATION_TYPE_GNSS;
+                 locationType < (int32_t) U_LOCATION_TYPE_MAX_NUM;
                  locationType++) {
                 // Check the location types supported by this network type
                 uPortLog("U_LOCATION_TEST: testing location type %s.\n",
@@ -384,7 +384,7 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
                      (y < pLocationCfgList->numEntries) &&
                      (pLocationCfg == NULL);
                      y++) {
-                    if (locationType == (pLocationCfgList + y)->pCfgData->locationType) {
+                    if (locationType == (int32_t) (pLocationCfgList + y)->pCfgData->locationType) {
                         // The location type is supported
                         pLocationCfg = (pLocationCfgList + y)->pCfgData;
                     }
@@ -406,12 +406,12 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
                 // Test the blocking location API (supported and non-supported cases)
                 testBlocking(networkHandle,
                              gUNetworkTestCfg[x].type,
-                             locationType, pLocationCfg);
+                             (uLocationType_t) locationType, pLocationCfg);
 
                 // Test the non-blocking location API (supported and non-supported cases)
                 testNonBlocking(networkHandle,
                                 gUNetworkTestCfg[x].type,
-                                locationType, pLocationCfg);
+                                (uLocationType_t) locationType, pLocationCfg);
 
                 // Account for first-call heap usage
                 if ((heapLossFirstCall[locationType] == INT_MIN) && (pLocationCfg != NULL)) {

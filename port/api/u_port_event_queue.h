@@ -76,7 +76,8 @@
  *
  * `uPortEventQueueClose()` shuts down the queue and deletes
  * the task.  This is a cooperative process: your function
- * must have exited for shut-down to complete.
+ * must have emptied the queue and exited for shut-down to
+ * complete.
  */
 
 #ifdef __cplusplus

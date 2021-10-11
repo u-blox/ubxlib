@@ -565,7 +565,7 @@ int32_t uCellInfoGetSnrDb(int32_t cellHandle, int32_t *pSnrDb)
             } else if ((pRadioParameters->rssiDbm != 0) && (pRadioParameters->rsrpDbm != 0)) {
                 int32_t ix = pRadioParameters->rssiDbm - (pRadioParameters->rsrpDbm + 1);
                 if (ix >= 0) {
-                    const char snrLut[] = {6, 2, 0, -2, -3, -5, -6, -7, -8, -10};
+                    const signed char snrLut[] = {6, 2, 0, -2, -3, -5, -6, -7, -8, -10};
                     *pSnrDb = (ix < (int32_t) sizeof(snrLut)) ? snrLut[ix] : (- ix - 1);
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }

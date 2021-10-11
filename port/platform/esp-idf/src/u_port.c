@@ -27,10 +27,14 @@
 
 #include "u_error_common.h"
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
 
 #include "freertos/FreeRTOS.h" // For xPortGetFreeHeapSize()
+#ifdef ARDUINO
+#include "freertos/task.h"
+#endif
 
 #include "esp_timer.h" // For esp_timer_get_time()
 #include "esp_system.h" // For esp_get_minimum_free_heap_size()
@@ -66,13 +70,29 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
+#ifndef ARDUINO
     (void) stackSizeBytes;
     (void) priority;
+#endif
 
-    // RTOS is already running, just call pEntryPoint
     if (pEntryPoint != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
+#ifndef ARDUINO
+        // RTOS is already running, just call pEntryPoint
         pEntryPoint(pParameter);
+#else
+        // Under Arduino it is not possible to set the stack size
+        // we would like for the main task since there is only one
+        // global sdkconfig file that cannot be overridden, so in that
+        // case we do start a task for our main task and delete this
+        // one
+        TaskHandle_t taskHandle;
+        if (xTaskCreate(pEntryPoint, "EntryPoint",
+                        stackSizeBytes, pParameter,
+                        priority, &taskHandle) == pdPASS) {
+            vTaskDelete(NULL);
+        }
+#endif
     }
 
     return errorCode;

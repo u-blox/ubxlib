@@ -1,0 +1,71 @@
+# This file should contain the paths to all source files that are
+# required for the ubxlib library on Arduino.  Do not include
+# test or example source files but do include [ESP-IDF] platform
+# source files.
+# Paths are relative to the ubxlib root directory, forward-slashes
+# must be used.
+
+ble/src/u_ble_extmod.c
+ble/src/u_ble_intmod.c
+ble/src/u_ble_cfg_extmod.c
+ble/src/u_ble_cfg_intmod.c
+ble/src/u_ble_data_extmod.c
+ble/src/u_ble_data_intmod.c
+ble/src/u_ble_private.c
+cell/src/u_cell.c
+cell/src/u_cell_pwr.c
+cell/src/u_cell_cfg.c
+cell/src/u_cell_info.c
+cell/src/u_cell_net.c
+cell/src/u_cell_sock.c
+cell/src/u_cell_sec.c
+cell/src/u_cell_sec_c2c.c
+cell/src/u_cell_sec_tls.c
+cell/src/u_cell_mqtt.c
+cell/src/u_cell_file.c
+cell/src/u_cell_loc.c
+cell/src/u_cell_private.c
+gnss/src/u_gnss.c
+gnss/src/u_gnss_pwr.c
+gnss/src/u_gnss_cfg.c
+gnss/src/u_gnss_info.c
+gnss/src/u_gnss_pos.c
+gnss/src/u_gnss_util.c
+gnss/src/u_gnss_private.c
+wifi/src/u_wifi.c
+wifi/src/u_wifi_cfg.c
+wifi/src/u_wifi_net.c
+wifi/src/u_wifi_private.c
+wifi/src/u_wifi_sock.c
+common/network/src/u_network.c
+common/network/src/u_network_private_short_range.c
+common/network/src/u_network_private_ble_extmod.c
+common/network/src/u_network_private_ble_intmod.c
+common/network/src/u_network_private_cell.c
+common/network/src/u_network_private_wifi.c
+common/network/src/u_network_private_gnss.c
+common/sock/src/u_sock.c
+common/security/src/u_security.c
+common/security/src/u_security_credential.c
+common/security/src/u_security_tls.c
+common/location/src/u_location.c
+common/location/src/u_location_shared.c
+common/at_client/src/u_at_client.c
+common/ubx_protocol/src/u_ubx_protocol.c
+common/short_range/src/u_short_range.c
+common/short_range/src/u_short_range_sec_tls.c
+common/short_range/src/u_short_range_edm.c
+common/short_range/src/u_short_range_edm_stream.c
+common/short_range/src/u_short_range_private.c
+common/utils/src/u_ringbuffer.c
+common/utils/src/u_hex_bin_convert.c
+common/utils/src/u_time.c
+common/mqtt_client/src/u_mqtt_client.c
+port/platform/common/event_queue/u_port_event_queue.c
+port/platform/common/mbedtls/u_port_crypto.c
+port/clib/u_port_clib_mktime64.c
+port/platform/esp-idf/src/u_port.c
+port/platform/esp-idf/src/u_port_debug.c
+port/platform/esp-idf/src/u_port_os.c
+port/platform/esp-idf/src/u_port_gpio.c
+port/platform/esp-idf/src/u_port_uart.c

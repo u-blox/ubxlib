@@ -60,7 +60,10 @@ CONNECTION_LIST = [
      "debugger": u_settings.CONNECTION_INSTANCE_20.get("debugger")},
     # Instance 21, WHRE board
     {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_21.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_21.get("debugger")}]
+     "debugger": u_settings.CONNECTION_INSTANCE_21.get("debugger")},
+    # Instance 22, ESP32, SARA-R422
+    {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_22.get("serial_port"),
+     "debugger": u_settings.CONNECTION_INSTANCE_22.get("debugger")}]
 
 def init_locks(manager):
     '''Create locks'''

@@ -152,8 +152,10 @@ static void eventQueueClose(uEventQueue_t *pEventQueue)
 {
     uEventQueueControlOrSize_t control = U_EVENT_CONTROL_EXIT_NOW;
 
-    // Get the task to exit
-    uPortQueueSend(pEventQueue->queue, (void *) &control);
+    // Get the task to exit, persisting until it is done
+    while (uPortQueueSend(pEventQueue->queue, (void *) &control) != 0) {
+        uPortTaskBlock(10);
+    }
     U_PORT_MUTEX_LOCK(pEventQueue->taskRunningMutex);
     U_PORT_MUTEX_UNLOCK(pEventQueue->taskRunningMutex);
 

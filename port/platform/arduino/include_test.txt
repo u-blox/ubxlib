@@ -1,0 +1,18 @@
+# This file should contain the paths to all header files that are
+# required for testing ubxlib on the Arduino platform.
+# Paths are relative to the ubxlib root directory, forward-slashes
+# must be used.
+
+ble/test
+cell/test
+gnss/test
+wifi/test
+common/sock/test
+common/network/test
+common/security/test
+common/location/test
+common/at_client/test
+common/short_range/test
+common/mqtt_client/test
+common/ubx_protocol/test
+port/test
