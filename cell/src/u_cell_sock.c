@@ -28,6 +28,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+#include "stdlib.h"    // malloc()/free()
 #include "stdio.h"     // snprintf()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
@@ -41,6 +42,8 @@
 #include "u_port_os.h"
 
 #include "u_at_client.h"
+
+#include "u_hex_bin_convert.h"
 
 #include "u_sock_errno.h"
 #include "u_sock.h"
@@ -204,6 +207,7 @@ static uCellSockSocket_t *pSockCreate(int32_t sockHandle,
         pSock->cellHandle = cellHandle;
         pSock->atHandle = atHandle;
         pSock->sockHandleModule = -1;
+        pSock->pendingBytes = 0;
         pSock->pAsyncClosedCallback = NULL;
         pSock->pDataCallback = NULL;
         pSock->pClosedCallback = NULL;
@@ -225,6 +229,7 @@ static void sockFree(int32_t sockHandle)
             pSock->cellHandle = -1;
             pSock->atHandle = NULL;
             pSock->sockHandleModule = -1;
+            pSock->pendingBytes = 0;
             pSock->pAsyncClosedCallback = NULL;
             pSock->pDataCallback = NULL;
             pSock->pClosedCallback = NULL;
@@ -555,6 +560,38 @@ static int32_t getOptionLinger(const uCellSockSocket_t *pSocket,
     return errnoLocal;
 }
 
+// Set hex mode on the underlying AT interface on or off.
+int32_t setHexMode(int32_t cellHandle, bool hexModeOnNotOff)
+{
+    int32_t errnoLocal = U_SOCK_EINVAL;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t state = 0;
+
+    if (hexModeOnNotOff) {
+        state = 1;
+    }
+
+    // Find the instance
+    pInstance = pUCellPrivateGetInstance(cellHandle);
+    if (pInstance != NULL) {
+        // Set hex mode
+        errnoLocal = U_SOCK_EIO;
+        atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UDCONF=");
+        uAtClientWriteInt(atHandle, 1);
+        uAtClientWriteInt(atHandle, state);
+        uAtClientCommandStopReadResponse(atHandle);
+        if (uAtClientUnlock(atHandle) == 0) {
+            pInstance->socketsHexMode = (state == 1);
+            errnoLocal = U_SOCK_ENONE;
+        }
+    }
+
+    return -errnoLocal;
+}
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: MISC
  * -------------------------------------------------------------- */
@@ -619,6 +656,7 @@ int32_t uCellSockInit()
             pSock->cellHandle = -1;
             pSock->sockHandle = -1;
             pSock->sockHandleModule = -1;
+            pSock->pendingBytes = 0;
             pSock->pDataCallback = NULL;
             pSock->pClosedCallback = NULL;
         }
@@ -1109,6 +1147,33 @@ int32_t uCellSockSecure(int32_t cellHandle,
     return negErrnoLocal;
 }
 
+// Switch on hex mode.
+int32_t uCellSockHexModeOn(int32_t cellHandle)
+{
+    return setHexMode(cellHandle, true);
+}
+
+// Switch off hex mode.
+int32_t uCellSockHexModeOff(int32_t cellHandle)
+{
+    return setHexMode(cellHandle, false);
+}
+
+// Determine whether hex mode is on or off.
+bool uCellSockHexModeIsOn(int32_t cellHandle)
+{
+    bool hexModeIsOn = false;
+    uCellPrivateInstance_t *pInstance;
+
+    // Find the instance
+    pInstance = pUCellPrivateGetInstance(cellHandle);
+    if (pInstance != NULL) {
+        hexModeIsOn = pInstance->socketsHexMode;
+    }
+
+    return hexModeIsOn;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: UDP ONLY
  * -------------------------------------------------------------- */
@@ -1125,12 +1190,19 @@ int32_t uCellSockSendTo(int32_t cellHandle,
     uCellSockSocket_t *pSocket;
     char buffer[U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES];
     char *pRemoteIpAddress;
+    size_t dataLengthMax = U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES;
     int32_t sentSize = 0;
+    size_t x;
+    bool written = false;
+    char *pHexBuffer = NULL;
 
     // Find the instance
     pInstance = pUCellPrivateGetInstance(cellHandle);
     if (pInstance != NULL) {
         atHandle = pInstance->atHandle;
+        if (pInstance->socketsHexMode) {
+            dataLengthMax /= 2;
+        }
         // Find the entry
         if (sockHandle >= 0) {
             pSocket = pFindBySockHandle(sockHandle);
@@ -1141,40 +1213,63 @@ int32_t uCellSockSendTo(int32_t cellHandle,
                     pRemoteIpAddress = pUSockDomainRemovePort(buffer);
                     if (pRemoteIpAddress != NULL) {
                         negErrnoLocalOrSize = -U_SOCK_EMSGSIZE;
-                        if (dataSizeBytes <= U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES) {
-                            negErrnoLocalOrSize = -U_SOCK_EIO;
-                            uAtClientLock(atHandle);
-                            uAtClientCommandStart(atHandle, "AT+USOST=");
-                            // Write module socket handle
-                            uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
-                            // Write IP address
-                            uAtClientWriteString(atHandle, pRemoteIpAddress, true);
-                            // Write port number
-                            uAtClientWriteInt(atHandle, pRemoteAddress->port);
-                            // Number of bytes to follow
-                            uAtClientWriteInt(atHandle, (int32_t) dataSizeBytes);
-                            uAtClientCommandStop(atHandle);
-                            // Wait for the prompt
-                            if (uAtClientWaitCharacter(atHandle, '@') == 0) {
-                                // Wait for it...
-                                uPortTaskBlock(50);
-                                // Go!
-                                uAtClientWriteBytes(atHandle, (const char *) pData,
-                                                    dataSizeBytes, true);
-                                // Grab the response
-                                uAtClientResponseStart(atHandle, "+USOST:");
-                                // Skip the socket ID
-                                uAtClientSkipParameters(atHandle, 1);
-                                // Bytes sent
-                                sentSize = uAtClientReadInt(atHandle);
-                                uAtClientResponseStop(atHandle);
-                                if ((uAtClientUnlock(atHandle) == 0) &&
-                                    (sentSize >= 0)) {
-                                    // All is good, probably
-                                    negErrnoLocalOrSize = sentSize;
+                        if (dataSizeBytes <= dataLengthMax) {
+                            if (pInstance->socketsHexMode) {
+                                negErrnoLocalOrSize = -U_SOCK_ENOMEM;
+                                pHexBuffer = (char *) malloc(dataSizeBytes * 2 + 1);  // +1 for terminator
+                                if (pHexBuffer != NULL) {
+                                    // Make the hex-coded null terminated string
+                                    x = uBinToHex((const char *) pData, dataSizeBytes, pHexBuffer);
+                                    *(pHexBuffer + x) = 0;
                                 }
-                            } else {
-                                uAtClientUnlock(atHandle);
+                            }
+                            if (!pInstance->socketsHexMode || (pHexBuffer != NULL)) {
+                                negErrnoLocalOrSize = -U_SOCK_EIO;
+                                uAtClientLock(atHandle);
+                                uAtClientCommandStart(atHandle, "AT+USOST=");
+                                // Write module socket handle
+                                uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
+                                // Write IP address
+                                uAtClientWriteString(atHandle, pRemoteIpAddress, true);
+                                // Write port number
+                                uAtClientWriteInt(atHandle, pRemoteAddress->port);
+                                // Number of bytes to follow
+                                uAtClientWriteInt(atHandle, (int32_t) dataSizeBytes);
+                                if (pHexBuffer) {
+                                    // Send the hex mode data as a string
+                                    uAtClientWriteString(atHandle, pHexBuffer, true);
+                                    uAtClientCommandStop(atHandle);
+                                    // Free the buffer
+                                    free(pHexBuffer);
+                                    written = true;
+                                } else {
+                                    // Not in hex mode, wait for the prompt
+                                    uAtClientCommandStop(atHandle);
+                                    if (uAtClientWaitCharacter(atHandle, '@') == 0) {
+                                        // Wait for it...
+                                        uPortTaskBlock(50);
+                                        // Send the binary data
+                                        uAtClientWriteBytes(atHandle, (const char *) pData,
+                                                            dataSizeBytes, true);
+                                        written = true;
+                                    }
+                                }
+                                if (written) {
+                                    // Grab the response
+                                    uAtClientResponseStart(atHandle, "+USOST:");
+                                    // Skip the socket ID
+                                    uAtClientSkipParameters(atHandle, 1);
+                                    // Bytes sent
+                                    sentSize = uAtClientReadInt(atHandle);
+                                    uAtClientResponseStop(atHandle);
+                                    if ((uAtClientUnlock(atHandle) == 0) &&
+                                        (sentSize >= 0)) {
+                                        // All is good, probably
+                                        negErrnoLocalOrSize = sentSize;
+                                    }
+                                } else {
+                                    uAtClientUnlock(atHandle);
+                                }
                             }
                         }
                     }
@@ -1196,9 +1291,13 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
     uCellSockSocket_t *pSocket;
+    int32_t dataLengthMax = U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES;
     char buffer[U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES];
-    int32_t x = -1;
+    int32_t x;
+    int32_t port = -1;
     int32_t receivedSize = -1;
+    int32_t readLength;
+    char *pHexBuffer = NULL;
 
     buffer[0] = 0;  // In case of slip-ups
 
@@ -1216,6 +1315,9 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
     pInstance = pUCellPrivateGetInstance(cellHandle);
     if (pInstance != NULL) {
         atHandle = pInstance->atHandle;
+        if (pInstance->socketsHexMode) {
+            dataLengthMax /= 2;
+        }
         // Find the entry
         if (sockHandle >= 0) {
             pSocket = pFindBySockHandle(sockHandle);
@@ -1264,8 +1366,7 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
                     uAtClientCommandStart(atHandle, "AT+USORF=");
                     uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
                     // Number of bytes to read
-                    uAtClientWriteInt(atHandle,
-                                      U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
+                    uAtClientWriteInt(atHandle, dataLengthMax);
                     uAtClientCommandStop(atHandle);
                     uAtClientResponseStart(atHandle, "+USORF:");
                     // Skip the socket ID
@@ -1274,34 +1375,59 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
                     uAtClientReadString(atHandle, buffer,
                                         sizeof(buffer), false);
                     // Read the port
-                    x = uAtClientReadInt(atHandle);
+                    port = uAtClientReadInt(atHandle);
                     // Read the amount of data
                     receivedSize = uAtClientReadInt(atHandle);
-                    if (receivedSize > U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES) {
-                        receivedSize = U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES;
+                    if (receivedSize > dataLengthMax) {
+                        receivedSize = dataLengthMax;
                     }
                     if ((int32_t) dataSizeBytes > receivedSize) {
                         dataSizeBytes = receivedSize;
                     }
                     if (receivedSize > 0) {
-                        // Don't stop for anything!
-                        uAtClientIgnoreStopTag(atHandle);
-                        // Get the leading quote mark out of the way
-                        uAtClientReadBytes(atHandle, NULL, 1, true);
-                        // Now read out all the actual data,
-                        // first the bit we want
-                        uAtClientReadBytes(atHandle, (char *) pData,
-                                           dataSizeBytes, true);
-                        if (receivedSize > (int32_t) dataSizeBytes) {
-                            //...and then the rest poured away to NULL
-                            uAtClientReadBytes(atHandle, NULL,
-                                               receivedSize -
-                                               dataSizeBytes, true);
+                        if (pInstance->socketsHexMode) {
+                            // In hex mode we need a buffer to dump
+                            // the hex into and then we can decode it
+                            negErrnoLocalOrSize = -U_SOCK_ENOMEM;
+                            //lint -e{647} Suppress suspicious truncation
+                            pHexBuffer = (char *) malloc(receivedSize * 2 + 1);  // +1 for terminator
+                        }
+                        if (!pInstance->socketsHexMode || (pHexBuffer != NULL)) {
+                            if (pHexBuffer != NULL) {
+                                // In hex mode we can read in the whole string
+                                //lint -e{647} Suppress suspicious truncation
+                                readLength = uAtClientReadString(atHandle, pHexBuffer,
+                                                                 receivedSize * 2 + 1, false);
+                                if (readLength > 0) {
+                                    x = (int32_t) dataSizeBytes * 2;
+                                    if (readLength > x) {
+                                        readLength = x;
+                                    }
+                                    uHexToBin(pHexBuffer, readLength, (char *) pData);
+                                }
+                                // Free memory
+                                free(pHexBuffer);
+                            } else {
+                                // Binary mode, don't stop for anything!
+                                uAtClientIgnoreStopTag(atHandle);
+                                // Get the leading quote mark out of the way
+                                uAtClientReadBytes(atHandle, NULL, 1, true);
+                                // Now read out all the actual data,
+                                // first the bit we want
+                                uAtClientReadBytes(atHandle, (char *) pData,
+                                                   dataSizeBytes, true);
+                                if (receivedSize > (int32_t) dataSizeBytes) {
+                                    //...and then the rest poured away to NULL
+                                    uAtClientReadBytes(atHandle, NULL,
+                                                       receivedSize -
+                                                       dataSizeBytes, true);
+                                }
+                                // Make sure to wait for the stop tag before
+                                // we finish
+                                uAtClientRestoreStopTag(atHandle);
+                            }
                         }
                     }
-                    // Make sure to wait for the stop tag before
-                    // we finish
-                    uAtClientRestoreStopTag(atHandle);
                     uAtClientResponseStop(atHandle);
                     // BEFORE unlocking, work out what's happened.
                     // This is to prevent a URC being processed that
@@ -1330,9 +1456,9 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
         }
     }
 
-    if ((negErrnoLocalOrSize >= 0) && (pRemoteAddress != NULL) && (x >= 0)) {
+    if ((negErrnoLocalOrSize >= 0) && (pRemoteAddress != NULL) && (port >= 0)) {
         if (uSockStringToAddress(buffer, pRemoteAddress) == 0) {
-            pRemoteAddress->port = (uint16_t) x;
+            pRemoteAddress->port = (uint16_t) port;
         } else {
             // If we can't decode the remote address this becomes
             // an error, can't go receiving things from servers
@@ -1359,70 +1485,103 @@ int32_t uCellSockWrite(int32_t cellHandle,
     uCellSockSocket_t *pSocket;
     int32_t leftToSendSize = (int32_t) dataSizeBytes;
     int32_t sentSize = 0;
+    int32_t dataOffset = 0;
     int32_t thisSendSize = U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES;
-    size_t loopCounter = 0;
+    size_t x = 0;
+    bool written = true;
+    char *pHexBuffer = NULL;
 
     // Find the instance
     pInstance = pUCellPrivateGetInstance(cellHandle);
     if (pInstance != NULL) {
         atHandle = pInstance->atHandle;
+        if (pInstance->socketsHexMode) {
+            thisSendSize /= 2;
+            negErrnoLocalOrSize = -U_SOCK_ENOMEM;
+            pHexBuffer = (char *) malloc(dataSizeBytes * 2 + 1);  // +1 for terminator
+            if (pHexBuffer != NULL) {
+                // Make the hex-coded null terminated string
+                x = uBinToHex((const char *) pData, dataSizeBytes, pHexBuffer);
+                *(pHexBuffer + x) = 0;
+            }
+        }
         // Find the entry
         if (sockHandle >= 0) {
             pSocket = pFindBySockHandle(sockHandle);
             if (pSocket != NULL) {
-                negErrnoLocalOrSize = U_SOCK_ENONE;
-                while ((leftToSendSize > 0) &&
-                       (negErrnoLocalOrSize == U_SOCK_ENONE) &&
-                       (loopCounter < U_CELL_SOCK_TCP_RETRY_LIMIT)) {
-                    if (leftToSendSize < thisSendSize) {
-                        thisSendSize = leftToSendSize;
-                    }
-                    uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+USOWR=");
-                    // Write module socket handle
-                    uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
-                    // Number of bytes to follow
-                    uAtClientWriteInt(atHandle, (int32_t) dataSizeBytes);
-                    uAtClientCommandStop(atHandle);
-                    // Wait for the prompt
-                    if (uAtClientWaitCharacter(atHandle, '@') == 0) {
-                        // Wait for it...
-                        uPortTaskBlock(50);
-                        // Go!
-                        uAtClientWriteBytes(atHandle, (const char *) pData,
-                                            dataSizeBytes, true);
-                        // Grab the response
-                        uAtClientResponseStart(atHandle, "+USOWR:");
-                        // Skip the socket ID
-                        uAtClientSkipParameters(atHandle, 1);
-                        // Bytes sent
-                        sentSize = uAtClientReadInt(atHandle);
-                        uAtClientResponseStop(atHandle);
-                        if (uAtClientUnlock(atHandle) == 0) {
-                            pData = (const char *) pData + sentSize;
-                            leftToSendSize -= sentSize;
-                            // Technically, it should be OK to
-                            // send fewer bytes than asked for,
-                            // however if this happens a lot we'll
-                            // get stuck, which isn't desirable,
-                            // so use the loop counter to avoid that
-                            if (sentSize < thisSendSize) {
-                                loopCounter++;
+                if (!pInstance->socketsHexMode || (pHexBuffer != NULL)) {
+                    negErrnoLocalOrSize = U_SOCK_ENONE;
+                    x = 0;
+                    while ((leftToSendSize > 0) &&
+                           (negErrnoLocalOrSize == U_SOCK_ENONE) &&
+                           (x < U_CELL_SOCK_TCP_RETRY_LIMIT) &&
+                           written) {
+                        if (leftToSendSize < thisSendSize) {
+                            thisSendSize = leftToSendSize;
+                        }
+                        uAtClientLock(atHandle);
+                        uAtClientCommandStart(atHandle, "AT+USOWR=");
+                        // Write module socket handle
+                        uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
+                        // Number of bytes to follow
+                        uAtClientWriteInt(atHandle, (int32_t) dataSizeBytes);
+                        written = false;
+                        if (pHexBuffer) {
+                            // Send the hex mode data as a string
+                            //lint -e(679) Suppress suspicious truncation
+                            uAtClientWriteString(atHandle,
+                                                 pHexBuffer + (dataOffset * 2), true);
+                            uAtClientCommandStop(atHandle);
+                            written = true;
+                        } else {
+                            uAtClientCommandStop(atHandle);
+                            // Wait for the prompt
+                            if (uAtClientWaitCharacter(atHandle, '@') == 0) {
+                                // Wait for it...
+                                uPortTaskBlock(50);
+                                // Go!
+                                uAtClientWriteBytes(atHandle,
+                                                    (const char *) pData + dataOffset,
+                                                    dataSizeBytes, true);
+                                written = true;
+                            }
+                        }
+                        if (written) {
+                            // Grab the response
+                            uAtClientResponseStart(atHandle, "+USOWR:");
+                            // Skip the socket ID
+                            uAtClientSkipParameters(atHandle, 1);
+                            // Bytes sent
+                            sentSize = uAtClientReadInt(atHandle);
+                            uAtClientResponseStop(atHandle);
+                            if (uAtClientUnlock(atHandle) == 0) {
+                                dataOffset += sentSize;
+                                leftToSendSize -= sentSize;
+                                // Technically, it should be OK to
+                                // send fewer bytes than asked for,
+                                // however if this happens a lot we'll
+                                // get stuck, which isn't desirable,
+                                // so use the loop counter to avoid that
+                                if (sentSize < thisSendSize) {
+                                    x++;
+                                }
+                            } else {
+                                negErrnoLocalOrSize = -U_SOCK_EIO;
+                                // Got an AT interface error, see
+                                // what the module's socket error
+                                // number has to say for debug purposes
+                                doUsoer(atHandle);
                             }
                         } else {
                             negErrnoLocalOrSize = -U_SOCK_EIO;
-                            // Got an AT interace error, see
-                            // what the module's socket error
-                            // number has to say for debug purposes
-                            doUsoer(atHandle);
+                            uAtClientUnlock(atHandle);
                         }
-                    } else {
-                        negErrnoLocalOrSize = -U_SOCK_EIO;
-                        uAtClientUnlock(atHandle);
                     }
                 }
             }
         }
+        // Free the buffer
+        free(pHexBuffer);
     }
 
     if (negErrnoLocalOrSize == U_SOCK_ENONE) {
@@ -1442,15 +1601,21 @@ int32_t uCellSockRead(int32_t cellHandle,
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
     uCellSockSocket_t *pSocket;
+    int32_t dataLengthMax = U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES;
     int32_t x = -1;
     int32_t thisWantedReceiveSize;
     int32_t thisActualReceiveSize;
     int32_t totalReceivedSize = 0;
+    int32_t readLength;
+    char *pHexBuffer = NULL;
 
     // Find the instance
     pInstance = pUCellPrivateGetInstance(cellHandle);
     if (pInstance != NULL) {
         atHandle = pInstance->atHandle;
+        if (pInstance->socketsHexMode) {
+            dataLengthMax /= 2;
+        }
         // Find the entry
         if (sockHandle >= 0) {
             pSocket = pFindBySockHandle(sockHandle);
@@ -1497,7 +1662,7 @@ int32_t uCellSockRead(int32_t cellHandle,
                     while ((dataSizeBytes > 0) &&
                            (pSocket->pendingBytes > 0) &&
                            (negErrnoLocalOrSize == U_SOCK_ENONE)) {
-                        thisWantedReceiveSize = U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES;
+                        thisWantedReceiveSize = dataLengthMax;
                         if (thisWantedReceiveSize > (int32_t) dataSizeBytes) {
                             thisWantedReceiveSize = (int32_t) dataSizeBytes;
                         }
@@ -1516,19 +1681,47 @@ int32_t uCellSockRead(int32_t cellHandle,
                             thisActualReceiveSize = (int32_t) dataSizeBytes;
                         }
                         if (thisActualReceiveSize > 0) {
-                            // Don't stop for anything!
-                            uAtClientIgnoreStopTag(atHandle);
-                            // Get the leading quote mark out of the way
-                            uAtClientReadBytes(atHandle, NULL, 1, true);
-                            // Now read out the available data
-                            uAtClientReadBytes(atHandle,
-                                               (char *) pData +
-                                               totalReceivedSize,
-                                               thisActualReceiveSize, true);
+                            if (pInstance->socketsHexMode) {
+                                // In hex mode we need a buffer to dump
+                                // the hex into and then we can decode it
+                                negErrnoLocalOrSize = -U_SOCK_ENOMEM;
+                                //lint -e{647} Suppress suspicious truncation
+                                pHexBuffer = (char *) malloc(thisActualReceiveSize * 2 + 1);  // +1 for terminator
+                            }
+                            if (!pInstance->socketsHexMode || (pHexBuffer != NULL)) {
+                                negErrnoLocalOrSize = U_SOCK_ENONE;
+                                if (pHexBuffer != NULL) {
+                                    // In hex mode we can read in the whole string
+                                    //lint -e{647} Suppress suspicious truncation
+                                    readLength = uAtClientReadString(atHandle, pHexBuffer,
+                                                                     thisActualReceiveSize * 2 + 1,
+                                                                     false);
+                                    if (readLength > 0) {
+                                        x = ((int32_t) dataSizeBytes - totalReceivedSize) * 2;
+                                        if (readLength > x) {
+                                            readLength = x;
+                                        }
+                                        uHexToBin(pHexBuffer, readLength,
+                                                  (char *) pData + totalReceivedSize);
+                                    }
+                                    // Free memory
+                                    free(pHexBuffer);
+                                } else {
+                                    // Binary mode, don't stop for anything!
+                                    uAtClientIgnoreStopTag(atHandle);
+                                    // Get the leading quote mark out of the way
+                                    uAtClientReadBytes(atHandle, NULL, 1, true);
+                                    // Now read out the available data
+                                    uAtClientReadBytes(atHandle,
+                                                       (char *) pData +
+                                                       totalReceivedSize,
+                                                       thisActualReceiveSize, true);
+                                    // Make sure we wait for the stop tag before
+                                    // going around again
+                                    uAtClientRestoreStopTag(atHandle);
+                                }
+                            }
                         }
-                        // Make sure we wait for the stop tag before
-                        // going around again
-                        uAtClientRestoreStopTag(atHandle);
                         uAtClientResponseStop(atHandle);
                         // BEFORE unlocking, work out what's happened.
                         // This is to prevent a URC being processed that

@@ -43,7 +43,8 @@ extern "C" {
 
 /** The maximum size of a datagram and the maximum size of a
  * single TCP segment sent to the cellular module (defined by the
- * cellular module AT interface).
+ * cellular module AT interface).  Note the if hex mode is
+  set (using uCellSockHexModeOn()) then the number is halved.
  */
 #define U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES 1024
 
@@ -268,16 +269,58 @@ int32_t uCellSockSecure(int32_t cellHandle,
                         int32_t sockHandle,
                         int32_t profileId);
 
+/** Switch on use of hex mode on the underlying AT
+ * interface.  This is useful if your application sends
+ * many short (e.g. 50 byte) messages in rapid succession.
+ * When run in the default binary mode this driver has to
+ * wait for a prompt character to arrive from the module
+ * and then transmit the binary message and, though the
+ * message is of optimal length (the hex mode message is
+ * obviously twice as long) the per-packet latencies can
+ * be 50 to 100 ms per packet, larger than the time it would
+ * take to transmit the twice-as-long hex-coded message for
+ * short message lengths, though it should be noted that
+ * the code will malloc() a temporary buffer in which to
+ * store the hex encoded message. In hex mode the maximum
+ * length of a datagram is halved.
+ * Note that this will apply to ALL sockets but you may
+ * switch modes at any time, e.g. you might do so based
+ * on message size.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            zero on success else negated value
+ *                    of U_SOCK_Exxx from u_sock_errno.h.
+ */
+int32_t uCellSockHexModeOn(int32_t cellHandle);
+
+/** Switch back to the default mode of sending packets
+ * in binary form on the underlying AT interface.
+ * Note that this will apply to ALL sockets.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            zero on success else negated value
+ *                    of U_SOCK_Exxx from u_sock_errno.h.
+ */
+int32_t uCellSockHexModeOff(int32_t cellHandle);
+
+/** Determine whether hex mode (or conversely binary mode)
+ * is in used on the underlying AT interface.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            true if hex mode is on, else false.
+ */
+bool uCellSockHexModeIsOn(int32_t cellHandle);
+
 /* ----------------------------------------------------------------
  * FUNCTIONS: UDP ONLY
  * -------------------------------------------------------------- */
 
 /** Send a datagram.  The maximum length of datagram
- * that can be transmitted is U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES:
- * if dataSizeBytes is longer than this nothing will be
- * transmitted and an error will be returned.  Note that not all
- * modules support use of uCellSockSendTo() on a connected socket
- * (e.g. SARA-R422 does not).
+ * that can be transmitted is U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES
+ * (or half this if hex mode is on): if dataSizeBytes is longer than
+ * this nothing will be transmitted and an error will be returned.
+ * Note that not all modules support use of uCellSockSendTo() on a
+ * connected socket (e.g. SARA-R422 does not).
  *
  * @param cellHandle     the handle of the cellular instance.
  * @param sockHandle     the handle of the socket.
@@ -311,11 +354,13 @@ int32_t uCellSockSendTo(int32_t cellHandle,
  * @param dataSizeBytes  the number of bytes of storage available
  *                       at pData.  Each call receives a single
  *                       datagram of up to
- *                       U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES; if
- *                       dataSizeBytes is less than this the
- *                       remainder will be thrown away.  To ensure
- *                       no loss always allocate a buffer of
- *                       at least U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES.
+ *                       U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES (or
+ *                       half that if in hex mode); if dataSizeBytes
+ *                       is less than this the remainder will be
+ *                       thrown away.  To ensure no loss always
+ *                       allocate a buffer of at least
+ *                       U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES  (or
+ *                       half that if in hex mode).
  * @return               the number of bytes received else negated
  *                       value of U_SOCK_Exxx from u_sock_errno.h.
  */

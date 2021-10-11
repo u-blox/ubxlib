@@ -625,136 +625,160 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     U_PORT_TEST_ASSERT(!gDataCallbackCalledUdp);
     U_PORT_TEST_ASSERT(!gDataCallbackCalledTcp);
 
-    // Send and wait for the UDP echo data, trying a few
-    // times to reduce the chance of internet loss getting
-    // in the way
-    uPortLog("U_CELL_SOCK_TEST: sending %d byte(s) to %s:%d...\n",
-             sizeof(gAllChars),
-             U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-             U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
-    y = 0;
-    memset(pBuffer, 0, U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
-    for (size_t x = 0; (x < U_SOCK_TEST_UDP_RETRIES) &&
-         (y != sizeof(gAllChars)); x ++) {
-        y = uCellSockSendTo(cellHandle, gSockHandleUdp,
-                            &echoServerAddressUdp,
-                            gAllChars, sizeof(gAllChars));
-        if (y == sizeof(gAllChars)) {
-            // Wait a little while to get a data callback
-            // triggered by a URC
-            for (size_t a = 10; (a > 0) && !gDataCallbackCalledUdp; a--) {
-                uPortTaskBlock(1000);
-            }
-            y = 0;
-            for (size_t z = 10; (z > 0) &&
-                 (y != sizeof(gAllChars)); z--) {
-                y = uCellSockReceiveFrom(cellHandle,
-                                         gSockHandleUdp,
-                                         &address, pBuffer,
-                                         U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
-                if (y <= 0) {
-                    uPortTaskBlock(500);
+    // Do this twice: once with binary mode and once with hex mode
+    for (size_t a = 0; a < 2; a++) {
+        gDataCallbackCalledUdp = false;
+        if (a == 0) {
+            U_PORT_TEST_ASSERT(!uCellSockHexModeIsOn(cellHandle));
+        } else {
+            U_PORT_TEST_ASSERT(uCellSockHexModeOn(cellHandle) == 0);
+            U_PORT_TEST_ASSERT(uCellSockHexModeIsOn(cellHandle));
+        }
+        // Send and wait for the UDP echo data, trying a few
+        // times to reduce the chance of internet loss getting
+        // in the way
+        uPortLog("U_CELL_SOCK_TEST: sending %d byte(s) to %s:%d...\n",
+                 sizeof(gAllChars),
+                 U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                 U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
+        y = 0;
+        memset(pBuffer, 0, U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
+        for (size_t x = 0; (x < U_SOCK_TEST_UDP_RETRIES) &&
+             (y != sizeof(gAllChars)); x ++) {
+            y = uCellSockSendTo(cellHandle, gSockHandleUdp,
+                                &echoServerAddressUdp,
+                                gAllChars, sizeof(gAllChars));
+            if (y == sizeof(gAllChars)) {
+                // Wait a little while to get a data callback
+                // triggered by a URC
+                for (size_t a = 10; (a > 0) && !gDataCallbackCalledUdp; a--) {
+                    uPortTaskBlock(1000);
                 }
-            }
-            if (y != sizeof(gAllChars)) {
-                uPortLog("U_CELL_SOCK_TEST: failed to receive UDP echo"
-                         " on try %d.\n", x + 1);
-            }
-        } else {
-            uPortLog("U_CELL_SOCK_TEST: failed to send UDP data on"
-                     " try %d.\n", x + 1);
+                y = 0;
+                for (size_t z = 10; (z > 0) &&
+                     (y != sizeof(gAllChars)); z--) {
+                    y = uCellSockReceiveFrom(cellHandle,
+                                             gSockHandleUdp,
+                                             &address, pBuffer,
+                                             U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
+                    if (y <= 0) {
+                        uPortTaskBlock(500);
+                    }
+                }
+                if (y != sizeof(gAllChars)) {
+                    uPortLog("U_CELL_SOCK_TEST: failed to receive UDP echo"
+                             " on try %d.\n", x + 1);
+                }
+            } else {
+                uPortLog("U_CELL_SOCK_TEST: failed to send UDP data on"
+                         " try %d.\n", x + 1);
             U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, gSockHandleUdp) > 0);
+            }
         }
-    }
-    uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over UDP.\n", y);
-    U_PORT_TEST_ASSERT(y == sizeof(gAllChars));
-    if (!gDataCallbackCalledUdp) {
-        uPortLog("U_CELL_SOCK_TEST: *** WARNING *** the data callback"
-                 " was not called during the test.  This can happen"
-                 " legimitately if all the reads from the module"
-                 " happened to coincide with data receptions and so"
-                 " the URC was not involved.  However if it happens"
-                 " too often something may be wrong.\n");
-    }
-    U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
-    U_PORT_TEST_ASSERT(memcmp(pBuffer, gAllChars, sizeof(gAllChars)) == 0);
-    U_PORT_TEST_ASSERT(memcmp(&(address.ipAddress),
-                              &(echoServerAddressUdp.ipAddress),
-                              sizeof(address.ipAddress)) == 0);
-    U_PORT_TEST_ASSERT(address.port == echoServerAddressUdp.port);
-    U_PORT_TEST_ASSERT(!gClosedCallbackCalledUdp);
-
-    // Send the TCP echo data in random sized chunks
-    uPortLog("U_CELL_SOCK_TEST: sending %d byte(s) to %s:%d in"
-             " random sized chunks...\n", sizeof(gAllChars),
-             U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-             U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
-    y = 0;
-    count = 0;
-    while ((y < sizeof(gAllChars)) && (count < 100)) {
-        if ((sizeof(gAllChars) - y) > 1) {
-            w = rand() % (sizeof(gAllChars) - y);
-        } else {
-            w = 1;
+        uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over UDP.\n", y);
+        U_PORT_TEST_ASSERT(y == sizeof(gAllChars));
+        if (!gDataCallbackCalledUdp) {
+            uPortLog("U_CELL_SOCK_TEST: *** WARNING *** the data callback"
+                     " was not called during the test.  This can happen"
+                     " legimitately if all the reads from the module"
+                     " happened to coincide with data receptions and so"
+                     " the URC was not involved.  However if it happens"
+                     " too often something may be wrong.\n");
         }
-        if (w > 0) {
-            count++;
-        }
-        z = uCellSockWrite(cellHandle, gSockHandleTcp,
-                           gAllChars + y, w);
-        if (z > 0) {
-            y += z;
-        } else {
-            uPortTaskBlock(500);
-        }
-    }
-    uPortLog("U_CELL_SOCK_TEST: %d byte(s) sent in %d chunks.\n",
-             y, count);
-
-    // Wait a little while to get a data callback
-    // triggered by a URC
-    for (size_t x = 10; (x > 0) && !gDataCallbackCalledTcp; x--) {
-        uPortTaskBlock(1000);
+        U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
+        U_PORT_TEST_ASSERT(memcmp(pBuffer, gAllChars, sizeof(gAllChars)) == 0);
+        U_PORT_TEST_ASSERT(memcmp(&(address.ipAddress),
+                                  &(echoServerAddressUdp.ipAddress),
+                                  sizeof(address.ipAddress)) == 0);
+        U_PORT_TEST_ASSERT(address.port == echoServerAddressUdp.port);
+        U_PORT_TEST_ASSERT(!gClosedCallbackCalledUdp);
     }
 
-    // Get the data back again
-    uPortLog("U_CELL_SOCK_TEST: receiving TCP echo data back"
-             " in random sized chunks...\n");
-    y = 0;
-    count = 0;
-    memset(pBuffer, 0, U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
-    while ((y < sizeof(gAllChars)) && (count < 100)) {
-        if ((sizeof(gAllChars) - y) > 1) {
-            w = rand() % (sizeof(gAllChars) - y);
+    // Hex mode off again
+    U_PORT_TEST_ASSERT(uCellSockHexModeOff(cellHandle) == 0);
+    U_PORT_TEST_ASSERT(!uCellSockHexModeIsOn(cellHandle));
+
+    // Do this twice: once with binary mode and once with hex mode
+    for (size_t a = 0; a < 2; a++) {
+        gDataCallbackCalledTcp = false;
+        if (a == 0) {
+            U_PORT_TEST_ASSERT(!uCellSockHexModeIsOn(cellHandle));
         } else {
-            w = 1;
+            U_PORT_TEST_ASSERT(uCellSockHexModeOn(cellHandle) == 0);
+            U_PORT_TEST_ASSERT(uCellSockHexModeIsOn(cellHandle));
         }
-        if (w > 0) {
-            count++;
+        // Send the TCP echo data in random sized chunks
+        uPortLog("U_CELL_SOCK_TEST: sending %d byte(s) to %s:%d in"
+                 " random sized chunks...\n", sizeof(gAllChars),
+                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                 U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+        y = 0;
+        count = 0;
+        while ((y < sizeof(gAllChars)) && (count < 100)) {
+            if ((sizeof(gAllChars) - y) > 1) {
+                w = rand() % (sizeof(gAllChars) - y);
+            } else {
+                w = 1;
+            }
+            if (w > 0) {
+                count++;
+            }
+            z = uCellSockWrite(cellHandle, gSockHandleTcp,
+                               gAllChars + y, w);
+            if (z > 0) {
+                y += z;
+            } else {
+                uPortTaskBlock(500);
+            }
         }
-        z = uCellSockRead(cellHandle, gSockHandleTcp,
-                          pBuffer + y, w);
-        if (z > 0) {
-            y += z;
-        } else {
-            uPortTaskBlock(500);
+        uPortLog("U_CELL_SOCK_TEST: %d byte(s) sent in %d chunks.\n",
+                 y, count);
+
+        // Wait a little while to get a data callback
+        // triggered by a URC
+        for (size_t x = 10; (x > 0) && !gDataCallbackCalledTcp; x--) {
+            uPortTaskBlock(1000);
         }
+
+        // Get the data back again
+        uPortLog("U_CELL_SOCK_TEST: receiving TCP echo data back"
+                 " in random sized chunks...\n");
+        y = 0;
+        count = 0;
+        memset(pBuffer, 0, U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
+        while ((y < sizeof(gAllChars)) && (count < 100)) {
+            if ((sizeof(gAllChars) - y) > 1) {
+                w = rand() % (sizeof(gAllChars) - y);
+            } else {
+                w = 1;
+            }
+            if (w > 0) {
+                count++;
+            }
+            z = uCellSockRead(cellHandle, gSockHandleTcp,
+                              pBuffer + y, w);
+            if (z > 0) {
+                y += z;
+            } else {
+                uPortTaskBlock(500);
+            }
+        }
+        uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over TCP, received"
+                 " in %d receive call(s).\n", y, count);
+        if (!gDataCallbackCalledTcp) {
+            uPortLog("U_CELL_SOCK_TEST: *** WARNING *** the data callback"
+                     " was not called during the test.  This can happen"
+                     " legimitately if all the reads from the module"
+                     " happened to coincide with data receptions and so"
+                     " the URC was not involved.  However if it happens"
+                     " too often something may be wrong.\n");
+        }
+        U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
+        // Compare the data
+        U_PORT_TEST_ASSERT(memcmp(pBuffer, gAllChars,
+                                  sizeof(gAllChars)) == 0);
+        U_PORT_TEST_ASSERT(!gClosedCallbackCalledTcp);
     }
-    uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over TCP, received"
-             " in %d receive call(s).\n", y, count);
-    if (!gDataCallbackCalledTcp) {
-        uPortLog("U_CELL_SOCK_TEST: *** WARNING *** the data callback"
-                 " was not called during the test.  This can happen"
-                 " legimitately if all the reads from the module"
-                 " happened to coincide with data receptions and so"
-                 " the URC was not involved.  However if it happens"
-                 " too often something may be wrong.\n");
-    }
-    U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
-    // Compare the data
-    U_PORT_TEST_ASSERT(memcmp(pBuffer, gAllChars,
-                              sizeof(gAllChars)) == 0);
-    U_PORT_TEST_ASSERT(!gClosedCallbackCalledTcp);
 
     // Sockets should both still be open
     U_PORT_TEST_ASSERT(!gClosedCallbackCalledUdp);

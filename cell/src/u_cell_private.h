@@ -292,6 +292,7 @@ typedef struct uCellPrivateInstance_t {
     volatile void *pMqttContext; /**< Hook for MQTT context, volatile as it
                                       can be populared by a URC in a different thread. */
     uCellPrivateLocContext_t *pLocContext; /**< Hook for a location context. **/
+    bool socketsHexMode; /**< set to true for sockets to use hex mode. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 

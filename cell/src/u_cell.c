@@ -233,6 +233,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 pInstance->pSecurityC2cContext = NULL;
                 pInstance->pMqttContext = NULL;
                 pInstance->pLocContext = NULL;
+                pInstance->socketsHexMode = false;
                 pInstance->pNext = NULL;
 
                 // Now set up the pins
