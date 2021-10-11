@@ -401,8 +401,10 @@ static void eventHandler(void *pParam, size_t paramLength)
     }
 }
 
-static void processEdmAtEvent(uShortRangeEdmEvent_t *pEvent)
+static bool enqueueEdmAtEvent(uShortRangeEdmEvent_t *pEvent)
 {
+    bool success = false;
+
     uShortRangeEdmStreamEvent_t event;
 
     gEdmStream.atResponseLength = pEvent->params.atEvent.length;
@@ -417,13 +419,19 @@ static void processEdmAtEvent(uShortRangeEdmEvent_t *pEvent)
 
     event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_AT;
     if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                            &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                            &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
+        success = true;
+    } else {
         uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
     }
+
+    return success;
 }
 
-static void processEdmConnectBtEvent(uShortRangeEdmEvent_t *pEvent)
+static bool enqueueEdmConnectBtEvent(uShortRangeEdmEvent_t *pEvent)
 {
+    bool success = false;
+
     uShortRangeEdmStreamConnections_t *pConnection =
         findConnection(pEvent->params.btConnectEvent.channel);
 
@@ -448,14 +456,20 @@ static void processEdmConnectBtEvent(uShortRangeEdmEvent_t *pEvent)
 #endif
 
         if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                                &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
+            success = true;
+        } else {
             uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
         }
     }
+
+    return success;
 }
 
-static void processEdmConnectIpv4Event(uShortRangeEdmEvent_t *pEvent)
+static bool enqueueEdmConnectIpv4Event(uShortRangeEdmEvent_t *pEvent)
 {
+    bool success = false;
+
     uShortRangeEdmStreamConnections_t *pConnection =
         findConnection(pEvent->params.ipv4ConnectEvent.channel);
 
@@ -502,15 +516,21 @@ static void processEdmConnectIpv4Event(uShortRangeEdmEvent_t *pEvent)
 #endif
 
             if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                    &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                                    &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
+                success = true;
+            } else {
                 uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
             }
         }
     }
+
+    return success;
 }
 
-static void processEdmConnectIpv6Event(uShortRangeEdmEvent_t *pEvent)
+static bool enqueueEdmConnectIpv6Event(uShortRangeEdmEvent_t *pEvent)
 {
+    bool success = false;
+
     uShortRangeEdmStreamConnections_t *pConnection =
         findConnection(pEvent->params.ipv6ConnectEvent.channel);
 
@@ -552,15 +572,21 @@ static void processEdmConnectIpv6Event(uShortRangeEdmEvent_t *pEvent)
 #endif
 
             if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                    &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                                    &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
+                success = true;
+            } else {
                 uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
             }
         }
     }
+
+    return success;
 }
 
-static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
+static bool enqueueEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
 {
+    bool success = false;
+
     uint8_t channel = pEvent->params.disconnectEvent.channel;
     uShortRangeEdmStreamConnections_t *pConnection = findConnection(channel);
 
@@ -575,7 +601,9 @@ static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
                 uEdmChLogLine(LOG_CH_BT, "ch: %d, disconnect", channel);
 #endif
                 if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                        &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                                        &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
+                    success = true;
+                } else {
                     uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
                 }
                 break;
@@ -588,7 +616,9 @@ static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
                 uEdmChLogLine(LOG_CH_IP, "ch: %d, disconnect", channel);
 #endif
                 if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                        &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                                        &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
+                    success = true;
+                } else {
                     uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
                 }
                 break;
@@ -601,7 +631,9 @@ static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
                 uEdmChLogLine(LOG_CH_IP, "ch: %d, disconnect", channel);
 #endif
                 if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                                        &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                                        &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
+                    success = true;
+                } else {
                     uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
                 }
                 break;
@@ -612,10 +644,14 @@ static void processEdmDisconnectEvent(uShortRangeEdmEvent_t *pEvent)
         pConnection->channel = -1;
         pConnection->type = U_SHORT_RANGE_CONNECTION_TYPE_INVALID;
     }
+
+    return success;
 }
 
-static void processEdmDataEvent(uShortRangeEdmEvent_t *pEvent)
+static bool enqueueEdmDataEvent(uShortRangeEdmEvent_t *pEvent)
 {
+    bool success = false;
+
     uShortRangeEdmStreamEvent_t event;
     event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_DATA;
     event.data.channel = pEvent->params.dataEvent.channel;
@@ -633,48 +669,55 @@ static void processEdmDataEvent(uShortRangeEdmEvent_t *pEvent)
 #endif
 
     if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
-                            &event, sizeof(uShortRangeEdmStreamEvent_t)) != 0) {
+                            &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
+        success = true;
+    } else {
         uPortLog("U_SHO_EDM_STREAM: Failed to enqueue message\n");
     }
+
+    return success;
 }
 
 static void processEdmEvent(uShortRangeEdmEvent_t *pEvent)
 {
+    bool enqueued = false;
+
     switch (pEvent->type) {
 
         case U_SHORT_RANGE_EDM_EVENT_AT:
-            processEdmAtEvent(pEvent);
+            enqueued = enqueueEdmAtEvent(pEvent);
             break;
 
         case U_SHORT_RANGE_EDM_EVENT_CONNECT_BT:
-            processEdmConnectBtEvent(pEvent);
+            enqueued = enqueueEdmConnectBtEvent(pEvent);
             break;
 
         case U_SHORT_RANGE_EDM_EVENT_DISCONNECT:
-            processEdmDisconnectEvent(pEvent);
+            enqueued = enqueueEdmDisconnectEvent(pEvent);
             break;
 
         case U_SHORT_RANGE_EDM_EVENT_DATA:
-            processEdmDataEvent(pEvent);
-            break;
-
-        case U_SHORT_RANGE_EDM_EVENT_STARTUP:
-            processedEvent();
+            enqueued = enqueueEdmDataEvent(pEvent);
             break;
 
         case U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv4:
-            processEdmConnectIpv4Event(pEvent);
+            enqueued = enqueueEdmConnectIpv4Event(pEvent);
             break;
 
         case U_SHORT_RANGE_EDM_EVENT_CONNECT_IPv6:
-            processEdmConnectIpv6Event(pEvent);
+            enqueued = enqueueEdmConnectIpv6Event(pEvent);
             break;
 
-        case U_SHORT_RANGE_EDM_EVENT_INVALID:
-            break;
-
+        case U_SHORT_RANGE_EDM_EVENT_INVALID: /* Intentional fallthrough */
+        case U_SHORT_RANGE_EDM_EVENT_STARTUP: /* Intentional fallthrough */
         default:
+            /* Do nothing here - if msg was not enqueued the event will be processed */
             break;
+    }
+
+    if (!enqueued) {
+        /* No event was enqueued to the event queue so we simply consume the event */
+        processedEvent();
     }
 }
 
