@@ -472,6 +472,8 @@ static void osTestTask(void *pParameters)
 {
     int32_t queueItem = 0;
     int32_t index = 0;
+    int32_t x = 0;
+    int32_t y;
 #if U_CFG_OS_CLIB_LEAKS
     int32_t heapClibLoss;
 
@@ -526,11 +528,16 @@ static void osTestTask(void *pParameters)
             U_PORT_TEST_ASSERT(gStuffToSend[index] == queueItem);
             index++;
         }
-        uPortLog("U_PORT_TEST_OS_TASK: task checking control queue.\n");
-        if (uPortQueueTryReceive(gQueueHandleControl, 100, &queueItem) == 0) {
+        x = 0;
+        y = uPortQueuePeek(gQueueHandleControl, &x);
+        U_PORT_TEST_ASSERT((y == 0) ||
+                           (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
+                           (y == (int32_t) U_ERROR_COMMON_TIMEOUT));
+        if (uPortQueueTryReceive(gQueueHandleControl, 10, &queueItem) == 0) {
             uPortLog("U_PORT_TEST_OS_TASK: task received %d on control"
                      " queue.\n", queueItem);
             U_PORT_TEST_ASSERT(queueItem == -1);
+            U_PORT_TEST_ASSERT((y < 0) || (x == queueItem));
         }
     }
 
@@ -1067,6 +1074,9 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     int64_t startTimeMs;
     int64_t timeNowMs;
     int32_t stackMinFreeBytes;
+    int32_t y = -1;
+    int32_t z;
+    uPortQueueHandle_t queueHandle = NULL;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
@@ -1149,6 +1159,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
         // queue so that the test task exits after receiving the
         // last item on the data queue
         if (x == sizeof(gStuffToSend) / sizeof(gStuffToSend[0]) - 1) {
+            uPortTaskBlock(1000);
             stackMinFreeBytes = uPortTaskStackMinFree(gTaskHandle);
             uPortLog("U_PORT_TEST: test task had %d byte(s) free out of %d.\n",
                      stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
@@ -1184,6 +1195,25 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     uPortLog("U_PORT_TEST: deleting queues...\n");
     U_PORT_TEST_ASSERT(uPortQueueDelete(gQueueHandleControl) == 0);
     U_PORT_TEST_ASSERT(uPortQueueDelete(gQueueHandleData) == 0);
+
+    // Create a queue to test peek with
+    U_PORT_TEST_ASSERT(uPortQueueCreate(U_PORT_TEST_QUEUE_LENGTH,
+                                        U_PORT_TEST_QUEUE_ITEM_SIZE,
+                                        &queueHandle) == 0);
+    sendToQueue(queueHandle, 0xFF);
+    z = uPortQueuePeek(queueHandle, &y);
+    uPortLog("U_PORT_TEST: peeking queue returned %d.\n", z);
+    if (z == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
+        U_PORT_TEST_ASSERT(y == -1);
+        uPortLog("U_PORT_TEST: peek is not supported on this platform.\n");
+    } else {
+        U_PORT_TEST_ASSERT(z == 0);
+        uPortLog("U_PORT_TEST: found %d on queue.\n", y);
+        U_PORT_TEST_ASSERT(uPortQueueReceive(queueHandle, &z) == 0);
+        U_PORT_TEST_ASSERT(z == 0xFF);
+        U_PORT_TEST_ASSERT(y == z);
+    }
+    U_PORT_TEST_ASSERT(uPortQueueDelete(queueHandle) == 0);
 
     timeNowMs = uPortGetTickTimeMs() - startTimeMs;
     uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"

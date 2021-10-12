@@ -250,6 +250,24 @@ int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
     return (int32_t) errorCode;
 }
 
+// Peek the given queue.
+int32_t uPortQueuePeek(const uPortQueueHandle_t queueHandle,
+                       void *pEventData)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((queueHandle != NULL) && (pEventData != NULL)) {
+        errorCode = U_ERROR_COMMON_TIMEOUT;
+        if (xQueuePeek((QueueHandle_t) queueHandle,
+                       pEventData,
+                       (portTickType) portMAX_DELAY) == pdTRUE) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
 // Get the number of free spaces in the given queue.
 int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle)
 {

@@ -149,6 +149,13 @@ int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
     (void) pEventData;
     return 0;
 }
+int32_t uPortQueuePeek(const uPortQueueHandle_t queueHandle,
+                       void *pEventData)
+{
+    (void) queueHandle;
+    (void) pEventData;
+    return 0;
+}
 int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle)
 {
     (void) queueHandle;

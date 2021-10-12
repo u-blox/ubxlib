@@ -222,6 +222,19 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
 int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
                              int32_t waitMs, void *pEventData);
 
+/** Peek the given queue; the data is copied out of the queue but
+ * is NOT removed from the queue. If the queue is empty
+ * U_ERROR_COMMON_TIMEOUT is returned.  It is NOT a requirement
+ * that this API is implemented: where it is not implemented
+ * U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
+ *
+ * @param queueHandle the handle of the queue.
+ * @param pEventData  pointer to a place to put incoming data.
+ * @return            zero on success else negative error code.
+ */
+int32_t uPortQueuePeek(const uPortQueueHandle_t queueHandle,
+                       void *pEventData);
+
 /** Get the number of free spaces in the given queue.
  * It is NOT a requirement that this API is implemented:
  * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
