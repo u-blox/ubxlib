@@ -672,7 +672,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
             } else {
                 uPortLog("U_CELL_SOCK_TEST: failed to send UDP data on"
                          " try %d.\n", x + 1);
-            U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, gSockHandleUdp) > 0);
+                U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, gSockHandleUdp) > 0);
             }
         }
         uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over UDP.\n", y);
