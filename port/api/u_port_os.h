@@ -223,6 +223,9 @@ int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
                              int32_t waitMs, void *pEventData);
 
 /** Get the number of free spaces in the given queue.
+ * It is NOT a requirement that this API is implemented:
+ * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * should be returned.
  *
  * @param queueHandle the handle of the queue.
  * @return            on success the number of spaces available,
