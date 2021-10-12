@@ -24,6 +24,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "stdio.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -94,6 +95,25 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_PLATFORM;
 
+    // Below is a workaround for a memory leak when using newlib built with _LITE_EXIT enabled.
+    // When _LITE_EXIT is enabled the stdio streams stdout, stdin and stderr are not closed
+    // when deallocating the task, resulting in memory leaks if the deleted task have been using
+    // these io streams.
+    // Note: The workaround below only works when a task deletes itself.
+#if defined(__NEWLIB__) && defined(_LITE_EXIT) && defined(_REENT_SMALL) && \
+    !defined(_REENT_GLOBAL_STDIO_STREAMS) && !defined(_UNBUF_STREAM_OPT)
+    if (taskHandle == NULL) {
+        if (stdout) {
+            fclose(stdout);
+        }
+        if (stderr) {
+            fclose(stderr);
+        }
+        if (stdin) {
+            fclose(stdin);
+        }
+    }
+#endif
     if (osThreadTerminate((osThreadId) taskHandle) == osOK) {
         errorCode = U_ERROR_COMMON_SUCCESS;
     }
