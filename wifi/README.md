@@ -11,7 +11,8 @@ The Wi-Fi APIs are split into the following groups:
 The module types supported by this implementation are listed in [u_wifi_module_type.h](api/u_wifi_module_type.h).
 
 
-HOWEVER this is the detailed API; if all you would like to do is bring up a Wi-Fi bearer as simply as possible and then get on with exchanging data, please consider using the [common/network](/common/network) API, along with the [common/sock](/common/sock) API.  You may still dip down into this API from the network level as the handles used at the network level are the ones generated here.
+HOWEVER for Wi-Fi connection and data transfer the recommendation is to use the [common/network](/common/network) API, along with the [common/sock](/common/sock) API.
+The handle returned by `uNetworkAdd()` can still be used with the `wifi` API for configuration etc. Please see the [socket example](/example/sockets) for details.
 
 NOTES:
 * Secure and server sockets not yet supported for Wi-Fi
