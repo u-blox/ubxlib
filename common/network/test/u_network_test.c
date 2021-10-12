@@ -143,6 +143,7 @@ static const int32_t gTotalBytes = (sizeof gTestData - 1) * U_BLE_TEST_TEST_DATA
 static volatile int32_t gBytesSent;
 static volatile int32_t gChannel;
 static volatile size_t gBleHandle;
+static uPortSemaphoreHandle_t gBleConnectionSem = NULL;
 #endif
 
 /** Used for keepGoingCallback() timeout.
@@ -296,6 +297,9 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
         } else {
             uPortLog("U_NETWORK_TEST: connection attempt failed\n");
         }
+    }
+    if (gBleConnectionSem) {
+        uPortSemaphoreGive(gBleConnectionSem);
     }
 
 #if U_CFG_OS_CLIB_LEAKS
@@ -553,6 +557,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                 gBytesSent = 0;
                 gBytesReceived = 0;
                 gIndexInBlock = 0;
+                U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gBleConnectionSem, 0, 1) == 0);
 
                 uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
                                                     connectionCallback,
@@ -576,25 +581,25 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                     }
                     for (size_t tries = 0; tries < 3; tries++) {
                         uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
-                        U_PORT_TEST_ASSERT(uBleDataConnectSps(gUNetworkTestCfg[x].handle,
-                                                              gRemoteSpsAddress) == 0);
-
-                        for (timeoutCount = 0; timeoutCount < 50; timeoutCount++) {
+                        int32_t result;
+                        result = uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                                                    gRemoteSpsAddress);
+                        if (result == 0) {
                             // Wait for connection
+                            uPortSemaphoreTryTake(gBleConnectionSem, 10000);
                             if (gConnHandle != -1) {
                                 break;
                             }
-                            uPortTaskBlock(100);
-                        }
-                        if (gConnHandle != -1) {
-                            break;
+                        } else {
+                            // Just wait a bit and try again...
+                            uPortTaskBlock(5000);
                         }
                     }
 
-                    if (timeoutCount >= 50) {
+                    if (gConnHandle == -1) {
                         uPortLog("U_NETWORK_TEST: All SPS connection attempts failed!\n");
+                        U_PORT_TEST_ASSERT(false);
                     }
-                    U_PORT_TEST_ASSERT(timeoutCount < 50);
                     if (i == 0) {
                         uBleDataGetSpsServerHandles(gUNetworkTestCfg[x].handle, gChannel, &spsHandles);
                     }
@@ -624,6 +629,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
 
                 uBleDataSetDataAvailableCallback(gUNetworkTestCfg[x].handle, NULL, NULL);
                 uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle, NULL, NULL);
+
+                U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gBleConnectionSem) == 0);
+                gBleConnectionSem = NULL;
             }
         }
 
