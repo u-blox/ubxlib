@@ -34,6 +34,8 @@
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
+//lint -efile(766, stdio.h)
+#include "stdio.h"
 #include "stdbool.h"
 #include "stdlib.h"    // rand()
 #include "time.h"      // mktime()
@@ -58,6 +60,11 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+#if defined(__NEWLIB__) && defined(_REENT_SMALL) && \
+    !defined(_REENT_GLOBAL_STDIO_STREAMS) && !defined(_UNBUF_STREAM_OPT)
+# define PRE_ALLOCATE_FILE_COUNT 16
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -158,6 +165,33 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleHeapDefence")
                       buffer);
 
     uPortDeinit();
+
+#ifdef PRE_ALLOCATE_FILE_COUNT
+    // This is newlib specific workaround
+    // When newlib is built with _REENT_GLOBAL_STDIO_STREAMS *disabled*
+    // a global dynamic pool will be used for FILE pointers.
+    // The pool re-uses existing FILE pointers but if no FILE is currently
+    // free for use, newlib will allocate a new one. Since our tests checks
+    // heap usage this can result in "false" memory leak failurs.
+    // To mitigate this problem we start with allocating a couple of FILE
+    // pointers so that that newlib doesn't need to allocate any new ones
+    // throughout the complete test suite.
+    //
+    // TODO: REMOVE THIS WHEN #275 IS DONE
+    static bool files_allocated = false;
+    extern FILE *__sfp (struct _reent *);
+    if (!files_allocated) {
+        uPortLog("U_PREAMBLE_TEST: Pre-allocating FILE pointers\n");
+        FILE *f[PRE_ALLOCATE_FILE_COUNT];
+        for (int i = 0; i < PRE_ALLOCATE_FILE_COUNT; i++) {
+            f[i] = __sfp(_REENT);
+        }
+        for (int i = 0; i < PRE_ALLOCATE_FILE_COUNT; i++) {
+            f[i]->_flags = 0;
+        }
+        files_allocated = true;
+    }
+#endif
 
 #if U_CFG_ENABLE_LOGGING
     heapPlatformLoss -= uPortGetHeapFree();
