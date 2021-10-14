@@ -42,6 +42,11 @@
 #include "u_port_event_queue_private.h"
 #include "u_port_event_queue.h"
 
+#if defined(__NEWLIB__) && defined(_REENT_SMALL) && !_REENT_GLOBAL_STDIO_STREAMS
+#include "u_cfg_sw.h"
+#include "u_port_debug.h"
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -102,6 +107,19 @@ static void eventQueueTask(void *pParam)
                                                  & (param[0]);
 
     U_PORT_MUTEX_LOCK(pEventQueue->taskRunningMutex);
+#if defined(__NEWLIB__) && defined(_REENT_SMALL) && \
+    !defined(_REENT_GLOBAL_STDIO_STREAMS) && !defined(_UNBUF_STREAM_OPT)
+    // This is a temporary workaround to prevent false memory leak failures
+    // in our automated tests.
+    // When _REENT_SMALL is enabled in newlib the allocation of the stdout
+    // stream is delayed until it is needed. To prevent the delayed allocation
+    // we just make an empty print here.
+    //
+    // TODO: REMOVE THIS WHEN #272 IS DONE
+    //
+    // Note: If this is enabled for ESP32 it will crash... (?)
+    uPortLog("");
+#endif
 
     *pControlOrSize = U_EVENT_CONTROL_NONE;
     // Continue until we're told to exit

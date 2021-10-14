@@ -44,6 +44,17 @@ You should then be able to download the Debug build from the IDE and the IDE sho
 
 Alternatively, if you just want to run the target without the debugger and simply view the SWO output, the (ST-Link utility)[https://www.st.com/en/development-tools/stsw-link004.html] utility includes a "Printf via SWO Viewer" option under its "ST-LINK" menu.  Set the core clock to 168 MHz, press "Start" and your debug `printf()`s will appear in that window.  HOWEVER, in this tool ST have fixed the expected SWO clock at 2 MHz whereas in normal operation we run it at 125 kHz to improve reliability; to use the ST-Link viewer you must unfortunately set the conditional complation flag `U_CFG_HW_SWO_CLOCK_HZ` to 2000000 before you build the code and then hope that trace output is sufficiently reliable (for adhoc use it is usually fine, it is under constant automated test that the cracks start to appear).
 
+# newlib workarounds
+
+## stdio memory leak
+The `newlib` supplied via STM32CubeIDE (v1.7.0) is built with the config `_REENT_SMALL` and `_LITE_EXIT`. This configuration will together with FreeRTOS `configUSE_NEWLIB_REENTRANT=1` create memory leaks if the `stdio` streams are used on a task that later on is deleted. The reasons for this are:
+* When `_REENT_SMALL` is enabled reentrant related resources will be dynamically allocated when they are first used. I.e. the first time `printf()` is used for a task a large buffer will be dynamically allocated and at this moment the `stdout` stream will be opened.
+* When `_LITE_EXIT` is enabled `newlib` will not close the `stdio` streams on cleanup. I.e. if `stdout` has been opened for a task it will be kept open even after the task has been deleted.
+To mitigate this issue we manually close `stdout`, `stdin` and `stderr` in `uPortTaskDelete()` for the STM32 port. However, it important to note that this workaround only works when a task deletes itself (`uPortTaskDelete(NULL)`) as we cannot access the reent instance from another task.
+
+## FILE pointer pool
+Another effect from `_REENT_SMALL` is that `FILE` pointers (that among other things are used for the `stdio` streams) are stored in a global pool. When there are no free `FILE` pointer available in this pool `newlib` will dynamically allocate a new one. This is not a memory leak as such since the `FILE` pointers will be re-used when they are closed. However, for our test system that checks for memory leaks it becomes cumbersome since we don't know when these allocations will happen. For this reason we have added a workaround to `preambleHeapDefence()` that will pre-allocate a set of `FILE` pointers that should eliminate the need for `newlib` to do any further allocations during the tests.
+
 # Maintenance
 - When updating this build to a new version of `STM32Cube_FW_F4` change the release version stated in the introduction above.
 - When adding a new API (this is complicated, needing changes in multiple places in two files):
@@ -97,3 +108,4 @@ Alternatively, if you just want to run the target without the debugger and simpl
   ...i.e. the `<name/>` in the `.project` file must appear in the `value` field between `${workspace_loc:/${ProjName}/` and `}` in the new `<listOptionValue/>` line.
   
   When you have made and saved your changes, keep the modified files open in an editor (e.g. `notepad++`), start the STM32Cube IDE, load or refresh the project and check that everything looks right and that the code compiles.  The STM32Cube IDE has a tendency to *fiddle* with the contents of the `.project` file but can get that wrong and lose the entire `<linkedResources />` section from the `.project` file; keeping the modified files open in an editor should allow you to recover if that happens.
+- When STM32CubeIDE is upgraded a new version of `newlib` may be included which may use a different build configuration. Since we have some workarounds for the STM `newlib` mentioned above they may need some attention.

@@ -35,7 +35,7 @@
  * that back, even if you delete the task.  So either don't printf()
  * from the task at all or don't delete it.
  */
-#define U_CFG_OS_CLIB_LEAKS 1
+#define U_CFG_OS_CLIB_LEAKS 0
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR STM32F4: OS GENERIC
