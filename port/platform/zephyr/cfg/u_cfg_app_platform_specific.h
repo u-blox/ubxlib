@@ -137,7 +137,11 @@
 
 #ifndef U_CFG_APP_PIN_CELL_PWR_ON
 /** The NRF5x GPIO output that is connected to the PWR_ON
- * pin of the cellular module.
+ * pin of the cellular module.  Note that if you are using
+ * the Nordic NRF5340 DK board configuration and the version of
+ * Zephry that comes with NCS from about v1.6.1 then Zephyr
+ * use this pin for something and hence it is better to change
+ * it, e.g. to pin 36 (AKA 1.04).
  */
 # define U_CFG_APP_PIN_CELL_PWR_ON            33 // AKA 1.01
 #endif
