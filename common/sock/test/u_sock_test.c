@@ -1401,6 +1401,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
                      errorCode, errno);
             U_PORT_TEST_ASSERT(errorCode == 0);
             U_PORT_TEST_ASSERT(errno == 0);
+            // Give the socket closure time to propagate
+            uPortTaskBlock(100);
             uPortLog("U_SOCK_TEST: opening one more, should succeed.\n");
             descriptor[0] = openSocketAndUseIt(networkHandle,
                                                &remoteAddress,

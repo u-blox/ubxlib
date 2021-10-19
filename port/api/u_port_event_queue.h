@@ -23,7 +23,9 @@
  * @brief An event queue.  Simply put, allows the user to run a
  * function in its own task context, driven asynchronously, with
  * parameters sent through an OS queue.  These functions are
- * thread-safe.
+ * thread-safe except that an event queue should not be closed
+ * while uPortEventQueueSend() or uPortEventQueueSendIrq() are
+ * in progress.
  *
  * It works like this.  If you have function of the form, say:
  *
@@ -142,10 +144,25 @@ extern "C" {
  *                             u_cfg_os_platform_specific.h for
  *                             your platform for more information.
  *                             The default application, for instance,
- *                             runs at U_CFG_OS_APP_TASK_PRIORITY,
- *                             so if you want pFunction to be
- *                             scheduled before it you might set a
- *                             priority of U_CFG_OS_APP_TASK_PRIORITY + 1.
+ *                             runs at U_CFG_OS_APP_TASK_PRIORITY.  Unless
+ *                             you know what you are doing it is STRONGLY
+ *                             advised to run all your event queues at
+ *                             the same U_CFG_OS_APP_TASK_PRIORITY; this
+ *                             way the OS will round-robin schedule the
+ *                             event tasks and no-one will be starved. If
+ *                             you chose different priorities it is very
+ *                             easy for a task to become starved of run-time,
+ *                             meaning it will not be able to empty its queue,
+ *                             the queue may become full and then
+ *                             uPortEventQueueSend() will block. This holds
+ *                             true even for an event queue being fed from
+ *                             an interrupt if the receiving task is
+ *                             forwarding the events to another queue: all
+ *                             the event tasks should run at the same
+ *                             priority otherwise the effective queue depth
+ *                             is that of one link in the chain, not the sum
+ *                             of the links in the chain, and you risk dropping
+ *                             characters at uPortEventQueueSendIrq().
  * @param queueLength          the number of items to let onto the
  *                             queue before blocking or returning an
  *                             error, must be at least 1.
@@ -161,7 +178,8 @@ int32_t uPortEventQueueOpen(void (*pFunction) (void *, size_t),
 
 /** Send to an event queue.  The data at pParam will be copied
  * onto the queue.  If the queue is full this function will block
- * until room is available.
+ * until room is available.  An event queue should not be closed
+ * while this function is in progress.
  *
  * @param handle            the handle for the event queue.
  * @param pParam            a pointer to the parameters structure
@@ -181,7 +199,9 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
  * the event will not be sent and an error will be returned.
  * Note: you must ensure that your interrupt stack is large
  * enough to hold an array of size paramLengthBytes +
- * U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES.
+ * U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES. An event
+ * queue should not be closed while this function is in
+ * progress.
  *
  * @param handle            the handle for the event queue.
  * @param pParam            a pointer to the parameters structure

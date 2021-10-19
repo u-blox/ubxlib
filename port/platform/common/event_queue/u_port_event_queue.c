@@ -359,7 +359,8 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
     uEventQueue_t *pEventQueue;
-    char *pBlock;
+    char *pBlock = NULL;
+    uPortQueueHandle_t queue = NULL;
 
     if (gMutex != NULL) {
 
@@ -370,6 +371,7 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
         if ((pEventQueue != NULL) &&
             (paramLengthBytes <= pEventQueue->paramMaxLengthBytes) &&
             ((pParam != NULL) || (paramLengthBytes == 0))) {
+            queue = pEventQueue->queue;
             errorCode = U_ERROR_COMMON_NO_MEMORY;
             // We need to add the control word to the start, so malloc
             // a block that is paramLengthBytes plus the control
@@ -386,15 +388,23 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
                     memcpy(pBlock + U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES,
                            pParam, paramLengthBytes);
                 }
-                // Send it off
-                errorCode = (uErrorCode_t) uPortQueueSend(pEventQueue->queue,
-                                                          pBlock);
-                // Free memory again
-                free(pBlock);
             }
         }
 
+        // We release the mutex before sending to the
+        // queue since the send process may block (e.g.
+        // if the queue is full) and we don't want
+        // that to block the entire API
         U_PORT_MUTEX_UNLOCK(gMutex);
+
+        if (pBlock != NULL) {
+            if (queue != NULL) {
+                // Send it off
+                errorCode = (uErrorCode_t) uPortQueueSend(queue, pBlock);
+            }
+            // Free memory again
+            free(pBlock);
+        }
     }
 
     return (int32_t) errorCode;

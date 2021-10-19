@@ -346,9 +346,12 @@ extern "C" {
 
 #ifndef U_AT_CLIENT_CALLBACK_TASK_PRIORITY
 /** The priority of the task in which any callbacks triggered via
- * uAtClientCallback() will run.
+ * uAtClientCallback() will run.  This is set to
+ * U_CFG_OS_APP_TASK_PRIORITY because the callback task is often in
+ * a chain of event tasks which should be set to the same
+ * priority or there will be a "kink" in the chain.
  */
-# define U_AT_CLIENT_CALLBACK_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 2)
+# define U_AT_CLIENT_CALLBACK_TASK_PRIORITY U_CFG_OS_APP_TASK_PRIORITY
 #endif
 
 /* ----------------------------------------------------------------
