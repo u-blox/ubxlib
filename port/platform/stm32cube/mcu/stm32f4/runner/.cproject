@@ -82,6 +82,7 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/mcu/cfg}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/common/runner}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/common/heap_check}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/common/mutex_debug}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/Third-Party/Unity}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/include}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/CMSIS_RTOS}"/>
@@ -238,6 +239,7 @@
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/mcu/cfg}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/common/runner}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/common/heap_check}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/U-Blox/platform/common/mutex_debug}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Ubxlib/Inc/Third-Party/Unity}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/include}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Inc/Third_Party/FreeRTOS/Source/CMSIS_RTOS}"/>

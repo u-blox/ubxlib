@@ -30,7 +30,9 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
+
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_debug.h"
 
 #ifdef U_RUNNER_TOP_STR
@@ -57,6 +59,12 @@
 static void appTask(void *pParam)
 {
     (void) pParam;
+
+#ifdef U_CFG_MUTEX_DEBUG
+    uMutexDebugInit();
+    uMutexDebugWatchdog(uMutexDebugPrint, NULL,
+                        U_MUTEX_DEBUG_WATCHDOG_TIMEOUT_SECONDS);
+#endif
 
 #ifdef U_RUNNER_TOP_STR
     // If U_RUNNER_TOP_STR is defined we must be running inside the

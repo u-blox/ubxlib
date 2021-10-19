@@ -189,6 +189,7 @@ SRC_FILES += \
   $(UBXLIB_PATH)/port/platform/common/test/u_preamble_test.c \
   $(UBXLIB_PATH)/port/platform/common/runner/u_runner.c \
   $(UBXLIB_PATH)/port/platform/common/heap_check/u_heap_check.c \
+  $(UBXLIB_PATH)/port/platform/common/mutex_debug/u_mutex_debug.c \
   ${UBXLIB_PATH}/wifi/src/u_wifi.c \
   ${UBXLIB_PATH}/wifi/src/u_wifi_cfg.c \
   ${UBXLIB_PATH}/wifi/src/u_wifi_net.c \
@@ -284,6 +285,7 @@ INC_FOLDERS += \
   $(UBXLIB_PATH)/port/platform/common/event_queue \
   $(UBXLIB_PATH)/port/platform/common/runner \
   $(UBXLIB_PATH)/port/platform/common/heap_check \
+  $(UBXLIB_PATH)/port/platform/common/mutex_debug \
   $(UBXLIB_PATH)/wifi/api \
   $(UBXLIB_PATH)/wifi/test \
   $(NRF5_PORT_PATH) \

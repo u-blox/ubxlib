@@ -30,10 +30,11 @@ set(COMPONENT_ADD_INCLUDEDIRS
                    "../../../../../../api"
 # The private API for the event queue
                    "../../../../../common/event_queue"
+# The mutex debug API that can be compiled in with U_CFG_MUTEX_DEBUG
+                   "../../../../../common/mutex_debug"
 # The platform specific configuration files
                    "../../../.."
-                   "../../cfg"
-)
+                   "../../cfg")
 
 # The implementations of the APIs
 set(COMPONENT_SRCS 
@@ -110,6 +111,7 @@ set(COMPONENT_SRCS
 # The porting layer
                    "../../../../../common/mbedtls/u_port_crypto.c"
                    "../../../../../common/event_queue/u_port_event_queue.c"
+                   "../../../../../common/mutex_debug/u_mutex_debug.c"
                    "../../../../src/u_port.c"
                    "../../../../src/u_port_debug.c"
                    "../../../../src/u_port_gpio.c"

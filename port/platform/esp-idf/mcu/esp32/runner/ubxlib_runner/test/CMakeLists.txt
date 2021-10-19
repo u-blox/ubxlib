@@ -99,7 +99,8 @@ set(COMPONENT_ADD_INCLUDEDIRS "../../../../../app"
                               "../../../../.."
                               "../../../cfg"
                               "../../../../../src"
-                              "../../../../../../../clib")
+                              "../../../../../../../clib"
+                              "../../../../../../common/mutex_debug")
 
 if (DEFINED ENV{U_UBXLIB_AUTO})
 # If we're running under automation, bring in u_runner

@@ -30,13 +30,14 @@ target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/src/u_port_gatt.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/port/clib/u_port_clib_mktime64.c)
 
 #ubxlib common
-target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/error/api ${UBXLIB_BASE}/port/api ${UBXLIB_PF_COMMON}/runner ${UBXLIB_PF_COMMON}/event_queue)
+target_include_directories(app PRIVATE ${UBXLIB_BASE}/cfg ${UBXLIB_BASE}/common/error/api ${UBXLIB_BASE}/port/api ${UBXLIB_PF_COMMON}/runner ${UBXLIB_PF_COMMON}/event_queue ${UBXLIB_PF_COMMON}/mutex_debug)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/mbedtls/u_port_crypto.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/event_queue/u_port_event_queue.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/port/test/u_port_test.c)
 target_sources(app PRIVATE ${UBXLIB_BASE}/port/test/u_port_gatt_test.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/test/u_preamble_test.c)
 target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/runner/u_runner.c)
+target_sources(app PRIVATE ${UBXLIB_PF_COMMON}/mutex_debug/u_mutex_debug.c)
 
 #at-client
 target_include_directories(app PRIVATE ${UBXLIB_BASE}/common/at_client/api ${UBXLIB_BASE}/common/at_client/src ${UBXLIB_BASE}/common/at_client/test)

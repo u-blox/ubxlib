@@ -12,6 +12,7 @@
 
 cfg
 common/error/api
+port/platform/common/mutex_debug
 port/api
 port/clib
 port/platform/common/event_queue

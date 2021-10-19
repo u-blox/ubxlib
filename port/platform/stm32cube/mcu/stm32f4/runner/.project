@@ -182,6 +182,11 @@
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/runner/u_runner.c</locationURI>
 		</link>
 		<link>
+			<name>Ubxlib/U-Blox/Common/u_mutex_debug.c</name>
+			<type>1</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/mutex_debug/u_mutex_debug.c</locationURI>
+		</link>
+		<link>
 			<name>Ubxlib/U-Blox/Common/ShortRange/u_short_range.c</name>
 			<type>1</type>
 			<locationURI>$%7BUBX_PATH%7D/common/short_range/src/u_short_range.c</locationURI>
@@ -1066,6 +1071,11 @@
 			<name>Ubxlib/Inc/U-Blox/platform/common/runner</name>
 			<type>2</type>
 			<locationURI>$%7BUBX_PATH%7D/port/platform/common/runner</locationURI>
+		</link>
+		<link>
+			<name>Ubxlib/Inc/U-Blox/platform/common/mutex_debug</name>
+			<type>2</type>
+			<locationURI>$%7BUBX_PATH%7D/port/platform/common/mutex_debug</locationURI>
 		</link>
 		<link>
 			<name>Ubxlib/Inc/U-Blox/platform/common/heap_check</name>

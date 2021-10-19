@@ -17,7 +17,11 @@
 #ifndef _U_PORT_OS_H_
 #define _U_PORT_OS_H_
 
-/* No #includes allowed here */
+/* No #includes allowed here _except_, under special circumstances,
+ * if we want to sneak mutex debug in under-cover, see the section
+ * under U_CFG_MUTEX_DEBUG that is snuck in at the very end of this
+ * file.
+ */
 
 /** @file
  * @brief Porting layer for OS functions.  These functions are
@@ -380,6 +384,19 @@ void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
 
 #ifdef __cplusplus
 }
+#endif
+
+/* ----------------------------------------------------------------
+ * INCLUDE FOR U_CFG_MUTEX_DEBUG
+ * -------------------------------------------------------------- */
+
+/* This is included down here as we (a) need it to be brought into
+ * everywhere that the OS port functions are called, (b) it needs
+ * the types above and (c) we don't want its macros to modify the
+ * function prototypes above.
+ */
+#ifdef U_CFG_MUTEX_DEBUG
+# include "u_mutex_debug.h"
 #endif
 
 #endif // _U_PORT_OS_H_

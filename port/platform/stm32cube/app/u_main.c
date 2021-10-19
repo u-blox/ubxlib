@@ -31,7 +31,9 @@
 #include "u_cfg_os_platform_specific.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
+
 #include "u_error_common.h"
+
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -66,6 +68,12 @@ static void appTask(void *pParam)
 #if (U_CFG_APP_PIN_C030_ENABLE_3V3 >= 0) || (U_CFG_APP_PIN_CELL_RESET >= 0) || \
     (U_CFG_APP_PIN_CELL_PWR_ON >= 0)
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+#endif
+
+#ifdef U_CFG_MUTEX_DEBUG
+    uMutexDebugInit();
+    uMutexDebugWatchdog(uMutexDebugPrint, NULL,
+                        U_MUTEX_DEBUG_WATCHDOG_TIMEOUT_SECONDS);
 #endif
 
     uPortInit();
