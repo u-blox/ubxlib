@@ -164,7 +164,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)            |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                        |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)  /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP) /* features */
         )
     },
     {

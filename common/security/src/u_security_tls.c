@@ -239,6 +239,12 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(int32_t networkHandle,
                             errorCode = uCellSecTlsSniSet((uCellSecTlsContext_t *) pNetworkSpecific,
                                                           pSettings->pSni);
                         }
+                        if ((errorCode == 0) && (pSettings->useDeviceCertificate)) {
+                            // Set that the device certificate from security sealing
+                            // should be used as the client certificate
+                            errorCode = uCellSecTlsUseDeviceCertificateSet((uCellSecTlsContext_t *) pNetworkSpecific,
+                                                                           pSettings->includeCaCertificates);
+                        }
                     }
                 }
             }

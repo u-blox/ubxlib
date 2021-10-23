@@ -159,7 +159,8 @@ int32_t uCellSecTlsRootCaCertificateNameGet(const uCellSecTlsContext_t *pContext
 
 /** Set the name of the client X.509 certificate to use.
  * The X.509 certificate must have been stored in the module
- * using uSecurityCredentialStore().
+ * using uSecurityCredentialStore().  See also
+ * uCellSecTlsUseDeviceCertificateSet() below.
  *
  * @param pContext    a pointer to the security context.
  * @param pName       the null-terminated name of the client
@@ -251,6 +252,38 @@ int32_t uCellSecTlsClientPskSet(const uCellSecTlsContext_t *pContext,
                                 const char *pPsk, size_t pskLengthBytes,
                                 const char *pPskId, size_t pskIdLengthBytes,
                                 bool generate);
+
+/** If this returns successfully then, for a module which supports u-blox
+ * security and has been security sealed, the device public X.509 certificate
+ * that was generated at security sealing will be used as the client
+ * certificate.
+ *
+ * @param pContext               a pointer to the security context.
+ * @param includeCaCertificates  if set to true then the CA X.509 certificates
+ *                               that were used to sign the device
+ *                               certificate during the security sealing
+ *                               process will also be included.
+ * @return                       zero on success else negative error code.
+ */
+int32_t uCellSecTlsUseDeviceCertificateSet(const uCellSecTlsContext_t *pContext,
+                                           bool includeCaCertificates);
+
+/** Get whether the device public X.509 certificate that was generated at
+ * security sealing is being used as the client certificate.
+ *
+ * @param pContext                a pointer to the security context.
+ * @param pIncludeCaCertificates  a place to store whether the CA X.509
+ *                                certificates that were used to sign the device
+ *                                certificate during the security sealing
+ *                                process are also being included; may be NULL.
+ * @return                        true if the device public X.509 certificate
+ *                                is being usd as the cient certificate, else
+ *                                false (and the name set with the call to
+ *                                uCellSecTlsClientCertificateNameSet() is being
+ *                                used instead).
+ */
+bool uCellSecTlsIsUsingDeviceCertificate(const uCellSecTlsContext_t *pContext,
+                                         bool *pIncludeCaCertificates);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: CONFIGURE CIPHER SUITE

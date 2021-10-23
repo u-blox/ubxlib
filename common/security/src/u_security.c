@@ -288,6 +288,58 @@ bool uSecurityIsSealed(int32_t networkHandle)
 }
 
 /* ----------------------------------------------------------------
+ * FUNCTIONS: ZERO TOUCH PROVISIONING
+ * -------------------------------------------------------------- */
+
+// Read the device public certificate generated during sealing.
+int32_t uSecurityZtpGetDeviceCertificate(int32_t networkHandle,
+                                         char *pData,
+                                         size_t dataSizeBytes)
+{
+    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+
+    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+        errorCodeOrSize = uCellSecZtpGetDeviceCertificate(networkHandle,
+                                                          pData,
+                                                          dataSizeBytes);
+    }
+
+    return errorCodeOrSize;
+}
+
+// Read the device private key generated during sealing.
+int32_t uSecurityZtpGetPrivateKey(int32_t networkHandle,
+                                  char *pData,
+                                  size_t dataSizeBytes)
+{
+    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+
+    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+        errorCodeOrSize = uCellSecZtpGetPrivateKey(networkHandle,
+                                                   pData,
+                                                   dataSizeBytes);
+    }
+
+    return errorCodeOrSize;
+}
+
+// Read the certificate authorities used during sealing.
+int32_t uSecurityZtpGetCertificateAuthorities(int32_t networkHandle,
+                                              char *pData,
+                                              size_t dataSizeBytes)
+{
+    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+
+    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+        errorCodeOrSize = uCellSecZtpGetCertificateAuthorities(networkHandle,
+                                                               pData,
+                                                               dataSizeBytes);
+    }
+
+    return errorCodeOrSize;
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: END TO END ENCRYPTION
  * -------------------------------------------------------------- */
 

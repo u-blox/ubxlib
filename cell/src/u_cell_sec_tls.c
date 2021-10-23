@@ -739,6 +739,94 @@ int32_t uCellSecTlsClientPskSet(const uCellSecTlsContext_t *pContext,
     return gLastErrorCode;
 }
 
+// Use the device public X.509 certificate from security sealing as
+// the client certificate.
+int32_t uCellSecTlsUseDeviceCertificateSet(const uCellSecTlsContext_t *pContext,
+                                           bool includeCaCertificates)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t parameter = 2; // Default is not to include CA certificates
+
+    if (includeCaCertificates) {
+        parameter = 1;
+    }
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pContext != NULL) {
+            pInstance = pUCellPrivateGetInstance(pContext->cellHandle);
+            if (pInstance != NULL) {
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+USECPRF=");
+                uAtClientWriteInt(atHandle, pContext->profileId);
+                uAtClientWriteInt(atHandle, 14);
+                uAtClientWriteInt(atHandle, parameter);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get whether the device public X.509 certificate from security sealing
+// is being used as the client certificate.
+bool uCellSecTlsIsUsingDeviceCertificate(const uCellSecTlsContext_t *pContext,
+                                         bool *pIncludeCaCertificates)
+{
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t x;
+    bool isUsingDeviceCertificate = false;
+
+    if (pIncludeCaCertificates != NULL) {
+        *pIncludeCaCertificates = false;
+    }
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        if (pContext != NULL) {
+            pInstance = pUCellPrivateGetInstance(pContext->cellHandle);
+            if (pInstance != NULL) {
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+USECPRF=");
+                uAtClientWriteInt(atHandle, pContext->profileId);
+                uAtClientWriteInt(atHandle, 14);
+                uAtClientCommandStop(atHandle);
+                // The response is +USECPRF: 0,14,x
+                uAtClientResponseStart(atHandle, "+USECPRF:");
+                // Skip the first parameter, which is just 14
+                // coming back at us
+                uAtClientSkipParameters(atHandle, 1);
+                x = uAtClientReadInt(atHandle);
+                uAtClientResponseStop(atHandle);
+                if ((uAtClientUnlock(atHandle) == 0) && (x > 0)) {
+                    isUsingDeviceCertificate = true;
+                    if ((pIncludeCaCertificates != NULL) && (x == 1)) {
+                        *pIncludeCaCertificates = true;
+                    }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return isUsingDeviceCertificate;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: CONFIGURE CIPHER SUITE
  * -------------------------------------------------------------- */

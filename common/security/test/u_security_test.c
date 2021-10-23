@@ -44,6 +44,8 @@
 #include "u_cfg_test_platform_specific.h"
 #include "u_cfg_os_platform_specific.h" // For U_CFG_OS_CLIB_LEAKS.
 
+#include "u_error_common.h" // For U_ERROR_COMMON_NOT_SUPPORTED
+
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -1168,6 +1170,145 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
                     uPortLog("U_SECURITY_TEST: this device supports u-blox"
                              " security but has not been security sealed,"
                              " no testing of end to end encryption will be"
+                             " carried out.\n");
+                }
+            }
+
+            // Check for memory leaks
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SECURITY_TEST: we have leaked %d byte(s).\n",
+                     heapUsed);
+            // heapUsed < 0 for the Zephyr case where the heap can look
+            // like it increases (negative leak)
+            U_PORT_TEST_ASSERT(heapUsed <= 0);
+        }
+    }
+}
+
+/** Test reading the certificate/key/authorities from sealing.
+ */
+U_PORT_TEST_FUNCTION("[security]", "securityZtp")
+{
+    int32_t networkHandle;
+    int32_t y;
+    int32_t z;
+    int32_t heapUsed;
+    char *pData;
+#ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
+    char key[U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES];
+    char hmac[U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES];
+#endif
+
+    // Do the standard preamble to make sure there is
+    // a network underneath us
+    stdPreamble();
+
+    // Repeat for all bearers
+    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+        networkHandle = gUNetworkTestCfg[x].handle;
+        if (networkHandle >= 0) {
+            // Get the initial-ish heap
+            heapUsed = uPortGetHeapFree();
+
+            uPortLog("U_SECURITY_TEST: checking if u-blox security"
+                     " is supported by handle %d...\n", networkHandle);
+            if (uSecurityIsSupported(networkHandle)) {
+                uPortLog("U_SECURITY_TEST: security is supported.\n");
+                uPortLog("U_SECURITY_TEST: waiting for seal status...\n");
+                if (uSecurityIsSealed(networkHandle)) {
+                    uPortLog("U_SECURITY_TEST: device is sealed.\n");
+
+#ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
+                    // If C2C security is in place for a module then the
+                    // certificates can only be read if a C2C session is
+                    // open
+                    uPortLog("U_SECURITY_TEST: pairing for C2C...\n");
+                    LOG_ON;
+                    U_PORT_TEST_ASSERT(uSecurityC2cPair(networkHandle,
+                                                        U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
+                                                        key, hmac) == 0);
+                    uPortLog("U_SECURITY_TEST: opening a C2C session...\n");
+                    U_PORT_TEST_ASSERT(uSecurityC2cOpen(networkHandle,
+                                                        U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
+                                                        key, hmac) == 0);
+                    LOG_OFF;
+                    LOG_PRINT;
+#endif
+                    // First get the size of the device public certificate
+                    y = uSecurityZtpGetDeviceCertificate(networkHandle, NULL, 0);
+                    uPortLog("U_SECURITY_TEST: device public X.509 certificate is %d bytes.\n", y);
+                    U_PORT_TEST_ASSERT((y > 0) || (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
+                    if (y > 0) {
+                        // Allocate memory to receive into and zero it for good measure
+                        pData = (char *) malloc(y);
+                        U_PORT_TEST_ASSERT(pData != NULL);
+                        //lint -e(668) Suppress possible use of NULL pointer for pData
+                        memset(pData, 0, y);
+                        uPortLog("U_SECURITY_TEST: getting device public X.509 certificate...\n", y);
+                        z = uSecurityZtpGetDeviceCertificate(networkHandle, pData, y);
+                        U_PORT_TEST_ASSERT(z == y);
+                        // Can't really check the data but can check that it is
+                        // of the correct length
+                        U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
+                        free(pData);
+                    } else {
+                        uPortLog("U_SECURITY_TEST: module does not support reading device"
+                                 " public certificate.\n");
+                    }
+
+                    // Get the size of the device private certificate
+                    y = uSecurityZtpGetPrivateKey(networkHandle, NULL, 0);
+                    uPortLog("U_SECURITY_TEST: private key is %d bytes.\n", y);
+                    U_PORT_TEST_ASSERT((y > 0) || (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
+                    if (y > 0) {
+                        // Allocate memory to receive into and zero it for good measure
+                        pData = (char *) malloc(y);
+                        U_PORT_TEST_ASSERT(pData != NULL);
+                        //lint -e(668) Suppress possible use of NULL pointer for pData
+                        memset(pData, 0, y);
+                        uPortLog("U_SECURITY_TEST: getting private key...\n", y);
+                        z = uSecurityZtpGetPrivateKey(networkHandle, pData, y);
+                        U_PORT_TEST_ASSERT(z == y);
+                        // Can't really check the data but can check that it is
+                        // of the correct length
+                        U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
+                        free(pData);
+                    } else {
+                        uPortLog("U_SECURITY_TEST: module does not support reading device"
+                                 " private key.\n");
+                    }
+
+                    // Get the size of the certificate authorities
+                    y = uSecurityZtpGetCertificateAuthorities(networkHandle, NULL, 0);
+                    uPortLog("U_SECURITY_TEST: X.509 certificate authorities are %d bytes.\n", y);
+                    U_PORT_TEST_ASSERT((y > 0) || (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
+                    if (y > 0) {
+                        // Allocate memory to receive into and zero it for good measure
+                        pData = (char *) malloc(y);
+                        U_PORT_TEST_ASSERT(pData != NULL);
+                        //lint -e(668) Suppress possible use of NULL pointer for pData
+                        memset(pData, 0, y);
+                        uPortLog("U_SECURITY_TEST: getting X.509 certificate authorities...\n", y);
+                        z = uSecurityZtpGetCertificateAuthorities(networkHandle, pData, y);
+                        U_PORT_TEST_ASSERT(z == y);
+                        // Can't really check the data but can check that it is
+                        // of the correct length
+                        U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
+                        free(pData);
+                    } else {
+                        uPortLog("U_SECURITY_TEST: module does not support reading "
+                                 " certificate authorities.\n");
+                    }
+
+#ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
+                    uPortLog("U_SECURITY_TEST: closing C2C session again...\n");
+                    U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
+#endif
+
+                } else {
+                    uPortLog("U_SECURITY_TEST: this device supports u-blox"
+                             " security but has not been security sealed,"
+                             " no testing of reading ZTP items can be"
                              " carried out.\n");
                 }
             }

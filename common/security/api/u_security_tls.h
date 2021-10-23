@@ -307,7 +307,8 @@ typedef struct {
                                                uSecurityCredentialStore(). */
     const char *pClientCertificateName;   /**< the null-terminated name of the
                                                client X.509 certificate, as stored
-                                               using uSecurityCredentialStore(). */
+                                               using uSecurityCredentialStore();
+                                               see also useDeviceCertificate below.*/
     const char *pClientPrivateKeyName;    /**< the null-terminated name of the
                                                client private key, as stored using
                                                uSecurityCredentialStore(). */
@@ -354,6 +355,18 @@ typedef struct {
                            is set automatically if the connect string is a URL. */
     bool enableSessionResumption; /**< set to true to enable session resumption; currently
                                        only false is supported. */
+    bool useDeviceCertificate; /**< if this is set to true then pClientCertificateName should
+                                    be set to NULL and instead, for a module that supports
+                                    u-blox security and has been security sealed, the device
+                                    public X.509 certificate that was generated during the
+                                    sealing process is used instead; currently supported on
+                                    some cellular modules only, see the AT+USECPRF=14 command
+                                    in the AT manual for you module for further information. */
+    bool includeCaCertificates; /**< if useDeviceCertificate is true then setting this to
+                                     true will cause the X.509 certificates of the certificate
+                                     authorities that were used to sign the device certificates
+                                     at sealing to ALSO be included; currently supported on
+                                     cellular modules only. */
 } uSecurityTlsSettings_t;
 
 /** The default settings for security: whenever uSecurityTlsSettings_t
@@ -361,18 +374,20 @@ typedef struct {
  * correct default settings are applied.
  */
 #define U_SECURITY_TLS_SETTINGS_DEFAULT {U_SECURITY_TLS_VERSION_ANY, /* tlsVersion */ \
-                                         NULL, /* Root CA name */        \
-                                         NULL, /* Client CA name */      \
-                                         NULL, /* Private key name */    \
+                                         NULL, /* Root CA name */               \
+                                         NULL, /* Client CA name */             \
+                                         NULL, /* Private key name */           \
                                          U_SECURITY_TLS_CERTIFICATE_CHECK_NONE, \
-                                         NULL, /* Private key PW */      \
-                                         {0},  /* Cipher suites */       \
-                                         {NULL, 0}, /* PSK */            \
-                                         {NULL, 0}, /* PSK ID */         \
-                                         false, /* pskGeneratedByRoT */  \
-                                         NULL, /* Expected server URL */ \
-                                         NULL, /* SNI */                 \
-                                         false}; /* Session resumption */
+                                         NULL, /* Private key PW */             \
+                                         {0},  /* Cipher suites */              \
+                                         {NULL, 0}, /* PSK */                   \
+                                         {NULL, 0}, /* PSK ID */                \
+                                         false, /* pskGeneratedByRoT */         \
+                                         NULL, /* Expected server URL */        \
+                                         NULL, /* SNI */                        \
+                                         false, /* Session resumption */        \
+                                         false, /* use device certificate */    \
+                                         false}; /* include CA certificates */
 
 /** Security context structure.
  */

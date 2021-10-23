@@ -395,6 +395,13 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
                                              U_CELL_SEC_TLS_TEST_NAME_LENGTH_BYTES + 1) < 0);
     }
 
+    // TODO currently there are no automated tests of
+    // uCellSecTlsUseDeviceCertificateSet() and uCellSecTlsIsUsingDeviceCertificate()
+    // since none of the FW versions we have on the modules of the
+    // automated test system support it.  The functions have instead
+    // been tested manually.  Come back to this when we have replaced
+    // the module HW so that a later module FW can be used.
+
     // Remove the security context
     uPortLog("U_CELL_SEC_TLS_TEST: removing security context...\n");
     uCellSecTlsRemove(pContext);

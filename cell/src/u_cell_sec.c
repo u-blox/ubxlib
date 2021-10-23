@@ -28,6 +28,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+#include "limits.h"    // for INT_MAX
 #include "stdlib.h"    // malloc(), free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
@@ -150,6 +151,57 @@ static bool moduleIsSealed(const uCellPrivateInstance_t *pInstance)
     }
 
     return isSealed;
+}
+
+// Read a certificate/key/authority generated/used during sealing.
+static int32_t ztpGet(int32_t cellHandle, int32_t type,
+                      char *pData, size_t dataSizeBytes)
+{
+    int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t x;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_SECURITY_ZTP)) {
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+USECDEVCERT=");
+                uAtClientWriteInt(atHandle, type);
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+USECDEVCERT:");
+                // Skip the type that is sent back to us
+                uAtClientSkipParameters(atHandle, 1);
+                // Read the string that follows
+                if (pData == NULL) {
+                    // If the data is to be thrown away, make
+                    // sure all of it is thrown away
+                    dataSizeBytes = INT_MAX;
+                }
+                x = uAtClientReadString(atHandle, pData,
+                                        // Cast in two stages to keep Lint happy
+                                        (size_t)  (unsigned) dataSizeBytes,
+                                        false);
+                uAtClientResponseStop(atHandle);
+                errorCodeOrSize = uAtClientUnlock(atHandle);
+                if ((errorCodeOrSize == 0) && (x > 0)) {
+                    errorCodeOrSize = x + 1; // +1 to include the terminator in the count
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrSize;
 }
 
 /* ----------------------------------------------------------------
@@ -611,6 +663,34 @@ bool uCellSecIsSealed(int32_t cellHandle)
     }
 
     return isSealed;
+}
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: ZERO TOUCH PROVISIONING
+ * -------------------------------------------------------------- */
+
+// Read the device public certificate generated during seaing.
+int32_t uCellSecZtpGetDeviceCertificate(int32_t cellHandle,
+                                        char *pData,
+                                        size_t dataSizeBytes)
+{
+    return ztpGet(cellHandle, 1, pData, dataSizeBytes);
+}
+
+// Read the device private key generated during sealing.
+int32_t uCellSecZtpGetPrivateKey(int32_t cellHandle,
+                                 char *pData,
+                                 size_t dataSizeBytes)
+{
+    return ztpGet(cellHandle, 0, pData, dataSizeBytes);
+}
+
+// Read the certificate authorities used during sealing.
+int32_t uCellSecZtpGetCertificateAuthorities(int32_t cellHandle,
+                                             char *pData,
+                                             size_t dataSizeBytes)
+{
+    return ztpGet(cellHandle, 2, pData, dataSizeBytes);
 }
 
 /* ----------------------------------------------------------------

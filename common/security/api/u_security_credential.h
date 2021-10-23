@@ -223,6 +223,12 @@ int32_t uSecurityCredentialGetHash(int32_t networkHandle,
  * }
  * ```
  *
+ * NOTE: the certificates listed are ONLY those that have been loaded
+ * using uSecurityCredentialStore() or were pre-stored in the module.
+ * Certificates which have been generated automatically using
+ * u-blox security are NOT listed here, please see instead the
+ * uSecurityZtp*() APIs in u_security.h.
+ *
  * @param networkHandle        the handle of the instance to be used,
  *                             e.g. as returned by uNetworkAdd().
  * @param pCredential          pointer to somewhere to store the result.
@@ -242,6 +248,12 @@ int32_t uSecurityCredentialListFirst(int32_t networkHandle,
  * can be freed with a call to uSecurityCredentialListLast()).
  * This function is not thread-safe in that there is a single list
  * for all threads.
+ *
+ * NOTE: the certificates listed are ONLY those that have been loaded
+ * using uSecurityCredentialStore() or were pre-stored in the module.
+ * Certificates which have been generated automatically using
+ * u-blox security are NOT listed here, please see instead the
+ * uSecurityZtp*() APIs in u_security.h.
  *
  * @param networkHandle        the handle of the instance to be used,
  *                             e.g. as returned by uNetworkAdd().

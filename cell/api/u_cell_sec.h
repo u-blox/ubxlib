@@ -259,6 +259,127 @@ int32_t uCellSecSealSet(int32_t cellHandle,
 bool uCellSecIsSealed(int32_t cellHandle);
 
 /* ----------------------------------------------------------------
+ * FUNCTIONS: ZERO TOUCH PROVISIONING
+ * -------------------------------------------------------------- */
+
+/** Read the device X.509 public certificate that was generated
+ * during the sealing process.  If the certificate does not [yet]
+ * exist an error will be returned.  This feature is only
+ * supported if the Zero Touch Provisioning feature is enabled
+ * in your Thingstream portal for the module.
+ *
+ * If pData is set to NULL then the number of bytes required to
+ * store the certificate, including a null terminator, will still
+ * be returned, allowing this API to be called once to find out
+ * the length and then a second time with the correct amount of
+ * storage allocated.  The certificate is returned in PEM format
+ * and will include a null terminator.
+ *
+ * In order to avoid character loss it is recommended that
+ * flow control lines are connected on the interface to the
+ * module.
+ *
+ * Note that if the chip-to-chip security feature is enabled
+ * in the Thingstream portal for a module then a chip-to-chip
+ * security session must have been opened before this function is
+ * called, otherwise it will return an error.
+ *
+ * @param cellHandle      the handle of the cellular instance.
+ * @param pData           a pointer to somewhere to store
+ *                        the certificate; use NULL to
+ *                        just get the size required without
+ *                        any actual data being returned.
+ * @param dataSizeBytes   the number of bytes of storage at
+ *                        pData; ignored if pData is NULL.
+ * @return                on success the number of bytes read
+ *                        (or, if pData is NULL the number of
+ *                        bytes that would be read) INCLUDING
+ *                        the null terminator (i.e. strlen() + 1),
+ *                        else negative error code on failure.
+ */
+int32_t uCellSecZtpGetDeviceCertificate(int32_t cellHandle,
+                                        char *pData,
+                                        size_t dataSizeBytes);
+
+/** Read the device private key that was generated during the
+ * sealing process.  If the key does not [yet] exist an error
+ * will be returned.  This feature is only supported if the Zero
+ * Touch Provisioning feature is enabled in your Thingstream
+ * portal for the module.
+ *
+ * If pData is set to NULL then the number of bytes required to
+ * store the key, including a null terminator, will still be
+ * returned, allowing this API to be called once to find out
+ * the length and then a second time with the correct amount of
+ * storage allocated.  The key is returned in PEM format and
+ * will include a null terminator.
+ *
+ * In order to avoid character loss it is recommended that
+ * flow control lines are connected on the interface to the
+ * module.
+ *
+ * Note that if the chip-to-chip security feature is enabled
+ * in the Thingstream portal for a module then a chip-to-chip
+ * security session must have been opened before this function is
+ * called, otherwise it will return an error.
+ *
+ * @param cellHandle      the handle of the cellular instance.
+ * @param pData           a pointer to somewhere to store
+ *                        the key; use NULL to just get the
+ *                        size required without any actual data
+ *                        being returned.
+ * @param dataSizeBytes   the number of bytes of storage at
+ *                        pData; ignored if pData is NULL.
+ * @return                on success the number of bytes read
+ *                        (or, if pData is NULL the number of
+ *                        bytes that would be read) INCLUDING
+ *                        the null terminator (i.e. strlen() + 1),
+ *                        else negative error code on failure.
+ */
+int32_t uCellSecZtpGetPrivateKey(int32_t cellHandle,
+                                 char *pData,
+                                 size_t dataSizeBytes);
+
+/** Read the X.509 certificate authorities that were used during
+ * the sealing process.  If the certificate(s) do not [yet]
+ * exist an error will be returned.  This feature is only
+ * supported if the Zero Touch Provisioning feature is enabled
+ * in your Thingstream portal for the module.
+ *
+ * If pData is set to NULL then the number of bytes required to
+ * store the certificates, including a null terminator, will still
+ * be returned, allowing this API to be called once to find out
+ * the length and then a second time with the correct amount of
+ * storage allocated.  The certificate(s) are returned in PEM
+ * format and will include a null terminator.
+ *
+ * In order to avoid character loss it is recommended that
+ * flow control lines are connected on the interface to the
+ * module.
+ *
+ * Note that if the chip-to-chip security feature is enabled
+ * in the Thingstream portal for a module then a chip-to-chip
+ * security session must have been opened before this function is
+ * called, otherwise it will return an error.
+ *
+ * @param cellHandle      the handle of the cellular instance.
+ * @param pData           a pointer to somewhere to store
+ *                        the certificate authorities; use
+ *                        NULL to just get the size required
+ *                        without any actual data being returned.
+ * @param dataSizeBytes   the number of bytes of storage at
+ *                        pData; ignored if pData is NULL.
+ * @return                on success the number of bytes read
+ *                        (or, if pData is NULL the number of
+ *                        bytes that would be read) INCLUDING
+ *                        the null terminator (i.e. strlen() + 1),
+ *                        else negative error code on failure.
+ */
+int32_t uCellSecZtpGetCertificateAuthorities(int32_t cellHandle,
+                                             char *pData,
+                                             size_t dataSizeBytes);
+
+/* ----------------------------------------------------------------
  * FUNCTIONS: END TO END ENCRYPTION
  * -------------------------------------------------------------- */
 
