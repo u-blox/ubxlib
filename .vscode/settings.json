@@ -1,0 +1,21 @@
+{
+    /* Files that are not shown in vscode workspace */
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/.obj": true
+    },
+    /* Files that will not be parsed by C/CPP extension */
+    "C_Cpp.files.exclude": {
+        "**/.vscode": true,
+        "**/_build": true
+    },
+    "files.associations": {
+        "*.h": "c",
+        "type_traits": "c"
+    },
+    "cmake.configureOnOpen": false
+}

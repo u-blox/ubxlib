@@ -1,0 +1,16 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "extensions": {
+        "recommendations": [
+            "ms-vscode.cpptools",
+            "marus25.cortex-debug",
+            "shardulm94.trailing-spaces",
+            "ms-python.python",
+            "rioj7.command-variable"
+        ]
+    }
+}

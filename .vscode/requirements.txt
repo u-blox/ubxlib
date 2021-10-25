@@ -1,0 +1,4 @@
+PyYAML
+invoke
+psutil
+requests

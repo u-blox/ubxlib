@@ -17,7 +17,9 @@ sdkconfig
 doxygen_output
 _jenkins_work
 _work
-U_FLAGS.override
-.override
+*.state.json
+u_flags.yml
+config.yml
+arm-toolchain-path.txt
 _build
 /port/platform/arduino/ubxlib

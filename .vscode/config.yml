@@ -1,0 +1,32 @@
+
+unity:
+    windows:
+        install_dir: C:\u-blox\ubxlib_sdks\unity
+    linux:
+        install_dir: ${HOME}/ubxlib_sdks/unity
+
+nrfconnect:
+    version: v1.6.1
+    windows:
+        install_dir: C:\u-blox\ubxlib_sdks\nrfconnect\v1.6.1
+    linux:
+        install_dir: ${HOME}/ubxlib_sdks/nrfconnect/v1.6.1
+
+arm_embedded:
+    version: 10-2020-q4-major
+    windows:
+        install_dir: C:\u-blox\ubxlib_sdks\gcc-arm-none-eabi-10-2020-q4-major
+    linux:
+        install_dir: ${HOME}/ubxlib_sdks/gcc-arm-none-eabi-10-2020-q4-major
+
+nrf5:
+    url: "https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/nRF5_SDK_15.3.0_59ac345.zip"
+    version: 15.3.0_59ac345
+    windows:
+        install_dir: C:\u-blox\ubxlib_sdks\nRF5_SDK_15.3.0_59ac345
+    linux:
+        install_dir: ${HOME}/ubxlib_sdks/nRF5_SDK_15.3.0_59ac345
+
+make:
+    windows:
+        install_dir: C:\u-blox\ubxlib_sdks\make

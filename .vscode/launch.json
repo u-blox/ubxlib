@@ -1,0 +1,192 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "nrf5340dk runner [Zephyr]: Run APP",
+            "cwd": "${workspaceFolder}/.vscode/_build/nrfconnect/runner_nrf5340dk_nrf5340_cpuapp",
+            "executable": "./zephyr/zephyr.hex",
+            "request": "launch",
+            "type": "cortex-debug",
+            "device": "NRF5340_XXAA_APP",
+            "interface": "swd",
+            "servertype": "jlink",
+            "runToMain": true,
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            },
+            "armToolchainPath": "${input:getArmToolchainPath}",
+            "postLaunchCommands": [
+                "add-symbol-file ./zephyr/zephyr.elf 0",
+            ],
+            "preLaunchTask": "Build nrf5340dk runner [Zephyr]"
+        },
+        {
+            "name": "evkninab3 runner [nRF5 SDK]: Attach",
+            "cwd": "${workspaceFolder}/.vscode/_build/nrf5/runner_ubx_evkninab3_nrf52840/",
+            "executable": "nrf52840_xxaa.out",
+            "request": "attach",
+            "type": "cortex-debug",
+            "device": "NRF52840_xxAA",
+            "interface": "swd",
+            "servertype": "jlink",
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            },
+            "armToolchainPath": "${input:getArmToolchainPath}"
+        },
+        {
+            "name": "evkninab3 runner [nRF5 SDK]: Run",
+            "cwd": "${workspaceFolder}/.vscode/_build/nrf5/runner_ubx_evkninab3_nrf52840/",
+            "executable": "nrf52840_xxaa.out",
+            "request": "launch",
+            "type": "cortex-debug",
+            "device": "NRF52840_xxAA",
+            "interface": "swd",
+            "servertype": "jlink",
+            "runToMain": true,
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            },
+            "armToolchainPath": "${input:getArmToolchainPath}",
+            "preLaunchTask": "Build evkninab3 runner [nRF5 SDK]"
+        },
+        {
+            "name": "evkninab3 runner [Zephyr]: Run",
+            "cwd": "${workspaceFolder}/.vscode/_build/nrfconnect/runner_ubx_evkninab3_nrf52840/",
+            "executable": "./zephyr/zephyr.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "device": "NRF52840_xxAA",
+            "interface": "swd",
+            "servertype": "jlink",
+            "runToMain": true,
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            },
+            "armToolchainPath": "${input:getArmToolchainPath}",
+            "preLaunchTask": "Build evkninab3 runner [Zephyr]"
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: u_run_branch",
+            "type": "python",
+            "request": "launch",
+            "program": "u_run_branch.py",
+            "preLaunchTask": "Create workdir",
+            "args": [
+                "-d",
+                "debug.txt",
+                "-s",
+                "summary.txt",
+                "-u",
+                "${workspaceFolder}",
+                "-w",
+                "/tmp/work",
+                "A commit message"
+            ],
+            "cwd": "${workspaceFolder}/port/platform/common/automation",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: u_run",
+            "type": "python",
+            "request": "launch",
+            "preLaunchTask": "Create workdir",
+            "program": "u_run.py",
+            "args": [
+                "-d",
+                "debug.txt",
+                "-s",
+                "summary.txt",
+                "-u",
+                "${workspaceFolder}",
+                "-w",
+                "/tmp/work",
+                "${input:instance}"
+            ],
+            "cwd": "${workspaceFolder}/port/platform/common/automation",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: u_agent_service",
+            "request": "launch",
+            "type": "python",
+            "preLaunchTask": "Create workdir",
+            "program": "${workspaceFolder}/port/platform/common/automation/u_agent_service.py",
+            "args": ["-u", "/opt/sdks/unity/", "-n", "test-host", "/workdir", "1","2","3","4","5"],
+            "cwd": "${workspaceFolder}/port/platform/common/automation",
+            "console": "integratedTerminal"
+        },
+    ],
+
+    "inputs": [
+        {
+            "type": "pickString",
+            "id": "instance",
+            "description": "What instance do you want to run?",
+            "options": [
+              "0.0", "0.1", "0.2", "0.3", "1", "2", "3", "4", "5",
+              "10",
+              "11",
+              "12",
+              "13.0.0", "13.0.1", "13.1",
+              "14",
+              "15.0.0", "15.0.1", "15.1",
+              "16",
+              "17",
+              "18",
+              "19"
+            ],
+            "default": "component"
+        },
+        {
+            "id": "getArmToolchainPath",
+            "type": "command",
+            "command": "extension.commandvariable.file.content",
+            "args": {
+                "fileName": "${workspaceFolder}/.vscode/arm-toolchain-path.txt"
+            }
+        }
+    ]
+}
