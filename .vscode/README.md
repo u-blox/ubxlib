@@ -12,9 +12,9 @@ Note: currently building/running/debugging is only supported on the following pl
 1. Make sure you have Python 3.x installed and that it is in your `PATH` environment. Also make sure that `pip3` is accessable through your `PATH` environment.
 2. Run either [setup_linux.sh](setup_linux.sh) or [setup_windows.bat](setup_windows.sh) depending on your platform.
 3. In vscode use `Open workspace from file` and open [ubxlib-runner.code-workspace](/ubxlib-runner.code-workspace).
-4. Make sure that all the extentsions recommended by the workspace is installed.
+4. Make sure that all the extensions recommended by the workspace are installed.
 
-## `config.yml`
+## [config.yml](config.yml)
 This file is used to tell what SDK versions should be downloaded and where to install them. If you already have some SDKs installed you can point to their location. If not you will be asked for confirmation when you try to build a target if you want to download the required software.
 
 ## `u_flags.yml`
