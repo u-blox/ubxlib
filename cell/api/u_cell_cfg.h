@@ -214,6 +214,30 @@ int32_t uCellCfgSetMnoProfile(int32_t cellHandle,
  */
 int32_t uCellCfgGetMnoProfile(int32_t cellHandle);
 
+/** Configures serial interface. The configuration affects how an available
+ * (physical or logical) serial interface is used, e.g the meaning of data
+ * flowing over it. Possible usages are:
+ *      modem interface (AT command)
+ *      Trace interface (diagnostic log)
+ *      Raw interface (e.g GPS/GNSS).
+ * The module must be re-booted afterwards (with a call to uCellPwrReboot())
+ * for it to take effect.
+ * Note: to find the serial interface variants available for your module, see the
+ * serial interface configuration section (AT+USIO) of AT manual.
+ *
+ * @param cellHandle        the handle of the cellular instance.
+ * @param requestedVariant  the serial interface variant to set, e.g 0 - 255
+ * @return                  zero on success or negative error code on failure.
+ */
+int32_t uCellCfgSetSerialInterface(int32_t cellHandle, int32_t requestedVariant);
+
+/** Get the serial interface active configure.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            active variant of serial interface or negative code on failure.
+ */
+int32_t uCellCfgGetActiveSerialInterface(int32_t cellHandle);
+
 /** Some cellular modules support an "AT+UDCONF" command which
  * allows details of specific features to be configured inside the
  * module, thereafter stored as a non-volatile setting and so

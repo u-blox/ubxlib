@@ -1207,6 +1207,81 @@ int32_t uCellCfgGetMnoProfile(int32_t cellHandle)
     return errorCodeOrMnoProfile;
 }
 
+// Configure serial interface
+int32_t uCellCfgSetSerialInterface(int32_t cellHandle, int32_t requestedVariant)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            // Lock mutex before using AT client.
+            uAtClientLock(atHandle);
+            // Send AT command.
+            uAtClientCommandStart(atHandle, "AT+USIO=");
+            // Write serial interface request variant
+            uAtClientWriteInt(atHandle, requestedVariant);
+            // Wait for response
+            uAtClientCommandStopReadResponse(atHandle);
+            // Unlock mutex after using AT client.
+            errorCode = uAtClientUnlock(atHandle);
+            if (errorCode == 0) {
+                pInstance->rebootIsRequired = true;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the serial interface active configuration
+int32_t uCellCfgGetActiveSerialInterface(int32_t cellHandle)
+{
+    int32_t errorCodeOrActiveVariant = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t activeVariant;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCodeOrActiveVariant = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+USIO?");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+USIO:");
+            uAtClientSkipParameters(atHandle, 1);
+            // Skip one byte of '*' coming in the second param. e.g +USIO: 5,*5
+            uAtClientSkipBytes(atHandle, 1);
+            activeVariant = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
+            errorCodeOrActiveVariant = uAtClientUnlock(atHandle);
+            if ((errorCodeOrActiveVariant == 0) && (activeVariant >= 0)) {
+                errorCodeOrActiveVariant = activeVariant;
+            } else {
+                uPortLog("U_CELL_CFG: unable to read serial interface profile, error %d.\n",
+                         errorCodeOrActiveVariant);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrActiveVariant;
+}
+
 // Set "AT+UDCONF".
 int32_t uCellCfgSetUdconf(int32_t cellHandle, int32_t param1,
                           int32_t param2,  int32_t param3)
