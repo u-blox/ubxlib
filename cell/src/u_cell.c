@@ -234,6 +234,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 pInstance->pMqttContext = NULL;
                 pInstance->pLocContext = NULL;
                 pInstance->socketsHexMode = false;
+                pInstance->pFileSystemTag = NULL;
                 pInstance->pNext = NULL;
 
                 // Now set up the pins

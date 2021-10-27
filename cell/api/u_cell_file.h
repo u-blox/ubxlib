@@ -54,6 +54,39 @@ typedef struct uCellFileListContainer_t {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** The file system is able to read/write/delete/list files from
+ * pre-defined "tagged" areas of the file system, a little like
+ * directories but the tags are ONLY pre-defined by the module.
+ * To use a tagged area, call this function with the tag name (refer
+ * to the file system section of the AT manual for your module to
+ * find out what the permitted tags are).  If this function is not
+ * called the default "USER" area of the file system applies.
+ * Note that uCellFileBlockRead() does NOT support use of tags, i.e.
+ * only files from the default "USER" area of the file system can
+ * be read in blocks.
+ *
+ * @param cellHandle the handle of the cellular instance.
+ * @param pTag       the null-terminated string that is the name of the
+ *                   tag to use - this tag name will apply until the
+ *                   cellular API is deinitialised; use NULL to return
+ *                   to default operation (where no specific tag is
+ *                   used and hence the default "USER" area of the file
+ *                   system will be addressed).
+ * @return           zero on success or negative error code on failure.
+ */
+int32_t uCellFileSetTag(int32_t cellHandle, const char *pTag);
+
+/** Get the file system tag that is currently in use, see
+ * uCellFileSetTag() for more information.  If NULL is returned then
+ * no specific tag is being applied and hence the default "USER" area
+ * of the file system is being addressed.
+ *
+ * @param cellHandle the handle of the cellular instance.
+ * @return           the null-terminated tag name currently in use or
+ *                   NULL if no specific tag is in use.
+ */
+const char *pUCellFileGetTag(int32_t cellHandle);
+
 /** Open file in write mode on file system and write stream of bytes
  * in it. If the file already exists, the data will be appended to
  * the file already stored in the file system. In order to avoid
@@ -92,9 +125,12 @@ int32_t uCellFileRead(int32_t cellHandle,
                       char *pData,
                       size_t dataSize);
 
-/** Read partial contents of file from file system, based on given offset and size.
- * If the file does not exist, error will be return. In order to avoid character loss
- * it is recommended that flow control lines are connected on the interface to the module.
+/** Read partial contents of file from file system, based on given
+ * offset and size.  If the file does not exist, error will be returned.
+ * In order to avoid character loss it is recommended that flow control
+ * lines are connected on the interface to the module.  Note that this
+ * functions does NOT support use of tags, i.e. only files from the
+ * default "USER" area of the file system can be read in blocks.
  *
  * @param cellHandle the handle of the cellular instance.
  * @param pFileName  a pointer to file name to read file contents from file system.
@@ -154,6 +190,9 @@ int32_t uCellFileDelete(int32_t cellHandle,
  * }
  * ```
  *
+ * If a tag has been set using uCellFileSetTag() then only
+ * files from the tagged area of the file system will be listed.
+ *
  * @param cellHandle the handle of the cellular instance.
  * @param pFileName  pointer to somewhere to store the result.
  * @return           the total number of file names in the list
@@ -169,6 +208,10 @@ int32_t uCellFileListFirst(int32_t cellHandle,
  * times will free the memory that held the list after the final call
  * (can be freed with a call to uCellFileListLast()). This function
  * is not thread-safe in that there is a single list for all threads.
+ *
+ *
+ * If a tag has been set using uCellFileSetTag() then only
+ * files from the tagged area of the file system will be listed.
  *
  * @param cellHandle the handle of the cellular instance.
  * @param pFileName  pointer to somewhere to store the result.

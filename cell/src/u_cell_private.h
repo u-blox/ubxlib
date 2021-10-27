@@ -163,7 +163,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST,
     U_CELL_PRIVATE_FEATURE_AUTO_BAUDING,
     U_CELL_PRIVATE_FEATURE_AT_PROFILES,
-    U_CELL_PRIVATE_FEATURE_SECURITY_ZTP
+    U_CELL_PRIVATE_FEATURE_SECURITY_ZTP,
+    U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -294,6 +295,7 @@ typedef struct uCellPrivateInstance_t {
                                       can be populared by a URC in a different thread. */
     uCellPrivateLocContext_t *pLocContext; /**< Hook for a location context. **/
     bool socketsHexMode; /**< set to true for sockets to use hex mode. */
+    const char *pFileSystemTag; /**< the tagged area of the file system currently being addressed. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 

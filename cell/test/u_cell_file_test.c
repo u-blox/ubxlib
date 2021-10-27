@@ -36,7 +36,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // memset()
+#include "string.h"    // memset(), strcmp()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -90,9 +90,11 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileWrite")
 {
     int32_t heapUsed;
     int32_t cellHandle;
+    const uCellPrivateModule_t *pModule;
     int32_t result;
     const char *pBuffer = "DEADBEEFDEADBEEF";
     size_t length;
+    size_t y = 1;
 
     length = strlen(pBuffer);
 
@@ -107,14 +109,39 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileWrite")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    // Open file in write mode and write data into the file
-    uPortLog("U_CELL_FILE_TEST: writing data into file...\n");
-    result = uCellFileWrite(cellHandle, // Cellular Handle
-                            U_CELL_FILE_TEST_FILE_NAME, // File name
-                            pBuffer, // Data to write into the file
-                            length); // Data size
-    uPortLog("U_CELL_FILE_TEST: number of bytes written into the file = %d.\n", result);
-    U_PORT_TEST_ASSERT(result == length);
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
+
+    // Do this twice if tags are supported
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)) {
+        y = 2;
+    }
+
+    for (size_t x = 0; x < y; x++) {
+        if (x > 0) {
+            uPortLog("U_CELL_FILE_TEST: repeating with tag...\n");
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, "USER") == 0);
+        } else {
+            U_PORT_TEST_ASSERT(pUCellFileGetTag(cellHandle) == NULL);
+        }
+
+        // Open file in write mode and write data into the file
+        uPortLog("U_CELL_FILE_TEST: writing data into file...\n");
+        result = uCellFileWrite(cellHandle, // Cellular Handle
+                                U_CELL_FILE_TEST_FILE_NAME, // File name
+                                pBuffer, // Data to write into the file
+                                length); // Data size
+        uPortLog("U_CELL_FILE_TEST: number of bytes written into the file = %d.\n", result);
+        U_PORT_TEST_ASSERT(result == length);
+
+        if (x > 0) {
+            U_PORT_TEST_ASSERT(strcmp(pUCellFileGetTag(cellHandle), "USER") == 0);
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, NULL) == 0);
+        }
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
@@ -134,7 +161,9 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileSize")
 {
     int32_t heapUsed;
     int32_t cellHandle;
+    const uCellPrivateModule_t *pModule;
     int32_t fileSize = 0;
+    size_t y = 1;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -147,13 +176,38 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileSize")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    // Read size of file
-    uPortLog("U_CELL_FILE_TEST: reading file size...\n");
-    fileSize = uCellFileSize(cellHandle, // Cellular Handle
-                             U_CELL_FILE_TEST_FILE_NAME); // File name
-    uPortLog("U_CELL_FILE_TEST: file size = %d.\n", fileSize);
-    // This should pass if previous test has passed
-    U_PORT_TEST_ASSERT(fileSize > 0);
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
+
+    // Do this twice if tags are supported
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)) {
+        y = 2;
+    }
+
+    for (size_t x = 0; x < y; x++) {
+        if (x > 0) {
+            uPortLog("U_CELL_FILE_TEST: repeating with tag...\n");
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, "USER") == 0);
+        } else {
+            U_PORT_TEST_ASSERT(pUCellFileGetTag(cellHandle) == NULL);
+        }
+
+        // Read size of file
+        uPortLog("U_CELL_FILE_TEST: reading file size...\n");
+        fileSize = uCellFileSize(cellHandle, // Cellular Handle
+                                 U_CELL_FILE_TEST_FILE_NAME); // File name
+        uPortLog("U_CELL_FILE_TEST: file size = %d.\n", fileSize);
+        // This should pass if previous test has passed
+        U_PORT_TEST_ASSERT(fileSize > 0);
+
+        if (x > 0) {
+            U_PORT_TEST_ASSERT(strcmp(pUCellFileGetTag(cellHandle), "USER") == 0);
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, NULL) == 0);
+        }
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
@@ -173,6 +227,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileBlockRead")
 {
     int32_t heapUsed;
     int32_t cellHandle;
+    const uCellPrivateModule_t *pModule;
     int32_t result;
     int32_t offset;
     size_t length;
@@ -188,6 +243,12 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileBlockRead")
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
+
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
 
     // Block read from file
     length = 8;
@@ -207,6 +268,15 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileBlockRead")
     U_PORT_TEST_ASSERT(memcmp(buffer, "FDEADBEE", length) == 0);
     U_PORT_TEST_ASSERT(*(buffer + length) == 0xaa);
 
+    // Confirm that an error is returned if a tag is set
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)) {
+        U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, "USER") == 0);
+        U_PORT_TEST_ASSERT(uCellFileBlockRead(cellHandle,
+                                              U_CELL_FILE_TEST_FILE_NAME,
+                                              buffer, 0, 8) < 0);
+        U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, NULL) == 0);
+    }
+
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
     uCellTestPrivatePostamble(&gHandles, false);
@@ -225,8 +295,10 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileRead")
 {
     int32_t heapUsed;
     int32_t cellHandle;
+    const uCellPrivateModule_t *pModule;
     int32_t length = 0;
     char buffer[50];
+    size_t y = 1;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -239,14 +311,39 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileRead")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    // Read contents of file
-    uPortLog("U_CELL_FILE_TEST: reading whole file...\n");
-    length = uCellFileRead(cellHandle, // Cellular Handle
-                           U_CELL_FILE_TEST_FILE_NAME, // File name
-                           buffer, sizeof(buffer)); // Buffer to store file contents
-    uPortLog("U_CELL_FILE_TEST: number of bytes read = %d.\n", length);
-    uPortLog("U_CELL_FILE_TEST: data read \"%.*s\".\n", length, buffer);
-    U_PORT_TEST_ASSERT(length > 0);
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
+
+    // Do this twice if tags are supported
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)) {
+        y = 2;
+    }
+
+    for (size_t x = 0; x < y; x++) {
+        if (x > 0) {
+            uPortLog("U_CELL_FILE_TEST: repeating with tag...\n");
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, "USER") == 0);
+        } else {
+            U_PORT_TEST_ASSERT(pUCellFileGetTag(cellHandle) == NULL);
+        }
+
+        // Read contents of file
+        uPortLog("U_CELL_FILE_TEST: reading whole file...\n");
+        length = uCellFileRead(cellHandle, // Cellular Handle
+                               U_CELL_FILE_TEST_FILE_NAME, // File name
+                               buffer, sizeof(buffer)); // Buffer to store file contents
+        uPortLog("U_CELL_FILE_TEST: number of bytes read = %d.\n", length);
+        uPortLog("U_CELL_FILE_TEST: data read \"%.*s\".\n", length, buffer);
+        U_PORT_TEST_ASSERT(length > 0);
+
+        if (x > 0) {
+            U_PORT_TEST_ASSERT(strcmp(pUCellFileGetTag(cellHandle), "USER") == 0);
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, NULL) == 0);
+        }
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
@@ -266,8 +363,10 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAll")
 {
     int32_t heapUsed;
     int32_t cellHandle;
-    bool found = false;
+    const uCellPrivateModule_t *pModule;
+    bool found;
     char *pFileName;
+    size_t y = 1;
 
     pFileName = (char *) malloc(U_CELL_FILE_NAME_MAX_LENGTH);
     U_PORT_TEST_ASSERT(pFileName != NULL);
@@ -283,19 +382,45 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAll")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    uPortLog("U_CELL_FILE_TEST: listing all the files...\n");
-    for (int32_t x = uCellFileListFirst(cellHandle, pFileName);
-         x >= 0;
-         x = uCellFileListNext(cellHandle, pFileName)) {
-        uPortLog("U_CELL_FILE_TEST: \"%s\".\n", pFileName);
-        if (strcmp(pFileName, U_CELL_FILE_TEST_FILE_NAME) == 0) {
-            found = true;
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
+
+    // Do this twice if tags are supported
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)) {
+        y = 2;
+    }
+
+    for (size_t x = 0; x < y; x++) {
+        if (x > 0) {
+            uPortLog("U_CELL_FILE_TEST: repeating with tag...\n");
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, "USER") == 0);
+        } else {
+            U_PORT_TEST_ASSERT(pUCellFileGetTag(cellHandle) == NULL);
         }
+
+        uPortLog("U_CELL_FILE_TEST: listing all the files...\n");
+        found = false;
+        for (int32_t x = uCellFileListFirst(cellHandle, pFileName);
+             x >= 0;
+             x = uCellFileListNext(cellHandle, pFileName)) {
+            uPortLog("U_CELL_FILE_TEST: \"%s\".\n", pFileName);
+            if (strcmp(pFileName, U_CELL_FILE_TEST_FILE_NAME) == 0) {
+                found = true;
+            }
+        }
+
+        if (x > 0) {
+            U_PORT_TEST_ASSERT(strcmp(pUCellFileGetTag(cellHandle), "USER") == 0);
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, NULL) == 0);
+        }
+
+        U_PORT_TEST_ASSERT(found);
     }
 
     free(pFileName);
-
-    U_PORT_TEST_ASSERT(found);
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
@@ -315,6 +440,8 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileDelete")
 {
     int32_t heapUsed;
     int32_t cellHandle;
+    const uCellPrivateModule_t *pModule;
+    size_t y = 1;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -327,8 +454,41 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileDelete")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    uPortLog("U_CELL_FILE_TEST: deleting file...\n");
-    U_PORT_TEST_ASSERT(uCellFileDelete(cellHandle, U_CELL_FILE_TEST_FILE_NAME) == 0);
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
+
+    // Do this twice if tags are supported
+    if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)) {
+        y = 2;
+    }
+
+    for (size_t x = 0; x < y; x++) {
+        if (x > 0) {
+            uPortLog("U_CELL_FILE_TEST: repeating with tag...\n");
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, "USER") == 0);
+        } else {
+            U_PORT_TEST_ASSERT(pUCellFileGetTag(cellHandle) == NULL);
+        }
+
+        uPortLog("U_CELL_FILE_TEST: deleting file...\n");
+        U_PORT_TEST_ASSERT(uCellFileDelete(cellHandle, U_CELL_FILE_TEST_FILE_NAME) == 0);
+
+        if (x > 0) {
+            U_PORT_TEST_ASSERT(strcmp(pUCellFileGetTag(cellHandle), "USER") == 0);
+            U_PORT_TEST_ASSERT(uCellFileSetTag(cellHandle, NULL) == 0);
+        } else {
+            if (y > 1) {
+                // Re-create the file so that we can delete it again
+                uPortLog("U_CELL_FILE_TEST: re-writing file...\n");
+                U_PORT_TEST_ASSERT(uCellFileWrite(cellHandle,
+                                                  U_CELL_FILE_TEST_FILE_NAME,
+                                                  "some text", 9) == 9);
+            }
+        }
+    }
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

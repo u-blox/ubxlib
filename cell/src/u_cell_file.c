@@ -119,6 +119,54 @@ static void uCellFileListClear()
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// Set the tagged area of the file system that future calls will use.
+int32_t uCellFileSetTag(int32_t cellHandle, const char *pTag)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)) {
+                pInstance->pFileSystemTag = pTag;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the file system tag that is currently in use.
+const char *pUCellFileGetTag(int32_t cellHandle)
+{
+    uCellPrivateInstance_t *pInstance;
+    const char *pFileSystemTag = NULL;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance !=  NULL) {
+            pFileSystemTag = pInstance->pFileSystemTag;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return pFileSystemTag;
+}
+
 // Write data into the file.
 int32_t uCellFileWrite(int32_t cellHandle,
                        const char *pFileName,
@@ -131,11 +179,13 @@ int32_t uCellFileWrite(int32_t cellHandle,
     size_t bytesWritten = 0;
 
     if (gUCellPrivateMutex != NULL) {
+
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         // Check parameters
-        if ((pInstance !=  NULL) && (pData !=  NULL) && (pFileName != NULL) &&
+        if ((pInstance != NULL) && (pData !=  NULL) && (pFileName != NULL) &&
             (strlen(pFileName) <= U_CELL_FILE_NAME_MAX_LENGTH)) {
             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
             atHandle = pInstance->atHandle;
@@ -146,6 +196,10 @@ int32_t uCellFileWrite(int32_t cellHandle,
             uAtClientWriteString(atHandle, pFileName, true);
             // Write size of data to be written into the file
             uAtClientWriteInt(atHandle, (int32_t) dataSize);
+            if (pInstance->pFileSystemTag != NULL) {
+                // Write tag
+                uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+            }
             uAtClientCommandStop(atHandle);
             // Wait for the prompt
             if (uAtClientWaitCharacter(atHandle, '>') == 0) {
@@ -168,10 +222,11 @@ int32_t uCellFileWrite(int32_t cellHandle,
                 errorCode = uAtClientUnlock(atHandle);
             }
         }
+
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 
-    return errorCode ;
+    return errorCode;
 }
 
 // Read data from file.
@@ -187,11 +242,13 @@ int32_t uCellFileRead(int32_t cellHandle,
     int32_t indicatedReadSize = 0;
 
     if (gUCellPrivateMutex != NULL) {
+
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         // Check parameters
-        if ((pInstance !=  NULL) && (pData !=  NULL) && (pFileName != NULL) &&
+        if ((pInstance != NULL) && (pData !=  NULL) && (pFileName != NULL) &&
             (strlen(pFileName) <= U_CELL_FILE_NAME_MAX_LENGTH)) {
             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
             atHandle = pInstance->atHandle;
@@ -200,6 +257,10 @@ int32_t uCellFileRead(int32_t cellHandle,
             uAtClientCommandStart(atHandle, "AT+URDFILE=");
             // Write file name
             uAtClientWriteString(atHandle, pFileName, true);
+            if (pInstance->pFileSystemTag != NULL) {
+                // Write tag
+                uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+            }
             uAtClientCommandStop(atHandle);
             // Grab the response
             if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
@@ -242,6 +303,7 @@ int32_t uCellFileRead(int32_t cellHandle,
                 errorCode = readSize;
             }
         }
+
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 
@@ -262,65 +324,73 @@ int32_t uCellFileBlockRead(int32_t cellHandle,
     int32_t indicatedReadSize = 0;
 
     if (gUCellPrivateMutex != NULL) {
+
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         // Check parameters
-        if ((pInstance !=  NULL) && (pData !=  NULL) && (pFileName != NULL) &&
+        if ((pInstance != NULL) && (pData !=  NULL) && (pFileName != NULL) &&
             (strlen(pFileName) <= U_CELL_FILE_NAME_MAX_LENGTH)) {
-            errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            atHandle = pInstance->atHandle;
-            // Do the URDBLOCK thang with the AT interface
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+URDBLOCK=");
-            // Write file name
-            uAtClientWriteString(atHandle, pFileName, true);
-            // Write offset in bytes from the beginning of the file
-            uAtClientWriteInt(atHandle, (int32_t) offset);
-            // Write size of data to be read from file
-            uAtClientWriteInt(atHandle, (int32_t) dataSize);
-            uAtClientCommandStop(atHandle);
-            // Grab the response
-            if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-                // SARA-R4 only puts \n before the
-                // response, not \r\n as it should
-                uAtClientResponseStart(atHandle, "\n+URDBLOCK:");
-            } else {
-                uAtClientResponseStart(atHandle, "+URDBLOCK:");
-            }
-            // Skip the file name
-            uAtClientSkipParameters(atHandle, 1);
-            // Read the size
-            indicatedReadSize = uAtClientReadInt(atHandle);
-            readSize = indicatedReadSize;
-            if (readSize > (int32_t) dataSize) {
-                readSize = (int32_t) dataSize;
-            }
-            // Don't stop for anything!
-            uAtClientIgnoreStopTag(atHandle);
-            // Get the leading quote mark out of the way
-            uAtClientReadBytes(atHandle, NULL, 1, true);
-            // Now read out all the actual data,
-            // first the bit we want
-            readSize = uAtClientReadBytes(atHandle, pData,
-                                          // Cast in two stages to keep Lint happy
-                                          (size_t) (unsigned) readSize,
-                                          true);
-            if (indicatedReadSize > readSize) {
-                //...and then the rest poured away to NULL
-                uAtClientReadBytes(atHandle, NULL,
-                                   // Cast in two stages to keep Lint happy
-                                   (size_t) (unsigned) (indicatedReadSize - readSize),
-                                   true);
-            }
-            // Make sure to wait for the stop tag before
-            // we finish
-            uAtClientRestoreStopTag(atHandle);
-            uAtClientResponseStop(atHandle);
-            if (uAtClientUnlock(atHandle) == 0) {
-                errorCode = readSize;
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            // Use of tags is not supported by any of the modules
+            // we support for block reads
+            if (pInstance->pFileSystemTag == NULL) {
+                errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                atHandle = pInstance->atHandle;
+                // Do the URDBLOCK thang with the AT interface
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+URDBLOCK=");
+                // Write file name
+                uAtClientWriteString(atHandle, pFileName, true);
+                // Write offset in bytes from the beginning of the file
+                uAtClientWriteInt(atHandle, (int32_t) offset);
+                // Write size of data to be read from file
+                uAtClientWriteInt(atHandle, (int32_t) dataSize);
+                uAtClientCommandStop(atHandle);
+                // Grab the response
+                if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+                    // SARA-R4 only puts \n before the
+                    // response, not \r\n as it should
+                    uAtClientResponseStart(atHandle, "\n+URDBLOCK:");
+                } else {
+                    uAtClientResponseStart(atHandle, "+URDBLOCK:");
+                }
+                // Skip the file name
+                uAtClientSkipParameters(atHandle, 1);
+                // Read the size
+                indicatedReadSize = uAtClientReadInt(atHandle);
+                readSize = indicatedReadSize;
+                if (readSize > (int32_t) dataSize) {
+                    readSize = (int32_t) dataSize;
+                }
+                // Don't stop for anything!
+                uAtClientIgnoreStopTag(atHandle);
+                // Get the leading quote mark out of the way
+                uAtClientReadBytes(atHandle, NULL, 1, true);
+                // Now read out all the actual data,
+                // first the bit we want
+                readSize = uAtClientReadBytes(atHandle, pData,
+                                              // Cast in two stages to keep Lint happy
+                                              (size_t) (unsigned) readSize,
+                                              true);
+                if (indicatedReadSize > readSize) {
+                    //...and then the rest poured away to NULL
+                    uAtClientReadBytes(atHandle, NULL,
+                                       // Cast in two stages to keep Lint happy
+                                       (size_t) (unsigned) (indicatedReadSize - readSize),
+                                       true);
+                }
+                // Make sure to wait for the stop tag before
+                // we finish
+                uAtClientRestoreStopTag(atHandle);
+                uAtClientResponseStop(atHandle);
+                if (uAtClientUnlock(atHandle) == 0) {
+                    errorCode = readSize;
+                }
             }
         }
+
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 
@@ -337,11 +407,13 @@ int32_t uCellFileSize(int32_t cellHandle,
     int32_t size = 0;
 
     if (gUCellPrivateMutex != NULL) {
+
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         // Check parameters
-        if ((pInstance !=  NULL) && (pFileName != NULL) &&
+        if ((pInstance != NULL) && (pFileName != NULL) &&
             (strlen(pFileName) <= U_CELL_FILE_NAME_MAX_LENGTH)) {
             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
             atHandle = pInstance->atHandle;
@@ -352,6 +424,10 @@ int32_t uCellFileSize(int32_t cellHandle,
             uAtClientWriteInt(atHandle, 2);
             // Write file name
             uAtClientWriteString(atHandle, pFileName, true);
+            if (pInstance->pFileSystemTag != NULL) {
+                // Write tag
+                uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+            }
             uAtClientCommandStop(atHandle);
             // Grab the response
             uAtClientResponseStart(atHandle, "+ULSTFILE:");
@@ -362,6 +438,7 @@ int32_t uCellFileSize(int32_t cellHandle,
                 errorCode = size;
             }
         }
+
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 
@@ -377,11 +454,13 @@ int32_t uCellFileDelete(int32_t cellHandle,
     uAtClientHandle_t atHandle;
 
     if (gUCellPrivateMutex != NULL) {
+
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         // Check parameters
-        if ((pInstance !=  NULL) && (pFileName != NULL) &&
+        if ((pInstance != NULL) && (pFileName != NULL) &&
             (strlen(pFileName) <= U_CELL_FILE_NAME_MAX_LENGTH)) {
             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
             atHandle = pInstance->atHandle;
@@ -390,6 +469,10 @@ int32_t uCellFileDelete(int32_t cellHandle,
             uAtClientCommandStart(atHandle, "AT+UDELFILE=");
             // Write file name
             uAtClientWriteString(atHandle, pFileName, true);
+            if (pInstance->pFileSystemTag != NULL) {
+                // Write tag
+                uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+            }
             uAtClientCommandStop(atHandle);
             // Grab the response
             uAtClientCommandStopReadResponse(atHandle);
@@ -397,6 +480,7 @@ int32_t uCellFileDelete(int32_t cellHandle,
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
         }
+
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 
@@ -416,11 +500,13 @@ int32_t uCellFileListFirst(int32_t cellHandle,
     size_t count = 0;
 
     if (gUCellPrivateMutex != NULL) {
+
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         // Check parameters
-        if ((pInstance !=  NULL) && (pFileName != NULL)) {
+        if ((pInstance != NULL) && (pFileName != NULL)) {
             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
             atHandle = pInstance->atHandle;
             // Do the ULSTFILE thang with the AT interface
@@ -430,6 +516,10 @@ int32_t uCellFileListFirst(int32_t cellHandle,
             uAtClientCommandStart(atHandle, "AT+ULSTFILE=");
             // List files operation
             uAtClientWriteInt(atHandle, 0);
+            if (pInstance->pFileSystemTag != NULL) {
+                // Write tag
+                uAtClientWriteString(atHandle, pInstance->pFileSystemTag, true);
+            }
             uAtClientCommandStop(atHandle);
             uAtClientResponseStart(atHandle, "+ULSTFILE:");
             while (keepGoing) {
@@ -473,6 +563,7 @@ int32_t uCellFileListFirst(int32_t cellHandle,
             }
             uAtClientUnlock(atHandle);
         }
+
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 
@@ -488,11 +579,13 @@ int32_t uCellFileListNext(int32_t cellHandle,
     uAtClientHandle_t atHandle;
 
     if (gUCellPrivateMutex != NULL) {
+
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         // Check parameters
-        if ((pInstance !=  NULL) && (pFileName != NULL)) {
+        if ((pInstance != NULL) && (pFileName != NULL)) {
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
             // While this doesn't use the AT interface we can use
@@ -500,6 +593,7 @@ int32_t uCellFileListNext(int32_t cellHandle,
             errorCode = uCellFileListGetRemove(pFileName);
             uAtClientUnlock(atHandle);
         }
+
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 
@@ -513,10 +607,12 @@ void uCellFileListLast(int32_t cellHandle)
     uAtClientHandle_t atHandle;
 
     if (gUCellPrivateMutex != NULL) {
+
         U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
         pInstance = pUCellPrivateGetInstance(cellHandle);
         // Check parameters
-        if (pInstance !=  NULL) {
+        if (pInstance != NULL) {
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
             // While this doesn't use the AT interface we can use
@@ -524,6 +620,7 @@ void uCellFileListLast(int32_t cellHandle)
             uCellFileListClear();
             uAtClientUnlock(atHandle);
         }
+
         U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
     }
 }

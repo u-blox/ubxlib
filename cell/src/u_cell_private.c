@@ -103,7 +103,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // not marked as supported for now
          // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)         |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                  |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
         )
     },
     {
@@ -126,7 +127,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // not marked as supported for now
          // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)                 |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
         )
     },
     {
@@ -140,7 +142,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
         )
     },
     {
@@ -165,7 +168,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)            |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                        |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                         |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP)                        |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
         )
     },
     {
@@ -181,7 +185,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                 |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                      |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                        |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                               |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
         )
     },
     {
@@ -203,7 +208,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_WILL)                           |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)            |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
         )
     }
 };
