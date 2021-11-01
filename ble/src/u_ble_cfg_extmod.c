@@ -124,34 +124,26 @@ static int32_t setBleRole(const uAtClientHandle_t atHandle, int32_t role)
 
 static int32_t getServer(const uAtClientHandle_t atHandle, int32_t type)
 {
-    int32_t error = -1;
-    int32_t id;
+    int32_t error;
+    int32_t found_id = -1;
 
     uAtClientLock(atHandle);
-    // Short time out so we don't hang if number of set servers is less than max
-    uAtClientTimeoutSet(atHandle, 50);
     uAtClientCommandStart(atHandle, "AT+UDSC");
     uAtClientCommandStop(atHandle);
 
-    bool found = false;
-    for (size_t y = 0; (y < U_BLE_CFG_MAX_NUM_SERVERS) &&
-         !found; y++) {
-        uAtClientResponseStart(atHandle, "+UDSC:");
-        id = uAtClientReadInt(atHandle);
+    // Loop until we get OK, ERROR or timeout
+    while (uAtClientResponseStart(atHandle, "+UDSC:") == 0) {
+        int32_t id = uAtClientReadInt(atHandle);
         if (uAtClientReadInt(atHandle) == type) {
-            found = true;
-            break;
+            found_id = id;
         }
     }
 
     uAtClientResponseStop(atHandle);
-    // Don't check for errors here as we will likely
-    // have a timeout through waiting for a type that
-    // didn't come.
-    uAtClientUnlock(atHandle);
+    error = uAtClientUnlock(atHandle);
 
-    if (found) {
-        error = id;
+    if (error == 0) {
+        error = found_id;
     }
 
     return error;
