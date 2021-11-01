@@ -184,7 +184,7 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
         // Connect to wifi network
         int32_t res = uWifiNetStationConnect(gHandles.wifiHandle,
                                              pSsid,
-                                             U_SHORT_RANGE_WIFI_AUTH_WPA2_PSK,
+                                             U_SHORT_RANGE_WIFI_AUTH_WPA_PSK,
                                              pPassPhrase);
         if (res == 0) {
             //Wait for connection and IP events.

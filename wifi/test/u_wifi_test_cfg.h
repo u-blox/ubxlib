@@ -42,7 +42,7 @@
 #ifndef U_WIFI_TEST_CFG_AUTHENTICATION
 /** The authentication mode to use for testing WiFi
  */
-# define U_WIFI_TEST_CFG_AUTHENTICATION 2 // WPA2
+# define U_WIFI_TEST_CFG_AUTHENTICATION 2 // WPA/WPA2/WPA3
 #endif
 
 #ifndef U_WIFI_TEST_CFG_WPA2_PASSPHRASE

@@ -64,8 +64,8 @@ typedef struct {
     const char *pSsid; /**< The access point SSID to connect */
     int32_t authentication; /**< The access point authentication mode. Values are:
                                 1: Open (No authentication)
-                                2: WPA2-PSK */
-    const char *pPassPhrase; /**< WPA2 passphrase - should be NULL for open */
+                                2: WPA/WPA2/WPA3-PSK */
+    const char *pPassPhrase; /**< WPA/WPA2/WPA3 passphrase - should be NULL for open */
 } uNetworkConfigurationWifi_t;
 
 #endif // _U_NETWORK_CONFIG_WIFI_H_

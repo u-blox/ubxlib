@@ -155,8 +155,8 @@ static int32_t parseAuthentication(int32_t value, uWifiNetAuth_t *pDstAuth)
             *pDstAuth = U_SHORT_RANGE_WIFI_AUTH_OPEN;
             break;
 
-        case (int32_t)U_SHORT_RANGE_WIFI_AUTH_WPA2_PSK:
-            *pDstAuth = U_SHORT_RANGE_WIFI_AUTH_WPA2_PSK;
+        case (int32_t)U_SHORT_RANGE_WIFI_AUTH_WPA_PSK:
+            *pDstAuth = U_SHORT_RANGE_WIFI_AUTH_WPA_PSK;
             break;
 
         default:

@@ -322,7 +322,7 @@ static void connectWifi()
         // Connect to wifi network
         tmp = uWifiNetStationConnect(gHandles.wifiHandle,
                                      U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
-                                     U_SHORT_RANGE_WIFI_AUTH_WPA2_PSK,
+                                     U_SHORT_RANGE_WIFI_AUTH_WPA_PSK,
                                      U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
         TEST_CHECK_TRUE(tmp == 0);
     }

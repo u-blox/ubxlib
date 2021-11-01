@@ -32,26 +32,6 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_WIFI_UART_BUFFER_LENGTH_BYTES
-/** The recommended UART buffer length for the short range driver,
- * large enough for large AT or EDM packet using WiFi.
- */
-# define U_WIFI_UART_BUFFER_LENGTH_BYTES 600
-#endif
-
-#ifndef U_WIFI_AT_BUFFER_LENGTH_BYTES
-/** The AT client buffer length required in the AT client by the
- * wifi driver.
- */
-# define U_WIFI_AT_BUFFER_LENGTH_BYTES U_AT_CLIENT_BUFFER_LENGTH_BYTES
-#endif
-
-#ifndef U_WIFI_UART_BAUD_RATE
-/** The default baud rate to communicate with a short range module.
- */
-# define U_WIFI_UART_BAUD_RATE 115200
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

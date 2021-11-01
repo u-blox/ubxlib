@@ -53,7 +53,7 @@ extern "C" {
  * -------------------------------------------------------------- */
 typedef enum {
     U_SHORT_RANGE_WIFI_AUTH_OPEN = 1, /**< No authentication mode */
-    U_SHORT_RANGE_WIFI_AUTH_WPA2_PSK = 2, /**< WPA2 psk authentication mode. */
+    U_SHORT_RANGE_WIFI_AUTH_WPA_PSK = 2, /**< WPA/WPA2/WPA3 psk authentication mode. */
 } uWifiNetAuth_t;
 
 
@@ -101,7 +101,7 @@ typedef void (*uWifiNetNetworkStatusCallback_t) (int32_t wifiHandle,
  * @param wifiHandle       the handle of the wifi instance.
  * @param pSsid            the Service Set Identifier
  * @param authentication   the authentication type
- * @param[in] pPassPhrase  the Passphrase (8-63ASCII characters as a string) for WPA/WPA2
+ * @param[in] pPassPhrase  the Passphrase (8-63ASCII characters as a string) for WPA/WPA2/WPA3
  * @return                 zero on successful, else negative error code.
  *                         Note: There is no actual connection until the Wifi callback reports
  *                         connected.

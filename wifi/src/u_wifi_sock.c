@@ -98,7 +98,7 @@ typedef enum {
 typedef struct {
     int32_t sockHandle; /**< The handle of the socket instance
                              -1 if this socket is not in use. */
-    int32_t wifiHandle; /**< The handle of the cellular wifi instance.
+    int32_t wifiHandle; /**< The handle of the wifi instance.
                              -1 if this socket is not in use. */
     int32_t connHandle; /**< The connection handle that the wifi module
                                    uses for the socket instance.

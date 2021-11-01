@@ -21,7 +21,7 @@
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
- * are common and private to cellular API testing.
+ * are common and private to wifi API testing.
  */
 
 #ifdef __cplusplus
@@ -98,7 +98,7 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
 //                                           is not defined
 void uWifiTestPrivatePostamble(uWifiTestPrivate_t *pParameters);
 
-/** The standard clean-up for a cell test.
+/** The standard clean-up for a wifi test.
  *
  * @param pParameters a pointer to the parameters struct.
  */

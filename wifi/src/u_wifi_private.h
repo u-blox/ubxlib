@@ -19,7 +19,7 @@
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
- * are common and private to the cellular API.
+ * are common and private to the wifi API.
  */
 
 #ifdef __cplusplus
