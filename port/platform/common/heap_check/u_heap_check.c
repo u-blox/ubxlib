@@ -231,7 +231,7 @@ void *__wrap__realloc_r(void *pReent, void *pMem, size_t sizeBytes)
  * -------------------------------------------------------------- */
 
 // Get the minimum heap free, ever.
-size_t uHeapCheckGetMinFree()
+size_t uHeapCheckGetMinFree(void)
 {
     size_t minFree = 0;
 

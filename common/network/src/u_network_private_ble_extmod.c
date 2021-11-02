@@ -124,7 +124,7 @@ static void clearInstance(uNetworkPrivateBleInstance_t *pInstance)
  * -------------------------------------------------------------- */
 
 // Initialise the network API for BLE.
-int32_t uNetworkInitBle()
+int32_t uNetworkInitBle(void)
 {
     int32_t errorCode = uNetworkInitShortRange();
     if (errorCode >= 0) {
@@ -139,7 +139,7 @@ int32_t uNetworkInitBle()
 }
 
 // Deinitialise the sho network API.
-void uNetworkDeinitBle()
+void uNetworkDeinitBle(void)
 {
     uBleDeinit();
     uNetworkDeinitShortRange();

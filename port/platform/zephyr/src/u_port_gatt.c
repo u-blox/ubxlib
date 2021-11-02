@@ -669,12 +669,12 @@ static void gattXchangeMtuRsp(struct bt_conn *conn, uint8_t err,
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-int32_t uPortGattInit()
+int32_t uPortGattInit(void)
 {
     return 0;
 }
 
-void uPortGattDeinit()
+void uPortGattDeinit(void)
 {
     uPortGattRemoveAllServices();
 }

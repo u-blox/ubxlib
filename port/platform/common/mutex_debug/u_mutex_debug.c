@@ -579,7 +579,7 @@ int32_t uMutexDebugUnlock(uPortMutexHandle_t mutexHandle)
  * -------------------------------------------------------------- */
 
 // Initialise mutex debug.
-int32_t uMutexDebugInit()
+int32_t uMutexDebugInit(void)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
 
@@ -593,7 +593,7 @@ int32_t uMutexDebugInit()
 }
 
 // De-initialise mutex debug.
-void uMutexDebugDeinit()
+void uMutexDebugDeinit(void)
 {
     if (gMutexList != NULL) {
 

@@ -35,12 +35,12 @@
 #include "u_network_config_cell.h"
 #include "u_network_private_cell.h"
 
-int32_t uNetworkInitCell()
+int32_t uNetworkInitCell(void)
 {
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-void uNetworkDeinitCell()
+void uNetworkDeinitCell(void)
 {
 
 }

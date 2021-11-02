@@ -131,7 +131,7 @@ static uNetworkPrivateShoInstance_t *pFindHandle(int32_t shoHandle)
  * -------------------------------------------------------------- */
 
 // Initialise the network API for short range.
-int32_t uNetworkInitShortRange()
+int32_t uNetworkInitShortRange(void)
 {
     // We will only do the real initialization on first call to
     // uNetworkInitShortRange().
@@ -151,7 +151,7 @@ int32_t uNetworkInitShortRange()
 }
 
 // Deinitialise the short range network API.
-void uNetworkDeinitShortRange()
+void uNetworkDeinitShortRange(void)
 {
     // We use the ref counter to decide if its time to do the real
     // deinit. As an example: if uNetworkInitShortRange() has been

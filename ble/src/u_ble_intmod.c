@@ -70,14 +70,14 @@ uBleModuleType_t shortRangeToBleModule(uShortRangeModuleType_t module)
  * -------------------------------------------------------------- */
 
 // Initialise the ble driver.
-int32_t uBleInit()
+int32_t uBleInit(void)
 {
     uBleDataPrivateInit();
     return uPortGattInit();
 }
 
 // Shut-down the ble driver.
-void uBleDeinit()
+void uBleDeinit(void)
 {
     uBleDataPrivateDeinit();
     return uPortGattDeinit();

@@ -71,7 +71,7 @@
  * -------------------------------------------------------------- */
 
 // Initialise the network API for BLE.
-int32_t uNetworkInitBle()
+int32_t uNetworkInitBle(void)
 {
     uBleInit();
 
@@ -79,7 +79,7 @@ int32_t uNetworkInitBle()
 }
 
 // Deinitialise the sho network API.
-void uNetworkDeinitBle()
+void uNetworkDeinitBle(void)
 {
     uBleDeinit();
 }

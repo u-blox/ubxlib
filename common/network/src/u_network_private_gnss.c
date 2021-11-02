@@ -132,7 +132,7 @@ static uNetworkPrivateGnssInstance_t *pGetInstance(int32_t gnssHandle)
  * -------------------------------------------------------------- */
 
 // Initialise the network API for GNSS.
-int32_t uNetworkInitGnss()
+int32_t uNetworkInitGnss(void)
 {
     uGnssInit();
 
@@ -145,7 +145,7 @@ int32_t uNetworkInitGnss()
 }
 
 // Deinitialise the GNSS network API.
-void uNetworkDeinitGnss()
+void uNetworkDeinitGnss(void)
 {
     uGnssDeinit();
 }

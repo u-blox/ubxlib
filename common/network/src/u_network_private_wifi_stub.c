@@ -39,7 +39,7 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uNetworkInitWifi()
+int32_t uNetworkInitWifi(void)
 {
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }

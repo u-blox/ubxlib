@@ -138,7 +138,7 @@ static bool keepGoingCallback(int32_t cellHandle)
  * -------------------------------------------------------------- */
 
 // Initialise the network API for cellular.
-int32_t uNetworkInitCell()
+int32_t uNetworkInitCell(void)
 {
     uAtClientInit();
     uCellInit();
@@ -153,7 +153,7 @@ int32_t uNetworkInitCell()
 }
 
 // Deinitialise the cellular network API.
-void uNetworkDeinitCell()
+void uNetworkDeinitCell(void)
 {
     uAtClientDeinit();
     uCellDeinit();

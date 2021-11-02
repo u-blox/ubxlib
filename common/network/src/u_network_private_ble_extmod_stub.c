@@ -39,12 +39,12 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uNetworkInitBle()
+int32_t uNetworkInitBle(void)
 {
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-void uNetworkDeinitBle()
+void uNetworkDeinitBle(void)
 {
 }
 

@@ -215,7 +215,7 @@ static inline uEventQueue_t *pEventQueueGet(int32_t handle)
 //lint -esym(759, uPortEventQueuePrivateInit)
 //lint -esym(765, uPortEventQueuePrivateInit)
 //lint -esym(714, uPortEventQueuePrivateInit)
-int32_t uPortEventQueuePrivateInit()
+int32_t uPortEventQueuePrivateInit(void)
 {
     int32_t errorCode = 0;
 
@@ -238,7 +238,7 @@ int32_t uPortEventQueuePrivateInit()
 //lint -esym(759, uPortEventQueuePrivateDeinit)
 //lint -esym(765, uPortEventQueuePrivateDeinit)
 //lint -esym(714, uPortEventQueuePrivateDeinit)
-void uPortEventQueuePrivateDeinit()
+void uPortEventQueuePrivateDeinit(void)
 {
     if (gMutex != NULL) {
 

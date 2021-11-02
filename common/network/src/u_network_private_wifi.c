@@ -327,7 +327,7 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
  * -------------------------------------------------------------- */
 
 // Initialise the network API for Wifi.
-int32_t uNetworkInitWifi()
+int32_t uNetworkInitWifi(void)
 {
     int32_t errorCode = uNetworkInitShortRange();
     if (errorCode >= 0) {
@@ -342,7 +342,7 @@ int32_t uNetworkInitWifi()
 }
 
 // Deinitialise the Wifi network API.
-void uNetworkDeinitWifi()
+void uNetworkDeinitWifi(void)
 {
     uWifiDeinit();
     uNetworkDeinitShortRange();
