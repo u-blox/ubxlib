@@ -1,5 +1,5 @@
 # Introduction
-These directories provide the implementation of the porting layer on the Zephyr platform.  Instructions on how to install the necessary tools and perform the build can be found in the MCU directories below.  Though this is intended to become a generic Zephyr platform, at the moment it supports only Nordic MCUs as they require a **specific** version/configuration of Zephyr.
+These directories provide the implementation of the porting layer on the Zephyr platform.  Instructions on how to install the necessary tools and perform the build can be found in the [runner](runner) directory.  Though this is intended to become a generic Zephyr platform, at the moment it supports only Nordic MCUs as they require a **specific** version/configuration of Zephyr.
 
 Note: the directory structure here differs from that in the other platform directories in order to follow more closely the approach adopter by Zephyr, which is hopefully familiar to Zephyr users.
 

@@ -1,28 +1,28 @@
 # Introduction
-This directory contains the wifi APIs for control and data.
+This directory contains the Wi-Fi APIs for control and data.
 
-The wifi APIs are split into the following groups:
+The Wi-Fi APIs are split into the following groups:
 
-- `<no group>`: init/deinit of the wifi API and adding a wifi instance.
-- `cfg`: configuration of the wifi module.
-- `net`: connection to a wifi network.
+- `<no group>`: init/deinit of the Wi-Fi API and adding a Wi-Fi instance.
+- `cfg`: configuration of the Wi-Fi module.
+- `net`: connection to a Wi-Fi network.
 - `sock`: sockets, for exchanging data (but see the [common/sock](/common/sock) component for the best way to do this).
 
 The module types supported by this implementation are listed in [u_wifi_module_type.h](api/u_wifi_module_type.h).
 
 **NOTES:**
-* Secure and server sockets not yet supported for wifi
-* Wifi UDP sockets has some limitations (also documented in [u_wifi_sock.h](api/u_wifi_sock.h)):
+* Secure and server sockets not yet supported for Wi-Fi
+* Wi-Fi UDP sockets has some limitations (also documented in [u_wifi_sock.h](api/u_wifi_sock.h)):
    - Each UDP socket can only be used for communicating with a *single* remote peer.
    - Before using `uWifiSockReceiveFrom()` either `uWifiSockSendTo()` or `uWifiSockConnect()` must have been called
 
 # Usage
-The [api](api) directory contains the files that define the wifi APIs, each API function documented in its header file.  In the [src](src) directory you will find the implementation of the APIs and in the [test](test) directory the tests for the APIs that can be run on any platform.
+The [api](api) directory contains the files that define the Wi-Fi APIs, each API function documented in its header file.  In the [src](src) directory you will find the implementation of the APIs and in the [test](test) directory the tests for the APIs that can be run on any platform.
 
-HOWEVER for wifi connection and data transfer the recommendation is to use the [common/network](/common/network) API, along with the [common/sock](/common/sock) API. The handle returned by `uNetworkAdd()` can still be used with the `wifi` API for configuration etc. Please see the [socket example](/example/sockets) for details.
+HOWEVER for Wi-Fi connection and data transfer the recommendation is to use the [common/network](/common/network) API, along with the [common/sock](/common/sock) API. The handle returned by `uNetworkAdd()` can still be used with the `wifi` API for configuration etc. Please see the [socket example](/example/sockets) for details.
 
 ## Example
-Below is a simple example that will setup a wifi connection using the [common/network](/common/network) API:
+Below is a simple example that will setup a Wi-Fi connection using the [common/network](/common/network) API:
 
 ```c
 #include <stddef.h>
@@ -72,10 +72,10 @@ int main(void)
     VERIFY(uNetworkInit() == 0, "uNetworkInit failed\n");
 
     netHandle = uNetworkAdd(U_NETWORK_TYPE_WIFI, &wifiConfig);
-    uPortLog("Bring up wifi\n");
+    uPortLog("Bring up Wi-Fi\n");
     VERIFY(uNetworkUp(netHandle) == 0, "uNetworkUp failed\n");
 
-    uPortLog("Wifi connected\n");
+    uPortLog("Wi-Fi connected\n");
     // Just sleep for 10 sec
     uPortTaskBlock(10*1000);
 

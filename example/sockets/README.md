@@ -36,4 +36,4 @@ Obviously you will need a SIM in your board, an antenna connected and you may ne
 
 `U_CFG_APP_PIN_SHORT_RANGE_xxx`: the default values for the MCU pins connecting your short range module to your MCU are #defined in the file [port/platform](/port/platform)`/<platform>/mcu/<mcu>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the #defines (where -1 means "not connected").
 
-`U_CFG_APP_SHORT_RANGE_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the cellular module.  The default is usually acceptable but if you wish to change it then consult the file [port/platform](/port/platform)`<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.
+`U_CFG_APP_SHORT_RANGE_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the Wi-Fi module.  The default is usually acceptable but if you wish to change it then consult the file [port/platform](/port/platform)`<platform>/mcu/<mcu>/cfg/cfg_hw_platform_specific.h` for other options.
