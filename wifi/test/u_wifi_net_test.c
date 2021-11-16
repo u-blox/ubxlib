@@ -40,6 +40,7 @@
 
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdbool.h"
+#include "string.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
@@ -86,13 +87,10 @@ static volatile int32_t gWifiDisconnected = 0;
 static volatile uint32_t gNetStatusMask = 0;
 static volatile int32_t gLookForDisconnectReasonBitMask = 0;
 static volatile int32_t gDisconnectReasonFound = 0;
+static uWifiNetScanResult_t gScanResult;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
 static void wifiConnectionCallback(int32_t wifiHandle,
@@ -249,6 +247,36 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
     return testError;
 }
 
+static void uWifiScanResultCallback(int32_t wifiHandle, uWifiNetScanResult_t *pResult)
+{
+    if (strcmp(pResult->ssid, U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID)) == 0) {
+        gScanResult = *pResult;
+    }
+}
+
+static bool validateScanResult(uWifiNetScanResult_t *pResult)
+{
+    if ((pResult->channel <= 0) || (pResult->channel > 185)) {
+        uPortLog(LOG_TAG "Invalid WiFi channel: %d\n", pResult->channel);
+        return false;
+    }
+    if (pResult->rssi > 0) {
+        uPortLog(LOG_TAG "Invalid RSSI value: %d\n", pResult->rssi);
+        return false;
+    }
+    if ((pResult->opMode != U_WIFI_NET_OP_MODE_INFRASTRUCTURE) &&
+        (pResult->opMode != U_WIFI_NET_OP_MODE_ADHOC)) {
+        uPortLog(LOG_TAG "Invalid opMode value: %d\n", pResult->rssi);
+        return false;
+    }
+
+    return true;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
 U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetInitialisation")
 {
     int32_t waitCtr = 0;
@@ -332,6 +360,82 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetStationConnectWrongPassphrase")
     // Handle errors
     U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_CONNECTED);
     U_PORT_TEST_ASSERT(gDisconnectReasonFound);
+}
+
+U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetScan")
+{
+    int32_t result;
+    uWifiTestError_t testError = U_WIFI_TEST_ERROR_NONE;
+
+    result = uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                      &gHandles);
+    U_PORT_TEST_ASSERT(result == 0);
+
+    //----------------------------------------------------------
+    // Scan for all networks
+    //----------------------------------------------------------
+
+    // If an AP is found with SSID matching U_WIFI_TEST_CFG_SSID the scan result entry
+    // will be stored in gScanResult.
+    memset(&gScanResult, 0, sizeof(gScanResult));
+
+    // There is a risk that the AP is not included in the scan results even if it's present
+    // For this reason we use a retry loop
+    for (int32_t i = 0; i < 3; i++) {
+        result = uWifiNetStationScan(gHandles.wifiHandle,
+                                     NULL,
+                                     uWifiScanResultCallback);
+        U_PORT_TEST_ASSERT(result == 0);
+        if (gScanResult.channel != 0) {
+            // We found it
+            break;
+        }
+    }
+    // Make sure the AP was found
+    U_PORT_TEST_ASSERT(gScanResult.channel != 0);
+    // Basic validation of the result
+    U_PORT_TEST_ASSERT(validateScanResult(&gScanResult));
+
+    //----------------------------------------------------------
+    // Scan specifically for U_WIFI_TEST_CFG_SSID
+    //----------------------------------------------------------
+    memset(&gScanResult, 0, sizeof(gScanResult));
+    for (int32_t i = 0; i < 3; i++) {
+        result = uWifiNetStationScan(gHandles.wifiHandle,
+                                     U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
+                                     uWifiScanResultCallback);
+        U_PORT_TEST_ASSERT(result == 0);
+        if (gScanResult.channel != 0) {
+            // We found it
+            break;
+        }
+    }
+    // Make sure the AP was found
+    U_PORT_TEST_ASSERT(gScanResult.channel != 0);
+    // Basic validation of the result
+    U_PORT_TEST_ASSERT(validateScanResult(&gScanResult));
+
+    //----------------------------------------------------------
+    // Scan for non existent SSID
+    //----------------------------------------------------------
+    memset(&gScanResult, 0, sizeof(gScanResult));
+    for (int32_t i = 0; i < 3; i++) {
+        result = uWifiNetStationScan(gHandles.wifiHandle,
+                                     "DUMMYSSID",
+                                     uWifiScanResultCallback);
+        U_PORT_TEST_ASSERT(result == 0);
+        if (gScanResult.channel != 0) {
+            // We found it
+            break;
+        }
+    }
+    // Make sure the AP was NOT found
+    U_PORT_TEST_ASSERT(gScanResult.channel == 0);
+
+    uWifiTestPrivatePostamble(&gHandles);
+
+    // Handle errors
+    U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_NONE);
 }
 
 #endif // U_SHORT_RANGE_TEST_WIFI()

@@ -32,6 +32,10 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#define U_WIFI_BSSID_SIZE 6        /**< Binary BSSID size*/
+#define U_WIFI_SSID_SIZE (32 + 1)  /**< Null terminated SSID string size*/
+
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
