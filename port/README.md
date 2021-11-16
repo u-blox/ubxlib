@@ -28,7 +28,9 @@ For ports that use CMake [ubxlib.cmake](ubxlib.cmake) can be used to collect the
 `ubxlib.cmake` is typically included in a port specific CMake file and will then define a couple of variables that the calling CMake file can make use of (see the [esp32 component CMakeLists.txt](platform/esp-idf/mcu/esp32/components/ubxlib/CMakeLists.txt) as example).
 
 Before including `ubxlib.cmake` you must set the variable `UBXLIB_BASE` to root directory of `ubxlib`.
-You must also specify what `ubxlib` features to enable using the `UBXLIB_FEATURES` variable.
+You must also specify what `ubxlib` features to enable using the `UBXLIB_FEATURES` variable described below.
+
+## UBXLIB_FEATURES
 Available features currently are:
 * `u_lib`: Include the `lib_common` API
 * `short_range`: Include `wifi`, `ble` and `short_range` API
@@ -59,3 +61,22 @@ After `ubxlib.cmake` has been included the following variables will be available
 * `UBXLIB_PRIVATE_INC`: A list of the private include directories required to build ubxlib
 * `UBXLIB_TEST_SRC`: A list of all the test .c files
 * `UBXLIB_TEST_INC`: A list of test include directories
+
+# Shared Makefile
+For ports that use `make` [ubxlib.mk](ubxlib.mk) can be used to collect the `ubxlib` source code files, include directories etc in the same way as for CMake above.
+
+Just like the shared CMake file you must first set the variable `UBXLIB_BASE` to root directory of `ubxlib` and configure the `ubxlib` features using the `UBXLIB_FEATURES` (please see [UBXLIB_FEATURES](#UBXLIB_FEATURES) above). `ubxlib.mk` will then define the same output variables as the shared CMake above (see [Output Variables](#Output-Variables))
+
+## Example
+```makefile
+# Include ubxlib src and inc
+UBXLIB_BASE = <path_to_ubxlib>
+UBXLIB_FEATURES = cell gnss short_range
+# From this line we will get back:
+# - UBXLIB_SRC
+# - UBXLIB_INC
+# - UBXLIB_PRIVATE_INC
+# - UBXLIB_TEST_SRC
+# - UBXLIB_TEST_INC
+include $(UBXLIB_BASE)/port/ubxlib.mk
+```
