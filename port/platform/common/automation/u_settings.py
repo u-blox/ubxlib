@@ -159,18 +159,6 @@ __DEFAULT_SETTINGS["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py
 __DEFAULT_SETTINGS["STATIC_SIZE_ARM_GNU_INSTALL_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin"
-__DEFAULT_SETTINGS["STATIC_SIZE_MAP_FILE_NAME"] = "static_size.map"
-__DEFAULT_SETTINGS["STATIC_SIZE_C_FLAGS"] =                             \
-    "-Os -g0 -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16"
-__DEFAULT_SETTINGS["STATIC_SIZE_LD_FLAGS"] = "-Os -g0 -Wl,-Map=" + \
-    __DEFAULT_SETTINGS["STATIC_SIZE_MAP_FILE_NAME"] + \
-    " -Wl,--cref -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 --specs=nano.specs -lc -lnosys -lm"
-__DEFAULT_SETTINGS["STATIC_SIZE_NO_FLOAT_MAP_FILE_NAME"] = "static_size_no_float.map"
-__DEFAULT_SETTINGS["STATIC_SIZE_NO_FLOAT_C_FLAGS"] = "-Os -g0 -mcpu=cortex-m4+nofp"
-__DEFAULT_SETTINGS["STATIC_SIZE_NO_FLOAT_LD_FLAGS"] = "-Os -g0 -Wl,-Map=" + \
-    __DEFAULT_SETTINGS["STATIC_SIZE_NO_FLOAT_MAP_FILE_NAME"] +              \
-    " -Wl,--cref -mcpu=cortex-m4+nofp --specs=nano.specs -lc -lnosys"
-__DEFAULT_SETTINGS["STATIC_SIZE_LD_FLAGS_SUB_DIR"] = "port/platform/static_size"
 # u_run_esp_idf.py
 __DEFAULT_SETTINGS["ESP_IDF_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = "c:\\esp32"
 __DEFAULT_SETTINGS["ESP_IDF_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =           \
