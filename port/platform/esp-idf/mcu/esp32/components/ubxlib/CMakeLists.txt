@@ -108,6 +108,7 @@ set(COMPONENT_SRCS
                    "../../../../../../../wifi/src/u_wifi_net.c"
                    "../../../../../../../wifi/src/u_wifi_private.c"
                    "../../../../../../../wifi/src/u_wifi_sock.c"
+                   "../../../../../../../wifi/src/u_wifi_mqtt.c"
 # The porting layer
                    "../../../../../common/mbedtls/u_port_crypto.c"
                    "../../../../../common/event_queue/u_port_event_queue.c"

@@ -119,7 +119,7 @@ static int32_t getIpProtocol(char value, uShortRangeIpProtocol_t *pProtocol)
         case 0x01:
             *pProtocol = U_SHORT_RANGE_IP_PROTOCOL_UDP;
             break;
-        case 0x06:
+        case 0x02:
             *pProtocol = U_SHORT_RANGE_IP_PROTOCOL_MQTT;
             break;
         default:

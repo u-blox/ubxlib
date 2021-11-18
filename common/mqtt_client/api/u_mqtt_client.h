@@ -164,6 +164,8 @@ typedef struct {
     void *mutexHandle; /* No 'p' prefix as this should be treated as a handle,
                           not using actual type to avoid customer having to drag
                           more headers in for what is an internal structure. */
+    void *pPriv; /* Underlying MQTT implementation shall use this void pointer
+                   to hold the reference to the internal data structures */
     uSecurityTlsContext_t *pSecurityContext;
     int32_t totalMessagesSent;      /* Total messages sent from MQTT client */
     int32_t totalMessagesReceived;  /* Total messages received by MQTT client */

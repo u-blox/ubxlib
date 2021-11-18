@@ -7,6 +7,8 @@ The Wi-Fi APIs are split into the following groups:
 - `cfg`: configuration of the Wi-Fi module.
 - `net`: connection to a Wi-Fi network.
 - `sock`: sockets, for exchanging data (but see the [common/sock](/common/sock) component for the best way to do this).
+- `mqtt`: MQTT client over wifi network. Refer to [common/mqtt_client](/common/mqtt_client) component for generic
+mqtt client implementation.
 
 The module types supported by this implementation are listed in [u_wifi_module_type.h](api/u_wifi_module_type.h).
 
@@ -15,6 +17,7 @@ The module types supported by this implementation are listed in [u_wifi_module_t
 * Wi-Fi UDP sockets has some limitations (also documented in [u_wifi_sock.h](api/u_wifi_sock.h)):
    - Each UDP socket can only be used for communicating with a *single* remote peer.
    - Before using `uWifiSockReceiveFrom()` either `uWifiSockSendTo()` or `uWifiSockConnect()` must have been called
+* For using MQTT client over Wi-Fi connection the recommendation is to use the [common/mqtt_client](/common/mqtt_client) API
 
 # Usage
 The [api](api) directory contains the files that define the Wi-Fi APIs, each API function documented in its header file.  In the [src](src) directory you will find the implementation of the APIs and in the [test](test) directory the tests for the APIs that can be run on any platform.
