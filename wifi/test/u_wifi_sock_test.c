@@ -145,8 +145,8 @@ static volatile bool gAsyncClosedCallbackCalledTcp = false;
  */
 static volatile bool gAsyncClosedCallbackCalledUdp = false;
 
-static const uint32_t gNetStatusMaskAllUp = U_WIFI_STATUS_MASK_IPV4_UP |
-                                            U_WIFI_STATUS_MASK_IPV6_UP;
+static const uint32_t gNetStatusMaskAllUp = U_WIFI_NET_STATUS_MASK_IPV4_UP |
+                                            U_WIFI_NET_STATUS_MASK_IPV6_UP;
 
 static volatile int32_t gWifiConnected = 0;
 static volatile uint32_t gNetStatusMask = 0;
@@ -255,7 +255,7 @@ static void wifiConnectionCallback(int32_t wifiHandle,
     (void)pBssid;
     (void)disconnectReason;
     (void)pCallbackParameter;
-    if (status == U_WIFI_CON_STATUS_CONNECTED) {
+    if (status == U_WIFI_NET_CON_STATUS_CONNECTED) {
 #if !U_CFG_OS_CLIB_LEAKS
         uPortLog(LOG_TAG "Connected Wifi connId: %d, bssid: %s, channel: %d\n",
                  connId,
@@ -295,8 +295,8 @@ static void wifiNetworkStatusCallback(int32_t wifiHandle,
     (void)pCallbackParameter;
 #if !U_CFG_OS_CLIB_LEAKS
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
 #endif
 
     gNetStatusMask = statusMask;
@@ -322,7 +322,7 @@ static void connectWifi()
         // Connect to wifi network
         tmp = uWifiNetStationConnect(gHandles.wifiHandle,
                                      U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
-                                     U_SHORT_RANGE_WIFI_AUTH_WPA_PSK,
+                                     U_WIFI_NET_AUTH_WPA_PSK,
                                      U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
         TEST_CHECK_TRUE(tmp == 0);
     }

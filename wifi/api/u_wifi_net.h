@@ -33,27 +33,27 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** Wifi connection status codes used by uWifiNetConnectionStatusCallback_t */
-#define U_WIFI_CON_STATUS_DISCONNECTED 0
-#define U_WIFI_CON_STATUS_CONNECTED    1
+#define U_WIFI_NET_CON_STATUS_DISCONNECTED 0
+#define U_WIFI_NET_CON_STATUS_CONNECTED    1
 
 /** Wifi disconnect reason codes used by uWifiNetConnectionStatusCallback_t */
-#define U_WIFI_REASON_UNKNOWN          0
-#define U_WIFI_REASON_REMOTE_CLOSE     1
-#define U_WIFI_REASON_OUT_OF_RANGE     2
-#define U_WIFI_REASON_ROAMING          3
-#define U_WIFI_REASON_SECURITY_PROBLEM 4
-#define U_WIFI_REASON_NETWORK_DISABLED 5
+#define U_WIFI_NET_REASON_UNKNOWN          0
+#define U_WIFI_NET_REASON_REMOTE_CLOSE     1
+#define U_WIFI_NET_REASON_OUT_OF_RANGE     2
+#define U_WIFI_NET_REASON_ROAMING          3
+#define U_WIFI_NET_REASON_SECURITY_PROBLEM 4
+#define U_WIFI_NET_REASON_NETWORK_DISABLED 5
 
 /** Status bits used by uWifiNetIpStatusCallback_t */
-#define U_WIFI_STATUS_MASK_IPV4_UP 0x01 /**< When this bit is set IPv4 network is up */
-#define U_WIFI_STATUS_MASK_IPV6_UP 0x02 /**< When this bit is set IPv6 network is up */
+#define U_WIFI_NET_STATUS_MASK_IPV4_UP     (1 << 0) /**< When this bit is set IPv4 network is up */
+#define U_WIFI_NET_STATUS_MASK_IPV6_UP     (1 << 1) /**< When this bit is set IPv6 network is up */
 
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 typedef enum {
-    U_SHORT_RANGE_WIFI_AUTH_OPEN = 1, /**< No authentication mode */
-    U_SHORT_RANGE_WIFI_AUTH_WPA_PSK = 2, /**< WPA/WPA2/WPA3 psk authentication mode. */
+    U_WIFI_NET_AUTH_OPEN = 1, /**< No authentication mode */
+    U_WIFI_NET_AUTH_WPA_PSK = 2, /**< WPA/WPA2/WPA3 psk authentication mode. */
 } uWifiNetAuth_t;
 
 
@@ -61,13 +61,13 @@ typedef enum {
  *
  * @param wifiHandle         the handle of the wifi instance.
  * @param connId             connection ID.
- * @param status             new status of connection. Please see U_WIFI_CON_STATUS_xx.
+ * @param status             new status of connection. Please see U_WIFI_NET_CON_STATUS_xx.
  * @param channel            wifi channel.
- *                           Note: Only valid for U_WIFI_STATUS_CONNECTED otherwise set to 0.
+ *                           Note: Only valid for U_WIFI_NET_STATUS_CONNECTED otherwise set to 0.
  * @param pBssid             remote AP BSSID as null terminated string.
- *                           Note: Only valid for U_WIFI_STATUS_CONNECTED otherwise set to NULL.
- * @param disconnectReason   disconnect reason. Please see U_WIFI_REASON_xx.
- *                           Note: Only valid for U_WIFI_STATUS_DISCONNECTED otherwise set to 0.
+ *                           Note: Only valid for U_WIFI_NET_STATUS_CONNECTED otherwise set to NULL.
+ * @param disconnectReason   disconnect reason. Please see U_WIFI_NET_REASON_xx.
+ *                           Note: Only valid for U_WIFI_NET_STATUS_DISCONNECTED otherwise set to 0.
  * @param pCallbackParameter parameter pointer set when registering callback.
  */
 typedef void (*uWifiNetConnectionStatusCallback_t) (int32_t wifiHandle,
@@ -84,7 +84,7 @@ typedef void (*uWifiNetConnectionStatusCallback_t) (int32_t wifiHandle,
  * @param wifiHandle         the handle of the wifi instance.
  * @param interfaceType      interface type. Only 1: Wifi Station supported at the moment.
  * @param statusMask         bitmask indicating the new status. Please see defined bits
- *                           U_WIFI_STATUS_MASK_xx.
+ *                           U_WIFI_NET_STATUS_MASK_xx.
  * @param pCallbackParameter Parameter pointer set when registering callback.
  */
 typedef void (*uWifiNetNetworkStatusCallback_t) (int32_t wifiHandle,
