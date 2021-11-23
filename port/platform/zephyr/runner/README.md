@@ -1,7 +1,7 @@
 # Introduction
 This directory and its sub-directories contain the build infrastructure for the Zephyr platform in association with the nRFConnect tools.  The methods described here are those for Segger Embedded Studio (SES) and for `west`, the Zephyr command-line build tool.  The configuration here is sufficient to run the `ubxlib` tests and examples, no attempt is made to optimise the MCU RAM/flash etc. sizes, you need to know how to do that yourself.
 
-This is tested on `nRFConnect SDK version 1.4.2` which is the recommended version.
+This is tested on `nRFConnect SDK version 1.6.1` which is the recommended version.
 
 IMPORTANT: the pin usage defined in the `../cfg` directory for GPIO testing and in the `.overlay` files here for UART testing is subject to change as we try to settle on a single configuration that will work for all of the various board types.
 
