@@ -734,13 +734,19 @@ static int32_t configureMqttSessionConnection(uWifiMqttSession_t *pMqttSession,
         err = copyConnectionParams(&pMqttSession->pBrokerNameStr, pConnection->pBrokerNameStr);
 
         if (err == 0) {
-            err = copyConnectionParams(&pMqttSession->pClientIdStr, pConnection->pClientIdStr);
+            if (pConnection->pClientIdStr) {
+                err = copyConnectionParams(&pMqttSession->pClientIdStr, pConnection->pClientIdStr);
+            }
         }
         if (err == 0) {
-            err = copyConnectionParams(&pMqttSession->pUserNameStr, pConnection->pUserNameStr);
+            if (pConnection->pUserNameStr) {
+                err = copyConnectionParams(&pMqttSession->pUserNameStr, pConnection->pUserNameStr);
+            }
         }
         if (err == 0) {
-            err = copyConnectionParams(&pMqttSession->pPasswordStr, pConnection->pPasswordStr);
+            if (pConnection->pPasswordStr) {
+                err = copyConnectionParams(&pMqttSession->pPasswordStr, pConnection->pPasswordStr);
+            }
         }
         if (err == 0) {
             pMqttSession->localPort = pConnection->localPort;
@@ -847,6 +853,14 @@ int32_t uWifiMqttConnect(const uMqttClientContext_t *pContext,
             err = configureMqttSessionConnection(pMqttSession, pConnection);
 
             if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
+
+                if (pConnection->localPort == -1) {
+                    if (pContext->pSecurityContext != NULL) {
+                        pMqttSession->localPort = U_MQTT_BROKER_PORT_SECURE;
+                    } else {
+                        pMqttSession->localPort = U_MQTT_BROKER_PORT_UNSECURE;
+                    }
+                }
 
                 pMqttSession->atHandle = pInstance->atHandle;
                 pMqttSession->isConnected = true;
@@ -1019,6 +1033,10 @@ int32_t uWifiMqttSubscribe(const uMqttClientContext_t *pContext,
 
                     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
                         err = establishMqttConnectionToBroker(pMqttSession, pTopic, false);
+                    }
+
+                    if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                        err = (int32_t)pTopic->qos;
                     }
                 } else {
 
