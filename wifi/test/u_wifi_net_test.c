@@ -78,8 +78,8 @@
 
 static uWifiTestPrivate_t gHandles = { -1, -1, NULL, -1 };
 
-static const uint32_t gNetStatusMaskAllUp = U_WIFI_STATUS_MASK_IPV4_UP |
-                                            U_WIFI_STATUS_MASK_IPV6_UP;
+static const uint32_t gNetStatusMaskAllUp = U_WIFI_NET_STATUS_MASK_IPV4_UP |
+                                            U_WIFI_NET_STATUS_MASK_IPV6_UP;
 
 static volatile int32_t gWifiConnected = 0;
 static volatile int32_t gWifiDisconnected = 0;
@@ -108,7 +108,7 @@ static void wifiConnectionCallback(int32_t wifiHandle,
     (void)pCallbackParameter;
     (void)channel;
     (void)connId;
-    if (status == U_WIFI_CON_STATUS_CONNECTED) {
+    if (status == U_WIFI_NET_CON_STATUS_CONNECTED) {
 #if !U_CFG_OS_CLIB_LEAKS
         uPortLog(LOG_TAG "Connected Wifi connId: %d, bssid: %s, channel: %d\n",
                  connId,
@@ -151,8 +151,8 @@ static void wifiNetworkStatusCallback(int32_t wifiHandle,
     (void)pCallbackParameter;
 #if !U_CFG_OS_CLIB_LEAKS
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
 #endif
 
     gNetStatusMask = statusMask;
@@ -184,7 +184,7 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
         // Connect to wifi network
         int32_t res = uWifiNetStationConnect(gHandles.wifiHandle,
                                              pSsid,
-                                             U_SHORT_RANGE_WIFI_AUTH_WPA_PSK,
+                                             U_WIFI_NET_AUTH_WPA_PSK,
                                              pPassPhrase);
         if (res == 0) {
             //Wait for connection and IP events.
@@ -249,7 +249,6 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
     return testError;
 }
 
-
 U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetInitialisation")
 {
     int32_t waitCtr = 0;
@@ -311,7 +310,7 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetStationConnect")
 
 U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetStationConnectWrongSSID")
 {
-    gLookForDisconnectReasonBitMask = (1 << U_WIFI_REASON_OUT_OF_RANGE); // (cant find SSID)
+    gLookForDisconnectReasonBitMask = (1 << U_WIFI_NET_REASON_OUT_OF_RANGE); // (cant find SSID)
     gDisconnectReasonFound = 0;
     uWifiTestError_t testError = runWifiTest("DUMMYSSID",
                                              U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
@@ -323,10 +322,10 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetStationConnectWrongSSID")
 
 U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetStationConnectWrongPassphrase")
 {
-    // The expected disconnect reason is U_WIFI_REASON_SECURITY_PROBLEM.
-    // However, for some APs we will only get U_WIFI_REASON_UNKNOWN.
-    gLookForDisconnectReasonBitMask = (1 << U_WIFI_REASON_UNKNOWN) |
-                                      (1 << U_WIFI_REASON_SECURITY_PROBLEM);
+    // The expected disconnect reason is U_WIFI_NET_REASON_SECURITY_PROBLEM.
+    // However, for some APs we will only get U_WIFI_NET_REASON_UNKNOWN.
+    gLookForDisconnectReasonBitMask = (1 << U_WIFI_NET_REASON_UNKNOWN) |
+                                      (1 << U_WIFI_NET_REASON_SECURITY_PROBLEM);
     gDisconnectReasonFound = 0;
     uWifiTestError_t testError = runWifiTest(U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
                                              "WRONGPASSWD");

@@ -14,22 +14,11 @@
             "interface": "swd",
             "servertype": "jlink",
             "runToMain": true,
-            "rttConfig": {
-                "enabled": true,
-                "address": "auto",
-                "decoders": [
-                    {
-                        "label": "",
-                        "port": 0,
-                        "type": "console"
-                    }
-                ]
-            },
             "armToolchainPath": "${input:getArmToolchainPath}",
             "postLaunchCommands": [
                 "add-symbol-file ./zephyr/zephyr.elf 0",
             ],
-            "preLaunchTask": "Build nrf5340dk runner [Zephyr]"
+            "preLaunchTask": "Predebug nrf5340dk runner [Zephyr]"
         },
         {
             "name": "evkninab3 runner [nRF5 SDK]: Attach",
@@ -40,18 +29,8 @@
             "device": "NRF52840_xxAA",
             "interface": "swd",
             "servertype": "jlink",
-            "rttConfig": {
-                "enabled": true,
-                "address": "auto",
-                "decoders": [
-                    {
-                        "label": "",
-                        "port": 0,
-                        "type": "console"
-                    }
-                ]
-            },
-            "armToolchainPath": "${input:getArmToolchainPath}"
+            "armToolchainPath": "${input:getArmToolchainPath}",
+            "preLaunchTask": "RTTTerminal"
         },
         {
             "name": "evkninab3 runner [nRF5 SDK]: Run",
@@ -63,19 +42,8 @@
             "interface": "swd",
             "servertype": "jlink",
             "runToMain": true,
-            "rttConfig": {
-                "enabled": true,
-                "address": "auto",
-                "decoders": [
-                    {
-                        "label": "",
-                        "port": 0,
-                        "type": "console"
-                    }
-                ]
-            },
             "armToolchainPath": "${input:getArmToolchainPath}",
-            "preLaunchTask": "Build evkninab3 runner [nRF5 SDK]"
+            "preLaunchTask": "Predebug evkninab3 runner [nRF5 SDK]"
         },
         {
             "name": "evkninab3 runner [Zephyr]: Run",
@@ -99,7 +67,7 @@
                 ]
             },
             "armToolchainPath": "${input:getArmToolchainPath}",
-            "preLaunchTask": "Build evkninab3 runner [Zephyr]"
+            "preLaunchTask": "Predebug evkninab3 runner [Zephyr]"
         },
         {
             "name": "Python: Current File",

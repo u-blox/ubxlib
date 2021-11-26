@@ -25,12 +25,81 @@
             "problemMatcher": []
         },
         {
+            "type": "shell",
+            "label": "RTTTerminal",
+            "linux": {
+                "command": "JLinkRTTClient"
+            },
+            "windows": {
+                "command": "JLinkRTTClient"
+            },
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": true,
+                "clear": false,
+                "group": "ubxlib"
+            },
+            "problemMatcher": {
+                "owner": "typescript",
+                "fileLocation": "relative",
+                "pattern": {
+                    "regexp": "thisShouldNotMatch",
+                    "file": 1,
+                    "location": 2,
+                    "severity": 3,
+                    "code": 4,
+                    "message": 5
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "thisShouldNotMatch",
+                    "endsPattern": "^.*SEGGER"
+                }
+            },
+            "runOptions": {}
+        },
+        {
             "label": "Build nrf5340dk runner [Zephyr]",
             "type": "shell",
             "options": { "cwd": "${workspaceFolder}/.vscode" },
             "command": "inv nrfconnect.build ${workspaceFolder}/port/platform/zephyr/runner nrf5340dk_nrf5340_cpuapp runner_nrf5340dk_nrf5340_cpuapp",
             "group": { "kind": "build", "isDefault": true },
+            "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
+            "type": "shell",
+            "label": "Predebug nrf5340dk runner [Zephyr]",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false,
+                "group": "ubxlib"
+            },
+            "dependsOn":["RTTTerminal","Build nrf5340dk runner [Zephyr]"],
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Predebug evkninab3 runner [nRF5 SDK]",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false,
+                "group": "ubxlib"
+            },
+            "dependsOn":["RTTTerminal","Build evkninab3 runner [nRF5 SDK]"],
+            "problemMatcher": []
         },
         {
             "label": "Build evkninab3 runner [nRF5 SDK]",
@@ -38,7 +107,23 @@
             "options": {"cwd": ".vscode"},
             "command": "inv nrf5.build ${workspaceFolder}/port/platform/nrf5sdk/mcu/nrf52/gcc/runner runner_ubx_evkninab3_nrf52840",
             "group": { "kind": "build", "isDefault": true },
+            "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
+            "type": "shell",
+            "label": "Predebug evkninab3 runner [Zephyr]",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false,
+                "group": "ubxlib"
+            },
+            "dependsOn":["RTTTerminal","Build evkninab3 runner [Zephyr]"],
+            "problemMatcher": []
         },
         {
             "label": "Build evkninab3 runner [Zephyr]",
@@ -46,6 +131,7 @@
             "options": { "cwd": "${workspaceFolder}/.vscode" },
             "command": "inv nrfconnect.build ${workspaceFolder}/port/platform/zephyr/runner ubx_evkninab3_nrf52840 runner_ubx_evkninab3_nrf52840",
             "group": { "kind": "build", "isDefault": true },
+            "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
         {

@@ -70,6 +70,9 @@
 # define U_NETWORK_PRIVATE_WIFI_NETWORK_TIMEOUT_SEC 5
 #endif
 
+#define U_SHORT_RANGE_AUTH_OPEN 1
+#define U_SHORT_RANGE_AUTH_WPA_PSK 2
+
 //lint -esym(767, LOG_TAG) Suppress LOG_TAG defined differently in another module
 //lint -esym(750, LOG_TAG) Suppress LOG_TAG not referenced
 #define LOG_TAG "U_NETWORK_WIFI: "
@@ -151,12 +154,12 @@ static void clearInstance(uNetworkPrivateWifiInstance_t *pInstance)
 static int32_t parseAuthentication(int32_t value, uWifiNetAuth_t *pDstAuth)
 {
     switch (value) {
-        case (int32_t)U_SHORT_RANGE_WIFI_AUTH_OPEN:
-            *pDstAuth = U_SHORT_RANGE_WIFI_AUTH_OPEN;
+        case U_SHORT_RANGE_AUTH_OPEN:
+            *pDstAuth = U_WIFI_NET_AUTH_OPEN;
             break;
 
-        case (int32_t)U_SHORT_RANGE_WIFI_AUTH_WPA_PSK:
-            *pDstAuth = U_SHORT_RANGE_WIFI_AUTH_WPA_PSK;
+        case U_SHORT_RANGE_AUTH_WPA_PSK:
+            *pDstAuth = U_WIFI_NET_AUTH_WPA_PSK;
             break;
 
         default:
@@ -181,7 +184,7 @@ static void wifiConnectionCallback(int32_t wifiHandle,
     pInstance = (uNetworkPrivateWifiInstance_t *)pCallbackParameter;
 
     uStatusMessage_t msg = {
-        .msgType = (status == U_WIFI_CON_STATUS_DISCONNECTED) ? U_MSG_WIFI_DISCONNECT : U_MSG_WIFI_CONNECT,
+        .msgType = (status == U_WIFI_NET_CON_STATUS_DISCONNECTED) ? U_MSG_WIFI_DISCONNECT : U_MSG_WIFI_CONNECT,
         .disconnectReason = disconnectReason,
         .netStatusMask = 0
     };
@@ -189,7 +192,7 @@ static void wifiConnectionCallback(int32_t wifiHandle,
     (void)uPortQueueSend(pInstance->statusQueue, &msg);
 
 #if defined(U_CFG_ENABLE_LOGGING) && !U_CFG_OS_CLIB_LEAKS
-    if (status == U_WIFI_CON_STATUS_CONNECTED) {
+    if (status == U_WIFI_NET_CON_STATUS_CONNECTED) {
         uPortLog(LOG_TAG "Wifi connected connId: %d, bssid: %s, channel: %d\n",
                  connId,
                  pBssid,
@@ -225,8 +228,8 @@ static void wifiNetworkStatusCallback(int32_t wifiHandle,
 
 #if !U_CFG_OS_CLIB_LEAKS
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
 #endif
 
     uStatusMessage_t msg = {
@@ -256,7 +259,7 @@ static inline int32_t statusQueueWaitForWifiDisabled(const uPortQueueHandle_t qu
         int32_t errorCode = uPortQueueTryReceive(queueHandle, 1000, &msg);
         if ((errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) &&
             (msg.msgType == U_MSG_WIFI_DISCONNECT) &&
-            (msg.disconnectReason == U_WIFI_REASON_NETWORK_DISABLED)) {
+            (msg.disconnectReason == U_WIFI_NET_REASON_NETWORK_DISABLED)) {
             return (int32_t) U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -283,7 +286,7 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
                                                   int32_t timeoutSec)
 {
     static const uint32_t desiredNetStatusMask =
-        U_WIFI_STATUS_MASK_IPV4_UP | U_WIFI_STATUS_MASK_IPV6_UP;
+        U_WIFI_NET_STATUS_MASK_IPV4_UP | U_WIFI_NET_STATUS_MASK_IPV6_UP;
     uint32_t lastNetStatusMask = 0;
     int32_t startTime = (int32_t)uPortGetTickTimeMs();
     while ((int32_t)uPortGetTickTimeMs() - startTime < timeoutSec * 1000) {
@@ -300,7 +303,7 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
                     break;
 
                 case U_MSG_WIFI_DISCONNECT:
-                    if (msg.disconnectReason != U_WIFI_REASON_NETWORK_DISABLED) {
+                    if (msg.disconnectReason != U_WIFI_NET_REASON_NETWORK_DISABLED) {
                         return (int32_t) U_ERROR_COMMON_TEMPORARY_FAILURE;
                     }
                     break;

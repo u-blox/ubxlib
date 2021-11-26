@@ -82,10 +82,10 @@ def check_installation(ctx):
         "cmake_dir": "CMake project directory to build",
         "board_name": "Zephyr board name",
         "target_name": "A target name (build sub folder)",
-        "build_dir": "Output bild directory (default: {})".format(os.path.join("_build","nrfconnect")),
+        "builddir": "Output bild directory (default: {})".format(os.path.join("_build","nrfconnect")),
     }
 )
-def build(ctx, cmake_dir, board_name, target_name, build_dir=os.path.join("_build","nrfconnect")):
+def build(ctx, cmake_dir, board_name, target_name, builddir=os.path.join("_build","nrfconnect")):
     """Build a nRF connect SDK based application"""
     # Read U_FLAGS from nrfconnect.u_flags
     u_flags = utils.get_u_flags(ctx.config.cfg_dir, "nrfconnect", target_name)
@@ -94,18 +94,18 @@ def build(ctx, cmake_dir, board_name, target_name, build_dir=os.path.join("_buil
     # If the flags has been modified we trigger a rebuild
     pristine = "always" if u_flags['modified'] else "auto"
 
-    build_dir = os.path.join(build_dir, target_name)
-    ctx.run(f'{ctx.zephyr_pre_command}west build -p {pristine} -b {board_name} {cmake_dir} --build-dir {build_dir}')
+    builddir = os.path.join(builddir, target_name)
+    ctx.run(f'{ctx.zephyr_pre_command}west build -p {pristine} -b {board_name} {cmake_dir} --build-dir {builddir}')
 
 @task(
     pre=[check_installation],
     help={
         "target_name": "A target name (build sub folder)",
-        "build_dir": "Output bild directory (default: {})".format(os.path.join("_build","nrfconnect")),
+        "builddir": "Output bild directory (default: {})".format(os.path.join("_build","nrfconnect")),
     }
 )
-def clean(ctx, target_name, build_dir=os.path.join("_build","nrfconnect")):
+def clean(ctx, target_name, builddir=os.path.join("_build","nrfconnect")):
     """Remove all files for a nRF connect SDK build"""
-    build_dir = os.path.join(build_dir, target_name)
-    if os.path.exists(build_dir):
-        shutil.rmtree(build_dir)
+    builddir = os.path.join(builddir, target_name)
+    if os.path.exists(builddir):
+        shutil.rmtree(builddir)

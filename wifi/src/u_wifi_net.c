@@ -306,7 +306,7 @@ static void UUWLE_urc(uAtClientHandle_t atHandle,
     if (pStatus != NULL) {
         pStatus->shoHandle = shoHandle;
         pStatus->connId = connId;
-        pStatus->status = U_WIFI_CON_STATUS_CONNECTED;
+        pStatus->status = U_WIFI_NET_CON_STATUS_CONNECTED;
         pStatus->channel = channel;
         memcpy(pStatus->bssid, bssid, U_WIFI_WIFI_BSSID_SIZE);
         pStatus->reason = 0;
@@ -335,7 +335,7 @@ static void UUWLD_urc(uAtClientHandle_t atHandle,
     if (pStatus != NULL) {
         pStatus->shoHandle = shoHandle;
         pStatus->connId = connId;
-        pStatus->status = U_WIFI_CON_STATUS_DISCONNECTED;
+        pStatus->status = U_WIFI_NET_CON_STATUS_DISCONNECTED;
         pStatus->channel = 0;
         pStatus->bssid[0] = '\0';
         pStatus->reason = reason;
@@ -391,10 +391,10 @@ static void networkStatusCallback(uAtClientHandle_t atHandle,
                 static const char invalidIpV4[] = "0.0.0.0";
                 static const char invalidIpV6[] = "::";
                 if (strcmp(ipV4Str, invalidIpV4) != 0) {
-                    statusMask |= U_WIFI_STATUS_MASK_IPV4_UP;
+                    statusMask |= U_WIFI_NET_STATUS_MASK_IPV4_UP;
                 }
                 if (strcmp(ipV6Str, invalidIpV6) != 0) {
-                    statusMask |= U_WIFI_STATUS_MASK_IPV6_UP;
+                    statusMask |= U_WIFI_NET_STATUS_MASK_IPV6_UP;
                 }
             }
         }
