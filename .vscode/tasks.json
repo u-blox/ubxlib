@@ -135,6 +135,14 @@
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
         {
+            "label": "Build stm32f4 runner [STM32CubeF4]",
+            "type": "shell",
+            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "command": "inv stm32cubef4.build ${workspaceFolder}/port/platform/stm32cube/mcu/stm32f4/runner runner_stm32f4",
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
             "label": "Dry-run AStyle",
             "type": "shell",
             "options": {
