@@ -52,6 +52,8 @@
 #include "u_wifi_net.h"
 #include "u_wifi_private.h"
 
+#include "u_hex_bin_convert.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * ------------------------------------------------------------- */
@@ -72,6 +74,10 @@
 #define U_IFACE_TYPE_PPP      4
 #define U_IFACE_TYPE_BRIDGE   5
 #define U_IFACE_TYPE_BT_PAN   6
+
+//lint -esym(767, LOG_TAG) Suppress LOG_TAG defined differently in another module
+//lint -esym(750, LOG_TAG) Suppress LOG_TAG not referenced
+#define LOG_TAG "U_WIFI_NET: "
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -110,6 +116,23 @@ typedef enum {
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * ------------------------------------------------------------- */
+
+/** Helper function for getting the short range instance */
+static inline int32_t getInstance(int32_t shoHandle,
+                                  uShortRangePrivateInstance_t **ppInstance)
+{
+    *ppInstance = pUShortRangePrivateGetInstance(shoHandle);
+    if (*ppInstance == NULL) {
+        return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+
+    if ((*ppInstance)->mode != U_SHORT_RANGE_MODE_COMMAND &&
+        (*ppInstance)->mode != U_SHORT_RANGE_MODE_EDM) {
+        return (int32_t) U_WIFI_ERROR_INVALID_MODE;
+    }
+
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
+}
 
 /** Helper function for writing a Wifi station config integer value */
 static int32_t writeWifiStaCfgInt(uAtClientHandle_t atHandle,
@@ -465,14 +488,12 @@ int32_t uWifiNetSetConnectionStatusCallback(int32_t wifiHandle,
     int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     errorCode = uShortRangeLock();
-    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return errorCode;
     }
 
-    pInstance = pUShortRangePrivateGetInstance(shoHandle);
-    errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    if (pInstance != NULL) {
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    errorCode = getInstance(shoHandle, &pInstance);
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
         if (pCallback != NULL) {
             pInstance->pWifiConnectionStatusCallback = pCallback;
             pInstance->pWifiConnectionStatusCallbackParameter = pCallbackParameter;
@@ -501,14 +522,12 @@ int32_t uWifiNetSetNetworkStatusCallback(int32_t  wifiHandle,
     int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     errorCode = uShortRangeLock();
-    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return errorCode;
     }
 
-    pInstance = pUShortRangePrivateGetInstance(shoHandle);
-    errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    if (pInstance != NULL) {
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    errorCode = getInstance(shoHandle, &pInstance);
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
         if (pCallback != NULL) {
             pInstance->pNetworkStatusCallback = pCallback;
             pInstance->pNetworkStatusCallbackParameter = pCallbackParameter;
@@ -537,20 +556,13 @@ int32_t uWifiNetStationConnect(int32_t wifiHandle, const char *pSsid,
     int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     errorCode = uShortRangeLock();
-    if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
+    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return errorCode;
     }
 
-    pInstance = pUShortRangePrivateGetInstance(shoHandle);
-    if (pInstance == NULL) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    } else {
+    errorCode = getInstance(shoHandle, &pInstance);
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
         uAtClientHandle_t atHandle = pInstance->atHandle;
-
-        if ((pInstance->mode == U_SHORT_RANGE_MODE_COMMAND &&
-             pInstance->mode == U_SHORT_RANGE_MODE_EDM)) {
-            errorCode = (int32_t) U_WIFI_ERROR_INVALID_MODE;
-        }
 
         // Read connection status
         int32_t conStatus = readWifiStaStatusInt(atHandle, 3);
@@ -569,7 +581,7 @@ int32_t uWifiNetStationConnect(int32_t wifiHandle, const char *pSsid,
         // Configure Wifi
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
             // Set Wifi STA inactive on start up
-            uPortLog("U_WIFI_NET: Activating wifi STA mode\n");
+            uPortLog(LOG_TAG "Activating wifi STA mode\n");
             errorCode = writeWifiStaCfgInt(atHandle, 0, 0, 0);
         }
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
@@ -603,7 +615,6 @@ int32_t uWifiNetStationDisconnect(int32_t wifiHandle)
 {
     int32_t errorCode;
     uShortRangePrivateInstance_t *pInstance;
-    uAtClientHandle_t atHandle;
     int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     errorCode = uShortRangeLock();
@@ -611,26 +622,91 @@ int32_t uWifiNetStationDisconnect(int32_t wifiHandle)
         return errorCode;
     }
 
-    pInstance = pUShortRangePrivateGetInstance(shoHandle);
-    errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    if (pInstance != NULL) {
-        errorCode = (int32_t) U_WIFI_ERROR_INVALID_MODE;
-        if (pInstance->mode == U_SHORT_RANGE_MODE_COMMAND ||
-            pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-            atHandle = pInstance->atHandle;
-            // Read connection status
-            int32_t conStatus = readWifiStaStatusInt(atHandle, 3);
-            if (conStatus != 0) {
-                uPortLog("U_WIFI_NET: De-activating wifi STA mode\n");
-                errorCode = writeWifiStaCfgAction(atHandle, 0, STA_ACTION_DEACTIVATE);
-            } else {
-                // Wifi is already disabled
-                errorCode = (int32_t) U_WIFI_ERROR_ALREADY_DISCONNECTED;
-            }
+    errorCode = getInstance(shoHandle, &pInstance);
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+        // Read connection status
+        int32_t conStatus = readWifiStaStatusInt(atHandle, 3);
+        if (conStatus != 0) {
+            uPortLog(LOG_TAG "De-activating wifi STA mode\n");
+            errorCode = writeWifiStaCfgAction(atHandle, 0, STA_ACTION_DEACTIVATE);
+        } else {
+            // Wifi is already disabled
+            errorCode = (int32_t) U_WIFI_ERROR_ALREADY_DISCONNECTED;
         }
     }
 
     uShortRangeUnlock();
+
+    return errorCode;
+}
+
+
+int32_t uWifiNetStationScan(int32_t wifiHandle, const char *pSsid,
+                            uWifiNetScanResultCallback_t pCallback)
+{
+    int32_t errorCode;
+    uShortRangePrivateInstance_t *pInstance;
+    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
+
+    errorCode = uShortRangeLock();
+    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+        return errorCode;
+    }
+
+    errorCode = getInstance(shoHandle, &pInstance);
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        uAtClientHandle_t atHandle = pInstance->atHandle;
+
+        uAtClientLock(atHandle);
+        // Since the scanning can take some time we release the short range lock here
+        // This should be fine since we currently have the AT client lock instead
+        uShortRangeUnlock();
+        if (pSsid) {
+            uAtClientCommandStart(atHandle, "AT+UWSCAN=");
+            uAtClientWriteString(atHandle, pSsid, false);
+        } else {
+            uAtClientCommandStart(atHandle, "AT+UWSCAN");
+        }
+        uAtClientCommandStop(atHandle);
+
+        uAtClientTimeoutSet(atHandle, 10000);
+
+        // Handle the scan results
+        // Loop until we get OK, ERROR or timeout
+        while (uAtClientResponseStart(atHandle, "+UWSCAN:") == 0) {
+            uWifiNetScanResult_t scanResult;
+            int32_t result;
+            char bssid[32];
+
+            result = uAtClientReadString(atHandle, bssid, sizeof(bssid), false);
+            if (result >= 0) {
+                if (uHexToBin(bssid, result, (char *)scanResult.bssid) != result / 2) {
+                    result = -1;
+                }
+            }
+            if (result < 0) {
+                uPortLog(LOG_TAG "Warning: Failed to parse BSSID");
+            }
+            scanResult.opMode = uAtClientReadInt(atHandle);
+            result = uAtClientReadString(atHandle, scanResult.ssid, sizeof(scanResult.ssid), false);
+            if (result < 0) {
+                uPortLog(LOG_TAG "Warning: Failed to parse SSID");
+            }
+            scanResult.channel = uAtClientReadInt(atHandle);
+            scanResult.rssi = uAtClientReadInt(atHandle);
+            scanResult.authSuiteBitmask = uAtClientReadInt(atHandle);
+            scanResult.uniCipherBitmask = (uint8_t)uAtClientReadInt(atHandle);
+            scanResult.grpCipherBitmask = (uint8_t)uAtClientReadInt(atHandle);
+
+            pCallback(wifiHandle, &scanResult);
+        }
+
+        errorCode = uAtClientUnlock(atHandle);
+    } else {
+        uShortRangeUnlock();
+    }
+
 
     return errorCode;
 }

@@ -109,8 +109,8 @@ const char *testPublishMsg[MQTT_PUBLISH_TOTAL_MSG_COUNT] =  {"Hello test",
                                                             };
 static uWifiTestPrivate_t gHandles = { -1, -1, NULL, -1 };
 
-static const uint32_t gNetStatusMaskAllUp = U_WIFI_STATUS_MASK_IPV4_UP |
-                                            U_WIFI_STATUS_MASK_IPV6_UP;
+static const uint32_t gNetStatusMaskAllUp = U_WIFI_NET_STATUS_MASK_IPV4_UP |
+                                            U_WIFI_NET_STATUS_MASK_IPV6_UP;
 
 
 static volatile bool mqttSessionDisconnected = false;
@@ -135,7 +135,7 @@ static void wifiConnectionCallback(int32_t wifiHandle,
     (void)pBssid;
     (void)disconnectReason;
     (void)pCallbackParameter;
-    if (status == U_WIFI_CON_STATUS_CONNECTED) {
+    if (status == U_WIFI_NET_CON_STATUS_CONNECTED) {
         uPortLog(LOG_TAG "Connected Wifi connId: %d, bssid: %s, channel: %d\n",
                  connId,
                  pBssid,
@@ -171,8 +171,8 @@ static void wifiNetworkStatusCallback(int32_t wifiHandle,
     (void)statusMask;
     (void)pCallbackParameter;
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
 
     gNetStatusMask = statusMask;
 }
@@ -485,7 +485,7 @@ static void startWifi(void)
         // Connect to wifi network
         if (0 != uWifiNetStationConnect(gHandles.wifiHandle,
                                         U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
-                                        U_SHORT_RANGE_WIFI_AUTH_WPA_PSK,
+                                        U_WIFI_NET_AUTH_WPA_PSK,
                                         U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE))) {
 
             testError = U_WIFI_TEST_ERROR_CONNECT;

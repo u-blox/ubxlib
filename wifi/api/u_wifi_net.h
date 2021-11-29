@@ -17,7 +17,7 @@
 #ifndef _U_WIFI_NET_H_
 #define _U_WIFI_NET_H_
 
-/* No #includes allowed here */
+#include "u_wifi.h"
 
 /** @file
  * @brief This header file defines the APIs that obtain data transfer
@@ -48,6 +48,25 @@ extern "C" {
 #define U_WIFI_NET_STATUS_MASK_IPV4_UP     (1 << 0) /**< When this bit is set IPv4 network is up */
 #define U_WIFI_NET_STATUS_MASK_IPV6_UP     (1 << 1) /**< When this bit is set IPv6 network is up */
 
+/** uWifiNetScanResult_t values for .opMode */
+#define U_WIFI_NET_OP_MODE_INFRASTRUCTURE  1
+#define U_WIFI_NET_OP_MODE_ADHOC           2
+
+/** uWifiNetScanResult_t values for .authSuiteBitmask */
+#define U_WIFI_NET_AUTH_MASK_SHARED_SECRET (1 << 0)
+#define U_WIFI_NET_AUTH_MASK_PSK           (1 << 1)
+#define U_WIFI_NET_AUTH_MASK_EAP           (1 << 2)
+#define U_WIFI_NET_AUTH_MASK_WPA           (1 << 3)
+#define U_WIFI_NET_AUTH_MASK_WPA2          (1 << 4)
+#define U_WIFI_NET_AUTH_MASK_WPA3          (1 << 5)
+
+/** uWifiNetScanResult_t values for .uniCipherBitmask and .grpCipherBitmask */
+#define U_WIFI_NET_CIPHER_MASK_WEP64       (1 << 0)
+#define U_WIFI_NET_CIPHER_MASK_WEP128      (1 << 1)
+#define U_WIFI_NET_CIPHER_MASK_TKIP        (1 << 2)
+#define U_WIFI_NET_CIPHER_MASK_AES_CCMP    (1 << 3)
+#define U_WIFI_NET_CIPHER_MASK_UNKNOWN     0xFF /**< This will be the value for modules that doesn't support cipher masks */
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -55,6 +74,28 @@ typedef enum {
     U_WIFI_NET_AUTH_OPEN = 1, /**< No authentication mode */
     U_WIFI_NET_AUTH_WPA_PSK = 2, /**< WPA/WPA2/WPA3 psk authentication mode. */
 } uWifiNetAuth_t;
+
+typedef struct {
+    uint8_t bssid[U_WIFI_BSSID_SIZE]; /**< BSSID of the AP in binary format */
+    char ssid[U_WIFI_SSID_SIZE];      /**< Null terminated SSID string */
+    int32_t channel;            /**< WiFi channel number */
+    int32_t opMode;             /**< Operation mode, see U_WIFI_OP_MODE_xxx defines for values */
+    int32_t rssi;               /**< Received signal strength indication */
+    uint32_t authSuiteBitmask;  /**< Authentication bitmask, see U_NET_WIFI_AUTH_MASK_xx defines for values */
+    uint8_t uniCipherBitmask;   /**< Unicast cipher bitmask, see U_NET_WIFI_CIPHER_MASK_xx defines for values */
+    uint8_t grpCipherBitmask;   /**< Group cipher bitmask, see U_NET_WIFI_CIPHER_MASK_xx defines for values */
+} uWifiNetScanResult_t;
+
+
+/** Scan result callback type
+ *
+ * This callback will be called once for each entry found.
+ *
+ * @param wifiHandle         the handle of the wifi instance.
+ * @param pResult            the scan result.
+ * @param pCallbackParameter parameter pointer set when registering callback.
+ */
+typedef void (*uWifiNetScanResultCallback_t) (int32_t wifiHandle, uWifiNetScanResult_t *pResult);
 
 
 /** Connection status callback type
@@ -130,7 +171,7 @@ int32_t uWifiNetSetConnectionStatusCallback(int32_t wifiHandle,
                                             uWifiNetConnectionStatusCallback_t pCallback,
                                             void *pCallbackParameter);
 /** Set a callback for network status.
-  *
+ *
  * @param wifiHandle             the handle of the short range instance.
  * @param[in] pCallback          callback function.
  * @param[in] pCallbackParameter parameter included with the callback.
@@ -142,7 +183,21 @@ int32_t uWifiNetSetNetworkStatusCallback(int32_t wifiHandle,
                                          void *pCallbackParameter);
 
 
-
+/** Scan for SSIDs
+ *
+ * Please note that this function will block until the scan process is completed.
+ * During this time pCallback will be called for each scan result entry found.
+ *
+ * @param wifiHandle       the handle of the wifi instance.
+ * @param[in] pSsid        optional SSID to search for. Set to NULL to search for any SSID.
+ * @param[in] pCallback    callback for handling a scan result entry.
+ *                         IMPORTANT: The callback will be called while the AT lock is held.
+ *                                    This means that you are not allowed to call other u-blox
+ *                                    module APIs directly from this callback.
+ * @return                 zero on successful, else negative error code.
+ */
+int32_t uWifiNetStationScan(int32_t wifiHandle, const char *pSsid,
+                            uWifiNetScanResultCallback_t pCallback);
 
 #ifdef __cplusplus
 }

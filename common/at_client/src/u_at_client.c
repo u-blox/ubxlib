@@ -2472,11 +2472,12 @@ void uAtClientCommandStopReadResponse(uAtClientHandle_t atHandle)
 }
 
 // Start the response part.
-void uAtClientResponseStart(uAtClientHandle_t atHandle,
-                            const char *pPrefix)
+int32_t uAtClientResponseStart(uAtClientHandle_t atHandle,
+                               const char *pPrefix)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
-    bool prefixMatched;
+    bool prefixMatched = false;
+    int32_t returnCode = (int32_t) pClient->error;
 
     // IMPORTANT: this can't lock pClient->mutex as it
     // checks for URCs and may end up calling a URC
@@ -2502,8 +2503,12 @@ void uAtClientResponseStart(uAtClientHandle_t atHandle,
         // the information response
         if (prefixMatched) {
             setScope(pClient, U_AT_CLIENT_SCOPE_INFORMATION);
+            returnCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        } else {
+            returnCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
         }
     }
+    return returnCode;
 }
 
 // Read an integer parameter.
