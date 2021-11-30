@@ -2,7 +2,7 @@ from invoke import Collection, Config
 from sys import platform
 import os
 import yaml
-from . import nrfconnect, nrf5, stm32cubef4
+from . import nrfconnect, nrf5, stm32cubef4, esp_idf
 
 def parse_platform_specific(cfg, is_linux):
     """Recursive function that will parse platform specific config
@@ -57,3 +57,4 @@ ns.configure(cfg)
 ns.add_collection(nrfconnect)
 ns.add_collection(nrf5)
 ns.add_collection(stm32cubef4)
+ns.add_collection(esp_idf)
