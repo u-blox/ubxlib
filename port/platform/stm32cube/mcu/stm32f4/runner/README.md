@@ -1,4 +1,6 @@
 # Introduction
+> ⚠️ **IMPORTANT NOTE:** The STM32CubeIDE project will soon be replaced with a Makefile.
+
 This directory contains a build which compiles and runs any or all of the examples and tests for the STM32F4 MCU under the STM32Cube IDE.
 
 IMPORTANT: the STM32Cube IDE creates lots of sub-directories in here.  Please ignore them, NONE of the source files/header files are down here, they are all up in the `app` sub-directory for this platform so that they can be built with other/future ST SDKs as required.  Don't delete the empty directories though: if you do the STM32Cube IDE will then delete the links to the files in the `.project` file.
