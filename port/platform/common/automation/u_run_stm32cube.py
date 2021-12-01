@@ -73,7 +73,7 @@ PROJECT_CONFIGURATION = u_settings.STM32CUBE_PROJECT_CONFIGURATION #
 
 # The maximum number of U_FLAGx defines that the STM32F4Cube
 # project file can take
-MAX_NUM_DEFINES = u_settings.STM32CUBE_MAX_NUM_DEFINES #
+MAX_NUM_DEFINES = 30 #
 
 # The core clock rate of the STM32F4 processor, i.e. SystemCoreClock
 SYSTEM_CORE_CLOCK_HZ = u_settings.STM32CUBE_SYSTEM_CORE_CLOCK_HZ #

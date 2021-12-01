@@ -21,7 +21,7 @@ ubxlib
 
 You may unzip it to a different location but, if you do so, when you open your chosen build you must go to `Project` -> `Properties` -> `Resource` -> `Linked Resources`, modify the path variable `STM32CUBE_FW_PATH` to point to the correct location and then refresh the project.
 
-You may override or provide conditional compilation flags to this build without modifying the build file.  To do this, create an environment variable called `U_FLAGx`, where `x` is a number from 0 to 19, e.g. `U_FLAG0`, and set it to your conditional compilation flag with a `-D` prefix, e.g.:
+You may override or provide conditional compilation flags to this build without modifying the build file.  To do this, create an environment variable called `U_FLAGx`, where `x` is a number from 0 to 29, e.g. `U_FLAG0`, and set it to your conditional compilation flag with a `-D` prefix, e.g.:
 
 ```
 set U_FLAG0=-DU_CFG_APP_PIN_CELL_ENABLE_POWER=-1

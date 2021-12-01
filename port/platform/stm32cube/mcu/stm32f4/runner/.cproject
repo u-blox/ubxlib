@@ -114,6 +114,16 @@
 									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG17}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG18}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG19}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG20}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG21}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG22}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG23}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG24}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG25}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG26}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG27}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG28}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG29}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.859106057" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -271,6 +281,16 @@
 									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG17}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG18}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG19}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG20}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG21}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG22}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG23}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG24}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG25}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG26}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG27}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG28}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${env_var:U_FLAG29}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.820374411" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
