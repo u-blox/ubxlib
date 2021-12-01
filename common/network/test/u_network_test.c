@@ -580,10 +580,28 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                         }
                     }
                     for (size_t tries = 0; tries < 3; tries++) {
-                        uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
                         int32_t result;
-                        result = uBleDataConnectSps(gUNetworkTestCfg[x].handle,
-                                                    gRemoteSpsAddress);
+                        // Use first testrun(up/down) to test default connection parameters
+                        // and the second for using non-default.
+                        if (a == 0) {
+                            uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
+                            result = uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                                                        gRemoteSpsAddress,
+                                                        NULL);
+                        } else {
+                            uBleDataConnParams_t connParams;
+                            connParams.scanInterval = 64;
+                            connParams.scanWindow = 64;
+                            connParams.createConnectionTmo = 5000;
+                            connParams.connIntervalMin = 28;
+                            connParams.connIntervalMax = 34;
+                            connParams.connLatency = 0;
+                            connParams.linkLossTimeout = 2000;
+                            uPortLog("U_NETWORK_TEST: Connecting SPS with conn params: %s\n", gRemoteSpsAddress);
+                            result = uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                                                        gRemoteSpsAddress, &connParams);
+                        }
+
                         if (result == 0) {
                             // Wait for connection
                             uPortSemaphoreTryTake(gBleConnectionSem, 10000);

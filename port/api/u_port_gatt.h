@@ -95,6 +95,28 @@ typedef struct {
     uint8_t val[16];
 } uPortGattUuid128_t;
 
+/** GAP connection parameters
+ *
+ *  @param scanInterval Scan interval (N*0.625 ms)
+ *  @param scanWindow   Scan window (N*0.625 ms)
+ *  @param createConnectionTmo Timeout before giving up if
+ *                             remote device is not found in ms
+ *  @param connIntervalMin Connection interval (N*1.25 ms)
+ *  @param connIntervalMax Connection interval (N*1.25 ms)
+ *  @param connLatency Connection lantency, nbr of connection intervals
+ *  @param linkLossTimeout Link loss timeout in ms
+ */
+typedef struct {
+    // For central
+    uint16_t scanInterval;
+    uint16_t scanWindow;
+    uint32_t createConnectionTmo;
+    uint16_t connIntervalMin;
+    uint16_t connIntervalMax;
+    uint16_t connLatency;
+    uint32_t linkLossTimeout;
+} uPortGattGapParams_t;
+
 /** GATT Characteristic Descriptor type
  */
 typedef enum {
@@ -311,6 +333,9 @@ typedef uPortGattIter_t (*uPortGattDescriptorDiscoveryCallback_t)(int32_t connHa
                                                                   uPortGattUuid_t *pUuid,
                                                                   uint16_t attrHandle);
 
+
+extern const uPortGattGapParams_t uPortGattGapParamsDefault;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -407,10 +432,12 @@ int32_t uPortGattNotify(int32_t connHandle, const uPortGattCharacteristic_t *pCh
  *
  * @param pAddress    Pointer to array with address (6 bytes)
  * @param addressType Public or random address
+ * @param pGapParams  GAP connection parameters. Use NULL for default values.
  *
  * @return            connection handle
  */
-int32_t uPortGattConnectGap(uint8_t *pAddress, uPortBtLeAddressType_t addressType);
+int32_t uPortGattConnectGap(uint8_t *pAddress, uPortBtLeAddressType_t addressType,
+                            const uPortGattGapParams_t *pGapParams);
 
 /** Disconnect GAP
  *

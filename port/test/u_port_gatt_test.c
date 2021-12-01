@@ -62,7 +62,7 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 #define NBR_OF_CONNECTION_RETRIES 3
-#define CONNECTION_SETUP_TIMEOUT 5000
+#define CONNECTION_SETUP_TIMEOUT 6000
 #define WAIT_FOR_CALLBACK_TIMEOUT 1000
 #define WAIT_FOR_CALLBACK_FINISH_DELAY 100
 
@@ -790,7 +790,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
     uPortGattSetGapConnStatusCallback(gapConnStatusCallback, gGattCallbackParamIn);
 
     uPortLog("U_PORT_TEST: uPortGattConnectGap to unavailable device\n");
-    int32_t connHandle = uPortGattConnectGap(gInvalidAddress, gRemoteSpsPeripheralType);
+    int32_t connHandle = uPortGattConnectGap(gInvalidAddress, gRemoteSpsPeripheralType, NULL);
     U_PORT_TEST_ASSERT(connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE);
     U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, CONNECTION_SETUP_TIMEOUT));
     U_PORT_TEST_ASSERT_EQUAL(evt.conn.status, U_PORT_GATT_GAP_DISCONNECTED);
@@ -798,9 +798,19 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
     // Retry this a couple of times if connection setup fails
     bool testOK = false;
     for (int i = 0; i < NBR_OF_CONNECTION_RETRIES && !testOK; i++) {
+        uPortGattGapParams_t gapParams;
 
-        uPortLog("U_PORT_TEST: uPortGattConnectGap to device\n");
-        connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType);
+        gapParams.scanInterval = 100;
+        gapParams.scanWindow = 100;
+        gapParams.createConnectionTmo = 3000;
+
+        gapParams.connIntervalMin = 10;
+        gapParams.connIntervalMax = 20;
+        gapParams.connLatency = 0;
+        gapParams.linkLossTimeout = 3000;
+
+        uPortLog("U_PORT_TEST: uPortGattConnectGap to device with conn params\n");
+        connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType, &gapParams);
         U_PORT_TEST_ASSERT(connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE);
 
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, CONNECTION_SETUP_TIMEOUT));
@@ -889,7 +899,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
     bool testOK = false;
     for (int i = 0; i < NBR_OF_CONNECTION_RETRIES && !testOK; i++) {
         gattEvt_t evt;
-        int32_t connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType);
+        int32_t connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType, NULL);
         U_PORT_TEST_ASSERT(connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE);
 
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, CONNECTION_SETUP_TIMEOUT));
@@ -1014,7 +1024,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCharDisc")
     bool testOK = false;
     for (int i = 0; i < NBR_OF_CONNECTION_RETRIES && !testOK; i++) {
 
-        int32_t connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType);
+        int32_t connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType, NULL);
         U_PORT_TEST_ASSERT(connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE);
 
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, CONNECTION_SETUP_TIMEOUT));
@@ -1163,7 +1173,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattDescDisc")
     bool testOK = false;
     for (int i = 0; i < NBR_OF_CONNECTION_RETRIES && !testOK; i++) {
 
-        int32_t connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType);
+        int32_t connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType, NULL);
         U_PORT_TEST_ASSERT(connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE);
 
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, CONNECTION_SETUP_TIMEOUT));
@@ -1280,7 +1290,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
     // Retry this a couple of times if connection setup fails
     bool testOK = false;
     for (int i = 0; i < NBR_OF_CONNECTION_RETRIES && !testOK; i++) {
-        int32_t connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType);
+        int32_t connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType, NULL);
         U_PORT_TEST_ASSERT(connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE);
 
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, CONNECTION_SETUP_TIMEOUT));
@@ -1442,7 +1452,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattServerConf")
     // Retry this a couple of times if connection setup fails
     bool testOK = false;
     for (int i = 0; i < NBR_OF_CONNECTION_RETRIES && !testOK; i++) {
-        int32_t connHandle = uPortGattConnectGap(gRemoteSpsCentral, gRemoteSpsCentralType);
+        int32_t connHandle = uPortGattConnectGap(gRemoteSpsCentral, gRemoteSpsCentralType, NULL);
         U_PORT_TEST_ASSERT(connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE);
 
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, CONNECTION_SETUP_TIMEOUT));

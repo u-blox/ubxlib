@@ -57,6 +57,48 @@ extern "C" {
 #define U_BLE_DATA_DEFAULT_SEND_TIMEOUT_MS 100
 #endif
 
+/** Default central scan interval
+ */
+#ifndef U_BLE_DATA_CONN_PARAM_SCAN_INT_DEFAULT
+#define U_BLE_DATA_CONN_PARAM_SCAN_INT_DEFAULT 48
+#endif
+
+/** Default central scan window
+ */
+#ifndef U_BLE_DATA_CONN_PARAM_SCAN_WIN_DEFAULT
+#define U_BLE_DATA_CONN_PARAM_SCAN_WIN_DEFAULT 48
+#endif
+
+/** Default timeout when creating connection from central
+ */
+#ifndef U_BLE_DATA_CONN_PARAM_TMO_DEFAULT
+#define U_BLE_DATA_CONN_PARAM_TMO_DEFAULT 5000
+#endif
+
+/** Default minimum connection interval
+ */
+#ifndef U_BLE_DATA_CONN_PARAM_CONN_INT_MIN_DEFAULT
+#define U_BLE_DATA_CONN_PARAM_CONN_INT_MIN_DEFAULT 24
+#endif
+
+/** Default maximum connection interval
+ */
+#ifndef U_BLE_DATA_CONN_PARAM_CONN_INT_MAX_DEFAULT
+#define U_BLE_DATA_CONN_PARAM_CONN_INT_MAX_DEFAULT 30
+#endif
+
+/** Default connection latency
+ */
+#ifndef U_BLE_DATA_CONN_PARAM_CONN_LATENCY_DEFAULT
+#define U_BLE_DATA_CONN_PARAM_CONN_LATENCY_DEFAULT 0
+#endif
+
+/** Default link loss timeout
+ */
+#ifndef U_BLE_DATA_CONN_PARAM_LINK_LOSS_TMO_DEFAULT
+#define U_BLE_DATA_CONN_PARAM_LINK_LOSS_TMO_DEFAULT 2000
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -77,6 +119,28 @@ typedef struct {
     uint16_t     creditsValue;
     uint16_t     creditsCcc;
 } uBleDataSpsHandles_t;
+
+/** Connection parameters
+ *
+ *  @param scanInterval Scan interval (N*0.625 ms)
+ *  @param scanWindow   Scan window (N*0.625 ms)
+ *  @param createConnectionTmo Timeout before giving up if
+ *                             remote device is not found in ms
+ *  @param connIntervalMin Connection interval (N*1.25 ms)
+ *  @param connIntervalMax Connection interval (N*1.25 ms)
+ *  @param connLatency Connection lantency, nbr of connection intervals
+ *  @param linkLossTimeout Link loss timeout in ms
+ */
+typedef struct {
+    // For central
+    uint16_t scanInterval;
+    uint16_t scanWindow;
+    uint32_t createConnectionTmo;
+    uint16_t connIntervalMin;
+    uint16_t connIntervalMax;
+    uint16_t connLatency;
+    uint32_t linkLossTimeout;
+} uBleDataConnParams_t;
 
 /** Connection status callback type
  *
@@ -154,12 +218,16 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
  *       SPS server which the central device then will connect to when
  *       this function is called.
  *
- * @param bleHandle   the handle of the ble instance.
- * @param pAddress    pointer to the address in 0012F398DD12p format,
- *                    must not be NULL.
- * @return            zero on success, on failure negative error code.
+ * @param bleHandle    the handle of the ble instance.
+ * @param pAddress     pointer to the address in 0012F398DD12p format,
+ *                     must not be NULL.
+ * @param pConnParams  pointer to connection parameters.
+ *                     Use NULL for default values.
+ * @return             zero on success, on failure negative error code.
  */
-int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress);
+int32_t uBleDataConnectSps(int32_t bleHandle,
+                           const char *pAddress,
+                           const uBleDataConnParams_t *pConnParams);
 
 /** Disconnect the connection.
  * If data has been sent, it is advisable to have a 50 ms delay
@@ -269,7 +337,6 @@ int32_t uBleDataPresetSpsServerHandles(int32_t bleHandle, const uBleDataSpsHandl
  * @return            zero on success, on failure negative error code.
  */
 int32_t uBleDataDisableFlowCtrlOnNext(int32_t bleHandle);
-
 
 #ifdef __cplusplus
 }
