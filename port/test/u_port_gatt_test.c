@@ -871,7 +871,6 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
-
 // Test Primary service search.
 U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
 {
@@ -944,7 +943,24 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
             }
             serviceIndex++;
         } while ((svc->attrHandle != 0) && (serviceIndex <= U_PORT_GATT_TEST_NBR_OF_SERVICES + 1));
-        U_PORT_TEST_ASSERT_EQUAL(serviceIndex, U_PORT_GATT_TEST_NBR_OF_SERVICES + 1);
+        // We might need to retry service discovery in case of
+        // both central and peripheral devices not moved to connected state
+        if (serviceIndex != U_PORT_GATT_TEST_NBR_OF_SERVICES + 1) {
+            // Disconnect existing link and start reconnection and service discovery
+            if (uPortGattDisconnectGap(connHandle) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                if (waitForEvt(GATT_EVT_CONN_STATUS, &evt, WAIT_FOR_CALLBACK_TIMEOUT)) {
+                    if (evt.conn.status == U_PORT_GATT_GAP_DISCONNECTED) {
+                        uPortLog("U_PORT_TEST: Disconnected GAP for retry\n");
+                    }
+                }
+            }
+            if (i == (NBR_OF_CONNECTION_RETRIES - 1)) {
+                uPortLog("U_PORT_TEST: Muliple retries uPortGattStartPrimaryServiceDiscovery - get all services failed\n");
+            } else {
+                uPortLog("U_PORT_TEST: Retry uPortGattStartPrimaryServiceDiscovery - get all services\n");
+            }
+            continue;
+        }
 
         uPortLog("U_PORT_TEST: uPortGattStartPrimaryServiceDiscovery - get all services, no continue\n");
         gGattIterReturnValue = U_PORT_GATT_ITER_STOP;
