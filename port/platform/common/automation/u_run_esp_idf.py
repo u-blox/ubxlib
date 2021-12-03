@@ -174,10 +174,8 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
     else:
         os.makedirs(build_dir)
 
-    # CCACHE is a pain in the bum: falls over on Windows
-    # path length issues randomly and doesn't say where.
-    # Since we're generally doing clean builds, disable it
-    env["CCACHE_DISABLE"] = "1"
+    # Enable ccache to speed up rebuild
+    env["IDF_CCACHE_ENABLE"] = "1"
 
     if os.path.exists(build_dir):
         printer.string("{}building code...".format(prompt))
