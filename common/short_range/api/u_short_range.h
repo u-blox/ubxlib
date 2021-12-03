@@ -68,6 +68,10 @@ extern "C" {
  */
 #define U_SHORT_RANGE_IPv6_ADDRESS_LENGTH 16
 
+/** Module/Device serial number length.
+ */
+#define U_SHORT_RANGE_SERIAL_NUMBER_LENGTH 20
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -331,6 +335,27 @@ bool uShortRangeSupportsBle(uShortRangeModuleType_t moduleType);
  * @return                 true if moduleType supports WiFi, false otherwise.
  */
 bool uShortRangeSupportsWifi(uShortRangeModuleType_t moduleType);
+
+/** Get the serial number of the module.
+ *
+ * @param shortRangeHandle   the instance handle.
+ * @param[out] pSerialNumber a pointer to storage of atleast
+ *                           U_SHORT_RANGE_SERIAL_NUMBER_LENGTH bytes
+ *                           in which the product serial number will be stored;
+ *                           cannot be NULL.
+ * @return                   zero on success else negative error code.
+ */
+int32_t uShortRangeGetSerialNumber(int32_t shortRangeHandle, char *pSerialNumber);
+
+/** Get the shortrange handle corresponding to network handle.
+ *
+ * @param networkHandle     the network handle (i.e,BLE/Wifi handle)
+ * @return                  a short range handle on success
+ *                          else negative error code.
+ */
+int32_t uShortRangeGetShoHandle(int32_t networkHandle);
+
+
 
 #ifdef __cplusplus
 }

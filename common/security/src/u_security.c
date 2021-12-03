@@ -113,6 +113,9 @@
 
 #include "u_network_handle.h"
 #include "u_security.h"
+#include "u_at_client.h"
+#include "u_short_range_module_type.h"
+#include "u_short_range.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -172,6 +175,14 @@ int32_t uSecurityGetSerialNumber(int32_t networkHandle,
         if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
             errorCodeOrSize = uCellSecGetSerialNumber(networkHandle,
                                                       pSerialNumber);
+        } else {
+
+            int32_t shoHandle;
+            errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+            shoHandle = uShortRangeGetShoHandle(networkHandle);
+            if (shoHandle >= 0) {
+                errorCodeOrSize = uShortRangeGetSerialNumber(shoHandle, pSerialNumber);
+            }
         }
     }
 

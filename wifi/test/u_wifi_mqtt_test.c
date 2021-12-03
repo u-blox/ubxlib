@@ -238,7 +238,7 @@ static int32_t wifiMqttUnsubscribeTest(void)
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     err = uMqttClientSubscribe(mqttClientCtx, pTopicOut1, qos);
-    U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
+    U_PORT_TEST_ASSERT(err == (int32_t)qos);
 
 
     for (count = 0; count < MQTT_PUBLISH_TOTAL_MSG_COUNT; count++) {
@@ -376,10 +376,10 @@ static int32_t wifiMqttPublishSubscribeTest(void)
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     err = uMqttClientSubscribe(mqttClientCtx, pTopicOut1, qos);
-    U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
+    U_PORT_TEST_ASSERT(err == (int32_t)qos);
 
     err = uMqttClientSubscribe(mqttClientCtx, pTopicOut2, qos);
-    U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
+    U_PORT_TEST_ASSERT(err == (int32_t)qos);
 
     for (count = 0; count < MQTT_PUBLISH_TOTAL_MSG_COUNT; count++) {
 

@@ -31,6 +31,7 @@
 #include "stddef.h"
 #include "stdint.h"
 #include "stdbool.h"
+#include "string.h"
 
 // Required by ubxlib
 #include "u_port.h"
@@ -61,9 +62,13 @@
 #include "u_mqtt_common.h"
 #include "u_mqtt_client.h"
 
+// For U_SHORT_RANGE_TEST_WIFI()
+#include "u_short_range_test_selector.h"
+
 #ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
 # include "u_cfg_test_platform_specific.h"
+#include "u_wifi_test_cfg.h"
 #endif
 
 /* ----------------------------------------------------------------
@@ -99,35 +104,63 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+#if U_SHORT_RANGE_TEST_WIFI()
 
+// Wifi network configuration:
+// Set U_CFG_TEST_SHORT_RANGE_MODULE_TYPE to your module type,
+// chosen from the values in common/short_range/api/u_short_range_module_type.h
+static uNetworkConfigurationWifi_t gConfig = {
+    .type = U_NETWORK_TYPE_WIFI,
+    .module = U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    .uart = U_CFG_APP_SHORT_RANGE_UART,
+    /* Note that the pin numbers
+        that follow are those of the MCU:
+        if you are using an MCU inside
+        a u-blox module the IO pin numbering
+        for the module is likely different
+        to that from the MCU: check the data
+        sheet for the module to determine
+        the mapping. */
+    .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+    .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+    .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+    .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
+    .pSsid = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID), /* Wifi SSID - replace with your SSID */
+    .authentication = U_WIFI_TEST_CFG_AUTHENTICATION, /* Authentication mode (see uWifiNetAuth_t in wifi/api/u_wifi_net.h) */
+    .pPassPhrase = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE) /* WPA2 passphrase */
+};
+static const uNetworkType_t gNetType = U_NETWORK_TYPE_WIFI;
 // Cellular network configuration:
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                        U_CFG_TEST_CELL_MODULE_TYPE,
-                                                        NULL, /* SIM pin */
-                                                        NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-                                                        240, /* Connection timeout in seconds */
-                                                        U_CFG_APP_CELL_UART,
-                                                        /* Note that the pin numbers
-                                                           that follow are those of the MCU:
-                                                           if you are using an MCU inside
-                                                           a u-blox module the IO pin numbering
-                                                           for the module is likely different
-                                                           to that from the MCU: check the data
-                                                           sheet for the module to determine
-                                                           the mapping. */
-                                                        U_CFG_APP_PIN_CELL_TXD,
-                                                        U_CFG_APP_PIN_CELL_RXD,
-                                                        U_CFG_APP_PIN_CELL_CTS,
-                                                        U_CFG_APP_PIN_CELL_RTS,
-                                                        U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                        U_CFG_APP_PIN_CELL_PWR_ON,
-                                                        U_CFG_APP_PIN_CELL_VINT
-                                                       };
+#elif defined(U_CFG_TEST_CELL_MODULE_TYPE)
+static const uNetworkConfigurationCell_t gConfig = {U_NETWORK_TYPE_CELL,
+                                                    U_CFG_TEST_CELL_MODULE_TYPE,
+                                                    NULL, /* SIM pin */
+                                                    NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
+                                                    240, /* Connection timeout in seconds */
+                                                    U_CFG_APP_CELL_UART,
+                                                    /* Note that the pin numbers
+                                                       that follow are those of the MCU:
+                                                       if you are using an MCU inside
+                                                       a u-blox module the IO pin numbering
+                                                       for the module is likely different
+                                                       to that from the MCU: check the data
+                                                       sheet for the module to determine
+                                                       the mapping. */
+                                                    U_CFG_APP_PIN_CELL_TXD,
+                                                    U_CFG_APP_PIN_CELL_RXD,
+                                                    U_CFG_APP_PIN_CELL_CTS,
+                                                    U_CFG_APP_PIN_CELL_RTS,
+                                                    U_CFG_APP_PIN_CELL_ENABLE_POWER,
+                                                    U_CFG_APP_PIN_CELL_PWR_ON,
+                                                    U_CFG_APP_PIN_CELL_VINT
+                                                   };
+static const uNetworkType_t gNetType = U_NETWORK_TYPE_CELL;
 #else
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+// No module available - set some dummy values to make test system happy
+static const uNetworkConfigurationCell_t gConfig = {U_NETWORK_TYPE_NONE};
+static const uNetworkType_t gNetType = U_NETWORK_TYPE_CELL;
 #endif
 
 // TODO: Wifi network configuration.
@@ -164,7 +197,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
     uMqttClientContext_t *pContext = NULL;
     uMqttClientConnection_t connection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
     uSecurityTlsSettings_t tlsSettings = U_SECURITY_TLS_SETTINGS_DEFAULT;
-    char topic[32];
+    char topic[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
     const char message[] = "The quick brown fox jumps over the lazy dog";
     char buffer[64];
     size_t bufferSize;
@@ -178,8 +211,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
     // Add a network instance, in this case of type cell
     // since that's what we have configuration information
     // for above.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
+    networkHandle = uNetworkAdd(gNetType, (void *) &gConfig);
     uPortLog("Added network with handle %d.\n", networkHandle);
 
     // Bring up the network layer
@@ -229,6 +261,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                 uMqttClientSetMessageCallback(pContext,
                                               messageIndicationCallback,
                                               (void *) &messagesAvailable);
+
 
                 // In order to create a unique topic name on the
                 // public server that we can publish and subscribe
