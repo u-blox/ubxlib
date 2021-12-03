@@ -5,6 +5,11 @@ from . import utils, arm_embedded, unity, make
 
 STM32CUBE_F4_URL="https://github.com/STMicroelectronics/STM32CubeF4.git"
 
+DEFAULT_MAKEFILE_DIR = f"{utils.UBXLIB_DIR}/port/platform/stm32cube/mcu/stm32f4/runner"
+DEFAULT_OUTPUT_NAME = "runner_stm32f4"
+DEFAULT_BUILD_DIR = os.path.join("_build","stm32cubef4")
+DEFAULT_JOB_COUNT = 8
+
 @task(
     pre=[
         arm_embedded.check_installation,
@@ -35,36 +40,38 @@ def check_installation(ctx):
 @task(
     pre=[check_installation],
     help={
-        "makefile_dir": "Makefile project directory to build",
-        "target_name": "A target name (build sub folder)",
-        "build_dir": "Output bild directory (default: {})".format(os.path.join("_build","stm32cubef4")),
+        "makefile_dir": f"Makefile project directory to build (default: {DEFAULT_MAKEFILE_DIR})",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
+        "jobs": f"The number of Makefile jobs (default: {DEFAULT_JOB_COUNT})"
     }
 )
-def build(ctx, makefile_dir, target_name, build_dir=os.path.join("_build","stm32cubef4")):
+def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAME,
+          build_dir=DEFAULT_BUILD_DIR, jobs=DEFAULT_JOB_COUNT):
     """Build a STM32CubeF4 SDK based application"""
     # Read U_FLAGS from stm32cubef4.u_flags
-    u_flags = utils.get_u_flags(ctx.config.cfg_dir, "stm32cubef4", target_name)
+    u_flags = utils.get_u_flags(ctx.config.cfg_dir, "stm32cubef4", output_name)
     # If the flags has been modified we trigger a rebuild
     if u_flags['modified']:
-        clean(ctx, target_name, build_dir)
+        clean(ctx, output_name, build_dir)
 
-    build_dir = os.path.abspath(os.path.join(build_dir, target_name))
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     os.makedirs(build_dir, exist_ok=True)
     with ctx.cd(makefile_dir):
         # OUTPUT_DIRECTORY is very picky in Windows.
         # Seems it must be a relative path and `\` directory separators must NOT be used.
         build_dir = os.path.relpath(build_dir, makefile_dir).replace("\\", "/")
-        ctx.run(f'make -j8 UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
+        ctx.run(f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
                 f'CFLAGS="{u_flags["u_flags"]}" {" ".join(ctx.stm32cubef4_env)}')
 
 @task(
     help={
-        "target_name": "A target name (build sub folder)",
-        "build_dir": "Output bild directory (default: {})".format(os.path.join("_build","stm32cubef4")),
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})"
     }
 )
-def clean(ctx, target_name, build_dir=os.path.join("_build","stm32cubef4")):
-    """Remove all files for a nRF5 SDK build"""
-    build_dir = os.path.abspath(os.path.join(build_dir, target_name))
+def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
+    """Remove all files for a STM32CubeF4 build"""
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)

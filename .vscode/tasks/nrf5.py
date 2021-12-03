@@ -3,6 +3,11 @@ import shutil
 from invoke import task
 from . import utils, arm_embedded, unity, make
 
+DEFAULT_MAKEFILE_DIR = f"{utils.UBXLIB_DIR}/port/platform/nrf5sdk/mcu/nrf52/gcc/runner"
+DEFAULT_OUTPUT_NAME = "runner_ubx_evkninab3_nrf52840"
+DEFAULT_BUILD_DIR = os.path.join("_build","nrf5")
+DEFAULT_JOB_COUNT = 8
+
 @task(
     pre=[
         arm_embedded.check_installation,
@@ -33,36 +38,38 @@ def check_installation(ctx):
 @task(
     pre=[check_installation],
     help={
-        "makefile_dir": "Makefile project directory to build",
-        "target_name": "A target name (build sub folder)",
-        "builddir": "Output bild directory (default: {})".format(os.path.join("_build","nrf5")),
+        "makefile_dir": f"Makefile project directory to build (default: {DEFAULT_MAKEFILE_DIR})",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
+        "jobs": f"The number of Makefile jobs (default: {DEFAULT_JOB_COUNT})",
     }
 )
-def build(ctx, makefile_dir, target_name, builddir=os.path.join("_build","nrf5")):
+def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAME,
+          build_dir=DEFAULT_BUILD_DIR, jobs=DEFAULT_JOB_COUNT):
     """Build a nRF5 SDK based application"""
     # Read U_FLAGS from nrfconnect.u_flags
-    u_flags = utils.get_u_flags(ctx.config.cfg_dir, "nrf5", target_name)
+    u_flags = utils.get_u_flags(ctx.config.cfg_dir, "nrf5", output_name)
     # If the flags has been modified we trigger a rebuild
     if u_flags['modified']:
-        clean(ctx, target_name, builddir)
+        clean(ctx, output_name, build_dir)
 
-    builddir = os.path.abspath(os.path.join(builddir, target_name))
-    os.makedirs(builddir, exist_ok=True)
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    os.makedirs(build_dir, exist_ok=True)
     with ctx.cd(makefile_dir):
         # OUTPUT_DIRECTORY is very picky in Windows.
         # Seems it must be a relative path and `\` directory separators must NOT be used.
-        builddir = os.path.relpath(builddir, makefile_dir).replace("\\", "/")
-        ctx.run(f'make -j8 UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={builddir} '\
+        build_dir = os.path.relpath(build_dir, makefile_dir).replace("\\", "/")
+        ctx.run(f'make -j{DEFAULT_JOB_COUNT} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
                 f'NRF5_PATH={ctx.nrf5_dir} CFLAGS="{u_flags["u_flags"]}" {" ".join(ctx.nrf5_env)}')
 
 @task(
     help={
-        "target_name": "A target name (build sub folder)",
-        "builddir": "Output bild directory (default: {})".format(os.path.join("_build","nrf5")),
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})"
     }
 )
-def clean(ctx, target_name='nrf52840_xxaa', builddir=os.path.join("_build","nrf5")):
+def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
     """Remove all files for a nRF5 SDK build"""
-    build_dir = os.path.abspath(os.path.join(builddir, target_name))
-    if os.path.exists(builddir):
-        shutil.rmtree(builddir)
+    build_dir = os.path.join(build_dir, output_name)
+    if os.path.exists(build_dir):
+        shutil.rmtree(build_dir)
