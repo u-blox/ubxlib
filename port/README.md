@@ -22,3 +22,40 @@ If your platform is not currently supported you may be able to port it yourself,
 - provide your own versions of the header files `u_cfg_app_platform_specific.h`, `u_cfg_hw_platform_specific.h`, `u_cfg_test_platform_specific.h` and `u_cfg_os_platform_specific.h` (see examples in the existing platform directories); take particular note of translating the task priority values into those of your OS,
 - provide your own build metadata files (for CMake, Make, a home-grown Python lash-up, whatever): usually your chosen platform will dictate the shape of these and you just need to add to your existing structure the paths to the `ubxlib` source files and the `ubxlib` include files; otherwise take a look at the existing [nrf5 GCC platform](platform/nrf5sdk/mcu/nrf52/gcc/runner) or [static_size](platform/static_size) platforms as a starting point (though note that the latter does not bring in any `platform` or `test` files),
 - add [Unity](https://github.com/ThrowTheSwitch/Unity) to your build and then compile and run the tests in [u_port_test.c](test/u_port_test.c): if these pass then you have likely completed the necessary porting.
+
+# Shared CMake file
+For ports that use CMake [ubxlib.cmake](ubxlib.cmake) can be used to collect the `ubxlib` source code files, include directories etc.
+`ubxlib.cmake` is typically included in a port specific CMake file and will then define a couple of variables that the calling CMake file can make use of (see the [esp32 component CMakeLists.txt](platform/esp-idf/mcu/esp32/components/ubxlib/CMakeLists.txt) as example).
+
+Before including `ubxlib.cmake` you must set the variable `UBXLIB_BASE` to root directory of `ubxlib`.
+You must also specify what `ubxlib` features to enable using the `UBXLIB_FEATURES` variable.
+Available features currently are:
+* `u_lib`: Include the `lib_common` API
+* `short_range`: Include `wifi`, `ble` and `short_range` API
+* `cell`: Include `cell` API
+* `gnss`: Include `gnss` API
+
+**IMPORTANT:** This is under development so `short_range`, `cell` and `gnss` must currently always be enabled.
+
+## Example
+```cmake
+set(UBXLIB_BASE <path_to_ubxlib>)
+# Set the ubxlib features to compile (all needs to be enabled at the moment)
+set(UBXLIB_FEATURES short_range cell gnss)
+
+# From this line we will get back:
+# - UBXLIB_SRC
+# - UBXLIB_INC
+# - UBXLIB_PRIVATE_INC
+# - UBXLIB_TEST_SRC
+# - UBXLIB_TEST_INC
+include(${UBXLIB_BASE}/port/ubxlib.cmake)
+```
+
+## Output Variables
+After `ubxlib.cmake` has been included the following variables will be available:
+* `UBXLIB_SRC`: A list of all the .c files
+* `UBXLIB_INC`: A list of the public include directories
+* `UBXLIB_PRIVATE_INC`: A list of the private include directories required to build ubxlib
+* `UBXLIB_TEST_SRC`: A list of all the test .c files
+* `UBXLIB_TEST_INC`: A list of test include directories
