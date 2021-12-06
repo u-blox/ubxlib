@@ -15,6 +15,7 @@ import u_run_nrf5sdk # Build/run stuff on NRF5 (i.e. NRF52)
 import u_run_zephyr # Build/run stuff on Zephyr (i.e. NRF52/53)
 import u_run_stm32cube # Build/run stuff on STM's Cube IDE (i.e. STM32F4)
 import u_run_arduino # Build/run stuff under Arduino
+import u_run_windows # Build/run stuff on Windows
 import u_run_lint # Run Lint check
 import u_run_doxygen # Run a Doxygen check
 import u_run_astyle # Run AStyle check
@@ -266,6 +267,12 @@ def main(database, instance, filter_string, clean,
                                                      working_dir, printer, reporter,
                                                      test_report_handle, keep_going_flag,
                                                      unity_dir)
+                elif platform.lower() == "windows":
+                    return_value = u_run_windows.run(instance, mcu, toolchain, connection,
+                                                     connection_lock, platform_lock, misc_locks,
+                                                     clean, defines, ubxlib_dir, working_dir,
+                                                     printer, reporter, test_report_handle,
+                                                     keep_going_flag, unity_dir)
                 else:
                     printer.string("{}don't know how to handle platform \"{}\".".    \
                                    format(PROMPT, platform))

@@ -230,12 +230,12 @@ static void bleDataCallback(int32_t channel, void *pParameters)
     do {
         length = uBleDataReceive(gBleHandle, channel, buffer, sizeof buffer);
         if (length > 0) {
-            int errorOrigDataStartIndex = -1;
-            int errorRecDataStartIndex = -1;
-            int errorLength = -1;
+            int32_t errorOrigDataStartIndex = -1;
+            int32_t errorRecDataStartIndex = -1;
+            int32_t errorLength = -1;
 
             // Compare the data with the expected data
-            for (uint32_t x = 0; (x < length); x++) {
+            for (int32_t x = 0; (x < length); x++) {
                 gBytesReceived++;
                 if (gTestData[gIndexInBlock] != buffer[x]) {
                     if (errorOrigDataStartIndex < 0) {

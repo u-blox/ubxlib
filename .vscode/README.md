@@ -9,6 +9,7 @@ Note: currently building/running/debugging is only supported on the following pl
 - `evbninab3` [[nrf5sdk](/port/platform/nrf5sdk)]
 - `esp32` [[esp-idf](/port/platform/esp-idf)]
 - `u-blox C030` [[stm32cubef4](/port/platform/stm32cube)]
+- `Windows` [[windows](/port/platform/windows)]
 
 ## Setup
 1. Make sure you have Python 3.x installed and that it is in your `PATH` environment. Also make sure that `pip3` is accessable through your `PATH` environment.

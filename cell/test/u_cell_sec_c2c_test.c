@@ -547,7 +547,7 @@ static void print(const char *pStr, size_t length)
         c = *pStr++;
         if (!isprint((int32_t) c)) {
             // Print the hex
-            uPortLog("[%02x]", c);
+            uPortLog("[%02x]", (unsigned char) c);
         } else {
             // Print the ASCII character
             uPortLog("%c", c);

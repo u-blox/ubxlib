@@ -572,7 +572,7 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
                                           error.output))
     return success
 
-def exe_where(exe_name, help_text, printer, prompt):
+def exe_where(exe_name, help_text, printer, prompt, set_env=None):
     '''Find an executable using where.exe or which on linux'''
     success = False
 
@@ -590,8 +590,8 @@ def exe_where(exe_name, help_text, printer, prompt):
         else:
             cmd = ["where", "".join(exe_name)]
             printer.string("{}detected nonlinux, calling \"{}\"...".format(prompt, cmd))
-        text = subprocess.check_output(cmd,
-                                       stderr=subprocess.STDOUT,
+        text = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
+                                       env=set_env,
                                        shell=True) # Jenkins hangs without this
         for line in text.splitlines():
             printer.string("{}{} found in {}".format(prompt, exe_name, line))
@@ -606,7 +606,7 @@ def exe_where(exe_name, help_text, printer, prompt):
 
     return success
 
-def exe_version(exe_name, version_switch, printer, prompt):
+def exe_version(exe_name, version_switch, printer, prompt, set_env=None):
     '''Print the version of a given executable'''
     success = False
 
@@ -614,7 +614,7 @@ def exe_version(exe_name, version_switch, printer, prompt):
         version_switch = "--version"
     try:
         text = subprocess.check_output(subprocess_osify(["".join(exe_name), version_switch]),
-                                       stderr=subprocess.STDOUT,
+                                       stderr=subprocess.STDOUT, env=set_env,
                                        shell=True)  # Jenkins hangs without this
         for line in text.splitlines():
             printer.string("{}{}".format(prompt, line))
@@ -868,7 +868,9 @@ class ExeRun():
             if self._with_stdin:
                 popen_keywords['stdin'] = subprocess.PIPE
 
-            self._process = subprocess.Popen(self._call_list, **popen_keywords)
+            self._process = subprocess.Popen(subprocess_osify(self._call_list,
+                                                              shell=self._shell_cmd),
+                                             **popen_keywords)
 
             if self._printer:
                 self._printer.string("{}{} pid {} started".format(self._prompt,

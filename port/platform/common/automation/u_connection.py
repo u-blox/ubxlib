@@ -63,7 +63,11 @@ CONNECTION_LIST = [
      "debugger": u_settings.CONNECTION_INSTANCE_21.get("debugger")},
     # Instance 22, ESP32, SARA-R422
     {"lock": None, "serial_port": u_settings.CONNECTION_INSTANCE_22.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_22.get("debugger")}]
+     "debugger": u_settings.CONNECTION_INSTANCE_22.get("debugger")},
+    # Instance 23, WINDOWS, SARA-R5
+    # Note: windows has no serial port etc. but we need the lock field to permit
+    # parallel operations
+    {"lock": None}]
 
 def init_locks(manager):
     '''Create locks'''

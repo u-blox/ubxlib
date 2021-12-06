@@ -96,19 +96,19 @@ uMqttClientContext_t *mqttClientCtx;
 
 const uMqttClientConnection_t mqttUnsecuredConnection = {
     .pBrokerNameStr = "broker.hivemq.com",
-    .localPort = 1883,
-    .pClientIdStr = "test_client_id",
     .pUserNameStr = "test_user",
-    .pPasswordStr = "test_passwd"
+    .pPasswordStr = "test_passwd",
+    .pClientIdStr = "test_client_id",
+    .localPort = 1883
 };
 
 
 const uMqttClientConnection_t mqttSecuredConnection = {
     .pBrokerNameStr = "test.mosquitto.org",
-    .localPort = 8883,
-    .pClientIdStr = "test_client_id",
     .pUserNameStr = "test_user",
     .pPasswordStr = "test_passwd",
+    .pClientIdStr = "test_client_id",
+    .localPort = 8883,
     .keepAlive = true
 };
 
@@ -117,7 +117,7 @@ uSecurityTlsSettings_t mqttTlsSettings = {
     .pRootCaCertificateName = "mosquitto.org.crt",
     .pClientCertificateName = NULL,
     .pClientPrivateKeyName = NULL,
-    .certificateCheck = true
+    .certificateCheck = U_SECURITY_TLS_CERTIFICATE_CHECK_ROOT_CA
 };
 
 static const char *gpRootCaCert = "-----BEGIN CERTIFICATE-----\n"
@@ -584,7 +584,7 @@ static void startWifi(void)
     gWifiConnected = 0;
     // Do the standard preamble
     //lint -e(40) suppress undeclared identifier 'U_CFG_TEST_SHORT_RANGE_MODULE_TYPE'
-    if (0 != uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    if (0 != uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                       &gHandles)) {
         testError = U_WIFI_TEST_ERROR_PREAMBLE;
     }

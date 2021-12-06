@@ -282,12 +282,13 @@ bool nameInFilter(const char *pName, const char *pFilter)
 // Add a function to the list.
 void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription)
 {
-#ifdef __XTENSA__
+#if defined(__XTENSA__) || (defined (_WIN32) && !defined (_MSC_VER))
     uRunnerFunctionDescription_t *pFunction = gpFunctionList;
 
-    // For ESP-IDF (xtensa compiler) the constructors are
-    // found in reverse order so need to add them on the
-    // front here to get them the right way around
+    // For ESP-IDF (xtensa compiler) and on GCC under Windows
+    // (but not on MSVC under Windows) the constructors are found
+    // in reverse order so need to add them on the front here to
+    // get them the right way around
     gpFunctionList = pDescription;
     pDescription->pNext = pFunction;
 #else

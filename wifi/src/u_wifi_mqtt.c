@@ -34,7 +34,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "ctype.h"     // isdigit()
-#include "string.h"    // memset(), strcpy(), strtok_r(), strtol()
+#include "string.h"    // memset(), strncpy(), strtok_r(), strtol()
 #include "stdio.h"     // snprintf()
 #include "assert.h"
 
@@ -242,7 +242,8 @@ static void freeAllMqttTopics(uWifiMqttSession_t *pMqttSession)
     pMqttSession->topicList.pTail = NULL;
 }
 
-static int32_t copyConnectionParams(char **ppMqttSessionParams, const char *pConnectionParams)
+static int32_t copyConnectionParams(char **ppMqttSessionParams,
+                                    const char *pConnectionParams)
 {
     size_t len;
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
@@ -258,7 +259,7 @@ static int32_t copyConnectionParams(char **ppMqttSessionParams, const char *pCon
             if (*ppMqttSessionParams != NULL) {
 
                 memset(*ppMqttSessionParams, 0, len);
-                strcpy(*ppMqttSessionParams, pConnectionParams);
+                strncpy(*ppMqttSessionParams, pConnectionParams, len);
                 err = (int32_t)U_ERROR_COMMON_SUCCESS;
 
             } else {
@@ -324,11 +325,11 @@ static int32_t establishMqttConnectionToBroker(const uMqttClientContext_t *pCont
 
     if (pMqttSession->pClientIdStr) {
 
-       if (len < (int32_t)sizeof(url)) {
-           len += snprintf(&url[len], sizeof(url), "&client=%s", pMqttSession->pClientIdStr);
-       } else {
-         err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
-       }
+        if (len < (int32_t)sizeof(url)) {
+            len += snprintf(&url[len], sizeof(url), "&client=%s", pMqttSession->pClientIdStr);
+        } else {
+            err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+        }
     }
 
     if (pMqttSession->pUserNameStr) {
@@ -810,21 +811,25 @@ static int32_t configureMqttSessionConnection(uWifiMqttSession_t *pMqttSession,
     int32_t err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
 
     if ((pMqttSession != NULL) && (pConnection != NULL)) {
-        err = copyConnectionParams(&pMqttSession->pBrokerNameStr, pConnection->pBrokerNameStr);
+        err = copyConnectionParams(&pMqttSession->pBrokerNameStr,
+                                   pConnection->pBrokerNameStr);
 
         if (err == 0) {
             if (pConnection->pClientIdStr) {
-                err = copyConnectionParams(&pMqttSession->pClientIdStr, pConnection->pClientIdStr);
+                err = copyConnectionParams(&pMqttSession->pClientIdStr,
+                                           pConnection->pClientIdStr);
             }
         }
         if (err == 0) {
             if (pConnection->pUserNameStr) {
-                err = copyConnectionParams(&pMqttSession->pUserNameStr, pConnection->pUserNameStr);
+                err = copyConnectionParams(&pMqttSession->pUserNameStr,
+                                           pConnection->pUserNameStr);
             }
         }
         if (err == 0) {
             if (pConnection->pPasswordStr) {
-                err = copyConnectionParams(&pMqttSession->pPasswordStr, pConnection->pPasswordStr);
+                err = copyConnectionParams(&pMqttSession->pPasswordStr,
+                                           pConnection->pPasswordStr);
             }
         }
         if (err == 0) {
@@ -1049,7 +1054,8 @@ int32_t uWifiMqttPublish(const uMqttClientContext_t *pContext,
                     pTopic->retain = retain;
                     pTopic->qos = qos;
 
-                    err = copyConnectionParams(&pTopic->pTopicStr, pTopicNameStr);
+                    err = copyConnectionParams(&pTopic->pTopicStr,
+                                               pTopicNameStr);
 
                     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
                         err = establishMqttConnectionToBroker(pContext, pMqttSession, pTopic, true);
@@ -1109,7 +1115,8 @@ int32_t uWifiMqttSubscribe(const uMqttClientContext_t *pContext,
 
                     pTopic->qos = maxQos;
 
-                    err = copyConnectionParams(&pTopic->pTopicStr, pTopicFilterStr);
+                    err = copyConnectionParams(&pTopic->pTopicStr,
+                                               pTopicFilterStr);
 
                     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
                         err = establishMqttConnectionToBroker(pContext, pMqttSession, pTopic, false);

@@ -111,6 +111,14 @@
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
         {
+            "label": "Build windows runner [win32]",
+            "type": "shell",
+            "command": "cmake ${workspaceFolder}/port/platform/windows/mcu/win32/runner",
+            "group": { "kind": "build", "isDefault": true },
+            "presentation": { "group": "ubxlib" },
+            "problemMatcher": { "base": "$msCompile", "fileLocation": "absolute" }
+        },
+        {
             "type": "shell",
             "label": "Predebug evkninab3 runner [Zephyr]",
             "presentation": {

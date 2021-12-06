@@ -367,7 +367,7 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetScan")
     int32_t result;
     uWifiTestError_t testError = U_WIFI_TEST_ERROR_NONE;
 
-    result = uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    result = uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                       &gHandles);
     U_PORT_TEST_ASSERT(result == 0);
 

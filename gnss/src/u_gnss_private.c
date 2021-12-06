@@ -488,7 +488,7 @@ void uGnssPrivatePrintBuffer(const char *pBuffer,
 {
 #if U_CFG_ENABLE_LOGGING
     for (size_t x = 0; x < bufferLengthBytes; x++) {
-        uPortLog(" %02x", *pBuffer);
+        uPortLog(" %02x", (unsigned char) *pBuffer);
         pBuffer++;
     }
 #else
