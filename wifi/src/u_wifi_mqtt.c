@@ -62,12 +62,11 @@
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
 #include "u_ringbuffer.h"
+#include "u_short_range_sec_tls.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * ------------------------------------------------------------- */
-// todo: MQTT TLS connections need to be handled (AT+USECMNG) need to be implemented in u_security_tls.c
-// todo: inactivity time out, MQTT will message, keep alive support (present in uconnect) - refer to u_mqtt_client.h
 #define U_WIFI_MQTT_DATA_EVENT_STACK_SIZE 1536
 #define U_WIFI_MQTT_DATA_EVENT_PRIORITY (U_CFG_OS_PRIORITY_MAX - 5)
 
@@ -94,6 +93,7 @@ typedef struct uWifiMqttSession_t {
     char *pPasswordStr;
     char *pRxBuffer;
     bool isConnected;
+    bool keepAlive;
     uRingBuffer_t rxRingBuffer;
     uWifiMqttTopicList_t topicList;
     int32_t sessionHandle;
@@ -271,18 +271,36 @@ static int32_t copyConnectionParams(char **ppMqttSessionParams, const char *pCon
     return err;
 }
 
+static uShortRangeSecTlsContext_t *getShoTlsContext(const uMqttClientContext_t *pContext)
+{
+    uShortRangeSecTlsContext_t *pMqttTlsContext = NULL;
+
+    if (pContext != NULL) {
+        if (pContext->pSecurityContext != NULL) {
+            if (pContext->pSecurityContext->pNetworkSpecific != NULL) {
+                pMqttTlsContext = (uShortRangeSecTlsContext_t *)pContext->pSecurityContext->pNetworkSpecific;
+            }
+        }
+    }
+    uPortLog("MQTT SHO TLS context %p\n", pMqttTlsContext);
+
+    return pMqttTlsContext;
+}
+
 /**
  * Establish connection to a given broker. Report the disconnection
  * to the user via a callback in case of connection failure
  */
-static int32_t establishMqttConnectionToBroker(uWifiMqttSession_t *pMqttSession,
+static int32_t establishMqttConnectionToBroker(const uMqttClientContext_t *pContext,
+                                               uWifiMqttSession_t *pMqttSession,
                                                uWifiMqttTopic_t *pTopic,
                                                bool isPublish)
 {
     char url[200];
     uAtClientHandle_t atHandle;
-    int32_t err;
+    int32_t err = (int32_t)U_ERROR_COMMON_SUCCESS;
     int32_t len;
+    uShortRangeSecTlsContext_t *pMqttTlsContext;
 
     memset(url, 0, sizeof(url));
 
@@ -304,57 +322,118 @@ static int32_t establishMqttConnectionToBroker(uWifiMqttSession_t *pMqttSession,
                        pTopic->qos);
     }
 
-    if ((pMqttSession->pClientIdStr) && (len < (int32_t)sizeof(url))) {
-        len += snprintf(&url[len], sizeof(url), "&client=%s", pMqttSession->pClientIdStr);
+    if (pMqttSession->pClientIdStr) {
+
+       if (len < (int32_t)sizeof(url)) {
+           len += snprintf(&url[len], sizeof(url), "&client=%s", pMqttSession->pClientIdStr);
+       } else {
+         err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+       }
     }
 
-    if ((pMqttSession->pUserNameStr) && (len < (int32_t)sizeof(url))) {
-        len += snprintf(&url[len], sizeof(url), "&user=%s", pMqttSession->pUserNameStr);
+    if (pMqttSession->pUserNameStr) {
+
+        if (len < (int32_t)sizeof(url)) {
+            len += snprintf(&url[len], sizeof(url), "&user=%s", pMqttSession->pUserNameStr);
+        } else {
+            err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+        }
     }
 
-    if ((pMqttSession->pPasswordStr) && (len < (int32_t)sizeof(url))) {
-        len += snprintf(&url[len], sizeof(url), "&passwd=%s", pMqttSession->pPasswordStr);
+    if (pMqttSession->pPasswordStr) {
+
+        if (len < (int32_t)sizeof(url)) {
+            len += snprintf(&url[len], sizeof(url), "&passwd=%s", pMqttSession->pPasswordStr);
+        } else {
+            err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+        }
     }
 
+    // TBD: KeepAlive parameter in uMqttClientConnection_t is a bool and it needs to
+    // be changed to uint16_t so that user try out different value acceptable by the broker.
 
+    if (pMqttSession->keepAlive) {
 
-    atHandle = pMqttSession->atHandle;
-    uPortLog("U_WIFI_MQTT: Sending AT+UDCP\n");
-    uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+UDCP=");
-    uAtClientWriteString(atHandle, (char *)&url[0], false);
-    uAtClientCommandStop(atHandle);
-    uAtClientResponseStart(atHandle, "+UDCP:");
-    pTopic->peerHandle = uAtClientReadInt(atHandle);
-    uAtClientResponseStop(atHandle);
-    err = uAtClientUnlock(atHandle);
+        if (len < (int32_t)sizeof(url)) {
+            len += snprintf(&url[len], sizeof(url), "&keepAlive=%d", 60);
+        } else {
+            err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+        }
+    }
+
+    pMqttTlsContext = getShoTlsContext(pContext);
+
+    if (pMqttTlsContext != NULL) {
+
+        if (pMqttTlsContext->pRootCaCertificateName) {
+
+            if (len < (int32_t)sizeof(url)) {
+                len += snprintf(&url[len], sizeof(url), "&ca=%s", pMqttTlsContext->pRootCaCertificateName);
+            } else {
+                err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+            }
+        }
+
+        if (pMqttTlsContext->pClientCertificateName) {
+
+            if (len < (int32_t)sizeof(url)) {
+                len += snprintf(&url[len], sizeof(url), "&cert=%s", pMqttTlsContext->pClientCertificateName);
+            } else {
+                err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+            }
+        }
+
+        if (pMqttTlsContext->pClientPrivateKeyName) {
+
+            if (len < (int32_t)sizeof(url)) {
+                len += snprintf(&url[len], sizeof(url), "&privKey=%s", pMqttTlsContext->pClientPrivateKeyName);
+            } else {
+                err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+            }
+        }
+    }
 
     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
-        if (uPortSemaphoreTryTake(pMqttSession->semaphore, 5000) != (int32_t)U_ERROR_COMMON_SUCCESS) {
-            err = (int32_t)U_ERROR_COMMON_TIMEOUT;
+
+        atHandle = pMqttSession->atHandle;
+        uPortLog("U_WIFI_MQTT: Sending AT+UDCP\n");
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UDCP=");
+        uAtClientWriteString(atHandle, (char *)&url[0], false);
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+UDCP:");
+        pTopic->peerHandle = uAtClientReadInt(atHandle);
+        uAtClientResponseStop(atHandle);
+        err = uAtClientUnlock(atHandle);
+
+        if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
+            if (uPortSemaphoreTryTake(pMqttSession->semaphore, 5000) != (int32_t)U_ERROR_COMMON_SUCCESS) {
+                err = (int32_t)U_ERROR_COMMON_TIMEOUT;
+            }
+        }
+        // Report to user that we are disconnected
+        if (err == (int32_t)U_ERROR_COMMON_TIMEOUT) {
+
+            pMqttSession->isConnected = false;
+
+            // Remove the topic from the mqtt session
+            freeMqttTopic(pMqttSession, pTopic);
+
+            if (pMqttSession->pDisconnectCb) {
+                //lint -save -e785
+                uCallbackEvent_t event = {
+                    .pDataCb = NULL,
+                    .pDisconnectCb = pMqttSession->pDisconnectCb,
+                    .pCbParam = pMqttSession->pCbParam,
+                    .pMqttSession = pMqttSession,
+                    .disconnStatus = err
+                };
+                //lint -restore
+                uPortEventQueueSend(gCallbackQueue, &event, sizeof(event));
+            }
         }
     }
-    // Report to user that we are disconnected
-    if (err == (int32_t)U_ERROR_COMMON_TIMEOUT) {
 
-        pMqttSession->isConnected = false;
-
-        // Remove the topic from the mqtt session
-        freeMqttTopic(pMqttSession, pTopic);
-
-        if (pMqttSession->pDisconnectCb) {
-            //lint -save -e785
-            uCallbackEvent_t event = {
-                .pDataCb = NULL,
-                .pDisconnectCb = pMqttSession->pDisconnectCb,
-                .pCbParam = pMqttSession->pCbParam,
-                .pMqttSession = pMqttSession,
-                .disconnStatus = err
-            };
-            //lint -restore
-            uPortEventQueueSend(gCallbackQueue, &event, sizeof(event));
-        }
-    }
     uPortLog("U_WIFI_MQTT: MQTT connection err = %d\n", err);
     return err;
 }
@@ -750,6 +829,7 @@ static int32_t configureMqttSessionConnection(uWifiMqttSession_t *pMqttSession,
         }
         if (err == 0) {
             pMqttSession->localPort = pConnection->localPort;
+            pMqttSession->keepAlive = pConnection->keepAlive;
             err = uPortSemaphoreCreate(&(pMqttSession->semaphore), 0, 1);
         }
         if (err == 0) {
@@ -972,7 +1052,7 @@ int32_t uWifiMqttPublish(const uMqttClientContext_t *pContext,
                     err = copyConnectionParams(&pTopic->pTopicStr, pTopicNameStr);
 
                     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                        err = establishMqttConnectionToBroker(pMqttSession, pTopic, true);
+                        err = establishMqttConnectionToBroker(pContext, pMqttSession, pTopic, true);
                     }
 
                 }
@@ -1032,7 +1112,7 @@ int32_t uWifiMqttSubscribe(const uMqttClientContext_t *pContext,
                     err = copyConnectionParams(&pTopic->pTopicStr, pTopicFilterStr);
 
                     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                        err = establishMqttConnectionToBroker(pMqttSession, pTopic, false);
+                        err = establishMqttConnectionToBroker(pContext, pMqttSession, pTopic, false);
                     }
 
                     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
