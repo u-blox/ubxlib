@@ -25,7 +25,7 @@
                     <span class="icon">⚠️ </span><span class="header">Important Note:</span>
                 </div>
                 <div class="message">
-                    The test runner STM32CubeIDE project will soon be removed and replaced with a Makefile
+                    See UPCOMING_CHANGES.md for important changes to platform support coming in March 2022.
                 </div>
             </div>
         </div>

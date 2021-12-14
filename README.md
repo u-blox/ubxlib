@@ -1,6 +1,6 @@
 ![u-blox logo](/readme_images/ublox-logo.png)
 
-![important message](/readme_images/important_msg.svg)
+[![important message](/readme_images/important_msg.svg)](/UPCOMING_CHANGES.md)
 
 # Introduction to `ubxlib`
 This repository contains the C code support library for [u-blox](https://www.u-blox.com) modules with [cellular](https://www.u-blox.com/en/cellular-modules) (2G/3G/4G), [short-range](https://www.u-blox.com/en/short-range-radio-chips-and-modules) (Bluetooth and Wi-Fi) and [positioning](https://www.u-blox.com/en/positioning-chips-and-modules) (GNSS) support. The library presents high level C APIs for use in customer applications (e.g. connect to a network, open a TCP socket, establish location, etc.) and implements these APIs on selected popular MCUs, also available inside u-blox modules.
