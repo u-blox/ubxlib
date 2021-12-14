@@ -61,6 +61,9 @@
 // For the security credential storage API
 #include "u_security_credential.h"
 
+// The specific credentials provided for use with this example
+#include "credentials_tls.h"
+
 #ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
 # include "u_cfg_test_platform_specific.h"
@@ -129,14 +132,6 @@ static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
 
 // TODO: Wifi network configuration.
 // static const uNetworkConfigurationWifi_t gConfigWifi = {U_NETWORK_TYPE_NONE};
-
-// The credentials that may be required to talk to the uxblib echo server.
-extern const char *const gpUEchoServerClientCertPem;
-extern const char gUEchoServerClientCertHash[];
-extern const char *const gpUEchoServerClientKeyPem;
-extern const char gUEchoServerClientKeyHash[];
-extern const char *const gpUEchoServerServerCertPem;
-extern const char gUEchoServerServerCertHash[];
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS

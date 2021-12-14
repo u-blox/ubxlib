@@ -49,6 +49,8 @@
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
+#include "u_error_common.h"
+
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -580,10 +582,28 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                         }
                     }
                     for (size_t tries = 0; tries < 3; tries++) {
-                        uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
                         int32_t result;
-                        result = uBleDataConnectSps(gUNetworkTestCfg[x].handle,
-                                                    gRemoteSpsAddress);
+                        // Use first testrun(up/down) to test default connection parameters
+                        // and the second for using non-default.
+                        if (a == 0) {
+                            uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
+                            result = uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                                                        gRemoteSpsAddress,
+                                                        NULL);
+                        } else {
+                            uBleDataConnParams_t connParams;
+                            connParams.scanInterval = 64;
+                            connParams.scanWindow = 64;
+                            connParams.createConnectionTmo = 5000;
+                            connParams.connIntervalMin = 28;
+                            connParams.connIntervalMax = 34;
+                            connParams.connLatency = 0;
+                            connParams.linkLossTimeout = 2000;
+                            uPortLog("U_NETWORK_TEST: Connecting SPS with conn params: %s\n", gRemoteSpsAddress);
+                            result = uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                                                        gRemoteSpsAddress, &connParams);
+                        }
+
                         if (result == 0) {
                             // Wait for connection
                             uPortSemaphoreTryTake(gBleConnectionSem, 10000);
@@ -831,9 +851,11 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
     uNetworkDeinit();
 
     y = uPortTaskStackMinFree(NULL);
-    uPortLog("U_NETWORK_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", y);
-    U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_NETWORK_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", y);
+        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

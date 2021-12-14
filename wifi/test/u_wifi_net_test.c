@@ -167,7 +167,7 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
     gWifiConnected = 0;
     gWifiDisconnected = 0;
     // Do the standard preamble
-    if (0 != uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    if (0 != uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                       &gHandles)) {
         testError = U_WIFI_TEST_ERROR_PREAMBLE;
     }
@@ -289,7 +289,7 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetInitialisation")
     // For this reason we start with making sure the wifi gets disconnected here
 
     // Do the standard preamble
-    if (0 != uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    if (0 != uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                       &gHandles)) {
         testError = U_WIFI_TEST_ERROR_PREAMBLE;
     }

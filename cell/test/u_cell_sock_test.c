@@ -360,7 +360,7 @@ static void checkOptionSet(int32_t cellHandle, int32_t sockHandle,
     size_t *pLength = &length;
 
     // Malloc memory for testing that value has been set
-    pValueRead = malloc(valueLength);
+    pValueRead = (char *) malloc(valueLength);
     U_PORT_TEST_ASSERT(pValueRead != NULL);
 
     uPortLog("U_CELL_SOCK_TEST: testing uCellSockOptionSet()"
@@ -402,9 +402,11 @@ static void checkOptionSet(int32_t cellHandle, int32_t sockHandle,
  * -------------------------------------------------------------- */
 
 // Callback function for the cellular connection process
-static bool keepGoingCallback()
+static bool keepGoingCallback(int32_t unused)
 {
     bool keepGoing = true;
+
+    (void) unused;
 
     if (uPortGetTickTimeMs() > gStopTimeMs) {
         keepGoing = false;
@@ -537,23 +539,24 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     // Connect to the network
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
-    U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL,
+    y = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
 #else
-                                       NULL,
+                        NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_USERNAME
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
 #else
-                                       NULL,
+                        NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_PASSWORD
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
 #else
-                                       NULL,
+                        NULL,
 #endif
-                                       keepGoingCallback) == 0);
+                        keepGoingCallback);
+    U_PORT_TEST_ASSERT(y == 0);
 
     // Get the current value of the data counters, if supported
     y = uCellNetGetDataCounterTx(cellHandle);
@@ -892,6 +895,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     void *pValueSaved;
     size_t length = 0;
     int32_t heapUsed;
+    int32_t y;
 
     // In case a previous test failed
     uCellSockDeinit();
@@ -908,23 +912,24 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
     // Connect to the network
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
-    U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL,
+    y = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
 #else
-                                       NULL,
+                        NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_USERNAME
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
 #else
-                                       NULL,
+                        NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_PASSWORD
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
 #else
-                                       NULL,
+                        NULL,
 #endif
-                                       keepGoingCallback) == 0);
+                        keepGoingCallback);
+    U_PORT_TEST_ASSERT(y == 0);
 
     // Init cell sockets
     U_PORT_TEST_ASSERT(uCellSockInit() == 0);
@@ -1036,9 +1041,11 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockCleanUp")
     uCellTestPrivateCleanup(&gHandles);
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_CELL_SOCK_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_SOCK_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

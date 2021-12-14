@@ -165,7 +165,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
         gFixMode = -1;
 
         // Put the initial dynamic setting back, just in cae
-        U_PORT_TEST_ASSERT(uGnssCfgSetDynamic(gnssHandle, gDynamic) == 0);
+        U_PORT_TEST_ASSERT(uGnssCfgSetDynamic(gnssHandle, (uGnssDynamic_t) gDynamic) == 0);
         gDynamic = -1;
 
         // Do the standard postamble, leaving the module on for the next
@@ -191,20 +191,22 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgCleanUp")
 
     if ((gDynamic >= 0) && (gHandles.gnssHandle >= 0)) {
         // Put the initial dynamic setting back
-        uGnssCfgSetDynamic(gHandles.gnssHandle, gDynamic);
+        uGnssCfgSetDynamic(gHandles.gnssHandle, (uGnssDynamic_t) gDynamic);
     }
 
     if ((gFixMode >= 0) && (gHandles.gnssHandle >= 0)) {
         // Put the initial fix mode back
-        uGnssCfgSetFixMode(gHandles.gnssHandle, gFixMode);
+        uGnssCfgSetFixMode(gHandles.gnssHandle, (uGnssFixMode_t) gFixMode);
     }
 
     uGnssTestPrivateCleanup(&gHandles);
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_GNSS_CFG_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_GNSS_CFG_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

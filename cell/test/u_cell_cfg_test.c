@@ -96,9 +96,11 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
  * -------------------------------------------------------------- */
 
 // Callback function for the cellular connection process
-static bool keepGoingCallback()
+static bool keepGoingCallback(int32_t unused)
 {
     bool keepGoing = true;
+
+    (void) unused;
 
     if (uPortGetTickTimeMs() > gStopTimeMs) {
         keepGoing = false;
@@ -837,9 +839,11 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgCleanUp")
     uCellTestPrivateCleanup(&gHandles);
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_CELL_CFG_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_CFG_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

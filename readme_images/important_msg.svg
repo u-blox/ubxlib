@@ -1,0 +1,33 @@
+<svg fill="none" viewBox="0 0 800 100" width="800" height="100" xmlns="http://www.w3.org/2000/svg">
+    <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+            <style>
+                .notification {
+                    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+                    background-color: #fff8c4;
+                    border: 1px solid #f2c779;
+                    border-radius: 10px;
+                    padding: 10px 10px 10px 36px;
+                }
+                .header {
+                    font-weight:bold;
+                    font-size: 20px;
+                }
+                .icon {
+                    font-size: 20px;
+                }
+                .message {
+                    padding: 10px 0px 0px 0px;
+                }
+            </style>
+            <div class="notification">
+                <div>
+                    <span class="icon">⚠️ </span><span class="header">Important Note:</span>
+                </div>
+                <div class="message">
+                    The test runner STM32CubeIDE project will soon be removed and replaced with a Makefile
+                </div>
+            </div>
+        </div>
+    </foreignObject>
+</svg>

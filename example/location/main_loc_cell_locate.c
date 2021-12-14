@@ -162,8 +162,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
 {
     int32_t networkHandle;
     uLocation_t location;
-    int32_t whole;
-    int32_t fraction;
+    int32_t whole = 0;
+    int32_t fraction = 0;
 
     // Set an out of range value so that we can test it later
     location.timeUtc = -1;

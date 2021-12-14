@@ -45,6 +45,8 @@
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
+#include "u_error_common.h"
+
 #include "u_port_clib_platform_specific.h" /* In some cases mktime() and rand() */
 #include "u_port.h"
 #include "u_port_debug.h"
@@ -218,9 +220,11 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleCleanUp")
     int32_t x;
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_PREAMBLE_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of the preamble.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_PREAMBLE_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of the preamble.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

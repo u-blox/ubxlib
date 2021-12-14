@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-#ifndef _U_BLE_CFG_H_
-#define _U_BLE_CFG_H_
-
-/* No #includes allowed here */
+#ifndef _CREDENTIALS_TLS_H_
+#define _CREDENTIALS_TLS_H_
 
 /** @file
- * @brief This header file defines the APIs that configure ble.
+ * @brief Credentials to use with the main_tls.c example.
  */
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef U_CFG_OVERRIDE
+# include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
 /* ----------------------------------------------------------------
@@ -35,36 +37,22 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-typedef enum {
-    U_BLE_CFG_ROLE_DISABLED = 0, /**< BLE disabled. */
-    U_BLE_CFG_ROLE_CENTRAL, /**< Central only mode. */
-    U_BLE_CFG_ROLE_PERIPHERAL, /**< Peripheral only mode. */
-    U_BLE_CFG_ROLE_CENTRAL_AND_PERIPHERAL, /**< Simultaneous central and peripheral mode. */
-} uBleCfgRole_t;
-
-typedef struct {
-    uBleCfgRole_t role;
-    bool spsServer;
-} uBleCfg_t;
-
 /* ----------------------------------------------------------------
- * FUNCTIONS
+ * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Configure ble for a short range module, may require module restarts
- *  so can take up to 500 ms before it returns.
- *
- * @param bleHandle   the handle of the ble instance.
- * @param pCfg        pointer to the configuration data, must not be NULL.
- * @return            zero on success or negative error code
- *                    on failure.
- */
-int32_t uBleCfgConfigure(int32_t bleHandle,
-                         const uBleCfg_t *pCfg);
+// The credentials that may be required to talk to the uxblib echo server.
+extern const char *const gpUEchoServerClientCertPem;
+extern const char gUEchoServerClientCertHash[];
+extern const char *const gpUEchoServerClientKeyPem;
+extern const char gUEchoServerClientKeyHash[];
+extern const char *const gpUEchoServerServerCertPem;
+extern const char gUEchoServerServerCertHash[];
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _U_BLE_CFG_H_
+#endif // _CREDENTIALS_TLS_H_
 
 // End of file

@@ -42,6 +42,8 @@
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
+#include "u_error_common.h"
+
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -108,7 +110,7 @@ U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
         U_PORT_TEST_ASSERT(uUbxProtocolEncode(classIn, idIn, pBodyIn, x,
                                               pBuffer) == x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         //lint -e(650) Suppress constant out of range; it isn't
-        U_PORT_TEST_ASSERT(*pBuffer == 0xb5);
+        U_PORT_TEST_ASSERT(*pBuffer == (char) 0xb5);
         U_PORT_TEST_ASSERT(*(pBuffer + 1) == 0x62);
         U_PORT_TEST_ASSERT(*(pBuffer + 2) == (char) classIn);
         U_PORT_TEST_ASSERT(*(pBuffer + 3) == (char) idIn);
@@ -126,7 +128,7 @@ U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
         U_PORT_TEST_ASSERT(memcmp(pBodyOut, pBodyIn, x) == 0);
         for (size_t y = x; y < U_UBX_PROTOCOL_TEST_MAX_BODY_SIZE; y++) {
             //lint -e(650) Suppress constant out of range; it isn't
-            U_PORT_TEST_ASSERT(*(pBodyOut + y) == 0xff);
+            U_PORT_TEST_ASSERT(*(pBodyOut + y) == (char) 0xff);
         }
         // No very good way to test CRC here but check that changing it
         // in the encoded message causes a decode failure
@@ -170,9 +172,11 @@ U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolCleanUp")
     int32_t x;
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_UBX_PROTOCOL_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_UBX_PROTOCOL_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

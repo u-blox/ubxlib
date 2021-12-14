@@ -112,6 +112,16 @@
  */
 #define U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS 100
 
+/** How long to wait to receive  a message on a queue in osTestTask.
+ */
+#ifdef _WIN32
+// The Windows queue implementation (named pipes) is really slow
+// in the osTestTask test for some reason.
+# define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 500
+#else
+# define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 10
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -522,7 +532,8 @@ static void osTestTask(void *pParameters)
         U_PORT_TEST_ASSERT(uPortQueueReceive(gQueueHandleData,
                                              &queueItem) == 0);
         uPortLog("U_PORT_TEST_OS_TASK: task received %d.\n", queueItem);
-        if (queueItem >= 0) {
+        if ((queueItem >= 0) &&
+            (index < (int32_t) (sizeof(gStuffToSend) / sizeof(gStuffToSend[0])))) {
             uPortLog("                     item %d, expecting %d.\n",
                      index + 1, gStuffToSend[index]);
             U_PORT_TEST_ASSERT(gStuffToSend[index] == queueItem);
@@ -533,12 +544,16 @@ static void osTestTask(void *pParameters)
         U_PORT_TEST_ASSERT((y == 0) ||
                            (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
                            (y == (int32_t) U_ERROR_COMMON_TIMEOUT));
-        if (uPortQueueTryReceive(gQueueHandleControl, 10, &queueItem) == 0) {
+
+        if (uPortQueueTryReceive(gQueueHandleControl,
+                                 U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS,
+                                 &queueItem) == 0) {
             uPortLog("U_PORT_TEST_OS_TASK: task received %d on control"
                      " queue.\n", queueItem);
             U_PORT_TEST_ASSERT(queueItem == -1);
             U_PORT_TEST_ASSERT((y < 0) || (x == queueItem));
         }
+        uPortLog("U_PORT_TEST_OS_TASK: queueItem %d.\n", queueItem);
     }
 
     uPortLog("U_PORT_TEST_OS_TASK: task exiting, unlocking mutex.\n");
@@ -690,8 +705,8 @@ static void uartReceivedDataCallback(int32_t uartHandle,
                                      uint32_t filter,
                                      void *pParameters)
 {
-    int32_t dataSizeOrError;
     int32_t receiveSizeOrError;
+    int32_t actualSizeOrError;
     uartEventCallbackData_t *pEventCallbackData = (uartEventCallbackData_t *) pParameters;
 
     pEventCallbackData->callCount++;
@@ -701,46 +716,61 @@ static void uartReceivedDataCallback(int32_t uartHandle,
         // Run until we spot an error or run out of data
         do {
             receiveSizeOrError = uPortUartGetReceiveSize(uartHandle);
-            dataSizeOrError = uPortUartRead(uartHandle,
-                                            pEventCallbackData->pReceive,
-                                            gUartBuffer + sizeof(gUartBuffer) -
-                                            pEventCallbackData->pReceive);
-            if (dataSizeOrError < 0) {
-                pEventCallbackData->errorCode = -2;
-            }
-            // dataSizeOrError will be smaller than receiveSizeOrError
-            // if our data buffer is smaller than the UART receive
-            // buffer but something might also have been received
-            // between the two calls, making it larger.  Just
-            // can't easily check uPortUartGetReceiveSize()
-            // for accuracy, so instead do a range check here
-            if (receiveSizeOrError < 0) {
-                pEventCallbackData->errorCode = -3;
-            }
-            if (receiveSizeOrError > U_CFG_TEST_UART_BUFFER_LENGTH_BYTES) {
-                pEventCallbackData->errorCode = -4;
-            }
-            // Compare the data with the expected data
-            for (int32_t x = 0; (pEventCallbackData->errorCode == 0) &&
-                 (x < dataSizeOrError); x++) {
-                if (gUartTestData[pEventCallbackData->indexInBlock] ==
-                    *(pEventCallbackData->pReceive)) {
-                    pEventCallbackData->bytesReceived++;
-                    pEventCallbackData->indexInBlock++;
-                    // -1 below to omit gUartTestData string terminator
-                    if (pEventCallbackData->indexInBlock >= sizeof(gUartTestData) - 1) {
-                        pEventCallbackData->indexInBlock = 0;
-                        pEventCallbackData->blockNumber++;
-                    }
-                    pEventCallbackData->pReceive++;
-                    if (pEventCallbackData->pReceive >= gUartBuffer + sizeof(gUartBuffer)) {
-                        pEventCallbackData->pReceive = gUartBuffer;
-                    }
-                } else {
+            // Since the initial part of the test is to send a manual
+            // "there some data" message, even though there isn't any
+            // in the buffer yet, we shouldn't go on to read the
+            // data unless we know there really is some; otherwise
+            // uPortUartRead() could get stuck, holding a mutex out
+            // down in the porting layer and preventing us from doing
+            // the uPortUartWrite() part of the test.  This sending
+            // data and receiving it ourselves isn't a normal case,
+            // it only occurs during testing.
+            actualSizeOrError = 0;
+            if (receiveSizeOrError > 0) {
+                actualSizeOrError = uPortUartRead(uartHandle,
+                                                  pEventCallbackData->pReceive,
+                                                  gUartBuffer + sizeof(gUartBuffer) -
+                                                  pEventCallbackData->pReceive);
+                if (actualSizeOrError < 0) {
+                    pEventCallbackData->errorCode = -2;
+                }
+                // actualSizeOrError will be smaller than receiveSizeOrError
+                // if our data buffer is smaller than the UART receive
+                // buffer but something might also have been received
+                // between the two calls, making it larger.  Just
+                // can't easily check uPortUartGetReceiveSize()
+                // for accuracy, so instead do a range check here
+                if (receiveSizeOrError < 0) {
+                    pEventCallbackData->errorCode = -3;
+                }
+                if (receiveSizeOrError > U_CFG_TEST_UART_BUFFER_LENGTH_BYTES) {
+                    pEventCallbackData->errorCode = -4;
+                }
+                if (actualSizeOrError > U_CFG_TEST_UART_BUFFER_LENGTH_BYTES) {
                     pEventCallbackData->errorCode = -5;
                 }
+                // Compare the data with the expected data
+                for (int32_t x = 0; (pEventCallbackData->errorCode == 0) &&
+                     (x < actualSizeOrError); x++) {
+                    if (gUartTestData[pEventCallbackData->indexInBlock] ==
+                        *(pEventCallbackData->pReceive)) {
+                        pEventCallbackData->bytesReceived++;
+                        pEventCallbackData->indexInBlock++;
+                        // -1 below to omit gUartTestData string terminator
+                        if (pEventCallbackData->indexInBlock >= sizeof(gUartTestData) - 1) {
+                            pEventCallbackData->indexInBlock = 0;
+                            pEventCallbackData->blockNumber++;
+                        }
+                        pEventCallbackData->pReceive++;
+                        if (pEventCallbackData->pReceive >= gUartBuffer + sizeof(gUartBuffer)) {
+                            pEventCallbackData->pReceive = gUartBuffer;
+                        }
+                    } else {
+                        pEventCallbackData->errorCode = -6;
+                    }
+                }
             }
-        } while ((dataSizeOrError > 0) && (pEventCallbackData->errorCode == 0));
+        } while ((actualSizeOrError > 0) && (pEventCallbackData->errorCode == 0));
     }
 }
 
@@ -755,6 +785,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     int32_t pinRts;
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
     int32_t stackMinFreeBytes;
+    int32_t x;
 
     eventCallbackData.callCount = 0;
     eventCallbackData.pReceive = gUartBuffer;
@@ -782,18 +813,32 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
         // to "get on with it"
         if (pinCts >= 0) {
             // Make CTS an output pin and low
-            U_PORT_TEST_ASSERT(uPortGpioSet(pinCts, 0) == 0);
+            x = uPortGpioSet(pinCts, 0);
+            // On Windows GPIOs aren't supported but
+            // pinCts is still used as a flow control
+            // on/off indicator
+            U_PORT_TEST_ASSERT((x == 0) ||
+                               (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
             gpioConfig.pin = pinCts;
             gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
-            U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
+            x = uPortGpioConfig(&gpioConfig);
+            U_PORT_TEST_ASSERT((x == 0) ||
+                               (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
             uPortTaskBlock(U_CFG_OS_YIELD_MS);
         }
         if (pinRts >= 0) {
             // Make RTS an output pin and low
-            U_PORT_TEST_ASSERT(uPortGpioSet(pinRts, 0) == 0);
+            x = uPortGpioSet(pinRts, 0);
+            // On Windows GPIOs aren't supported but
+            // pinRts is still used as a flow control
+            // on/off indicator
+            U_PORT_TEST_ASSERT((x == 0) ||
+                               (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
             gpioConfig.pin = pinRts;
             gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
-            U_PORT_TEST_ASSERT(uPortGpioConfig(&gpioConfig) == 0);
+            x = uPortGpioConfig(&gpioConfig);
+            U_PORT_TEST_ASSERT((x == 0) ||
+                               (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
             uPortTaskBlock(U_CFG_OS_YIELD_MS);
         }
         pinCts = -1;
@@ -840,6 +885,8 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     U_PORT_TEST_ASSERT(uPortUartEventSend(uartHandle,
                                           (uint32_t) U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) ==
                        0);
+    // Some platforms (e.g. Windows) can be a little slow at this
+    uPortTaskBlock(10);
     U_PORT_TEST_ASSERT(eventCallbackData.callCount == 1);
 
     // Send data over the UART N times, the callback will check it
@@ -891,9 +938,11 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     // Check the stack extent for the task on the end of the
     // event queue
     stackMinFreeBytes = uPortUartEventStackMinFree(uartHandle);
-    uPortLog("U_PORT_TEST: UART event queue task had %d byte(s) free out of %d.\n",
-             stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
-    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_PORT_TEST: UART event queue task had %d byte(s) free out of %d.\n",
+                 stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
+        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    }
 
     uPortLog("U_PORT_TEST: tidying up after UART test...\n");
     uPortUartClose(uartHandle);
@@ -1028,9 +1077,11 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     for (size_t x = 0; (x < sizeof(taskHandle) /
                         sizeof(taskHandle[0])); x++) {
         stackMinFreeBytes = uPortTaskStackMinFree(taskHandle[x]);
-        uPortLog("U_PORT_TEST: test task %d had %d byte(s) free out of %d.\n",
-                 x + 1, stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
-        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+        if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+            uPortLog("U_PORT_TEST: test task %d had %d byte(s) free out of %d.\n",
+                     x + 1, stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
+            U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+        }
     }
 
     // Let them stop
@@ -1153,17 +1204,18 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);
 
     uPortLog("U_PORT_TEST: sending stuff to task...\n");
-    for (size_t x = 0; x < sizeof(gStuffToSend) /
-         sizeof(gStuffToSend[0]); x++) {
+    for (size_t x = 0; x < sizeof(gStuffToSend) / sizeof(gStuffToSend[0]); x++) {
         // If this is the last thing then queue up a -1 on the control
         // queue so that the test task exits after receiving the
         // last item on the data queue
         if (x == sizeof(gStuffToSend) / sizeof(gStuffToSend[0]) - 1) {
             uPortTaskBlock(1000);
             stackMinFreeBytes = uPortTaskStackMinFree(gTaskHandle);
-            uPortLog("U_PORT_TEST: test task had %d byte(s) free out of %d.\n",
-                     stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
-            U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+            if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+                uPortLog("U_PORT_TEST: test task had %d byte(s) free out of %d.\n",
+                         stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
+                U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+            }
 
             uPortLog("U_PORT_TEST: sending -1 to terminate test task"
                      " control queue and waiting for it to stop...\n");
@@ -1176,7 +1228,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
         if (x & 1) {
             sendToQueue(gQueueHandleData, gStuffToSend[x]);
         } else {
-            sendToQueueIrq(gQueueHandleData, gStuffToSend[x]);
+            z = sendToQueueIrq(gQueueHandleData, gStuffToSend[x]);
+            if (z == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+                sendToQueue(gQueueHandleData, gStuffToSend[x]);
+            }
         }
     }
 
@@ -1245,12 +1300,14 @@ static void osTestTaskSemaphoreGive(void *pParameters)
     uPortTaskDelete(NULL);
 }
 
+#ifndef _WIN32
 static void osTestTaskSemaphoreGiveFromIsr(const void *pParameters)
 {
     (void) pParameters;
 
     U_PORT_TEST_ASSERT(uPortSemaphoreGiveIrq(gSemaphoreHandle) == 0);
 }
+#endif
 
 U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 {
@@ -1373,7 +1430,12 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #ifdef CONFIG_IRQ_OFFLOAD // Only really tested for zephyr for now
     irq_offload(osTestTaskSemaphoreGiveFromIsr, NULL);
 #else
+# ifndef _WIN32
     osTestTaskSemaphoreGiveFromIsr(NULL);
+# else
+    // ISR not supported on Windows, do the non-ISR version to keep the test going
+    U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) == 0);
+# endif
 #endif
 
     startTimeMs = uPortGetTickTimeMs();
@@ -1611,11 +1673,18 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
             U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
                                                    (void *) &x, 1) == 0);
         } else {
-            U_PORT_TEST_ASSERT(uPortEventQueueSendIrq(gEventQueueMaxHandle,
-                                                      (void *) pParam,
-                                                      U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES) == 0);
-            U_PORT_TEST_ASSERT(uPortEventQueueSendIrq(gEventQueueMinHandle,
-                                                      (void *) &x, 1) == 0);
+            y = uPortEventQueueSendIrq(gEventQueueMaxHandle, (void *) pParam,
+                                       U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES);
+            if (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+                y = uPortEventQueueSend(gEventQueueMaxHandle, (void *) pParam,
+                                        U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES);
+            }
+            U_PORT_TEST_ASSERT(y == 0);
+            y = uPortEventQueueSendIrq(gEventQueueMinHandle, (void *) &x, 1);
+            if (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+                y = uPortEventQueueSend(gEventQueueMinHandle, (void *) &x, 1);
+            }
+            U_PORT_TEST_ASSERT(y == 0);
         }
     }
 
@@ -1655,13 +1724,17 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
 
     // Check stack usage of the tasks at the end of the event queues
     stackMinFreeBytes = uPortEventQueueStackMinFree(gEventQueueMinHandle);
-    uPortLog("U_PORT_TEST: event queue min task had %d byte(s) free out of %d.\n",
-             stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
-    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_PORT_TEST: event queue min task had %d byte(s) free out of %d.\n",
+                 stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
+        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    }
     stackMinFreeBytes = uPortEventQueueStackMinFree(gEventQueueMaxHandle);
-    uPortLog("U_PORT_TEST: event queue max task had %d byte(s) free out of %d.\n",
-             stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
-    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_PORT_TEST: event queue max task had %d byte(s) free out of %d.\n",
+                 stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
+        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    }
 
     uPortLog("U_PORT_TEST: closing the event queues...\n");
     U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueMaxHandle) == 0);
@@ -2067,9 +2140,11 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
     int32_t x;
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_PORT_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_PORT_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

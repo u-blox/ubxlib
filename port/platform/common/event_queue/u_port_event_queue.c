@@ -381,6 +381,8 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
             if (pBlock != NULL) {
                 // Copy in the control word, which is actually just
                 // the size in this case
+                //lint -e(826) Suppress area too small; the size of pBlock is always
+                // at least U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES in size
                 *((uEventQueueControlOrSize_t *) pBlock) = (uEventQueueControlOrSize_t) paramLengthBytes;
                 if (pParam != NULL) {
                     // Copy in param
@@ -414,6 +416,7 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
 int32_t uPortEventQueueSendIrq(int32_t handle, const void *pParam,
                                size_t paramLengthBytes)
 {
+#ifndef _WIN32
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
     uEventQueue_t *pEventQueue;
     char block[paramLengthBytes +
@@ -428,6 +431,8 @@ int32_t uPortEventQueueSendIrq(int32_t handle, const void *pParam,
             ((pParam != NULL) || (paramLengthBytes == 0))) {
             // Copy in the control word, which is actually just
             // the size in this case
+            //lint -e(826) Suppress area too small; the size of pBlock is always
+            // at least U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES in size
             *((uEventQueueControlOrSize_t *) block) = (uEventQueueControlOrSize_t) paramLengthBytes;
             if (pParam != NULL) {
                 // Copy in param
@@ -439,6 +444,19 @@ int32_t uPortEventQueueSendIrq(int32_t handle, const void *pParam,
                                                          block);
         }
     }
+#else
+    // It would have been nice to leave this function as-is for win32
+    // and just let uPortQueueSendIrq() return an error ('cos the IRQ
+    // functions are not supported for the Windows platform), however
+    // MSVC, which we use on Windows, doesn't support dynamically sized
+    // arrays and hence we'd need to switch to using a static buffer for
+    // block, which is entirely unnecessary.  Hence this compiler switch.
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_SUPPORTED;
+
+    (void) handle;
+    (void) pParam;
+    (void) paramLengthBytes;
+#endif
 
     return (int32_t) errorCode;
 }

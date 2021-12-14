@@ -49,6 +49,8 @@
 #include "u_cfg_test_platform_specific.h"
 #include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
 
+#include "u_error_common.h"
+
 #include "u_port_clib_platform_specific.h" /* struct timeval in some cases. */
 #include "u_port.h"
 #include "u_port_debug.h"
@@ -220,25 +222,25 @@ static const uSockTestAddress_t gTestAddressList[] = {
     {"255.255.255.256:65535", {{U_SOCK_ADDRESS_TYPE_V4, {0x00000000}}, 0}, true, true},
     {"255.255.255.255:65536", {{U_SOCK_ADDRESS_TYPE_V4, {0x00000000}}, 0}, true, true},
     // IPV6
-    {"0:0:0:0:0:0:0:0", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, false, false},
-    {"[0:0:0:0:0:0:0:0]:0", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, false},
+    {"0:0:0:0:0:0:0:0", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, false, false},
+    {"[0:0:0:0:0:0:0:0]:0", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, false},
     // Note: the answer looks peculiar but remember that element 0 of the array is at the lowest address in memory and element 3 at
     // the highest address so, for network byte order, the lowest two values (b and c in the first case below) are
     // stored in the lowest array index, etc.
-    {"0:1:2:3:4:a:b:c", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x000b000c, 0x0004000a, 0x00020003, 0x00000001}}}, 0}, false, false},
-    {"[0:1:2:3:4:a:b:c]:0", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x000b000c, 0x0004000a, 0x00020003, 0x00000001}}}, 0}, true, false},
-    {"ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}}}, 0}, false, false},
-    {"[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65535", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}}}, 65535}, true, false},
+    {"0:1:2:3:4:a:b:c", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x000b000c, 0x0004000a, 0x00020003, 0x00000001}}}, 0}, false, false},
+    {"[0:1:2:3:4:a:b:c]:0", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x000b000c, 0x0004000a, 0x00020003, 0x00000001}}}, 0}, true, false},
+    {"ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}}}, 0}, false, false},
+    {"[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65535", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}}}, 65535}, true, false},
     // IPV6 error cases
-    {"[1ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65535", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
-    {"[ffff:1ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65535", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
-    {"[ffff:ffff:1ffff:ffff:ffff:ffff:ffff:ffff]:65535", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
-    {"[ffff:ffff:ffff:1ffff:ffff:ffff:ffff:ffff]:65535", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
-    {"[ffff:ffff:ffff:ffff:1ffff:ffff:ffff:ffff]:65535", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
-    {"[ffff:ffff:ffff:ffff:ffff:1ffff:ffff:ffff]:65535", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
-    {"[ffff:ffff:ffff:ffff:ffff:ffff:1ffff:ffff]:65535", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
-    {"[ffff:ffff:ffff:ffff:ffff:ffff:ffff:1ffff]:65535", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
-    {"[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65536", {{U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true}
+    {"[1ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65535", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
+    {"[ffff:1ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65535", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
+    {"[ffff:ffff:1ffff:ffff:ffff:ffff:ffff:ffff]:65535", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
+    {"[ffff:ffff:ffff:1ffff:ffff:ffff:ffff:ffff]:65535", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
+    {"[ffff:ffff:ffff:ffff:1ffff:ffff:ffff:ffff]:65535", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
+    {"[ffff:ffff:ffff:ffff:ffff:1ffff:ffff:ffff]:65535", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
+    {"[ffff:ffff:ffff:ffff:ffff:ffff:1ffff:ffff]:65535", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
+    {"[ffff:ffff:ffff:ffff:ffff:ffff:ffff:1ffff]:65535", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true},
+    {"[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65536", {{.type = U_SOCK_ADDRESS_TYPE_V6, .address = {.ipv6 = {0x00000000, 0x00000000, 0x00000000, 0x00000000}}}, 0}, true, true}
 };
 
 /** A further set of inputs for address port removal.
@@ -2535,9 +2537,11 @@ U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
     uNetworkDeinit();
 
     y = uPortTaskStackMinFree(NULL);
-    uPortLog("U_SOCK_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", y);
-    U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_SOCK_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", y);
+        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

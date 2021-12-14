@@ -198,6 +198,8 @@ static const struct bt_data ad[] = {
     BT_DATA(BT_DATA_NAME_COMPLETE, U_PORT_BLE_DEVICE_NAME, sizeof U_PORT_BLE_DEVICE_NAME - 1),
 };
 
+const uPortGattGapParams_t uPortGattGapParamsDefault = {48, 48, 5000, 24, 30, 0, 2000};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -875,23 +877,35 @@ static struct bt_conn *connectGapAsPeripheral(const bt_addr_le_t *peer, int32_t 
     return pConn;
 }
 
-static struct bt_conn *connectGapAsCentral(const bt_addr_le_t *pPeer, int32_t *pErrorCode)
+static struct bt_conn *connectGapAsCentral(const bt_addr_le_t *pPeer, int32_t *pErrorCode,
+                                           const uPortGattGapParams_t *pGapParams)
 {
     struct bt_conn_le_create_param createParam;
     struct bt_le_conn_param connParam;
     struct bt_conn *pConn;
 
     createParam.options = BT_CONN_LE_OPT_NONE;
-    createParam.interval = 48;
-    createParam.window = 48;
-    createParam.interval_coded = 0;
     createParam.window_coded = 0;
-    createParam.timeout = 0;
+    createParam.interval_coded = 0;
 
-    connParam.interval_min = 6;
-    connParam.interval_max = 15;
-    connParam.latency = 0;
-    connParam.timeout = 2000;
+    if (pGapParams == NULL) {
+        createParam.interval = uPortGattGapParamsDefault.scanInterval;
+        createParam.window = uPortGattGapParamsDefault.scanWindow;
+        createParam.timeout = uPortGattGapParamsDefault.createConnectionTmo / 10;
+        connParam.interval_min = uPortGattGapParamsDefault.connIntervalMin;
+        connParam.interval_max = uPortGattGapParamsDefault.connIntervalMax;
+        connParam.latency = uPortGattGapParamsDefault.connLatency;
+        connParam.timeout = uPortGattGapParamsDefault.linkLossTimeout;
+    } else {
+        createParam.interval = pGapParams->scanInterval;
+        createParam.window = pGapParams->scanWindow;
+        createParam.timeout = pGapParams->createConnectionTmo / 10;
+
+        connParam.interval_min = pGapParams->connIntervalMin;
+        connParam.interval_max = pGapParams->connIntervalMax;
+        connParam.latency = pGapParams->connLatency;
+        connParam.timeout = pGapParams->linkLossTimeout;
+    }
 
     *pErrorCode = bt_conn_le_create(pPeer, &createParam, &connParam, &pConn);
     if (*pErrorCode != 0) {
@@ -901,7 +915,8 @@ static struct bt_conn *connectGapAsCentral(const bt_addr_le_t *pPeer, int32_t *p
     return pConn;
 }
 
-int32_t uPortGattConnectGap(uint8_t *pAddress, uPortBtLeAddressType_t addressType)
+int32_t uPortGattConnectGap(uint8_t *pAddress, uPortBtLeAddressType_t addressType,
+                            const uPortGattGapParams_t *pGapParams)
 {
     bt_addr_le_t peer;
     int32_t connHandle;
@@ -920,7 +935,7 @@ int32_t uPortGattConnectGap(uint8_t *pAddress, uPortBtLeAddressType_t addressTyp
             pConn = connectGapAsPeripheral(&peer, &errorCode);
         } else {
             uPortLog("U_PORT_GATT: connecting as central\n");
-            pConn = connectGapAsCentral(&peer, &errorCode);
+            pConn = connectGapAsCentral(&peer, &errorCode, pGapParams);
         }
         if (pConn != 0) {
             gCurrentConnections[connHandle].pConn = pConn;

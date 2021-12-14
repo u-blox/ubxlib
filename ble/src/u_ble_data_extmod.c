@@ -36,6 +36,8 @@
 #include "stdbool.h"
 #include "string.h"    // memset()
 
+#include "u_compiler.h" // for U_DEPRECATED
+
 #include "u_error_common.h"
 
 #include "u_cfg_sw.h"
@@ -122,6 +124,8 @@ static void atConnectionEvent(int32_t shortRangeHandle,
 static void dataCallback(int32_t handle, int32_t channel, int32_t length,
                          char *pData, void *pParameters);
 static void onBleDataEvent(void *pParam, size_t eventSize);
+static int32_t setBleConfig(const uAtClientHandle_t atHandle,
+                            int32_t parameter, uint32_t value);
 
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
@@ -129,6 +133,15 @@ static void onBleDataEvent(void *pParam, size_t eventSize);
 static uBleDataSpsChannel_t *gpChannelList = NULL;
 static int32_t gBleDataEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
 static uPortMutexHandle_t gBleDataMutex;
+static const uBleDataConnParams_t gConnParamsDefault = {
+    U_BLE_DATA_CONN_PARAM_SCAN_INT_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_SCAN_WIN_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_TMO_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_CONN_INT_MIN_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_CONN_INT_MAX_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_CONN_LATENCY_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_LINK_LOSS_TMO_DEFAULT
+};
 
 /* ----------------------------------------------------------------
  * EXPORTED VARIABLES
@@ -479,7 +492,26 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress)
+static int32_t setBleConfig(const uAtClientHandle_t atHandle, int32_t parameter, uint32_t value)
+{
+    int32_t error;
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UBTLECFG=");
+    uAtClientWriteInt(atHandle, parameter);
+    uAtClientWriteInt(atHandle, (int32_t)value);
+    uAtClientCommandStopReadResponse(atHandle);
+    error = uAtClientUnlock(atHandle);
+
+    if (error != (int32_t) U_ERROR_COMMON_SUCCESS) {
+        uPortLog("U_BLE_DATA: Could not set BLE config param %d with value %d\n", parameter, value);
+    }
+
+    return error;
+}
+
+int32_t uBleDataConnectSps(int32_t bleHandle,
+                           const char *pAddress,
+                           const uBleDataConnParams_t *pConnParams)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -500,16 +532,48 @@ int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress)
                 memcpy(url, start, 6);
                 memcpy((url + 6), pAddress, 13);
                 atHandle = pInstance->atHandle;
-                uPortLog("U_BLE_DATA: Sending AT+UDCP\n");
 
-                uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UDCP=");
-                uAtClientWriteString(atHandle, (char *)&url[0], false);
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UDCP:");
-                uAtClientReadInt(atHandle); // conn handle
-                uAtClientResponseStop(atHandle);
-                errorCode = uAtClientUnlock(atHandle);
+                uPortLog("U_BLE_DATA: Setting config\n");
+
+                if (pConnParams == NULL) {
+                    pConnParams = &gConnParamsDefault;
+                }
+
+                errorCode = setBleConfig(atHandle, 4, 6); // set to min to avoid errors
+                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    errorCode = setBleConfig(atHandle, 5, pConnParams->connIntervalMax);
+                }
+                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    errorCode = setBleConfig(atHandle, 4, pConnParams->connIntervalMin);
+                }
+                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    errorCode = setBleConfig(atHandle, 6, pConnParams->connLatency);
+                }
+                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    errorCode = setBleConfig(atHandle, 7, pConnParams->linkLossTimeout);
+                }
+                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    errorCode = setBleConfig(atHandle, 8, pConnParams->createConnectionTmo);
+                }
+                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    errorCode = setBleConfig(atHandle, 9, pConnParams->scanInterval);
+                }
+                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    errorCode = setBleConfig(atHandle, 10, pConnParams->scanWindow);
+                }
+
+                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    uPortLog("U_BLE_DATA: Sending AT+UDCP\n");
+
+                    uAtClientLock(atHandle);
+                    uAtClientCommandStart(atHandle, "AT+UDCP=");
+                    uAtClientWriteString(atHandle, (char *)&url[0], false);
+                    uAtClientCommandStop(atHandle);
+                    uAtClientResponseStart(atHandle, "+UDCP:");
+                    uAtClientReadInt(atHandle); // conn handle
+                    uAtClientResponseStop(atHandle);
+                    errorCode = uAtClientUnlock(atHandle);
+                }
             }
         }
 
@@ -609,7 +673,7 @@ int32_t uBleDataSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t time
     return returnValue;
 }
 
-__attribute__((deprecated))
+U_DEPRECATED
 int32_t uBleDataSetCallbackData(int32_t bleHandle,
                                 void (*pCallback) (int32_t, size_t, char *, void *),
                                 void *pCallbackParameter)

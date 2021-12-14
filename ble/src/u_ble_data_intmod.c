@@ -261,6 +261,16 @@ static const uPortGattCharacteristic_t gSpsFifoChar = {
     .pNextChar = &gSpsCreditsChar,
 };
 
+static const uBleDataConnParams_t gConnParamsDefault = {
+    U_BLE_DATA_CONN_PARAM_SCAN_INT_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_SCAN_WIN_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_TMO_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_CONN_INT_MIN_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_CONN_INT_MAX_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_CONN_LATENCY_DEFAULT,
+    U_BLE_DATA_CONN_PARAM_LINK_LOSS_TMO_DEFAULT
+};
+
 /* ----------------------------------------------------------------
  * EXPORTED VARIABLES
  * -------------------------------------------------------------- */
@@ -1120,7 +1130,9 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress)
+int32_t uBleDataConnectSps(int32_t bleHandle,
+                           const char *pAddress,
+                           const uBleDataConnParams_t *pConnParams)
 {
     int32_t errorCode;
     uint8_t address[6];
@@ -1137,7 +1149,10 @@ int32_t uBleDataConnectSps(int32_t bleHandle, const char *pAddress)
     U_PORT_MUTEX_LOCK(gBleDataMutex);
 
     if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
-        gapConnHandle = uPortGattConnectGap(address, addrType);
+        if (pConnParams == NULL) {
+            pConnParams = &gConnParamsDefault;
+        }
+        gapConnHandle = uPortGattConnectGap(address, addrType, (const uPortGattGapParams_t *)pConnParams);
 
         if (!uPortGattIsAdvertising()) {
             // If we are advertising we are peripheral, then the connect
