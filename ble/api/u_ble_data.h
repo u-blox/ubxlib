@@ -17,7 +17,9 @@
 #ifndef _U_BLE_DATA_H_
 #define _U_BLE_DATA_H_
 
-/* No #includes allowed here */
+/* No #includes allowed here except this one to
+ * pick up the definition of U_DEPRECATED. */
+#include "u_compiler.h"
 
 /** @file
  * @brief This header file defines the APIs that obtain data transfer
@@ -195,7 +197,7 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
  * @param pCallbackParameter parameter included with the callback.
  * @return            zero on success, on failure negative error code.
  */
-__attribute__((deprecated))
+U_DEPRECATED
 int32_t uBleDataSetCallbackData(int32_t bleHandle,
                                 void (*pCallback) (int32_t, size_t, char *, void *),
                                 void *pCallbackParameter);

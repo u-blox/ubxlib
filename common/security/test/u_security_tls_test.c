@@ -40,6 +40,8 @@
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
+#include "u_error_common.h"
+
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -508,9 +510,11 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
     uNetworkDeinit();
 
     y = uPortTaskStackMinFree(NULL);
-    uPortLog("U_SECURITY_TLS_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", y);
-    U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_SECURITY_TLS_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", y);
+        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

@@ -69,11 +69,13 @@ bool uUbxProtocolIsLittleEndian()
 // Return a uint16_t from a pointer to a little-endian uint16_t.
 uint16_t uUbxProtocolUint16Decode(const char *pByte)
 {
+    // Use a uint8_t pointer for maths, more certain of its behaviour than char
+    const uint8_t *pInput = (const uint8_t *) pByte;
     uint16_t retValue;
 
-    retValue  = *pByte;
+    retValue  = *pInput;
     // Cast twice to keep Lint happy
-    retValue += (uint16_t) (((uint16_t) (unsigned char) * (pByte + 1)) << 8);
+    retValue += (uint16_t) (((uint16_t) *(pInput + 1)) << 8); // *NOPAD*
 
     return  retValue;
 }
@@ -81,13 +83,15 @@ uint16_t uUbxProtocolUint16Decode(const char *pByte)
 // Return a uint32_t from a pointer to a little-endian uint32_t.
 uint32_t uUbxProtocolUint32Decode(const char *pByte)
 {
+    // Use a uint8_t pointer for maths, more certain of its behaviour than char
+    const uint8_t *pInput = (const uint8_t *) pByte;
     uint32_t retValue;
 
-    retValue  = *pByte;
+    retValue  = *pInput;
     // Cast twice to keep Lint happy
-    retValue += ((uint32_t) (unsigned char) * (pByte + 1)) << 8;
-    retValue += ((uint32_t) (unsigned char) * (pByte + 2)) << 16;
-    retValue += ((uint32_t) (unsigned char) * (pByte + 3)) << 24;
+    retValue += ((uint32_t) *(pInput + 1)) << 8;  // *NOPAD*
+    retValue += ((uint32_t) *(pInput + 2)) << 16; // *NOPAD*
+    retValue += ((uint32_t) *(pInput + 3)) << 24; // *NOPAD*
 
     return retValue;
 }
@@ -95,17 +99,19 @@ uint32_t uUbxProtocolUint32Decode(const char *pByte)
 // Return a uint64_t from a pointer to a little-endian uint64_t.
 uint64_t uUbxProtocolUint64Decode(const char *pByte)
 {
+    // Use a uint8_t pointer for maths, more certain of its behaviour than char
+    const uint8_t *pInput = (const uint8_t *) pByte;
     uint64_t retValue;
 
-    retValue  = *pByte;
+    retValue  = *pInput;
     // Cast twice to keep Lint happy
-    retValue += ((uint64_t) (unsigned char) * (pByte + 1)) << 8;
-    retValue += ((uint64_t) (unsigned char) * (pByte + 2)) << 16;
-    retValue += ((uint64_t) (unsigned char) * (pByte + 3)) << 24;
-    retValue += ((uint64_t) (unsigned char) * (pByte + 4)) << 32;
-    retValue += ((uint64_t) (unsigned char) * (pByte + 5)) << 40;
-    retValue += ((uint64_t) (unsigned char) * (pByte + 6)) << 48;
-    retValue += ((uint64_t) (unsigned char) * (pByte + 7)) << 56;
+    retValue += ((uint64_t) *(pInput + 1)) << 8;  // *NOPAD*
+    retValue += ((uint64_t) *(pInput + 2)) << 16; // *NOPAD*
+    retValue += ((uint64_t) *(pInput + 3)) << 24; // *NOPAD*
+    retValue += ((uint64_t) *(pInput + 4)) << 32; // *NOPAD*
+    retValue += ((uint64_t) *(pInput + 5)) << 40; // *NOPAD*
+    retValue += ((uint64_t) *(pInput + 6)) << 48; // *NOPAD*
+    retValue += ((uint64_t) *(pInput + 7)) << 56; // *NOPAD*
 
     return retValue;
 }
@@ -163,7 +169,8 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
                            char *pBuffer)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    char *pWrite = pBuffer;
+    // Use a uint8_t pointer for maths, more certain of its behaviour than char
+    uint8_t *pWrite = (uint8_t *) pBuffer;
     int32_t ca = 0;
     int32_t cb = 0;
 
@@ -171,12 +178,12 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
         (pBuffer != NULL)) {
 
         // Complete the header
-        *pWrite++ = (char) 0xb5;
+        *pWrite++ = 0xb5;
         *pWrite++ = 0x62;
-        *pWrite++ = (char) messageClass;
-        *pWrite++ = (char) messageId;
-        *pWrite++ = (char) (messageBodyLengthBytes & 0xff);
-        *pWrite++ = (char) (messageBodyLengthBytes >> 8);
+        *pWrite++ = (uint8_t) messageClass;
+        *pWrite++ = (uint8_t) messageId;
+        *pWrite++ = (uint8_t) (messageBodyLengthBytes & (uint8_t) 0xff);
+        *pWrite++ = (uint8_t) (messageBodyLengthBytes >> 8);
 
         if (pMessage != NULL) {
             // Copy in the message body
@@ -188,14 +195,14 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
         // header and the body
         pBuffer += 2;
         for (size_t x = 0; x < messageBodyLengthBytes + 4; x++) {
-            ca += *pBuffer;
+            ca += (uint8_t) *pBuffer; // *NOPAD*
             cb += ca;
             pBuffer++;
         }
 
         // Write in the CRC
-        *pWrite++ = (char) (ca & 0xff);
-        *pWrite = (char) (cb & 0xff);
+        *pWrite++ = (uint8_t) (ca & (uint8_t) 0xff);
+        *pWrite = (uint8_t) (cb & (uint8_t) 0xff);
 
         errorCodeOrLength = (int32_t) (U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES + messageBodyLengthBytes);
     }
@@ -210,6 +217,8 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
                            const char **ppBufferOut)
 {
     int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    // Use a uint8_t pointer for maths, more certain of its behaviour than char
+    const uint8_t *pInput = (const uint8_t *) pBufferIn;
     int32_t overheadByteCount = 0;
     bool updateCrc = false;
     size_t expectedMessageByteCount = 0;
@@ -222,13 +231,13 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
         switch (overheadByteCount) {
             case 0:
                 //lint -e{650} Suppress warning about 0xb5 being out of range for char
-                if (*pBufferIn == 0xb5) {
+                if (*pInput == 0xb5) {
                     // Got first byte of header, increment count
                     overheadByteCount++;
                 }
                 break;
             case 1:
-                if (*pBufferIn == 0x62) {
+                if (*pInput == 0x62) {
                     // Got second byte of header, increment count
                     overheadByteCount++;
                 } else {
@@ -240,7 +249,7 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
                 // Got message class, store it, start CRC
                 // calculation and increment count
                 if (pMessageClass != NULL) {
-                    *pMessageClass = *pBufferIn;
+                    *pMessageClass = *pInput;
                 }
                 ca = 0;
                 cb = 0;
@@ -251,7 +260,7 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
                 // Got message ID, store it, update CRC and
                 // increment count
                 if (pMessageId != NULL) {
-                    *pMessageId = *pBufferIn;
+                    *pMessageId = *pInput;
                 }
                 updateCrc = true;
                 overheadByteCount++;
@@ -259,7 +268,7 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
             case 4:
                 // Got first byte of length, store it, update
                 // CRC and increment count
-                expectedMessageByteCount = *pBufferIn;
+                expectedMessageByteCount = *pInput;
                 updateCrc = true;
                 overheadByteCount++;
                 break;
@@ -268,7 +277,7 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
                 // updat CRC, increment count and reset the
                 // message byte count ready for the body to come next.
                 // Cast twice to keep Lint happy
-                expectedMessageByteCount += ((size_t) (unsigned char) * pBufferIn) << 8;
+                expectedMessageByteCount += ((size_t) *pInput) << 8; // *NOPAD*
                 messageByteCount = 0;
                 updateCrc = true;
                 overheadByteCount++;
@@ -278,14 +287,14 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
                     // Store the next byte of the message and
                     // update CRC
                     if ((pMessage != NULL) && (messageByteCount < maxMessageLengthBytes)) {
-                        *pMessage++ = *pBufferIn;
+                        *pMessage++ = (char) *pInput; // *NOPAD*
                     }
                     updateCrc = true;
                     messageByteCount++;
                 } else {
                     // First byte of CRC, check it
                     ca &= 0xff;
-                    if (ca == *pBufferIn) {
+                    if ((uint8_t) ca == *pInput) {
                         overheadByteCount++;
                     } else {
                         // Not a valid message, start again
@@ -296,7 +305,7 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
             case 7:
                 // Second byte of CRC, check it
                 cb &= 0xff;
-                if (cb == *pBufferIn) {
+                if ((uint8_t) cb == *pInput) {
                     overheadByteCount++;
                 } else {
                     // Not a valid message, start again
@@ -309,13 +318,13 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
         }
 
         if (updateCrc) {
-            ca += *pBufferIn;
+            ca += *pInput;
             cb += ca;
             updateCrc = false;
         }
 
         // Next byte
-        pBufferIn++;
+        pInput++;
     }
 
     if (overheadByteCount > 0) {
@@ -329,7 +338,7 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
     }
 
     if (ppBufferOut != NULL) {
-        *ppBufferOut = pBufferIn;
+        *ppBufferOut =  (const char *) pInput;
     }
 
     return sizeOrErrorCode;

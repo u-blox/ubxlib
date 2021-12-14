@@ -232,7 +232,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleDetect")
     int32_t heapUsed;
     heapUsed = uPortGetHeapFree();
 
-    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                &gHandles) == 0);
 
     uBleTestPrivatePostamble(&gHandles);
@@ -274,9 +274,11 @@ U_PORT_TEST_FUNCTION("[ble]", "bleCleanUp")
     }
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_BLE_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_BLE_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

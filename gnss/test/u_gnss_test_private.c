@@ -142,8 +142,10 @@ int32_t uGnssTestPrivateCellularOff()
         cellHandle = errorCode;
         if (uCellPwrIsPowered(cellHandle) && uCellPwrIsAlive(cellHandle)) {
             // Finally, power it off
+# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
             uPortLog("U_GNSS_TEST_PRIVATE: now we can power cellular off...\n");
             errorCode = uCellPwrOff(cellHandle, NULL);
+# endif
         } else {
             uPortLog("U_GNSS_TEST_PRIVATE: cellular is already off.\n");
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -159,7 +161,7 @@ int32_t uGnssTestPrivateCellularOff()
 
     return errorCode;
 }
-#endif
+#endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 
 // Return a string representing the name of the given transport type.
 const char *pGnssTestPrivateTransportTypeName(uGnssTransportType_t transportType)

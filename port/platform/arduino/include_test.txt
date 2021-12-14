@@ -16,3 +16,10 @@ common/short_range/test
 common/mqtt_client/test
 common/ubx_protocol/test
 port/test
+
+# There is a single header file in this example which usually doesn't
+# need to be mentioned since it is in the same directory as the
+# source file which includes it.  However, in the Arduino case, the
+# file has to be copied into the Arduino directory structure and hence
+# this directory has to be included here.
+example/sockets

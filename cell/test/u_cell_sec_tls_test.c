@@ -483,11 +483,13 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsCleanUp")
     uCellTestPrivateCleanup(&gHandles);
 
     minFreeStackBytes = uPortTaskStackMinFree(NULL);
-    uPortLog("U_CELL_SEC_TLS_TEST: main task stack had a minimum of"
-             " %d byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (minFreeStackBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_SEC_TLS_TEST: main task stack had a minimum of"
+                 " %d byte(s) free at the end of these tests.\n",
+                 minFreeStackBytes);
+        U_PORT_TEST_ASSERT(minFreeStackBytes >=
+                           U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 }

@@ -159,9 +159,11 @@ static int64_t gTimeUtc = LONG_MIN;
 
 #ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
 // Callback function for the cellular connection process
-static bool keepGoingCallback()
+static bool keepGoingCallback(int32_t param)
 {
     bool keepGoing = true;
+
+    (void) param;
 
     if (uPortGetTickTimeMs() > gStopTimeMs) {
         keepGoing = false;
@@ -311,19 +313,20 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
 #endif
 
 #ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
-    U_PORT_TEST_ASSERT(uCellLocSetServer(cellHandle,
-                                         U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
+    y = uCellLocSetServer(cellHandle,
+                          U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
 # ifdef U_CFG_APP_CELL_LOC_PRIMARY_SERVER
-                                         U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_PRIMARY_SERVER),
+                          U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_PRIMARY_SERVER),
 # else
-                                         NULL,
+                          NULL,
 # endif
 # ifdef U_CFG_APP_CELL_LOC_SECONDARY_SERVER
-                                         U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_SECONDARY_SERVER)) == 0);
+                          U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_SECONDARY_SERVER)) == 0);
 # else
-                                         NULL) == 0);
+                          NULL);
 # endif
 #endif
+    U_PORT_TEST_ASSERT(y == 0);
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up
@@ -385,38 +388,40 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
 #endif
 
     // Set the authentication token
-    U_PORT_TEST_ASSERT(uCellLocSetServer(cellHandle,
-                                         U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
+    x = uCellLocSetServer(cellHandle,
+                          U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
 # ifdef U_CFG_APP_CELL_LOCATE_PRIMARY_SERVER
-                                         U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOCATE_PRIMARY_SERVER),
+                          U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOCATE_PRIMARY_SERVER),
 # else
-                                         NULL,
+                          NULL,
 # endif
 # ifdef U_CFG_APP_CELL_LOCATE_SECONDARY_SERVER
-                                         U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOCATE_SECONDARY_SERVER)) == 0);
+                          U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOCATE_SECONDARY_SERVER)) == 0);
 # else
-                                         NULL) == 0);
+                          NULL);
 # endif
+    U_PORT_TEST_ASSERT(x == 0);
 
     // Make sure we are connected to a network
     gStopTimeMs = uPortGetTickTimeMs() + (U_CELL_LOC_TEST_TIMEOUT_SECONDS * 1000);
-    U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL,
+    x = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
 #else
-                                       NULL,
+                        NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_USERNAME
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
 #else
-                                       NULL,
+                        NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_PASSWORD
-                                       U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+                        U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
 #else
-                                       NULL,
+                        NULL,
 #endif
-                                       keepGoingCallback) == 0);
+                        keepGoingCallback);
+    U_PORT_TEST_ASSERT(x == 0);
 
     // Get position, blocking version
     uPortLog("U_CELL_LOC_TEST: location establishment, blocking version.\n");
@@ -430,8 +435,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
     // If we are running on a cellular test network we won't get position but
     // we should always get time
     if (x == 0) {
-        uPortLog("U_CELL_LOC_TEST: location establishment took %d second(s).\n",
-                 (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+    uPortLog("U_CELL_LOC_TEST: location establishment took %d second(s).\n",
+             (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
         if ((radiusMillimetres > 0) &&
             (radiusMillimetres <= U_CELL_LOC_TEST_MAX_RADIUS_MILLIMETRES)) {
             prefix[0] = latLongToBits(latitudeX1e7, &(whole[0]), &(fraction[0]));
@@ -556,9 +561,11 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCleanUp")
     uCellTestPrivateCleanup(&gHandles);
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_CELL_LOC_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_LOC_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

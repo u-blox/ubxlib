@@ -44,6 +44,8 @@
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
+#include "u_error_common.h"
+
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
@@ -178,16 +180,20 @@ static void checkStackExtents(uAtClientHandle_t atHandle)
     int32_t stackMinFreeBytes;
 
     stackMinFreeBytes = uAtClientUrcHandlerStackMinFree(atHandle);
-    uPortLog("U_AT_CLIENT_TEST: URC task had min %d byte(s)"
-             " stack free out of %d.\n", stackMinFreeBytes,
-             U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES);
-    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_AT_CLIENT_TEST: URC task had min %d byte(s)"
+                 " stack free out of %d.\n", stackMinFreeBytes,
+                 U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES);
+        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    }
 
     stackMinFreeBytes = uAtClientCallbackStackMinFree();
-    uPortLog("U_AT_CLIENT_TEST: AT callback task had min %d byte(s)"
-             " stack free out of %d.\n", stackMinFreeBytes,
-             U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES);
-    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_AT_CLIENT_TEST: AT callback task had min %d byte(s)"
+                 " stack free out of %d.\n", stackMinFreeBytes,
+                 U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES);
+        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    }
 }
 
 # if (U_CFG_TEST_UART_B >= 0)
@@ -1724,9 +1730,11 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCleanUp")
     }
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_AT_CLIENT_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_AT_CLIENT_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

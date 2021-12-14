@@ -401,7 +401,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
     // Do the standard preamble
-    returnCode = uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    returnCode = uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                           &gHandles);
     TEST_CHECK_TRUE(returnCode == 0);
 
@@ -634,7 +634,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     U_PORT_TEST_ASSERT(pBuffer != NULL);
 
     // Do the standard preamble
-    returnCode = uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    returnCode = uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                           &gHandles);
     TEST_CHECK_TRUE(returnCode == 0);
 

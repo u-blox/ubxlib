@@ -36,6 +36,8 @@
 #include "stdbool.h"
 #include "string.h"    // memset()
 
+#include "u_compiler.h" // for U_DEPRECATED
+
 #include "u_error_common.h"
 
 #include "u_cfg_sw.h"
@@ -671,7 +673,7 @@ int32_t uBleDataSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t time
     return returnValue;
 }
 
-__attribute__((deprecated))
+U_DEPRECATED
 int32_t uBleDataSetCallbackData(int32_t bleHandle,
                                 void (*pCallback) (int32_t, size_t, char *, void *),
                                 void *pCallbackParameter)

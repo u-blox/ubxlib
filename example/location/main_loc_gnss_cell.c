@@ -210,8 +210,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
     int32_t networkHandleCell;
     int32_t networkHandleGnss;
     uLocation_t location;
-    int32_t whole;
-    int32_t fraction;
+    int32_t whole = 0;
+    int32_t fraction = 0;
 
     // Set an out of range value so that we can test it later
     location.timeUtc = -1;

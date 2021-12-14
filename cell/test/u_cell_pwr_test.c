@@ -112,6 +112,8 @@ static bool keepGoingCallback(int32_t cellHandle)
     return keepGoing;
 }
 
+# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+
 // Test power on/off and aliveness, parameterised by the VInt pin.
 static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                                int32_t pinVint)
@@ -120,14 +122,14 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
     int32_t cellHandle;
     bool trulyHardPowerOff = false;
     const uCellPrivateModule_t *pModule;
-# if U_CFG_APP_PIN_CELL_VINT < 0
+#  if U_CFG_APP_PIN_CELL_VINT < 0
     int64_t timeMs;
-# endif
+#  endif
 
-# if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
+#  if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
     //lint -e(838) Suppress previously assigned value has not been used
     trulyHardPowerOff = true;
-# endif
+#  endif
 
     uPortLog("U_CELL_PWR_TEST: running power-on and alive tests");
     if (pinVint >= 0) {
@@ -160,13 +162,13 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
         uPortLog("U_CELL_PWR_TEST: powering off to begin test.\n");
         uCellPwrOff(cellHandle, NULL);
         uPortLog("U_CELL_PWR_TEST: power off completed.\n");
-# if U_CFG_APP_PIN_CELL_VINT < 0
+#  if U_CFG_APP_PIN_CELL_VINT < 0
         uPortLog("U_CELL_PWR_TEST: waiting another %d second(s)"
                  " to be sure of a clean power off as there's"
                  " no VInt pin to tell us...\n",
                  pModule->powerDownWaitSeconds);
         uPortTaskBlock(pModule->powerDownWaitSeconds);
-# endif
+#  endif
     }
 
     // Do this twice so as to check transiting from
@@ -181,9 +183,9 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
             uPortLog(" with cellPwrOff(NULL), iteration %d.\n", x + 1);
         }
         U_PORT_TEST_ASSERT(!uCellPwrIsAlive(cellHandle));
-# if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
+#  if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
         U_PORT_TEST_ASSERT(!uCellPwrIsPowered(cellHandle));
-# endif
+#  endif
         // TODO Note: only use a NULL PIN as we don't support anything
         // else at least that's the case on SARA-R4 when you want to
         // have power saving
@@ -205,13 +207,13 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
         uPortLog("U_CELL_PWR_TEST: waiting %d second(s) before powering off...\n",
                  pModule->minAwakeTimeSeconds);
         uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
-# if U_CFG_APP_PIN_CELL_VINT < 0
+#  if U_CFG_APP_PIN_CELL_VINT < 0
         timeMs = uPortGetTickTimeMs();
-# endif
+#  endif
         uPortLog("U_CELL_PWR_TEST: powering off...\n");
         uCellPwrOff(cellHandle, pKeepGoingCallback);
         uPortLog("U_CELL_PWR_TEST: power off completed.\n");
-# if U_CFG_APP_PIN_CELL_VINT < 0
+#  if U_CFG_APP_PIN_CELL_VINT < 0
         timeMs = uPortGetTickTimeMs() - timeMs;
         if (timeMs < pModule->powerDownWaitSeconds * 1000) {
             timeMs = (pModule->powerDownWaitSeconds * 1000) - timeMs;
@@ -220,7 +222,7 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                      (int32_t) ((timeMs / 1000) + 1));
             uPortTaskBlock(timeMs);
         }
-# endif
+#  endif
     }
 
     // Do this twice so as to check transiting from
@@ -234,9 +236,9 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
         }
         uPortLog(", iteration %d.\n", x + 1);
         U_PORT_TEST_ASSERT(!uCellPwrIsAlive(cellHandle));
-# if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
+#  if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
         U_PORT_TEST_ASSERT(!uCellPwrIsPowered(cellHandle));
-# endif
+#  endif
         uPortLog("U_CELL_PWR_TEST: powering on...\n");
         U_PORT_TEST_ASSERT(uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN,
                                       NULL) == 0);
@@ -246,13 +248,13 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
         uPortLog("U_CELL_PWR_TEST: waiting %d second(s) before powering off...\n",
                  pModule->minAwakeTimeSeconds);
         uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
-# if U_CFG_APP_PIN_CELL_VINT < 0
+#  if U_CFG_APP_PIN_CELL_VINT < 0
         timeMs = uPortGetTickTimeMs();
-# endif
+#  endif
         uPortLog("U_CELL_PWR_TEST: hard powering off...\n");
         uCellPwrOffHard(cellHandle, trulyHardPowerOff, NULL);
         uPortLog("U_CELL_PWR_TEST: hard power off completed.\n");
-# if U_CFG_APP_PIN_CELL_VINT < 0
+#  if U_CFG_APP_PIN_CELL_VINT < 0
         timeMs = uPortGetTickTimeMs() - timeMs;
         if (!trulyHardPowerOff && (timeMs < pModule->powerDownWaitSeconds * 1000)) {
             timeMs = (pModule->powerDownWaitSeconds * 1000) - timeMs;
@@ -261,22 +263,26 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                      " tell us...\n", (int32_t) ((timeMs / 1000) + 1));
             uPortTaskBlock(timeMs);
         }
-# endif
+#  endif
     }
 
     uPortLog("U_CELL_PWR_TEST: testing power-on and alive calls after hard power off.\n");
     U_PORT_TEST_ASSERT(!uCellPwrIsAlive(cellHandle));
-# if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
+#  if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
     U_PORT_TEST_ASSERT(!uCellPwrIsPowered(cellHandle));
-# endif
+#  endif
 
     uPortLog("U_CELL_PWR_TEST: removing cellular instance...\n");
     uCellRemove(cellHandle);
 }
 
+# endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
 
 /** Test all the power functions apart from reboot.
  *
@@ -326,9 +332,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
     // without use of the VInt pin, even
     // if it is connected
     testPowerAliveVInt(&gHandles, -1);
-# if U_CFG_APP_PIN_CELL_VINT >= 0
+#  if U_CFG_APP_PIN_CELL_VINT >= 0
     testPowerAliveVInt(&gHandles, U_CFG_APP_PIN_CELL_VINT);
-# endif
+#  endif
 
     U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
 
@@ -348,6 +354,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
+
+#endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
 
 /** Test reboot.
  */
@@ -412,11 +420,11 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
 
     uPortLog("U_CELL_PWR_TEST: resetting cellular...\n");
     x = uCellPwrResetHard(gHandles.cellHandle, U_CFG_APP_PIN_CELL_RESET);
-#if U_CFG_APP_PIN_CELL_RESET >= 0
+# if U_CFG_APP_PIN_CELL_RESET >= 0
     U_PORT_TEST_ASSERT(x == 0);
-#else
+# else
     U_PORT_TEST_ASSERT(x < 0);
-#endif
+# endif
 
     U_PORT_TEST_ASSERT(uCellPwrIsAlive(gHandles.cellHandle));
 
@@ -448,9 +456,11 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrCleanUp")
     uCellTestPrivateCleanup(&gHandles);
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_CELL_PWR_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_PWR_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

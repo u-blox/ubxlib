@@ -398,9 +398,11 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
 void uCellTestPrivatePostamble(uCellTestPrivate_t *pParameters,
                                bool powerOff)
 {
+#if U_CFG_APP_PIN_CELL_PWR_ON >= 0
     if (powerOff && (pParameters->cellHandle >= 0)) {
         uCellPwrOff(pParameters->cellHandle, NULL);
     }
+#endif
 
     uPortLog("U_CELL_TEST_PRIVATE: deinitialising cellular API...\n");
     // Let uCellDeinit() remove the cell handle

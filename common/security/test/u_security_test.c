@@ -1357,9 +1357,11 @@ U_PORT_TEST_FUNCTION("[security]", "securityCleanUp")
     uNetworkDeinit();
 
     y = uPortTaskStackMinFree(NULL);
-    uPortLog("U_SECURITY_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", y);
-    U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_SECURITY_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", y);
+        U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

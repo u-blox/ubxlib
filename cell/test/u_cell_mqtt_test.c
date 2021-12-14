@@ -112,9 +112,11 @@ static const char gAllChars[] = "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0
  * -------------------------------------------------------------- */
 
 // Callback function for the cellular connection process.
-static bool keepGoingCallback()
+static bool keepGoingCallback(int32_t unused)
 {
     bool keepGoing = true;
+
+    (void) unused;
 
     if (uPortGetTickTimeMs() > gStopTimeMs) {
         keepGoing = false;
@@ -175,23 +177,24 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         // DNS look-up on the MQTT broker domain name
         gStopTimeMs = uPortGetTickTimeMs() +
                       (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
-        U_PORT_TEST_ASSERT(uCellNetConnect(cellHandle, NULL,
+        x = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
-                                           U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
 #else
-                                           NULL,
+                            NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_USERNAME
-                                           U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
 #else
-                                           NULL,
+                            NULL,
 #endif
 #ifdef U_CELL_TEST_CFG_PASSWORD
-                                           U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+                            U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
 #else
-                                           NULL,
+                            NULL,
 #endif
-                                           keepGoingCallback) == 0);
+                            keepGoingCallback);
+        U_PORT_TEST_ASSERT(x == 0);
 
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) &&
             U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) &&
@@ -209,20 +212,19 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         }
 
         // Initialise the MQTT client.
-        U_PORT_TEST_ASSERT(uCellMqttInit(cellHandle,
-                                         pServerAddress,
-                                         NULL,
+        x = uCellMqttInit(cellHandle, pServerAddress, NULL,
 #ifdef U_CELL_MQTT_TEST_MQTT_USERNAME
-                                         U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTT_USERNAME),
+                          U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTT_USERNAME),
 #else
-                                         NULL,
+                          NULL,
 #endif
 #ifdef U_CELL_MQTT_TEST_MQTT_PASSWORD
-                                         U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTT_PASSWORD),
+                          U_PORT_STRINGIFY_QUOTED(U_CELL_MQTT_TEST_MQTT_PASSWORD),
 #else
-                                         NULL,
+                          NULL,
 #endif
-                                         NULL, false) == 0);
+                          NULL, false);
+        U_PORT_TEST_ASSERT(x == 0);
 
         // Note: deliberately not setting a disconnect callback
         // here, here we test having none, testing with a disconnect
@@ -443,9 +445,11 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttCleanUp")
     uCellTestPrivateCleanup(&gHandles);
 
     x = uPortTaskStackMinFree(NULL);
-    uPortLog("U_CELL_MQTT_TEST: main task stack had a minimum of %d"
-             " byte(s) free at the end of these tests.\n", x);
-    U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_MQTT_TEST: main task stack had a minimum of %d"
+                 " byte(s) free at the end of these tests.\n", x);
+        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 

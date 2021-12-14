@@ -38,6 +38,7 @@
 #include "stdlib.h"    // rand()
 
 #include "u_cfg_sw.h"
+#include "u_compiler.h" // for U_WEAK
 
 #include "u_port_debug.h"
 #include "u_port_crypto.h"
@@ -898,7 +899,8 @@ const char *pUCellSecC2cInterceptTx(uAtClientHandle_t atHandle,
 // Obtain a random string to use as initial value.
 // This is a default implementation only, intended to be
 // overridden by the application.
-__attribute__ ((weak)) const char *pUCellSecC2cGetIv()
+U_WEAK
+const char *pUCellSecC2cGetIv()
 {
     for (size_t x = 0; x < sizeof(gIv); x++) {
         gIv[x] = (char) rand();

@@ -90,7 +90,7 @@ U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgConfigureModule")
     uWifiCfg_t cfg;
     heapUsed = uPortGetHeapFree();
 
-    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                 &gHandles) == 0);
     cfg.notUsed = false;
     U_PORT_TEST_ASSERT(uWifiCfgConfigure(gHandles.wifiHandle, &cfg) == 0);

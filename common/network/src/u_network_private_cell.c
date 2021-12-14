@@ -275,20 +275,25 @@ int32_t uNetworkDownCell(int32_t handle,
 {
     int32_t errorCode;
 
-    (void) pConfiguration;
-
-    // Disonnect with default timeout, ignoring
-    // error code as we're going to power off anyway
-    uCellNetDisconnect(handle, NULL);
-    // Power off with default timeout
-    errorCode = uCellPwrOff(handle, NULL);
-    if (errorCode != 0) {
-        // If that didn't do it, try the hard way
-        errorCode = uCellPwrOffHard(handle, false, NULL);
+    if (pConfiguration->pinPwrOn >= 0) {
+        // Disonnect with default timeout, ignoring
+        // error code as we're going to power off anyway
+        uCellNetDisconnect(handle, NULL);
+        // Power off with default timeout
+        errorCode = uCellPwrOff(handle, NULL);
         if (errorCode != 0) {
-            // If that didn't do it, try the truly hard way
-            errorCode = uCellPwrOffHard(handle, true, NULL);
+            // If that didn't do it, try the hard way
+            errorCode = uCellPwrOffHard(handle, false, NULL);
+            if (errorCode != 0) {
+                // If that didn't do it, try the truly hard way
+                errorCode = uCellPwrOffHard(handle, true, NULL);
+            }
         }
+    } else {
+        // If we don't have a power-on pin connected,
+        // just do a network disconnect as otherwise we
+        // won't be able to power back on again
+        errorCode = uCellNetDisconnect(handle, NULL);
     }
 
     return errorCode;

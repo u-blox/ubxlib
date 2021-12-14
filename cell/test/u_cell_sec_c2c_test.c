@@ -1616,24 +1616,30 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
     U_PORT_TEST_ASSERT(gAtTestCount == sizeof(gTestAt) / sizeof(gTestAt[0]));
 
     stackMinFreeBytes = uAtClientUrcHandlerStackMinFree(atClientHandle);
-    uPortLog("U_CELL_SEC_C2C_TEST: AT client URC task had min %d byte(s)"
-             " stack free out of %d.\n", stackMinFreeBytes,
-             U_CELL_SEC_C2C_TEST_TASK_STACK_SIZE_BYTES);
-    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_SEC_C2C_TEST: AT client URC task had min %d byte(s)"
+                 " stack free out of %d.\n", stackMinFreeBytes,
+                 U_CELL_SEC_C2C_TEST_TASK_STACK_SIZE_BYTES);
+        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    }
 
     stackMinFreeBytes = uAtClientCallbackStackMinFree();
-    uPortLog("U_CELL_SEC_C2C_TEST: AT client callback task had min"
-             " %d byte(s) stack free out of %d.\n", stackMinFreeBytes,
-             U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES);
-    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_SEC_C2C_TEST: AT client callback task had min"
+                 " %d byte(s) stack free out of %d.\n", stackMinFreeBytes,
+                 U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES);
+        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    }
 
     // Check the stack extent for the task on the end of the
     // event queue
     stackMinFreeBytes = uPortUartEventStackMinFree(gUartBHandle);
-    uPortLog("U_CELL_SEC_C2C_TEST: the AT server event queue task had"
-             " %d byte(s) free out of %d.\n",
-             stackMinFreeBytes, U_CELL_SEC_C2C_TEST_TASK_STACK_SIZE_BYTES);
-    U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_SEC_C2C_TEST: the AT server event queue task had"
+                 " %d byte(s) free out of %d.\n",
+                 stackMinFreeBytes, U_CELL_SEC_C2C_TEST_TASK_STACK_SIZE_BYTES);
+        U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
+    }
 
     uPortLog("U_CELL_SEC_C2C_TEST: removing AT client...\n");
     uAtClientRemove(atClientHandle);
@@ -1677,11 +1683,13 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cCleanUp")
     }
 
     minFreeStackBytes = uPortTaskStackMinFree(NULL);
-    uPortLog("U_CELL_SEC_C2C_TEST: main task stack had a minimum of"
-             " %d byte(s) free at the end of these tests.\n",
-             minFreeStackBytes);
-    U_PORT_TEST_ASSERT(minFreeStackBytes >=
-                       U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    if (minFreeStackBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
+        uPortLog("U_CELL_SEC_C2C_TEST: main task stack had a minimum of"
+                 " %d byte(s) free at the end of these tests.\n",
+                 minFreeStackBytes);
+        U_PORT_TEST_ASSERT(minFreeStackBytes >=
+                           U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
+    }
 
     uPortDeinit();
 }
