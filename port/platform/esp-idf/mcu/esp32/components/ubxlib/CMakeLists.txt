@@ -16,11 +16,12 @@ include(${UBXLIB_BASE}/port/ubxlib.cmake)
 list(APPEND UBXLIB_INC
     ${PLATFORM_DIR}
     ${PLATFORM_DIR}/mcu/esp32/cfg
+    ${PLATFORM_DIR}/../../clib
+    ${PLATFORM_DIR}/../common/mbedtls
 )
 
 list(APPEND UBXLIB_PRIVATE_INC
     ${PLATFORM_DIR}/src
-    ${PLATFORM_DIR}/../../clib
     ${UBXLIB_PRIVATE_INC}
 )
 
@@ -34,6 +35,7 @@ set(COMPONENT_SRCS
     ${PLATFORM_DIR}/src/u_port_os.c
     ${PLATFORM_DIR}/src/u_port_uart.c
     ${PLATFORM_DIR}/../../clib/u_port_clib_mktime64.c
+    ${PLATFORM_DIR}/../common/mbedtls/u_port_crypto.c
     ${UBXLIB_SRC}
 )
 set(COMPONENT_PRIV_INCLUDEDIRS

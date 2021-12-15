@@ -94,7 +94,6 @@ u_add_module_dir(base ${UBXLIB_BASE}/common/utils)
 
 # Additional source directories
 u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/event_queue)
-u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/mbedtls)
 u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/mutex_debug)
 
 # Additional include directories
