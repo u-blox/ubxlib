@@ -141,9 +141,7 @@ endif()
 # Test related files and directories
 list(APPEND UBXLIB_TEST_INC
   ${UBXLIB_BASE}/common/network/test
-  ${UBXLIB_BASE}/port/platform/common/runner
 )
-u_add_test_source_dir(base ${UBXLIB_BASE}/port/platform/common/runner)
 u_add_test_source_dir(base ${UBXLIB_BASE}/port/platform/common/test)
 u_add_test_source_dir(base ${UBXLIB_BASE}/port/test)
 u_add_test_source_dir(base ${UBXLIB_BASE}/common/network/test)

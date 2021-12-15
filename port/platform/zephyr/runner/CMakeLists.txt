@@ -21,4 +21,10 @@ include(./lib_common_test.cmake)
 target_sources(app PRIVATE ${UBXLIB_BASE}/common/lib_common/test/u_lib_common_test.c)
 
 # test runner application
-target_sources(app PRIVATE ${ZEPHYR_PORT_BASE}/app/u_main.c)
+target_sources(app PRIVATE
+    ${UBXLIB_BASE}/port/platform/common/runner/u_runner.c
+    ${ZEPHYR_PORT_BASE}/app/u_main.c
+)
+target_include_directories(app PRIVATE
+    ${UBXLIB_BASE}/port/platform/common/runner
+)

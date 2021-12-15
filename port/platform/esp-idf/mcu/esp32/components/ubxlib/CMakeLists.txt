@@ -1,4 +1,5 @@
 get_filename_component(UBXLIB_BASE ${CMAKE_CURRENT_LIST_DIR}/../../../../../../../ ABSOLUTE)
+get_filename_component(PLATFORM_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../.. ABSOLUTE)
 set(ENV{UBXLIB_BASE} ${UBXLIB_BASE})
 
 # Set the ubxlib features to compile (all needs to be enabled at the moment)
@@ -12,25 +13,40 @@ set(UBXLIB_FEATURES short_range cell gnss)
 # - UBXLIB_TEST_INC
 include(${UBXLIB_BASE}/port/ubxlib.cmake)
 
+list(APPEND UBXLIB_INC
+    ${PLATFORM_DIR}
+    ${PLATFORM_DIR}/mcu/esp32/cfg
+)
+
+list(APPEND UBXLIB_PRIVATE_INC
+    ${PLATFORM_DIR}/src
+    ${PLATFORM_DIR}/../../clib
+    ${UBXLIB_PRIVATE_INC}
+)
+
 set(COMPONENT_ADD_INCLUDEDIRS
     ${UBXLIB_INC}
-    "../../cfg"
-    "../../../.."
 )
 set(COMPONENT_SRCS
-    "../../../../src/u_port.c"
-    "../../../../src/u_port_debug.c"
-    "../../../../src/u_port_gpio.c"
-    "../../../../src/u_port_os.c"
-    "../../../../src/u_port_uart.c"
-    "../../../../../../clib/u_port_clib_mktime64.c"
+    ${PLATFORM_DIR}/src/u_port.c
+    ${PLATFORM_DIR}/src/u_port_debug.c
+    ${PLATFORM_DIR}/src/u_port_gpio.c
+    ${PLATFORM_DIR}/src/u_port_os.c
+    ${PLATFORM_DIR}/src/u_port_uart.c
+    ${PLATFORM_DIR}/../../clib/u_port_clib_mktime64.c
     ${UBXLIB_SRC}
 )
 set(COMPONENT_PRIV_INCLUDEDIRS
-    "../../../../src"
-    "../../../../../../clib"
     ${UBXLIB_PRIVATE_INC}
 )
+
+# Export these variables to parent so they can be picked up by ubxlib_runner
+set(UBXLIB_TEST_SRC ${UBXLIB_TEST_SRC} PARENT_SCOPE)
+set(UBXLIB_TEST_INC ${UBXLIB_TEST_INC} PARENT_SCOPE)
+set(UBXLIB_INC ${UBXLIB_INC} PARENT_SCOPE)
+set(UBXLIB_PRIVATE_INC ${UBXLIB_PRIVATE_INC} PARENT_SCOPE)
+set(UBXLIB_BASE ${UBXLIB_BASE} PARENT_SCOPE)
+
 
 # For crypto functions
 set(COMPONENT_REQUIRES mbedtls)
