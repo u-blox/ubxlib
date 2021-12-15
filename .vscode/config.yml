@@ -27,6 +27,22 @@ nrf5:
     linux:
         install_dir: ${HOME}/ubxlib_sdks/nRF5_SDK_15.3.0_59ac345
 
+stm32cubef4:
+    version: v1.26.2
+    windows:
+        install_dir: C:\u-blox\ubxlib_sdks\STM32CubeF4
+    linux:
+        install_dir: ${HOME}/ubxlib_sdks/STM32CubeF4
+
+esp_idf:
+    version: v4.3.1
+    windows:
+        install_dir: C:\u-blox\ubxlib_sdks\esp_idf
+        idf_tools_install_dir: C:\u-blox\ubxlib_sdks\esp_idf_tools
+    linux:
+        install_dir: ${HOME}/ubxlib_sdks/esp_idf
+        idf_tools_install_dir: ${HOME}/ubxlib_sdks/esp_idf_tools
+
 make:
     windows:
         install_dir: C:\u-blox\ubxlib_sdks\make

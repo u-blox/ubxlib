@@ -15,9 +15,14 @@ from glob import glob
 
 U_FLAG_YML = "u_flags.yml"
 
+UBXLIB_DIR = os.path.abspath(os.path.dirname(__file__) + "/../..")
+
 def question(text):
     yes = {'yes','y', 'ye', ''}
     no = {'no','n'}
+    if not sys.stdin.isatty():
+        # Auto yes if stdin is not available
+        return True
     while True:
         sys.stdout.write("{} [y/n]: ".format(text))
         choice = input().lower()

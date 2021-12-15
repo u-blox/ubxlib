@@ -4,9 +4,11 @@ The vscode workspace supports both Linux and Windows. However, in Windows there 
 
 Note: currently building/running/debugging is only supported on the following platforms:
 
-- [zephyr](https://github.com/u-blox/ubxlib_priv/tree/master/port/platform/zephyr) `nrf5340dk`,
-- [zephyr](https://github.com/u-blox/ubxlib_priv/tree/master/port/platform/zephyr) `evkninab3`,
-- [nrf5sdk/gcc](https://github.com/u-blox/ubxlib_priv/tree/master/port/platform/nrf5sdk/gcc) `evbninab3` (i.e. nRF52).
+- `nrf5340dk` [[zephyr](/port/platform/zephyr)]
+- `evkninab3` [[zephyr](/port/platform/zephyr)]
+- `evbninab3` [[nrf5sdk](/port/platform/nrf5sdk)]
+- `esp32` [[esp-idf](/port/platform/esp-idf)]
+- `u-blox C030` [[stm32cubef4](/port/platform/stm32cube)]
 
 ## Setup
 1. Make sure you have Python 3.x installed and that it is in your `PATH` environment. Also make sure that `pip3` is accessable through your `PATH` environment.

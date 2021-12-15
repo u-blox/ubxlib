@@ -9,6 +9,11 @@ ZEPHYR_URL="https://github.com/zephyrproject-rtos/zephyr.git"
 SDK_NRF_URL="https://github.com/nrfconnect/sdk-nrf"
 NRF_TOOLCHAIN_BASE_URL="https://developer.nordicsemi.com/.pc-tools/toolchain"
 
+DEFAULT_CMAKE_DIR = f"{utils.UBXLIB_DIR}/port/platform/zephyr/runner"
+DEFAULT_BOARD_NAME = "nrf5340dk_nrf5340_cpuapp"
+DEFAULT_OUTPUT_NAME = f"runner_{DEFAULT_BOARD_NAME}"
+DEFAULT_BUILD_DIR = os.path.join("_build","nrfconnect")
+
 def download_windows_toolchain(version, install_dir):
     with urlopen(f"{NRF_TOOLCHAIN_BASE_URL}/index.json") as url:
         toolchain_list = json.loads(url.read().decode())
@@ -49,7 +54,6 @@ def check_windows_toolchain(ctx):
 def check_installation(ctx):
     """Check that the toolchain for nRF connect SDK is installed"""
     cfg = ctx.config.nrfconnect
-    ctx.zephyr_env = {}
     ctx.zephyr_pre_command = ""
 
     if not ctx.config.is_linux:
@@ -79,33 +83,34 @@ def check_installation(ctx):
 @task(
     pre=[check_installation],
     help={
-        "cmake_dir": "CMake project directory to build",
-        "board_name": "Zephyr board name",
-        "target_name": "A target name (build sub folder)",
-        "builddir": "Output bild directory (default: {})".format(os.path.join("_build","nrfconnect")),
+        "cmake_dir": f"CMake project directory to build (default: {DEFAULT_CMAKE_DIR})",
+        "board_name": f"Zephyr board name (default: {DEFAULT_BOARD_NAME})",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})"
     }
 )
-def build(ctx, cmake_dir, board_name, target_name, builddir=os.path.join("_build","nrfconnect")):
+def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
+          output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
     """Build a nRF connect SDK based application"""
     # Read U_FLAGS from nrfconnect.u_flags
-    u_flags = utils.get_u_flags(ctx.config.cfg_dir, "nrfconnect", target_name)
+    u_flags = utils.get_u_flags(ctx.config.cfg_dir, "nrfconnect", output_name)
     ctx.config.run.env['U_FLAGS'] = u_flags['u_flags']
 
     # If the flags has been modified we trigger a rebuild
     pristine = "always" if u_flags['modified'] else "auto"
 
-    builddir = os.path.join(builddir, target_name)
-    ctx.run(f'{ctx.zephyr_pre_command}west build -p {pristine} -b {board_name} {cmake_dir} --build-dir {builddir}')
+    build_dir = os.path.join(build_dir, output_name)
+    ctx.run(f'{ctx.zephyr_pre_command}west build -p {pristine} -b {board_name} {cmake_dir} --build-dir {build_dir}')
 
 @task(
     pre=[check_installation],
     help={
-        "target_name": "A target name (build sub folder)",
-        "builddir": "Output bild directory (default: {})".format(os.path.join("_build","nrfconnect")),
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})"
     }
 )
-def clean(ctx, target_name, builddir=os.path.join("_build","nrfconnect")):
+def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
     """Remove all files for a nRF connect SDK build"""
-    builddir = os.path.join(builddir, target_name)
-    if os.path.exists(builddir):
-        shutil.rmtree(builddir)
+    build_dir = os.path.join(build_dir, output_name)
+    if os.path.exists(build_dir):
+        shutil.rmtree(build_dir)
