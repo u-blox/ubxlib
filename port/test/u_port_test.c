@@ -1785,7 +1785,8 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
 
     buffer[sizeof(buffer) - 1] = 'x';
 
-    strcpy(buffer, "abcabc");
+    // memcpy() rather than strncpy() as strncpy() would overwrite the 'x' with 0
+    memcpy(buffer, "abcabc", 7);
     U_PORT_TEST_ASSERT(strcmp(strtok_r(buffer, "b", &pSave), "a") == 0);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
     //lint -e(668) Suppress possible passing of NULL pointer to strcmp,
@@ -1799,10 +1800,10 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
     U_PORT_TEST_ASSERT(strtok_r(NULL, "b", &pSave) == NULL);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
 
-    strcpy(buffer, "abcade");
+    memcpy(buffer, "abcade", 7);
     U_PORT_TEST_ASSERT(strcmp(strtok_r(buffer, "a", &pSave), "bc") == 0);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
-    strcpy(buffer, "abcade");
+    memcpy(buffer, "abcade", 7);
     U_PORT_TEST_ASSERT(strcmp(strtok_r(buffer, "a", &pSave), "bc") == 0);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
     //lint -e(668) Suppress possible passing of NULL pointer to strcmp,
@@ -1812,7 +1813,7 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
     U_PORT_TEST_ASSERT(strtok_r(NULL, "a", &pSave) == NULL);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
 
-    strcpy(buffer, "abcabc");
+    memcpy(buffer, "abcabc", 7);
     U_PORT_TEST_ASSERT(strcmp(strtok_r(buffer, "d", &pSave), "abcabc") == 0);
     U_PORT_TEST_ASSERT(buffer[sizeof(buffer) - 1] == 'x');
     U_PORT_TEST_ASSERT(strtok_r(NULL, "d", &pSave) == NULL);

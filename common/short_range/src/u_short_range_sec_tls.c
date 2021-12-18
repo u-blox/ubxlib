@@ -33,12 +33,13 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // strlen(), strcpy(), memset()
+#include "string.h"    // strlen(), strncpy(), memset()
 
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
 
 #include "u_security_tls.h"
+#include "u_security_credential.h"
 
 #include "u_short_range_sec_tls.h"
 
@@ -73,7 +74,8 @@ static uErrorCode_t storeString(const char *pSrc, char **ppDest)
         *ppDest = (char *) malloc(strlen(pSrc) + 1);
         if (*ppDest != NULL) {
             errorCode = U_ERROR_COMMON_SUCCESS;
-            strcpy(*ppDest, pSrc);
+            strncpy(*ppDest, pSrc,
+                    U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES + 1);
         }
     }
 

@@ -36,7 +36,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // memcpy(), memcmp()
+#include "string.h"    // memcpy(), memcmp(), strncpy(), strncat()
 #include "ctype.h"     // isdigit()
 
 #include "u_cfg_sw.h"
@@ -996,22 +996,25 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     uPortLog("U_CELL_SEC_C2C_TEST_%d: AT server inserting"
                              " URC \"%s %s\".\n", gAtTestCount + 1,
                              pTestAt->pUrcPrefix, pTestAt->pUrcBody);
-                    strcpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
-                           pTestAt->pUrcPrefix);
-                    strcat(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
-                           pTestAt->pUrcBody);
-                    strcat(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, "\r\n");
-                    y = uPortGetTickTimeMs();
-                    sizeOrError = atServerEncryptAndSendThing(uartHandle,
-                                                              gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
-                                                              strlen(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES),
-                                                              pTestAt->chunkLengthMax);
-                    uPortLog("U_CELL_SEC_C2C_TEST_%d: ...took %d ms.\n",
-                             gAtTestCount + 1, uPortGetTickTimeMs() - y);
-                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
-                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
-                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
-                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+                    strncpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                            pTestAt->pUrcPrefix,
+                            sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2));
+                    strncat(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                            pTestAt->pUrcBody,
+                            sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2));
+                    strncat(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, "\r\n",
+                            sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2));
+                            y = uPortGetTickTimeMs();
+                            sizeOrError = atServerEncryptAndSendThing(uartHandle,
+                                                                      gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                                                      strlen(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES),
+                                                                      pTestAt->chunkLengthMax);
+                            uPortLog("U_CELL_SEC_C2C_TEST_%d: ...took %d ms.\n",
+                                     gAtTestCount + 1, uPortGetTickTimeMs() - y);
+                            U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+                            U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+                            U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+                            U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
                 }
 
                 if (sizeOrError >= 0) {
@@ -1037,8 +1040,9 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     uPortLog("U_CELL_SEC_C2C_TEST_%d: ...and then \"OK\".\n", gAtTestCount + 1);
                     *(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES) = 0;
                     if (pTestAt->pResponsePrefix != NULL) {
-                        strcpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
-                               pTestAt->pResponsePrefix);
+                        strncpy(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                pTestAt->pResponsePrefix,
+                                sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2));
                     }
                     x = strlen(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
                     if (pTestAt->pResponseBody != NULL) {

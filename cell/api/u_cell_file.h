@@ -33,7 +33,9 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** Maximum allowed file name length for a file on file system.
+/** Maximum allowed file name length for a file on file system;
+ * this does NOT include room for a null terminator, so any storage
+ * buffer should be this length plus one.
  */
 #define U_CELL_FILE_NAME_MAX_LENGTH 248
 
@@ -99,8 +101,8 @@ const char *pUCellFileGetTag(int32_t cellHandle);
  *                   / * : % | " < > ?.
  * @param pData      a pointer to the data to write into the file.
  * @param dataSize   number of data bytes to write into the file.
- * @return           on success return number of bytes written into the file
- *                   or negative error code on failure.
+ * @return           on success return number of bytes written into
+ *                   the file or negative error code on failure.
  */
 int32_t uCellFileWrite(int32_t cellHandle,
                        const char *pFileName,
@@ -112,8 +114,8 @@ int32_t uCellFileWrite(int32_t cellHandle,
  * that flow control lines are connected on the interface to the module.
  *
  * @param cellHandle the handle of the cellular instance.
- * @param pFileName  a pointer to file name to read file contents from file system.
- *                   File name cannot contain these characters:
+ * @param pFileName  a pointer to file name to read file contents from the
+ *                   file system. File name cannot contain these characters:
  *                   / * : % | " < > ?.
  * @param pData      a pointer to stream of data bytes to be read.
  * @param dataSize   number of data bytes to read.
@@ -133,8 +135,9 @@ int32_t uCellFileRead(int32_t cellHandle,
  * default "USER" area of the file system can be read in blocks.
  *
  * @param cellHandle the handle of the cellular instance.
- * @param pFileName  a pointer to file name to read file contents from file system.
- *                   File name cannot contain these characters:
+ * @param pFileName  a pointer to file name to read file contents from
+ *                   the file system. File name cannot contain these
+ *                   characters:
  *                   / * : % | " < > ?.
  * @param pData      a pointer to stream of data bytes to be read.
  * @param offset     offset in bytes from the beginning of the file.
@@ -181,7 +184,7 @@ int32_t uCellFileDelete(int32_t cellHandle,
  * For instance, to print out the names of all stored files on file system:
  *
  * ```
- * char fileName[U_CELL_FILE_NAME_MAX_LENGTH];
+ * char fileName[U_CELL_FILE_NAME_MAX_LENGTH + 1];
  *
  * for (int32_t x = uCellFileListFirst(handle, &fileName);
  *      x >= 0;
@@ -194,7 +197,9 @@ int32_t uCellFileDelete(int32_t cellHandle,
  * files from the tagged area of the file system will be listed.
  *
  * @param cellHandle the handle of the cellular instance.
- * @param pFileName  pointer to somewhere to store the result.
+ * @param pFileName  pointer to somewhere to store the result;
+ *                   at least U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
+ *                   of storage must be provided.
  * @return           the total number of file names in the list
  *                   or negative error code.
  */
@@ -214,7 +219,9 @@ int32_t uCellFileListFirst(int32_t cellHandle,
  * files from the tagged area of the file system will be listed.
  *
  * @param cellHandle the handle of the cellular instance.
- * @param pFileName  pointer to somewhere to store the result.
+ * @param pFileName  pointer to somewhere to store the result;
+ *                   at least U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
+ *                   of storage must be provided..
  * @return           the number of entries remaining *after*
  *                   this one has been read or negative error
  *                   code.

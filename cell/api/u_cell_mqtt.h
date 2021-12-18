@@ -39,7 +39,9 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 #ifndef U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES
-/** The maximum length of an MQTT broker address string.
+/** The maximum length of an MQTT broker address string; this does
+ * NOT include room for a null terminator, any buffer should be
+ * this length plus one.
  */
 # define U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES 256
 #endif
@@ -53,27 +55,35 @@ extern "C" {
 
 #ifndef U_CELL_MQTT_PUBLISH_BIN_MAX_LENGTH_BYTES
 /** The maximum length of an MQTT publish message in bytes,
- * if binary mode can be used.
+ * if binary mode can be used; this does not include room
+ * for a null terminator, any buffer should be this length
+ * plus one.
  */
 # define U_CELL_MQTT_PUBLISH_BIN_MAX_LENGTH_BYTES 1024
 #endif
 
 #ifndef U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES
 /** The maximum length of an MQTT topic used as a filter
- * or in a will message in bytes.
+ * or in a will message in bytes; this does NOT include
+ * room for a null terminator, any buffer should be
+ * this length plus one.
  */
 # define U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES 256
 #endif
 
 #ifndef U_CELL_MQTT_READ_TOPIC_MAX_LENGTH_BYTES
-/** The maximum length of an MQTT read topic in bytes.
+/** The maximum length of an MQTT read topic in bytes;
+ * this does NOT include room for a null terminator,
+ * any buffer should be this length plus one.
  */
 # define U_CELL_MQTT_READ_TOPIC_MAX_LENGTH_BYTES 256
 #endif
 
 #ifndef U_CELL_MQTT_WILL_MESSAGE_MAX_LENGTH_BYTES
 /** The maximum length of an MQTT "will" message in
- * bytes.
+ * bytes; this does NOT include room for a null
+ * terminator, any buffer should be this length
+ * plus one.
  */
 # define U_CELL_MQTT_WILL_MESSAGE_MAX_LENGTH_BYTES 256
 #endif

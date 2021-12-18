@@ -33,7 +33,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "string.h"    // memset(), strcpy(), strtok_r(), strtol()
+#include "string.h"    // memset(), strncpy(), strtok_r(), strtol()
 
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
@@ -87,7 +87,8 @@ static int32_t uCellFileListGetRemove(char *pFile)
 
     if (pTmp != NULL) {
         if (pFile != NULL) {
-            strcpy(pFile, pTmp->fileName);
+            strncpy(pFile, pTmp->fileName,
+                    U_CELL_FILE_NAME_MAX_LENGTH + 1);
         }
         pTmp = gpFileList->pNext;
         free(gpFileList);

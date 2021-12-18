@@ -55,7 +55,7 @@ static const struct device *getGpioDevice(uint32_t pin)
     const struct device *pDev;
     // common practice in device trees that one gpio port holds 32 pins
     char dtDeviceNodeLabel[7];
-    strcpy(dtDeviceNodeLabel, "GPIO_x");
+    strncpy(dtDeviceNodeLabel, "GPIO_x", sizeof(dtDeviceNodeLabel));
     // replace x with corresponding port number
     dtDeviceNodeLabel[5] = '0' + (pin / GPIO_MAX_PINS_PER_PORT);
     dtDeviceNodeLabel[6] = 0;
