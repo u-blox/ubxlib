@@ -1150,7 +1150,7 @@ static bool isPrint(const char *pBuffer, size_t bufferLength)
     bool printable = true;
 
     for (size_t x = 0; (x < bufferLength) && printable; x++) {
-        if (!isprint((int32_t) *pBuffer)) {
+        if (!isprint((int32_t) (uint8_t) *pBuffer)) {
             printable = false;
         }
         pBuffer++;

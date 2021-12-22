@@ -114,7 +114,7 @@ target_include_directories(ubxlib_test PRIVATE
 
 # Create the test target for ubxlib, including in it u_main.c
 add_executable(ubxlib_test_main ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/app/u_main.c)
-target_include_directories(ubxlib_test_main PRIVATE ${UBXLIB_PRIVATE_TEST_INC_PORT})
+target_include_directories(ubxlib_test_main PRIVATE ${UBXLIB_PRIVATE_TEST_INC_PORT} ${UBXLIB_PRIVATE_INC})
 
 # Link the ubxlib test target with the ubxlib tests library and Unity
 target_link_libraries(ubxlib_test_main PRIVATE ubxlib unity ubxlib_test)

@@ -755,7 +755,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
                 if (gpULocationTestCfg[gUNetworkTestCfg[x].type]->numEntries > 0) {
                     // Just take the first one, we don't care which as this
                     // is a network test not a location test
-                    pLocationCfg = (gpULocationTestCfg[gUNetworkTestCfg[x].type])->pCfgData;
+                    pLocationCfg = gpULocationTestCfg[gUNetworkTestCfg[x].type]->pCfgData[0];
                     startTime = uPortGetTickTimeMs();
                     gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
                     uLocationTestResetLocation(&location);

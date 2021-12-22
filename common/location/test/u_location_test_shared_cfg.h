@@ -91,7 +91,7 @@ typedef struct {
  */
 typedef struct {
     size_t numEntries;
-    const uLocationTestCfg_t *pCfgData;
+    const uLocationTestCfg_t *pCfgData[U_LOCATION_TYPE_MAX_NUM];
 } uLocationTestCfgList_t;
 
 /* ----------------------------------------------------------------

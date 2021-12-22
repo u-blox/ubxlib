@@ -48,7 +48,7 @@ You will need a SIM in your board, a cellular antenna connected and you may need
 ## The GNSS Cloud Locate Example `main_loc_gnss_cloud_locate.c`
 You may take advantage of positioning assistance information known to u-blox servers by using the u-blox Cloud Locate service with your GNSS chip, as shown in the [main_loc_gnss_cloud_locate.c](main_loc_cloud_locate.c) example.  This is currently only supported through cellular modules.
 
-First, you must log-in to your Thingstream accoud and, under Location Services, add a Cloud Locate thing (if you don't already have one).  The thing will have a set of credentials associated with it; client ID, username and password.  Edit [main_loc_gnss_cloud_locate.c](main_loc_gnss_cloud_locate.c) to put these credentials into the `MY_THINGSTREAM_CLIENT_ID`, `MY_THINGSTREAM_USERNAME` and `MY_THINGSTREAM_PASSWORD` fields respectively.
+First, you must log-in to your Thingstream account and, under Location Services, add a Cloud Locate thing (if you don't already have one).  The thing will have a set of credentials associated with it; client ID, username and password.  Edit [main_loc_gnss_cloud_locate.c](main_loc_gnss_cloud_locate.c) to put these credentials into the `MY_THINGSTREAM_CLIENT_ID`, `MY_THINGSTREAM_USERNAME` and `MY_THINGSTREAM_PASSWORD` conditional compilation flags respectively.
 
 Then perform the settings of the GNSS Cellular Example above.
 

@@ -319,9 +319,9 @@ static int32_t parseLocation(char *pStr, uLocation_t *pLocation)
                 pLocation->timeUtc  += (int64_t) strtol(pStr, NULL, 10) * 60;
             }
             // Move pStr to Seconds after the hour, which ends at the final quotation mark
-            pStr = strtok_r(pStr, ":", &pSaved);
+            pStr = strtok_r(NULL, ":", &pSaved);
             if (pStr != NULL) {
-                pLocation->timeUtc  += (int64_t) strtol(pStr, NULL, 10);
+                pLocation->timeUtc += (int64_t) strtol(pStr, NULL, 10);
             }
         } else {
             pStr = NULL;
@@ -372,7 +372,7 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
                 strncat(topicBuffer, U_LOCATION_PRIVATE_CLOUD_LOCATE_MQTT_SUBSCRIBE_TOPIC_POSTFIX,
                         sizeof(topicBuffer) - 1); // -1 to allow room for terminator
                 errorCode = uMqttClientSubscribe(pMqttClientContext, topicBuffer, U_MQTT_QOS_EXACTLY_ONCE);
-                subscribed = (errorCode == 0);
+                subscribed = (errorCode >= 0);
             }
 
             if (errorCode >= 0) { // >= 0 since uMqttClientSubscribe() returns QoS

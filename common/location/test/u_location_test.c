@@ -181,9 +181,9 @@ static void testBlocking(int32_t networkHandle,
 
     gNetworkHandle = networkHandle;
     if (pLocationCfg != NULL) {
-        pLocationAssist = pLocationCfg->pLocationAssist;
         pAuthenticationTokenStr = pLocationCfg->pAuthenticationTokenStr;
-        if (pLocationCfg->pLocationAssist->networkHandleAssist >= 0) {
+        pLocationAssist = pLocationCfg->pLocationAssist;
+        if ((pLocationAssist != NULL) && (pLocationAssist->networkHandleAssist >= 0)) {
             // If an assistance network handle is in play we can't
             // check the network handle in the callback
             gNetworkHandle = -1;
@@ -204,7 +204,7 @@ static void testBlocking(int32_t networkHandle,
                                         keepGoingCallback) == 0);
         uPortLog("U_LOCATION_TEST: location establishment took %d second(s).\n",
                  (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
-        // If we are running on a local cellular network we won't get position but
+        // If we are running on a test cellular network we won't get position but
         // we should always get time
         if ((location.radiusMillimetres > 0) &&
             (location.radiusMillimetres <= U_LOCATION_TEST_MAX_RADIUS_MILLIMETRES)) {
@@ -272,8 +272,8 @@ static void testNonBlocking(int32_t networkHandle,
     const char *pAuthenticationTokenStr = NULL;
 
     if (pLocationCfg != NULL) {
-        pLocationAssist = pLocationCfg->pLocationAssist;
         pAuthenticationTokenStr = pLocationCfg->pAuthenticationTokenStr;
+        pLocationAssist = pLocationCfg->pLocationAssist;
     }
     startTime = uPortGetTickTimeMs();
     gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
@@ -403,28 +403,27 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
                 uPortLog("U_LOCATION_TEST: testing location type %s.\n",
                          gpULocationTestTypeStr[locationType]);
                 pLocationCfgList = gpULocationTestCfg[gUNetworkTestCfg[x].type];
-                gpLocationCfg = NULL;
                 for (size_t y = 0;
                      (y < pLocationCfgList->numEntries) && (gpLocationCfg == NULL);
                      y++) {
-                    if (locationType == (int32_t) (pLocationCfgList + y)->pCfgData->locationType) {
+                    if (locationType == (int32_t) (pLocationCfgList->pCfgData[y]->locationType)) {
                         // The location type is supported, make a copy
                         // of the test configuration for it into something
                         // writeable
-                        gpLocationCfg = pULocationTestCfgDeepCopyMalloc((pLocationCfgList + y)->pCfgData);
+                        gpLocationCfg = pULocationTestCfgDeepCopyMalloc(pLocationCfgList->pCfgData[y]);
                     }
                 }
 
-                // The first time a given location type is called it may allocate
-                // memory (e.g for mutexes) which are only released at deinitialisation
-                // of the location API.  Track that this so as to take account of it in
-                // the heap check calculation.
-                if ((heapLossFirstCall[locationType] == INT_MIN) && (gpLocationCfg != NULL)) {
-                    heapLoss = uPortGetHeapFree();
-                }
-
                 if (gpLocationCfg != NULL) {
-                    if (gpLocationCfg->pLocationAssist->pClientIdStr != NULL) {
+                    // The first time a given location type is called it may allocate
+                    // memory (e.g for mutexes) which are only released at deinitialisation
+                    // of the location API.  Track this so as to take account of it in
+                    // the heap check calculation.
+                    if (heapLossFirstCall[locationType] == INT_MIN) {
+                        heapLoss = uPortGetHeapFree();
+                    }
+                    if ((gpLocationCfg->pLocationAssist != NULL) &&
+                        (gpLocationCfg->pLocationAssist->pClientIdStr != NULL)) {
                         // If we have a Client ID then we will need to log into the
                         // MQTT broker first
                         gpLocationCfg->pLocationAssist->pMqttClientContext = pULocationTestMqttLogin(networkHandle,
@@ -445,29 +444,27 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
                 }
 
                 // Test the blocking location API (supported and non-supported cases)
-                testBlocking(networkHandle,
-                             gUNetworkTestCfg[x].type,
+                testBlocking(networkHandle, gUNetworkTestCfg[x].type,
                              (uLocationType_t) locationType, gpLocationCfg);
 
                 // Test the non-blocking location API (supported and non-supported cases)
-                testNonBlocking(networkHandle,
-                                gUNetworkTestCfg[x].type,
+                testNonBlocking(networkHandle, gUNetworkTestCfg[x].type,
                                 (uLocationType_t) locationType, gpLocationCfg);
 
                 if (gpLocationCfg != NULL) {
-                    if (gpLocationCfg->pLocationAssist->pMqttClientContext != NULL) {
+                    if ((gpLocationCfg->pLocationAssist != NULL) &&
+                        (gpLocationCfg->pLocationAssist->pMqttClientContext != NULL)) {
                         // Log out of the MQTT broker again
                         uLocationTestMqttLogout(gpLocationCfg->pLocationAssist->pMqttClientContext);
                         gpLocationCfg->pLocationAssist->pMqttClientContext = NULL;
                     }
+                    // Account for first-call heap usage
+                    if (heapLossFirstCall[locationType] == INT_MIN) {
+                        heapLossFirstCall[locationType] = heapLoss - uPortGetHeapFree();
+                    }
                     // Free the memory from the location configuration copy
                     uLocationTestCfgDeepCopyFree(gpLocationCfg);
-                    // Note: not NULLifying gpLocationCfg as we use it as a flag below
-                }
-
-                // Account for first-call heap usage
-                if ((heapLossFirstCall[locationType] == INT_MIN) && (gpLocationCfg != NULL)) {
-                    heapLossFirstCall[locationType] = heapLoss - uPortGetHeapFree();
+                    gpLocationCfg = NULL;
                 }
             }
         }

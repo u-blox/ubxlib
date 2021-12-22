@@ -758,7 +758,7 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
 
     uPortLog("U_AT_CLIENT_TEST_%d: checking that we can wait for character"
              " 0x%02x ", index + 1, pWaitForChar->character);
-    if (isprint((int32_t) pWaitForChar->character)) {
+    if (isprint((int32_t) (uint8_t) pWaitForChar->character)) {
         uPortLog("('%c') ", pWaitForChar->character);
     }
     uPortLog("and then read the remaining %d parameter(s).\n",
@@ -770,7 +770,7 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
     // Wait for the character
     uPortLog("U_AT_CLIENT_TEST_%d: waiting for character 0x%02x",
              index + 1, pWaitForChar->character);
-    if (isprint((int32_t) pWaitForChar->character)) {
+    if (isprint((int32_t) (uint8_t) pWaitForChar->character)) {
         uPortLog(" ('%c')", pWaitForChar->character);
     }
     uPortLog("...\n");
