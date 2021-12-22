@@ -29,6 +29,7 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
+#include "stdio.h"     // snprintf()
 #include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
@@ -60,6 +61,11 @@
  * she's powered-on.
  */
 #define U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON 10
+
+/** The UART power saving duration in GSM frames, needed for the
+ * UART power saving AT command.
+ */
+#define U_CELL_PWR_UART_POWER_SAVING_GSM_FRAMES ((U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000000) / 4615)
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -96,8 +102,7 @@ static const char *const gpConfigCommand[] = {"ATE0",      // Echo off
 #endif
                                               "ATI9",      // Firmware version
                                               "AT&C1",     // DCD circuit (109) changes with the carrier
-                                              "AT&D0",     // Ignore changes to DTR
-                                              "AT+UPSV=0"  // Switch off UART power saving initially
+                                              "AT&D0"      // Ignore changes to DTR
                                              };
 
 /* ----------------------------------------------------------------
@@ -113,21 +118,32 @@ static int32_t moduleIsAlive(const uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle = pInstance->atHandle;
     bool isAlive = false;
 
-    // See if the cellular module is responding at the AT interface
-    // by poking it with "AT" up to "attempts" times.
-    // The response can be "OK" or it can also be "CMS/CMS ERROR"
-    // if the modem happened to be awake and in the middle
-    // of something from a previous command.
-    // Wait 1 second for a response each time
-    for (int32_t x = 0; !isAlive && (x < attempts); x++) {
-        uAtClientLock(atHandle);
-        uAtClientTimeoutSet(atHandle,
-                            pInstance->pModule->responseMaxWaitMs);
-        uAtClientCommandStart(atHandle, "AT");
-        uAtClientCommandStopReadResponse(atHandle);
-        uAtClientDeviceErrorGet(atHandle, &deviceError);
-        isAlive = (uAtClientUnlock(atHandle) == 0) ||
-                  (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
+    // It may be that we have been called when an AT client
+    // has just been instantiated (so it has no knowledge of
+    // previous transmit events against which to measure an
+    // inactivity time-out) and yet the module is already
+    // powered-on but is in UART power saving mode; call the
+    // wake-up call-back here to handle that case
+    if (uCellPrivateUartWakeUpCallback(atHandle, NULL) == 0) {
+        // If it responds at this point then it must be alive,
+        // job done
+        isAlive = true;
+    } else {
+        // See if the cellular module is responding at the AT interface
+        // by poking it with "AT" up to "attempts" times.
+        // The response can be "OK" or it can also be "CMS/CMS ERROR"
+        // if the modem happened to be awake and in the middle
+        // of something from a previous command.
+        for (int32_t x = 0; !isAlive && (x < attempts); x++) {
+            uAtClientLock(atHandle);
+            uAtClientTimeoutSet(atHandle,
+                                pInstance->pModule->responseMaxWaitMs);
+            uAtClientCommandStart(atHandle, "AT");
+            uAtClientCommandStopReadResponse(atHandle);
+            uAtClientDeviceErrorGet(atHandle, &deviceError);
+            isAlive = (uAtClientUnlock(atHandle) == 0) ||
+                      (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR);
+        }
     }
 
     if (isAlive) {
@@ -162,7 +178,9 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     bool success = true;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t atStreamHandle;
+    int32_t uartPowerSavingMode = 0; // Assume no UART power saving
     uAtClientStream_t atStreamType;
+    char buffer[20]; // Enough room for AT+UPSV=2,1300
 
     // First send all the commands that everyone gets
     for (size_t x = 0;
@@ -191,17 +209,73 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     atStreamHandle = uAtClientStreamGet(atHandle, &atStreamType);
     if (success && (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART)) {
         // Get the UART stream handle and set the flow
-        // control correctly for it
+        // control and power saving mode correctly for it
         // TODO: check if AT&K3 requires both directions
         // of flow control to be on or just one of them
         if (uPortUartIsRtsFlowControlEnabled(atStreamHandle) &&
             uPortUartIsCtsFlowControlEnabled(atStreamHandle)) {
-            // RTS/CTS handshaking on
             success = moduleConfigureOne(atHandle, "AT&K3");
+            // The RTS/CTS handshaking lines are being used
+            // for flow control by the UART HW so we can't use
+            // them for power control purposes.  Also,
+            // we can't use the wake-up on TX line feature
+            // since, when the module has gone to sleep,
+            // the module incoming flow control line (CTS) will
+            // float to "off" and this MCU's UART HW will not be
+            // able to send anything (but see exception for SARA-R4
+            // below).
         } else {
-            // RTS/CTS handshaking off
             success = moduleConfigureOne(atHandle, "AT&K0");
+            // RTS/CTS handshaking is not used by the UART HW, we
+            // can use the wake-up on TX line feature.
+            // TODO: we _could_, on non-SARA-R4 modules (see below),
+            // use the RTS line as the flow control signaller but this
+            // is complicated as we would need to add an API to tell
+            // this cellular handler about the line and then the
+            // wake-up handler would need to take control of the
+            // RTS line as a GPIO and set it to 0 ("on") sufficiently
+            // far in advance of [and during] AT communication with
+            // the module. And, of course, the application would have
+            // to NOT try to use UART flow control as the RTS pin is
+            // no longer available to the UART HW: no UART HW would
+            // set the RTS pin to 0 ("on") sufficiently far in advance
+            // of the actual transmission of data for the module to
+            // be able to wake up and receive that TXD data.
+            if (uAtClientWakeUpHandlerIsSet(atHandle)) {
+                uartPowerSavingMode = 1;
+            }
         }
+
+        if (uAtClientWakeUpHandlerIsSet(atHandle) &&
+            U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+            // SARA-R4 doesn't support modes 1 or 2 but
+            // does support the functionality of mode 1
+            // though numbered as mode 4 and without the
+            // timeout parameter (the timeout is fixed at
+            // 6 seconds) *and* this works even if the flow
+            // control lines are connected to a sleeping
+            // module: it would appear the module incoming
+            // flow control line (CTS) is held low ("on") even
+            // while the module is asleep in the SARA-R4 case.
+            uartPowerSavingMode = 4;
+        }
+    }
+
+    if (success) {
+        // Set the UART power saving mode
+        if (uartPowerSavingMode == 1) {
+            snprintf(buffer, sizeof(buffer), "AT+UPSV=%d,%d",
+                     (int) uartPowerSavingMode,
+                     U_CELL_PWR_UART_POWER_SAVING_GSM_FRAMES);
+        } else {
+            snprintf(buffer, sizeof(buffer), "AT+UPSV=%d", (int) uartPowerSavingMode);
+            if ((uartPowerSavingMode == 0) && uAtClientWakeUpHandlerIsSet(atHandle)) {
+                // Remove the wake-up handler if it turns out that power
+                // saving cannot be supported
+                uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
+            }
+        }
+        success = moduleConfigureOne(atHandle, buffer);
     }
 
     if (success) {
@@ -280,6 +354,10 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
     uCellPrivateClearDynamicParameters(pInstance);
     uAtClientTimeoutSet(atHandle,
                         U_CELL_PRIVATE_CPWROFF_WAIT_TIME_SECONDS * 1000);
+    // Switch off UART power saving first, as it seems to
+    // affect the power off process
+    uAtClientCommandStart(atHandle, "AT+UPSV=0");
+    uAtClientCommandStopReadResponse(atHandle);
     uAtClientCommandStart(atHandle, "AT+CPWROFF");
     uAtClientCommandStopReadResponse(atHandle);
     errorCode = uAtClientUnlock(atHandle);
@@ -532,6 +610,7 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -540,6 +619,7 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
+            atHandle = pInstance->atHandle;
             errorCode = (int32_t) U_CELL_ERROR_NOT_CONFIGURED;
             // If we have control of power and the user
             // wants a truly hard power off then just do it.
@@ -552,6 +632,13 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             } else {
                 if (pInstance->pinPwrOn >= 0) {
+                    // Switch off UART power saving first, as it seems to
+                    // affect the power off process, no error checking,
+                    // we're going down anyway
+                    uAtClientLock(atHandle);
+                    uAtClientCommandStart(atHandle, "AT+UPSV=0");
+                    uAtClientCommandStopReadResponse(atHandle);
+                    uAtClientUnlock(atHandle);
                     uPortLog("U_CELL_PWR: powering off using the PWR_ON pin.\n");
                     uPortGpioSet(pInstance->pinPwrOn, U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                     // Power off the module by pulling the PWR_ON pin

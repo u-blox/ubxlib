@@ -88,6 +88,17 @@ extern "C" {
 # define U_CELL_VINT_PIN_ON_STATE 0
 #endif
 
+#ifndef U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS
+/** The time for which the cellular module's UART should remain
+ * responsive after the previous command.  For SARA-R4 the value
+ * is fixed at 6 seconds and hence, for convenience, a value of
+ * 6 seconds is used here (for the other cellular modules) to
+ * achieve the same behaviour.  Must be set to at least 1, since
+ * the wake-up function is called just before the timeout.
+ */
+#define U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS 6
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

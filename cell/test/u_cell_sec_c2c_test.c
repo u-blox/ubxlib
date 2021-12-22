@@ -1004,17 +1004,17 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                             sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2));
                     strncat(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES, "\r\n",
                             sizeof(gBufferA) - (U_CELL_SEC_C2C_GUARD_LENGTH_BYTES * 2));
-                            y = uPortGetTickTimeMs();
-                            sizeOrError = atServerEncryptAndSendThing(uartHandle,
-                                                                      gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
-                                                                      strlen(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES),
-                                                                      pTestAt->chunkLengthMax);
-                            uPortLog("U_CELL_SEC_C2C_TEST_%d: ...took %d ms.\n",
-                                     gAtTestCount + 1, uPortGetTickTimeMs() - y);
-                            U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
-                            U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
-                            U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
-                            U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
+                    y = uPortGetTickTimeMs();
+                    sizeOrError = atServerEncryptAndSendThing(uartHandle,
+                                                              gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
+                                                              strlen(gBufferA + U_CELL_SEC_C2C_GUARD_LENGTH_BYTES),
+                                                              pTestAt->chunkLengthMax);
+                    uPortLog("U_CELL_SEC_C2C_TEST_%d: ...took %d ms.\n",
+                             gAtTestCount + 1, uPortGetTickTimeMs() - y);
+                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferA);
+                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferA);
+                    U_CELL_SEC_C2C_CHECK_GUARD_UNDERRUN(gBufferB);
+                    U_CELL_SEC_C2C_CHECK_GUARD_OVERRUN(gBufferB);
                 }
 
                 if (sizeOrError >= 0) {

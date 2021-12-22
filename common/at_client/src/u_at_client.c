@@ -155,6 +155,31 @@
 #define U_AT_CLIENT_DATA_BUFFER_PTR(pBufStruct) (((char *) (pBufStruct)) +          \
                                                  sizeof(uAtClientReceiveBuffer_t))
 
+/** Macro to lock the client mutex: this checks if we're
+ * in a wake-up handler and, if so, it locks the wake-up
+ * handler muted instead of the usual one (which will be
+ * already locked).
+ */
+#define U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient) if ((pClient->pWakeUp != NULL) &&              \
+                                                   (pClient->pWakeUp->inWakeUpHandler)) {     \
+                                                   uPortMutexLock(pClient->pWakeUp->mutex);   \
+                                               } else {                                       \
+                                                   uPortMutexLock(pClient->mutex);            \
+                                               } {
+
+/** Macro to unlock the client mutex: this checks if we're
+ * in a wake-up handler and, if so, it unlocks the wake-up
+ * handler muted instead of the usual one (which must stay
+ * locked so that it can be unlocked when we unwind from
+ * the wake-up handler).
+ */
+#define U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient) } if ((pClient->pWakeUp != NULL) &&             \
+                                                       (pClient->pWakeUp->inWakeUpHandler)) {    \
+                                                     uPortMutexUnlock(pClient->pWakeUp->mutex);  \
+                                                 } else {                                        \
+                                                     uPortMutexUnlock(pClient->mutex);           \
+                                                 }
+
 // Do some cross-checking
 #if (U_AT_CLIENT_CALLBACK_TASK_PRIORITY >= U_AT_CLIENT_URC_TASK_PRIORITY)
 # error U_AT_CLIENT_CALLBACK_TASK_PRIORITY must be less than U_AT_CLIENT_URC_TASK_PRIORITY
@@ -183,7 +208,7 @@
 # define LOG_IF(cond, place) if (cond) {                               \
                                  logDebug(pClient, place,              \
                                           -1, NULL, NULL, -1, -1, -1,  \
-                                         -1, -1);                     \
+                                          -1, -1);                     \
                              }
 #else
 # define LOG_BUFFER_FILL(place)
@@ -272,6 +297,17 @@ typedef struct {
     void *pParam;
 } uAtClientCallback_t;
 
+/** Struct defining a wake-up handler.
+ */
+typedef struct {
+    int32_t (*pHandler) (uAtClientHandle_t, void *);
+    void *pParam;
+    uPortMutexHandle_t mutex;
+    bool inWakeUpHandler;
+    int32_t inactivityTimeoutMs;
+    int32_t atTimeoutSavedMs;
+} uAtClientWakeUp_t;
+
 /** Definition of an AT client instance.
  */
 typedef struct uAtClientInstance_t {
@@ -296,6 +332,7 @@ typedef struct uAtClientInstance_t {
     uAtClientUrc_t *pUrcList; /** Linked-list anchor for URC handlers. */
     int64_t lastResponseStopMs; /** The time the last response ended in milliseconds. */
     int64_t lockTimeMs; /** The time when the stream was locked. */
+    int64_t lastTxTimeMs; /** The time when the last transmit activity was carried out, set to -1 initially. */
     size_t urcMaxStringLength; /** The longest URC string to monitor for. */
     size_t maxRespLength; /** The max length of OK, (CME) (CMS) ERROR and URCs. */
     bool delimiterRequired; /** Is a delimiter to be inserted before the next parameter or not. */
@@ -312,6 +349,7 @@ typedef struct uAtClientInstance_t {
                                         processed by the AT client. */
     void *pInterceptRxContext; /** Context pointer that will be passed to pInterceptRx
                                    as its fourth parameter. */
+    uAtClientWakeUp_t *pWakeUp; /** Pointer to a wake-up handler structure. */
     struct uAtClientInstance_t *pNext;
 } uAtClientInstance_t;
 
@@ -442,7 +480,7 @@ static void logDebug(const uAtClientInstance_t *pClient,
 
         // Only keep it if it is different
         // bar the initial 32-bit timestamp
-        // and 32-biit "place"
+        // and 32-bit "place"
         if ((gDebugIndex == 0) ||
             (memcmp(((int32_t *) pDebug) + 2, ((int32_t *) & (gDebug[gDebugIndex - 1])) + 2,
                     sizeof(*pDebug) - (sizeof(int32_t) * 2)) != 0)) {
@@ -544,7 +582,10 @@ static void removeClient(uAtClientInstance_t *pClient)
     // the rug out from under a URC
     U_PORT_MUTEX_LOCK(pClient->streamMutex);
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
+
+    // Must not be in a wake-up handler
+    assert((pClient->pWakeUp == NULL) || (!pClient->pWakeUp->inWakeUpHandler));
 
     // Remove it from the list
     removeAtClientInstance(pClient);
@@ -568,6 +609,12 @@ static void removeClient(uAtClientInstance_t *pClient)
             break;
     }
 
+    // Remove any wake-up handler
+    if (pClient->pWakeUp != NULL) {
+        uPortMutexDelete(pClient->pWakeUp->mutex);
+        free(pClient->pWakeUp);
+    }
+
     // Delete the stream mutex
     U_PORT_MUTEX_UNLOCK(pClient->streamMutex);
     uPortMutexDelete(pClient->streamMutex);
@@ -578,7 +625,7 @@ static void removeClient(uAtClientInstance_t *pClient)
     }
 
     // Unlock its main mutex so that we can delete it
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
     uPortMutexDelete(pClient->mutex);
 
     // And finally free the client context.
@@ -1566,60 +1613,103 @@ static size_t write(uAtClientInstance_t *pClient,
     size_t lengthToWrite;
     const char *pDataStart = pData;
     const char *pDataToWrite = pData;
+    int64_t savedLockTimeMs;
+    int64_t wakeUpDurationMs = 0;
+    uAtClientScope_t savedScope;
+    uAtClientTag_t savedStopTag;
 
     while (((pData < pDataStart + length) || andFlush) &&
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
         lengthToWrite = length - (pData - pDataStart);
-        if (pClient->pInterceptTx != NULL) {
-            if (pData < pDataStart + length) {
-                // Call the intercept function
-                pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
-                                                     &pData, &lengthToWrite,
-                                                     pClient->pInterceptTxContext);
+        if ((pClient->pWakeUp != NULL) && (pClient->lastTxTimeMs >= 0) &&
+            (uPortGetTickTimeMs() > pClient->lastTxTimeMs + pClient->pWakeUp->inactivityTimeoutMs) &&
+            !pClient->pWakeUp->inWakeUpHandler) {
+            pClient->pWakeUp->inWakeUpHandler = true;
+            // We have a wake-up handler, the inactivity timeout
+            // has expired and we're not already in the wake-up
+            // handler, so we need to call it
+            // Remember the lock time and measure how long
+            // waking up takes in order to correct for it
+            savedLockTimeMs = pClient->lockTimeMs;
+            wakeUpDurationMs = uPortGetTickTimeMs();
+            // Remember the dynamic things that the
+            // wake-up handler might overwrite
+            savedScope = pClient->scope;
+            savedStopTag = pClient->stopTag;
+            // Reset the scope and stopTag
+            pClient->scope = U_AT_CLIENT_SCOPE_NONE;
+            pClient->stopTag.pTagDef = &gNoStopTag;
+            pClient->stopTag.found = false;
+            if (pClient->pWakeUp->pHandler((uAtClientHandle_t) pClient,
+                                           pClient->pWakeUp->pParam) != 0) {
+                setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+            }
+            // Put all the saved things back
+            pClient->scope = savedScope;
+            pClient->stopTag = savedStopTag;
+            // Set the adjusted lock time, allowing for potential
+            // wrap in uPortGetTickTimeMs()
+            wakeUpDurationMs = uPortGetTickTimeMs() - wakeUpDurationMs;
+            if (wakeUpDurationMs > 0) {
+                pClient->lockTimeMs = savedLockTimeMs + wakeUpDurationMs;
             } else {
-                // andFlush must be true: call the intercept
-                // function again with NULL to flush it out
-                pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
-                                                     NULL, &lengthToWrite,
-                                                     pClient->pInterceptTxContext);
+                pClient->lockTimeMs = uPortGetTickTimeMs();
+            }
+            pClient->pWakeUp->inWakeUpHandler = false;
+        }
+        if (pClient->error == U_ERROR_COMMON_SUCCESS) {
+            if (pClient->pInterceptTx != NULL) {
+                if (pData < pDataStart + length) {
+                    // Call the intercept function
+                    pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
+                                                         &pData, &lengthToWrite,
+                                                         pClient->pInterceptTxContext);
+                } else {
+                    // andFlush must be true: call the intercept
+                    // function again with NULL to flush it out
+                    pDataToWrite = pClient->pInterceptTx((uAtClientHandle_t) pClient,
+                                                         NULL, &lengthToWrite,
+                                                         pClient->pInterceptTxContext);
+                    andFlush = false;
+                }
+            } else {
+                // If there is no intercept function then move pData
+                // on, plus clear andFlush, to indicate that we're done
+                pData = pDataStart + length;
                 andFlush = false;
             }
-        } else {
-            // If there is no intercept function then move pData
-            // on, plus clear andFlush, to indicate that we're done
-            pData = pDataStart + length;
-            andFlush = false;
-        }
-        if ((pDataToWrite == NULL) && (lengthToWrite > 0)) {
-            setError(pClient, U_ERROR_COMMON_UNKNOWN);
-        }
-        while ((lengthToWrite > 0) &&
-               (pDataToWrite != NULL) &&
-               (pClient->error == U_ERROR_COMMON_SUCCESS)) {
-            // Send the data
-            switch (pClient->streamType) {
-                case U_AT_CLIENT_STREAM_TYPE_UART:
-                    thisLengthWritten = uPortUartWrite(pClient->streamHandle,
-                                                       pDataToWrite, lengthToWrite);
-                    break;
-                // Write handled in intercept
-                case U_AT_CLIENT_STREAM_TYPE_EDM:
-                    break;
-                default:
-                    break;
+            if ((pDataToWrite == NULL) && (lengthToWrite > 0)) {
+                setError(pClient, U_ERROR_COMMON_UNKNOWN);
             }
-            if (thisLengthWritten > 0) {
-                pDataToWrite += thisLengthWritten;
-                lengthToWrite -= thisLengthWritten;
-            } else {
-                setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+            while ((lengthToWrite > 0) &&
+                   (pDataToWrite != NULL) &&
+                   (pClient->error == U_ERROR_COMMON_SUCCESS)) {
+                // Send the data
+                switch (pClient->streamType) {
+                    case U_AT_CLIENT_STREAM_TYPE_UART:
+                        thisLengthWritten = uPortUartWrite(pClient->streamHandle,
+                                                           pDataToWrite, lengthToWrite);
+                        break;
+                    // Write handled in intercept
+                    case U_AT_CLIENT_STREAM_TYPE_EDM:
+                        break;
+                    default:
+                        break;
+                }
+                if (thisLengthWritten > 0) {
+                    pDataToWrite += thisLengthWritten;
+                    lengthToWrite -= thisLengthWritten;
+                    pClient->lastTxTimeMs = uPortGetTickTimeMs();
+                } else {
+                    setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+                }
             }
         }
     }
 
     // If there is an intercept function it may be that
     // the length written is longer or shorter than
-    // passed in so it's not easily possible to printAt()
+    // passed in so it is not easily possible to printAt()
     // exactly what was written, we can only check
     // if *everything* was written
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
@@ -1675,6 +1765,9 @@ static bool findUrcHandler(const uAtClientInstance_t *pClient,
 
 // Try to lock the stream: this does NOT clear errors.
 // Returns zero on success.
+// Don't need to worry about being in a wake-up handler
+// here since we would definitely already be locked
+// in that case.
 static int32_t tryLock(uAtClientInstance_t *pClient)
 {
     int32_t outcome;
@@ -1692,13 +1785,26 @@ static int32_t tryLock(uAtClientInstance_t *pClient)
 // directly in taskUrc to avoid recursion.
 static void unlockNoDataCheck(uAtClientInstance_t *pClient)
 {
-    // If there is a saved timeout value, restore it
-    // before unlocking the mutex
-    if (pClient->atTimeoutSavedMs >= 0) {
-        pClient->atTimeoutMs = pClient->atTimeoutSavedMs;
-        pClient->atTimeoutSavedMs = -1;
+    if ((pClient->pWakeUp != NULL) && (pClient->pWakeUp->inWakeUpHandler)) {
+        // If we're in a wake-up handler then restore any
+        // saved timeout value from there, if there is one,
+        // but don't do any unlocking as that will happen
+        // when we unwind out of the wake-up handler.
+        if (pClient->pWakeUp->atTimeoutSavedMs >= 0) {
+            pClient->atTimeoutMs = pClient->pWakeUp->atTimeoutSavedMs;
+            pClient->pWakeUp->atTimeoutSavedMs = -1;
+        }
+    } else {
+        // Not in a wake-up handler so just restore the
+        // usual saved timeout if there was one
+        if (pClient->atTimeoutSavedMs >= 0) {
+            pClient->atTimeoutMs = pClient->atTimeoutSavedMs;
+            pClient->atTimeoutSavedMs = -1;
+        }
+        // Only unlock the stream if we're not in a wake-up
+        // handler
+        uPortMutexUnlock(pClient->streamMutex);
     }
-    uPortMutexUnlock(pClient->streamMutex);
 }
 
 // Convert a string which should contain
@@ -2032,11 +2138,13 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                             pClient->pUrcList = NULL;
                             pClient->lastResponseStopMs = 0;
                             pClient->lockTimeMs = 0;
+                            pClient->lastTxTimeMs = -1;
                             pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
                             pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
                             pClient->delimiterRequired = false;
                             pClient->pInterceptTx = NULL;
                             pClient->pInterceptRx = NULL;
+                            pClient->pWakeUp = NULL;
                             pClient->pNext = NULL;
                             // Set up the buffer and its protection markers
                             pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
@@ -2172,7 +2280,7 @@ void uAtClientTimeoutSet(uAtClientHandle_t atHandle, int32_t timeoutMs)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     // Try, without blocking, to lock this AT client's
     // stream mutex
@@ -2180,21 +2288,32 @@ void uAtClientTimeoutSet(uAtClientHandle_t atHandle, int32_t timeoutMs)
         // We were able to lock the stream mutex, we're obviously
         // not currently in a lock, so set the timeout
         // forever and unlock the mutex again
-        ((uAtClientInstance_t *) atHandle)->atTimeoutMs = timeoutMs;
+        pClient->atTimeoutMs = timeoutMs;
         uPortMutexUnlock(pClient->streamMutex);
     } else {
         // We were not able to lock the stream mutex so we must
         // be in a lock.  In this case save the current
         // timeout before changing it so that we can put
         // it back once the stream mutex is unlocked
-        if (((uAtClientInstance_t *) atHandle)->atTimeoutSavedMs < 0) {
-            ((uAtClientInstance_t *) atHandle)->atTimeoutSavedMs =
-                ((uAtClientInstance_t *) atHandle)->atTimeoutMs;
+        if ((pClient->pWakeUp != NULL) && pClient->pWakeUp->inWakeUpHandler) {
+            // If we're in a wake-up handler stash the saved timeout
+            // in the wake-up structure so that we can restore
+            // it when we unwind back out without overwriting one
+            // that might be saved in the client context
+            if (pClient->pWakeUp->atTimeoutSavedMs < 0) {
+                pClient->pWakeUp->atTimeoutSavedMs = pClient->atTimeoutMs;
+            }
+        } else {
+            // Not in a wake-up handler so just save the timeout
+            // in the client context
+            if (pClient->atTimeoutSavedMs < 0) {
+                pClient->atTimeoutSavedMs = pClient->atTimeoutMs;
+            }
         }
-        ((uAtClientInstance_t *) atHandle)->atTimeoutMs = timeoutMs;
+        pClient->atTimeoutMs = timeoutMs;
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Set a callback to be called on consecutive AT timeouts.
@@ -2256,7 +2375,12 @@ void uAtClientLock(uAtClientHandle_t atHandle)
     // pClient->mutex that would prevent uAtClientUnlock()
     // from working.
     if ((pClient != NULL) && pClient->streamMutex != NULL) {
-        uPortMutexLock(pClient->streamMutex);
+        // Only lock the mutex if we're not in a wake-up
+        // callback (since it will already be locked in
+        // that case)
+        if ((pClient->pWakeUp == NULL) || !pClient->pWakeUp->inWakeUpHandler) {
+            uPortMutexLock(pClient->streamMutex);
+        }
         clearError(pClient);
         pClient->lockTimeMs = uPortGetTickTimeMs();
     }
@@ -2270,7 +2394,7 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
     uErrorCode_t error;
     int32_t sizeBytes;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     unlockNoDataCheck(pClient);
 
@@ -2298,7 +2422,7 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
     error = pClient->error;
     assert(U_AT_CLIENT_GUARD_CHECK(pClient->pReceiveBuffer));
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
     return (int32_t) error;
 }
@@ -2310,7 +2434,7 @@ void uAtClientCommandStart(uAtClientHandle_t atHandle,
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
     int64_t delayMs;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
         // Wait for delay period if required
@@ -2331,7 +2455,7 @@ void uAtClientCommandStart(uAtClientHandle_t atHandle,
         }
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Write an integer parameter.
@@ -2342,7 +2466,7 @@ void uAtClientWriteInt(uAtClientHandle_t atHandle,
     char numberString[12];
     int32_t length;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (writeCheckAndDelimit(pClient)) {
         // Write the integer parameter
@@ -2354,7 +2478,7 @@ void uAtClientWriteInt(uAtClientHandle_t atHandle,
         }
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Write a uint64_t parameter.
@@ -2365,7 +2489,7 @@ void uAtClientWriteUint64(uAtClientHandle_t atHandle,
     char numberString[24];
     int32_t length;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (writeCheckAndDelimit(pClient)) {
         // Write the uint64_t parameter
@@ -2377,7 +2501,7 @@ void uAtClientWriteUint64(uAtClientHandle_t atHandle,
         }
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Write a string parameter.
@@ -2387,7 +2511,7 @@ void uAtClientWriteString(uAtClientHandle_t atHandle,
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (writeCheckAndDelimit(pClient)) {
         // Write opening quotes if required
@@ -2401,7 +2525,7 @@ void uAtClientWriteString(uAtClientHandle_t atHandle,
         }
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Write a sequence of bytes.
@@ -2413,7 +2537,7 @@ size_t uAtClientWriteBytes(uAtClientHandle_t atHandle,
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
     size_t writeLength = 0;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     // Do write check and delimit if required, else
     // just check for errors
@@ -2424,7 +2548,7 @@ size_t uAtClientWriteBytes(uAtClientHandle_t atHandle,
         writeLength = write(pClient, pData, lengthBytes, standalone);
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
     return writeLength;
 }
@@ -2435,14 +2559,13 @@ void uAtClientWritePartialString(uAtClientHandle_t atHandle,
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
-
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (!isFirst || writeCheckAndDelimit(pClient)) {
         write(pClient, pParam, strlen(pParam), false);
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Stop the outgoing part of an AT command sequence.
@@ -2450,7 +2573,7 @@ void uAtClientCommandStop(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
         // Finish by writing the AT command delimiter
@@ -2460,7 +2583,7 @@ void uAtClientCommandStop(uAtClientHandle_t atHandle)
               true);
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Stop the outgoing part and deal with a simple response also.
@@ -2512,11 +2635,11 @@ int32_t uAtClientReadInt(uAtClientHandle_t atHandle)
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
     int32_t integerRead;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     integerRead = readInt(pClient);
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
     return integerRead;
 }
@@ -2529,7 +2652,7 @@ int32_t uAtClientReadUint64(uAtClientHandle_t atHandle,
     char buffer[32]; // Enough for an integer
     int32_t returnValue = -1;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if ((pClient->error == U_ERROR_COMMON_SUCCESS) &&
         !pClient->stopTag.found &&
@@ -2543,7 +2666,7 @@ int32_t uAtClientReadUint64(uAtClientHandle_t atHandle,
         returnValue = 0;
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
     return returnValue;
 }
@@ -2557,11 +2680,11 @@ int32_t uAtClientReadString(uAtClientHandle_t atHandle,
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
     int32_t lengthRead;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     lengthRead = readString(pClient, pString, lengthBytes, ignoreStopTag);
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
     return lengthRead;
 }
@@ -2578,7 +2701,7 @@ int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
     int32_t matchPos = 0;
     int32_t c;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     while ((lengthRead < ((int32_t) lengthBytes + matchPos)) &&
            (pClient->error == U_ERROR_COMMON_SUCCESS) &&
@@ -2656,7 +2779,7 @@ int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
         lengthRead = -1;
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
     return lengthRead;
 }
@@ -2666,7 +2789,7 @@ void uAtClientResponseStop(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pClient->scope == U_AT_CLIENT_SCOPE_INFORMATION) {
         informationResponseStop(pClient);
@@ -2679,7 +2802,7 @@ void uAtClientResponseStop(uAtClientHandle_t atHandle)
 
     pClient->lastResponseStopMs = uPortGetTickTimeMs();
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Switch off stop tag detection.
@@ -2687,13 +2810,13 @@ void uAtClientIgnoreStopTag(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
         setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Switch stop tag detection back on.
@@ -2701,13 +2824,13 @@ void uAtClientRestoreStopTag(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pClient->error == U_ERROR_COMMON_SUCCESS) {
         setScope(pClient, U_AT_CLIENT_SCOPE_RESPONSE);
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Skip the given number of parameters.
@@ -2720,7 +2843,7 @@ void uAtClientSkipParameters(uAtClientHandle_t atHandle,
     size_t matchPos = 0;
     int32_t c;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     for (size_t x = 0; (x < count) && !pStopTag->found &&
          (pClient->error == U_ERROR_COMMON_SUCCESS); x++) {
@@ -2761,7 +2884,7 @@ void uAtClientSkipParameters(uAtClientHandle_t atHandle,
         }
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Skip the given number of bytes.
@@ -2771,7 +2894,7 @@ void uAtClientSkipBytes(uAtClientHandle_t atHandle,
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
     int32_t c;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (!pClient->stopTag.found) {
         for (size_t x = 0; (x < lengthBytes) &&
@@ -2784,7 +2907,7 @@ void uAtClientSkipBytes(uAtClientHandle_t atHandle,
         }
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Wait for a single character to arrive.
@@ -2840,7 +2963,7 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     size_t prefixLength;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if ((pPrefix != NULL) && (pHandler != NULL)) {
         errorCode = U_ERROR_COMMON_NO_MEMORY;
@@ -2872,7 +2995,7 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
         }
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
     return (int32_t) errorCode;
 }
@@ -2885,7 +3008,7 @@ void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
     uAtClientUrc_t *pCurrent = pClient->pUrcList;
     uAtClientUrc_t *pPrev = NULL;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     while (pCurrent != NULL) {
         if (strcmp(pPrefix, pCurrent->pPrefix) == 0) {
@@ -2902,7 +3025,7 @@ void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
         }
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Get the stack high watermark for the URC task.
@@ -2973,7 +3096,7 @@ void uAtClientFlush(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pClient->debugOn) {
         uPortLog("U_AT_CLIENT_%d-%d: flush.\n", pClient->streamType,
@@ -2989,7 +3112,7 @@ void uAtClientFlush(uAtClientHandle_t atHandle)
     memset(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer), 0,
            pClient->pReceiveBuffer->dataBufferSize);
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Clear the error status to none.
@@ -2997,11 +3120,11 @@ void uAtClientClearError(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     clearError(pClient);
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Get the error status
@@ -3010,11 +3133,11 @@ int32_t uAtClientErrorGet(uAtClientHandle_t atHandle)
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
     uErrorCode_t error;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     error = pClient->error;
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
     return (int32_t) error;
 }
@@ -3026,14 +3149,14 @@ void uAtClientDeviceErrorGet(uAtClientHandle_t atHandle,
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     if (pDeviceError != NULL) {
         memcpy(pDeviceError, &(pClient->deviceError),
                sizeof(*pDeviceError));
     }
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Get the handle and type of the underlying stream
@@ -3057,12 +3180,12 @@ void uAtClientStreamInterceptTx(uAtClientHandle_t atHandle,
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     pClient->pInterceptTx = pCallback;
     pClient->pInterceptTxContext = pContext;
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Add a receive intercept function.
@@ -3075,7 +3198,7 @@ void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
 
-    U_PORT_MUTEX_LOCK(pClient->mutex);
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     // Must reset the buffer before doing this
     // as there are indexes in there that keep
@@ -3085,7 +3208,65 @@ void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
     pClient->pInterceptRx = pCallback;
     pClient->pInterceptRxContext = pContext;
 
-    U_PORT_MUTEX_UNLOCK(pClient->mutex);
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
+}
+
+// Set a wake-up handler function.
+int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
+                                  int32_t (*pHandler) (uAtClientHandle_t,
+                                                       void *),
+                                  void *pHandlerParam,
+                                  int32_t inactivityTimeoutMs)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
+
+    if (pHandler == NULL) {
+        if (pClient->pWakeUp != NULL) {
+            // Mustn't be in the wake-up handler
+            assert(!pClient->pWakeUp->inWakeUpHandler);
+            uPortMutexDelete(pClient->pWakeUp->mutex);
+            free(pClient->pWakeUp);
+            pClient->pWakeUp = NULL;
+        }
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    } else {
+        if (pClient->pWakeUp == NULL) {
+            pClient->pWakeUp = (uAtClientWakeUp_t *) malloc(sizeof(*(pClient->pWakeUp)));
+            if (pClient->pWakeUp != NULL) {
+                if (uPortMutexCreate(&(pClient->pWakeUp->mutex)) < 0) {
+                    // Clean up if we couldn't create the mutex
+                    free(pClient->pWakeUp);
+                    pClient->pWakeUp = NULL;
+                }
+            }
+        } else {
+            // Mustn't be in the wake-up handler
+            assert(!pClient->pWakeUp->inWakeUpHandler);
+        }
+        if (pClient->pWakeUp != NULL) {
+            pClient->pWakeUp->pHandler = pHandler;
+            pClient->pWakeUp->pParam = pHandlerParam;
+            pClient->pWakeUp->inactivityTimeoutMs = inactivityTimeoutMs;
+            pClient->pWakeUp->atTimeoutSavedMs = -1;
+            pClient->pWakeUp->inWakeUpHandler = false;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
+
+    return errorCode;
+}
+
+// Return true if a wake-up handler is set.
+//lint -esym(818, atHandle) Suppress could be declared
+// as pointing to const. it is!
+bool uAtClientWakeUpHandlerIsSet(const uAtClientHandle_t atHandle)
+{
+    return ((const uAtClientInstance_t *) atHandle)->pWakeUp != NULL;
 }
 
 // End of file

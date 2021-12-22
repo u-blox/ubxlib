@@ -76,7 +76,7 @@
 
 /** Used for keepGoingCallback() timeout.
  */
-static int64_t gStopTimeMS;
+static int64_t gStopTimeMs;
 
 /** Handles.
  */
@@ -105,7 +105,7 @@ static bool keepGoingCallback(int32_t cellHandle)
         gCallbackErrorCode = 1;
     }
 
-    if (uPortGetTickTimeMs() > gStopTimeMS) {
+    if (uPortGetTickTimeMs() > gStopTimeMs) {
         keepGoing = false;
     }
 
@@ -194,13 +194,20 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                                       NULL) == 0);
         uPortLog("U_CELL_PWR_TEST: checking that module is alive...\n");
         U_PORT_TEST_ASSERT(uCellPwrIsAlive(cellHandle));
+        // Give the module time to sort itself out
+        uPortLog("U_CELL_PWR_TEST: waiting %d second(s) before powering off...\n",
+                 pModule->minAwakeTimeSeconds);
+        uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
+# if U_CFG_APP_PIN_CELL_VINT < 0
+        timeMs = uPortGetTickTimeMs();
+# endif
         // Test with and without a keep-going callback
         if (x > 0) {
             // Note: can't check if keepGoingCallback is being
             // called here as we've no control over how long the
             // module takes to power off.
             pKeepGoingCallback = keepGoingCallback;
-            gStopTimeMS = uPortGetTickTimeMs() +
+            gStopTimeMs = uPortGetTickTimeMs() +
                           (((int64_t) pModule->powerDownWaitSeconds) * 1000);
         }
         // Give the module time to sort itself out
