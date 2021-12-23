@@ -4,20 +4,27 @@ import tempfile
 import io
 import os
 import time
-import yaml
-import json
 import shutil
-from hashlib import md5
+from sys import platform
 from io import BytesIO
 from zipfile import ZipFile
 from tarfile import TarFile
 from glob import glob
 
-U_FLAG_YML = "u_flags.yml"
-
 UBXLIB_DIR = os.path.abspath(os.path.dirname(__file__) + "/../..")
 
+def is_linux():
+    """Returns True if current system is Linux"""
+    return platform != "win32"
+
+def is_automation():
+    """Returns True if running automated (detected by checking if there is a TTY)"""
+    return not sys.stdin.isatty()
+
 def question(text):
+    """ Prompt user for yes/no question
+    returns True if user enter yes otherwise False
+    """
     yes = {'yes','y', 'ye', ''}
     no = {'no','n'}
     if not sys.stdin.isatty():
@@ -31,8 +38,8 @@ def question(text):
         elif choice in no:
             return False
 
-
 def download(url, file):
+    """Download a file from URL"""
     response = requests.get(url, stream=True)
     content_length = response.headers.get("content-length")
 
@@ -54,6 +61,13 @@ def download(url, file):
 
 
 def extract_tar(file, tar_mode, dest_dir, skip_first_sub_dir):
+    """Extract a .tar file
+    file:               The File object to extract
+    tar_mode:           The tar mode - see https://docs.python.org/3/library/tarfile.html
+    dest_dir:           Destination directory
+    skip_first_sub_dir: When this is set to true the first subdir in the tar file
+                        will be skipped
+    """
     class ProgressWrapper(io.BufferedReader):
         def __init__(self, file, *args, **kwargs):
             io.BufferedReader.__init__(self, raw=file, *args, **kwargs)
@@ -66,10 +80,10 @@ def extract_tar(file, tar_mode, dest_dir, skip_first_sub_dir):
         def read(self, size):
             if time.time() >= self.next_time:
                 progress = int((self.tell() / self.size) * 20)
-                sys.stdout.write("\rExtracting [{}{}]".format("#" * progress, " " * (20-progress)))
+                sys.stdout.write("\rExtracting  [{}{}]".format("#" * progress, " " * (20-progress)))
                 self.next_time += 0.5
             elif self.tell() + size >= self.size:
-                sys.stdout.write("\rExtracting [{}]".format("#" * 20))
+                sys.stdout.write("\rExtracting  [{}]".format("#" * 20))
 
             return io.BufferedReader.read(self, size)
 
@@ -102,6 +116,12 @@ def extract_tar(file, tar_mode, dest_dir, skip_first_sub_dir):
 
 
 def extract_zip(file, dest_dir, skip_first_sub_dir):
+    """Extract a .zip file
+    file:               The File object to extract
+    dest_dir:           Destination directory
+    skip_first_sub_dir: When this is set to true the first subdir in the zip file
+                        will be skipped
+    """
     next_time = time.time()
     with ZipFile(BytesIO(file.read())) as archive:
         info_entries = archive.infolist()
@@ -128,17 +148,25 @@ def extract_zip(file, dest_dir, skip_first_sub_dir):
             # Print progress bar
             if time.time() >= next_time or entry_index == entry_count:
                 progress = int((entry_index / entry_count) * 20)
-                sys.stdout.write("\rExtracting [{}{}]".format("#" * progress, " " * (20-progress)))
+                sys.stdout.write("\rExtracting  [{}{}]".format("#" * progress, " " * (20-progress)))
                 next_time += 0.5
         print("\nDone")
 
 
 def download_and_extract(url, dest_dir, skip_first_sub_dir=False):
+    """Download and extract an archive
+    url:                URL to download
+    dest_dir:           Destination directory
+    skip_first_sub_dir: When this is set to true the first subdir in the zip file
+                        will be skipped
+    """
     tar_mode = None
     if url.lower().endswith(".tar.bz2"):
         tar_mode = "r:bz2"
-    if url.lower().endswith(".tar.xz"):
+    elif url.lower().endswith(".tar.xz"):
         tar_mode = "r:xz"
+    elif url.lower().endswith(".tar.gz"):
+        tar_mode = "r:gz"
     with tempfile.TemporaryFile() as file:
         download(url, file)
         file.seek(0)
@@ -150,52 +178,28 @@ def download_and_extract(url, dest_dir, skip_first_sub_dir=False):
             extract_zip(file, dest_dir, skip_first_sub_dir)
 
 
-def get_u_flags(cfg_dir, builder_name, target, store_new_hash=True):
-    u_flags = ""
-    file_path = os.path.join(cfg_dir, U_FLAG_YML)
-    u_flag_data = None
-
-    # Load u_flags.yml
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as f:
-            u_flag_data = yaml.safe_load(os.path.expandvars(f.read()))
-
-    # If things are missing in the structure - add them
-    if u_flag_data == None:
-        u_flag_data = {}
-    if not builder_name in u_flag_data or u_flag_data[builder_name] == None:
-        u_flag_data[builder_name] = {}
-    if not target in u_flag_data[builder_name]:
-        u_flag_data[builder_name][target] = { "u_flags": [ None ], "md5": "" }
-    if not "md5" in u_flag_data[builder_name][target]:
-        u_flag_data[builder_name][target]["md5"] = ""
-    if not "u_flags" in u_flag_data[builder_name][target]:
-        u_flag_data[builder_name][target]["u_flags"] = [ None ]
-    cur_hash = u_flag_data[builder_name][target]["md5"]
-    u_flag_list = u_flag_data[builder_name][target]["u_flags"]
-
-    # Calculate new hash based on the u_flags list to see if anything has changed
-    data = json.dumps(u_flag_list, sort_keys=True, ensure_ascii=True)
-    new_hash = md5(data.encode('ascii')).hexdigest()
-    if store_new_hash:
-        u_flag_data[builder_name][target]["md5"] = new_hash
-
-    # Write back the .yml file
-    with open(file_path, 'w') as file:
-        yaml.dump(u_flag_data, file, default_flow_style=False)
-
-    # Add "-D" to each entry
-    if u_flag_list != None and u_flag_list[0] != None:
-        entries = [f"-D{line.strip()}" for line in u_flag_list]
-        u_flags = " ".join(entries)
-    return {
-        'modified' : cur_hash != new_hash,
-        'u_flags' : u_flags
-    }
-
 def add_dir_to_path(config, dir):
+    """Add a directory to PATH in a PyInvoke config"""
     if "PATH" in config.run.env:
         path = dir + os.pathsep + config.run.env
     else:
         path = dir + os.pathsep + os.environ["PATH"]
     config.run.env["PATH"] = path
+
+
+def change_dir_prefix(path):
+    """PyInvoke ctx.cd() doesn't handle a windows case when changing directory
+    to a different drive. For this reason this function can be used to generate
+    a command prefix similar to what ctx.cd() does, but also handling change of
+    drive.
+
+    So instead of:
+        with ctx.cd(some_path):
+    use this instead:
+        with ctx.prefix(u_utils.change_dir_prefix(some_path)):
+    """
+    prefix = f"cd {path}"
+    if not is_linux():
+        drive = os.path.splitdrive(path)
+        prefix += f" && {drive[0]}"
+    return prefix
