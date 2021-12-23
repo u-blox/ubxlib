@@ -44,7 +44,8 @@ extern "C" {
 /** Run Cloud Locate.
  *
  * @param networkHandle      the handle of the thing providing the
- *                           MQTT connection (e.g. the cellular module).
+ *                           MQTT connection (e.g. the cellular or
+ *                           Wi-Fi module).
  * @param gnssHandle         the handle of the GNSS device that will
  *                           provide the RRLP data for Cloud Locate.
  * @param pMqttClientContext the context of an MQTT client that can

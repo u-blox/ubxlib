@@ -229,16 +229,16 @@ typedef enum {
  *                                            if you want the location to be returned
  *                                            by this function (as well as being available
  *                                            in the cloud).
- *                                - Wi-Fi:    none currently supported: the
- *                                            following location types will be
- *                                            supported in future:
- *                                            U_LOCATION_TYPE_CLOUD_GOOGLE,
- *                                            U_LOCATION_TYPE_CLOUD_SKYHOOK and
- *                                            U_LOCATION_TYPE_CLOUD_HERE.
- *                                            pAuthenticationTokenStr
- *                                            must be populated with a valid
- *                                            authentication token for the
- *                                            chosen service.
+ *                                - Wi-Fi:    only U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is
+ *                                            currently supported, for which pLocationAssist
+ *                                            fields networkHandleAssist and
+ *                                            pMqttClientContext MUST be populated and
+ *                                            the MQTT login to the Thingstream
+ *                                            server MUST already have been performed;
+ *                                            the field pClientIdStr should be populated
+ *                                            if you want the location to be returned
+ *                                            by this function (as well as being available
+ *                                            in the cloud).
  *                                - BLE:      no form of BLE location is currently
  *                                            supported.
  * @param pLocationAssist         additional information for the location
