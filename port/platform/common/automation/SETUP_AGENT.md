@@ -46,7 +46,7 @@ Note: when unzipping a downloaded file make sure to right-click and unblock it *
 |                          | `nRF command-line tools`: as for nRF5SDK GCC. |                                                   |                                 |
 |                          | `JLink Software and Documentation Pack`: as for nRF5SDK. |                                        |                                 |
 | STM32Cube platform       | `STM32Cube FW F4`: SDK.                       | https://www.st.com/en/embedded-software/stm32cubef4.html | `C:\STM32Cube_FW_F4`     |
-|                          | `STM32Cube`: IDE.                             | https://www.st.com/en/development-tools/stm32cubeide.html | `C:\ST\STM32CubeIDE_1.4.0\STM32CubeIDE` |
+|                          | `openocd`                                     | https://github.com/xpack-dev-tools/openocd-xpack/releases/tag/v0.11.0-3 | `C:\\Tools\\xpack-openocd-0.11.0-3` |
 |                          | Optional: `STLink` utility.                   | https://www.st.com/en/development-tools/stsw-link004.html | Anywhere; conventionally copy the files into `C:\ST\STM32 ST-LINK Utility` and add a shortcut to the `STM32 ST-LINK Utility.exe` executable on the desktop.               |
 |                          | Optional: `mfc100.dll`, only needed if the above complains about the lack of it. | https://www.microsoft.com/en-us/download/details.aspx?id=26999 | Anywhere, the installer will choose. |
 | Nothing                  | Optional: `u-blox EasyFlash` to update cellular module FW; for those outside u-blox this can be obtained from your u-blox FAE. | https://github.com/u-blox/ubxlib_third_party | Anywhere, conventionally `C:\Program Files (x86)\EasyFlash.vx.y`.             |

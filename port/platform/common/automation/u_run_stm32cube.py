@@ -34,26 +34,8 @@ ARM_GCC_TOOLCHAIN_PATH = u_settings.STM32CUBE_ARM_GNU_INSTALL_ROOT
 # directory
 STM32CUBE_FW_PATH = u_settings.STM32CUBE_STM32CUBE_FW_PATH # e.g. "C:\\STM32Cube_FW_F4"
 
-# Location of the STM32Cube IDE directory
-STM32CUBE_IDE_PATH = u_settings.STM32CUBE_STM32CUBE_IDE_PATH # e.g. "C:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE"
-
-# Location of STM32_Programmer_CLI.exe in
-# the STM32Cube IDE directory
-STM32_PROGRAMMER_CLI_PATH = u_settings.STM32CUBE_STM32_PROGRAMMER_CLI_PATH #
-
-# Location of the OpenOCD executable, which can
-# be found deep in the STM32Cube IDE directories
-OPENOCD_PATH = u_settings.STM32CUBE_OPENOCD_PATH #
-
-# Location of the OpenOCD scripts directory, which can
-# also be found deep in the STM32Cube IDE directories
-OPENOCD_SCRIPTS_PATH = u_settings.STM32CUBE_OPENOCD_SCRIPTS_PATH #
-
-# The OpenOCD script file provided by ST for their STLink interface
-OPENOCD_STLINK_INTERFACE_SCRIPT = u_settings.STM32CUBE_OPENOCD_STLINK_INTERFACE_SCRIPT #
-
-# The OpenOCD script file provided by ST for their STM32F4 target
-OPENOCD_STM32F4_TARGET_SCRIPT = u_settings.STM32CUBE_OPENOCD_STM32F4_TARGET_SCRIPT #
+# Location of the OpenOCD executable
+OPENOCD_PATH = u_settings.STM32CUBE_XPACK_OPENOCD_PATH
 
 # The STM32F4 cube SDK directory in ubxlib
 SDK_DIR = "port/platform/stm32cube"
@@ -75,11 +57,11 @@ SWO_DECODED_TEXT_FILE = u_settings.STM32CUBE_SWO_DECODED_TEXT_FILE #
 
 # The list of commands to be sent to OpenOCD when it is opened
 OPENOCD_COMMANDS = ["init", # Always required at the start
-                    "itm port 0 on", # ITM on
                     # Write SWO data to file at the given rate
                     "tpiu config internal " + SWO_DATA_FILE +         \
                     " uart off " + str(SYSTEM_CORE_CLOCK_HZ) + " " +  \
                     str(SWO_CLOCK_HZ),
+                    "itm port 0 on", # ITM on
                     "reset init",  # Reset the processor
                     "resume"]  # Start the processor
 
@@ -108,43 +90,15 @@ RUN_INACTIVITY_TIME_SECONDS = u_utils.RUN_INACTIVITY_TIME_SECONDS
 
 # Table of paths that must exist plus hints as to how to
 # install the things if they're not
-PATHS_LIST = [{"name": "STM32CUBE_IDE_PATH",
-               "path_string": STM32CUBE_IDE_PATH,
-               "hint": "can't find the STM32Cube IDE. Please either"        \
-                       " install it from"                                   \
-                       " https://www.st.com/en/development-tools/stm32cubeide.html" \
-                       " or change STM32CUBE_IDE_PATH to point to where it" \
-                       " is."},
-              {"name": "STM32_PROGRAMMER_CLI_PATH",
-               "path_string": STM32_PROGRAMMER_CLI_PATH,
-               "hint": "can't find the STM32 programmer CLI, it should be"  \
-                       " provided as part of the STM32Cube IDE. Maybe you"  \
-                       " upgraded it and haven't update the paths?"},
-              {"name": "OPENOCD_PATH",
-               "path_string": OPENOCD_PATH,
-               "hint": "can't find OpenOCD, it should be provided as part"  \
-                       " of the STM32Cube IDE. Maybe you upgraded it and"   \
-                       " haven't update the paths?"},
-              {"name": "OPENOCD_SCRIPTS_PATH",
-               "path_string": OPENOCD_SCRIPTS_PATH,
-               "hint": "can't find the ST configuration scripts for OpenOCD" \
-                       " they should be provided as part of the STM32Cube"   \
-                       " IDE. Maybe you upgraded it and haven't update the"  \
-                       " paths?"},
-              {"name": "OPENOCD_STLINK_INTERFACE_SCRIPT",
-               "path_string": OPENOCD_SCRIPTS_PATH + os.sep + "interface" + \
-                              os.sep + OPENOCD_STLINK_INTERFACE_SCRIPT,
-               "hint": "can't find the STLink interface script for OpenOCD." \
-                       " It should be provided as part of the STM32Cube"     \
-                       " IDE. Maybe you upgraded it and haven't update the"  \
-                       " paths?"},
-              {"name": "OPENOCD_STM32F4_TARGET_SCRIPT",
-               "path_string": OPENOCD_SCRIPTS_PATH + os.sep + "target" + \
-                              os.sep + OPENOCD_STM32F4_TARGET_SCRIPT,
-               "hint": "can't find the STM32F4 target script for OpenOCD." \
-                       " It should be provided as part of the STM32Cube"     \
-                       " IDE. Maybe you upgraded it and haven't update the"  \
-                       " paths?"}]
+PATHS_LIST = [
+    {"name": "OPENOCD_PATH",
+             "path_string": OPENOCD_PATH,
+             "hint": "can't find OpenOCD. Please install OpenOCD v0.11"  \
+                     " and make sure STM32CUBE_XPACK_OPENOCD_PATH is"   \
+                     " set to the correct path."}
+]
+
+CFG_DIR = os.path.abspath(os.path.dirname(__file__) + "/cfg")
 
 class UbxError(Exception):
     def __init__(self, type, message=None):
@@ -225,18 +179,20 @@ def build_gcc(clean, makefile_dir, build_subdir, ubxlib_dir, unity_dir,
 
 def download(connection, guard_time_seconds, elf_path, printer, prompt):
     '''Download the given binary file'''
-    call_list = []
+    call_list = [
+        OPENOCD_PATH,
+        "-f", f"{CFG_DIR}/stm32f4.cfg",
+    ]
 
-    call_list.append(STM32_PROGRAMMER_CLI_PATH)
-    call_list.append("-q") # no progress bar
-    call_list.append("-c")       # connect
-    call_list.append("port=SWD") # via SWD
     if connection and "debugger" in connection and connection["debugger"]:
         # Connect to the given debugger
-        call_list.append("sn=" + connection["debugger"])
-    call_list.append("-w")       # write the
-    call_list.append(elf_path)   # ELF file
-    call_list.append("-rst")     # and reset the target
+        call_list += [ "-c", "hla_serial " + connection["debugger"] ]
+
+    elf_path = elf_path.replace("\\", "/")
+    call_list += [
+        "-c", f"program {elf_path} reset",
+        "-c", "exit"
+    ]
 
     # Print what we're gonna do
     tmp = ""
@@ -250,23 +206,15 @@ def download(connection, guard_time_seconds, elf_path, printer, prompt):
 
 def open_ocd(commands, connection):
     '''Assemble the command line for OpenOCD: it's a doozy'''
-    call_list = []
+    call_list = [
+        OPENOCD_PATH,
+        "-f", f"{CFG_DIR}/stm32f4.cfg"
+    ]
 
-    call_list.append(OPENOCD_PATH)
-    call_list.append("-f")
-    call_list.append(OPENOCD_SCRIPTS_PATH + os.sep + "interface" + \
-                     os.sep + OPENOCD_STLINK_INTERFACE_SCRIPT)
-    call_list.append("-f")
-    call_list.append(OPENOCD_SCRIPTS_PATH + os.sep + "target" + \
-                     os.sep + OPENOCD_STM32F4_TARGET_SCRIPT)
-    call_list.append("-s")
-    call_list.append(OPENOCD_SCRIPTS_PATH)
     if connection and "debugger" in connection and connection["debugger"]:
-        call_list.append("-c")
-        call_list.append("hla_serial " + connection["debugger"])
+        call_list += [ "-c", "hla_serial " + connection["debugger"] ]
     for command in commands:
-        call_list.append("-c")
-        call_list.append(command)
+        call_list += [ "-c", command ]
 
     return call_list
 

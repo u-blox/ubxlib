@@ -22,52 +22,39 @@ CONNECTION_LIST = [
     None,      # Instance 8, reserved
     None,      # Instance 9, reserved
     # Instance 10, WHRE board
-    {"lock": None, "id": 10, "serial_port": u_settings.CONNECTION_INSTANCE_10.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_10.get("debugger")},
+    {"lock": None, "id": 10, **u_settings.CONNECTION_INSTANCE_10},
     # Instance 11, ESP32
-    {"lock": None, "id": 11, "serial_port": u_settings.CONNECTION_INSTANCE_11.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_11.get("debugger")},
+    {"lock": None, "id": 11, **u_settings.CONNECTION_INSTANCE_11},
     # Instance 12, ESP32, SARA-R5
-    {"lock": None, "id": 12, "serial_port": u_settings.CONNECTION_INSTANCE_12.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_12.get("debugger")},
+    {"lock": None, "id": 12, **u_settings.CONNECTION_INSTANCE_12},
     # Instance 13, NRF52840, SARA-R5
-    {"lock": None, "id": 13, "serial_port": u_settings.CONNECTION_INSTANCE_13.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_13.get("debugger"),
-     "swo_port": u_utils.JLINK_SWO_PORT},
+    {"lock": None, "id": 13, **u_settings.CONNECTION_INSTANCE_13},
     # Instance 14, STM32F4 Discovery, SARA-R412M-02B
-    {"lock": None, "id": 14, "serial_port": u_settings.CONNECTION_INSTANCE_14.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_14.get("debugger")},
+    {"lock": None, "id": 14, **u_settings.CONNECTION_INSTANCE_14},
     # Instance 15, NRF52840, SARA-R410M-02B
-    {"lock": None, "id": 15, "serial_port": u_settings.CONNECTION_INSTANCE_15.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_15.get("debugger"),
+    {"lock": None, "id": 15, **u_settings.CONNECTION_INSTANCE_15,
      "swo_port": u_utils.JLINK_SWO_PORT + 1},
     # Instance 16, C030-U201 board (STM32F4), live network 3G
-    {"lock": None, "id": 16, "serial_port": u_settings.CONNECTION_INSTANCE_16.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_16.get("debugger")},
+    {"lock": None, "id": 16, **u_settings.CONNECTION_INSTANCE_16},
     # Instance 17, NRF5340: the COM port is the lowest numbered of the three
-    {"lock": None, "id": 17, "serial_port": u_settings.CONNECTION_INSTANCE_17.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_17.get("debugger"),
+    {"lock": None, "id": 17, **u_settings.CONNECTION_INSTANCE_17,
      "swo_port": u_utils.JLINK_SWO_PORT + 2},
     # Instance 18, NRF5340 with SARA-R5 EVK: the COM port is the middle of the three
-    {"lock": None, "id": 18, "serial_port": u_settings.CONNECTION_INSTANCE_18.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_18.get("debugger"),
+    {"lock": None, "id": 18, **u_settings.CONNECTION_INSTANCE_18,
      "swo_port": u_utils.JLINK_SWO_PORT + 3},
     # Instance 19, C030-R5 board (STM32F4), cat-M1
-    {"lock": None, "id": 19, "serial_port": u_settings.CONNECTION_INSTANCE_19.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_19.get("debugger")},
+    {"lock": None, "id": 19, **u_settings.CONNECTION_INSTANCE_19},
     # Instance 20, WHRE board
-    {"lock": None, "id": 20, "serial_port": u_settings.CONNECTION_INSTANCE_20.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_20.get("debugger")},
+    {"lock": None, "id": 20, **u_settings.CONNECTION_INSTANCE_20},
     # Instance 21, WHRE board
-    {"lock": None, "id": 21, "serial_port": u_settings.CONNECTION_INSTANCE_21.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_21.get("debugger")},
+    {"lock": None, "id": 21, **u_settings.CONNECTION_INSTANCE_21},
     # Instance 22, ESP32, SARA-R422
-    {"lock": None, "id": 22, "serial_port": u_settings.CONNECTION_INSTANCE_22.get("serial_port"),
-     "debugger": u_settings.CONNECTION_INSTANCE_22.get("debugger")},
+    {"lock": None, "id": 22, **u_settings.CONNECTION_INSTANCE_22},
     # Instance 23, WINDOWS, SARA-R5
     # Note: windows has no serial port etc. but we need the lock field to permit
     # parallel operations.
-    {"lock": None, "id": 23}]
+    {"lock": None, "id": 23}
+]
 
 def init_locks(manager):
     '''Create locks'''
