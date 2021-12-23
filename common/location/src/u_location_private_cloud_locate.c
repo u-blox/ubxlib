@@ -137,15 +137,14 @@ static int32_t stringToInt32(char *pStr, int32_t *pNumber,
                              int32_t maxFractionalDigits,
                              char **ppEnd)
 {
-    int32_t errorCode = 0;
+    int32_t errorCode = -1;
     int64_t int64 = 0;
     bool negate = false;
     bool fraction = false;
-    int32_t powerOfTen;
-    int32_t y;
+    int32_t powerOfTen = 0;
+    int32_t y = 0;
 
     *pNumber = 0;
-    powerOfTen = 0;
 
     // Find the start of a decimal number
     while (!isdigit((int32_t) *pStr) &&
@@ -154,6 +153,7 @@ static int32_t stringToInt32(char *pStr, int32_t *pNumber,
     }
 
     if (*pStr != 0) {
+        errorCode = 0;
         if (*pStr == '-') {
             negate = true;
         }
@@ -162,7 +162,8 @@ static int32_t stringToInt32(char *pStr, int32_t *pNumber,
         }
         // Now we've dealt with the sign, we should have a number
         while ((errorCode == 0) && (*pStr != 0) &&
-               (powerOfTen < maxFractionalDigits)) {
+               (powerOfTen < maxFractionalDigits) &&
+               (y == 0)) {
             if (isdigit((int32_t) *pStr)) {
                 // Add the digit to the result
                 int64 *= 10;
@@ -177,7 +178,7 @@ static int32_t stringToInt32(char *pStr, int32_t *pNumber,
             } else if (!fraction && (*pStr == '.')) {
                 fraction = true;
             } else {
-                errorCode = -1;
+                y = -1;
             }
             pStr++;
         }
