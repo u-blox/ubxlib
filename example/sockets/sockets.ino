@@ -72,7 +72,7 @@ static const uNetworkConfigurationCell_t configCell = {U_NETWORK_TYPE_NONE};
 static int32_t networkHandle;
 
 // A global error code
-static int32_t errorCode;
+static int32_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
 
 /* ----------------------------------------------------------------
  * UTILITY FUNCTIONS
@@ -136,17 +136,20 @@ void setup() {
 
     // Add a network instance, in this case of type cell
     // since that's what we have configuration information
-    // for above.  Once this function has returned the
-    // transport is powered-up, can be configured etc. but
-    // is not yet connected.
+    // for above.  Once this function has returned a
+    // non-negative value then the transport is powered-up,
+    // can be configured etc. but is not yet connected.
     networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
                                 (void *) &configCell);
-    printf("Added network with handle %d.\n", networkHandle);
-
-    // Bring up the network layer, i.e. connect it so that
-    // after this point it may be used to transfer data.
-    printf("Bringing up the network...\n");
-    errorCode = uNetworkUp(networkHandle);
+    if (networkHandle >= 0) {
+        printf("Added network with handle %d.\n", networkHandle);
+        // Bring up the network layer, i.e. connect it so that
+        // after this point it may be used to transfer data.
+        printf("Bringing up the network...\n");
+        errorCode = uNetworkUp(networkHandle);
+    } else {
+        printf("Unable to add network, error %d!\n", networkHandle);
+    }
 
     // An errorCode of zero indicates success
 }
