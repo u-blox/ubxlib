@@ -242,7 +242,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 // Now set up the pins
                 uPortLog("U_CELL: initialising with enable power pin ");
                 if (pinEnablePower >= 0) {
-                    uPortLog("%d (0x%02x), ", pinEnablePower, pinEnablePower);
+                    uPortLog("%d (0x%02x) (where %d is on), ", pinEnablePower,
+                             pinEnablePower, U_CELL_ENABLE_POWER_PIN_ON_STATE);
                 } else {
                     uPortLog("not connected, ");
                 }
@@ -306,7 +307,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                         enablePowerAtStart = uPortGpioGet(pinEnablePower);
                         if (!leavePowerAlone) {
                             // Make sure the default is off.
-                            enablePowerAtStart = 0;
+                            enablePowerAtStart = (int32_t) !U_CELL_ENABLE_POWER_PIN_ON_STATE;
                         }
                         platformError = uPortGpioSet(pinEnablePower, enablePowerAtStart);
                         if (platformError != 0) {

@@ -365,7 +365,8 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
     waitForPowerOff(pInstance, pKeepGoingCallback);
     // Now switch off power if possible
     if (pInstance->pinEnablePower >= 0) {
-        uPortGpioSet(pInstance->pinEnablePower, 0);
+        uPortGpioSet(pInstance->pinEnablePower,
+                     (int32_t) !U_CELL_ENABLE_POWER_PIN_ON_STATE);
     }
     if (pInstance->pinPwrOn >= 0) {
         uPortGpioSet(pInstance->pinPwrOn, (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
@@ -395,7 +396,8 @@ static void quickPowerOff(uCellPrivateInstance_t *pInstance,
         waitForPowerOff(pInstance, pKeepGoingCallback);
         // Now switch off power if possible
         if (pInstance->pinEnablePower > 0) {
-            uPortGpioSet(pInstance->pinEnablePower, 0);
+            uPortGpioSet(pInstance->pinEnablePower,
+                         (int32_t) !U_CELL_ENABLE_POWER_PIN_ON_STATE);
         }
         // Remove any security context as these disappear
         // at power off
@@ -421,7 +423,7 @@ bool uCellPwrIsPowered(int32_t cellHandle)
         if (pInstance != NULL) {
             isPowered = true;
             if (pInstance->pinEnablePower >= 0) {
-                isPowered = (uPortGpioGet(pInstance->pinEnablePower) == 1);
+                isPowered = (uPortGpioGet(pInstance->pinEnablePower) == U_CELL_ENABLE_POWER_PIN_ON_STATE);
             }
         }
 
@@ -509,7 +511,8 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
                     uPortLog("U_CELL_PWR: powering on.\n");
                     // First, switch on the volts
                     if (pInstance->pinEnablePower >= 0) {
-                        platformError = uPortGpioSet(pInstance->pinEnablePower, 1);
+                        platformError = uPortGpioSet(pInstance->pinEnablePower,
+                                                     (int32_t) U_CELL_ENABLE_POWER_PIN_ON_STATE);
                     }
                     if (platformError == 0) {
                         // Wait for things to settle
@@ -625,7 +628,8 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
             // wants a truly hard power off then just do it.
             if (trulyHard && (pInstance->pinEnablePower > 0)) {
                 uPortLog("U_CELL_PWR: powering off by pulling the power.\n");
-                uPortGpioSet(pInstance->pinEnablePower, 0);
+                uPortGpioSet(pInstance->pinEnablePower,
+                             (int32_t) !U_CELL_ENABLE_POWER_PIN_ON_STATE);
                 // Remove any security context as these disappear
                 // at power off
                 uCellPrivateC2cRemoveContext(pInstance);
@@ -652,7 +656,8 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
                     waitForPowerOff(pInstance, pKeepGoingCallback);
                     // Now switch off power if possible
                     if (pInstance->pinEnablePower > 0) {
-                        uPortGpioSet(pInstance->pinEnablePower, 0);
+                        uPortGpioSet(pInstance->pinEnablePower,
+                                     (int32_t) !U_CELL_ENABLE_POWER_PIN_ON_STATE);
                     }
                     // Remove any security context as these disappear
                     // at power off
@@ -778,14 +783,16 @@ int32_t uCellPwrReboot(int32_t cellHandle,
                             waitForPowerOff(pInstance, pKeepGoingCallback);
                             // Now switch off power if possible
                             if (pInstance->pinEnablePower > 0) {
-                                uPortGpioSet(pInstance->pinEnablePower, 0);
+                                uPortGpioSet(pInstance->pinEnablePower,
+                                             (int32_t) !U_CELL_ENABLE_POWER_PIN_ON_STATE);
                                 // Wait for things to settle
                                 uPortTaskBlock(5000);
                             }
                         }
                         // Now power back on again
                         if (pInstance->pinEnablePower >= 0) {
-                            uPortGpioSet(pInstance->pinEnablePower, 1);
+                            uPortGpioSet(pInstance->pinEnablePower,
+                                         (int32_t) U_CELL_ENABLE_POWER_PIN_ON_STATE);
                             // Wait for things to settle
                             uPortTaskBlock(100);
                         }

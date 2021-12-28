@@ -78,6 +78,17 @@ extern "C" {
 # define U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE 1
 #endif
 
+/** There can be an inverter in-line between the MCU pin
+ * and the thing (e.g. a transistor) that is enabling power to
+ * the cellular module; this allows the sense to be switched
+ * easily.
+ */
+#ifndef U_CELL_ENABLE_POWER_PIN_INVERTED
+# define U_CELL_ENABLE_POWER_PIN_ON_STATE 1
+#else
+# define U_CELL_ENABLE_POWER_PIN_ON_STATE 0
+#endif
+
 /** There can be an inverter in-line between the VINT pin
  * on the cellular module and the MCU pin; this allows the sense
  * to be switched easily.
