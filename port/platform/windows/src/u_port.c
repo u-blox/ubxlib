@@ -86,7 +86,7 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
                 uPortLog("U_PORT: WARNING unable to set thread to priority %d [%d].\n",
                          priority, uPortPrivateTaskPriorityConvert(priority));
             }
-            Sleep(INFINITE);
+            WaitForSingleObject(threadHandle, INFINITE);
         }
     }
 

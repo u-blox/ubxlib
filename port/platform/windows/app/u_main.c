@@ -122,14 +122,9 @@ void testFail(void)
 int main(void)
 {
     // Start the platform to run the tests
-    uPortPlatformStart(appTask, NULL,
-                       U_CFG_OS_APP_TASK_STACK_SIZE_BYTES,
-                       U_CFG_OS_APP_TASK_PRIORITY);
-
-    // Should never get here
-    assert(false);
-
-    return 0;
+    return uPortPlatformStart(appTask, NULL,
+                              U_CFG_OS_APP_TASK_STACK_SIZE_BYTES,
+                              U_CFG_OS_APP_TASK_PRIORITY);
 }
 
 // End of file
