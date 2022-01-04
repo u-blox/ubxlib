@@ -159,13 +159,6 @@ def build(clean, ubxlib_dir, unity_dir, defines, env, printer, prompt,
         call_list += ["--no-warn-unused-cli"]
         call_list += [cmakelist_dir]
 
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".         \
-                        format(prompt, os.getcwd(), tmp))
-
         # Call CMake
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, CMAKE_GUARD_TIME_SECONDS,
@@ -179,13 +172,6 @@ def build(clean, ubxlib_dir, unity_dir, defines, env, printer, prompt,
             call_list += ["--config", BUILD_CONFIGURATION]
             call_list += ["--target", BUILD_TARGET]
             call_list += ["-j", "8"]
-
-            # Print what we're gonna do
-            tmp = ""
-            for item in call_list:
-                tmp += " " + item
-            printer.string("{}in directory {} calling{}".         \
-                            format(prompt, os.getcwd(), tmp))
 
             # Call Make to do the build
             # Set shell to keep Jenkins happy

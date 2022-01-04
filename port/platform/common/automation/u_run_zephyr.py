@@ -313,13 +313,6 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter, kee
     # Clear the output folder ourselves as well, just
     # to be completely sure
     if not clean or u_utils.deltree(BUILD_SUBDIR, printer, prompt):
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".         \
-                       format(prompt, os.getcwd(), tmp))
-
         # Call west to do the build
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,

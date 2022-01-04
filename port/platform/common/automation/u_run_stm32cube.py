@@ -156,13 +156,6 @@ def build_gcc(clean, makefile_dir, build_subdir, ubxlib_dir, unity_dir,
             call_list.append("CFLAGS=" + cflags)
         call_list.append("OUTPUT_DIRECTORY=" + outputdir)
 
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".         \
-                        format(prompt, os.getcwd(), tmp))
-
         # Call make to do the build
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
@@ -193,13 +186,6 @@ def download(connection, guard_time_seconds, elf_path, printer, prompt):
         "-c", f"program {elf_path} reset",
         "-c", "exit"
     ]
-
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".         \
-                   format(prompt, os.getcwd(), tmp))
 
     # Call it
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt)

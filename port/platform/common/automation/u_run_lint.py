@@ -177,13 +177,6 @@ def create_lint_config(lint_platform_path, defines, printer, prompt, keep_going_
     call_list.append("-f")
     call_list.append(lint_platform_path + os.sep + "co-gcc.mak")
 
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".         \
-                   format(prompt, os.getcwd(), tmp))
-
     # Call it
     return u_utils.exe_run(call_list, None, printer, prompt, shell_cmd=True,
                            keep_going_flag=keep_going_flag)

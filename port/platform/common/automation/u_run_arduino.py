@@ -76,13 +76,6 @@ RUN_INACTIVITY_TIME_SECONDS = u_utils.RUN_INACTIVITY_TIME_SECONDS
 def run_command(call_list, guard_time_seconds, printer, prompt, keep_going_flag):
     '''Run an external command'''
 
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".            \
-                   format(prompt, os.getcwd(), tmp))
-
     # Do it, setting shell to True to keep Jenkins happy
     return u_utils.exe_run(call_list, guard_time_seconds,
                            printer, prompt, shell_cmd=True,

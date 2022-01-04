@@ -679,6 +679,12 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
     kill_time = None
     read_time = start_time
 
+    if printer and prompt:
+        # Print what we're gonna do
+        printer.string("{}in directory {} calling{}".         \
+                        format(prompt, os.getcwd(), " ".join(call_list)))
+
+
     if returned_env is not None:
         # The caller wants the environment after the
         # command has run, so, from this post:
@@ -1274,13 +1280,6 @@ def reset_nrf_target(connection, printer, prompt):
         call_list.append("-s")
         call_list.append(connection["debugger"])
 
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".         \
-                   format(prompt, os.getcwd(), tmp))
-
     # Call it
     return exe_run(call_list, 60, printer, prompt)
 
@@ -1298,14 +1297,6 @@ def usb_cutter_reset(usb_cutter_id_strs, printer, prompt):
             call_list = call_list_root.copy()
             call_list.append(usb_cutter_id_str)
             call_list.append(action)
-
-            # Print what we're gonna do
-            tmp = ""
-            for item in call_list:
-                tmp += " " + item
-            if printer:
-                printer.string("{}in directory {} calling{}".         \
-                               format(prompt, os.getcwd(), tmp))
 
             # Set shell to keep Jenkins happy
             exe_run(call_list, 0, printer, prompt, shell_cmd=True)

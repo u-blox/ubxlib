@@ -137,13 +137,6 @@ def download(connection, guard_time_seconds, hex_path, printer, prompt):
         call_list.append("-s")
         call_list.append(connection["debugger"])
 
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".         \
-                   format(prompt, os.getcwd(), tmp))
-
     # Call it
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt)
 
@@ -198,13 +191,6 @@ def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
         call_list.append("GNU_VERSION=" + GNU_VERSION)
         call_list.append("GNU_PREFIX=" + GNU_PREFIX)
         call_list.append("GNU_INSTALL_ROOT=" + GNU_INSTALL_ROOT)
-
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".         \
-                        format(prompt, os.getcwd(), tmp))
 
         # Call make to do the build
         # Set shell to keep Jenkins happy

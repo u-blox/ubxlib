@@ -72,13 +72,6 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter, keep_goin
             "float_size"
         ]
 
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".         \
-                       format(prompt, os.getcwd(), tmp))
-
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, 0, printer, prompt, shell_cmd=True,
                            keep_going_flag=keep_going_flag):

@@ -206,13 +206,6 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
         call_list.append("size")
         call_list.append("build")
 
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".            \
-                       format(prompt, os.getcwd(), tmp))
-
         # Do the build,
         # set shell to True to keep Jenkins happy
         success = u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
@@ -243,13 +236,6 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
     call_list.append("-B")
     call_list.append(build_dir)
     call_list.append("flash")
-
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".            \
-                   format(prompt, os.getcwd(), tmp))
 
     # Give ourselves priority here or the download can fail
     u_utils.set_process_prio_high()
