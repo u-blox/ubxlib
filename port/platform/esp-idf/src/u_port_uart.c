@@ -60,6 +60,7 @@
 typedef struct {
     QueueHandle_t queue; /**< Also used as a marker that this UART is in use. */
     bool markedForDeletion; /**< If true this UART should NOT be used. */
+    bool ctsSuspended;
     uPortTaskHandle_t eventTaskHandle;
     uPortMutexHandle_t eventTaskRunningMutex;
     uint32_t eventFilter;
@@ -262,6 +263,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
             handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
 
             gUartData[uart].markedForDeletion = false;
+            gUartData[uart].ctsSuspended = false;
             gUartData[uart].eventTaskHandle = NULL;
             gUartData[uart].eventTaskRunningMutex = NULL;
             gUartData[uart].pEventCallback = NULL;
@@ -708,6 +710,89 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
     }
 
     return ctsFlowControlIsEnabled;
+}
+
+// Suspend CTS flow control.
+int32_t uPortUartCtsSuspend(int32_t handle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uart_hw_flowcontrol_t flowCtrl;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (!gUartData[handle].ctsSuspended) {
+                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                if (uart_get_hw_flow_ctrl(handle, &flowCtrl) == ESP_OK) {
+                    switch (flowCtrl) {
+                        case UART_HW_FLOWCTRL_CTS:
+                            if (uart_set_hw_flow_ctrl(handle, UART_HW_FLOWCTRL_DISABLE,
+                                                      U_CFG_HW_CELLULAR_RTS_THRESHOLD) == ESP_OK) {
+                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                gUartData[handle].ctsSuspended = true;
+                            }
+                            break;
+                        case UART_HW_FLOWCTRL_CTS_RTS:
+                            if (uart_set_hw_flow_ctrl(handle, UART_HW_FLOWCTRL_RTS,
+                                                      U_CFG_HW_CELLULAR_RTS_THRESHOLD) == ESP_OK) {
+                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                gUartData[handle].ctsSuspended = true;
+                            }
+                            break;
+                        case UART_HW_FLOWCTRL_DISABLE:
+                        case UART_HW_FLOWCTRL_RTS:
+                        default:
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                            break;
+                    }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Resume CTS flow control.
+void uPortUartCtsResume(int32_t handle)
+{
+    uart_hw_flowcontrol_t flowCtrl;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            gUartData[handle].ctsSuspended) {
+            if (uart_get_hw_flow_ctrl(handle, &flowCtrl) == ESP_OK) {
+                switch (flowCtrl) {
+                    case UART_HW_FLOWCTRL_DISABLE:
+                        uart_set_hw_flow_ctrl(handle, UART_HW_FLOWCTRL_CTS,
+                                              U_CFG_HW_CELLULAR_RTS_THRESHOLD);
+                        break;
+                    case UART_HW_FLOWCTRL_RTS:
+                        uart_set_hw_flow_ctrl(handle, UART_HW_FLOWCTRL_CTS_RTS,
+                                              U_CFG_HW_CELLULAR_RTS_THRESHOLD);
+                        break;
+                    case UART_HW_FLOWCTRL_CTS:
+                    case UART_HW_FLOWCTRL_CTS_RTS:
+                    default:
+                        break;
+                }
+                gUartData[handle].ctsSuspended = false;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
 }
 
 // End of file

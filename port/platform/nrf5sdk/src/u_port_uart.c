@@ -123,6 +123,7 @@ typedef struct {
     NRF_UARTE_Type *pReg;
     nrfx_timer_t timer;
     nrf_ppi_channel_t ppiChannel;
+    bool hwfcSuspended;
     int32_t uartHandle;
     int32_t eventQueueHandle;
     uint32_t eventFilter;
@@ -619,6 +620,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                             gUartData[uart].pRxBufferWriteNext = gUartData[uart].pRxStart;
                             gUartData[uart].startRxByteCount = 0;
                             gUartData[uart].endRxByteCount = 0;
+                            gUartData[uart].hwfcSuspended = false;
                             gUartData[uart].eventQueueHandle = -1;
                             gUartData[uart].eventFilter = 0;
                             gUartData[uart].pEventCallback = NULL;
@@ -1127,6 +1129,59 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
     }
 
     return ctsFlowControlIsEnabled;
+}
+
+// Suspend CTS flow control.
+int32_t uPortUartCtsSuspend(int32_t handle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    NRF_UARTE_Type *pReg;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (!gUartData[handle].hwfcSuspended) {
+                pReg = gUartData[handle].pReg;
+                if (nrf_uarte_cts_pin_get(pReg) != NRF_UARTE_PSEL_DISCONNECTED) {
+                    // Note: this disables flow control in both directions since
+                    // it is not possible to do so just for CTS using nRF5
+                    nrf_uarte_configure(pReg, NRF_UARTE_PARITY_EXCLUDED,
+                                        NRF_UARTE_HWFC_DISABLED);
+                    gUartData[handle].hwfcSuspended = true;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Resume CTS flow control.
+void uPortUartCtsResume(int32_t handle)
+{
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0]))) {
+            if (gUartData[handle].hwfcSuspended) {
+                nrf_uarte_configure(gUartData[handle].pReg,
+                                    NRF_UARTE_PARITY_EXCLUDED,
+                                    NRF_UARTE_HWFC_ENABLED);
+                gUartData[handle].hwfcSuspended = false;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
 }
 
 // End of file
