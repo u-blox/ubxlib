@@ -7,8 +7,9 @@ from scripts.packages import u_package
 
 DEFAULT_MAKEFILE_DIR = f"{u_utils.UBXLIB_DIR}/port/platform/nrf5sdk/mcu/nrf52/gcc/runner"
 DEFAULT_OUTPUT_NAME = "runner_ubx_evkninab3_nrf52840"
-DEFAULT_BUILD_DIR = os.path.join("_build","nrf5")
+DEFAULT_BUILD_DIR = "_build/nrf5"
 DEFAULT_JOB_COUNT = 8
+DEFAULT_FLASH_FILE = f"nrf52840_xxaa.hex"
 
 @task()
 def check_installation(ctx):
@@ -75,3 +76,21 @@ def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
     build_dir = os.path.join(build_dir, output_name)
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
+
+@task(
+    pre=[check_installation],
+    help={
+        "file": f"The file to flash (default: {DEFAULT_FLASH_FILE}",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
+        "debugger_serial": "The debugger serial number (optional)"
+    }
+)
+def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
+          output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
+    """Flash a nRF5 SDK based application"""
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    cmd = f"nrfjprog -f nrf52 --program {build_dir}/{file} --chiperase --verify"
+    if debugger_serial != "":
+        cmd += f" -s {debugger_serial}"
+    ctx.run(cmd)

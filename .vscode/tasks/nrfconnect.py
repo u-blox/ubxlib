@@ -71,3 +71,21 @@ def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
     build_dir = os.path.join(build_dir, output_name)
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
+
+@task(
+    pre=[check_installation],
+    help={
+        "debugger_serial": "The debugger serial number (optional)",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
+        "hex_file": "Optional: Specify the hex file to flash manually"
+    }
+)
+def flash(ctx, debugger_serial="", output_name=DEFAULT_OUTPUT_NAME,
+          build_dir=DEFAULT_BUILD_DIR, hex_file=None):
+    """Flash a nRF connect SDK based application"""
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    if debugger_serial != "":
+        debugger_serial = f"--snr {debugger_serial}"
+    hex_arg = "" if hex_file == None else f"--hex-file {hex_file}"
+    ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild {hex_arg} -d {build_dir} {debugger_serial} --erase')

@@ -11,6 +11,7 @@ DEFAULT_MAKEFILE_DIR = f"{u_utils.UBXLIB_DIR}/port/platform/stm32cube/mcu/stm32f
 DEFAULT_OUTPUT_NAME = "runner_stm32f4"
 DEFAULT_BUILD_DIR = os.path.join("_build","stm32cubef4")
 DEFAULT_JOB_COUNT = 8
+DEFAULT_FLASH_FILE = f"runner.elf"
 
 @task()
 def check_installation(ctx):
@@ -75,3 +76,24 @@ def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
+
+
+@task(
+    pre=[check_installation],
+    help={
+        "file": f"The file to flash (default: {DEFAULT_FLASH_FILE}",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
+        "debugger_serial": "The debugger serial number (optional)",
+    }
+)
+def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
+          output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
+    """Flash a nRF5 SDK based application"""
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    cmd = f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32f4.cfg'
+    if debugger_serial != "":
+        cmd += f' -c hla_serial {debugger_serial}'
+    cmd += f' -c "program {build_dir}/{file} reset" -c exit'
+    ctx.run(cmd)
+

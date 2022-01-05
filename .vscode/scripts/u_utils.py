@@ -11,7 +11,12 @@ from zipfile import ZipFile
 from tarfile import TarFile
 from glob import glob
 
+# The root directory of ubxlib
 UBXLIB_DIR = os.path.abspath(os.path.dirname(__file__) + "/../..")
+# Automation script directory
+AUTOMATION_DIR = UBXLIB_DIR + "/port/platform/common/automation"
+# OpenOCD config dir used for automation
+OPENOCD_CFG_DIR = AUTOMATION_DIR + "/cfg"
 
 def is_linux():
     """Returns True if current system is Linux"""

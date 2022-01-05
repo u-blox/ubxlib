@@ -36,7 +36,7 @@ def check_installation(ctx):
 )
 def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
           build_dir=DEFAULT_BUILD_DIR, u_flags=None):
-    """Build a ESP-IDF SDK based application"""
+    """Build an ESP-IDF SDK based application"""
     # Handle u_flags
     if u_flags:
         ctx.config.run.env["U_FLAGS"] = u_flags_to_cflags(u_flags)
@@ -64,7 +64,23 @@ def build(ctx, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
     }
 )
 def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
-    """Remove all files for a ESP-IDF SDK build"""
+    """Remove all files for an ESP-IDF SDK build"""
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
+
+@task(
+    pre=[check_installation],
+    help={
+        "serial_port": "The serial port connected to ESP32 device",
+        "cmake_dir": f"CMake project directory to build (default: {DEFAULT_CMAKE_DIR})",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})"
+    }
+)
+def flash(ctx, serial_port, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
+          build_dir=DEFAULT_BUILD_DIR):
+    """Flash an ESP-IDF SDK based application"""
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    ctx.run(f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
+            f'-p {serial_port} flash')
