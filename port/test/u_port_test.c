@@ -877,6 +877,15 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
                                                        (uint32_t) U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) ==
                        0);
 
+    // Can't easily check that the CTS suspend/resume functions work
+    // and, in any case, they may not be supported so simply call them
+    // both here, before the main body of the test, to check that they
+    // don't crash anything and that the test works afterwards
+    x = uPortUartCtsSuspend(uartHandle);
+    U_PORT_TEST_ASSERT((x == 0) ||
+                       (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
+    uPortUartCtsResume(uartHandle);
+
     // Manually send an Rx event and check that it caused
     // the callback to be called
     U_PORT_TEST_ASSERT(eventCallbackData.callCount == 0);

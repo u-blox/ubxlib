@@ -758,4 +758,22 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
     return ctsFlowControlIsEnabled;
 }
 
+// Suspend CTS flow control.
+int32_t uPortUartCtsSuspend(int32_t handle)
+{
+    (void) handle;
+
+    // On the Zephyr platform HW handshaking is controlled
+    // statically by the UART configuration structure at
+    // compile time and hence it is not possible to suspend
+    // CTS operation
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+// Resume CTS flow control.
+void uPortUartCtsResume(int32_t handle)
+{
+    (void) handle;
+}
+
 // End of file

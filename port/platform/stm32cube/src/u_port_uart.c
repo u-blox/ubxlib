@@ -115,6 +115,7 @@ typedef struct {
 typedef struct uPortUartData_t {
     int32_t uart;
     int32_t uartHandle;
+    bool ctsSuspended;
     int32_t eventQueueHandle;
     uint32_t eventFilter;
     void (*pEventCallback)(int32_t, uint32_t, void *);
@@ -957,6 +958,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                     uartData.pConstData = &(gUartCfg[uart]);
                     uartData.pRxBufferRead = uartData.pRxBufferStart;
                     uartData.pRxBufferWrite = uartData.pRxBufferStart;
+                    uartData.ctsSuspended = false;
                     uartData.eventQueueHandle = -1;
                     uartData.userNeedsNotify = true;
 
@@ -1564,7 +1566,6 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
 
         pUartData = pGetUartDataByHandle(handle);
         if (pUartData != NULL) {
-            // No need to lock the mutex, this is atomic
             flowControlStatus = LL_USART_GetHWFlowCtrl(gUartCfg[pUartData->uart].pReg);
             if ((flowControlStatus == LL_USART_HWCONTROL_CTS) ||
                 (flowControlStatus == LL_USART_HWCONTROL_RTS_CTS)) {
@@ -1576,6 +1577,56 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
     }
 
     return ctsFlowControlIsEnabled;
+}
+
+// Suspend CTS flow control.
+int32_t uPortUartCtsSuspend(int32_t handle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uint32_t flowControlStatus;
+    uPortUartData_t *pUartData;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pGetUartDataByHandle(handle);
+        if (pUartData != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (!pUartData->ctsSuspended) {
+                flowControlStatus = LL_USART_GetHWFlowCtrl(gUartCfg[pUartData->uart].pReg);
+                if ((flowControlStatus == LL_USART_HWCONTROL_CTS) ||
+                    (flowControlStatus == LL_USART_HWCONTROL_RTS_CTS)) {
+                    LL_USART_DisableCTSHWFlowCtrl(gUartCfg[pUartData->uart].pReg);
+                    pUartData->ctsSuspended = true;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Resume CTS flow control.
+void uPortUartCtsResume(int32_t handle)
+{
+    uPortUartData_t *pUartData;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        pUartData = pGetUartDataByHandle(handle);
+        if ((pUartData != NULL) && (pUartData->ctsSuspended)) {
+            LL_USART_EnableCTSHWFlowCtrl(gUartCfg[pUartData->uart].pReg);
+            pUartData->ctsSuspended = false;
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
 }
 
 // End of file

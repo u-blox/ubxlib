@@ -363,6 +363,15 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
     (void) handle;
     return false;
 }
+int32_t uPortUartCtsSuspend(int32_t handle)
+{
+    (void) handle;
+    return 0;
+}
+void uPortUartCtsResume(int32_t handle)
+{
+    (void) handle;
+}
 
 // From u_port_crypto.h.
 int32_t uPortCryptoSha256(const char *pInput,
