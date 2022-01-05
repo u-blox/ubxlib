@@ -294,13 +294,41 @@ bool uPortUartIsRtsFlowControlEnabled(int32_t handle);
 
 /** Determine if CTS flow control, i.e. a signal from
  * this software to the module that this sofware is ready
- * to accept data, is enabled.
+ * to accept data, is enabled.  Note that this returns
+ * true even if CTS flow control is currently suspended
+ * by a call to uPortUartCtsSuspend().
  *
  * @param handle the handle of the UART instance.
  * @return       true if CTS flow control is enabled
  *               on this UART, else false.
  */
 bool uPortUartIsCtsFlowControlEnabled(int32_t handle);
+
+/** Suspend CTS flow control.  This is useful if the device
+ * on the other end of the UART can enter a sleep state during
+ * which the CTS line may float such as to prevent the UART
+ * from communicating with the device.  When that happens, this
+ * function may be called while the device is revived from
+ * sleep state (e.g. by sending it "wake-up" characters), then
+ * CTS flow control should be resumed afterwards with a call to
+ * uPortUartCtsResume().  This function may NOT be supported on a
+ * given platform; if it is not supported the function should return
+ * U_ERROR_COMMON_NOT_SUPPORTED.
+ *
+ * @param handle the handle of the UART instance.
+ * @return       zero on success else negative error code.
+ */
+int32_t uPortUartCtsSuspend(int32_t handle);
+
+/** Resume CTS flow control; should be called after
+ * uPortUartCtsSuspend() to resume normal flow control operation.
+ * This function must be supported if uPortUartCtsSuspend() is
+ * supported.  Where uPortUartCtsSuspend() is not supported
+ * this function may still be called but will have no effect.
+ *
+ * @param handle the handle of the UART instance.
+ */
+void uPortUartCtsResume(int32_t handle);
 
 #ifdef __cplusplus
 }
