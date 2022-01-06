@@ -62,6 +62,34 @@ extern "C" {
 # endif
 #endif
 
+/** There can be an inverter in-line between the MCU pin
+ * that is connected to the cellular module's DTR pin and the
+ * module's DTR pin itself; this allows the sense to be switched
+ * easily.  See uCellPwrSetDtrPowerSavingPin() for how the pin
+ * value is set.
+ */
+#ifndef U_CELL_DTR_PIN_INVERTED
+# define U_CELL_DTR_PIN_ON_STATE 0
+#else
+# define U_CELL_DTR_PIN_ON_STATE 1
+#endif
+
+#ifndef U_CELL_PWR_UART_POWER_SAVING_DTR_READY_MS
+/** When DTR power saving is in use (see uCellPwrSetDtrPowerSavingPin()),
+ * this is how long to wait after DTR has been asserted before
+ * the module is ready to receive UART data; value in milliseconds.
+ */
+# define U_CELL_PWR_UART_POWER_SAVING_DTR_READY_MS 20
+#endif
+
+#ifndef U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS
+/** When DTR power saving is in use (see uCellPwrSetDtrPowerSavingPin()),
+ * this is the minimum time that should pass betweeen toggling of the pin;
+ * value in milliseconds.
+ */
+# define U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS 20
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -284,6 +312,42 @@ int32_t uCellPwrReboot(int32_t cellHandle,
  *                   code on failure.
  */
 int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset);
+
+/** Set the DTR power-saving pin.  Power saving is normally handled
+ * automatically but there is a specific case with the SARA-R5 modules
+ * where the UART flow control lines are in use which prevents that
+ * working.  Instead, and only for SARA-R5 modules, the DTR pin can
+ * be used to control power saving by calling this function.
+ * This must be called BEFORE the module is first powered-on, e.g.
+ * just after uCellAdd().
+ * Note: the same problem exists for SARA-U201 modules and, in theory,
+ * the same solution applies.  However, since we are not able to
+ * regression test that configuration it is not currently marked as
+ * supported
+ * Note: the cellular module _remembers_ the power saving mode and so,
+ * if you should ever change a module from DTR power saving to a
+ * different power saving mode, you must keep the DTR pin of the
+ * module asserted (i.e. tied low) in order that the AT+UPSV command
+ * to change to one of the other modes can be sent.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @param pin         the pin of this MCU that is connected to
+ *                    the DTR line of the cellular module.
+ * @return            zero on success or negative error
+ *                    code on failure.
+ */
+int32_t uCellPwrSetDtrPowerSavingPin(int32_t cellHandle,
+                                     int32_t pin);
+
+/** Get the DTR power-saving pin.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            the pin of this MCU that is connected to
+ *                    the DTR line of the cellular module, i.e.
+ *                    as set by uCellPwrSetDtrPowerSavingPin(),
+ *                    or negative error code.
+ */
+int32_t uCellPwrGetDtrPowerSavingPin(int32_t cellHandle);
 
 #ifdef __cplusplus
 }

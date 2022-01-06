@@ -191,7 +191,8 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_AUTO_BAUDING,
     U_CELL_PRIVATE_FEATURE_AT_PROFILES,
     U_CELL_PRIVATE_FEATURE_SECURITY_ZTP,
-    U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG
+    U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG,
+    U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -327,6 +328,7 @@ typedef struct uCellPrivateInstance_t {
     bool socketsHexMode; /**< set to true for sockets to use hex mode. */
     const char *pFileSystemTag; /**< the tagged area of the file system currently being addressed. */
     struct uCellPrivateInstance_t *pNext;
+    int32_t dtrPowerSavingPin;
 } uCellPrivateInstance_t;
 
 /* ----------------------------------------------------------------
@@ -496,15 +498,18 @@ void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance);
  */
 void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance);
 
-/** Callback to wake up the cellular module from UART power saving.
+/** Callback to wake up the cellular module from UART power
+ * saving where sending a character to the UART is good enough to
+ * wake it up.
  *
  * @param atHandle   the handle of the AT client that is talking
  *                   to the module.
- * @param pParam     the parameter for the callback, may be NULL.
+ * @param pParam     the parameter for the callback, ignored.
  * @return           0 on successful wake-up, else negative error.
  */
 int32_t uCellPrivateUartWakeUpCallback(uAtClientHandle_t atHandle,
                                        void *pParam);
+
 #ifdef __cplusplus
 }
 #endif

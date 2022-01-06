@@ -1289,6 +1289,37 @@ int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
  */
 bool uAtClientWakeUpHandlerIsSet(const uAtClientHandle_t atHandle);
 
+/** Set an "activity" pin.  This is useful where the module at the
+ * other end of the link requires a pin to be raised or lowered while
+ * this MCU is actively communicating over the AT interface (i.e.
+ * sending stuff or waiting for a response to stuff).  The pin must
+ * have already been configured as an output and set to the correct
+ * initial level by the caller.
+ *
+ * @param atHandle     the handle of the AT client.
+ * @param pin          the pin number of this MCU to use; use -1
+ *                     to remove a previously-set activity pin.
+ * @param readyMs      how long after the pin is set to wait until
+ *                     AT commands can continue; value in milliseconds.
+ * @param hysteresisMs the minimum time between the pin being toggled;
+ *                     value in milliseconds.
+ * @param highIsOn     if true then the pin is set high while an AT
+ *                     command is executed, else it is set low
+ *                     while an AT command is executed.
+ * @return             zero on success else negative error code.
+ */
+int32_t uAtClientSetActivityPin(uAtClientHandle_t atHandle,
+                                int32_t pin, int32_t readyMs,
+                                int32_t hysteresisMs, bool highIsOn);
+
+/** Get the activity pin, if one is set.
+ *
+ * @param atHandle  the handle of the AT client.
+ * @return          the activity pin if one is set, else negative
+ *                  error code.
+ */
+int32_t uAtClientGetActivityPin(const uAtClientHandle_t atHandle);
+
 #ifdef __cplusplus
 }
 #endif

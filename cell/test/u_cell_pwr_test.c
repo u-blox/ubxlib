@@ -147,6 +147,10 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
     U_PORT_TEST_ASSERT(pHandles->cellHandle >= 0);
     cellHandle = pHandles->cellHandle;
 
+#if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
+    uCellPwrSetDtrPowerSavingPin(cellHandle, U_CFG_APP_PIN_CELL_DTR);
+#endif
+
     // Get the private module data as we need it for testing
     pModule = pUCellPrivateGetModule(cellHandle);
     U_PORT_TEST_ASSERT(pModule != NULL);
@@ -155,7 +159,7 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
 
     // Let the module state settle in case it is on but still
     // booting
-    uPortTaskBlock((pModule->bootWaitSeconds) * 1000);
+    uPortTaskBlock(pModule->bootWaitSeconds * 1000);
 
     // If the module is on at the start, switch it off.
     if (uCellPwrIsAlive(cellHandle)) {
@@ -167,7 +171,7 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                  " to be sure of a clean power off as there's"
                  " no VInt pin to tell us...\n",
                  pModule->powerDownWaitSeconds);
-        uPortTaskBlock(pModule->powerDownWaitSeconds);
+        uPortTaskBlock(pModule->powerDownWaitSeconds * 1000);
 #  endif
     }
 

@@ -39,6 +39,7 @@
 
 #include "u_port.h"
 #include "u_port_os.h"     // Required by u_cell_private.h
+#include "u_port_uart.h"
 #include "u_port_crypto.h"
 
 #include "u_at_client.h"
@@ -85,7 +86,11 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION) |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)    |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES) /* features */
+         // In theory SARA-U201 does support DTR power saving however we do not
+         // have this in our regression test farm and hence it is not marked
+         // as supported for now
+         // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)  /* features */
         )
     },
     {
@@ -169,7 +174,8 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)                        |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                         |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP)                        |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING) /* features */
         )
     },
     {
@@ -570,11 +576,19 @@ int32_t uCellPrivateUartWakeUpCallback(uAtClientHandle_t atHandle,
 {
     int32_t errorCode = (int32_t) U_CELL_ERROR_AT;
     uAtClientDeviceError_t deviceError;
+    int32_t atStreamHandle;
+    uAtClientStream_t atStreamType = U_AT_CLIENT_STREAM_TYPE_MAX;
 
     (void) pParam;
 
+    atStreamHandle = uAtClientStreamGet(atHandle, &atStreamType);
+    if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
+        // Disable CTS, in case it gets in our way
+        uPortUartCtsSuspend(atStreamHandle);
+    }
+
     // Poke the AT interface a few times at short intervals
-    // to awaken the module
+    // to either awaken the module or make sure it is awake
     for (size_t x = 0;
          (x < U_CELL_PRIVATE_UART_WAKE_UP_RETRIES + 1) && (errorCode != 0);
          x++) {
@@ -593,6 +607,11 @@ int32_t uCellPrivateUartWakeUpCallback(uAtClientHandle_t atHandle,
             (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR)) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
+    }
+
+    if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
+        // We can listen to CTS again
+        uPortUartCtsResume(atStreamHandle);
     }
 
     return errorCode;

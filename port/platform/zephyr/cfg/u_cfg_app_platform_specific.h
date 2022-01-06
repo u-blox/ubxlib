@@ -28,9 +28,10 @@
 
 /** @file
  * @brief This header file contains configuration information for
- * a Zephyr platform that is fed in at application level.  It assumes
- * an nRF5x MCU, e.g. nRF52840 or nRF5340. You should override these
- * values as necessary for your particular platform.
+ * a Zephyr platform that is fed in at application level, with one
+ * exception (see below).  It assumes an nRF5x MCU, e.g. nRF52840 or
+ * nRF5340. You should override these values as necessary for your particular
+ * platform.
  * Note that the pin numbers used below should be those of the MCU: if you
  * are using an MCU inside a u-blox module the IO pin numbering for
  * the module is likely different to that from the MCU: check the data
@@ -60,6 +61,13 @@
  * the pins have pre-assigned functions so you have to read the back of
  * the PCB _very_ carefully to find any that are free.  In
  * general, port 1 is freer than port 0, hence the choices below.
+ *
+ * EXCEPTION: U_CFG_APP_PIN_CELL_DTR is a compile-time configuration
+ * built into this code rather than passed in as a run-time parameter.
+ * It is required where a cellular module is connected which must be
+ * allowed to enter power saving mode and, also, HW flow control is
+ * required on the UART interface to that cellular module. See the notes
+ * above the pin definition below for further details.
  */
 
 /** Required for Zephyr device tree query:
@@ -160,6 +168,27 @@
  * -1 is used where there is no such connection.
  */
 # define U_CFG_APP_PIN_CELL_VINT              -1
+#endif
+
+/** The Zephyr platform does not permit temporary suspension
+ * of CTS flow control, which causes a problem when employing
+ * power saving on some (e.g. SARA-R5) cellular modules as
+ * the module's flow control line floats high during sleep,
+ * preventing the wake-up character being sent to the module
+ * by this MCU to get it out of sleep mode.  So, for this
+ * platform, if HW flow control is required and cellular module
+ * sleep is also required, the DTR pin of the module should
+ * be connected to this MCU and its value should be set here,
+ * i.e. this is a compile-time configuration for ubxlib.
+ * NOTE: the DTR pin CANNOT be used to wake up a SARA-R4 cellular
+ * module but that is fine as SARA-R4 holds CTS low during sleep.
+ * and hence a wake-up character can always be sent.  Putting
+ * it another way, do NOT set U_CFG_APP_PIN_CELL_DTR to a
+ * non-negative value if you're using power saving with a
+ * SARA-R4 cellular module, it will work without it.
+ */
+#ifndef U_CFG_APP_PIN_CELL_DTR
+# define U_CFG_APP_PIN_CELL_DTR               -1
 #endif
 
 /* IMPORTANT: the UART pins given here are required for compilation
