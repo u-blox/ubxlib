@@ -50,6 +50,7 @@
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
+#include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue.h"
 
@@ -180,6 +181,13 @@
                                                      uPortMutexUnlock(pClient->mutex);           \
                                                  }
 
+#ifndef U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS
+/** When performing hysteresis of the activity pin, the interval to use for each
+ * wait step; value in milliseconds.
+ */
+# define U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS 10
+#endif
+
 // Do some cross-checking
 #if (U_AT_CLIENT_CALLBACK_TASK_PRIORITY >= U_AT_CLIENT_URC_TASK_PRIORITY)
 # error U_AT_CLIENT_CALLBACK_TASK_PRIORITY must be less than U_AT_CLIENT_URC_TASK_PRIORITY
@@ -308,6 +316,16 @@ typedef struct {
     int32_t atTimeoutSavedMs;
 } uAtClientWakeUp_t;
 
+/** Struct defining an activity pin.
+ */
+typedef struct {
+    int32_t pin;
+    int32_t readyMs;
+    bool highIsOn;
+    int64_t lastToggleTime;
+    int32_t hysteresisMs;
+} uAtClientActivityPin_t;
+
 /** Definition of an AT client instance.
  */
 typedef struct uAtClientInstance_t {
@@ -350,6 +368,7 @@ typedef struct uAtClientInstance_t {
     void *pInterceptRxContext; /** Context pointer that will be passed to pInterceptRx
                                    as its fourth parameter. */
     uAtClientWakeUp_t *pWakeUp; /** Pointer to a wake-up handler structure. */
+    uAtClientActivityPin_t *pActivityPin; /** Pointer to an activity pin structure. */
     struct uAtClientInstance_t *pNext;
 } uAtClientInstance_t;
 
@@ -614,6 +633,9 @@ static void removeClient(uAtClientInstance_t *pClient)
         uPortMutexDelete(pClient->pWakeUp->mutex);
         free(pClient->pWakeUp);
     }
+
+    // Remove any activity pin
+    free(pClient->pActivityPin);
 
     // Delete the stream mutex
     U_PORT_MUTEX_UNLOCK(pClient->streamMutex);
@@ -1775,6 +1797,18 @@ static int32_t tryLock(uAtClientInstance_t *pClient)
     outcome = uPortMutexTryLock(pClient->streamMutex, 0);
     if (outcome == 0) {
         pClient->lockTimeMs = uPortGetTickTimeMs();
+        if (pClient->pActivityPin != NULL) {
+            // If an activity pin is set then switch it on
+            while (uPortGetTickTimeMs() - pClient->pActivityPin->lastToggleTime <
+                   pClient->pActivityPin->hysteresisMs) {
+                uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
+            }
+            if (uPortGpioSet(pClient->pActivityPin->pin,
+                             (int32_t) pClient->pActivityPin->highIsOn) == 0) {
+                pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
+                uPortTaskBlock(pClient->pActivityPin->readyMs);
+            }
+        }
     }
 
     return outcome;
@@ -1800,6 +1834,18 @@ static void unlockNoDataCheck(uAtClientInstance_t *pClient)
         if (pClient->atTimeoutSavedMs >= 0) {
             pClient->atTimeoutMs = pClient->atTimeoutSavedMs;
             pClient->atTimeoutSavedMs = -1;
+        }
+
+        if (pClient->pActivityPin != NULL) {
+            // If an activity pin is set then switch it off
+            while (uPortGetTickTimeMs() - pClient->pActivityPin->lastToggleTime <
+                   pClient->pActivityPin->hysteresisMs) {
+                uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
+            }
+            if (uPortGpioSet(pClient->pActivityPin->pin,
+                             (int32_t) !pClient->pActivityPin->highIsOn) == 0) {
+                pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
+            }
         }
         // Only unlock the stream if we're not in a wake-up
         // handler
@@ -2145,6 +2191,7 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                             pClient->pInterceptTx = NULL;
                             pClient->pInterceptRx = NULL;
                             pClient->pWakeUp = NULL;
+                            pClient->pActivityPin = NULL;
                             pClient->pNext = NULL;
                             // Set up the buffer and its protection markers
                             pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
@@ -2380,6 +2427,18 @@ void uAtClientLock(uAtClientHandle_t atHandle)
         // that case)
         if ((pClient->pWakeUp == NULL) || !pClient->pWakeUp->inWakeUpHandler) {
             uPortMutexLock(pClient->streamMutex);
+            if (pClient->pActivityPin != NULL) {
+                while (uPortGetTickTimeMs() - pClient->pActivityPin->lastToggleTime <
+                       pClient->pActivityPin->hysteresisMs) {
+                    uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
+                }
+                // If an activity pin is set then switch it on
+                if (uPortGpioSet(pClient->pActivityPin->pin,
+                                 (int32_t) pClient->pActivityPin->highIsOn) == 0) {
+                    pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
+                    uPortTaskBlock(pClient->pActivityPin->readyMs);
+                }
+            }
         }
         clearError(pClient);
         pClient->lockTimeMs = uPortGetTickTimeMs();
@@ -3269,4 +3328,55 @@ bool uAtClientWakeUpHandlerIsSet(const uAtClientHandle_t atHandle)
     return ((const uAtClientInstance_t *) atHandle)->pWakeUp != NULL;
 }
 
+// Set an "activity" pin.
+int32_t uAtClientSetActivityPin(uAtClientHandle_t atHandle,
+                                int32_t pin, int32_t readyMs,
+                                int32_t hysteresisMs, bool highIsOn)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
+
+    if (pin < 0) {
+        free(pClient->pActivityPin);
+        pClient->pActivityPin = NULL;
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    } else {
+        if (pClient->pActivityPin == NULL) {
+            pClient->pActivityPin = (uAtClientActivityPin_t *) malloc(sizeof(*(pClient->pActivityPin)));
+        }
+        if (pClient->pActivityPin != NULL) {
+            pClient->pActivityPin->pin = pin;
+            pClient->pActivityPin->readyMs = readyMs;
+            pClient->pActivityPin->highIsOn = highIsOn;
+            pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
+            pClient->pActivityPin->hysteresisMs = hysteresisMs;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
+
+    return errorCode;
+}
+
+// Return the activity pin.
+//lint -esym(818, atHandle) Suppress could be declared
+// as pointing to const. it is!
+int32_t uAtClientGetActivityPin(const uAtClientHandle_t atHandle)
+{
+    int32_t activityPin = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+    const uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
+
+    if (pClient->pActivityPin != NULL) {
+        activityPin = pClient->pActivityPin->pin;
+    }
+
+    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
+
+    return activityPin;
+}
 // End of file

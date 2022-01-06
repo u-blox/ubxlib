@@ -135,6 +135,11 @@ int32_t uGnssTestPrivateCellularOff()
                                  U_CFG_APP_PIN_CELL_ENABLE_POWER,
                                  U_CFG_APP_PIN_CELL_PWR_ON,
                                  U_CFG_APP_PIN_CELL_VINT, false);
+#if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
+            if (errorCode == 0) {
+                errorCode = uCellPwrSetDtrPowerSavingPin(cellHandle, U_CFG_APP_PIN_CELL_DTR);
+            }
+#endif
         }
     }
 

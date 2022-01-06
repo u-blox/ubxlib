@@ -203,9 +203,19 @@ int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration)
                     // Set the timeout
                     pInstance->stopTimeMs = uPortGetTickTimeMs() +
                                             (((int64_t) pConfiguration->timeoutSeconds) * 1000);
-                    // Power on
-                    x = uCellPwrOn(errorCodeOrHandle, pConfiguration->pPin,
-                                   keepGoingCallback);
+#if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
+                    // For the special case of DTR power saving the DTR pin,
+                    // which is not in the configuration structure, is set
+                    // at compile time
+                    x = uCellPwrSetDtrPowerSavingPin(errorCodeOrHandle, U_CFG_APP_PIN_CELL_DTR);
+                    if (x == 0) {
+#endif
+                        // Power on
+                        x = uCellPwrOn(errorCodeOrHandle, pConfiguration->pPin,
+                                       keepGoingCallback);
+#if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
+                    }
+#endif
                     if (x != 0) {
                         // If we failed to power on, clean up
                         uNetworkRemoveCell(errorCodeOrHandle);

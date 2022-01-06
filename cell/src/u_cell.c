@@ -237,6 +237,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 pInstance->pLocContext = NULL;
                 pInstance->socketsHexMode = false;
                 pInstance->pFileSystemTag = NULL;
+                pInstance->dtrPowerSavingPin = -1;
                 pInstance->pNext = NULL;
 
                 // Now set up the pins

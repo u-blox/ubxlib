@@ -311,9 +311,11 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle);
  * function may be called while the device is revived from
  * sleep state (e.g. by sending it "wake-up" characters), then
  * CTS flow control should be resumed afterwards with a call to
- * uPortUartCtsResume().  This function may NOT be supported on a
- * given platform; if it is not supported the function should return
+ * uPortUartCtsResume().  This function may NOT be supported on all
+ * platforms; where it is not supported the function will return
  * U_ERROR_COMMON_NOT_SUPPORTED.
+ * If suspension of CTS is supported but CTS flow control is
+ * not being used this function will return successfully.
  *
  * @param handle the handle of the UART instance.
  * @return       zero on success else negative error code.

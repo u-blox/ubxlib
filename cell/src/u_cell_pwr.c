@@ -75,6 +75,19 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+/** The UART power-saving modes: note that these numbers are defined
+ * by the AT interface and should NOT be changed.
+ */
+//lint -esym(749, uCellPwrPsvMode_t::U_CELL_PWR_PSV_MODE_RTS) Suppress not referenced
+//lint -esym(749, uCellPwrPsvMode_t::U_CELL_PWR_PSV_MODE_DTR) Suppress not referenced
+typedef enum {
+    U_CELL_PWR_PSV_MODE_DISABLED = 0,    /**< No UART power saving. */
+    U_CELL_PWR_PSV_MODE_DATA = 1,        /**< Module wakes up on TXD line activity, SARA-U201/SARA-R5 version. */
+    U_CELL_PWR_PSV_MODE_RTS = 2,         /**< Module wakes up on RTS line being asserted (not used in this code). */
+    U_CELL_PWR_PSV_MODE_DTR = 3,         /**< Module wakes up on DTR line being asserted. */
+    U_CELL_PWR_PSV_MODE_DATA_SARA_R4 = 4 /**< Module wakes up on TXD line activity, SARA-R4 version. */
+} uCellPwrPsvMode_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -185,7 +198,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     bool success = true;
     uAtClientHandle_t atHandle = pInstance->atHandle;
     int32_t atStreamHandle;
-    int32_t uartPowerSavingMode = 0; // Assume no UART power saving
+    uCellPwrPsvMode_t uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DISABLED; // Assume no UART power saving
     uAtClientStream_t atStreamType;
     char buffer[20]; // Enough room for AT+UPSV=2,1300
 
@@ -227,62 +240,74 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
             uPortUartIsCtsFlowControlEnabled(atStreamHandle)) {
             success = moduleConfigureOne(atHandle, "AT&K3",
                                          U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
-            // The RTS/CTS handshaking lines are being used
-            // for flow control by the UART HW so we can't use
-            // them for power control purposes.  Also,
-            // we can't use the wake-up on TX line feature
-            // since, when the module has gone to sleep,
-            // the module incoming flow control line (CTS) will
-            // float to "off" and this MCU's UART HW will not be
-            // able to send anything (but see exception for SARA-R4
-            // below).
+            if (uAtClientWakeUpHandlerIsSet(atHandle)) {
+                // The RTS/CTS handshaking lines are being used
+                // for flow control by the UART HW.  This complicates
+                // matters for power saving as, at least on SARA-R5
+                // (where power saving is a valued feature), the CTS
+                // line floats high during sleep, preventing the
+                // "wake-up" character being sent to the module to get
+                // it out of sleep.
+
+                // Check if this platform supports suspension of CTS
+                // on a temporary basis
+                if (uPortUartCtsSuspend(atStreamHandle) == 0) {
+                    // It does: resume CTS and we can use the wake-up on
+                    // TX line feature for power saving
+                    uPortUartCtsResume(atStreamHandle);
+                    uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA;
+                }
+            }
         } else {
             success = moduleConfigureOne(atHandle, "AT&K0",
                                          U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
             // RTS/CTS handshaking is not used by the UART HW, we
-            // can use the wake-up on TX line feature.
-            // TODO: we _could_, on non-SARA-R4 modules (see below),
-            // use the RTS line as the flow control signaller but this
-            // is complicated as we would need to add an API to tell
-            // this cellular handler about the line and then the
-            // wake-up handler would need to take control of the
-            // RTS line as a GPIO and set it to 0 ("on") sufficiently
-            // far in advance of [and during] AT communication with
-            // the module. And, of course, the application would have
-            // to NOT try to use UART flow control as the RTS pin is
-            // no longer available to the UART HW: no UART HW would
-            // set the RTS pin to 0 ("on") sufficiently far in advance
-            // of the actual transmission of data for the module to
-            // be able to wake up and receive that TXD data.
+            // can use the wake-up on TX line feature without any
+            // complications.
             if (uAtClientWakeUpHandlerIsSet(atHandle)) {
-                uartPowerSavingMode = 1;
+                uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA;
             }
         }
+    }
 
-        if (uAtClientWakeUpHandlerIsSet(atHandle) &&
-            U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-            // SARA-R4 doesn't support modes 1 or 2 but
-            // does support the functionality of mode 1
-            // though numbered as mode 4 and without the
-            // timeout parameter (the timeout is fixed at
-            // 6 seconds) *and* this works even if the flow
-            // control lines are connected to a sleeping
-            // module: it would appear the module incoming
-            // flow control line (CTS) is held low ("on") even
-            // while the module is asleep in the SARA-R4 case.
-            uartPowerSavingMode = 4;
-        }
+    if (success && uAtClientWakeUpHandlerIsSet(atHandle) &&
+        (pInstance->dtrPowerSavingPin >= 0)) {
+        // Irrespective of all the above, we permit the user to define
+        // and connect this MCU to the module's DTR pin which,
+        // on SARA-R5 and SARA-U201, can be used to get out of sleep
+        // mode. This will already have been set by the user calling
+        // uCellPwrSetDtrPowerSavingPin().
+        // Remove the wake-up handler but don't tell the AT client
+        // about the DTR pin yet, wait until we've configured the
+        // module with the AT+UPSV command before we do that.
+        uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
+        uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DTR;
+    }
+
+    if (uAtClientWakeUpHandlerIsSet(atHandle) &&
+        U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+        // SARA-R4 doesn't support modes 1, 2 or 3 but
+        // does support the functionality of mode 1
+        // though numbered as mode 4 and without the
+        // timeout parameter (the timeout is fixed at
+        // 6 seconds) *and* this works even if the flow
+        // control lines are connected to a sleeping
+        // module: it would appear the module incoming
+        // flow control line (CTS) is held low ("on") even
+        // while the module is asleep in the SARA-R4 case.
+        uartPowerSavingMode = U_CELL_PWR_PSV_MODE_DATA_SARA_R4;
     }
 
     if (success) {
         // Set the UART power saving mode
-        if (uartPowerSavingMode == 1) {
+        if (uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DATA) {
             snprintf(buffer, sizeof(buffer), "AT+UPSV=%d,%d",
                      (int) uartPowerSavingMode,
                      U_CELL_PWR_UART_POWER_SAVING_GSM_FRAMES);
         } else {
             snprintf(buffer, sizeof(buffer), "AT+UPSV=%d", (int) uartPowerSavingMode);
-            if ((uartPowerSavingMode == 0) && uAtClientWakeUpHandlerIsSet(atHandle)) {
+            if ((uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DISABLED) &&
+                uAtClientWakeUpHandlerIsSet(atHandle)) {
                 // Remove the wake-up handler if it turns out that power
                 // saving cannot be supported
                 uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
@@ -296,11 +321,19 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
             uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
             uPortLog("U_CELL_PWR: power saving not supported.\n");
         }
+        // Only now tell the AT Client that it should control the
+        // DTR pin, if relevant
+        if (uartPowerSavingMode == U_CELL_PWR_PSV_MODE_DTR) {
+            uAtClientSetActivityPin(atHandle, pInstance->dtrPowerSavingPin,
+                                    U_CELL_PWR_UART_POWER_SAVING_DTR_READY_MS,
+                                    U_CELL_PWR_UART_POWER_SAVING_DTR_HYSTERESIS_MS,
+                                    U_CELL_DTR_PIN_ON_STATE == 1 ? true : false);
+        }
     }
 
     if (success) {
         if (andRadioOff) {
-            // switch the radio off until commanded to connect
+            // Switch the radio off until commanded to connect
             // Wait for flip time to expire
             while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
                    (U_CELL_PRIVATE_AT_CFUN_FLIP_DELAY_SECONDS * 1000)) {
@@ -918,6 +951,76 @@ int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset)
     }
 
     return errorCode;
+}
+
+// Set the DTR power-saving pin.
+int32_t uCellPwrSetDtrPowerSavingPin(int32_t cellHandle, int32_t pin)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uPortGpioConfig_t gpioConfig;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) && (pInstance->pModule != NULL)) {
+            errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            if (pin >= 0) {
+                errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)) {
+                    // Set the DTR pin as an output, asserted to prevent sleep
+                    // initially.  Note that the mode of sleep that uses the DTR
+                    // pin is a literal switch: DTR must be asserted while this
+                    // MCU communicates with the module; URCs are always active.
+                    uPortGpioSet(pin, U_CELL_DTR_PIN_ON_STATE);
+                    U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
+                    gpioConfig.pin = pin;
+                    gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+                    errorCode = uPortGpioConfig(&gpioConfig);
+                    if (errorCode == 0) {
+                        pInstance->dtrPowerSavingPin = pin;
+                        uPortLog("U_CELL_PWR: pin %d (0x%02x), connected to module DTR"
+                                 " pin, is being used to control power saving,"
+                                 " where %d means \"DTR on\" (and hence power"
+                                 " saving not allowed).\n",
+                                 pin, pin, U_CELL_DTR_PIN_ON_STATE);
+                    }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+
+    }
+
+    return errorCode;
+}
+
+// Get the DTR power-saving pin.
+int32_t uCellPwrGetDtrPowerSavingPin(int32_t cellHandle)
+{
+    int32_t errorCodeOrPin = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCodeOrPin = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+            if (pInstance->dtrPowerSavingPin >= 0) {
+                errorCodeOrPin = pInstance->dtrPowerSavingPin;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrPin;
 }
 
 // End of file
