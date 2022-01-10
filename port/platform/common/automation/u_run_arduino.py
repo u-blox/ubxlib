@@ -148,7 +148,7 @@ def clear_prebuilt_library(library_path, mcu, printer, prompt):
         u_utils.deltree(prebuilt_dir, printer, prompt)
 
 # Create the ubxlib library for Arduino
-def create_library(ubxlib_dir, arduino_dir, toolchain, library_path, postfix,
+def create_library(arduino_dir, toolchain, library_path, postfix,
                    clean, printer, prompt, keep_going_flag):
     '''Create the ubxlib library'''
     call_list = []
@@ -166,7 +166,7 @@ def create_library(ubxlib_dir, arduino_dir, toolchain, library_path, postfix,
     call_list.append("-p")
     call_list.append(toolchain)
     call_list.append("-u")
-    call_list.append(ubxlib_dir)
+    call_list.append(u_utils.UBXLIB_DIR)
     call_list.append("-o")
     call_list.append(library_path + postfix)
     call_list.append(arduino_dir + os.sep + "source" + postfix + ".txt")
@@ -313,8 +313,8 @@ def download(build_dir, board, serial_port, printer, prompt, keep_going_flag):
     return success
 
 def run(instance, mcu, board, toolchain, connection, connection_lock,
-        platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle,
+        platform_lock, misc_locks, clean, defines,
+        printer, reporter, test_report_handle,
         keep_going_flag=None, unity_dir=None):
     '''Build/run on Arduino'''
     return_value = -1
@@ -353,184 +353,178 @@ def run(instance, mcu, board, toolchain, connection, connection_lock,
                 text += " \"" + define + "\""
             else:
                 text += ", \"" + define + "\""
-    if ubxlib_dir:
-        text += ", ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     printer.string("{}{}.".format(prompt, text))
 
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "Arduino")
-    printer.string("{}CD to {}...".format(prompt, working_dir))
 
-    with u_utils.ChangeDir(working_dir):
-        # Lock the Arduino platform while we install the tools
-        with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
-                          "platform", printer, prompt,
-                          keep_going_flag) as locked_platform:
-            if locked_platform:
-                installed = install(board, ARDUINO_BOARDS_URLS,
-                                    printer, prompt, keep_going_flag)
+    # Lock the Arduino platform while we install the tools
+    with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
+                        "platform", printer, prompt,
+                        keep_going_flag) as locked_platform:
+        if locked_platform:
+            installed = install(board, ARDUINO_BOARDS_URLS,
+                                printer, prompt, keep_going_flag)
 
-        if installed:
-            arduino_dir = os.path.join(ubxlib_dir, ARDUINO_SUB_DIR)
-            library_path = os.path.join(working_dir, LIBRARIES_SUB_DIR)
-            # Clear out any pre-built ubxlib library or rebuilds
-            # won't pick up changes
-            clear_prebuilt_library(os.path.join(library_path, LIBRARY_NAME),
-                                   mcu, printer, prompt)
-            # Create the ubxlib Arduino library
-            if create_library(ubxlib_dir, arduino_dir, toolchain,
-                              os.path.join(library_path, LIBRARY_NAME),
-                              LIBRARY_NAME_LIB_POSTFIX,
-                              clean, printer, prompt, keep_going_flag):
-                # Create the ubxlib Arduino test library
-                if create_library(ubxlib_dir, arduino_dir, toolchain,
-                                  os.path.join(library_path, LIBRARY_NAME),
-                                  LIBRARY_NAME_TEST_POSTFIX,
-                                  clean, printer, prompt, keep_going_flag):
-                    # We now build both libraries with the test sketch and we also
-                    # build the examples with the just the ubxlib Arduino library.
-                    # Make a list of the sketches to build
-                    sketch_paths.append(os.path.join(arduino_dir, TEST_SKETCH_SUB_PATH))
-                    for root, _directories, files in os.walk(library_path):
-                        for file in files:
-                            if os.sep + "examples" + os.sep in root and file.endswith(".ino"):
-                                sketch_paths.append(os.path.join(root, file))
-                    printer.string("{}{} thing(s) to build.".format(prompt, len(sketch_paths)))
-                    # Build the sketches: note that the first build of the ubxlib
-                    # Arduino library to a .a file will be copied back into the library
-                    # directory for use in the following builds
-                    build_dir = os.path.join(working_dir, BUILD_SUBDIR)
-                    for sketch_path in sketch_paths:
-                        build_start_time = time()
-                        build_path = build(build_dir, sketch_path, library_path, mcu, board, defines,
-                                           clean, printer, prompt, reporter, keep_going_flag)
-                        if not u_utils.keep_going(keep_going_flag, printer, prompt) or not build_path:
-                            break
-                        build_paths.append(build_path)
-                        reporter.event(u_report.EVENT_TYPE_BUILD,
-                                       u_report.EVENT_PASSED,
-                                       "build {} of {} took {:.0f} second(s)". \
-                                       format(len(build_paths), len(sketch_paths),
-                                              time() - build_start_time))
-                    if len(build_paths) == len(sketch_paths):
-                        # Download and run the builds
-                        with u_connection.Lock(connection, connection_lock,
-                                               CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                               printer, prompt, keep_going_flag) as locked:
-                            if locked:
-                                for build_path in build_paths:
-                                    # I have seen download failures occur if two
-                                    # are initiated at the same time so lock the
-                                    # platform for this
-                                    downloaded = False
-                                    with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
-                                                      "platform", printer, prompt,
-                                                      keep_going_flag) as locked_platform:
-                                        if locked_platform:
-                                            # Have seen this fail, so give it a few goes
-                                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                           u_report.EVENT_START)
-                                            retries = 0
-                                            while u_utils.keep_going(keep_going_flag, printer,
-                                                                     prompt) and               \
-                                                  not downloaded and (retries < 3):
-                                                downloaded = download(build_path, board,
-                                                                      connection["serial_port"],
-                                                                      printer, prompt,
-                                                                      keep_going_flag)
-                                                if not downloaded:
-                                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                                   u_report.EVENT_WARNING,
-                                                                   "unable to download, will" \
-                                                                   " retry...")
-                                                    retries += 1
-                                                    sleep(5)
-                                    if downloaded:
-                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                       u_report.EVENT_COMPLETE)
-                                        reporter.event(u_report.EVENT_TYPE_TEST,
-                                                       u_report.EVENT_START)
-                                        # Open the COM port to get debug output
-                                        serial_handle = u_utils.open_serial(connection["serial_port"],
-                                                                            115200,
-                                                                            printer,
-                                                                            prompt,
-                                                                            dtr_set_on=monitor_dtr_rts_on,
-                                                                            rts_set_on=monitor_dtr_rts_on)
-                                        if serial_handle is not None:
-                                            # Monitor progress
-                                            return_values.append(u_monitor.main(serial_handle,
-                                                                                u_monitor.CONNECTION_SERIAL,
-                                                                                RUN_GUARD_TIME_SECONDS,
-                                                                                RUN_INACTIVITY_TIME_SECONDS,
-                                                                                "\r", instance,
-                                                                                printer,
-                                                                                reporter,
-                                                                                test_report_handle,
-                                                                                keep_going_flag=keep_going_flag))
-                                            # Delays and flushes here to make sure
-                                            # that the serial port actually closes
-                                            # since we might need to re-open it for
-                                            # another download going around the loop
-                                            serial_handle.cancel_read()
-                                            sleep(1)
-                                            serial_handle.reset_input_buffer()
-                                            serial_handle.reset_output_buffer()
-                                            sleep(1)
-                                            serial_handle.close()
-                                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                           u_report.EVENT_COMPLETE,
-                                                           "serial port closed")
-                                            sleep(5)
-                                        else:
-                                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                           u_report.EVENT_FAILED,
-                                                           "unable to open serial port " +      \
-                                                           connection["serial_port"])
-                                        if return_values and return_values[-1] == 0:
-                                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                                           u_report.EVENT_COMPLETE)
-                                        else:
-                                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                                           u_report.EVENT_FAILED)
-                                    else:
-                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                       u_report.EVENT_FAILED,
-                                                       "unable to download to the target")
-                                if return_values:
-                                    return_value = 0
-                                    for item in return_values:
-                                        # If a return value goes negative then
-                                        # only count the negative values, i.e. the
-                                        # number of infrastructure failures
-                                        if (item < 0) and (return_value >= 0):
-                                            return_value = item
-                                        else:
-                                            if (((item > 0) and (return_value >= 0)) or  \
-                                                ((item < 0) and (return_value < 0))):
-                                                return_value += item
-                            else:
-                                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                               u_report.EVENT_FAILED,
-                                               "unable to lock a connection")
-                    else:
-                        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                       u_report.EVENT_FAILED,
-                                       "failed a build")
-                else:
+    if installed:
+        arduino_dir = os.path.join(u_utils.UBXLIB_DIR, ARDUINO_SUB_DIR)
+        library_path = os.path.join(os.getcwd(), LIBRARIES_SUB_DIR)
+        # Clear out any pre-built ubxlib library or rebuilds
+        # won't pick up changes
+        clear_prebuilt_library(os.path.join(library_path, LIBRARY_NAME),
+                                mcu, printer, prompt)
+        # Create the ubxlib Arduino library
+        if create_library(arduino_dir, toolchain,
+                            os.path.join(library_path, LIBRARY_NAME),
+                            LIBRARY_NAME_LIB_POSTFIX,
+                            clean, printer, prompt, keep_going_flag):
+            # Create the ubxlib Arduino test library
+            if create_library(arduino_dir, toolchain,
+                                os.path.join(library_path, LIBRARY_NAME),
+                                LIBRARY_NAME_TEST_POSTFIX,
+                                clean, printer, prompt, keep_going_flag):
+                # We now build both libraries with the test sketch and we also
+                # build the examples with the just the ubxlib Arduino library.
+                # Make a list of the sketches to build
+                sketch_paths.append(os.path.join(arduino_dir, TEST_SKETCH_SUB_PATH))
+                for root, _directories, files in os.walk(library_path):
+                    for file in files:
+                        if os.sep + "examples" + os.sep in root and file.endswith(".ino"):
+                            sketch_paths.append(os.path.join(root, file))
+                printer.string("{}{} thing(s) to build.".format(prompt, len(sketch_paths)))
+                # Build the sketches: note that the first build of the ubxlib
+                # Arduino library to a .a file will be copied back into the library
+                # directory for use in the following builds
+                build_dir = os.path.join(os.getcwd(), BUILD_SUBDIR)
+                for sketch_path in sketch_paths:
+                    build_start_time = time()
+                    build_path = build(build_dir, sketch_path, library_path, mcu, board, defines,
+                                        clean, printer, prompt, reporter, keep_going_flag)
+                    if not u_utils.keep_going(keep_going_flag, printer, prompt) or not build_path:
+                        break
+                    build_paths.append(build_path)
                     reporter.event(u_report.EVENT_TYPE_BUILD,
-                                   u_report.EVENT_FAILED,
-                                   "unable to build library, check debug log for details")
+                                    u_report.EVENT_PASSED,
+                                    "build {} of {} took {:.0f} second(s)". \
+                                    format(len(build_paths), len(sketch_paths),
+                                            time() - build_start_time))
+                if len(build_paths) == len(sketch_paths):
+                    # Download and run the builds
+                    with u_connection.Lock(connection, connection_lock,
+                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,
+                                            printer, prompt, keep_going_flag) as locked:
+                        if locked:
+                            for build_path in build_paths:
+                                # I have seen download failures occur if two
+                                # are initiated at the same time so lock the
+                                # platform for this
+                                downloaded = False
+                                with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
+                                                    "platform", printer, prompt,
+                                                    keep_going_flag) as locked_platform:
+                                    if locked_platform:
+                                        # Have seen this fail, so give it a few goes
+                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                        u_report.EVENT_START)
+                                        retries = 0
+                                        while u_utils.keep_going(keep_going_flag, printer,
+                                                                    prompt) and               \
+                                                not downloaded and (retries < 3):
+                                            downloaded = download(build_path, board,
+                                                                    connection["serial_port"],
+                                                                    printer, prompt,
+                                                                    keep_going_flag)
+                                            if not downloaded:
+                                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                                u_report.EVENT_WARNING,
+                                                                "unable to download, will" \
+                                                                " retry...")
+                                                retries += 1
+                                                sleep(5)
+                                if downloaded:
+                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                    u_report.EVENT_COMPLETE)
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                    u_report.EVENT_START)
+                                    # Open the COM port to get debug output
+                                    serial_handle = u_utils.open_serial(connection["serial_port"],
+                                                                        115200,
+                                                                        printer,
+                                                                        prompt,
+                                                                        dtr_set_on=monitor_dtr_rts_on,
+                                                                        rts_set_on=monitor_dtr_rts_on)
+                                    if serial_handle is not None:
+                                        # Monitor progress
+                                        return_values.append(u_monitor.main(serial_handle,
+                                                                            u_monitor.CONNECTION_SERIAL,
+                                                                            RUN_GUARD_TIME_SECONDS,
+                                                                            RUN_INACTIVITY_TIME_SECONDS,
+                                                                            "\r", instance,
+                                                                            printer,
+                                                                            reporter,
+                                                                            test_report_handle,
+                                                                            keep_going_flag=keep_going_flag))
+                                        # Delays and flushes here to make sure
+                                        # that the serial port actually closes
+                                        # since we might need to re-open it for
+                                        # another download going around the loop
+                                        serial_handle.cancel_read()
+                                        sleep(1)
+                                        serial_handle.reset_input_buffer()
+                                        serial_handle.reset_output_buffer()
+                                        sleep(1)
+                                        serial_handle.close()
+                                        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                                        u_report.EVENT_COMPLETE,
+                                                        "serial port closed")
+                                        sleep(5)
+                                    else:
+                                        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                                        u_report.EVENT_FAILED,
+                                                        "unable to open serial port " +      \
+                                                        connection["serial_port"])
+                                    if return_values and return_values[-1] == 0:
+                                        reporter.event(u_report.EVENT_TYPE_TEST,
+                                                        u_report.EVENT_COMPLETE)
+                                    else:
+                                        reporter.event(u_report.EVENT_TYPE_TEST,
+                                                        u_report.EVENT_FAILED)
+                                else:
+                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                    u_report.EVENT_FAILED,
+                                                    "unable to download to the target")
+                            if return_values:
+                                return_value = 0
+                                for item in return_values:
+                                    # If a return value goes negative then
+                                    # only count the negative values, i.e. the
+                                    # number of infrastructure failures
+                                    if (item < 0) and (return_value >= 0):
+                                        return_value = item
+                                    else:
+                                        if (((item > 0) and (return_value >= 0)) or  \
+                                            ((item < 0) and (return_value < 0))):
+                                            return_value += item
+                        else:
+                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                            u_report.EVENT_FAILED,
+                                            "unable to lock a connection")
+                else:
+                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                    u_report.EVENT_FAILED,
+                                    "failed a build")
             else:
-                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                               u_report.EVENT_FAILED,
-                               "unable to create library, check debug log for details")
+                reporter.event(u_report.EVENT_TYPE_BUILD,
+                                u_report.EVENT_FAILED,
+                                "unable to build library, check debug log for details")
         else:
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                           u_report.EVENT_FAILED,
-                           "unable to install tools, check debug log for details")
+                            u_report.EVENT_FAILED,
+                            "unable to create library, check debug log for details")
+    else:
+        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                        u_report.EVENT_FAILED,
+                        "unable to install tools, check debug log for details")
 
     return return_value

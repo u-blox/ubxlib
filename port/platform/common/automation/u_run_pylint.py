@@ -18,7 +18,7 @@ PYTHON_PATHS = ["port" + os.sep + "platform" + os.sep + "common" +  \
 # The minimum pylint rating to require
 MIN_RATING = 9
 
-def run(instance, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=None):
+def run(instance, ubxlib_dir, printer, reporter, keep_going_flag=None):
     '''Run Pylint'''
     return_value = 1
     got_pylint = False
@@ -29,8 +29,6 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=No
 
     # Print out what we've been told to do
     text = "running Pylint from ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     text += ", checking for minimum rating " + str(MIN_RATING)
     printer.string("{}{}.".format(prompt, text))
 

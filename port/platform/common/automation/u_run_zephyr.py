@@ -263,11 +263,11 @@ def download(connection, jlink_device_name, guard_time_seconds,
                                       build_dir, env, printer, prompt)
     return success
 
-def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter, keep_going_flag):
+def build(board, clean, defines, env, printer, prompt, reporter, keep_going_flag):
     '''Build using west'''
     call_list = []
     defines_text = ""
-    runner_dir = ubxlib_dir + os.sep + RUNNER_DIR
+    runner_dir = u_utils.UBXLIB_DIR + os.sep + RUNNER_DIR
     output_dir = os.getcwd() + os.sep + BUILD_SUBDIR
     build_dir = None
 
@@ -327,9 +327,8 @@ def build(board, clean, ubxlib_dir, defines, env, printer, prompt, reporter, kee
     return build_dir
 
 def run(instance, mcu, board, toolchain, connection, connection_lock,
-        platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle,
-        keep_going_flag=None):
+        platform_lock, misc_locks, clean, defines,
+        printer, reporter, test_report_handle, keep_going_flag=None):
     '''Build/run on Zephyr'''
     return_value = -1
     build_dir = None
@@ -357,124 +356,118 @@ def run(instance, mcu, board, toolchain, connection, connection_lock,
                 text += " \"" + define + "\""
             else:
                 text += ", \"" + define + "\""
-    if ubxlib_dir:
-        text += ", ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     printer.string("{}{}.".format(prompt, text))
 
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "Zephyr")
-    # Switch to the working directory
-    with u_utils.ChangeDir(working_dir):
-        # Check that everything we need is installed
-        # and configured
+    # Check that everything we need is installed
+    # and configured
+    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+        check_installation(TOOLS_LIST, printer, prompt):
+        # Set up the environment variables for Zephyr
+        returned_env = set_env(printer, prompt)
         if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-           check_installation(TOOLS_LIST, printer, prompt):
-            # Set up the environment variables for Zephyr
-            returned_env = set_env(printer, prompt)
-            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-               returned_env:
-                # The west tools need to use the environment
-                # configured above.
-                print_env(returned_env, printer, prompt)
-                # Note that Zephyr brings in its own
-                # copy of Unity so there is no need to
-                # fetch it here.
-                if board:
-                    # Do the build
-                    build_start_time = time()
-                    build_dir = build(board, clean, ubxlib_dir, defines,
-                                      returned_env, printer, prompt, reporter,
-                                      keep_going_flag)
-                    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                       build_dir:
-                        # Build succeeded, need to lock some things to do the download
-                        reporter.event(u_report.EVENT_TYPE_BUILD,
-                                       u_report.EVENT_PASSED,
-                                       "build took {:.0f} second(s)".format(time() -
-                                                                            build_start_time))
-                        # Do the download
-                        with u_connection.Lock(connection, connection_lock,
-                                               CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                               printer, prompt,
-                                               keep_going_flag) as locked_connection:
-                            if locked_connection:
-                                # Get the device name for JLink
-                                jlink_device_name = jlink_device(mcu)
-                                if not jlink_device_name:
-                                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                                   u_report.EVENT_WARNING,
-                                                   "MCU not found in JLink devices")
-                                # Do the download
-                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_START)
-                                retries = 0
-                                downloaded = False
-                                while u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                                      not downloaded and (retries < 3):
-                                    downloaded = download(connection, jlink_device_name,
-                                                          DOWNLOAD_GUARD_TIME_SECONDS,
-                                                          build_dir, returned_env, printer, prompt)
-                                    if not downloaded:
-                                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                       u_report.EVENT_WARNING,
-                                                       "unable to download, will retry...")
-                                        retries += 1
-                                        sleep(5)
-                                if downloaded:
-                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                   u_report.EVENT_COMPLETE)
-                                    # Now the target can be reset
-                                    u_utils.reset_nrf_target(connection,
-                                                             printer, prompt)
-                                    reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_START)
-
-                                    with URttReader(jlink_device(mcu),
-                                                    jlink_serial=connection["debugger"],
-                                                    printer=printer,
-                                                    prompt=prompt) as rtt_reader:
-                                        return_value = u_monitor.main(rtt_reader,
-                                                                      u_monitor.CONNECTION_RTT,
-                                                                      RUN_GUARD_TIME_SECONDS,
-                                                                      RUN_INACTIVITY_TIME_SECONDS,
-                                                                      "\n", instance, printer,
-                                                                      reporter,
-                                                                      test_report_handle,
-                                                                      keep_going_flag=keep_going_flag)
-                                    if return_value == 0:
-                                        reporter.event(u_report.EVENT_TYPE_TEST,
-                                                       u_report.EVENT_COMPLETE)
-                                    else:
-                                        reporter.event(u_report.EVENT_TYPE_TEST,
-                                                       u_report.EVENT_FAILED)
-                                else:
-                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                                   u_report.EVENT_FAILED,
-                                                   "check debug log for details")
-                            else:
+            returned_env:
+            # The west tools need to use the environment
+            # configured above.
+            print_env(returned_env, printer, prompt)
+            # Note that Zephyr brings in its own
+            # copy of Unity so there is no need to
+            # fetch it here.
+            if board:
+                # Do the build
+                build_start_time = time()
+                build_dir = build(board, clean, defines,
+                                    returned_env, printer, prompt, reporter,
+                                    keep_going_flag)
+                if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                    build_dir:
+                    # Build succeeded, need to lock some things to do the download
+                    reporter.event(u_report.EVENT_TYPE_BUILD,
+                                    u_report.EVENT_PASSED,
+                                    "build took {:.0f} second(s)".format(time() -
+                                                                        build_start_time))
+                    # Do the download
+                    with u_connection.Lock(connection, connection_lock,
+                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,
+                                            printer, prompt,
+                                            keep_going_flag) as locked_connection:
+                        if locked_connection:
+                            # Get the device name for JLink
+                            jlink_device_name = jlink_device(mcu)
+                            if not jlink_device_name:
                                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                               u_report.EVENT_FAILED,
-                                               "unable to lock a connection")
-                    else:
-                        return_value = 1
-                        reporter.event(u_report.EVENT_TYPE_BUILD,
-                                       u_report.EVENT_FAILED,
-                                       "check debug log for details")
+                                                u_report.EVENT_WARNING,
+                                                "MCU not found in JLink devices")
+                            # Do the download
+                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                            u_report.EVENT_START)
+                            retries = 0
+                            downloaded = False
+                            while u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                                    not downloaded and (retries < 3):
+                                downloaded = download(connection, jlink_device_name,
+                                                        DOWNLOAD_GUARD_TIME_SECONDS,
+                                                        build_dir, returned_env, printer, prompt)
+                                if not downloaded:
+                                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                    u_report.EVENT_WARNING,
+                                                    "unable to download, will retry...")
+                                    retries += 1
+                                    sleep(5)
+                            if downloaded:
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                u_report.EVENT_COMPLETE)
+                                # Now the target can be reset
+                                u_utils.reset_nrf_target(connection,
+                                                            printer, prompt)
+                                reporter.event(u_report.EVENT_TYPE_TEST,
+                                                u_report.EVENT_START)
+
+                                with URttReader(jlink_device(mcu),
+                                                jlink_serial=connection["debugger"],
+                                                printer=printer,
+                                                prompt=prompt) as rtt_reader:
+                                    return_value = u_monitor.main(rtt_reader,
+                                                                    u_monitor.CONNECTION_RTT,
+                                                                    RUN_GUARD_TIME_SECONDS,
+                                                                    RUN_INACTIVITY_TIME_SECONDS,
+                                                                    "\n", instance, printer,
+                                                                    reporter,
+                                                                    test_report_handle,
+                                                                    keep_going_flag=keep_going_flag)
+                                if return_value == 0:
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                    u_report.EVENT_COMPLETE)
+                                else:
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                    u_report.EVENT_FAILED)
+                            else:
+                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                                u_report.EVENT_FAILED,
+                                                "check debug log for details")
+                        else:
+                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                            u_report.EVENT_FAILED,
+                                            "unable to lock a connection")
                 else:
                     return_value = 1
-                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                   u_report.EVENT_FAILED,
-                                   "unable to find overlay file")
+                    reporter.event(u_report.EVENT_TYPE_BUILD,
+                                    u_report.EVENT_FAILED,
+                                    "check debug log for details")
             else:
+                return_value = 1
                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                               u_report.EVENT_FAILED,
-                               "environment setup failed")
+                                u_report.EVENT_FAILED,
+                                "unable to find overlay file")
         else:
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                           u_report.EVENT_FAILED,
-                           "there is a problem with the tools installation for Zephyr")
+                            u_report.EVENT_FAILED,
+                            "environment setup failed")
+    else:
+        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                        u_report.EVENT_FAILED,
+                        "there is a problem with the tools installation for Zephyr")
 
     return return_value

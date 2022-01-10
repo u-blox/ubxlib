@@ -123,6 +123,9 @@ MONITOR_DTR_RTS_OFF_MARKER = "U_CFG_MONITOR_DTR_RTS_OFF"
 # and ".exe" for Windows
 EXE_EXT = pick_by_os(linux="", other=".exe")
 
+# The ubxlib root directory
+UBXLIB_DIR = os.path.abspath(os.path.dirname(__file__) + "/../../../..")
+
 def safe_print(string):
     '''Print a string avoiding pesky code-page decode errors'''
     try:

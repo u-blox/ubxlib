@@ -218,7 +218,7 @@ def get_file_list(ubxlib_dir, lint_dirs, use_stubs):
 
     return file_list
 
-def run(instance, defines, ubxlib_dir, working_dir, printer, reporter,
+def run(instance, defines, ubxlib_dir, printer, reporter,
         keep_going_flag=None, unity_dir=None):
     '''Run Lint'''
     return_value = 1
@@ -229,8 +229,6 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter,
 
     # Print out what we've been told to do
     text = "running Lint from ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     if unity_dir:
         text += ", using Unity from \"" + unity_dir + "\""
     printer.string("{}{}.".format(prompt, text))
@@ -238,88 +236,84 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter,
     reporter.event(u_report.EVENT_TYPE_CHECK,
                    u_report.EVENT_START,
                    "Lint")
-    # Switch to the working directory
-    with u_utils.ChangeDir(working_dir):
-        # Check that everything we need is installed
+    # Check that everything we need is installed
+    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+       check_installation(TOOLS_LIST, COMPILER_INCLUDE_DIRS,
+                          printer, prompt):
+        # Fetch Unity, if necessary
         if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-           check_installation(TOOLS_LIST, COMPILER_INCLUDE_DIRS,
-                              printer, prompt):
-            # Fetch Unity, if necessary
+            not unity_dir:
+            if u_utils.fetch_repo(u_utils.UNITY_URL,
+                                  u_utils.UNITY_SUBDIR,
+                                  None, printer, prompt,
+                                  submodule_init=False):
+                unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
+        if unity_dir:
+            # Create the local Lint configuration files
             if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                not unity_dir:
-                if u_utils.fetch_repo(u_utils.UNITY_URL,
-                                      u_utils.UNITY_SUBDIR,
-                                      None, printer, prompt,
-                                      submodule_init=False):
-                    unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
-            if unity_dir:
-                # Create the local Lint configuration files
-                if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                   create_lint_config(ubxlib_dir + os.sep +
-                                      LINT_PLATFORM_PATH,
-                                      defines, printer, prompt, keep_going_flag):
-                    # Determine if "U_CFG_LINT_USE_STUBS" is in the list of
-                    # compiler options
-                    use_stubs = False
+               create_lint_config(ubxlib_dir + os.sep +
+                                  LINT_PLATFORM_PATH,
+                                  defines, printer, prompt, keep_going_flag):
+                # Determine if "U_CFG_LINT_USE_STUBS" is in the list of
+                # compiler options
+                use_stubs = False
+                for item in defines:
+                    if item == "U_CFG_LINT_USE_STUBS":
+                        use_stubs = True
+                        break
+                # Get the file list
+                file_list = get_file_list(ubxlib_dir, LINT_DIRS,
+                                          use_stubs)
+                # Assemble the call list
+                call_list.append("flexelint")
+                if defines:
                     for item in defines:
-                        if item == "U_CFG_LINT_USE_STUBS":
-                            use_stubs = True
-                            break
-                    # Get the file list
-                    file_list = get_file_list(ubxlib_dir, LINT_DIRS,
-                                              use_stubs)
-
-                    # Assemble the call list
-                    call_list.append("flexelint")
-                    if defines:
-                        for item in defines:
-                            call_list.append("-d" + item)
-                    for item in COMPILER_INCLUDE_DIRS:
-                        call_list.append("-i\"" + item + "\"")
-                    call_list.append("-i\"" + unity_dir + os.sep + "src\"")
-                    for item in UBXLIB_INCLUDE_DIRS:
-                        call_list.append("-i\"" + ubxlib_dir + os.sep + item + "\"")
-                    for item in LINT_PLATFORM_CONFIG_FILES:
-                        call_list.append(ubxlib_dir + os.sep + LINT_PLATFORM_PATH +
-                                         os.sep + item)
-                    call_list.extend(file_list)
-
-                    # Print what we're gonna do
-                    tmp = ""
-                    for item in call_list:
-                        tmp += " " + item
-                    printer.string("{}in directory {} calling{}".         \
-                                   format(prompt, os.getcwd(), tmp))
-                    try:
-                        text = subprocess.check_output(u_utils.subprocess_osify(call_list),
-                                                       stderr=subprocess.STDOUT,
-                                                       shell=True) # Jenkins hangs without this
-                        reporter.event(u_report.EVENT_TYPE_CHECK,
-                                       u_report.EVENT_PASSED)
-                        for line in text.splitlines():
-                            printer.string("{}{}".format(prompt, line.decode()))
-                        return_value = 0
-                    except subprocess.CalledProcessError as error:
-                        reporter.event(u_report.EVENT_TYPE_CHECK,
-                                       u_report.EVENT_FAILED)
-                        printer.string("{}Lint returned error {}:".
-                                       format(prompt, error.returncode))
-                        for line in error.output.splitlines():
-                            line = line.strip().decode()
-                            if line:
-                                reporter.event_extra_information(line)
-                                printer.string("{}{}".format(prompt, line))
-                else:
-                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                   u_report.EVENT_FAILED,
-                                   "could not create Lint config")
+                        call_list.append("-d" + item)
+                for item in COMPILER_INCLUDE_DIRS:
+                    call_list.append("-i\"" + item + "\"")
+                call_list.append("-i\"" + unity_dir + os.sep + "src\"")
+                for item in UBXLIB_INCLUDE_DIRS:
+                    call_list.append("-i\"" + ubxlib_dir + os.sep + item + "\"")
+                for item in LINT_PLATFORM_CONFIG_FILES:
+                    call_list.append(ubxlib_dir + os.sep + LINT_PLATFORM_PATH +
+                                     os.sep + item)
+                call_list.extend(file_list)
+                # Print what we're gonna do
+                tmp = ""
+                for item in call_list:
+                    tmp += " " + item
+                printer.string("{}in directory {} calling{}".         \
+                               format(prompt, os.getcwd(), tmp))
+                try:
+                    text = subprocess.check_output(u_utils.subprocess_osify(call_list),
+                                                   stderr=subprocess.STDOUT,
+                                                   shell=True) # Jenkins hangs without this
+                    reporter.event(u_report.EVENT_TYPE_CHECK,
+                                   u_report.EVENT_PASSED)
+                    for line in text.splitlines():
+                        printer.string("{}{}".format(prompt, line.decode()))
+                    return_value = 0
+                except subprocess.CalledProcessError as error:
+                    reporter.event(u_report.EVENT_TYPE_CHECK,
+                                   u_report.EVENT_FAILED)
+                    printer.string("{}Lint returned error {}:".
+                                   format(prompt, error.returncode))
+                    for line in error.output.splitlines():
+                        line = line.strip().decode()
+                        if line:
+                            reporter.event_extra_information(line)
+                            printer.string("{}{}".format(prompt, line))
             else:
                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                u_report.EVENT_FAILED,
-                               "unable to fetch Unity")
+                               "could not create Lint config")
         else:
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                            u_report.EVENT_FAILED,
-                           "there is a problem with the Lint installation")
+                           "unable to fetch Unity")
+    else:
+        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                       u_report.EVENT_FAILED,
+                       "there is a problem with the Lint installation")
 
     return return_value

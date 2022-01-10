@@ -140,13 +140,13 @@ def download(connection, guard_time_seconds, hex_path, printer, prompt):
     # Call it
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt)
 
-def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
+def build_gcc(clean, build_subdir, unity_dir,
               defines, printer, prompt, reporter, keep_going_flag):
     '''Build on GCC'''
     call_list = []
     hex_file_path = None
 
-    makefile = ubxlib_dir + os.sep + RUNNER_DIR_GCC + os.sep + "Makefile"
+    makefile = u_utils.UBXLIB_DIR + os.sep + RUNNER_DIR_GCC + os.sep + "Makefile"
     outputdir = os.getcwd() + os.sep + build_subdir
 
     # The Nordic Makefile.common that is included by our Makefile
@@ -207,8 +207,8 @@ def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
     return hex_file_path
 
 def run(instance, mcu, toolchain, connection, connection_lock,
-        platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle,
+        platform_lock, misc_locks, clean, defines,
+        printer, reporter, test_report_handle,
         keep_going_flag=None, unity_dir=None):
     '''Build/run on nRF5'''
     return_value = -1
@@ -235,10 +235,6 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                 text += " \"" + define + "\""
             else:
                 text += ", \"" + define + "\""
-    if ubxlib_dir:
-        text += ", ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     if unity_dir:
         text += ", using Unity from \"" + unity_dir + "\""
     printer.string("{}{}.".format(prompt, text))
@@ -246,9 +242,10 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "nRF5SDK/" + toolchain)
-    # Switch to the working directory
-    with u_utils.ChangeDir(working_dir):
-        # Check that everything we need is installed
+    # Check that everything we need is installed
+    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+        check_installation(toolchain, TOOLS_LIST, printer, prompt):
+        # Fetch Unity, if necessary
         if u_utils.keep_going(keep_going_flag, printer, prompt) and \
            check_installation(toolchain, TOOLS_LIST, printer, prompt):
             # Fetch Unity, if necessary
@@ -265,7 +262,7 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                 if u_utils.keep_going(keep_going_flag, printer, prompt):
                     if toolchain.lower() == "gcc":
                         build_subdir_gcc = BUILD_SUBDIR_PREFIX_GCC + instance_text.replace(".", "_")
-                        hex_file_path = build_gcc(clean, build_subdir_gcc, ubxlib_dir, unity_dir,
+                        hex_file_path = build_gcc(clean, build_subdir_gcc, unity_dir,
                                                   defines, printer, prompt, reporter, keep_going_flag)
                 if hex_file_path:
                     # Build succeeded, need to lock a connection to do the download
@@ -297,36 +294,36 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                     sleep(5)
                             if downloaded:
                                 reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_COMPLETE)
+                                                u_report.EVENT_COMPLETE)
 
                                 # Now the target can be reset
                                 u_utils.reset_nrf_target(connection,
-                                                         printer, prompt)
+                                                            printer, prompt)
                                 reporter.event(u_report.EVENT_TYPE_TEST,
-                                               u_report.EVENT_START)
+                                                u_report.EVENT_START)
 
                                 with URttReader("NRF52840_XXAA",
                                                 jlink_serial=connection["debugger"],
                                                 printer=printer,
                                                 prompt=prompt) as rtt_reader:
                                     return_value = u_monitor.main(rtt_reader,
-                                                                  u_monitor.CONNECTION_RTT,
-                                                                  RUN_GUARD_TIME_SECONDS,
-                                                                  RUN_INACTIVITY_TIME_SECONDS,
-                                                                  "\n", instance, printer,
-                                                                  reporter,
-                                                                  test_report_handle)
+                                                                    u_monitor.CONNECTION_RTT,
+                                                                    RUN_GUARD_TIME_SECONDS,
+                                                                    RUN_INACTIVITY_TIME_SECONDS,
+                                                                    "\n", instance, printer,
+                                                                    reporter,
+                                                                    test_report_handle)
 
                                 if return_value == 0:
                                     reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_COMPLETE)
+                                                    u_report.EVENT_COMPLETE)
                                 else:
                                     reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_FAILED)
+                                                    u_report.EVENT_FAILED)
                             else:
                                 reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_FAILED,
-                                               "check debug log for details")
+                                                u_report.EVENT_FAILED,
+                                                "check debug log for details")
                             # Wait for a short while before giving
                             # the connection lock away to make sure
                             # that everything really has shut down
@@ -334,20 +331,20 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                             sleep(5)
                         else:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                           u_report.EVENT_FAILED,
-                                           "unable to lock a connection")
-                else:
-                    return_value = 1
-                    reporter.event(u_report.EVENT_TYPE_BUILD,
-                                   u_report.EVENT_FAILED,
-                                   "check debug log for details")
+                                            u_report.EVENT_FAILED,
+                                            "unable to lock a connection")
             else:
-                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                               u_report.EVENT_FAILED,
-                               "unable to fetch Unity")
+                return_value = 1
+                reporter.event(u_report.EVENT_TYPE_BUILD,
+                                u_report.EVENT_FAILED,
+                                "check debug log for details")
         else:
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                           u_report.EVENT_FAILED,
-                           "there is a problem with the tools installation for nRF5 SDK")
+                            u_report.EVENT_FAILED,
+                            "unable to fetch Unity")
+    else:
+        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                        u_report.EVENT_FAILED,
+                        "there is a problem with the tools installation for nRF5 SDK")
 
     return return_value

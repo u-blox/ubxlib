@@ -120,13 +120,13 @@ def set_up_environment(printer, prompt, reporter, keep_going_flag):
                        "{} failed".format(" ".join(MSVC_SETUP_BATCH_FILE)))
     return returned_env
 
-def build(clean, ubxlib_dir, unity_dir, defines, env, printer, prompt,
+def build(clean, unity_dir, defines, env, printer, prompt,
           reporter, keep_going_flag):
     '''Build using MSVC'''
     defines_text = ""
     call_list = []
     output_dir = os.getcwd() + os.sep + BUILD_SUBDIR
-    cmakelist_dir = ubxlib_dir + os.sep + RUNNER_DIR
+    cmakelist_dir = u_utils.UBXLIB_DIR + os.sep + RUNNER_DIR
     exe_file_path = None
 
     # Clear the output folder if we're not just running
@@ -193,9 +193,8 @@ def build(clean, ubxlib_dir, unity_dir, defines, env, printer, prompt,
     return exe_file_path
 
 def run(instance, mcu, toolchain, connection, connection_lock, platform_lock,
-        misc_locks, clean, defines, ubxlib_dir, working_dir,
-        printer, reporter, test_report_handle, keep_going_flag=None,
-        unity_dir=None):
+        misc_locks, clean, defines, printer, reporter, test_report_handle,
+        keep_going_flag=None, unity_dir=None):
     '''Build/run on Windows'''
     return_value = -1
     exe_file = None
@@ -227,10 +226,6 @@ def run(instance, mcu, toolchain, connection, connection_lock, platform_lock,
                 text += " \"" + define + "\""
             else:
                 text += ", \"" + define + "\""
-    if ubxlib_dir:
-        text += ", ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     if unity_dir:
         text += ", using Unity from \"" + unity_dir + "\""
     printer.string("{}{}.".format(prompt, text))
@@ -238,82 +233,80 @@ def run(instance, mcu, toolchain, connection, connection_lock, platform_lock,
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "Windows")
-    # Switch to the working directory
-    with u_utils.ChangeDir(working_dir):
-        # Set up the environment
-        returned_env = set_up_environment(printer, prompt, reporter, keep_going_flag)
-        if returned_env:
-            # When building we must use the set of environment variables
-            # returned above.
-            print_env(returned_env, printer, prompt)
-            # Check that everything we need is installed
-            # and configured
+    # Set up the environment
+    returned_env = set_up_environment(printer, prompt, reporter, keep_going_flag)
+    if returned_env:
+        # When building we must use the set of environment variables
+        # returned above.
+        print_env(returned_env, printer, prompt)
+        # Check that everything we need is installed
+        # and configured
+        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+            check_installation(TOOLS_LIST, returned_env, printer, prompt):
+            # Fetch Unity, if necessary
             if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-               check_installation(TOOLS_LIST, returned_env, printer, prompt):
-                # Fetch Unity, if necessary
+                not unity_dir:
+                if u_utils.fetch_repo(u_utils.UNITY_URL,
+                                        u_utils.UNITY_SUBDIR,
+                                        None, printer, prompt,
+                                        submodule_init=False):
+                    unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
+            if unity_dir:
+                # Do the build
+                build_start_time = time()
+                exe_file = build(clean, unity_dir, defines,
+                                    returned_env, printer, prompt, reporter,
+                                    keep_going_flag)
                 if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                    not unity_dir:
-                    if u_utils.fetch_repo(u_utils.UNITY_URL,
-                                          u_utils.UNITY_SUBDIR,
-                                          None, printer, prompt,
-                                          submodule_init=False):
-                        unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
-                if unity_dir:
-                    # Do the build
-                    build_start_time = time()
-                    exe_file = build(clean, ubxlib_dir, unity_dir, defines,
-                                     returned_env, printer, prompt, reporter,
-                                     keep_going_flag)
-                    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                       exe_file:
-                        # Build succeeded, need to lock some things before we can run it
-                        reporter.event(u_report.EVENT_TYPE_BUILD,
-                                       u_report.EVENT_PASSED,
-                                       "build took {:.0f} second(s)".format(time() -
-                                                                            build_start_time))
-                        # Lock the connection in order to run
-                        with u_connection.Lock(connection, connection_lock,
-                                               CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                               printer, prompt,
-                                               keep_going_flag) as locked_connection:
-                            if locked_connection:
-                                # Start the .exe and monitor what it spits out
-                                with u_utils.ExeRun([exe_file], printer, prompt) as process:
-                                    return_value = u_monitor.main(process.stdout,
-                                                                  u_monitor.CONNECTION_PIPE,
-                                                                  RUN_GUARD_TIME_SECONDS,
-                                                                  RUN_INACTIVITY_TIME_SECONDS,
-                                                                  None, instance, printer,
-                                                                  reporter,
-                                                                  test_report_handle,
-                                                                  keep_going_flag=keep_going_flag)
-                                    if return_value == 0:
-                                        reporter.event(u_report.EVENT_TYPE_TEST,
-                                                       u_report.EVENT_COMPLETE)
-                                    else:
-                                        reporter.event(u_report.EVENT_TYPE_TEST,
-                                                       u_report.EVENT_FAILED)
-                            else:
-                                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                               u_report.EVENT_FAILED,
-                                               "unable to lock a connection")
-                    else:
-                        return_value = 1
-                        reporter.event(u_report.EVENT_TYPE_BUILD,
-                                       u_report.EVENT_FAILED,
-                                       "check debug log for details")
+                    exe_file:
+                    # Build succeeded, need to lock some things before we can run it
+                    reporter.event(u_report.EVENT_TYPE_BUILD,
+                                    u_report.EVENT_PASSED,
+                                    "build took {:.0f} second(s)".format(time() -
+                                                                        build_start_time))
+                    # Lock the connection in order to run
+                    with u_connection.Lock(connection, connection_lock,
+                                            CONNECTION_LOCK_GUARD_TIME_SECONDS,
+                                            printer, prompt,
+                                            keep_going_flag) as locked_connection:
+                        if locked_connection:
+                            # Start the .exe and monitor what it spits out
+                            with u_utils.ExeRun([exe_file], printer, prompt) as process:
+                                return_value = u_monitor.main(process.stdout,
+                                                                u_monitor.CONNECTION_PIPE,
+                                                                RUN_GUARD_TIME_SECONDS,
+                                                                RUN_INACTIVITY_TIME_SECONDS,
+                                                                None, instance, printer,
+                                                                reporter,
+                                                                test_report_handle,
+                                                                keep_going_flag=keep_going_flag)
+                                if return_value == 0:
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                    u_report.EVENT_COMPLETE)
+                                else:
+                                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                                    u_report.EVENT_FAILED)
+                        else:
+                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                            u_report.EVENT_FAILED,
+                                            "unable to lock a connection")
                 else:
-                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                   u_report.EVENT_FAILED,
-                                   "unable to fetch Unity")
+                    return_value = 1
+                    reporter.event(u_report.EVENT_TYPE_BUILD,
+                                    u_report.EVENT_FAILED,
+                                    "check debug log for details")
             else:
                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                               u_report.EVENT_FAILED,
-                               "there is a problem with the tools installation for Windows")
+                                u_report.EVENT_FAILED,
+                                "unable to fetch Unity")
         else:
-            return_value = 1
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                           u_report.EVENT_FAILED,
-                           "unable to set up environment")
+                            u_report.EVENT_FAILED,
+                            "there is a problem with the tools installation for Windows")
+    else:
+        return_value = 1
+        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                        u_report.EVENT_FAILED,
+                        "unable to set up environment")
 
     return return_value
