@@ -41,7 +41,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 |                         |              |**MCU**|||||
 |                         |              |ST-Micro STM32F4|Espressif ESP32<br />|Nordic nRF52|Nordic nRF53|win32|
 |                         |              |**Toolchain**|||||
-|                         |              |Cube|ESP-IDF<br />Arduino-ESP32|GCC<br />SES (nRF5)<br />nRF Connect|nRF Connect|MSVC|
+|                         |              |Cube|ESP-IDF<br />Arduino-ESP32|GCC<br />nRF Connect|nRF Connect|MSVC|
 |                         |              |**RTOS/SDK**|||||
 |                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|Windows|
 | **`ubxlib` peripherals**   |**API**       |||||
