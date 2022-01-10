@@ -176,6 +176,8 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
 
     # Enable ccache to speed up rebuild
     env["IDF_CCACHE_ENABLE"] = "1"
+    # Disable git submodule check since this slows down the build process a lot
+    env["IDF_SKIP_CHECK_SUBMODULES"] = "1"
 
     if os.path.exists(build_dir):
         printer.string("{}building code...".format(prompt))
