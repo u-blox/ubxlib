@@ -87,6 +87,13 @@ def flash(ctx, serial_port, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUT
     ctx.run(f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
             f'-p {serial_port} flash')
 
+@task(
+    pre=[check_installation],
+)
+def terminal(ctx):
+    """Open an ESP-IDF SDK terminal"""
+    ctx.run(f'{ctx.esp_idf_pre_command} {ctx.config.run.shell}', pty=True)
+
 
 @task(
     pre=[check_installation],

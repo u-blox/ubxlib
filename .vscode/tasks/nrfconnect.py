@@ -103,3 +103,10 @@ def log(ctx, mcu="NRF5340_XXAA_APP", debugger_serial=None):
             if data:
                 sys.stdout.write("".join(map(chr, data)))
                 sys.stdout.flush()
+
+@task(
+    pre=[check_installation],
+)
+def terminal(ctx):
+    """Open a nRFconnect SDK terminal"""
+    ctx.run(f'{ctx.zephyr_pre_command}{ctx.config.run.shell}', pty=True)
