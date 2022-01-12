@@ -68,8 +68,8 @@ int32_t uBase64Encode(const char *pBinary, size_t binaryLengthBytes,
     // Determine the required length of decode buffer by calling
     // base64() with NULL
     //lint -e(712) Suppress loss of precision
-    base64(pBinary, binaryLengthBytes, (int *) & (bytesEncoded),
-           NULL); // *NOPAD* stop AStyle offsetting &
+    base64(pBinary, binaryLengthBytes,
+           (int *) &(bytesEncoded), NULL); // *NOPAD* stop AStyle offsetting &
     if ((pBase64 != NULL) && ((int32_t) base64LengthBytes >= bytesEncoded)) {
         // Now do the encode
         //lint -e(712) Suppress loss of precision

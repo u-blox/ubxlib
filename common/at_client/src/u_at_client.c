@@ -614,9 +614,9 @@ static void printAt(const uAtClientInstance_t *pClient,
     if (pClient->printAtOn) {
         for (size_t x = 0; x < length; x++) {
             c = *pAt++;
-            if (!isprint((int32_t) (uint8_t) c)) {
+            if (!isprint((int32_t) c)) {
 #ifdef U_AT_CLIENT_PRINT_CONTROL_CHARACTERS
-                uPortLog("[%02x]", (uint8_t) c);
+                uPortLog("[%02x]", c);
 #else
                 if (c == '\r') {
                     // Convert \r\n into \n
@@ -625,7 +625,7 @@ static void printAt(const uAtClientInstance_t *pClient,
                     // Do nothing
                 } else {
                     // Print the hex
-                    uPortLog("[%02x]", (uint8_t) c);
+                    uPortLog("[%02x]", c);
                 }
 #endif
             } else {

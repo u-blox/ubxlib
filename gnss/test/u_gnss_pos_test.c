@@ -257,7 +257,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
-        uPortLog("U_GNSS_POS_TEST: testing position establlishment on transport %s...\n",
+        uPortLog("U_GNSS_POS_TEST: testing position establishment on transport %s...\n",
                  pGnssTestPrivateTransportTypeName(transportTypes[x]));
         // Do the standard preamble
         U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,

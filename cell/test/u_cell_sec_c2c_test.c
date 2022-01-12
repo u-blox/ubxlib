@@ -545,7 +545,7 @@ static void print(const char *pStr, size_t length)
 
     for (size_t x = 0; x < length; x++) {
         c = *pStr++;
-        if (!isprint((int32_t) (uint8_t) c)) {
+        if (!isprint((int32_t) c)) {
             // Print the hex
             uPortLog("[%02x]", (unsigned char) c);
         } else {

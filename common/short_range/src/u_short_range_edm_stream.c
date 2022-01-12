@@ -210,7 +210,7 @@ static inline void dumpAtData(const char *pBuffer, size_t length)
 {
     for (int i = 0; i < length; i++) {
         char ch = pBuffer[i];
-        if (isprint((int32_t) (uint8_t) ch)) {
+        if (isprint((int32_t) ch)) {
             uPortLog("%c", ch);
         } else if (ch == '\r') {
             uPortLog("\\r", ch);

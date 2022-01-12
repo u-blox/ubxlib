@@ -310,7 +310,7 @@ static int32_t setSequence(const uCellSecTlsContext_t *pContext,
                     // a printable ASCII string
                     errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
                     for (size_t x = 0; (x < size) && good; x++) {
-                        good = isprint((int32_t) (uint8_t) *(pBinary + x)) != 0; // *NOPAD*
+                        good = isprint((int32_t) *(pBinary + x)) != 0; // *NOPAD*
                     }
                     if (good) {
                         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;

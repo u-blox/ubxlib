@@ -19,6 +19,11 @@ https://code.visualstudio.com/
 
 ...and, in Visual Studio Code, install the extension `CMake Tools`.
 
+# IMPORTANT Note About char Types
+In Microsoft Visual C++ `char` types are signed, which can lead to unexpected behaviours e.g. a character value which contains 0xaa, when compared with the literal value 0xaa, will return false; the character value is interpreted as being negative because it has the top bit set, while the literal value 0xaa is positive.  To avoid this problem you should use the command-line switch [/J](https://docs.microsoft.com/en-us/cpp/build/reference/j-default-char-type-is-unsigned) with the compiler or, alternatively, pass the conditional compilation flag `_CHAR_UNSIGNED` to the compiler (see below for how to do this).
+
+This is done automatically for the `runner` build.
+
 # SDK Usage
 Before you can compile code under MSVC you need to invoke a specific command enviroment.  To do this, open a fresh command prompt and run a command of the following form:
 
@@ -28,7 +33,7 @@ Before you can compile code under MSVC you need to invoke a specific command env
 
 You may override or provide conditional compilation flags without modifying the build file.  Do this by adding a `U_FLAGS` environment variable, e.g.:
 
-`U_FLAGS=-U_CFG_APP_CELL_UART=3 -DU_CFG_TEST_CELL_MODULE_TYPE=U_CELL_MODULE_TYPE_SARA_R5`
+`U_FLAGS=-D_CHAR_UNSIGNED -DU_CFG_APP_CELL_UART=3 -DU_CFG_TEST_CELL_MODULE_TYPE=U_CELL_MODULE_TYPE_SARA_R5`
 
 You may now build the code at that command prompt; create a build directory for yourself and, for instance, to build the `runner` build, you would enter `cmake -G <generator> <path to the runner directory>` to create the build metadata with the `<generator>` of your choice (but see the section that follows for the easiest way to proceed).
 
