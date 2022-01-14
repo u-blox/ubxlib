@@ -48,12 +48,16 @@ def get_cflags_from_u_flags_yml(cfg_dir, builder_name, target, store_new_hash=Tr
         'cflags' : cflags
     }
 
-def u_flags_to_cflags(u_flag_str):
+def u_flags_to_cflags(u_flags):
     """Helper function to convert the following string:
          "U_VARIABLE1=1 U_VARIABLE2=foo"
        to:
          "-DU_VARIABLE1=1 -DU_VARIABLE2=foo"
     """
-    u_flag_list = u_flag_str.split()
+    if isinstance(u_flags, str):
+        u_flag_list = u_flags.split()
+    else:
+        u_flag_list = u_flags
     cflags = [f"-D{u_flag}" for u_flag in u_flag_list]
+
     return " ".join(cflags)

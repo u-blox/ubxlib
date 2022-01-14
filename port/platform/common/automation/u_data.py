@@ -329,6 +329,41 @@ def get_defines_for_instance(database, instance):
         if instance == row["instance"]:
             defines = row["defines"]
 
+    if not defines:
+        defines = []
+
+    # If there is a cellular module on this instance, add its
+    # name to the defines list
+    cellular_module_name = get_cellular_module_for_instance(database, instance)
+    if cellular_module_name:
+        defines.append("U_CFG_TEST_CELL_MODULE_TYPE=" + cellular_module_name)
+
+    # If there is a short-range module on this instance, add its
+    # name to the defines list
+    short_range_module_name = get_short_range_module_for_instance(database, instance)
+    if short_range_module_name:
+        defines.append("U_CFG_TEST_SHORT_RANGE_MODULE_TYPE=" + short_range_module_name)
+
+    # If there is a GNSS module on this instance, add its
+    # name to the defines list
+    gnss_module_name = get_gnss_module_for_instance(database, instance)
+    if gnss_module_name:
+        defines.append("U_CFG_TEST_GNSS_MODULE_TYPE=" + gnss_module_name)
+
+    # Also, when running testing it is best to run the
+    # the "port" tests first as, if there's a problem with the
+    # port, you want to notice it first.
+    # This also acts as a flag to indicate that we're running
+    # under u_runner automation
+    defines.append("U_RUNNER_TOP_STR=port")
+
+    # When running tests on cellular LTE modules, so
+    # SARA-R4 or SARA-R5, we need to set the RF band we
+    # are running in to NOT include the public network,
+    # since otherwise the modules can sometimes wander off
+    # onto it.
+    defines.append("U_CELL_TEST_CFG_BANDMASK1=0x000010ULL")
+
     return defines
 
 def get_toolchain_for_instance(database, instance):

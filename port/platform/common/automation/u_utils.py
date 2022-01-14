@@ -1480,3 +1480,37 @@ def commit_message_parse(message, instances, printer=None, prompt=None):
         instances.extend(instances_local[:])
 
     return found, filter_string_local
+
+def merge_filter(defines, filter_string):
+    '''Merge the given filter string into defines'''
+    defines_returned = []
+    filter_list = []
+
+    if filter_string:
+        filter_list = filter_string.split(".")
+    if defines:
+        for define in defines:
+            if define.startswith(FILTER_MACRO_NAME):
+                # Find the bit after "U_CFG_APP_FILTER=" if it's there
+                parts = define.split("=")
+                if parts and len(parts) > 1:
+                    # Find the individual parts of the filter "thinga.thingb"
+                    filters = parts[1].split(".")
+                    if filters and len(filters) > 0:
+                        # Add them to our filter list
+                        filter_list.extend(filters)
+            else:
+                # If it's not "U_CFG_APP_FILTER" then just add it
+                defines_returned.append(define)
+
+    # Now add the filter list back into the defines
+    if len(filter_list) > 0:
+        new_filter_string = ""
+        for idx, item in enumerate(filter_list):
+            if idx > 0:
+                new_filter_string += "."
+            new_filter_string += item.strip()
+        defines_returned.append(FILTER_MACRO_NAME + "=" + \
+                                new_filter_string)
+
+    return defines_returned
