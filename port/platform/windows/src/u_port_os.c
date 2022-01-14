@@ -24,9 +24,12 @@
  * Implementation note 2: the win32 API doesn't have adhoc queues.  The
  * closest thing is a pipe and the ideal thing would be just anonymous pipes,
  * which seem perfect _except_ that our APIs require us to be able to
- * peek the queue and the win32 pipe peek call will block on an anonymous
+ * peek the queue and the win32 pipe peek() call will block on an anonymous
  * pipe as an anonymous pipe can _only_ be opened with _synchronous_ file
- * pointers.  Hence we end up having to use named pipes.
+ * pointers.  I tried named pipes with asynchronous access but they have huge
+ * latency; stuff being placed into a queue often doesn't appear at the other
+ * end for hundreds of milliseconds.  Hence we have a home-grown queuing
+ * system in u_port_private.c using semaphore protection.
  * Implementation note 3: mutexes under Windows are always recursive so,
  * since we do not normally require that (and we test for it) a semaphore
  * with a count of 1 is used instead.
@@ -151,15 +154,17 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
                                     (LPTHREAD_START_ROUTINE) pFunction, pParameter,
                                     0,     // default creation flags
                                     &threadId);
-        if (threadHandle != NULL) {
+        if (threadHandle != INVALID_HANDLE_VALUE) {
             if (SetThreadPriority(threadHandle,
                                   (DWORD) uPortPrivateTaskPriorityConvert(priority))) {
                 *pTaskHandle = (uPortTaskHandle_t) threadId;
                 errorCode = U_ERROR_COMMON_SUCCESS;
             } else {
                 TerminateThread(threadHandle, 0);
-                CloseHandle(threadHandle);
             }
+            // Don't need this handle any more: this does
+            // not delete the thread, don't worry
+            CloseHandle(threadHandle);
         }
     }
 
@@ -179,11 +184,17 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
         // This doesn't perform any clean-up, it is
         // essential that the caller performs any clean-up
         // required (e.g. deallocating memory) first.
-        threadHandle = OpenThread(DELETE, false, (DWORD) taskHandle);
-        if ((threadHandle != INVALID_HANDLE_VALUE) &&
-            TerminateThread(threadHandle, 0)) {
-            errorCode = U_ERROR_COMMON_SUCCESS;
+        threadHandle = OpenThread(THREAD_TERMINATE, false, (DWORD) taskHandle);
+        if (threadHandle != INVALID_HANDLE_VALUE) {
+            if (TerminateThread(threadHandle, 0)) {
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            }
             CloseHandle(threadHandle);
+        } else {
+            // OpenThread returns INVALID_HANDLE_VALUE if the
+            // thread in question has already terminated so
+            // this is actually a success
+            errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
 
@@ -220,143 +231,31 @@ int32_t uPortQueueCreate(size_t queueLength,
                          size_t itemSizeBytes,
                          uPortQueueHandle_t *pQueueHandle)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    HANDLE writeHandle = INVALID_HANDLE_VALUE;
-    HANDLE readHandle = INVALID_HANDLE_VALUE;
-    OVERLAPPED overlap;
-    int32_t pipeHandle = -1;
-    char name[20]; // enough room for "\\.\pipe\7FFFFFFF"
-    DWORD x;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (pQueueHandle != NULL) {
-        errorCode = U_ERROR_COMMON_NO_MEMORY;
-        // Get a handle for the pipe we will need and use it to
-        // form the name of the pipe
-        pipeHandle = uPortPrivatePipeAdd();
-        if (pipeHandle >= 0) {
-            errorCode = U_ERROR_COMMON_PLATFORM;
-            snprintf(name, sizeof(name), "\\\\.\\pipe\\%x", pipeHandle);
-            // Windows doesn't have queue objects as such,
-            // instead we use a named pipe opened with the
-            // possibility of asynchronous access; even
-            // though we don't want asynchronous write access
-            // we have to use this mode so as to get asynchronous
-            // read access.
-            writeHandle = CreateNamedPipe(name,
-                                          // The returned handle is a write handle
-                                          // (outbound) and asynchronous operations
-                                          // are possible
-                                          PIPE_ACCESS_OUTBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED,
-                                          // Message (i.e. for us a queue item) based
-                                          // reads/writes that block by default
-                                          PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-                                          // One instances with a buffer length that can hold
-                                          // the whole queue
-                                          1, queueLength * itemSizeBytes,
-                                          queueLength * itemSizeBytes,
-                                          NMPWAIT_USE_DEFAULT_WAIT, NULL);
-            if (writeHandle != INVALID_HANDLE_VALUE) {
-                // Here we need to call connect in order that we can
-                // open the read handle, and for that we need an event.
-                memset(&overlap, 0, sizeof(overlap));
-                overlap.hEvent = CreateEvent(NULL, true, false, NULL);
-                if ((overlap.hEvent != INVALID_HANDLE_VALUE) &&
-                    (ConnectNamedPipe(writeHandle, &overlap) == 0) &&
-                    (GetLastError() == ERROR_IO_PENDING)) {
-                    // Now open the read handle on the pipe
-                    // FILE_WRITE_ATTRIBUTES so that we can change the
-                    // read handle to message mode a little further down.
-                    // Temporary so that it shouldn't get written to disk.
-                    readHandle = CreateFile(name, GENERIC_READ | FILE_WRITE_ATTRIBUTES, 0, NULL,
-                                            OPEN_EXISTING,
-                                            FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_OVERLAPPED,
-                                            NULL);
-                    if (readHandle != INVALID_HANDLE_VALUE) {
-                        // Wait for the connection to occur
-                        if (GetOverlappedResult(writeHandle, &overlap, &x, true)) {
-                            // CreateFile always sets byte mode for the read handle
-                            // initially, need to change to message mode
-                            x = PIPE_READMODE_MESSAGE | PIPE_WAIT;
-                            if (SetNamedPipeHandleState(readHandle, &x, NULL, NULL)) {
-                                // Now store those attributes in our list of pipes
-                                errorCode = uPortPrivatePipeSet(pipeHandle, itemSizeBytes,
-                                                                queueLength, writeHandle,
-                                                                readHandle);
-                                if (errorCode == 0) {
-                                    *pQueueHandle = (uPortQueueHandle_t) pipeHandle;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                CloseHandle(overlap.hEvent);
-            }
-
-            if (errorCode != 0) {
-                // Clean up
-                CloseHandle(readHandle);
-                DisconnectNamedPipe(writeHandle);
-                CloseHandle(writeHandle);
-                uPortPrivatePipeRemove(pipeHandle);
-            }
+        errorCode = uPortPrivateQueueAdd(itemSizeBytes, queueLength);
+        if (errorCode >= 0) {
+            *pQueueHandle = (uPortQueueHandle_t) errorCode;
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
     }
 
-    return (int32_t) errorCode;
+    return errorCode;
 }
 
 // Delete the given queue.
 int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortPrivatePipe_t pipe;
-
-    if (uPortPrivatePipeGetCopy((int32_t) queueHandle, &pipe) == 0) {
-        CloseHandle(pipe.readHandle);
-        DisconnectNamedPipe(pipe.writeHandle);
-        CloseHandle(pipe.writeHandle);
-        uPortPrivatePipeRemove((int32_t) queueHandle);
-        errorCode = U_ERROR_COMMON_SUCCESS;
-    }
-
-    return (int32_t) errorCode;
+    return uPortPrivateQueueRemove((int32_t) queueHandle);
 }
 
 // Send to the given queue.
 int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
                        const void *pEventData)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortPrivatePipe_t pipe;
-    DWORD  bytesWritten = 0;
-    OVERLAPPED overlap;
-
-    if (pEventData != NULL) {
-        if (uPortPrivatePipeGetCopy((int32_t) queueHandle, &pipe) == 0) {
-            errorCode = U_ERROR_COMMON_PLATFORM;
-            memset(&overlap, 0, sizeof(overlap));
-            overlap.hEvent = CreateEvent(NULL, true, false, NULL);
-            if (overlap.hEvent != INVALID_HANDLE_VALUE) {
-                // The file is opened for asynchronous write
-                // so either WriteFile returns immediately having
-                // written the entire message (message mode) or
-                // we get an error indicating that IO is pending
-                // and we wait for it to complete.
-                if (WriteFile(pipe.writeHandle, pEventData,
-                              pipe.itemSizeBytes, NULL, &overlap) ||
-                    ((GetLastError() == ERROR_IO_PENDING) &&
-                     GetOverlappedResult(pipe.writeHandle, &overlap,
-                                         &bytesWritten, true)) &&
-                    (bytesWritten == pipe.itemSizeBytes)) {
-                    errorCode = U_ERROR_COMMON_SUCCESS;
-                }
-                CloseHandle(overlap.hEvent);
-            }
-        }
-    }
-
-    return (int32_t) errorCode;
+    return uPortPrivateQueueWrite((int32_t) queueHandle,
+                                  (const char *) pEventData);
 }
 
 // Send to the given queue from an interrupt; not relevant
@@ -372,32 +271,10 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
                           void *pEventData)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    HANDLE readHandle = INVALID_HANDLE_VALUE;
-    uPortPrivatePipe_t pipe;
-    DWORD  bytesRead = 0;
-    OVERLAPPED overlap;
 
     if (pEventData != NULL) {
-        if (uPortPrivatePipeGetCopy((int32_t) queueHandle, &pipe) == 0) {
-            errorCode = U_ERROR_COMMON_PLATFORM;
-            memset(&overlap, 0, sizeof(overlap));
-            overlap.hEvent = CreateEvent(NULL, true, false, NULL);
-            if (overlap.hEvent != INVALID_HANDLE_VALUE) {
-                // The file is opened for asynchronous read
-                // so either ReadFile returns immediately having
-                // read an entire message (message mode) or
-                // we get an error indicating that IO is pending
-                // and we wait for the result to be populated
-                if (ReadFile(pipe.readHandle, pEventData,
-                             pipe.itemSizeBytes, NULL, &overlap) ||
-                    ((GetLastError() == ERROR_IO_PENDING) &&
-                     GetOverlappedResult(pipe.readHandle, &overlap,
-                                         &bytesRead, true))) {
-                    errorCode = U_ERROR_COMMON_SUCCESS;
-                }
-                CloseHandle(overlap.hEvent);
-            }
-        }
+        errorCode = uPortPrivateQueueRead((int32_t) queueHandle,
+                                          (char *) pEventData, -1);
     }
 
     return (int32_t) errorCode;
@@ -408,37 +285,10 @@ int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
                              int32_t waitMs, void *pEventData)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortPrivatePipe_t pipe;
-    DWORD  bytesRead = 0;
-    OVERLAPPED overlap;
 
     if (pEventData != NULL) {
-        if (uPortPrivatePipeGetCopy((int32_t) queueHandle, &pipe) == 0) {
-            errorCode = U_ERROR_COMMON_PLATFORM;
-            memset(&overlap, 0, sizeof(overlap));
-            overlap.hEvent = CreateEvent(NULL, true, false, NULL);
-            if (overlap.hEvent != INVALID_HANDLE_VALUE) {
-                // The file is opened for asynchronous read
-                // so either ReadFile returns immediately having
-                // read a complete message (message mode) or
-                // we get an error indicating that IO is pending
-                // and we wait for the result to be populated
-                if (ReadFile(pipe.readHandle, pEventData,
-                             pipe.itemSizeBytes, NULL, &overlap)) {
-                    errorCode = U_ERROR_COMMON_SUCCESS;
-                } else {
-                    if (GetLastError() == ERROR_IO_PENDING) {
-                        errorCode = U_ERROR_COMMON_TIMEOUT;
-                        if (GetOverlappedResultEx(pipe.readHandle, &overlap,
-                                                  &bytesRead, (DWORD) waitMs,
-                                                  false)) {
-                            errorCode = U_ERROR_COMMON_SUCCESS;
-                        }
-                    }
-                }
-            }
-            CloseHandle(overlap.hEvent);
-        }
+        errorCode = uPortPrivateQueueRead((int32_t) queueHandle,
+                                          (char *) pEventData, waitMs);
     }
 
     return (int32_t) errorCode;
@@ -448,42 +298,13 @@ int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
 int32_t uPortQueuePeek(const uPortQueueHandle_t queueHandle,
                        void *pEventData)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortPrivatePipe_t pipe;
-    DWORD bytesRead = 0;
-
-    if (pEventData != NULL) {
-        if (uPortPrivatePipeGetCopy((int32_t) queueHandle, &pipe) == 0) {
-            errorCode = U_ERROR_COMMON_TIMEOUT;
-            if (PeekNamedPipe(pipe.readHandle, pEventData,
-                              pipe.itemSizeBytes, &bytesRead,
-                              NULL, NULL)) {
-                if (bytesRead == pipe.itemSizeBytes) {
-                    errorCode = U_ERROR_COMMON_SUCCESS;
-                }
-            }
-        }
-    }
-
-    return (int32_t) errorCode;
+    return uPortPrivateQueuePeek((int32_t) queueHandle, (char *) pEventData);
 }
 
 // Get the number of free spaces in the given queue.
 int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle)
 {
-    int32_t errorCodeOrFree = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uPortPrivatePipe_t pipe;
-    DWORD bytesAvailable = 0;
-
-    if (uPortPrivatePipeGetCopy((int32_t) queueHandle, &pipe) == 0) {
-        if (PeekNamedPipe(pipe.readHandle, NULL, 0,
-                          NULL, &bytesAvailable, NULL)) {
-            errorCodeOrFree = ((pipe.maxNumItems * pipe.itemSizeBytes) -
-                               bytesAvailable) / pipe.itemSizeBytes;
-        }
-    }
-
-    return errorCodeOrFree;
+    return uPortPrivateQueueGetFree((int32_t) queueHandle);
 }
 
 /* ----------------------------------------------------------------
@@ -586,7 +407,7 @@ int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
                                           (DWORD) initialCount,
                                           (DWORD) limit,
                                           NULL); // No name
-        if (semaphoreHandle != NULL) {
+        if (semaphoreHandle != INVALID_HANDLE_VALUE) {
             *pSemaphoreHandle = (uPortSemaphoreHandle_t) semaphoreHandle;
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
@@ -598,14 +419,8 @@ int32_t uPortSemaphoreCreate(uPortSemaphoreHandle_t *pSemaphoreHandle,
 // Destroy a semaphore.
 int32_t uPortSemaphoreDelete(const uPortSemaphoreHandle_t semaphoreHandle)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-
-    if (semaphoreHandle != NULL) {
-        CloseHandle((HANDLE) semaphoreHandle);
-        errorCode = U_ERROR_COMMON_SUCCESS;
-    }
-
-    return (int32_t) errorCode;
+    CloseHandle((HANDLE) semaphoreHandle);
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
 // Take the given semaphore.
@@ -613,7 +428,7 @@ int32_t uPortSemaphoreTake(const uPortSemaphoreHandle_t semaphoreHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
-    if (semaphoreHandle != NULL) {
+    if (semaphoreHandle != INVALID_HANDLE_VALUE) {
         errorCode = U_ERROR_COMMON_PLATFORM;
         if (WaitForSingleObject((HANDLE) semaphoreHandle, INFINITE) == WAIT_OBJECT_0) {
             errorCode = U_ERROR_COMMON_SUCCESS;
@@ -630,7 +445,7 @@ int32_t uPortSemaphoreTryTake(const uPortSemaphoreHandle_t semaphoreHandle,
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t x;
 
-    if (semaphoreHandle != NULL) {
+    if (semaphoreHandle != INVALID_HANDLE_VALUE) {
         errorCode = U_ERROR_COMMON_PLATFORM;
         x = (int32_t) WaitForSingleObject((HANDLE) semaphoreHandle, (DWORD) delayMs);
         if (x == WAIT_OBJECT_0) {
@@ -648,7 +463,7 @@ int32_t uPortSemaphoreGive(const uPortSemaphoreHandle_t semaphoreHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
-    if (semaphoreHandle != NULL) {
+    if (semaphoreHandle != INVALID_HANDLE_VALUE) {
         if (ReleaseSemaphore((HANDLE) semaphoreHandle, 1, NULL)) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         } else {

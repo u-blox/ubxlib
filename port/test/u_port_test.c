@@ -104,7 +104,7 @@
 
 /** The amount of memory to malloc()ate during re-entrancy
  * testing.
-  */
+ */
 #define U_PORT_TEST_OS_MALLOC_SIZE_INTS ((int32_t) (1024 / sizeof(int32_t)))
 
 /** Number of interations for the event queue test.
@@ -114,13 +114,7 @@
 
 /** How long to wait to receive  a message on a queue in osTestTask.
  */
-#ifdef _WIN32
-// The Windows queue implementation (named pipes) is really slow
-// in the osTestTask test for some reason.
-# define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 500
-#else
-# define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 10
-#endif
+#define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 10
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -470,8 +464,12 @@ static void osReentTask(void *pParameter)
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
     }
 
-    // And delete ourselves
+#ifndef _WIN32
+    // And delete ourselves; WIN32 API supports
+    // deleting another thread so in that case
+    // we do the delete from the creating thread
     uPortTaskDelete(NULL);
+#endif
 }
 
 // The test task for OS stuff.
@@ -1087,6 +1085,16 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // Let them stop
     gWaitForStop = false;
 
+#ifdef _WIN32
+    // WIN32 API supports deleting another thread so,
+    // rather than let the threads delete themselves,
+    // in this case we do it from here
+    for (size_t x = 0; (x < sizeof(taskHandle) /
+                        sizeof(taskHandle[0])); x++) {
+        U_PORT_TEST_ASSERT(uPortTaskDelete(taskHandle[x]) == 0);
+    }
+#endif
+
     // Let the idle task tidy-away the tasks
     uPortTaskBlock(U_CFG_OS_YIELD_MS + 1000);
 
@@ -1687,11 +1695,12 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
             U_PORT_TEST_ASSERT(y == 0);
         }
     }
+    // Let everything get to its destination; can be a problem when
+    // running on Windows as a platform if the machine in question
+    // is heavily loaded (a Windows test agent often is)
+    uPortTaskBlock(1000);
 
     // Bonus iteration with NULL parameter
-    //lint -esym(438, x) Suppress value not used, which
-    // will occur if uPortLog() is compiled out
-    x++;
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMaxHandle,
                                            NULL, 0) == 0);
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,

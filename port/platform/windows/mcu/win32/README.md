@@ -17,7 +17,7 @@ To perform visual debugging install Visual Studio Code, which can be downloaded 
 
 https://code.visualstudio.com/
 
-...and, in Visual Studio Code, install the extension `CMake Tools`.
+...and, in Visual Studio Code, install the extensions `CMake Tools` and `C/C++ for Visual Studio Code`.
 
 # SDK Usage
 Before you can compile code under MSVC you need to invoke a specific command enviroment.  To do this, open a fresh command prompt and run a command of the following form:
