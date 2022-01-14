@@ -841,7 +841,7 @@ void uAtClientTestPrint(const char *pBytes, size_t length)
     if (pBytes != NULL) {
         for (size_t x = 0; x < length; x++) {
             c = *pBytes++;
-            if (!isprint((int32_t) c)) {
+            if (!isprint((int32_t) (uint8_t) c)) {
                 if (c == '\r') {
                     uPortLog("\\r");
                 } else if (c == '\n') {

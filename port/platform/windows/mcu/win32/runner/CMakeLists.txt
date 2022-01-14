@@ -46,6 +46,15 @@ if (DEFINED ENV{U_FLAGS})
     message("Environment variable U_FLAGS added ${U_FLAGS} to the build.")
 endif()
 
+# As explained in the README.md under the win32 directory, in Microsoft
+# Visual C++ char types are signed, which can lead to unexpected behaviours
+# e.g. a character value which contains 0xaa, when compared with the literal value
+# 0xaa, will return false; the character value is interpreted as being negative
+# because it has the top bit set, while the literal value 0xaa is positive.
+# To avoid this problem we define the conditional compilation flag _CHAR_UNSIGNED
+# to the compiler, which has an effect in limits.h.
+add_compile_options("-D_CHAR_UNSIGNED")
+
 # Get the platform-independent ubxlib source and include files
 # from the ubxlib common .cmake file, i.e.
 # - UBXLIB_SRC
@@ -114,7 +123,7 @@ target_include_directories(ubxlib_test PRIVATE
 
 # Create the test target for ubxlib, including in it u_main.c
 add_executable(ubxlib_test_main ${UBXLIB_BASE}/port/platform/${UBXLIB_PLATFORM}/app/u_main.c)
-target_include_directories(ubxlib_test_main PRIVATE ${UBXLIB_PRIVATE_TEST_INC_PORT})
+target_include_directories(ubxlib_test_main PRIVATE ${UBXLIB_PRIVATE_TEST_INC_PORT} ${UBXLIB_PRIVATE_INC})
 
 # Link the ubxlib test target with the ubxlib tests library and Unity
 target_link_libraries(ubxlib_test_main PRIVATE ubxlib unity ubxlib_test)

@@ -43,6 +43,19 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#if defined(_MSV_VER) && !defined(_CHAR_UNSIGNED)
+/** As explained in the README.md under the win32 directory, in Microsoft
+ * Visual C++ char types are signed, which can lead to unexpected behaviours
+ * e.g. a character value which contains 0xaa, when compared with the literal value
+ * 0xaa, will return false; the character value is interpreted as being negative
+ * because it has the top bit set, while the literal value 0xaa is positive.
+ * To avoid this problem the command-line switch /J to the compiler must be
+ * used.  This defines the conditional compilation flag _CHAR_UNSIGNED to the
+ * compiler, which has an effect in limits.h.
+ */
+#error Please use the compilation switch /J or pass the compilation flag _CHAR_UNSIGNED to the compiler to ensure char types are unsigned.
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

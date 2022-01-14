@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2020 u-blox Cambourne Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,9 @@
  * limitations under the License.
  */
 
-/** @brief This example demonstrates how to bring up a cellular network
- * and then use a GNSS module attached to the cellular module to perform
- * a location fix, i.e. this example ONLY applies if your GNSS module is
- * attached to the cellular module and NOT to this MCU.
- *
- * Also, it is MUCH EASIER in this case to just use Cell Locate in the
- * cellular module (see the example main_loc_cell_locate.c) which will use
- * the GNSS chip for you or will provide a cell-tower-based fix if out
- * of coverage of GNSS.
+/** @brief This example demonstrates how to use Cloud Locate.  It
+ * employs a GNSS module that is connected via or is inside (the
+ * SARA-R510M8S/SARA-R422M8S case) a cellular module.
  *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
@@ -32,6 +26,7 @@
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
+#include "stdio.h"
 
 #include "stdio.h"
 #include "stddef.h"
@@ -63,6 +58,10 @@
 #include "u_network_config_cell.h"
 #include "u_network_config_gnss.h"
 
+// For the MQTT client API
+#include "u_mqtt_common.h"
+#include "u_mqtt_client.h"
+
 // For the location API
 #include "u_location.h"
 
@@ -74,6 +73,22 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+// Set the Thingstream client ID of your thing below,
+// something like "device:521b5a33-2374-4547-8edc-50743c144509"
+#define MY_THINGSTREAM_CLIENT_ID "TBC"
+
+// Set the Thingstream user name of your thing below,
+// something like "WF592TTWUQ18512KLU6L"
+#define MY_THINGSTREAM_USERNAME "TBC"
+
+// Set the Thingstream password of your thing below,
+// something like "nsd8hsK/NSDFdgdblfmbQVXbx7jeZ/8vnsiltgty"
+#define MY_THINGSTREAM_PASSWORD "TBC"
+
+// The minimum number of satellites we need to be able to see to
+// include a GNSS measurement in the data sent to Cloud Locate
+#define SATELLITES_MIN 6
 
 #ifndef U_CFG_ENABLE_LOGGING
 # define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
@@ -164,6 +179,28 @@ static uNetworkConfigurationGnss_t gConfigGnss = {U_NETWORK_TYPE_GNSS,
 static uNetworkConfigurationGnss_t gConfigGnss = {U_NETWORK_TYPE_NONE};
 #endif
 
+#if !defined(U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID) || !defined(U_CFG_TEST_CLOUD_LOCATE)
+const char *gpMyThingstreamClientId = MY_THINGSTREAM_CLIENT_ID;
+#else
+// For u-blox internal testing only
+const char *gpMyThingstreamClientId = U_PORT_STRINGIFY_QUOTED(
+                                          U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID);
+#endif
+#if !defined(U_CFG_APP_CLOUD_LOCATE_MQTT_USERNAME) || !defined(U_CFG_TEST_CLOUD_LOCATE)
+const char *gpMyThingstreamUsername = MY_THINGSTREAM_USERNAME;
+#else
+// For u-blox internal testing only
+const char *gpMyThingstreamUsername = U_PORT_STRINGIFY_QUOTED(
+                                          U_CFG_APP_CLOUD_LOCATE_MQTT_USERNAME);
+#endif
+#if !defined(U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD) || !defined(U_CFG_TEST_CLOUD_LOCATE)
+const char *gpMyThingstreamPassword = MY_THINGSTREAM_PASSWORD;
+#else
+// For u-blox internal testing only
+const char *gpMyThingstreamPassword = U_PORT_STRINGIFY_QUOTED(
+                                          U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD);
+#endif
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -222,10 +259,12 @@ static void printLocation(int32_t latitudeX1e7, int32_t longitudeX1e7)
 // The entry point, main(): before this is called the system
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
-U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
+U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 {
     int32_t networkHandleCell;
     int32_t networkHandleGnss;
+    uLocationAssist_t locationAssist = U_LOCATION_ASSIST_DEFAULTS;
+    uMqttClientConnection_t mqttConnection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
     uLocation_t location;
 
     // Set an out of range value so that we can test it later
@@ -240,7 +279,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
                                     (void *) &gConfigCell);
     uPortLog("Added cellular network with handle %d.\n", networkHandleCell);
 
-    // Copy the cellular handle into the GNSS configuration
+    // In this example we assume the GNSS module is inside the
+    // cellular module (e.g. SARA-R510M8S or SARA-R422M8S) and so
+    // we need to copy the cellular handle into the GNSS configuration
+    // in order that it knows to use it
     gConfigGnss.networkHandleAt = networkHandleCell;
 
     // Add a GNSS network instance
@@ -266,12 +308,64 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
             // Here you may use the GNSS API with the network handle
             // if you wish to configure the GNSS chip etc.
 
-            // Now get location
-            if (uLocationGet(networkHandleGnss, U_LOCATION_TYPE_GNSS,
-                             NULL, NULL, &location, NULL) == 0) {
-                printLocation(location.latitudeX1e7, location.longitudeX1e7);
+            // To use Cloud Locate we need to populate the
+            // locationAssist structure passed to the location
+            // API to tell it what to do.
+
+            // First, give it the network handle for the GNSS chip
+            // to be used with the Cloud Locate service
+            locationAssist.networkHandleAssist = networkHandleGnss;
+            // Then set the number of satellites that GNSS must be
+            // able to see before it is worth including that measurement
+            // in the estimate
+            locationAssist.svsThreshold = SATELLITES_MIN;
+            // Cloud Locate requires an MQTT Now connection to a thing
+            // in your Thingstream account that is enabled for the
+            // u-blox Cloud Locate service
+            locationAssist.pMqttClientContext = pUMqttClientOpen(networkHandleCell, NULL);
+            if (locationAssist.pMqttClientContext != NULL) {
+                // Populate the MQTT connection structure with the
+                // credentials of your thing
+                mqttConnection.pBrokerNameStr = "mqtt.thingstream.io";
+                mqttConnection.pClientIdStr = gpMyThingstreamClientId;
+                mqttConnection.pUserNameStr = gpMyThingstreamUsername;
+                mqttConnection.pPasswordStr = gpMyThingstreamPassword;
+
+                // Make the MQTT connection to Thingstream
+                uPortLog("Connecting to Thingstream MQTT broker \"%s\"...\n",
+                         mqttConnection.pBrokerNameStr);
+                if (uMqttClientConnect((uMqttClientContext_t *) locationAssist.pMqttClientContext,
+                                       &mqttConnection) == 0) {
+                    // Note: in order to make this a self-contained example we
+                    // read back our location from the Cloud Locate service by
+                    // setting the locationAssist.pClientIdStr field to the client
+                    // ID of your Thingstream account and passing a location structure
+                    // to the uLocationGet() call; normally with Cloud Locate you
+                    // would not bother with this as the point is that the cloud-side
+                    // knows where the device is, the device itself does not care
+                    locationAssist.pClientIdStr = gpMyThingstreamClientId;
+
+                    // Now put the lot together by running the Cloud Locate service,
+                    // giving it the location assist structure
+                    if (uLocationGet(networkHandleCell,
+                                     U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
+                                     &locationAssist, NULL,
+                                     &location, NULL) == 0) {
+                        printLocation(location.latitudeX1e7, location.longitudeX1e7);
+                    } else {
+                        uPortLog("Unable to establish location!\n");
+                    }
+
+                    // When finished with the MQTT client
+                    uMqttClientDisconnect((uMqttClientContext_t *) locationAssist.pMqttClientContext);
+                } else {
+                    uPortLog("Unable to connect to the Thingstream MQTT broker!\n");
+                }
+
+                // When finished with the MQTT context
+                uMqttClientClose((uMqttClientContext_t *) locationAssist.pMqttClientContext);
             } else {
-                uPortLog("Unable to get a location fix!\n");
+                uPortLog("Unable to create an MQTT context!\n");
             }
 
             // When finished with the GNSS network layer
@@ -294,7 +388,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
     uPortDeinit();
 
     uPortLog("Done.\n");
-#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0)
+#if defined(U_CFG_TEST_CLOUD_LOCATE) && defined(U_CFG_TEST_GNSS_MODULE_TYPE) && (U_CFG_APP_GNSS_UART < 0)
+    // For u-blox internal testing only
     EXAMPLE_FINAL_STATE(location.timeUtc > 0);
 #endif
 }

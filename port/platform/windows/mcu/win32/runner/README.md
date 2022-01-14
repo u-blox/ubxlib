@@ -22,7 +22,7 @@ Note: you may put this repo in a different location but if you do so you will ne
 
 Before building you must tell the tests which module(s) you are using and the UARTs they are connected on.  For instance, to do so using the `U_FLAGS` mechanism, if you were using a SARA-R5 cellular module on COM3, you would set:
 
-`U_FLAGS=-U_CFG_APP_CELL_UART=3 -DU_CFG_TEST_CELL_MODULE_TYPE=U_CELL_MODULE_TYPE_SARA_R5`
+`U_FLAGS=-DU_CFG_APP_CELL_UART=3 -DU_CFG_TEST_CELL_MODULE_TYPE=U_CELL_MODULE_TYPE_SARA_R5`
 
 By default all of the examples and tests supported by this platform will be executed.  To execute just a subset set the conditional compilation flag `U_CFG_APP_FILTER` to the example and/or test you wish to run.  For instance, to run all of the examples you would set `U_CFG_APP_FILTER=example`, or to run all of the porting tests `U_CFG_APP_FILTER=port`, or to run a particular example `U_CFG_APP_FILTER=examplexxx`, where `xxx` is the start of the rest of the example name.  In other words, the filter is a simple partial string compare with the start of the example/test name.  Note that quotation marks must NOT be used around the value part.
 
