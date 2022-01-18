@@ -1243,11 +1243,11 @@ static bool consumeToString(uAtClientInstance_t *pClient,
         if (character >= 0) {
             if (character == *(pString + index)) {
                 index++;
-            }
-        } else if (index != 0) {
-            index = 0;
-            if (character == *pString) {
-                index++;
+            } else {
+                index = 0;
+                if (character == *pString) {
+                    index++;
+                }
             }
         }
     }
