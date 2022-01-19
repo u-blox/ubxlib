@@ -62,6 +62,10 @@
  */
 #define U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON 10
 
+/** The number of time to try a configuration AT command by default.
+ */
+#define U_CELL_PWR_CONFIGURATION_COMMAND_TRIES 3
+
 /** The UART power saving duration in GSM frames, needed for the
  * UART power saving AT command.
  */
@@ -155,12 +159,11 @@ static int32_t moduleIsAlive(const uCellPrivateInstance_t *pInstance,
 
 // Configure one item in the cellular module.
 static bool moduleConfigureOne(uAtClientHandle_t atHandle,
-                               const char *pAtString)
+                               const char *pAtString,
+                               int32_t configurationTries)
 {
     bool success = false;
-    // I have seen modules return "ERROR" to some AT
-    // commands during startup so try a few times
-    for (size_t x = 3; (x > 0) && !success; x--) {
+    for (size_t x = configurationTries; (x > 0) && !success; x--) {
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, pAtString);
         uAtClientCommandStopReadResponse(atHandle);
@@ -186,7 +189,8 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
     for (size_t x = 0;
          (x < sizeof(gpConfigCommand) / sizeof(gpConfigCommand[0])) &&
          success; x++) {
-        success = moduleConfigureOne(atHandle, gpConfigCommand[x]);
+        success = moduleConfigureOne(atHandle, gpConfigCommand[x],
+                                     U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
     }
 
     if (success &&
@@ -194,16 +198,19 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         // SARA-R4 only: switch on the right UCGED mode
         // (SARA-R5 and SARA-U201 have a single mode and require no setting)
         if (U_CELL_PRIVATE_HAS(pInstance->pModule, U_CELL_PRIVATE_FEATURE_UCGED5)) {
-            success = moduleConfigureOne(atHandle, "AT+UCGED=5");
+            success = moduleConfigureOne(atHandle, "AT+UCGED=5",
+                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
         } else {
-            success = moduleConfigureOne(atHandle, "AT+UCGED=2");
+            success = moduleConfigureOne(atHandle, "AT+UCGED=2",
+                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
         }
     }
 
     if (success &&
         U_CELL_PRIVATE_MODULE_HAS_3GPP_POWER_SAVING(pInstance->pModule->moduleType)) {
         // (TODO) switch off power saving until it is integrated into this API
-        success = moduleConfigureOne(atHandle, "AT+CPSMS=0");
+        success = moduleConfigureOne(atHandle, "AT+CPSMS=0",
+                                     U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
     }
 
     atStreamHandle = uAtClientStreamGet(atHandle, &atStreamType);
@@ -214,7 +221,8 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
         // of flow control to be on or just one of them
         if (uPortUartIsRtsFlowControlEnabled(atStreamHandle) &&
             uPortUartIsCtsFlowControlEnabled(atStreamHandle)) {
-            success = moduleConfigureOne(atHandle, "AT&K3");
+            success = moduleConfigureOne(atHandle, "AT&K3",
+                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
             // The RTS/CTS handshaking lines are being used
             // for flow control by the UART HW so we can't use
             // them for power control purposes.  Also,
@@ -225,7 +233,8 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
             // able to send anything (but see exception for SARA-R4
             // below).
         } else {
-            success = moduleConfigureOne(atHandle, "AT&K0");
+            success = moduleConfigureOne(atHandle, "AT&K0",
+                                         U_CELL_PWR_CONFIGURATION_COMMAND_TRIES);
             // RTS/CTS handshaking is not used by the UART HW, we
             // can use the wake-up on TX line feature.
             // TODO: we _could_, on non-SARA-R4 modules (see below),
@@ -275,7 +284,14 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
                 uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
             }
         }
-        success = moduleConfigureOne(atHandle, buffer);
+        if (!moduleConfigureOne(atHandle, buffer, 1) && uAtClientWakeUpHandlerIsSet(atHandle)) {
+            // If AT+UPSV returns error then power saving cannot be
+            // supported; this is true when the UART interface is actually
+            // a virtual UART interface being used from an application that
+            // is on-board the module; remove the wake-up handler in this case
+            uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
+            uPortLog("U_CELL_PWR: power saving not supported.\n");
+        }
     }
 
     if (success) {
@@ -347,17 +363,20 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle = pInstance->atHandle;
 
     uPortLog("U_CELL_PWR: powering off with AT command.\n");
+    if (uAtClientWakeUpHandlerIsSet(atHandle)) {
+        // Switch off UART power saving first, as it seems to
+        // affect the power off process.
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UPSV=0");
+        uAtClientCommandStopReadResponse(atHandle);
+        uAtClientUnlock(atHandle);
+    }
     // Send the power off command and then pull the power
-    // No error checking, we're going dowwwwwn...
     uAtClientLock(atHandle);
     // Clear the dynamic parameters
     uCellPrivateClearDynamicParameters(pInstance);
     uAtClientTimeoutSet(atHandle,
                         U_CELL_PRIVATE_CPWROFF_WAIT_TIME_SECONDS * 1000);
-    // Switch off UART power saving first, as it seems to
-    // affect the power off process
-    uAtClientCommandStart(atHandle, "AT+UPSV=0");
-    uAtClientCommandStopReadResponse(atHandle);
     uAtClientCommandStart(atHandle, "AT+CPWROFF");
     uAtClientCommandStopReadResponse(atHandle);
     errorCode = uAtClientUnlock(atHandle);
@@ -636,13 +655,15 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             } else {
                 if (pInstance->pinPwrOn >= 0) {
-                    // Switch off UART power saving first, as it seems to
-                    // affect the power off process, no error checking,
-                    // we're going down anyway
-                    uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UPSV=0");
-                    uAtClientCommandStopReadResponse(atHandle);
-                    uAtClientUnlock(atHandle);
+                    if (uAtClientWakeUpHandlerIsSet(atHandle)) {
+                        // Switch off UART power saving first, as it seems to
+                        // affect the power off process, no error checking,
+                        // we're going down anyway
+                        uAtClientLock(atHandle);
+                        uAtClientCommandStart(atHandle, "AT+UPSV=0");
+                        uAtClientCommandStopReadResponse(atHandle);
+                        uAtClientUnlock(atHandle);
+                    }
                     uPortLog("U_CELL_PWR: powering off using the PWR_ON pin.\n");
                     uPortGpioSet(pInstance->pinPwrOn, U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
                     // Power off the module by pulling the PWR_ON pin
