@@ -36,7 +36,9 @@ extern "C" {
 /** The maximum length of the name of an X.509 certificate
  * or security key.  This is the smallest maximum length: longer
  * name lengths may be supported on some modules in which case
- * this length can be overriden.
+ * this length can be overriden; this does NOT include room for
+ * a null terminator, any buffer length should be this length
+ * plus one.
  */
 #ifndef U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES
 # define U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES 32
@@ -45,7 +47,9 @@ extern "C" {
 /** The maximum length of an X.509 certificate or security key.
  * this is the smallest maximum length: longer certificates/keys
  * may be supported on some modules in which case this length
- * can be overriden.
+ * can be overriden; this does NOT include room for
+ * a null terminator, any buffer length should be this length
+ * plus one.
  */
 #ifndef U_SECURITY_CREDENTIAL_MAX_LENGTH_BYTES
 # define U_SECURITY_CREDENTIAL_MAX_LENGTH_BYTES (1024 * 8)
@@ -54,14 +58,18 @@ extern "C" {
 /** The maximum length of a security key password.
  * this is the smallest maximum length: longer password lengths
  * may be supported on some modules in which case this length
- * can be overriden.
+ * can be overriden; this does NOT include room for
+ * a null terminator, any buffer length should be this length
+ * plus one.
  */
 #ifndef U_SECURITY_CREDENTIAL_PASSWORD_MAX_LENGTH_BYTES
 # define U_SECURITY_CREDENTIAL_PASSWORD_MAX_LENGTH_BYTES 64
 #endif
 
 /** The maximum length of the subject field of an X.509
- * certificate.
+ * certificate; this does NOT include room for
+ * a null terminator, any buffer length should be this length
+ * plus one.
  */
 #ifndef U_SECURITY_CREDENTIAL_X509_SUBJECT_MAX_LENGTH_BYTES
 # define U_SECURITY_CREDENTIAL_X509_SUBJECT_MAX_LENGTH_BYTES 64

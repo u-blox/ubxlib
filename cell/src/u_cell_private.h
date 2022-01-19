@@ -130,6 +130,33 @@ extern "C" {
 #define U_CELL_PRIVATE_GREETING_STR "Module has booted."
 #endif
 
+#ifndef U_CELL_PRIVATE_UART_WAKE_UP_RETRIES
+/** The number of times to retry poking the AT interface
+ * to wake the module up from UART power saving.
+ */
+# define U_CELL_PRIVATE_UART_WAKE_UP_RETRIES 3
+#endif
+
+#ifndef U_CELL_PRIVATE_UART_WAKE_UP_FIRST_WAIT_MS
+/** How long to wait for the response to the first poke
+ * of the AT interface when waking the module up from
+ * UART power saving; this should be relatively
+ * short as the outgoing poke is quite likely to be
+ * lost.
+ */
+# define U_CELL_PRIVATE_UART_WAKE_UP_FIRST_WAIT_MS 100
+#endif
+
+#ifndef U_CELL_PRIVATE_UART_WAKE_UP_RETRY_INTERVAL_MS
+/** The interval at which to poke the AT interface
+ * to wake the module up from UART power saving
+ * after the first one; this should be longer than
+ * the first wait in case the module is having trouble
+ * heaving itself out of bed.
+ */
+# define U_CELL_PRIVATE_UART_WAKE_UP_RETRY_INTERVAL_MS 333
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -466,6 +493,15 @@ void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance);
  */
 void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance);
 
+/** Callback to wake up the cellular module from UART power saving.
+ *
+ * @param atHandle   the handle of the AT client that is talking
+ *                   to the module.
+ * @param pParam     the parameter for the callback, may be NULL.
+ * @return           0 on successful wake-up, else negative error.
+ */
+int32_t uCellPrivateUartWakeUpCallback(uAtClientHandle_t atHandle,
+                                       void *pParam);
 #ifdef __cplusplus
 }
 #endif

@@ -33,7 +33,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "ctype.h"     // isdigit(), isprint()
-#include "string.h"    // memset(), strcpy(), strtok_r(), strtol(), strncmp()
+#include "string.h"    // memset(), strncpy(), strtok_r(), strtol(), strncmp()
 #include "stdio.h"     // snprintf()
 #include "assert.h"
 
@@ -1247,7 +1247,8 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
                                 // We must have a domain name,
                                 // make a copy of it as we need to
                                 // manipulate it
-                                strcpy(pContext->pBrokerNameStr, pBrokerNameStr);
+                                strncpy(pContext->pBrokerNameStr, pBrokerNameStr,
+                                        U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES + 1);
                                 // Grab any port number off the end
                                 // and then remove it from the string
                                 port = uSockDomainGetPort(pContext->pBrokerNameStr);

@@ -368,7 +368,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAll")
     char *pFileName;
     size_t y = 1;
 
-    pFileName = (char *) malloc(U_CELL_FILE_NAME_MAX_LENGTH);
+    pFileName = (char *) malloc(U_CELL_FILE_NAME_MAX_LENGTH + 1);
     U_PORT_TEST_ASSERT(pFileName != NULL);
 
     // In case a previous test failed

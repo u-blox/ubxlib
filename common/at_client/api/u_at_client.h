@@ -26,7 +26,8 @@
  * responses and unsolicited result codes from the AT server.
  * These functions are thread-safe with the proviso that an AT
  * client should not be accessed before it has been added or after
- * it has been removed.
+ * it has been removed.  See also the restrictions for the function
+ * uAtClientSetWakeUpHandler().
  *
  * After initialisation/configuration, the general operation for
  * an AT command sequence is as follows:
@@ -1235,6 +1236,58 @@ void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
                                                     size_t *,
                                                     void *),
                                 void *pContext);
+
+/** Set a wake-up handler function.  This is useful where the
+ * other end of the link is a module which may go to sleep
+ * to save power and require some specific handling to recover
+ * from that state before normal AT operations can continue.
+ * The handler function is called before anything is transmitted
+ * if the time since the end of the last AT transmit is greater
+ * than inactivityTimeoutMs.  The handler function may carry out
+ * whatever pin-toggling or AT-command-based power-up processes that
+ * are required and return an integer; if the return value is zero
+ * then the power-up is assumed to have succeeded and operations
+ * will continue, else an error is assumed to have occurred.
+ *
+ * IMPORTANT: the wake-up handler may send and receive AT
+ * commands and may expect URCs to be processed but should not
+ * remove/deinitialise the AT interface or call this function,
+ * and probably shouldn't do anything with global effect (e.g.
+ * change the AT timeout UNLESS it is between the
+ * uAtClientLock()/uAtClientUnlock() functions) as such changes
+ * _will_ take effect.
+ * Also, this function should only be called when there is no
+ * "send" (i.e. from the MCU to the module) AT activity on-going.
+ *
+ * @param atHandle             the handle of the AT client.
+ * @param pHandler             the function to be called if
+ *                             inactivityTimeoutMs milliseconds
+ *                             have passed since the last AT
+ *                             communication; use NULL to
+ *                             remove a previous wake-up handler.
+ * @param pHandlerParam        void * parameter to be passed to
+ *                             the function call as the second
+ *                             parameter, may be NULL.
+ * @param inactivityTimeoutMs  the time since the last AT
+ *                             communication, in milliseconds,
+ *                             that will cause pHandler to be
+ *                             invoked.
+ * @return                     zero on success else negative error
+ *                             code.
+ */
+int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
+                                  int32_t (*pHandler) (uAtClientHandle_t,
+                                                       void *),
+                                  void *pHandlerParam,
+                                  int32_t inactivityTimeoutMs);
+
+/** Return true if a wake-up handler is set.
+ *
+ * @param atHandle  the handle of the AT client.
+ * @return          true if a wake-up handler is set for the AT client,
+ *                  else false.
+ */
+bool uAtClientWakeUpHandlerIsSet(const uAtClientHandle_t atHandle);
 
 #ifdef __cplusplus
 }

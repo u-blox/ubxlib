@@ -515,6 +515,7 @@ const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle)
     return pModule;
 }
 
+// Remove a chip-to-chip security context.
 void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance)
 {
     uCellSecC2cContext_t *pContext = (uCellSecC2cContext_t *) pInstance->pSecurityC2cContext;
@@ -541,6 +542,7 @@ void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance)
     }
 }
 
+// Remove a location context.
 void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance)
 {
     uCellPrivateLocContext_t *pContext;
@@ -560,6 +562,40 @@ void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance)
         free(pContext);
         pInstance->pLocContext = NULL;
     }
+}
+
+// Callback to wake up the cellular module from UART power saving.
+int32_t uCellPrivateUartWakeUpCallback(uAtClientHandle_t atHandle,
+                                       void *pParam)
+{
+    int32_t errorCode = (int32_t) U_CELL_ERROR_AT;
+    uAtClientDeviceError_t deviceError;
+
+    (void) pParam;
+
+    // Poke the AT interface a few times at short intervals
+    // to awaken the module
+    for (size_t x = 0;
+         (x < U_CELL_PRIVATE_UART_WAKE_UP_RETRIES + 1) && (errorCode != 0);
+         x++) {
+        uAtClientLock(atHandle);
+        if (x == 0) {
+            uAtClientTimeoutSet(atHandle, U_CELL_PRIVATE_UART_WAKE_UP_FIRST_WAIT_MS);
+        } else {
+            uAtClientTimeoutSet(atHandle, U_CELL_PRIVATE_UART_WAKE_UP_RETRY_INTERVAL_MS);
+        }
+        uAtClientCommandStart(atHandle, "AT");
+        uAtClientCommandStopReadResponse(atHandle);
+        uAtClientDeviceErrorGet(atHandle, &deviceError);
+        // Doesn't matter what the response is, even an error is OK,
+        // provided there is a response we're happy
+        if ((uAtClientUnlock(atHandle) == 0) ||
+            (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR)) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return errorCode;
 }
 
 // End of file

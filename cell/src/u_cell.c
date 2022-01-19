@@ -167,6 +167,8 @@ void uCellDeinit()
         while (gpUCellPrivateInstanceList != NULL) {
             pInstance = gpUCellPrivateInstanceList;
             removeCellInstance(pInstance);
+            // Free the wake-up callback
+            uAtClientSetWakeUpHandler(pInstance->atHandle, NULL, NULL, 0);
             // Free any scan results
             uCellPrivateScanFree(&(pInstance->pScanResults));
             // Free any chip to chip security context
@@ -240,7 +242,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 // Now set up the pins
                 uPortLog("U_CELL: initialising with enable power pin ");
                 if (pinEnablePower >= 0) {
-                    uPortLog("%d (0x%02x), ", pinEnablePower, pinEnablePower);
+                    uPortLog("%d (0x%02x) (where %d is on), ", pinEnablePower,
+                             pinEnablePower, U_CELL_ENABLE_POWER_PIN_ON_STATE);
                 } else {
                     uPortLog("not connected, ");
                 }
@@ -304,7 +307,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                         enablePowerAtStart = uPortGpioGet(pinEnablePower);
                         if (!leavePowerAlone) {
                             // Make sure the default is off.
-                            enablePowerAtStart = 0;
+                            enablePowerAtStart = (int32_t) !U_CELL_ENABLE_POWER_PIN_ON_STATE;
                         }
                         platformError = uPortGpioSet(pinEnablePower, enablePowerAtStart);
                         if (platformError != 0) {
@@ -337,6 +340,15 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                                         pInstance->pModule->atTimeoutSeconds * 1000);
                     uAtClientDelaySet(atHandle,
                                       pInstance->pModule->commandDelayMs);
+#ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
+                    // Here we set the power-saving wake-up handler but note
+                    // that this might be _removed_ during the power-on
+                    // process if it turns out that the configuration of
+                    // flow control lines is such that such power saving
+                    // cannot be supported
+                    uAtClientSetWakeUpHandler(atHandle, uCellPrivateUartWakeUpCallback, NULL,
+                                              (U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000) - 500);
+#endif
                     // ...and finally add it to the list
                     addCellInstance(pInstance);
                     handleOrErrorCode = pInstance->handle;
@@ -365,6 +377,8 @@ void uCellRemove(int32_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             removeCellInstance(pInstance);
+            // Free the wake-up callback
+            uAtClientSetWakeUpHandler(pInstance->atHandle, NULL, NULL, 0);
             // Free any scan results
             uCellPrivateScanFree(&(pInstance->pScanResults));
             // Free any chip to chip security context

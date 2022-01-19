@@ -1634,14 +1634,15 @@ static int32_t getDnsStr(const uCellPrivateInstance_t *pInstance,
                 if (v6) {
                     if (x == 1) {
                         if (pStrDns1 != NULL) {
-                            strcpy(pStrDns1, pBuffer +
-                                   (U_CELL_NET_IP_ADDRESS_SIZE * 2));
+                            strncpy(pStrDns1,
+                                    pBuffer + (U_CELL_NET_IP_ADDRESS_SIZE * 2),
+                                    U_CELL_NET_IP_ADDRESS_SIZE);
                         }
                     }
                 } else {
                     if (x == 0) {
                         if (pStrDns1 != NULL) {
-                            strcpy(pStrDns1, pBuffer);
+                            strncpy(pStrDns1, pBuffer, U_CELL_NET_IP_ADDRESS_SIZE);
                         }
                     }
                 }
@@ -1656,15 +1657,17 @@ static int32_t getDnsStr(const uCellPrivateInstance_t *pInstance,
                 if (v6) {
                     if (x == 1) {
                         if (pStrDns2 != NULL) {
-                            strcpy(pStrDns2, pBuffer +
-                                   (U_CELL_NET_IP_ADDRESS_SIZE * 3));
+                            strncpy(pStrDns2,
+                                    pBuffer + (U_CELL_NET_IP_ADDRESS_SIZE * 3),
+                                    U_CELL_NET_IP_ADDRESS_SIZE);
                         }
                     }
                 } else {
                     if (x == 0) {
                         if (pStrDns2 != NULL) {
-                            strcpy(pStrDns2, pBuffer +
-                                   U_CELL_NET_IP_ADDRESS_SIZE);
+                            strncpy(pStrDns2,
+                                    pBuffer + U_CELL_NET_IP_ADDRESS_SIZE,
+                                    U_CELL_NET_IP_ADDRESS_SIZE);
                         }
                     }
                 }
@@ -1752,12 +1755,15 @@ static int32_t getDnsStrUpsd(const uCellPrivateInstance_t *pInstance,
         if (errorCode == 0) {
             if (bytesRead[0] >= 0) {
                 if (pStrDns1 != NULL) {
-                    strcpy(pStrDns1, pBuffer);
+                    strncpy(pStrDns1, pBuffer,
+                            U_CELL_NET_IP_ADDRESS_SIZE);
                 }
             }
             if (bytesRead[1] >= 0) {
                 if (pStrDns2 != NULL) {
-                    strcpy(pStrDns2, pBuffer + U_CELL_NET_IP_ADDRESS_SIZE);
+                    strncpy(pStrDns2,
+                            pBuffer + U_CELL_NET_IP_ADDRESS_SIZE,
+                            U_CELL_NET_IP_ADDRESS_SIZE);
                 }
             }
             // Print what we got out for debug purposes
@@ -2765,7 +2771,7 @@ int32_t uCellNetGetIpAddressStr(int32_t cellHandle,
                         if ((errorCodeOrSize == 0) && (bytesRead > 0)) {
                             errorCodeOrSize = bytesRead;
                             if (pStr != NULL) {
-                                strcpy(pStr, pBuffer);
+                                strncpy(pStr, pBuffer, U_CELL_NET_IP_ADDRESS_SIZE);
                             }
                             uPortLog("U_CELL_NET: IP address \"%.*s\".\n",
                                      bytesRead, pBuffer);
