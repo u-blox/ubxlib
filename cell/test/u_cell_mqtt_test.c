@@ -263,19 +263,6 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             }
         }
 
-        // Set/get the inactivity timeout
-        uPortLog("U_CELL_MQTT_TEST: testing getting/setting inactivity timeout...\n");
-        x = uCellMqttGetInactivityTimeout(cellHandle);
-        U_PORT_TEST_ASSERT(x >= 0);
-        U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, x + 60) == 0);
-        y = uCellMqttGetInactivityTimeout(cellHandle);
-        U_PORT_TEST_ASSERT(y == x + 60);
-        // Leave the timeout where it is: reason is that on SARA-R5 if the
-        // inactivity timeout is *set* to zero (as opposed to being
-        // left at the default of zero) it doesn't mean no timeout,
-        // it means a zero timeout and, if you switch on MQTT keep-alive
-        // (AKA ping) you get +UUMQTTC: 8,0 poured at you forever
-
         // Set/get retention
         uPortLog("U_CELL_MQTT_TEST: testing getting/setting retention...\n");
         if (U_CELL_PRIVATE_HAS(pModule,
@@ -367,17 +354,61 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             free(pBuffer);
         }
 
+        // Test that we can get and set the inactivity timeout
+        z = 60;
+        uPortLog("U_CELL_MQTT_TEST: testing getting/setting inactivity timeout"
+                 " of %d second(s)...\n", z);
+        U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, z) == 0);
+        U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == z);
+
+        // Put it back to zero for the first connection to the broker
+        uPortLog("U_CELL_MQTT_TEST: testing setting inactivity timeout to 0.\n");
+        U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, 0) == 0);
+        U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == 0);
+
         // Need to connect before keep-alive can be set
         uPortLog("U_CELL_MQTT_TEST: connecting to broker \"%s\"...\n", pServerAddress);
         U_PORT_TEST_ASSERT(uCellMqttConnect(cellHandle) == 0);
 
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)) {
-            // Set/get keep-alive
-            uPortLog("U_CELL_MQTT_TEST: testing getting/setting keep-alive...\n");
-            if (uCellMqttIsKeptAlive(cellHandle)) {
-                U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOff(cellHandle) == 0);
+            // Try to set keep-alive on
+            uPortLog("U_CELL_MQTT_TEST: trying to set keep-alive on (should fail)...\n");
+            U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
+            // Should not be possible when the inactivity timeout is zero
+            U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) < 0);
+            U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
+
+            if (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R410M_03B) {
+                // For reasons I don't understand, SARA-R410M-03B won't let
+                // me set a new timeout value after a connect/disconnect, so
+                // there's no point in doing this bit
+
+                // Disconnect from the broker again to test with a non-zero
+                // inactivity timeout set
+                uPortLog("U_CELL_MQTT_TEST: disconnecting from broker to test with"
+                         " an inactivity timeout...\n");
+                U_PORT_TEST_ASSERT(uCellMqttDisconnect(cellHandle) == 0);
+
+                if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
+                    // On SARA-R422) need to wait a moment for the disconnect
+                    // to take effect
+                    uPortTaskBlock(5000);
+                }
+
+                // Set an inactivity timeout of 60 seconds
+                z = 60;
+                uPortLog("U_CELL_MQTT_TEST: setting inactivity timeout of %d second(s)...\n", z);
+                U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, z) == 0);
+                U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == z);
+
+                // Connect to the broker again
+                uPortLog("U_CELL_MQTT_TEST: connecting to broker \"%s\" again...\n",
+                         pServerAddress);
+                U_PORT_TEST_ASSERT(uCellMqttConnect(cellHandle) == 0);
+
+                uPortLog("U_CELL_MQTT_TEST: setting keep-alive on...\n");
                 U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
-            } else {
                 U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) == 0);
                 U_PORT_TEST_ASSERT(uCellMqttIsKeptAlive(cellHandle));
             }

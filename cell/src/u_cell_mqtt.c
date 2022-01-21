@@ -59,8 +59,9 @@
 #include "u_sock.h"
 
 #include "u_cell_module_type.h"
-#include "u_cell_net.h"     // Order is important
-#include "u_cell_private.h" // here don't change it
+#include "u_cell.h"         // Order is
+#include "u_cell_net.h"     // important here
+#include "u_cell_private.h" // don't change it
 #include "u_cell_info.h"    // For U_CELL_INFO_IMEI_SIZE
 
 #include "u_cell_mqtt.h"
@@ -290,6 +291,9 @@ static void UUMQTTC_urc(uAtClientHandle_t atHandle,
 #pragma GCC diagnostic pop
                 }
                 pContext->connected = false;
+                // Keep alive returns to "off" when the session ends,
+                // it must be set afresh each time
+                pContext->keptAlive = false;
             }
             pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED;
             break;
@@ -1113,6 +1117,7 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
             // For disconnections on SARA-R4 no need to wait,
             // that's it
             pContext->connected = false;
+            pContext->keptAlive = false;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         } else {
             // Otherwise wait for the URC for success
@@ -1586,20 +1591,13 @@ int32_t uCellMqttSetInactivityTimeout(int32_t cellHandle,
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
     if ((errorCode == 0) && (pInstance != NULL)) {
-        if ((seconds == 0) &&
-            (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5)) {
-            // Setting an inactivity timeout of zero for SARA-R5
-            // is not supported
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-        } else {
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UMQTT=");
-            // Set the inactivity timeout
-            uAtClientWriteInt(atHandle, 10);
-            uAtClientWriteInt(atHandle, (int32_t) seconds);
-            errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
-        }
+        atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UMQTT=");
+        // Set the inactivity timeout
+        uAtClientWriteInt(atHandle, 10);
+        uAtClientWriteInt(atHandle, (int32_t) seconds);
+        errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
     }
 
     U_CELL_MQTT_EXIT_FUNCTION();
@@ -1658,7 +1656,22 @@ int32_t uCellMqttGetInactivityTimeout(int32_t cellHandle)
 // Switch MQTT ping or "keep alive" on.
 int32_t uCellMqttSetKeepAliveOn(int32_t cellHandle)
 {
-    return setKeepAlive(cellHandle, true);
+    int32_t errorCode;
+
+    // First get the inactivity timeout
+    errorCode = uCellMqttGetInactivityTimeout(cellHandle);
+    if (errorCode > 0) {
+        // If the inactivity timeout function does not
+        // return an error and does not return a timeout
+        // value of zero then we can switch keep alive on
+        errorCode = setKeepAlive(cellHandle, true);
+    } else {
+        if (errorCode == 0) {
+            errorCode = (int32_t) U_CELL_ERROR_NOT_ALLOWED;
+        }
+    }
+
+    return errorCode;
 }
 
 // Switch MQTT ping or "keep alive" off.
