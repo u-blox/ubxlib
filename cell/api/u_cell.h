@@ -132,7 +132,8 @@ typedef enum {
     U_CELL_ERROR_NOT_FOUND = U_ERROR_CELL_MAX - 8,  /**< -264 if U_ERROR_BASE is 0. */
     U_CELL_ERROR_VALUE_OUT_OF_RANGE = U_ERROR_CELL_MAX - 9,  /**< -265 if U_ERROR_BASE is 0. */
     U_CELL_ERROR_TEMPORARY_FAILURE = U_ERROR_CELL_MAX - 10,  /**< -266 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_CELL_LOCATE = U_ERROR_CELL_MAX - 11  /**< -267 if U_ERROR_BASE is 0. */
+    U_CELL_ERROR_CELL_LOCATE = U_ERROR_CELL_MAX - 11,  /**< -267 if U_ERROR_BASE is 0. */
+    U_CELL_ERROR_NOT_ALLOWED = U_ERROR_CELL_MAX - 12  /**< -268 if U_ERROR_BASE is 0. */
 } uCellErrorCode_t;
 
 /* ----------------------------------------------------------------

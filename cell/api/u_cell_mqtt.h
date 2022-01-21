@@ -204,9 +204,14 @@ int32_t uCellMqttSetLocalPort(int32_t cellHandle, uint16_t port);
 int32_t uCellMqttGetLocalPort(int32_t cellHandle);
 
 /** Set the inactivity timeout used by the MQTT client.  If this
- * is not called then no inactivity timeout is used.  Note that for
- * SARA-R5 modules *setting* a value of 0 is not permitted, *leaving*
- * the value at the default of 0 is permitted.
+ * is not called then no inactivity timeout is used.  An inactivity
+ * timeout value of 0 means no inactivity timeout.  The inactivity
+ * timeout is applied at the moment the connection to the broker is
+ * made.
+ * Note that a very short inactivity timeout in conjunction with MQTT
+ * "keep alive" is inadvisable; the MQTT pings sent near the end of
+ * the inactivity timeout could cause heavy broker/network load and
+ * high power consumption.
  * IMPORTANT: a re-boot of the module will lose your setting.
  *
  * @param cellHandle  the handle of the cellular instance to be used.
@@ -228,7 +233,12 @@ int32_t uCellMqttGetInactivityTimeout(int32_t cellHandle);
 /** Switch MQTT ping or "keep alive" on.  This will send an
  * MQTT ping message to the broker near the end of the
  * inactivity timeout to keep the connection alive.
- * If this is not called no such ping is sent.
+ * If this is not called no such ping is sent.  This must
+ * be called after a connection has been made and is specific
+ * to that connection, i.e. "keep alive" always begins off
+ * for a connection and you must switch it on.  If the inactivity
+ * timeout is zero then this function will return
+ * U_CELL_ERROR_NOT_ALLOWED.
  * IMPORTANT: a re-boot of the module will lose your setting.
  *
  * @param cellHandle the handle of the cellular instance to be used.
