@@ -170,7 +170,9 @@ void changeInt32(void *p)
 // Change an int32_t keeping it positive.
 void changeInt32Positive(void *p)
 {
-    (*((int32_t *) p))++;
+    // Add 1000 because the SARA-R5 keep idle socket option
+    // is in increments of 1000 only.
+    (*((int32_t *) p)) += 1000;
     if (*(int32_t *) p < 0) {
         *(int32_t *) p = 0;
     }
