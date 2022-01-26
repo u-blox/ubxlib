@@ -280,6 +280,13 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
     return (int32_t) errorCode;
 }
 
+// Receive from the given queue, non-blocking.
+int32_t uPortQueueReceiveIrq(const uPortQueueHandle_t queueHandle,
+                             void *pEventData)
+{
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+}
+
 // Receive from the given queue, with a wait time.
 int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
                              int32_t waitMs, void *pEventData)
