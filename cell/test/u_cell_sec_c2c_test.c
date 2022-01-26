@@ -114,7 +114,7 @@
  * or STM32F4 and more again in the version pre-built for
  * Arduino.
  */
-# define U_CELL_SEC_C2C_TEST_TASK_STACK_SIZE_BYTES  2048
+# define U_CELL_SEC_C2C_TEST_TASK_STACK_SIZE_BYTES  2304
 #endif
 
 #ifndef U_CELL_SEC_C2C_TEST_TASK_PRIORITY
