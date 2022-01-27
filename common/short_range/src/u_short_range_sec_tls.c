@@ -67,15 +67,21 @@ static uErrorCode_t gLastErrorCode = U_ERROR_COMMON_SUCCESS;
 static uErrorCode_t storeString(const char *pSrc, char **ppDest)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_SUCCESS;
+    size_t bufferLength;
 
     *ppDest = NULL;
     if (pSrc != NULL) {
+        bufferLength = strlen(pSrc);
+        if (bufferLength > U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES) {
+            bufferLength = U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES;
+        }
+        // Add one more for the terminator
+        bufferLength++;
         errorCode = U_ERROR_COMMON_NO_MEMORY;
-        *ppDest = (char *) malloc(strlen(pSrc) + 1);
+        *ppDest = (char *) malloc(bufferLength);
         if (*ppDest != NULL) {
             errorCode = U_ERROR_COMMON_SUCCESS;
-            strncpy(*ppDest, pSrc,
-                    U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES + 1);
+            strncpy(*ppDest, pSrc, bufferLength);
         }
     }
 
