@@ -62,11 +62,11 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "assert.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -148,7 +148,7 @@ void uPortTaskBlock(int32_t delayMs)
 {
     // Make sure the scheduler has been started
     // or this will fly off into space
-    assert(xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED);
+    U_ASSERT(xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED);
     vTaskDelay(delayMs);
 }
 
@@ -505,7 +505,7 @@ void vApplicationStackOverflowHook(TaskHandle_t taskHandle,
 {
     uPortLog("U_PORT: task handle 0x%08x, \"%s\", overflowed its stack.\n",
              (int32_t) taskHandle, pTaskName);
-    assert(false);
+    U_ASSERT(false);
 }
 
 // Malloc failed hook, employed when configUSE_MALLOC_FAILED_HOOK is
@@ -517,7 +517,7 @@ void vApplicationMallocFailedHook( void )
              " check HEAP_SIZE in the Makefile for a GCC build or"
              " the value of arm_linker_heap_size in the project"
              " file for an SES build.\n");
-    assert(false);
+    U_ASSERT(false);
 }
 
 // End of file

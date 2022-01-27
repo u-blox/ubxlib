@@ -12,6 +12,7 @@
 
 cfg
 common/error/api
+common/assert/api
 port/platform/common/mutex_debug
 port/api
 port/clib

@@ -62,13 +62,13 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "assert.h"
 #include "stdlib.h"
 #include "string.h"    // memset
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -147,7 +147,7 @@ static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
             // Other architectures may have other alignment requirements so just add
             // a simple check that we don't waste a huge amount dynamic memory due to
             // aligment.
-            assert(Z_KERNEL_STACK_OBJ_ALIGN <= 512);
+            U_ASSERT(Z_KERNEL_STACK_OBJ_ALIGN <= 512);
             // Z_KERNEL_STACK_SIZE_ADJUST() will add extra space that Zephyr may require and
             // to make sure correct allignment we allocate Z_KERNEL_STACK_OBJ_ALIGN extra.
             stackAllocSize = Z_KERNEL_STACK_OBJ_ALIGN + Z_KERNEL_STACK_SIZE_ADJUST(stackSizeBytes);

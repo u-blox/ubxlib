@@ -31,6 +31,8 @@
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
 
+#include "u_assert.h"
+
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
@@ -117,7 +119,7 @@ void app_main(void)
     uPortPlatformStart(appTask, NULL, 0, 0);
 
     // Should never get here
-    assert(false);
+    U_ASSERT(false);
 }
 
 // End of file

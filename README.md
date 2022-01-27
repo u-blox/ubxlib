@@ -82,6 +82,7 @@ In order for u-blox to support multiple platforms with this code there is also a
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wi-Fi APIs
 ¦   +---ubx_protocol           <-- internal API used by the GNSS API
 ¦   +---error                  <-- u_error_common.h: error codes common across APIs
+¦   +---assert                 <-- u_assert.h: assert hook
 ¦   +---utils                  <-- contains common utilities
 ¦   ...
 +---cell                       <-- API for cellular (if you need more than network provides)

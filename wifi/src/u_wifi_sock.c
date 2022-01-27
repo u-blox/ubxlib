@@ -28,7 +28,6 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "assert.h"
 //lint -efile(537, stdlib.h) suppress repeated include
 #include "stdlib.h"    // malloc() and free()
 #include "stddef.h"    // NULL, size_t etc.
@@ -38,6 +37,8 @@
 #include "stdio.h"     // snprintf()
 
 #include "u_error_common.h"
+
+#include "u_assert.h"
 
 #include "u_port_os.h"
 #include "u_cfg_sw.h"
@@ -530,7 +531,7 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel, int32_t len
         return;
     }
 
-    assert( uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS );
+    U_ASSERT( uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS );
 
     wifiHandle = uShoToWifiHandle(pInstance->handle);
     uWifiSockSocket_t *pSock = pFindSocketByEdmChannel(wifiHandle, edmChannel);
@@ -544,9 +545,9 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel, int32_t len
                 const uint16_t shortLength = (uint16_t)length;
                 // We have checked the ring buffer size above so if uRingBufferAdd returns false
                 // there are something really wrong going on...
-                assert(uRingBufferAdd(&pSock->rxRingBuffer, (const char *)&magic, sizeof(magic)));
-                assert(uRingBufferAdd(&pSock->rxRingBuffer, (const char *)&shortLength, sizeof(shortLength)));
-                assert(uRingBufferAdd(&pSock->rxRingBuffer, pData, length));
+                U_ASSERT(uRingBufferAdd(&pSock->rxRingBuffer, (const char *)&magic, sizeof(magic)));
+                U_ASSERT(uRingBufferAdd(&pSock->rxRingBuffer, (const char *)&shortLength, sizeof(shortLength)));
+                U_ASSERT(uRingBufferAdd(&pSock->rxRingBuffer, pData, length));
             } else {
                 // If the buffer can't fit the data we will just drop it for now
                 uPortLog("U_WIFI_SOCK: RX FIFO full, dropping %d bytes!\n", length);
@@ -1304,19 +1305,19 @@ int32_t uWifiSockReceiveFrom(int32_t wifiHandle,
             size_t remainingDatagramBytes;
             // Nothing should fail below unless there is a corruption
             // Start by reading out our datagram header
-            assert(dataLength > U_DATAGRAM_HDR_SIZE);
+            U_ASSERT(dataLength > U_DATAGRAM_HDR_SIZE);
             errnoLocal = (int32_t)uRingBufferRead(&pSock->rxRingBuffer, (char *)&magic, sizeof(magic));
-            assert(errnoLocal == sizeof(magic));
+            U_ASSERT(errnoLocal == sizeof(magic));
             errnoLocal = (int32_t)uRingBufferRead(&pSock->rxRingBuffer, (char *)&datagramLength,
                                                   sizeof(datagramLength));
-            assert(errnoLocal == sizeof(datagramLength));
-            assert(uRingBufferDataSize(&pSock->rxRingBuffer) >= datagramLength);
+            U_ASSERT(errnoLocal == sizeof(datagramLength));
+            U_ASSERT(uRingBufferDataSize(&pSock->rxRingBuffer) >= datagramLength);
 
             // Next step is to read out the datagram data
             dataSizeBytes = MIN(dataSizeBytes, datagramLength);
             remainingDatagramBytes = datagramLength;
             errnoLocal = (int32_t)uRingBufferRead(&pSock->rxRingBuffer, (char *)pData, dataSizeBytes);
-            assert(errnoLocal == dataSizeBytes);
+            U_ASSERT(errnoLocal == dataSizeBytes);
             remainingDatagramBytes -= errnoLocal;
 
             while (remainingDatagramBytes) {

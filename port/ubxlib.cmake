@@ -85,6 +85,7 @@ endfunction()
 # Add /api, /src and /test sub folders for these:
 u_add_module_dir(base ${UBXLIB_BASE}/common/at_client)
 u_add_module_dir(base ${UBXLIB_BASE}/common/error)
+u_add_module_dir(base ${UBXLIB_BASE}/common/assert)
 u_add_module_dir(base ${UBXLIB_BASE}/common/location)
 u_add_module_dir(base ${UBXLIB_BASE}/common/mqtt_client)
 u_add_module_dir(base ${UBXLIB_BASE}/common/security)

@@ -37,12 +37,13 @@
 #include "string.h"    // memcpy(), strcmp(), strcspn(), strspm()
 #include "stdio.h"     // snprintf()
 #include "ctype.h"     // isprint()
-#include "assert.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
 
 #include "u_error_common.h"
+
+#include "u_assert.h"
 
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
@@ -585,7 +586,7 @@ static void removeClient(uAtClientInstance_t *pClient)
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
     // Must not be in a wake-up handler
-    assert((pClient->pWakeUp == NULL) || (!pClient->pWakeUp->inWakeUpHandler));
+    U_ASSERT((pClient->pWakeUp == NULL) || (!pClient->pWakeUp->inWakeUpHandler));
 
     // Remove it from the list
     removeAtClientInstance(pClient);
@@ -788,7 +789,7 @@ static void bufferReset(const uAtClientInstance_t *pClient,
         memmove(((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t),
                 ((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t) + pBuffer->length,
                 pBuffer->lengthBuffered - pBuffer->length);
-        assert(U_AT_CLIENT_GUARD_CHECK(pBuffer));
+        U_ASSERT(U_AT_CLIENT_GUARD_CHECK(pBuffer));
         pBuffer->lengthBuffered -= pBuffer->length;
     }
     pBuffer->readIndex = 0;
@@ -822,7 +823,7 @@ static void bufferRewind(const uAtClientInstance_t *pClient)
         memmove(((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t),
                 ((char *) pBuffer) + sizeof(uAtClientReceiveBuffer_t) + pBuffer->readIndex,
                 pBuffer->lengthBuffered);
-        assert(U_AT_CLIENT_GUARD_CHECK(pBuffer));
+        U_ASSERT(U_AT_CLIENT_GUARD_CHECK(pBuffer));
         pBuffer->readIndex = 0;
         LOG(102);
     }
@@ -983,7 +984,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
                 // length is now the length of the data that has been PROCESSED
                 // by the intercept function and is ready to be AT-parsed.
                 LOG_BUFFER_FILL(7);
-                assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
+                U_ASSERT(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
 
                 // Safety check
                 if (length > x) {
@@ -1022,7 +1023,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
                     memmove(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                             pReceiveBuffer->length + readLength,
                             pData, length);
-                    assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
+                    U_ASSERT(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
 
                     // We now have:
                     //
@@ -1057,7 +1058,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
                     memmove(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                             pReceiveBuffer->length + readLength + length,
                             pDataIntercept, y);
-                    assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
+                    U_ASSERT(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
                     // Lastly, we need to adjust the things that were at or
                     // beyond pDataIntercept to take account of the move.
                     // z is how far things were moved
@@ -1114,7 +1115,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         LOG_BUFFER_FILL(16);
     }
 
-    assert(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
+    U_ASSERT(U_AT_CLIENT_GUARD_CHECK(pReceiveBuffer));
 
     return readLength > 0;
 }
@@ -1223,7 +1224,7 @@ static void setScope(uAtClientInstance_t *pClient,
                 break;
             default:
                 //lint -e506 Suppress constant value Boolean
-                assert(false);
+                U_ASSERT(false);
                 break;
         }
     }
@@ -2420,7 +2421,7 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
     }
 
     error = pClient->error;
-    assert(U_AT_CLIENT_GUARD_CHECK(pClient->pReceiveBuffer));
+    U_ASSERT(U_AT_CLIENT_GUARD_CHECK(pClient->pReceiveBuffer));
 
     U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
@@ -3231,7 +3232,7 @@ int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
     if (pHandler == NULL) {
         if (pClient->pWakeUp != NULL) {
             // Mustn't be in the wake-up handler
-            assert(!pClient->pWakeUp->inWakeUpHandler);
+            U_ASSERT(!pClient->pWakeUp->inWakeUpHandler);
             uPortMutexDelete(pClient->pWakeUp->mutex);
             free(pClient->pWakeUp);
             pClient->pWakeUp = NULL;
@@ -3249,7 +3250,7 @@ int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
             }
         } else {
             // Mustn't be in the wake-up handler
-            assert(!pClient->pWakeUp->inWakeUpHandler);
+            U_ASSERT(!pClient->pWakeUp->inWakeUpHandler);
         }
         if (pClient->pWakeUp != NULL) {
             pClient->pWakeUp->pHandler = pHandler;

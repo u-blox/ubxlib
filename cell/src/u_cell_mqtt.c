@@ -35,11 +35,12 @@
 #include "ctype.h"     // isdigit(), isprint()
 #include "string.h"    // memset(), strncpy(), strtok_r(), strtol(), strncmp()
 #include "stdio.h"     // snprintf()
-#include "assert.h"
 
 #include "u_cfg_sw.h"
 
 #include "u_error_common.h"
+
+#include "u_assert.h"
 
 #include "u_port_clib_platform_specific.h" /* strtok_r and integer stdio, must
                                               be included before the other port
@@ -2495,9 +2496,9 @@ int32_t uCellMqttMessageRead(int32_t cellHandle, char *pTopicNameStr,
             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                assert (pUrcMessage != NULL);
+                U_ASSERT(pUrcMessage != NULL);
                 // For the old-style SARA-R4 interface we need a URC capture
-                assert(U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType));
+                U_ASSERT(U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType));
                 pUrcMessage->messageRead = false;
                 pUrcMessage->pTopicNameStr = pTopicNameStr;
                 pUrcMessage->topicNameSizeBytes = (int32_t) topicNameSizeBytes;

@@ -28,11 +28,11 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memset()
-#include "assert.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -327,7 +327,7 @@ static void lockMoveWaitingToLocker(uMutexInfo_t *pMutexInfo,
         // If there is a locker, free it, it's gone
         freeFunctionInformationBlock(pMutexInfo->pLocker);
         // Unlink the waiting entry in the list
-        assert(unlinkWaiting(pMutexInfo, pWaiting));
+        U_ASSERT(unlinkWaiting(pMutexInfo, pWaiting));
         // The waiting entry is now the locker
         pMutexInfo->pLocker = pWaiting;
         // Zero the counter

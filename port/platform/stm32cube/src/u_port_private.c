@@ -27,14 +27,13 @@
 
 #include "u_cfg_hw_platform_specific.h" // For U_CFG_HW_SWO_CLOCK_HZ
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port.h"
 
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_ll_bus.h"
 
 #include "u_port_private.h"  // Down here 'cos it needs GPIO_TypeDef
-
-#include "assert.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -201,8 +200,8 @@ GPIO_TypeDef *const pUPortPrivateGpioGetReg(int32_t pin)
 {
     int32_t port = U_PORT_STM32F4_GPIO_PORT(pin);
 
-    assert(port >= 0);
-    assert(port < sizeof(gpGpioReg) / sizeof(gpGpioReg[0]));
+    U_ASSERT(port >= 0);
+    U_ASSERT(port < sizeof(gpGpioReg) / sizeof(gpGpioReg[0]));
 
     return gpGpioReg[port];
 }
@@ -212,9 +211,9 @@ void uPortPrivateGpioEnableClock(int32_t pin)
 {
     int32_t port = U_PORT_STM32F4_GPIO_PORT(pin);
 
-    assert(port >= 0);
-    assert(port < sizeof(gLlApbGrpPeriphGpioPort) /
-           sizeof(gLlApbGrpPeriphGpioPort[0]));
+    U_ASSERT(port >= 0);
+    U_ASSERT(port < sizeof(gLlApbGrpPeriphGpioPort) /
+             sizeof(gLlApbGrpPeriphGpioPort[0]));
     LL_AHB1_GRP1_EnableClock(gLlApbGrpPeriphGpioPort[port]);
 }
 

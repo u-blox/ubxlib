@@ -67,13 +67,12 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
 
 #include "cmsis_os.h"
-
-#include "assert.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -171,7 +170,7 @@ void uPortTaskBlock(int32_t delayMs)
 {
     // Make sure the scheduler has been started
     // or this may fly off into space
-    assert(osKernelRunning());
+    U_ASSERT(osKernelRunning());
     osDelay(delayMs);
 }
 
@@ -534,7 +533,7 @@ void vApplicationStackOverflowHook(TaskHandle_t taskHandle,
 {
     uPortLog("U_PORT: task handle 0x%08x, \"%s\", overflowed its"
              " stack.\n", (int32_t) taskHandle, pTaskName);
-    assert(false);
+    U_ASSERT(false);
 }
 
 // Malloc failed hook, employed when configUSE_MALLOC_FAILED_HOOK is
@@ -543,7 +542,7 @@ void vApplicationMallocFailedHook()
 {
     uPortLog("U_PORT: freeRTOS doesn't have enough heap, increase"
              " configTOTAL_HEAP_SIZE in FreeRTOSConfig.h.\n");
-    assert(false);
+    U_ASSERT(false);
 }
 
 // End of file

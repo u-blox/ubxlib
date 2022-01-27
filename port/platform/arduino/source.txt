@@ -63,6 +63,7 @@ common/utils/src/u_ringbuffer.c
 common/utils/src/u_hex_bin_convert.c
 common/utils/src/u_time.c
 common/mqtt_client/src/u_mqtt_client.c
+common/assert/src/u_assert.c
 port/platform/common/event_queue/u_port_event_queue.c
 port/platform/common/mbedtls/u_port_crypto.c
 port/clib/u_port_clib_mktime64.c

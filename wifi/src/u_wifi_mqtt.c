@@ -36,7 +36,6 @@
 #include "ctype.h"     // isdigit()
 #include "string.h"    // memset(), strncpy(), strtok_r(), strtol()
 #include "stdio.h"     // snprintf()
-#include "assert.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"

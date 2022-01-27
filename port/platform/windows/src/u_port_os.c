@@ -91,7 +91,6 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "stdio.h"     // snprintf()
-#include "assert.h"
 
 #include "windows.h"
 
