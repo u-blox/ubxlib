@@ -139,6 +139,15 @@ typedef enum {
     U_SHORT_RANGE_CONNECTION_IPv6
 } uShortRangeIpVersion_t;
 
+// Enable anonymous unions inclusion for ARM compiler
+#ifdef __arm__
+// Stop GCC complaining
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#pragma anon_unions
+#pragma GCC diagnostic pop
+#endif
+
 typedef struct {
     uShortRangeIpVersion_t type;
     union {
