@@ -407,6 +407,22 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
     return (int32_t) errorCode;
 }
 
+// Receive from the given queue, non-blocking.
+int32_t uPortQueueReceiveIrq(const uPortQueueHandle_t queueHandle,
+                             void *pEventData)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((queueHandle != NULL) && (pEventData != NULL)) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        if (0 == k_msgq_get((struct k_msgq *)queueHandle, pEventData, K_NO_WAIT)) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
 // Receive from the given queue, with a wait time.
 int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
                              int32_t waitMs, void *pEventData)

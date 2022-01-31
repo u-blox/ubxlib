@@ -214,6 +214,16 @@ int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
 int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
                           void *pEventData);
 
+/** Receive from the given queue from ISR
+ *
+ * @param queueHandle the handle of the queue.
+ * @param pEventData  pointer to a place to put incoming data.
+ * @return            zero on success else negative error code.
+ */
+int32_t uPortQueueReceiveIrq(const uPortQueueHandle_t queueHandle,
+                             void *pEventData);
+
+
 /** Try to receive from the given queue, waiting for the given
  * time for something to arrive.
  *

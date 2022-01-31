@@ -2038,6 +2038,7 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
         // Must be on a platform where the pins can be set at run-time
         // and the flow control pins are connected so test with flow control
         runUartTest(50000, 115200, true);
+        runUartTest(50000, 1000000, true);
     }
 #endif
 
