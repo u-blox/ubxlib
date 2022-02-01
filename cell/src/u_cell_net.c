@@ -2357,9 +2357,17 @@ int32_t uCellNetScanGetFirst(int32_t cellHandle,
                             (U_CELL_NET_SCAN_TIME_SECONDS * 1000 / 3)) &&
                            ((pKeepGoingCallback == NULL) || (pKeepGoingCallback(cellHandle)))) {
                         uAtClientResponseStart(atHandle, "+COPS:");
+                        // We use uAtClientReadBytes() here because the
+                        // thing we're reading contains quotation marks
+                        // but we do actually want to end up with a string,
+                        // so leave room to add a terminator
                         bytesRead = uAtClientReadBytes(atHandle, pBuffer,
-                                                       U_CELL_NET_SCAN_LENGTH_BYTES,
+                                                       U_CELL_NET_SCAN_LENGTH_BYTES - 1,
                                                        false);
+                        if (bytesRead >= 0) {
+                            // Add a terminator
+                            *(pBuffer + bytesRead) = 0;
+                        }
                         // Check if an error has been returned by the module,
                         // e.g. +CME ERROR: Temporary Failure, and if
                         // so exit the while() loop and try AT+COPS=? again.
