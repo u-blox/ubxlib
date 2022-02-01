@@ -104,6 +104,10 @@ static const char *const gpConfigCommand[] = {"ATE0",      // Echo off
 // really is a good 1.8V SIM.
                                               "AT+UDCONF=92,1,1",
 #endif
+// SARA-R5xxx-01B remembers whether sockets are in hex mode or
+// not so reset that here in order that all modules behave the
+// same way
+                                              "AT+UDCONF=1,0",
                                               "ATI9",      // Firmware version
                                               "AT&C1",     // DCD circuit (109) changes with the carrier
                                               "AT&D0"      // Ignore changes to DTR
