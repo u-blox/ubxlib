@@ -87,6 +87,15 @@
 #define U_CELL_SOCK_SECURE_DELAY_MILLISECONDS 250
 #endif
 
+#ifndef U_CELL_SOCK_SARA_R422_DNS_DELAY_MILLISECONDS
+/** The gap to leave between being connected to the network
+ * and performing a DNS look-up for a SARA-R422 module. If
+ * you do a DNS look-up immediately after connecting then
+ * SARA-R422 gets a bit upset.
+ */
+#define U_CELL_SOCK_SARA_R422_DNS_DELAY_MILLISECONDS 500
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -1898,6 +1907,14 @@ int32_t uCellSockGetHostByName(int32_t cellHandle,
         while ((atError < 0) &&
                (uPortGetTickTimeMs() < startTimeMs +
                 U_CELL_SOCK_DNS_SHOULD_RETRY_MS)) {
+            if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
+                // SARA-R422 can get upset if UDNSRN is sent very quickly
+                // after a connection is made so we add a short delay here
+                while (uPortGetTickTimeMs() - pInstance->connectedAtMs <
+                       U_CELL_SOCK_SARA_R422_DNS_DELAY_MILLISECONDS) {
+                    uPortTaskBlock(100);
+                }
+            }
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
             // Needs more time
