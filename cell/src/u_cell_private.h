@@ -308,6 +308,9 @@ typedef struct uCellPrivateInstance_t {
     uCellNetRat_t rat[U_CELL_NET_REG_DOMAIN_MAX_NUM];  /**< The active RAT for each domain. */
     uCellPrivateRadioParameters_t radioParameters; /**< The radio parameters. */
     int64_t startTimeMs;     /**< Used while connecting and scanning. */
+    int64_t connectedAtMs;   /**< When a connection was last established,
+                                  can be used for offsetting from that time;
+                                  does NOT mean that we are currently connected. */
     bool rebootIsRequired;   /**< Set to true if a reboot of the module is
                                   required, e.g. as a result of a configuration
                                   change. */

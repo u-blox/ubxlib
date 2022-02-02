@@ -1945,6 +1945,7 @@ int32_t uCellNetConnect(int32_t cellHandle,
                         if (pMccMnc != NULL) {
                             memcpy(pInstance->mccMnc, pMccMnc, sizeof(pInstance->mccMnc));
                         }
+                        pInstance->connectedAtMs = uPortGetTickTimeMs();
                         uPortLog("U_CELL_NET: connected after %d second(s).\n",
                                  (int32_t) ((uPortGetTickTimeMs() -
                                              pInstance->startTimeMs) / 1000));
@@ -2162,6 +2163,7 @@ int32_t uCellNetActivate(int32_t cellHandle,
                 }
 
                 if (errorCode == 0) {
+                    pInstance->connectedAtMs = uPortGetTickTimeMs();
                     if (pApn != NULL) {
                         uPortLog("U_CELL_NET: activated on APN \"%s\".\n", pApn);
                     } else {
