@@ -157,7 +157,10 @@ int32_t uCellGpioGet(int32_t cellHandle, uCellGpioName_t gpioId)
             // Write GPIO ID
             uAtClientWriteInt(atHandle, (int32_t) gpioId);
             uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+UGPIOR:");
+            // Note: need to use just +UGPIO" here since SARA-U201
+            // returns "+UGPIO:" while all the other modules
+            // return "+UGPIOR:"
+            uAtClientResponseStart(atHandle, "+UGPIO");
             // Skip the first integer parameter, which is
             // just our GPIO ID again
             uAtClientSkipParameters(atHandle, 1);
