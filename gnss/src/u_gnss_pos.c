@@ -307,10 +307,11 @@ int32_t uGnssPosGet(int32_t gnssHandle,
         if (pInstance != NULL) {
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
             if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
-                // Temporary change: on old versions of the
-                // SARA-R10M8S module the LNA in the GNSS
-                // chip is not automatically switched on by the
-                // firmware in the cellular module, so we need
+                // Temporary change: on prototype versions of the
+                // SARA-R10M8S module (production week (printed on the
+                // module label, upper right) earlier than 20/27)
+                // the LNA in the GNSS chip is not automatically switched
+                // on by the firmware in the cellular module, so we need
                 // to switch it on ourselves by sending UBX-CFG-ANT
                 // with contents 02000f039
                 message[0] = 0x02;
@@ -388,10 +389,11 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
                     if (pParameters != NULL) {
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
                         if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
-                            // Temporary change: on old versions of the
-                            // SARA-R10M8S module the LNA in the GNSS
-                            // chip is not automatically switched on by the
-                            // firmware in the cellular module, so we need
+                            // Temporary change: on prototype versions of the
+                            // SARA-R10M8S module (production week (printed on the
+                            // module label, upper right) earlier than 20/27)
+                            // the LNA in the GNSS chip is not automatically switched
+                            // on by the firmware in the cellular module, so we need
                             // to switch it on ourselves by sending UBX-CFG-ANT
                             // with contents 02000f039
                             message[0] = 0x02;
@@ -497,10 +499,11 @@ int32_t uGnssPosGetRrlp(int32_t gnssHandle, char *pBuffer,
 
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
             if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
-                // Temporary change: on old versions of the
-                // SARA-R10M8S module the LNA in the GNSS
-                // chip is not automatically switched on by the
-                // firmware in the cellular module, so we need
+                // Temporary change: on prototype versions of the
+                // SARA-R10M8S module (production week (printed on the
+                // module label, upper right) earlier than 20/27)
+                // the LNA in the GNSS chip is not automatically switched
+                // on by the firmware in the cellular module, so we need
                 // to switch it on ourselves by sending UBX-CFG-ANT
                 // with contents 02000f039
                 message[0] = 0x02;
