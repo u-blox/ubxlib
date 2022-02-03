@@ -75,6 +75,14 @@
 # define U_CELL_SEC_USECDEVINFO_DELAY_SECONDS 5
 #endif
 
+/** The length of the encrypted C2C confirmation tag,
+ * used in V2 C2C key pairing.
+ */
+#define U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES (U_CELL_SEC_C2C_IV_LENGTH_BYTES +               \
+                                                                U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES + \
+                                                                U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES +          \
+                                                                U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES)
+
 // Check that U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES is big enough
 // to hold the IMEI as a string
 #if U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES < (U_CELL_INFO_IMEI_SIZE + 1)
@@ -97,6 +105,12 @@
 // the hex version of array of U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES.
 #if U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES * 2 != U_CELL_SEC_HEX_BUFFER_LENGTH_BYTES
 # error U_CELL_SEC_HEX_BUFFER_LENGTH_BYTES not the same size as the ASCII hex version of U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES.
+#endif
+
+// Check that U_CELL_SEC_HEX_BUFFER_LENGTH_BYTES is big enough to hold
+// the hex version of array of U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES.
+#if U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES * 2 != U_CELL_SEC_HEX_BUFFER_LENGTH_BYTES
+# error U_CELL_SEC_HEX_BUFFER_LENGTH_BYTES not the same size as the ASCII hex version of U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES.
 #endif
 
 // Check that U_SECURITY_PSK_MAX_LENGTH_BYTES is at least as big as U_SECURITY_PSK_ID_MAX_LENGTH_BYTES
@@ -202,6 +216,101 @@ static int32_t ztpGet(int32_t cellHandle, int32_t type,
     }
 
     return errorCodeOrSize;
+}
+
+// Enrypt a C2C confirmation tag, consisting
+// of U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES
+// but hex encode (so twice that long).
+// pC2cConfirmationTagHex must point to the hex-coded
+// C2C confirmation tag, length
+// U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES * 2.
+// pTeSecret is the fixed length TE secret, length
+// U_SECURITY_C2C_TE_SECRET_LENGTH_BYTES.
+// pKey is the fixed length encryption key, length
+// U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES.
+// pHMacKey is the fixed length HMAC key, length
+// U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES.
+// pOutputBuffer must point to storage of length
+// U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES.
+// Note that this is actually just the "body" part
+// of the V2 C2C frame encoding, see encode() over in
+// u_cell_sec_cec.c.
+static size_t encryptC2cConfirmationTag(const char *pC2cConfirmationTagHex,
+                                        const char *pTeSecret,
+                                        const char *pKey,
+                                        const char *pHMacKey,
+                                        char *pOutputBuffer)
+{
+    size_t length = 0;
+    char ivOrMac[U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES];
+    // *INDENT-OFF* (otherwise AStyle makes a mess of this)
+    char c2cConfirmationTagPadded[U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES +
+                                  U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES];
+    // *INDENT-ON*
+
+    // Get an IV into a local variable
+    memcpy(ivOrMac, pUCellSecC2cGetIv(), U_CELL_SEC_C2C_IV_LENGTH_BYTES);
+
+    // We want to end up with this:
+    //
+    //  ----------------------------------------------------------------
+    // |    IV    | Encrypted padded C2C confirmation  |  truncated MAC |
+    // | 16 bytes |           tag (binary)             |     16 bytes   |
+    //  ----------------------------------------------------------------
+    //
+    // Write IV into its position in the output.
+    // Then the encryption function can be pointed at the
+    // local copy and will overwrite it
+    memcpy(pOutputBuffer, ivOrMac, U_CELL_SEC_C2C_IV_LENGTH_BYTES);
+    length += U_CELL_SEC_C2C_IV_LENGTH_BYTES;
+
+    // Copy the hex into the padding buffer as binary
+    uHexToBin(pC2cConfirmationTagHex, U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES * 2,
+              c2cConfirmationTagPadded);
+
+    // Need to deal with padding.  Counter-intuitively, though
+    // the binary confirmation tag will be 16 bytes long,
+    // that is actually the worst case for padding with the
+    // RFC 5652 algorithm: it gains a whole 16 bytes of padding.
+    for (size_t x = 0; x < U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES; x++) {
+        c2cConfirmationTagPadded[U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES + x] =
+            (char) U_CELL_SEC_C2C_MAX_PAD_LENGTH_BYTES;
+    }
+
+    // Encrypt the padded binary C2C confirmation tag into the
+    // output buffer after the IV using the encryption key and the IV
+    if (uPortCryptoAes128CbcEncrypt(pKey,
+                                    U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES,
+                                    ivOrMac, c2cConfirmationTagPadded,
+                                    sizeof(c2cConfirmationTagPadded),
+                                    pOutputBuffer + U_CELL_SEC_C2C_IV_LENGTH_BYTES) == 0) {
+        length += sizeof(c2cConfirmationTagPadded);
+        // Next we need to create a HMAC tag across the
+        // IV, the encrypted text and the TE Secret.
+        // The simplest way to do this is to copy
+        // the TE Secret into the output buffer, perform
+        // the calculation (putting the result into the
+        // local variable ivOrMac) and then we overwrite
+        // where it is in the buffer with the truncated MAC
+        // (which is at least as big, as checked with
+        // a #error above)
+        memcpy(pOutputBuffer + length, pTeSecret, U_SECURITY_C2C_TE_SECRET_LENGTH_BYTES);
+        if (uPortCryptoHmacSha256(pHMacKey,
+                                  U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES,
+                                  pOutputBuffer,
+                                  length + U_SECURITY_C2C_TE_SECRET_LENGTH_BYTES,
+                                  ivOrMac) == 0) {
+            // Now copy the first 16 bytes of the
+            // generated HMAC tag into the output,
+            // overwriting the TE Secret
+            memcpy(pOutputBuffer + length, ivOrMac,
+                   U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES);
+            // Account for its length
+            length += U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES;
+        }
+    }
+
+    return length;
 }
 
 /* ----------------------------------------------------------------
@@ -373,7 +482,10 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
     uAtClientHandle_t atHandle;
     int32_t x = -1;
     int32_t y = -1;
+    int32_t z = -1;
     char buffer[U_CELL_SEC_HEX_BUFFER_LENGTH_BYTES + 1]; // +1 for terminator
+    char *pEncryptedC2cConfirmationTag;
+    char *pEncryptedC2cConfirmationTagHex;
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -420,6 +532,12 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
                         y = (int32_t) uHexToBin(buffer,
                                                 sizeof(buffer) - 1,
                                                 pHMac);
+                        // If the HMAC key is present, there must
+                        // also be a chip to chip confirmation tag
+                        z = uAtClientReadString(atHandle, buffer,
+                                                sizeof(buffer), false);
+                        // We don't need to convert this to binary,
+                        // just need the hex
                     } else {
                         // Zero the HMAC key field so that we know it is
                         // empty, then we know to use the V1 scheme.
@@ -430,12 +548,71 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
                 }
                 uAtClientResponseStop(atHandle);
                 // Key has to be the right length and, if present,
-                // so does the HMAC key
+                // so do both the HMAC key and the C2C confirmation tag
                 if ((uAtClientUnlock(atHandle) == 0) &&
                     (x == U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES) &&
-                    ((y <= 0) ||
-                     (y == U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES))) {
+                    ((z < 0) ||
+                     ((y == U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES) &&
+                      // * 2 since we're only using the hex here
+                      (z == U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES * 2)))) {
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
+
+                if ((errorCode == 0) && (y > 0) && (z > 0)) {
+                    errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                    // For V2 encryption there is another step: the C2C
+                    // confirmation tag has to be encrypted in exactly
+                    // the same way as we would encrypt a C2C frame, using
+                    // the secrets, but without the surrounding framing
+                    // and then sent back to the module, hex coded, to
+                    // confirm that we have received all of the above.
+
+                    // Get memory to put it in
+                    // *INDENT-OFF* (otherwise AStyle makes a mess of this)
+                    pEncryptedC2cConfirmationTag = (char *) malloc(U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES);
+                    if (pEncryptedC2cConfirmationTag != NULL) {
+                        // ...and memory to put the hex-coded version in, +1 for terminator
+                        pEncryptedC2cConfirmationTagHex = (char *) malloc((U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES * 2) + 1);
+                        // *INDENT-ON*
+                        if (pEncryptedC2cConfirmationTagHex != NULL) {
+                            errorCode = (int32_t) U_ERROR_COMMON_AUTHENTICATION_FAILURE;
+                            // Encrypt the buffer, which should contain the
+                            // hex-coded C2C confirmation tag, with all the
+                            // other bits and pieces
+                            x = (int32_t) encryptC2cConfirmationTag(buffer, pTESecret,
+                                                                    pKey, pHMac,
+                                                                    pEncryptedC2cConfirmationTag);
+                            if (x == U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES) {
+                                // Now send the TE secret and this to the module
+                                uAtClientLock(atHandle);
+                                uAtClientTimeoutSet(atHandle,
+                                                    U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
+                                uAtClientCommandStart(atHandle, "AT+USECC2C=");
+                                uAtClientWriteInt(atHandle, 4);
+                                uBinToHex(pTESecret, U_SECURITY_C2C_TE_SECRET_LENGTH_BYTES, buffer);
+                                // Add a terminator since the AT write needs a string
+                                buffer[sizeof(buffer) - 1] = 0;
+                                uAtClientWriteString(atHandle, buffer, true);
+                                uBinToHex(pEncryptedC2cConfirmationTag,
+                                          U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES,
+                                          pEncryptedC2cConfirmationTagHex);
+                                // Add a terminator since the AT write needs a string
+                                *(pEncryptedC2cConfirmationTagHex +
+                                  (U_CELL_SEC_ENCRYPTED_C2C_CONFIRMATION_TAG_LENGTH_BYTES * 2)) = 0;
+                                uAtClientWriteString(atHandle, pEncryptedC2cConfirmationTagHex, true);
+                                uAtClientCommandStopReadResponse(atHandle);
+                                // Should get OK back
+                                if (uAtClientUnlock(atHandle) == 0) {
+                                    // NOW we're good
+                                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                                }
+                            }
+                            // Free the hex buffer
+                            free(pEncryptedC2cConfirmationTagHex);
+                        }
+                        // Free the binary buffer
+                        free(pEncryptedC2cConfirmationTag);
+                    }
                 }
 
                 // For safety, don't want keys sitting around in RAM
