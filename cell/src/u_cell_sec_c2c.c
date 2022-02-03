@@ -69,11 +69,6 @@
  */
 #define U_CELL_SEC_C2C_FRAME_MARKER 0xf9
 
-/** The offset to the HMAC tag within the full
- * 32 byte MAC for V2 chip to chip.
- */
-#define U_CELL_SEC_C2C_SHA256_HMAC_TAG_OFFSET_BYTES 16
-
 // Check that an array of size U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES
 // is big enough to hold an IV also
 #if U_CELL_SEC_C2C_IV_LENGTH_BYTES > U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES
@@ -318,10 +313,17 @@ static size_t encode(const uCellSecC2cContext_t *pContext)
         // In V2 the body is as follows:
         //
         //  -----------------------------------------------
-        // |  padded user data  |    IV    | truncated MAC |
-        // |                    | 16 bytes |    16 bytes   |
+        // |    IV    | encrypted padded  |  truncated MAC |
+        // | 16 bytes |     user data     |     16 bytes   |
         //  -----------------------------------------------
         //
+        // Note that the V2 body is also encoded in a similar
+        // function over in u_cell_sec.c, used when
+        // creating the C2C confirmation tag: I would have
+        // separated this part out and had a single version but
+        // the C2C confirmation tag was a late-breaking
+        // change and I didn't want to pull this code to bits.
+
         // Length is the padded input length plus the IV length
         // plus a truncated MAC length.
         // Little endian, like the CRC
@@ -337,20 +339,20 @@ static size_t encode(const uCellSecC2cContext_t *pContext)
         uPortLog("U_CELL_SEC_C2C_ENCODE: chunk length will be %d byte(s).\n", x);
 #endif
 
-        x = pTx->txInLength;
-        // Write IV into its position in the output.
+        // Write IV into the output.
         // Then the encryption function can be pointed at the
         // local copy so that we can cheerfully overwrite it
-        memcpy(pTx->txOut + 3 + x, ivOrMac,
+        memcpy(pTx->txOut + 3, ivOrMac,
                U_CELL_SEC_C2C_IV_LENGTH_BYTES);
+        x = U_CELL_SEC_C2C_IV_LENGTH_BYTES;
         // Encrypt the padded plain text into the
         // output buffer using the encryption key and the IV
         if (uPortCryptoAes128CbcEncrypt(pContext->key,
                                         sizeof(pContext->key),
-                                        ivOrMac, pTx->txIn, x,
-                                        pTx->txOut + 3) == 0) {
-            // Account for the length of the initial vector
-            x += U_CELL_SEC_C2C_IV_LENGTH_BYTES;
+                                        ivOrMac, pTx->txIn,
+                                        pTx->txInLength,
+                                        pTx->txOut + 3 + x) == 0) {
+            x += pTx->txInLength;
             // Next we need to create a HMAC tag across the
             // encrypted text, the IV and the TE Secret.
             // The simplest way to do this is to copy
@@ -367,12 +369,11 @@ static size_t encode(const uCellSecC2cContext_t *pContext)
                                       pTx->txOut + 3,
                                       x + sizeof(pContext->teSecret),
                                       ivOrMac) == 0) {
-                // Now copy the most significant 16 bits
-                // of the generated HMAC tag into the output,
+                // Now copy the first 16 bytes of the
+                // generated HMAC tag into the output,
                 // overwriting the TE Secret
                 memcpy(pTx->txOut + 3 + x,
-                       ivOrMac + U_CELL_SEC_C2C_SHA256_HMAC_TAG_OFFSET_BYTES,
-                       U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES);
+                       ivOrMac, U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES);
                 // Account for its length
                 x += U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES;
                 success = true;
@@ -382,8 +383,8 @@ static size_t encode(const uCellSecC2cContext_t *pContext)
         // In V1 the body is as follows:
         //
         //  ---------------------------------------------
-        // |  padded user data  |    MAC    |    IV      |
-        // |                    | 32 bytes  |  16 bytes  |
+        // |  encrypted padded  |    MAC    |    IV      |
+        // |      user data     | 32 bytes  |  16 bytes  |
         //  ---------------------------------------------
         //
         // Length is the padded input length plus the MAC length
@@ -565,8 +566,8 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
                     // In V2 the body is as follows:
                     //
                     //  -----------------------------------------------
-                    // |  padded user data  |    IV    | truncated MAC |
-                    // |                    | 16 bytes |    16 bytes   |
+                    // |    IV    |  encrypted padded  | truncated MAC |
+                    // | 16 bytes |     user data      |    16 bytes   |
                     //  -----------------------------------------------
                     //
                     // The CRC matches.  Now we want
@@ -603,11 +604,10 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
                                               x + sizeof(pContext->teSecret),
                                               pRx->rxOut +
                                               x + sizeof(pContext->teSecret)) == 0) {
-                        // Compare the upper 16 bytes of
+                        // Compare the first 16 bytes of
                         // it with the truncated MAC we received.
                         if (memcmp(pData + x, pRx->rxOut + x +
-                                   sizeof(pContext->teSecret) +
-                                   U_CELL_SEC_C2C_SHA256_HMAC_TAG_OFFSET_BYTES,
+                                   sizeof(pContext->teSecret),
                                    U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES) == 0) {
                             // The MAC's match, decrypt the contents
                             // into rxOut using the key and the IV from the
@@ -620,12 +620,13 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
                             uPortLog("U_CELL_SEC_C2C_DECODE: MACs match.\n");
                             uPortLog("U_CELL_SEC_C2C_DECODE: IV:\n");
-                            printBlock(pData + x, U_CELL_SEC_C2C_IV_LENGTH_BYTES, true);
+                            printBlock(pData, U_CELL_SEC_C2C_IV_LENGTH_BYTES, true);
 #endif
                             if (uPortCryptoAes128CbcDecrypt(pContext->key,
                                                             sizeof(pContext->key),
-                                                            pData + x, /* IV */
-                                                            pData, x,
+                                                            pData, /* IV */
+                                                            pData + U_CELL_SEC_C2C_IV_LENGTH_BYTES,
+                                                            x,
                                                             pRx->rxOut) == 0) {
 #ifdef U_CELL_SEC_C2C_DETAILED_DEBUG
                                 uPortLog("U_CELL_SEC_C2C_DECODE: padded decrypted data:\n");
@@ -652,8 +653,8 @@ static size_t decode(const uCellSecC2cContext_t *pContext)
                     // In V1 the body is as follows:
                     //
                     //  ---------------------------------------------
-                    // |  padded user data  |    MAC    |    IV      |
-                    // |                    | 32 bytes  |  16 bytes  |
+                    // |  encrypted padded  |    MAC    |    IV      |
+                    // |      user data     | 32 bytes  |  16 bytes  |
                     //  ---------------------------------------------
                     //
                     // The CRC matches, decrypt the contents

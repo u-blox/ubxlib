@@ -72,6 +72,12 @@ extern "C" {
  */
 #define U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES 16
 
+/** The length of the chip to chip confirmation tag
+ * returned by a module during pairing for chip to chip
+ * encryption.
+ */
+#define U_SECURITY_C2C_CONFIRMATION_TAG_LENGTH_BYTES 16
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
