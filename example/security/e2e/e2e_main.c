@@ -158,7 +158,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
 {
     int32_t networkHandle;
     int32_t rxSize = 0;
-    char buffer[MY_MESSAGE_LENGTH + U_SECURITY_E2E_HEADER_LENGTH_BYTES];
+    char buffer[MY_MESSAGE_LENGTH + U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES];
 
     // Initialise the APIs we will need
     uPortInit();
@@ -269,7 +269,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
 
 #ifndef U_CFG_SECURITY_DEVICE_PROFILE_UID
     // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE((rxSize == sizeof(buffer)) || !uSecurityIsSupported(networkHandle));
+    EXAMPLE_FINAL_STATE((rxSize >= MY_MESSAGE_LENGTH + U_SECURITY_E2E_HEADER_LENGTH_MIN_BYTES) || \
+                        !uSecurityIsSupported(networkHandle));
 #endif
 
     // Calling these will also deallocate the network handle

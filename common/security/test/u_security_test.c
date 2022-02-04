@@ -1000,6 +1000,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
     int32_t y;
     int32_t heapUsed;
     void *pData;
+    int32_t version;
+    int32_t headerLengthBytes = U_SECURITY_E2E_V1_HEADER_LENGTH_BYTES;
 
     // Do the standard preamble to make sure there is
     // a network underneath us
@@ -1028,15 +1030,41 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
                     // TODO: temporarily remove the security heartbeat
                     // call here.  One of the test instances is misbehaving
                     // in this function (taking too long to return), will
-                    // disable while the problem is investiated.
+                    // disable while the problem is investigated.
                     //y = uSecurityHeartbeatTrigger(networkHandle);
                     //uPortLog("U_SECURITY_TEST: uSecurityHeartbeatTrigger()"
                     //         " returned %d.\n", y);
                     uPortLog("U_SECURITY_TEST: testing end to end encryption...\n");
 
+                    // First get the current E2E encryption version
+                    version = uSecurityE2eGetVersion(networkHandle);
+                    if (version > 0) {
+                        U_PORT_TEST_ASSERT((version == 1) || (version == 2));
+                        uPortLog("U_SECURITY_TEST: end to end encryption is v%d\n", version);
+                        if (version == 2) {
+                            // On all current modules where V2 is supported and
+                            // selected V1 is also supported; this may change
+                            // in future of course
+                            version = 1;
+                            uPortLog("U_SECURITY_TEST: setting end to end encryption v%d.\n", version);
+                            U_PORT_TEST_ASSERT(uSecurityE2eSetVersion(networkHandle, version) == 0);
+                            U_PORT_TEST_ASSERT(uSecurityE2eGetVersion(networkHandle) == version);
+                            version = 2;
+                            uPortLog("U_SECURITY_TEST: setting end to end encryption v%d again.\n", version);
+                            U_PORT_TEST_ASSERT(uSecurityE2eSetVersion(networkHandle, version) == 0);
+                            U_PORT_TEST_ASSERT(uSecurityE2eGetVersion(networkHandle) == version);
+                            headerLengthBytes = U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES;
+                        }
+                        uPortLog("U_SECURITY_TEST: end to end encryption is v%d\n", version);
+
+                    } else {
+                        uPortLog("U_SECURITY_TEST: end to end encryption version"
+                                 " check not supported, assuming v1.\n");
+                        version = 1;
+                    }
+
                     // Allocate memory to receive into
-                    pData = malloc(sizeof(gAllChars) +
-                                   U_SECURITY_E2E_HEADER_LENGTH_BYTES);
+                    pData = malloc(sizeof(gAllChars) + headerLengthBytes);
                     U_PORT_TEST_ASSERT(pData != NULL);
                     // Copy the output data into the input buffer, just to have
                     // something in there we can compare against
@@ -1046,7 +1074,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
                              " byte(s) of data...\n", sizeof(gAllChars));
                     y = uSecurityE2eEncrypt(networkHandle, gAllChars,
                                             pData, sizeof(gAllChars));
-                    U_PORT_TEST_ASSERT(y == sizeof(gAllChars) + U_SECURITY_E2E_HEADER_LENGTH_BYTES);
+                    U_PORT_TEST_ASSERT(y == sizeof(gAllChars) + headerLengthBytes);
                     uPortLog("U_SECURITY_TEST: %d byte(s) of data returned.\n", y);
                     //lint -e(668) Suppress possible NULL pointer, it is checked above
                     U_PORT_TEST_ASSERT(memcmp(pData, gAllChars, sizeof(gAllChars)) != 0);

@@ -42,9 +42,38 @@ extern "C" {
 #define U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES 8
 
 /** The amount of additional space required in a message
- * buffer to accommodate header for end to end encryption.
+ * buffer to accommodate the header for end to end encryption;
+ * this is the value for E2E encryption version 1 and is
+ * included for backwards-compatibility: please instead
+ * use the V1 or V2 values depending on what the function
+ * uSecurityE2eGetVersion() returns, or use
+ * U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES.
  */
 #define U_SECURITY_E2E_HEADER_LENGTH_BYTES 32
+
+/** The amount of additional space required in a message
+ * buffer to accommodate the header for end to end
+ * encryption version 1.
+ */
+#define U_SECURITY_E2E_V1_HEADER_LENGTH_BYTES 32
+
+/** The amount of additional space required in a message
+ * buffer to accommodate the header for end to end
+ * encryption version 2.
+ */
+#define U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES 28
+
+/** The maximum amount of additional space required in a message
+ * buffer to accommodate the header for any version of end to end
+ * encryption.
+ */
+#define U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES U_SECURITY_E2E_V1_HEADER_LENGTH_BYTES
+
+/** The minimum amount of additional space required in a message
+ * buffer to accommodate the header for any version of end to end
+ * encryption.
+ */
+#define U_SECURITY_E2E_HEADER_LENGTH_MIN_BYTES U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES
 
 /** The maximum amount of storage required for a generated
  * pre-shared key.
@@ -448,6 +477,31 @@ int32_t uSecurityZtpGetCertificateAuthorities(int32_t networkHandle,
  * FUNCTIONS: END TO END ENCRYPTION
  * -------------------------------------------------------------- */
 
+/** Set the E2E encryption version to be used.  Not all module
+ * types support all versions: refer to the AT manual for your
+ * module to determine what's what.  If a module only supports
+ * a single E2E encryption type then it probably won't support
+ * setting the E2E encryption version.
+ *
+ * @param networkHandle  the handle of the instance to be used,
+ *                       e.g. as returned by uNetworkAdd().
+ * @param version        the version to use; 1 for version 1, etc.
+ * @return               zero on success else negative error code.
+ */
+int32_t uSecurityE2eSetVersion(int32_t networkHandle, int32_t version);
+
+/** Get the E2E encryption version.  If a module only supports
+ * a single E2E encryption type then it may not support getting the
+ * E2E encryption version.
+ *
+ * @param networkHandle  the handle of the instance to be used,
+ *                       e.g. as returned by uNetworkAdd().
+ * @return               on success the E2E encryption version
+ *                       (1 for version 1, etc.), else negative
+ *                       error code.
+ */
+int32_t uSecurityE2eGetVersion(int32_t networkHandle);
+
 /** Ask a module to encrypt a block of data.  For this to work
  * the module must have previously been security sealed but no
  * current connection is required.  Data encrypted in this way
@@ -460,11 +514,16 @@ int32_t uSecurityZtpGetCertificateAuthorities(int32_t networkHandle,
  * @param pDataIn        a pointer to dataSizeBytes of data to be
  *                       encrypted, may be NULL, in which case this
  *                       function does nothing.
- * @param pDataOut       a pointer to a location that MUST BE at
- *                       least of size dataSizeBytes +
- *                       U_SECURITY_E2E_HEADER_LENGTH_BYTES
- *                       to store the encrypted data; can only be
- *                       NULL if pDataIn is NULL.
+ * @param pDataOut       a pointer to a location to store the
+ *                       encrypted data that MUST BE at least of
+ *                       size dataSizeBytes +
+ *                       U_SECURITY_E2E_V1_HEADER_LENGTH_BYTES for
+ *                       E2E encryption version 1 or dataSizeBytes +
+ *                       U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES for
+ *                       E2E encryption version 2 (or you can
+ *                       just use U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES
+ *                       for both cases); can only be NULL if pDataIn
+ *                       is NULL.
  * @param dataSizeBytes  the number of bytes of data to encrypt;
  *                       must be zero if pDataIn is NULL.
  * @return               on success the number of bytes in the
