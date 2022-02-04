@@ -50,10 +50,9 @@
  * 0xaa, will return false; the character value is interpreted as being negative
  * because it has the top bit set, while the literal value 0xaa is positive.
  * To avoid this problem the command-line switch /J to the compiler must be
- * used.  This defines the conditional compilation flag _CHAR_UNSIGNED to the
- * compiler, which has an effect in limits.h.
+ * used.
  */
-#error Please use the compilation switch /J or pass the compilation flag _CHAR_UNSIGNED to the compiler to ensure char types are unsigned.
+#error Please use the compilation switch /J to ensure char types are unsigned.
 #endif
 
 /* ----------------------------------------------------------------

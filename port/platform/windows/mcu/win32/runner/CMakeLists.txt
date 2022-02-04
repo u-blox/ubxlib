@@ -7,7 +7,7 @@ if (MSVC)
     # C++20 standard (needed for designated initialisers)
     set(CMAKE_CXX_STANDARD 20)
     # Warnings as errors and ignore a few warnings
-    add_compile_options(/WX /wd4068 /wd4090 /wd4838 /wd4996 /wd4061 /wd4309 /wd5045)
+    add_compile_options(/J /WX /wd4068 /wd4090 /wd4838 /wd4996 /wd4061 /wd4309 /wd5045)
 else()
     # GCC-compatible options
     add_compile_options(-Wall -Wextra -Werror)
@@ -45,15 +45,6 @@ if (DEFINED ENV{U_FLAGS})
     add_compile_options(${U_FLAGS})
     message("Environment variable U_FLAGS added ${U_FLAGS} to the build.")
 endif()
-
-# As explained in the README.md under the win32 directory, in Microsoft
-# Visual C++ char types are signed, which can lead to unexpected behaviours
-# e.g. a character value which contains 0xaa, when compared with the literal value
-# 0xaa, will return false; the character value is interpreted as being negative
-# because it has the top bit set, while the literal value 0xaa is positive.
-# To avoid this problem we define the conditional compilation flag _CHAR_UNSIGNED
-# to the compiler, which has an effect in limits.h.
-add_compile_options("-D_CHAR_UNSIGNED")
 
 # Get the platform-independent ubxlib source and include files
 # from the ubxlib common .cmake file, i.e.

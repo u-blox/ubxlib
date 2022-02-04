@@ -831,7 +831,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
                 y = uPortEventQueueStackMinFree(gEventQueueHandle);
                 uPortLog("U_SOCK_TEST: event queue task had %d byte(s)"
                          " free at a minimum.\n", y);
-                U_PORT_TEST_ASSERT(y > 0);
+                U_PORT_TEST_ASSERT((y > 0) ||
+                                   (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
 
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(gDescriptor) == 0);

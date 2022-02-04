@@ -610,14 +610,9 @@ static void removeClient(uAtClientInstance_t *pClient)
     // Remove it from the list
     removeAtClientInstance(pClient);
 
-    // Free any URC handlers it had.
-    while (pClient->pUrcList != NULL) {
-        pUrc = pClient->pUrcList;
-        pClient->pUrcList = pUrc->pNext;
-        free(pUrc);
-    }
-
-    // Remove the URC event handler
+    // Remove the URC event handler, which may be running
+    // asynchronous stuff and so has to be flushed and
+    // closed before we mess with anything else
     switch (pClient->streamType) {
         case U_AT_CLIENT_STREAM_TYPE_UART:
             uPortUartEventCallbackRemove(pClient->streamHandle);
@@ -627,6 +622,13 @@ static void removeClient(uAtClientInstance_t *pClient)
             break;
         default:
             break;
+    }
+
+    // Free any URC handlers it had.
+    while (pClient->pUrcList != NULL) {
+        pUrc = pClient->pUrcList;
+        pClient->pUrcList = pUrc->pNext;
+        free(pUrc);
     }
 
     // Remove any wake-up handler

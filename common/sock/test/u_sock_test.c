@@ -2220,8 +2220,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                 stackMinFreeBytes = uPortEventQueueStackMinFree(gTestConfig.eventQueueHandle);
                 uPortLog("U_SOCK_TEST: event queue task had %d byte(s)"
                          " free at a minimum.\n", stackMinFreeBytes);
-                U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
-
+                U_PORT_TEST_ASSERT((stackMinFreeBytes > 0) ||
+                                   (stackMinFreeBytes == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
 
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(gTestConfig.descriptor) == 0);
@@ -2471,8 +2471,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
             stackMinFreeBytes = uPortEventQueueStackMinFree(gTestConfig.eventQueueHandle);
             uPortLog("U_SOCK_TEST: event queue task had %d byte(s)"
                      " free at a minimum.\n", stackMinFreeBytes);
-            U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
-
+            U_PORT_TEST_ASSERT((stackMinFreeBytes > 0) ||
+                               (stackMinFreeBytes == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
 
             // Close the socket
             U_PORT_TEST_ASSERT(!closedCallbackCalled);

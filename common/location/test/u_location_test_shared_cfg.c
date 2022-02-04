@@ -132,7 +132,6 @@ static const uLocationTestCfgList_t gCfgListCell = {1, {&gCfgCellLocate}};
 //lint -e{785} Suppress too few initialisers
 static const uLocationTestCfgList_t gCfgListCell = {1, {&gCfgCloudLocate}};
 #else
-//lint -e{785} Suppress too few initialisers
 static const uLocationTestCfgList_t gCfgListCell = {0};
 #endif
 

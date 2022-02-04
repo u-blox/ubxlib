@@ -520,11 +520,10 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     // Close the entire context
                     uMqttClientClose(gpMqttContextA);
                     gpMqttContextA = NULL;
-
-                    uPortLog("U_MQTT_CLIENT_TEST: taking down %s...\n",
-                             gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                    U_PORT_TEST_ASSERT(uNetworkDown(networkHandle) == 0);
                 }
+                uPortLog("U_MQTT_CLIENT_TEST: taking down %s...\n",
+                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+                U_PORT_TEST_ASSERT(uNetworkDown(networkHandle) == 0);
             }
 
             // Free memory

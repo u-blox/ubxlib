@@ -185,7 +185,11 @@ int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
         // required (e.g. deallocating memory) first.
         threadHandle = OpenThread(THREAD_TERMINATE, false, (DWORD) taskHandle);
         if (threadHandle != INVALID_HANDLE_VALUE) {
-            if (TerminateThread(threadHandle, 0)) {
+            if (TerminateThread(threadHandle, 0) || (GetLastError() == ERROR_INVALID_HANDLE)) {
+                // Success if the terminate succeeds or if it returns
+                // the error "invalid handle", as that must mean the
+                // task has terminated itself between us opening a
+                // handle on it and trying to terminate it
                 errorCode = U_ERROR_COMMON_SUCCESS;
             }
             CloseHandle(threadHandle);
