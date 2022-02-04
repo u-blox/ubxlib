@@ -121,7 +121,8 @@ typedef struct {
     NRF_UARTE_Type *pReg;
     nrf_ppi_channel_t ppiChannel;
     int32_t uartHandle;
-    bool hwfcSuspended;    int32_t eventQueueHandle;
+    bool hwfcSuspended;
+    int32_t eventQueueHandle;
     uint32_t eventFilter;
     void (*pEventCallback)(int32_t, uint32_t, void *);
     void *pEventCallbackParam;
