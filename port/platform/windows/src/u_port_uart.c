@@ -85,6 +85,7 @@ typedef struct uPortUartData_t {
     char *pRxBufferStart;
     volatile char *pRxBufferRead;
     volatile char *pRxBufferWrite;
+    bool ctsFlowControlSuspended;
     int32_t eventQueueHandle;
     uint32_t eventFilter;
     void (*pEventCallback)(int32_t, uint32_t, void *);
@@ -1099,6 +1100,79 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
     }
 
     return ctsFlowControlIsEnabled;
+}
+
+// Suspend CTS flow control.
+int32_t uPortUartCtsSuspend(int32_t handle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uPortUartData_t *pUartData = NULL;
+    DCB dcb;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pUartGetByHandle(handle);
+        if (pUartData != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (!pUartData->ctsFlowControlSuspended) {
+                errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                memset(&dcb, 0, sizeof(dcb));
+                dcb.DCBlength = sizeof(DCB);
+                // Retrieve settings
+                if (GetCommState(pUartData->windowsUartHandle, &dcb)) {
+                    if (dcb.fOutxCtsFlow == 0) {
+                        // Nothing to to
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    } else {
+                        // Switch CTS off
+                        dcb.fOutxCtsFlow = 0;
+                        if (SetCommState(pUartData->windowsUartHandle, &dcb)) {
+                            pUartData->ctsFlowControlSuspended = true;
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
+                    }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Resume CTS flow control.
+void uPortUartCtsResume(int32_t handle)
+{
+    uPortUartData_t *pUartData = NULL;
+    DCB dcb;
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        pUartData = pUartGetByHandle(handle);
+        if ((pUartData != NULL) && (pUartData->ctsFlowControlSuspended)) {
+            memset(&dcb, 0, sizeof(dcb));
+            dcb.DCBlength = sizeof(DCB);
+            // Retrieve settings
+            if (GetCommState(pUartData->windowsUartHandle, &dcb)) {
+                if (dcb.fOutxCtsFlow == 0) {
+                    dcb.fOutxCtsFlow = 1;
+                    if (SetCommState(pUartData->windowsUartHandle, &dcb)) {
+                        pUartData->ctsFlowControlSuspended = false;
+                    }
+                } else {
+                    pUartData->ctsFlowControlSuspended = false;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
 }
 
 // End of file
