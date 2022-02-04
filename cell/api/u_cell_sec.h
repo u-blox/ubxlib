@@ -383,6 +383,31 @@ int32_t uCellSecZtpGetCertificateAuthorities(int32_t cellHandle,
  * FUNCTIONS: END TO END ENCRYPTION
  * -------------------------------------------------------------- */
 
+/** Set the E2E encryption version to be used.  Not all cellular
+ * module types support all versions: refer to the AT manual for your
+ * cellular module to determine what's what.  If a cellular module
+ * only supports a single E2E encryption type then it probably won't
+ * support setting the E2E encryption version.
+ *
+ * @param cellHandle     the handle of the instance to be used.
+ * @param version        the version to use; use 1 for version 1,
+ *                       etc. (i.e. there is no version 0).
+ * @return               zero on success else negative error code.
+ */
+int32_t uCellSecE2eSetVersion(int32_t cellHandle, int32_t version);
+
+/** Get the E2E encryption version.  If a cellular module only supports
+ * a single E2E encryption type then it may not support getting the
+ * E2E encryption version.  Note that while the AT+USECOPCMD="e2e_enc"
+ * command returns 0 for version 1 etc., this function will return
+ * 1 for version 1, i.e. there is no version 0.
+ *
+ * @param cellHandle  the handle of the instance to be used.
+ * @return            on success the E2E encryption version,
+ *                    else negative error code.
+ */
+int32_t uCellSecE2eGetVersion(int32_t cellHandle);
+
 /** Ask a cellular module to encrypt a block of data.  For this to
  * work the module must have previously been security sealed but no
  * current connection is required.  Data encrypted in this way
@@ -394,11 +419,16 @@ int32_t uCellSecZtpGetCertificateAuthorities(int32_t cellHandle,
  * @param pDataIn        a pointer to dataSizeBytes of data to be
  *                       encrypted, may be NULL, in which case this
  *                       function does nothing.
- * @param pDataOut       a pointer to a location that MUST BE at
- *                       least of size dataSizeBytes +
- *                       U_SECURITY_E2E_HEADER_LENGTH_BYTES
- *                       to store the encrypted data; can only be
- *                       NULL if pDataIn is NULL.
+ * @param pDataOut       a pointer to a location to store the
+ *                       encrypted data that MUST BE at least of
+ *                       size dataSizeBytes +
+ *                       U_SECURITY_E2E_V1_HEADER_LENGTH_BYTES for
+ *                       E2E encryption version 1 or dataSizeBytes +
+ *                       U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES for
+ *                       E2E encryption version 2 (or you can
+ *                       just use U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES
+ *                       for both cases); can only be NULL if pDataIn
+ *                       is NULL.
  * @param dataSizeBytes  the number of bytes of data to encrypt;
  *                       must be zero if pDataIn is NULL.
  * @return               on success the number of bytes in the

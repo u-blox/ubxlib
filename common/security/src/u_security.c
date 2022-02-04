@@ -85,12 +85,40 @@
  *
  * bool uXxxSecIsSealed(int32_t handle);
  *
+ * Read the device public certificate generated during sealing (optional):
+ *
+ * int32_t uXxxSecZtpGetDeviceCertificate(int32_t handle,
+ *                                        char *pData,
+ *                                        size_t dataSizeBytes);
+ *
+ * Read the device private key generated during sealing (optional):
+ *
+ * int32_t uXxxSecZtpGetPrivateKey(int32_t handle,
+ *                                 char *pData,
+ *                                 size_t dataSizeBytes);
+ *
+ * Read the certificate authorities used during sealing (optional):
+ *
+ * int32_t uXxxSecZtpGetCertificateAuthorities(int32_t handle,
+ *                                             char *pData,
+ *                                             size_t dataSizeBytes);
+ *
  * Perform end to end encryption on a block of data (optional):
  *
  * int32_t uXxxSecE2eEncrypt(int32_t handle,
  *                           const void *pDataIn,
  *                           void *pDataOut,
  *                           size_t dataSizeBytes);
+ *
+ * Set the end to end encryption version in use (optional):
+ *
+ * int32_t uXxxSecE2eSetVersion(int32_t handle,
+ *                              int32_t version);
+ *
+ * Get the end to end encryption version in use (mandatory
+ * if uXxxSecE2eSetVersion() is supported):
+ *
+ * int32_t uXxxSecE2eGetVersion(int32_t handle);
  *
  * Trigger a security heartbeat (optional):
  *
@@ -354,6 +382,31 @@ int32_t uSecurityZtpGetCertificateAuthorities(int32_t networkHandle,
  * PUBLIC FUNCTIONS: END TO END ENCRYPTION
  * -------------------------------------------------------------- */
 
+// Set the E2E encryption version to be used.
+int32_t uSecurityE2eSetVersion(int32_t networkHandle, int32_t version)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+
+    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+        errorCode = uCellSecE2eSetVersion(networkHandle,
+                                          version);
+    }
+
+    return errorCode;
+}
+
+// Get the E2E encryption version.
+int32_t uSecurityE2eGetVersion(int32_t networkHandle)
+{
+    int32_t errorCodeOrVersion = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+
+    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+        errorCodeOrVersion = uCellSecE2eGetVersion(networkHandle);
+    }
+
+    return errorCodeOrVersion;
+}
+
 // Ask a module to encrypt a block of data.
 int32_t uSecurityE2eEncrypt(int32_t networkHandle,
                             const void *pDataIn,
@@ -363,8 +416,7 @@ int32_t uSecurityE2eEncrypt(int32_t networkHandle,
 
     if (pDataIn != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((pDataOut != NULL) &&
-            (dataSizeBytes >= U_SECURITY_E2E_HEADER_LENGTH_BYTES)) {
+        if ((pDataOut != NULL) && (dataSizeBytes > 0)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
             if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
                 errorCode = uCellSecE2eEncrypt(networkHandle,

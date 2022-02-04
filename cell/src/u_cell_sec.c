@@ -874,6 +874,85 @@ int32_t uCellSecZtpGetCertificateAuthorities(int32_t cellHandle,
  * PUBLIC FUNCTIONS: END TO END ENCRYPTION
  * -------------------------------------------------------------- */
 
+// Set the E2E encryption version to be used.
+int32_t uCellSecE2eSetVersion(int32_t cellHandle, int32_t version)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) && (version > 0)) {
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)) {
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
+                uAtClientCommandStart(atHandle, "AT+USECOPCMD=");
+                uAtClientWriteString(atHandle, "e2e_enc", true);
+                uAtClientWriteInt(atHandle, version - 1);
+                uAtClientCommandStopReadResponse(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Get the E2E encryption version.
+int32_t uCellSecE2eGetVersion(int32_t cellHandle)
+{
+    int32_t errorCodeOrVersion = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t version;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        errorCodeOrVersion = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if (pInstance != NULL) {
+            errorCodeOrVersion = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_ROOT_OF_TRUST)) {
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                uAtClientTimeoutSet(atHandle,
+                                    U_CELL_SEC_TRANSACTION_TIMEOUT_SECONDS * 1000);
+                uAtClientCommandStart(atHandle, "AT+USECOPCMD=");
+                uAtClientWriteString(atHandle, "e2e_enc", true);
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+USECOPCMD:");
+                // Skip the first parameter, which is just "e2e_enc"
+                // being sent back to us
+                uAtClientSkipParameters(atHandle, 1);
+                version = uAtClientReadInt(atHandle);
+                uAtClientResponseStop(atHandle);
+                errorCodeOrVersion = uAtClientUnlock(atHandle);
+                if (errorCodeOrVersion == 0) {
+                    errorCodeOrVersion = version + 1;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCodeOrVersion;
+}
+
 // Ask a cellular module to encrypt a block of data.
 int32_t uCellSecE2eEncrypt(int32_t cellHandle,
                            const void *pDataIn,
@@ -916,28 +995,16 @@ int32_t uCellSecE2eEncrypt(int32_t cellHandle,
                                                 dataSizeBytes, true);
                             // Grab the response
                             uAtClientResponseStart(atHandle, "+USECE2EDATAENC:");
-                            // dataSizeBytes is now that of the encrypted response
-                            dataSizeBytes += U_SECURITY_E2E_HEADER_LENGTH_BYTES;
                             // Read the length of the response
                             sizeOutBytes = uAtClientReadInt(atHandle);
                             if (sizeOutBytes > 0) {
-                                if (sizeOutBytes < (int32_t) dataSizeBytes) {
-                                    dataSizeBytes = sizeOutBytes;
-                                }
                                 // Don't stop for anything!
                                 uAtClientIgnoreStopTag(atHandle);
                                 // Get the leading quote mark out of the way
                                 uAtClientReadBytes(atHandle, NULL, 1, true);
                                 // Now read out all the actual data
                                 uAtClientReadBytes(atHandle, (char *) pDataOut,
-                                                   dataSizeBytes, true);
-                                if (sizeOutBytes > (int32_t) dataSizeBytes) {
-                                    //...and any extra poured away to NULL
-                                    uAtClientReadBytes(atHandle, NULL,
-                                                       sizeOutBytes -
-                                                       dataSizeBytes, true);
-                                    sizeOutBytes = (int32_t) dataSizeBytes;
-                                }
+                                                   sizeOutBytes, true);
                             }
                             // Make sure to wait for the top tag before
                             // we finish
