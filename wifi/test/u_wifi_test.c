@@ -55,7 +55,7 @@
 #include "u_port_uart.h"
 
 #include "u_at_client.h"
-
+#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 

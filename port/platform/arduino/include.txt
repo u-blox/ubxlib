@@ -41,6 +41,8 @@ common/location/src
 common/at_client/api
 common/at_client/src
 common/ubx_protocol/api
+common/short_range/api/u_short_range.h
+common/short_range/api/u_short_range_pbuf.h
 common/short_range/api
 common/short_range/src
 common/utils/api

@@ -49,6 +49,7 @@
 #include "u_ble_data.h"
 
 #include "u_short_range_module_type.h"
+#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
