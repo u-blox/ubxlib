@@ -151,12 +151,12 @@ static const uLocationTestCfgList_t gCfgListGnss = {1, {&gCfgGnss}};
 /** Location configurations for each network type.
  * ORDER IS IMPORTANT: follows the order of uNetworkType_t.
  */
-const uLocationTestCfgList_t *const gpULocationTestCfg[] = {&gCfgListNone,   // U_NETWORK_TYPE_NONE
-                                                            &gCfgListNone,   // U_NETWORK_TYPE_BLE
-                                                            &gCfgListCell,   // U_NETWORK_TYPE_CELL
-                                                            &gCfgListNone,   // U_NETWORK_TYPE_WIFI
-                                                            &gCfgListGnss    // U_NETWORK_TYPE_GNSS
-                                                           };
+const uLocationTestCfgList_t *gpULocationTestCfg[] = {&gCfgListNone,    // U_NETWORK_TYPE_NONE
+                                                      &gCfgListNone,   // U_NETWORK_TYPE_BLE
+                                                      &gCfgListCell,   // U_NETWORK_TYPE_CELL
+                                                      &gCfgListNone,   // U_NETWORK_TYPE_WIFI
+                                                      &gCfgListGnss    // U_NETWORK_TYPE_GNSS
+                                                     };
 
 /** Number of items in the gpULocationTestCfg array,
  * has to be done in this file and externed or GCC complains about
@@ -167,14 +167,14 @@ const size_t gpULocationTestCfgSize = sizeof (gpULocationTestCfg) /
 
 /** So that we can print the name of the location type being tested.
  */
-const char *const gpULocationTestTypeStr[] = {"none",        // U_LOCATION_TYPE_NONE
-                                              "GNSS",        // U_LOCATION_TYPE_GNSS
-                                              "Cell Locate", // U_LOCATION_TYPE_CLOUD_CELL_LOCATE
-                                              "Google",      // U_LOCATION_TYPE_CLOUD_GOOGLE
-                                              "Skyhook",     // U_LOCATION_TYPE_CLOUD_SKYHOOK
-                                              "Here",        // U_LOCATION_TYPE_CLOUD_HERE
-                                              "Cloud Locate" // U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE
-                                             };
+const char *gpULocationTestTypeStr[] = {"none",         // U_LOCATION_TYPE_NONE
+                                        "GNSS",        // U_LOCATION_TYPE_GNSS
+                                        "Cell Locate", // U_LOCATION_TYPE_CLOUD_CELL_LOCATE
+                                        "Google",      // U_LOCATION_TYPE_CLOUD_GOOGLE
+                                        "Skyhook",     // U_LOCATION_TYPE_CLOUD_SKYHOOK
+                                        "Here",        // U_LOCATION_TYPE_CLOUD_HERE
+                                        "Cloud Locate" // U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE
+                                       };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS

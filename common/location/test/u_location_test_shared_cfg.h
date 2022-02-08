@@ -101,7 +101,7 @@ typedef struct {
 /** Location configurations for each network type.
  * ORDER IS IMPORTANT: follows the order of uNetworkType_t.
  */
-extern const uLocationTestCfgList_t *const gpULocationTestCfg[];
+extern const uLocationTestCfgList_t *gpULocationTestCfg[];
 
 /** Number of items in the gpULocationTestCfg array.
  */
@@ -111,7 +111,7 @@ extern const size_t gpULocationTestCfgSize;
  * U_LOCATION_TYPE_MAX_NUM entries.
  * ORDER IS IMPORTANT: follows the order of uLocationType_t.
  */
-extern const char *const gpULocationTestTypeStr[];
+extern const char *gpULocationTestTypeStr[];
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
