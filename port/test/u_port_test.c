@@ -146,6 +146,12 @@
  */
 #define U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS 100
 
+/** The minimum item size for the event queue test: we used
+ * to fix this at 1 however there are some OS's which, internally,
+ * allocate space in words, hence it is 4 for greater compatibility.
+ */
+#define U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES 4
+
 /** How long to wait to receive  a message on a queue in osTestTask.
  */
 #define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 10
@@ -684,11 +690,12 @@ static void eventQueueMinFunction(void *pParam,
     if (gEventQueueMinCounter <
         U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS) {
         // For U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS
-        // we expect to receive paramLength of 1 where
+        // we expect to receive paramLength of
+        // U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES where
         // *pParam is a count of the number of times we've
         // been called.
-        if (paramLength != 1) {
-            gEventQueueMinErrorFlag = 1;
+        if (paramLength != U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES) {
+            gEventQueueMinErrorFlag = U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES;
         }
 
         if (gEventQueueMinErrorFlag == 0) {
@@ -1703,7 +1710,8 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     uPortLog("U_PORT_TEST: %d entries free on \"event queue max\".\n", y);
     U_PORT_TEST_ASSERT((y == U_PORT_TEST_QUEUE_LENGTH) ||
                        (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
-    gEventQueueMinHandle = uPortEventQueueOpen(eventQueueMinFunction, "blah", 1,
+    gEventQueueMinHandle = uPortEventQueueOpen(eventQueueMinFunction, "blah",
+                                               U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES,
                                                U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES,
                                                U_CFG_TEST_OS_TASK_PRIORITY,
                                                U_PORT_TEST_QUEUE_LENGTH);
@@ -1731,11 +1739,12 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                            pParam,
                                            U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES + 1) < 0);
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
-                                           pParam, 2) < 0);
+                                           pParam, U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES + 1) < 0);
 
     // Send the known test pattern N times to eventQueueMaxFunction
     // with the last byte overwritten with a counter, and just send
-    // the counter to eventQueueMinFunction as its single byte
+    // the counter to eventQueueMinFunction as its
+    // U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES payload.
     // The receiving functions will set a flag if they find a
     // problem.
     // Use both the IRQ and non-IRQ versions of the call
@@ -1748,7 +1757,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                                    (void *) pParam,
                                                    U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES) == 0);
             U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
-                                                   (void *) &x, 1) == 0);
+                                                   (void *) &x, U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES) == 0);
         } else {
             y = uPortEventQueueSendIrq(gEventQueueMaxHandle, (void *) pParam,
                                        U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES);
@@ -1757,9 +1766,11 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                         U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES);
             }
             U_PORT_TEST_ASSERT(y == 0);
-            y = uPortEventQueueSendIrq(gEventQueueMinHandle, (void *) &x, 1);
+            y = uPortEventQueueSendIrq(gEventQueueMinHandle, (void *) &x,
+                                       U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES);
             if (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-                y = uPortEventQueueSend(gEventQueueMinHandle, (void *) &x, 1);
+                y = uPortEventQueueSend(gEventQueueMinHandle, (void *) &x,
+                                        U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES);
             }
             U_PORT_TEST_ASSERT(y == 0);
         }
@@ -1826,7 +1837,8 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                            pParam,
                                            U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES) < 0);
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
-                                           pParam, 1) < 0);
+                                           pParam,
+                                           U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES) < 0);
 
     // Free memory
     free(pParam);
