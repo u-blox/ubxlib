@@ -52,10 +52,38 @@ extern "C" {
 #endif
 
 #ifndef U_LOCATION_TEST_CLOUD_LOCATE_SVS_THRESHOLD
-/** The number of satellites to request as being visible for RRLP
- * information to be valid when testing Cloud Locate.
+/** The number of satellites to request as being visible and meet
+ * the criteria for RRLP information to be valid when testing
+ * Cloud Locate.
  */
-# define U_LOCATION_TEST_CLOUD_LOCATE_SVS_THRESHOLD 6
+# define U_LOCATION_TEST_CLOUD_LOCATE_SVS_THRESHOLD U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD
+#endif
+
+#ifndef U_LOCATION_TEST_CLOUD_LOCATE_C_NO_THRESHOLD
+/** The threshold to use for carrier to noise ratio for the RRLP
+ * information for a given satellite to be considered valid when
+ * testing Cloud Locate.  Note that we use lower than the recommended
+ * value here to be quite sure we always get something that meets
+ * the criteria, avoiding occasional irritating failures in
+ * regression testing.
+ */
+# define U_LOCATION_TEST_CLOUD_LOCATE_C_NO_THRESHOLD 20
+#endif
+
+#ifndef U_LOCATION_TEST_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT
+/** The limit to use for multipath index for the RRLP
+ * information for a given satellite to be considered valid when
+ * testing Cloud Locate.
+ */
+# define U_LOCATION_TEST_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT
+#endif
+
+#ifndef U_LOCATION_TEST_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT
+/** The limit to use for pseudorange RMS error index for the RRLP
+ * information for a given satellite to be considered valid when
+ * testing Cloud Locate.
+ */
+# define U_LOCATION_TEST_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT
 #endif
 
 #ifndef U_LOCATION_TEST_MQTT_INACTIVITY_TIMEOUT_SECONDS

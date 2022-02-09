@@ -60,13 +60,6 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_SECONDS
-/** The number of seconds of RRLP information used by
- * Cloud Locate.
- */
-# define U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_SECONDS 5
-#endif
-
 #ifndef U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES
 /** The size of buffer for the RRLP data used by Cloud Locate,
  * should not be more than 1024 bytes which is the maximum
@@ -341,6 +334,9 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
                                     int32_t gnssHandle,
                                     uMqttClientContext_t *pMqttClientContext,
                                     int32_t svsThreshold,
+                                    int32_t cNoThreshold,
+                                    int32_t multipathIndexLimit,
+                                    int32_t pseudorangeRmsErrorIndexLimit,
                                     const char *pClientIdStr,
                                     uLocation_t *pLocation,
                                     bool (*pKeepGoingCallback) (int32_t))
@@ -351,10 +347,7 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
     char *pTopicBufferRead;
     char *pMessageRead;
     int64_t startTimeMs = uPortGetTickTimeMs();
-    int64_t waitTimeStartMs;
-    size_t secondsOfData = 0;
     bool subscribed = false;
-    int32_t y;
     size_t z;
 
     if ((gnssHandle >= 0) && (pMqttClientContext != NULL) &&
@@ -377,29 +370,18 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
             }
 
             if (errorCode >= 0) { // >= 0 since uMqttClientSubscribe() returns QoS
-                errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                while ((secondsOfData < U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_SECONDS) &&
-                       (((pKeepGoingCallback == NULL) &&
-                         (uPortGetTickTimeMs() - startTimeMs) / 1000 < U_LOCATION_TIMEOUT_SECONDS) ||
-                        ((pKeepGoingCallback != NULL) && pKeepGoingCallback(networkHandle)))) {
-                    // Get the RRLP data from the GNSS chip
-                    y = uGnssPosGetRrlp(gnssHandle, pBuffer,
-                                        U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES,
-                                        svsThreshold, -1, -1, pKeepGoingCallback);
-                    waitTimeStartMs = uPortGetTickTimeMs();
-                    if (y > 0) {
-                        secondsOfData++;
-                        // Send the RRLP data to the Cloud Locate service using MQTT
-                        errorCode = uMqttClientPublish(pMqttClientContext,
-                                                       U_LOCATION_PRIVATE_CLOUD_LOCATE_MQTT_PUBLISH_TOPIC,
-                                                       pBuffer, y,
-                                                       U_MQTT_QOS_EXACTLY_ONCE, false);
-                        // Wait one second before asking for more so as to
-                        // spread the data out
-                        while (uPortGetTickTimeMs() - waitTimeStartMs < 1000) {
-                            uPortTaskBlock(100);
-                        }
-                    }
+                // Get the RRLP data from the GNSS chip
+                errorCode = uGnssPosGetRrlp(gnssHandle, pBuffer,
+                                            U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES,
+                                            svsThreshold, cNoThreshold, multipathIndexLimit,
+                                            pseudorangeRmsErrorIndexLimit,
+                                            pKeepGoingCallback);
+                if (errorCode >= 0) {
+                    // Send the RRLP data to the Cloud Locate service using MQTT
+                    errorCode = uMqttClientPublish(pMqttClientContext,
+                                                   U_LOCATION_PRIVATE_CLOUD_LOCATE_MQTT_PUBLISH_TOPIC,
+                                                   pBuffer, errorCode,
+                                                   U_MQTT_QOS_EXACTLY_ONCE, false);
                 }
             }
 

@@ -42,10 +42,46 @@ extern "C" {
 # define U_LOCATION_TIMEOUT_SECONDS 240
 #endif
 
+#ifndef U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD
+/** The number of satellites to request as being visible and
+ * meet the criter for RRLP information to be valid for
+ * Cloud Locate.
+ */
+# define U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD 5
+#endif
+
+#ifndef U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD
+/** The minimum carrier to noise ratio for the RRLP information
+ * for a given satellite to be considered valid for Cloud Locate.
+ */
+# define U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD 30
+#endif
+
+#ifndef U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT
+/** The limit to use for multipath index for the RRLP
+ * information for a given satellite to be considered valid for
+ * Cloud Locate.
+ */
+# define U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT 1
+#endif
+
+#ifndef U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT
+/** The limit to use for pseudorange RMS error index for the RRLP
+ * information for a given satellite to be considered valid for
+ * Cloud Locate.
+ */
+# define U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT 3
+#endif
+
 #ifndef U_LOCATION_ASSIST_DEFAULTS
 /** Default values for uLocationAssist_t.
  */
-# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false, -1, -1, NULL, NULL}
+# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false, -1,                                         \
+                                     U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD,                     \
+                                     U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD,                    \
+                                     U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,             \
+                                     U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT, \
+                                     NULL, NULL}
 #endif
 
 /* ----------------------------------------------------------------
@@ -61,13 +97,13 @@ typedef enum {
     U_LOCATION_TYPE_CLOUD_CELL_LOCATE, /**< supported on cellular network
                                             instances only. */
     U_LOCATION_TYPE_CLOUD_GOOGLE, /**< not currently supported, will be
-                                       supported on Wifi modules in future. */
+                                       supported on Wi-Fi modules in future. */
     U_LOCATION_TYPE_CLOUD_SKYHOOK, /**< not currently supported, will be
-                                        supported on Wifi modules in future. */
+                                        supported on Wi-Fi modules in future. */
     U_LOCATION_TYPE_CLOUD_HERE,  /**< not currently supported, will be
-                                      supported on Wifi modules in future. */
-    U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,  /**< currently only supported on
-                                              cellular network instances. */
+                                      supported on Wi-Fi modules in future. */
+    U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,  /**< supported on cellular and Wi-Fi
+                                              network instances. */
     U_LOCATION_TYPE_MAX_NUM
 } uLocationType_t;
 
@@ -109,18 +145,44 @@ typedef struct {
     int32_t svsThreshold; /**< the number of space vehicles (AKA satellites)
                                that must be visible, only currently used by
                                U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE; use -1
-                               for "don't care". */
+                               for "don't care".  The recommended value is 5. */
+    int32_t cNoThreshold; /**< the minimum carrier to noise for a given
+                               satellite, only currently used by
+                               U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE, range
+                               0 to 63; specify -1 for "don't care".  The
+                               ideal value to use is 35 but that requires
+                               clear sky and a good antenna, hence the
+                               recommended value is 30; lower threshold
+                               values may work, just less reliably. */
+    int32_t multipathIndexLimit; /**< the maximum multipath index that
+                                      must be met for a given satellite,
+                                      only currently used by
+                                      U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
+                                      1 = low, 2 = medium, 3 = high; specify
+                                      -1 for "don't care".  The recommended
+                                      value is 1. */
+    int32_t pseudorangeRmsErrorIndexLimit; /**< the maximum pseudorange RMS
+                                                error index that must be met
+                                                for a given satellite, only
+                                                currently used by
+                                                U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE;
+                                                specify -1 for "don't care".
+                                                The recommended value is 3. */
     const char *pClientIdStr; /**< the Client ID of your device, obtained from your
-                                   Thingstream portal, required if you are using the
-                                   Cloud Locate service and want to receive-back the
-                                   location that Cloud Locate has determined; must be
-                                   null-terminated, will look something
-                                   like "device:4afce48b-6153-0657-8efb-58a87a9f3e46". */
-    void *pMqttClientContext; /**< the context of an MQTT client, required by
+                                   Thingstream portal, ONLY required if you are
+                                   using the Cloud Locate service and want to
+                                   receive-back the location that Cloud Locate has
+                                   determined; must be null-terminated, will look
+                                   something like
+                                   "device:4afce48b-6153-0657-8efb-58a87a9f3e46";
+                                   if you only need the cloud to know the location
+                                   of the device, the device itself doesn't care,
+                                   set this to NULL (which is the default). */
+    void *pMqttClientContext; /**< the context of an MQTT client, *required* by
                                    U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE to communicate
                                    with the u-blox Cloud Locate service; the
-                                   MQTT client must have been logged-in to the
-                                   Cloud Locate service before calling this API. */
+                                   MQTT client MUST have been logged-in to the
+                                   Cloud Locate service BEFORE calling this API. */
 } uLocationAssist_t;
 
 /** Definition of a location.
@@ -222,7 +284,7 @@ typedef enum {
  *                                            Locate authentication token.  For
  *                                            the Cloud Locate service pLocationAssist
  *                                            fields networkHandleAssist and
- *                                            pMqttClientContext MUST be populated and
+ *                                            pMqttClientContext MUST be populated, and
  *                                            the MQTT login to the Thingstream
  *                                            server MUST already have been performed;
  *                                            the field pClientIdStr should be populated
@@ -232,7 +294,7 @@ typedef enum {
  *                                - Wi-Fi:    only U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is
  *                                            currently supported, for which pLocationAssist
  *                                            fields networkHandleAssist and
- *                                            pMqttClientContext MUST be populated and
+ *                                            pMqttClientContext MUST be populated, and
  *                                            the MQTT login to the Thingstream
  *                                            server MUST already have been performed;
  *                                            the field pClientIdStr should be populated

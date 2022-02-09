@@ -43,46 +43,84 @@ extern "C" {
 
 /** Run Cloud Locate.
  *
- * @param networkHandle      the handle of the thing providing the
- *                           MQTT connection (e.g. the cellular or
- *                           Wi-Fi module).
- * @param gnssHandle         the handle of the GNSS device that will
- *                           provide the RRLP data for Cloud Locate.
- * @param pMqttClientContext the context of an MQTT client that can
- *                           be used to communicate with the Cloud
- *                           Locate service; must already have been
- *                           logged-in to the Cloud Locate service.
- * @param svsThreshold       the minimum number of satellites that
- *                           must be visible for an RRLP data block
- *                           to be considered valid; use -1 for
- *                           "don't care".
- * @param pClientIdStr       the Thingstream device ID, obtained from
- *                           the Thingstream portal, for this device;
- *                           must be provided if pLocation is not NULL,
- *                           must be null-terminated.
- * @param pLocation          a place to put the location once established,
- *                           may be NULL if this device does not require
- *                           the location, i.e. it is sufficient for it
- *                           to be known in the cloud.
- * @param pKeepGoingCallback a callback function that governs how long
- *                           location establishment is allowed to take.
- *                           This function is called while waiting for
- *                           location establishment to complete; location
- *                           establishment will only continue while
- *                           it returns true.  This allows the caller
- *                           to terminate the locating process at
- *                           their convenience.  This function may
- *                           also be used to feed any watchdog
- *                           timer that might be running.  May be NULL,
- *                           in which case location establishment will
- *                           stop when U_LOCATION_TIMEOUT_SECONDS have
- *                           elapsed.  The single int32_t parameter is
- *                           the network handle.
+ * @param networkHandle                 the handle of the thing
+ *                                      providing the MQTT
+ *                                      connection (e.g. the cellular
+ *                                      or Wi-Fi module).
+ * @param gnssHandle                    the handle of the GNSS device
+ *                                      that will provide the RRLP
+ *                                      data for Cloud Locate.
+ * @param pMqttClientContext            the context of an MQTT client
+ *                                      that can be used to communicate
+ *                                      with the Cloud Locate service;
+ *                                      must already have been logged-in
+ *                                      to the Cloud Locate service.
+ * @param svsThreshold                  the minimum number of satellites
+ *                                      that must be visible and meet
+ *                                      the criteria for C/No threshold,
+ *                                      multipath index and psuedorange
+ *                                      RMS error for an RRLP data
+ *                                      block to be considered usable;
+ *                                      use -1 for "don't care".
+ * @param cNoThreshold                  the minimum carrier to noise
+ *                                      value that must be met for any
+ *                                      single satellite's RRLP information
+ *                                      to be considered usable, range
+ *                                      0 to 63; specify -1 for
+ *                                      "don't care".  The ideal value
+ *                                       to use is 35 but that requires
+ *                                      clear sky and a good antenna,
+ *                                      hence the recommended value is
+ *                                      30; lower threshold values may
+ *                                      work, just less reliably.
+ * @param multipathIndexLimit           the maximum multipath index that
+ *                                      must be met for any single
+ *                                      satellite's RRLP information to
+ *                                      be considered valid, 1 = low,
+ *                                      2 = medium, 3 = high; specify
+ *                                      -1 for "don't care".  The
+ *                                      recommended value is 1.
+ * @param pseudorangeRmsErrorIndexLimit the maximum pseudorange RMS error
+ *                                      index that must be met for any
+ *                                      single satellite's RRLP information
+ *                                      to be considered valid, specify -1
+ *                                      for "don't care".  The recommended
+ *                                      value is 3.
+ * @param pClientIdStr                  the Thingstream device ID, obtained
+ *                                      from the Thingstream portal, for
+ *                                      this device; must be provided if
+ *                                      pLocation is not NULL, must be
+ *                                      null-terminated.
+ * @param pLocation                     a place to put the location once
+ *                                      established, may be NULL if this
+ *                                      device does not require the
+ *                                      location, i.e. it is sufficient
+ *                                      for it to be known in the cloud.
+ * @param pKeepGoingCallback            a callback function that governs
+ *                                      how long location establishment
+ *                                      is allowed to take.  This function
+ *                                      is called while waiting for
+ *                                      location establishment to complete;
+ *                                      location establishment will only
+ *                                      continue while it returns true.
+ *                                      This allows the caller to terminate
+ *                                      the locating process at their
+ *                                      convenience.  This function may
+ *                                      also be used to feed any watchdog
+ *                                      timer that might be running.  May
+ *                                      be NULL, in which case location
+ *                                      establishment will stop when
+ *                                      U_LOCATION_TIMEOUT_SECONDS have
+ *                                      elapsed.  The single int32_t
+ *                                      parameter is the network handle.
  */
 int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
                                     int32_t gnssHandle,
                                     uMqttClientContext_t *pMqttClientContext,
                                     int32_t svsThreshold,
+                                    int32_t cNoThreshold,
+                                    int32_t multipathIndexLimit,
+                                    int32_t pseudorangeRmsErrorIndexLimit,
                                     const char *pClientIdStr,
                                     uLocation_t *pLocation,
                                     bool (*pKeepGoingCallback) (int32_t));

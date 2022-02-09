@@ -471,14 +471,17 @@ int32_t uGnssPosGetRrlp(int32_t gnssHandle, char *pBuffer,
                         size_t sizeBytes, int32_t svsThreshold,
                         int32_t cNoThreshold,
                         int32_t multipathIndexLimit,
+                        int32_t pseudorangeRmsErrorIndexLimit,
                         bool (*pKeepGoingCallback) (int32_t))
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
     int64_t startTime;
     int32_t svs;
-    int32_t y;
+    int32_t numBytes;
     int32_t z;
+    int32_t numMeetingCriteria;
+    bool goodSatellite;
     int32_t ca = 0;
     int32_t cb = 0;
     // Access the buffer as a uint8_t to avoid maths funnies with
@@ -522,70 +525,93 @@ int32_t uGnssPosGetRrlp(int32_t gnssHandle, char *pBuffer,
                      (uPortGetTickTimeMs() - startTime) / 1000 < U_GNSS_POS_TIMEOUT_SECONDS) ||
                     ((pKeepGoingCallback != NULL) && pKeepGoingCallback(gnssHandle)))) {
 
-                y = uGnssPrivateSendReceiveUbxMessage(pInstance,
-                                                      0x02, 0x14, NULL, 0,
-                                                      pBuffer + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES,
-                                                      sizeBytes - U_GNSS_POS_RRLP_HEADER_SIZE_BYTES);
-                // 34 since that's the furthest we need to read to check on criteria
-                if ((((svsThreshold >= 0) || (cNoThreshold >= 0) || (multipathIndexLimit >= 0)) && (y >= 34)) ||
-                    (y >= 0)) {
-                    // The number of satellites is at offset 34
-                    svs = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 34);
-                    uPortLog("U_GNSS_POS: RRLP information for %d satellite(s).\n", svs);
-                    if ((svsThreshold >= 0) && (svs < svsThreshold)) {
-                        // Not enough satellites
-                        y = -1;
-                    }
-                    if ((cNoThreshold >= 0) || (multipathIndexLimit >= 0)) {
-                        // Check that the data on each satellite
-                        // meets the criteria
-                        for (int8_t x = 0; (x < svs) && (y >= 47 + (x * 24)); x++) {
-                            // Carrier to noise ratio is at offset 46 +(x * 24)
-                            if (cNoThreshold >= 0) {
-                                z = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 46 + (x * 24));
-                                uPortLog("U_GNSS_POS: RRLP CNo for satellite %d is %d.\n", x + 1, z);
-                                if (z < cNoThreshold) {
-                                    y = -1;
+                numBytes = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                             0x02, 0x14, NULL, 0,
+                                                             pBuffer + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES,
+                                                             sizeBytes - U_GNSS_POS_RRLP_HEADER_SIZE_BYTES);
+                if (numBytes > 0) {
+                    // Got something, is it good enough?
+                    // 34 since that's the furthest we need to read to check on the number of satellites
+                    if ((((svsThreshold >= 0) || (cNoThreshold >= 0) ||
+                          (multipathIndexLimit >= 0) || (pseudorangeRmsErrorIndexLimit >= 0)) && (numBytes >= 34))) {
+                        // The number of satellites is at offset 34
+                        svs = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 34);
+                        uPortLog("U_GNSS_POS: RRLP information for %d satellite(s).\n", svs);
+                        if ((svsThreshold >= 0) && (svs < svsThreshold)) {
+                            // Not enough satellites in the first place
+                            numBytes = -1;
+                        }
+                        if ((numBytes > 0) &&
+                            ((cNoThreshold >= 0) || (multipathIndexLimit >= 0) || (pseudorangeRmsErrorIndexLimit >= 0))) {
+                            numMeetingCriteria = svs;
+                            // 65 since that's the furthest we need to check on the criteria
+                            for (int8_t x = 0; (x < svs) && (numBytes >= 65 + (x * 24)); x++) {
+                                goodSatellite = true;
+                                // Carrier to noise ratio is at offset 46 + (x * 24)
+                                if (cNoThreshold >= 0) {
+                                    z = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 46 + (x * 24));
+                                    uPortLog("U_GNSS_POS: RRLP CNo for satellite %d is %d.\n", x + 1, z);
+                                    if (z < cNoThreshold) {
+                                        goodSatellite = false;
+                                    }
                                 }
-                            }
-                            // Multipath index is at offset 47 +(x * 24)
-                            if (multipathIndexLimit >= 0) {
-                                z = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 47 + (x * 24));
-                                uPortLog("U_GNSS_POS: RRLP multipath for satellite %d is %d.\n", x + 1, z);
-                                if (z > multipathIndexLimit) {
-                                    y = -1;
+                                // Multipath index is at offset 47 + (x * 24)
+                                if (goodSatellite && (multipathIndexLimit >= 0)) {
+                                    z = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 47 + (x * 24));
+                                    uPortLog("U_GNSS_POS: RRLP multipath for satellite %d is %d.\n", x + 1, z);
+                                    if (z > multipathIndexLimit) {
+                                        goodSatellite = false;
+                                    }
+                                }
+                                // Pseudorange RMS error index is at offset 65 + (x * 24)
+                                if (goodSatellite && (pseudorangeRmsErrorIndexLimit >= 0)) {
+                                    z = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 65 + (x * 24));
+                                    uPortLog("U_GNSS_POS: pseudorange RMS error index for satellite %d is %d.\n",
+                                             x + 1, z);
+                                    if (z > pseudorangeRmsErrorIndexLimit) {
+                                        goodSatellite = false;
+                                    }
+                                }
+                                if (!goodSatellite) {
+                                    numMeetingCriteria--;
+                                    uPortLog("U_GNSS_POS: only up to %d satellite(s) meet the criteria.\n",
+                                             numMeetingCriteria);
+                                    if (numMeetingCriteria < svsThreshold) {
+                                        // Force exit
+                                        numBytes = -1;
+                                    }
                                 }
                             }
                         }
                     }
+                }
 
-                    if (y > 0) {
-                        // Got a good one!
-                        // Since the Cloud Locate service expects the
-                        // UBX protocol header information we need to
-                        // re-construct that on the front of the message
-                        *pBufferUint8 = 0xb5;
-                        *(pBufferUint8 + 1) = 0x62;
-                        *(pBufferUint8 + 2) = 0x02;
-                        *(pBufferUint8 + 3) = 0x14;
-                        // Little-endian length of the body
-                        *(pBufferUint8 + 4) = (uint8_t) y;
-                        *(pBufferUint8 + 5) = (uint8_t) ((uint32_t) y >> 8);
-                        // Cloud locate also needs the two-byte CRC which
-                        // is across the class, ID, length and body so
-                        // reconstruct that here
-                        pBufferUint8 += 2;
-                        for (int32_t x = 0; x < y + 4; x++) {
-                            ca += *pBufferUint8;
-                            cb += ca;
-                            pBufferUint8++;
-                        }
-                        // Write in the CRC
-                        *pBufferUint8++ = (uint8_t) (ca & 0xff);
-                        *pBufferUint8 = (uint8_t) (cb & 0xff);
-
-                        errorCodeOrLength = y + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
+                if (numBytes > 0) {
+                    // Got a good measurement!
+                    // Since the Cloud Locate service expects the
+                    // UBX protocol header information we need to
+                    // re-construct that on the front of the message
+                    *pBufferUint8 = 0xb5;
+                    *(pBufferUint8 + 1) = 0x62;
+                    *(pBufferUint8 + 2) = 0x02;
+                    *(pBufferUint8 + 3) = 0x14;
+                    // Little-endian length of the body
+                    *(pBufferUint8 + 4) = (uint8_t) numBytes;
+                    *(pBufferUint8 + 5) = (uint8_t) ((uint32_t) numBytes >> 8);
+                    // Cloud Locate also needs the two-byte CRC which
+                    // is across the class, ID, length and body so
+                    // reconstruct that here
+                    pBufferUint8 += 2;
+                    for (int32_t x = 0; x < numBytes + 4; x++) {
+                        ca += *pBufferUint8;
+                        cb += ca;
+                        pBufferUint8++;
                     }
+                    // Write in the CRC
+                    *pBufferUint8++ = (uint8_t) (ca & 0xff);
+                    *pBufferUint8 = (uint8_t) (cb & 0xff);
+
+                    errorCodeOrLength = numBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
                 }
             }
         }

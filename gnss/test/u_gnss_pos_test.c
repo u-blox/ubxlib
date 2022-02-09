@@ -98,10 +98,20 @@
 #define U_GNSS_POS_TEST_RRLP_CNO_THRESHOLD 10
 #endif
 
-#ifndef U_GNSS_POS_TEST_RRLP_MULTIPATH_LIMIT
-/** Multipath limit for RRLP testing.
+#ifndef U_GNSS_POS_TEST_RRLP_MULTIPATH_INDEX_LIMIT
+/** Multipath limit for RRLP testing; we don't care
+ * about this when testing this SW, provided it has
+ * a value we're good.
  */
-#define U_GNSS_POS_TEST_RRLP_MULTIPATH_LIMIT 3
+#define U_GNSS_POS_TEST_RRLP_MULTIPATH_INDEX_LIMIT 3
+#endif
+
+#ifndef U_GNSS_POS_TEST_RRLP_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT
+/** Pseudo-range RMS error limit for RRLP testing; we don't care
+ * about this when testing this SW, provided it has a value we're
+ * good.
+ */
+#define U_GNSS_POS_TEST_RRLP_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT 63
 #endif
 
 /* ----------------------------------------------------------------
@@ -413,7 +423,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
 
         uPortLog("U_GNSS_POS_TEST: asking for RRLP information with no thresholds...\n");
         y = uGnssPosGetRrlp(gnssHandle, pBuffer, U_GNSS_POS_RRLP_SIZE_BYTES,
-                            -1, -1, -1, NULL);
+                            -1, -1, -1, -1, NULL);
         uPortLog("U_GNSS_POS_TEST: %d byte(s) of RRLP information was returned.\n", y);
         // Must contain at least 6 bytes for the header
         U_PORT_TEST_ASSERT(y >= 6);
@@ -425,7 +435,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
         y = uGnssPosGetRrlp(gnssHandle, pBuffer, U_GNSS_POS_RRLP_SIZE_BYTES,
                             U_GNSS_POS_TEST_RRLP_SVS_THRESHOLD,
                             U_GNSS_POS_TEST_RRLP_CNO_THRESHOLD,
-                            U_GNSS_POS_TEST_RRLP_MULTIPATH_LIMIT,
+                            U_GNSS_POS_TEST_RRLP_MULTIPATH_INDEX_LIMIT,
+                            U_GNSS_POS_TEST_RRLP_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT,
                             keepGoingCallback);
         uPortLog("U_GNSS_POS_TEST: RRLP took %d second(s) to arrive.\n",
                  (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);

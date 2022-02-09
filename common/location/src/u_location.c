@@ -233,6 +233,9 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
                                                             pLocationAssist->networkHandleAssist,
                                                             (uMqttClientContext_t *) pLocationAssist->pMqttClientContext,
                                                             pLocationAssist->svsThreshold,
+                                                            pLocationAssist->cNoThreshold,
+                                                            pLocationAssist->multipathIndexLimit,
+                                                            pLocationAssist->pseudorangeRmsErrorIndexLimit,
                                                             pLocationAssist->pClientIdStr,
                                                             &location, pKeepGoingCallback);
                     if (pLocation != NULL) {
