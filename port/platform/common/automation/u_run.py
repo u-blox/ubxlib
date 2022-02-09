@@ -10,11 +10,7 @@ from multiprocessing import Process, freeze_support # Needed to make Windows beh
 from signal import signal, SIGINT                   # For CTRL-C handling
 import u_data # Gets and displays the instance database
 import u_connection # The connection to use for a given instance
-import u_run_esp_idf # Build/run stuff on ESP-IDF (i.e. ESP32)
-import u_run_nrf5sdk # Build/run stuff on NRF5 (i.e. NRF52)
-import u_run_zephyr # Build/run stuff on Zephyr (i.e. NRF52/53)
-import u_run_stm32cube # Build/run stuff on STM's Cube IDE (i.e. STM32F4)
-import u_run_arduino # Build/run stuff under Arduino
+import u_run_log # The main test result logger used for all external HW
 import u_run_windows # Build/run stuff on Windows
 import u_run_lint # Run Lint check
 import u_run_doxygen # Run a Doxygen check
@@ -172,46 +168,16 @@ def main(database, instance, filter_string, clean,
                     # for more than about 10ish seconds should be stopped
                     # if the flag is cleared, in case the user decides to abort
                     # a test run.
-                    if platform.lower() == "esp-idf":
-                        return_value = u_run_esp_idf.run(instance, mcu, toolchain, connection,
-                                                         connection_lock, platform_lock,
-                                                         misc_locks, clean, defines,
-                                                         printer, reporter,
-                                                         test_report_handle,
-                                                         keep_going_flag)
-                    elif platform.lower() == "nrf5sdk":
-                        return_value = u_run_nrf5sdk.run(instance, mcu, toolchain, connection,
-                                                         connection_lock, platform_lock,
-                                                         misc_locks, clean, defines,
-                                                         printer, reporter,
-                                                         test_report_handle, keep_going_flag,
-                                                         unity_dir)
-                    elif platform.lower() == "zephyr":
-                        return_value = u_run_zephyr.run(instance, mcu, board, toolchain, connection,
-                                                        connection_lock, platform_lock,
-                                                        misc_locks, clean, defines,
-                                                        printer, reporter,
-                                                        test_report_handle, keep_going_flag)
-                    elif platform.lower() == "stm32cube":
-                        return_value = u_run_stm32cube.run(instance, mcu, toolchain, connection,
-                                                           connection_lock, platform_lock,
-                                                           misc_locks, clean, defines,
-                                                           printer, reporter,
-                                                           test_report_handle, keep_going_flag,
-                                                           unity_dir)
-                    elif platform.lower() == "arduino":
-                        return_value = u_run_arduino.run(instance, mcu, board, toolchain, connection,
-                                                         connection_lock, platform_lock,
-                                                         misc_locks, clean, defines,
-                                                         printer, reporter,
-                                                         test_report_handle, keep_going_flag,
-                                                         unity_dir)
-                    elif platform.lower() == "windows":
+                    if platform.lower() == "windows":
                         return_value = u_run_windows.run(instance, mcu, toolchain, connection,
                                                          connection_lock, platform_lock, misc_locks,
                                                          clean, defines, printer, reporter,
                                                          test_report_handle,
                                                          keep_going_flag, unity_dir)
+                    elif platform != "":
+                        # For all external HW the firmware has already been built and flashed
+                        # so we just need to listen for the log output
+                        return_value = u_run_log.run(instance, printer, reporter, test_report_handle, keep_going_flag)
                     else:
                         printer.string("{}don't know how to handle platform \"{}\".".    \
                                     format(PROMPT, platform))
