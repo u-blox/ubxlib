@@ -113,6 +113,21 @@
 # define U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS 150
 #endif // #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
 
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
+# ifdef U_PORT_TEST_CHECK_TIME_TAKEN
+/** The amount of time to wait for the UART-loopbacked
+ * data to arrive back normally.
+ */
+#  define U_PORT_TEST_UART_TIME_TO_ARRIVE_MS 1000
+# else
+/** The amount of time to wait for the UART-loopbacked
+ * data to arrive back when allowing laziness (e.g. on
+ * a heavily loaded Windoze machine).
+ */
+#  define U_PORT_TEST_UART_TIME_TO_ARRIVE_MS 5000
+# endif
+#endif
+
 /** The number of re-entrancy test tasks to run.
  */
 #define U_PORT_TEST_OS_NUM_REENT_TASKS 3
@@ -940,7 +955,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     }
 
     // Wait long enough for everything to have been received
-    uPortTaskBlock(1000);
+    uPortTaskBlock(U_PORT_TEST_UART_TIME_TO_ARRIVE_MS);
 
     // Print out some useful stuff
     if (eventCallbackData.errorCode == -5) {
