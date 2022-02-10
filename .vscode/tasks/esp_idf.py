@@ -1,6 +1,7 @@
 import os
 import sys
 import shutil
+import json
 from invoke import task
 from scripts import u_utils
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
@@ -12,6 +13,38 @@ ESP_IDF_URL="https://github.com/espressif/esp-idf"
 DEFAULT_CMAKE_DIR = f"{u_utils.UBXLIB_DIR}/port/platform/esp-idf/mcu/esp32/runner"
 DEFAULT_OUTPUT_NAME = "runner_esp32"
 DEFAULT_BUILD_DIR = os.path.join("_build","esp_idf")
+
+# In the test automation we build on one computer and flash on
+# different one. Since "idf.py flash" will automatically first
+# check that everything is built this becomes a problem.
+# To solve this we parse the flasher_args.json like idf.py
+# and call esptool.py manually.
+def _get_idf_flash_command(idf_path, build_dir, port, baudrate):
+    with open(os.path.join(build_dir, 'flasher_args.json')) as f:
+        flasher_args = json.load(f)
+
+    def flasher_path(f):
+        return os.path.join(build_dir, f)
+
+    cmd = 'python %s -p %s -b %s --before %s --after %s --chip %s %s write_flash ' % (
+            '%s/components/esptool_py/esptool/esptool.py' % idf_path,
+            port,
+            baudrate,
+            flasher_args['extra_esptool_args']['before'],
+            flasher_args['extra_esptool_args']['after'],
+            flasher_args['extra_esptool_args']['chip'],
+            '--no-stub' if not flasher_args['extra_esptool_args']['stub'] else ''
+        )
+
+    cmd += ' '.join(flasher_args['write_flash_args']) + ' '
+    flash_items = sorted(
+        ((o, f) for (o, f) in flasher_args['flash_files'].items() if len(o) > 0),
+        key=lambda x: int(x[0], 0),
+    )
+    for o, f in flash_items:
+        cmd += o + ' ' + flasher_path(f) + ' '
+
+    return cmd
 
 @task()
 def check_installation(ctx):
@@ -77,15 +110,22 @@ def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
         "serial_port": "The serial port connected to ESP32 device",
         "cmake_dir": f"CMake project directory to build (default: {DEFAULT_CMAKE_DIR})",
         "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
-        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})"
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
+        "use_flasher_json": f"When set to true esptool.py will be manually called based on" \
+                             "generated flasher_args.json. This allows flash without rebuild."
     }
 )
 def flash(ctx, serial_port, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUTPUT_NAME,
-          build_dir=DEFAULT_BUILD_DIR):
+          build_dir=DEFAULT_BUILD_DIR, use_flasher_json=False):
     """Flash an ESP-IDF SDK based application"""
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
-    ctx.run(f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
-            f'-p {serial_port} flash')
+
+    if use_flasher_json:
+        cmd = _get_idf_flash_command(ctx.esp_idf_dir, build_dir, serial_port, 460800)
+        ctx.run(f'{ctx.esp_idf_pre_command} {cmd}')
+    else:
+        ctx.run(f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
+                f'-p {serial_port} flash')
 
 @task(
     pre=[check_installation],
@@ -104,6 +144,6 @@ def log(ctx, serial_port, baudrate=115200, rts_state=None, dtr_state=None):
         while True:
             data = serial.read()
             if data:
-                sys.stdout.write("".join(map(chr, data)))
+                sys.stdout.write(data.decode(sys.stdout.encoding, "backslashreplace"))
                 sys.stdout.flush()
 

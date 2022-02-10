@@ -113,7 +113,8 @@ def instance_command(ctx, instance_str, cmd):
             esp_idf.build(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines)
         elif cmd == Command.FLASH:
             esp_idf.flash(ctx, serial_port=connection["serial_port"],
-                          output_name="", build_dir=ctx.build_dir)
+                          output_name="", build_dir=ctx.build_dir,
+                          use_flasher_json=True)
         elif cmd == Command.LOG:
             esp_idf.log(ctx, serial_port=connection["serial_port"],
                         dtr_state=monitor_dtr_rts_on,
