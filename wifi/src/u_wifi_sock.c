@@ -320,8 +320,7 @@ static inline int32_t getInstance(int32_t wifiHandle, uShortRangePrivateInstance
         return -U_SOCK_EINVAL;
     }
 
-    if ((*ppInstance)->mode != U_SHORT_RANGE_MODE_COMMAND &&
-        (*ppInstance)->mode != U_SHORT_RANGE_MODE_EDM) {
+    if ((*ppInstance)->mode != U_SHORT_RANGE_MODE_EDM) {
         return -U_SOCK_EIO;
     }
 

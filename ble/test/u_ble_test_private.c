@@ -40,17 +40,15 @@
 
 #include "u_port.h"
 #include "u_port_debug.h"
-#include "u_port_uart.h"
 
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
-#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
-#include "u_short_range_edm_stream.h"
 
 #include "u_ble_module_type.h"
 #include "u_ble.h"
+#include "u_ble_private.h"
 
 #include "u_ble_test_private.h"
 
@@ -76,10 +74,10 @@
 
 // The standard preamble for a ble test.
 int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
+                                const uShortRangeUartConfig_t *pUartConfig,
                                 uBleTestPrivate_t *pParameters)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    int32_t bleHandle;
+    int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
     // Set some defaults
     pParameters->uartHandle = -1;
@@ -87,97 +85,93 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
     pParameters->atClientHandle = NULL;
     pParameters->bleHandle = -1;
 
-    // Initialise the porting layer
-    if (uPortInit() == 0) {
 #ifndef U_CFG_BLE_MODULE_INTERNAL
+    int32_t shortRangeHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    const uShortRangeModuleInfo_t *pModule;
+
+    // Initialise the porting layer and ble
+    if ((uPortInit() == 0) && (uBleInit() == 0) && (uAtClientInit() == 0)) {
         uPortLog("U_BLE_TEST_PRIVATE: opening UART %d...\n",
                  U_CFG_APP_SHORT_RANGE_UART);
-        // Open a UART with the standard parameters
-        pParameters->uartHandle = uPortUartOpen(U_CFG_APP_SHORT_RANGE_UART,
-                                                U_SHORT_RANGE_UART_BAUD_RATE,
-                                                NULL,
-                                                U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES,
-                                                U_CFG_APP_PIN_SHORT_RANGE_TXD,
-                                                U_CFG_APP_PIN_SHORT_RANGE_RXD,
-                                                U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                                U_CFG_APP_PIN_SHORT_RANGE_RTS);
-#endif
-    }
 
-#ifndef U_CFG_BLE_MODULE_INTERNAL
-    if (pParameters->uartHandle >= 0) {
-        if (uShortRangeEdmStreamInit() == 0) {
-            pParameters->edmStreamHandle = uShortRangeEdmStreamOpen(pParameters->uartHandle);
-            if (pParameters->edmStreamHandle >= 0) {
-                if (uAtClientInit() == 0) {
-                    uPortLog("U_BLE_TEST_PRIVATE: adding an AT client on EDM...\n");
-                    pParameters->atClientHandle = uAtClientAdd(pParameters->edmStreamHandle,
-                                                               U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                               NULL,
-                                                               U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
-                    if (pParameters->atClientHandle != NULL) {
-                        uShortRangeEdmStreamSetAtHandle(pParameters->edmStreamHandle, pParameters->atClientHandle);
-                    }
+        shortRangeHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType, pUartConfig);
+
+        if (shortRangeHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            pParameters->bleHandle = uShoToBleHandle(shortRangeHandle);
+        }
+
+        errorCodeOrHandle = uShortRangeGetUartHandle(shortRangeHandle);
+
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            pParameters->uartHandle = errorCodeOrHandle;
+        }
+
+        errorCodeOrHandle = uShortRangeGetEdmStreamHandle(shortRangeHandle);
+
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            pParameters->edmStreamHandle = errorCodeOrHandle;
+        }
+
+        errorCodeOrHandle = uShortRangeAtClientHandleGet(shortRangeHandle, &pParameters->atClientHandle);
+
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            // So that we can see what we're doing
+            uAtClientTimeoutSet(pParameters->atClientHandle, 2000);
+            uAtClientPrintAtSet(pParameters->atClientHandle, true);
+            uAtClientDebugSet(pParameters->atClientHandle, true);
+        }
+
+        if (shortRangeHandle >= 0) {
+            if ((uShortRangeModuleType_t) moduleType != (int32_t) U_SHORT_RANGE_MODULE_TYPE_INVALID) {
+                errorCodeOrHandle = (int32_t) U_ERROR_COMMON_UNKNOWN;
+                pModule = uShortRangeGetModuleInfo((uShortRangeModuleType_t)moduleType);
+                if (pModule != NULL) {
+                    uPortLog("U_BLE_TEST_PRIVATE: Module: %d\n", pModule->moduleType);
+                    errorCodeOrHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
 
+                if (errorCodeOrHandle == 0) {
+                    uPortLog("U_BLE_TEST_PRIVATE: module is powered-up and configured for testing.\n");
+                }
             }
         }
     }
 
-    if (pParameters->atClientHandle != NULL) {
-        // So that we can see what we're doing
-        uAtClientTimeoutSet(pParameters->atClientHandle, 2000);
-        uAtClientPrintAtSet(pParameters->atClientHandle, true);
-        uAtClientDebugSet(pParameters->atClientHandle, true);
-        if (uBleInit() == 0) {
-            uPortLog("U_BLE_TEST_PRIVATE: adding a short range instance on"
-                     " the AT client...\n");
-            pParameters->bleHandle = uBleAdd(moduleType,
-                                             pParameters->atClientHandle);
+    errorCodeOrHandle = shortRangeHandle;
+#else
+    if (uPortInit() == 0) {
+        errorCodeOrHandle = uBleInit();
+
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            pParameters->bleHandle = errorCodeOrHandle;
         }
     }
-#else
-    pParameters->bleHandle = uBleAdd(moduleType, NULL);
+    (void)moduleType;
+    (void)pUartConfig;
 #endif
 
-    if (pParameters->bleHandle >= 0) {
-        bleHandle = pParameters->bleHandle;
-        uPortLog("U_BLE_TEST_PRIVATE: Detecting...\n");
-        uBleModuleType_t module = uBleDetectModule(bleHandle);
-
-        if (module != U_BLE_MODULE_TYPE_INVALID) {
-            uPortLog("U_BLE_TEST_PRIVATE: Module: %d\n", module);
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        }
-
-        if (errorCode == 0) {
-            uPortLog("U_BLE_TEST_PRIVATE: module is connected and configured for testing.\n");
-        }
-    }
-
-    return errorCode;
+    return errorCodeOrHandle;
 }
 
 // The standard postamble for a ble test.
 void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
 {
     uPortLog("U_BLE_TEST_PRIVATE: deinitialising ble API...\n");
-    uBleDeinit();
 
 #ifndef U_CFG_BLE_MODULE_INTERNAL
-    uPortLog("U_BLE_TEST_PRIVATE: removing AT client...\n");
-    uShortRangeEdmStreamClose(pParameters->edmStreamHandle);
-    uShortRangeEdmStreamDeinit();
-    pParameters->edmStreamHandle = -1;
-
-    uAtClientRemove(pParameters->atClientHandle);
+    uShortRangeClose(uBleToShoHandle(pParameters->bleHandle));
+    uBleDeinit();
     uAtClientDeinit();
 
-    uPortUartClose(pParameters->uartHandle);
-    pParameters->uartHandle = -1;
 #else
+    uBleDeinit();
     (void)pParameters;
 #endif
+
+    pParameters->uartHandle = -1;
+    pParameters->edmStreamHandle = -1;
+    pParameters->atClientHandle = NULL;
+    pParameters->bleHandle = -1;
 
     uPortDeinit();
 }
@@ -185,12 +179,18 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
 // The standard clean-up for a ble test.
 void uBleTestPrivateCleanup(uBleTestPrivate_t *pParameters)
 {
+#ifndef U_CFG_BLE_MODULE_INTERNAL
+    uShortRangeClose(uBleToShoHandle(pParameters->bleHandle));
     uBleDeinit();
-    uShortRangeEdmStreamClose(pParameters->edmStreamHandle);
-    pParameters->edmStreamHandle = -1;
     uAtClientDeinit();
-    uPortUartClose(pParameters->uartHandle);
+#else
+    uBleDeinit();
+#endif
     pParameters->uartHandle = -1;
+    pParameters->edmStreamHandle = -1;
+    pParameters->atClientHandle = NULL;
+    pParameters->bleHandle = -1;
+    uPortDeinit();
 }
 
 // End of file

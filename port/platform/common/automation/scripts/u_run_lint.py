@@ -100,6 +100,7 @@ UBXLIB_INCLUDE_DIRS = [LINT_PLATFORM_PATH,
                        os.path.join("port","platform","common","runner"),
                        os.path.join("port","platform","lint","stubs"),
                        os.path.join("wifi","api"),
+                       os.path.join("wifi","src"),
                        os.path.join("wifi","test")]
 
 # Include directories for the C compiler and its C library.

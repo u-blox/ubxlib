@@ -126,8 +126,7 @@ static inline int32_t getInstance(int32_t shoHandle,
         return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    if ((*ppInstance)->mode != U_SHORT_RANGE_MODE_COMMAND &&
-        (*ppInstance)->mode != U_SHORT_RANGE_MODE_EDM) {
+    if ((*ppInstance)->mode != U_SHORT_RANGE_MODE_EDM) {
         return (int32_t) U_WIFI_ERROR_INVALID_MODE;
     }
 

@@ -39,10 +39,10 @@ extern "C" {
 /** Struct to contain all the stuff needed by the common functions.
  */
 typedef struct {
-    int32_t uartHandle; /**< The handle returned by uPortUartOpen(). */
-    int32_t edmStreamHandle; /**< The handle returned by uShortRangeEdmStreamOpen(). */
-    uAtClientHandle_t atClientHandle; /**< The handle returned by uAtClientAdd(). */
-    int32_t wifiHandle;  /**< The handle returned by uWifiAdd(). */
+    int32_t uartHandle; /**< The handle returned by uShortRangeGetUartHandle(). */
+    int32_t edmStreamHandle; /**< The handle returned by uShortRangeGetEdmStreamHandle(). */
+    uAtClientHandle_t atClientHandle; /**< The handle returned by uShortRangeAtClientHandleGet(). */
+    int32_t wifiHandle;  /**< The converted wifi handle returned by uShortRangeOpenUart(). */
 } uWifiTestPrivate_t;
 
 
@@ -76,6 +76,7 @@ typedef enum {
  * RAT and bands for testing.
  *
  * @param moduleType  the module type.
+ * @param pUartConfig the uart config.
  * @param pParameters the place to put the parameters.
  * @return            zero on success else negative error code.
  */
@@ -85,6 +86,7 @@ typedef enum {
 //                                          U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 //                                          is not defined
 int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
+                                 const uShortRangeUartConfig_t *pUartConfig,
                                  uWifiTestPrivate_t *pParameters);
 
 /** The standard postamble for a Wifi test.

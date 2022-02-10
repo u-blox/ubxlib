@@ -53,14 +53,14 @@
 
 #include "u_port.h"
 #include "u_port_debug.h"
-#include "u_port_os.h"
-#include "u_port_uart.h"
 
 #include "u_at_client.h"
 #include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 #include "u_ble.h"
+//lint -efile(766, u_ble_private.h)
+#include "u_ble_private.h"
 
 //lint -efile(766, u_ble_test_private.h)
 #include "u_ble_test_private.h"
@@ -80,8 +80,7 @@
 
 /** UART handle for one AT client.
  */
-static int32_t gUartHandle = -1;
-static int32_t gEdmStreamHandle = -1;
+static uBleTestPrivate_t gHandles = {-1, -1, NULL, -1};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -109,134 +108,90 @@ U_PORT_TEST_FUNCTION("[ble]", "bleInitialisation")
     uPortDeinit();
 }
 
-#if (U_CFG_TEST_UART_A >= 0)
-/** Add a ble instance and remove it again.
- * Note: no ble operations are actually carried out and
- * hence this test can be run wherever any UART is
- * defined.
- */
-U_PORT_TEST_FUNCTION("[ble]", "bleAdd")
+#ifndef U_CFG_BLE_MODULE_INTERNAL
+U_PORT_TEST_FUNCTION("[ble]", "bleOpenUart")
 {
-    int32_t bleHandle;
-    uAtClientHandle_t atClientHandle;
-    uAtClientHandle_t atClientHandleCheck = (uAtClientHandle_t) -1;
     int32_t heapUsed;
-#ifdef U_CFG_BLE_MODULE_INTERNAL
-    uBleModuleType_t testModuleType = U_BLE_MODULE_TYPE_INTERNAL;
-#else
-    uBleModuleType_t testModuleType = U_BLE_MODULE_TYPE_NINA_B3;
-#endif
+    uAtClientHandle_t atClient = NULL;
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
+    int32_t shortRangeHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uPortDeinit();
 
-    // Whatever called us likely initialised the
-    // port so deinitialise it here to obtain the
-    // correct initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
+    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                               &uart,
+                                               &gHandles) == 0);
+    shortRangeHandle = uBleToShoHandle(gHandles.bleHandle);
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(shortRangeHandle) == gHandles.uartHandle);
+    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(shortRangeHandle) == gHandles.edmStreamHandle);
+    uShortRangeAtClientHandleGet(shortRangeHandle, &atClient);
+    U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+    U_PORT_TEST_ASSERT(uShortRangeAttention(shortRangeHandle) == 0);
+
+    uPortLog("U_BLE: calling uShortRangeOpenUart with same arg twice,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uShortRangeOpenUart((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                           &uart) < 0);
+
+    uBleTestPrivatePostamble(&gHandles);
+
+    uPortLog("U_BLE: calling uShortRangeOpenUart with NULL uart arg,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                               NULL,
+                                               &gHandles) < 0);
+    uPortLog("U_BLE: calling uShortRangeOpenUart with wrong module type,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
+                                               &uart,
+                                               &gHandles) < 0);
+    uart.uartPort = -1;
+    uPortLog("U_BLE: calling uShortRangeOpenUart with invalid uart arg,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                               &uart,
+                                               &gHandles) < 0);
+
+    uBleTestPrivateCleanup(&gHandles);
+#ifndef __XTENSA__
+    // Check for memory leaks
+    // TODO: this if'ed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_BLE_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+#else
+    (void) heapUsed;
+#endif
+}
+
+#else
+U_PORT_TEST_FUNCTION("[ble]", "bleOpenCpuInit")
+{
+    int32_t heapUsed;
     uPortDeinit();
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    gUartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
-                                U_CFG_TEST_BAUD_RATE,
-                                NULL,
-                                U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                U_CFG_TEST_PIN_UART_A_TXD,
-                                U_CFG_TEST_PIN_UART_A_RXD,
-                                U_CFG_TEST_PIN_UART_A_CTS,
-                                U_CFG_TEST_PIN_UART_A_RTS);
-    U_PORT_TEST_ASSERT(gUartHandle >= 0);
-
-    U_PORT_TEST_ASSERT(uShortRangeEdmStreamInit() == 0);
-    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
-    U_PORT_TEST_ASSERT(uBleInit() == 0);
-
-    gEdmStreamHandle = uShortRangeEdmStreamOpen(gUartHandle);
-    U_PORT_TEST_ASSERT(gEdmStreamHandle >= 0);
-
-    uPortLog("U_BLE_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_A);
-    atClientHandle = uAtClientAdd(gEdmStreamHandle, U_AT_CLIENT_STREAM_TYPE_EDM,
-                                  NULL, U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
-    U_PORT_TEST_ASSERT(atClientHandle != NULL);
-
-    uPortLog("U_BLE_TEST: adding a ble instance on that AT client...\n");
-    bleHandle = uBleAdd(testModuleType, (void *)atClientHandle);
-    U_PORT_TEST_ASSERT(bleHandle >= 0);
-#ifdef U_CFG_BLE_MODULE_INTERNAL
-    // In the case of internal Ble module there is not atClient handle
-    // saved in the Ble instance
-    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
-                                             &atClientHandleCheck) < 0);
-#else
-    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
-                                             &atClientHandleCheck) == 0);
-    U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
-
-    uPortLog("U_BLE_TEST: removing ble instance...\n");
-//lint -save -e522 uBleRemove lack side-effects when compiling for internal ble module
-    uBleRemove(bleHandle);
-//lint -restore
-
-    uPortLog("U_BLE_TEST: adding it again...\n");
-    bleHandle = uBleAdd(testModuleType, atClientHandle);
-    U_PORT_TEST_ASSERT(bleHandle >= 0);
-#endif
-
-    atClientHandleCheck = (uAtClientHandle_t) -1;
-#ifdef U_CFG_BLE_MODULE_INTERNAL
-    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
-                                             &atClientHandleCheck) < 0);
-#else
-    U_PORT_TEST_ASSERT(uBleAtClientHandleGet(bleHandle,
-                                             &atClientHandleCheck) == 0);
-    U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
-#endif
-
-    uPortLog("U_BLE_TEST: deinitialising ble API...\n");
-    uBleDeinit();
-
-    uPortLog("U_BLE_TEST: removing AT client...\n");
-    uShortRangeEdmStreamClose(gEdmStreamHandle);
-    gEdmStreamHandle = -1;
-    uShortRangeEdmStreamDeinit();
-
-    uAtClientRemove(atClientHandle);
-    uAtClientDeinit();
-
-    uPortUartClose(gUartHandle);
-    gUartHandle = -1;
-
-    uPortDeinit();
-
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    uPortLog("U_BLE_TEST: we have leaked %d byte(s).\n", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
-    (void) heapUsed;
-#endif
-}
-
-#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
-
-static uBleTestPrivate_t gHandles;
-
-U_PORT_TEST_FUNCTION("[ble]", "bleDetect")
-{
-    int32_t heapUsed;
-    heapUsed = uPortGetHeapFree();
-
-    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+    U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_BLE_MODULE_TYPE_INTERNAL,
+                                               NULL,
                                                &gHandles) == 0);
 
-    uBleTestPrivatePostamble(&gHandles);
-
+    uBleTestPrivateCleanup(&gHandles);
 #ifndef __XTENSA__
     // Check for memory leaks
     // TODO: this if'ed out for ESP32 (xtensa compiler) at
@@ -252,9 +207,9 @@ U_PORT_TEST_FUNCTION("[ble]", "bleDetect")
     (void) heapUsed;
 #endif
 }
+#endif
 
-#endif
-#endif
+
 
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
@@ -262,32 +217,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleDetect")
  */
 U_PORT_TEST_FUNCTION("[ble]", "bleCleanUp")
 {
-    int32_t x;
-
-    uBleDeinit();
-    if (gEdmStreamHandle >= 0) {
-        uShortRangeEdmStreamClose(gEdmStreamHandle);
-    }
-    uAtClientDeinit();
-    if (gUartHandle >= 0) {
-        uPortUartClose(gUartHandle);
-    }
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_BLE_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
-    uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        uPortLog("U_BLE_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    uBleTestPrivateCleanup(&gHandles);
 }
 
 #endif // U_SHORT_RANGE_TEST_BLE()

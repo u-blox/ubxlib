@@ -36,8 +36,6 @@
 
 #include "u_error_common.h"
 
-#include "u_port_uart.h"
-
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
@@ -127,6 +125,17 @@ static uNetworkPrivateShoInstance_t *pFindHandle(int32_t shoHandle)
     return pIter;
 }
 
+static void uNetworkConfigToShortRangeUartConfig(const uShortRangeConfig_t *pConfiguration,
+                                                 uShortRangeUartConfig_t *pUartConfig)
+{
+    pUartConfig->uartPort = pConfiguration->uart;
+    pUartConfig->baudRate = U_SHORT_RANGE_UART_BAUD_RATE;
+    pUartConfig->pinTx = pConfiguration->pinTxd;
+    pUartConfig->pinRx = pConfiguration->pinRxd;
+    pUartConfig->pinCts = pConfiguration->pinCts;
+    pUartConfig->pinRts = pConfiguration->pinRts;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -169,6 +178,7 @@ int32_t uNetworkAddShortRange(const uShortRangeConfig_t *pConfiguration)
 {
     int32_t errorCode;
     uNetworkPrivateShoInstance_t *pInstance;
+    uShortRangeUartConfig_t uartConfig;
 
     // The short range module might already be initialized
     pInstance = pFindUart(pConfiguration->uart);
@@ -190,73 +200,21 @@ int32_t uNetworkAddShortRange(const uShortRangeConfig_t *pConfiguration)
         return (int32_t)U_ERROR_COMMON_NO_MEMORY;
     }
 
-    // Open a UART with the recommended buffer length
-    // and default baud rate.
-    errorCode = uPortUartOpen(pConfiguration->uart,
-                              U_SHORT_RANGE_UART_BAUD_RATE, NULL,
-                              U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES,
-                              pConfiguration->pinTxd,
-                              pConfiguration->pinRxd,
-                              pConfiguration->pinCts,
-                              pConfiguration->pinRts);
-    pInstance->uartHandle = errorCode;
+    uNetworkConfigToShortRangeUartConfig(pConfiguration, &uartConfig);
+    // Open UART, EDM stream and initialize the module
+    errorCode = uShortRangeOpenUart((uShortRangeModuleType_t) pConfiguration->module,
+                                    &uartConfig);
 
     if (errorCode >= 0) {
-        errorCode = uShortRangeEdmStreamOpen(pInstance->uartHandle);
-        pInstance->edmStreamHandle = errorCode;
-    }
-
-    if (errorCode >= 0) {
-        // Add an AT client on the UART with the recommended
-        // default buffer size.
-        pInstance->atClientHandle = uAtClientAdd(pInstance->edmStreamHandle,
-                                                 U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                 NULL,
-                                                 U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
-        if (!pInstance->atClientHandle) {
-            errorCode = (int32_t) U_SHORT_RANGE_ERROR_AT;
-        }
-    }
-
-    if (errorCode >= 0) {
-        uShortRangeEdmStreamSetAtHandle(pInstance->edmStreamHandle, pInstance->atClientHandle);
-        errorCode = uShortRangeAdd((uShortRangeModuleType_t) pConfiguration->module,
-                                   pInstance->atClientHandle);
         pInstance->shoHandle = errorCode;
-    }
+        pInstance->uartHandle = uShortRangeGetUartHandle(pInstance->shoHandle);
+        pInstance->edmStreamHandle = uShortRangeGetEdmStreamHandle(pInstance->shoHandle);
+        uShortRangeAtClientHandleGet(pInstance->shoHandle, &pInstance->atClientHandle);
 
-    if (errorCode >= 0) {
-        uShortRangeModuleType_t shortRangeModule = uShortRangeDetectModule(pInstance->shoHandle);
-
-        if (shortRangeModule == U_SHORT_RANGE_MODULE_TYPE_INVALID) {
-            errorCode = (int32_t) U_SHORT_RANGE_ERROR_NOT_DETECTED;
-        } else if ((int32_t) shortRangeModule != pConfiguration->module) {
-            errorCode = (int32_t) U_SHORT_RANGE_ERROR_WRONG_TYPE;
-        } else {
-            // Everything is now setup
-            pInstance->module = (int32_t) shortRangeModule;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        }
-    }
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        pInstance->module = pConfiguration->module;
         pInstance->refCounter = 1;
         pInstance->uart = pConfiguration->uart;
-        errorCode = pInstance->shoHandle;
     } else {
-        // Something went wrong - cleanup needed
-        if (pInstance->shoHandle >= 0) {
-            uShortRangeRemove(pInstance->shoHandle);
-        }
-        if (pInstance->atClientHandle != NULL) {
-            uAtClientRemove(pInstance->atClientHandle);
-        }
-        if (pInstance->edmStreamHandle >= 0) {
-            uShortRangeEdmStreamClose(pInstance->edmStreamHandle);
-        }
-        if (pInstance->uartHandle >= 0) {
-            uPortUartClose(pInstance->uartHandle);
-        }
         clearInstance(pInstance);
     }
 
@@ -272,10 +230,7 @@ int32_t uNetworkRemoveShortRange(int32_t handle)
     // Find the instance in the list
     pInstance = pFindHandle(handle);
     if ((pInstance != NULL) && (--pInstance->refCounter <= 0)) {
-        uShortRangeRemove(pInstance->shoHandle);
-        uShortRangeEdmStreamClose(pInstance->edmStreamHandle);
-        uAtClientRemove(pInstance->atClientHandle);
-        uPortUartClose(pInstance->uartHandle);
+        uShortRangeClose(pInstance->shoHandle);
         clearInstance(pInstance);
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     }
