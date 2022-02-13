@@ -205,7 +205,7 @@ int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
         errorCode = U_ERROR_COMMON_PLATFORM;
         if (xQueueSend((QueueHandle_t) queueHandle,
                        pEventData,
-                       (portTickType) portMAX_DELAY) == pdTRUE) {
+                       (TickType_t) portMAX_DELAY) == pdTRUE) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -247,7 +247,7 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
         errorCode = U_ERROR_COMMON_PLATFORM;
         if (xQueueReceive((QueueHandle_t) queueHandle,
                           pEventData,
-                          (portTickType) portMAX_DELAY) == pdTRUE) {
+                          (TickType_t) portMAX_DELAY) == pdTRUE) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -301,7 +301,7 @@ int32_t uPortQueuePeek(const uPortQueueHandle_t queueHandle,
         errorCode = U_ERROR_COMMON_TIMEOUT;
         if (xQueuePeek((QueueHandle_t) queueHandle,
                        pEventData,
-                       (portTickType) portMAX_DELAY) == pdTRUE) {
+                       (TickType_t) portMAX_DELAY) == pdTRUE) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -363,7 +363,7 @@ int32_t MTX_FN(uPortMutexLock(const uPortMutexHandle_t mutexHandle))
     if (mutexHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
         if (xSemaphoreTake((SemaphoreHandle_t) mutexHandle,
-                           (portTickType) portMAX_DELAY) == pdTRUE) {
+                           (TickType_t) portMAX_DELAY) == pdTRUE) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -444,7 +444,7 @@ int32_t uPortSemaphoreTake(const uPortSemaphoreHandle_t semaphoreHandle)
     if (semaphoreHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
         if (xSemaphoreTake((SemaphoreHandle_t) semaphoreHandle,
-                           (portTickType) portMAX_DELAY) == pdTRUE) {
+                           (TickType_t) portMAX_DELAY) == pdTRUE) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
