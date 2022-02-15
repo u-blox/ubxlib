@@ -26,8 +26,8 @@ def run(instance, printer, reporter, test_report_handle, keep_going_flag=None):
                    u_report.EVENT_START)
 
     with u_utils.ExeRun(cmd, printer, prompt) as process:
-        return_value = u_monitor.main(process.stdout,
-                                      u_monitor.CONNECTION_PIPE,
+        return_value = u_monitor.main(process,
+                                      u_monitor.CONNECTION_PROCESS,
                                       RUN_GUARD_TIME_SECONDS,
                                       RUN_INACTIVITY_TIME_SECONDS,
                                       None, instance, printer,

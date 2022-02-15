@@ -308,7 +308,7 @@ def open_serial(serial_name, speed, printer, prompt, dtr_set_on=None, rts_set_on
     except (ValueError, serial.SerialException) as ex:
         printer.string("{}{} while accessing port {}: {}.".
                        format(prompt, type(ex).__name__,
-                              serial_handle.name, str(ex)))
+                              serial_name, str(ex)))
     return serial_handle
 
 def open_telnet(port_number, printer, prompt):
@@ -835,8 +835,6 @@ class ExeRun():
                 self._printer.string("{}{} pid {} already ended".format(self._prompt,
                                                                         self._call_list[0],
                                                                         self._process.pid))
-
-        return return_value
 
 # Simple SWO decoder: only handles single bytes of application
 # data at a time, i.e. what ITM_SendChar() sends.

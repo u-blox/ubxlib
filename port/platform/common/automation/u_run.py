@@ -82,7 +82,7 @@ def main(database, instance, filter_string, clean,
                 printer_text.append("{}unable to open file \"{}\" for summary report.".   \
                                     format(PROMPT, summary_report_file_path))
         if test_report_file_path:
-            test_report_handle = open(test_report_file_path, "w")
+            test_report_handle = open(test_report_file_path, "wb")
             if test_report_handle:
                 printer_text.append("{}writing test report to \"{}\".".  \
                                     format(PROMPT, test_report_file_path))

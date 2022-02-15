@@ -272,8 +272,8 @@ def run(instance, mcu, toolchain, connection, connection_lock, platform_lock,
                         if locked_connection:
                             # Start the .exe and monitor what it spits out
                             with u_utils.ExeRun([exe_file], printer, prompt) as process:
-                                return_value = u_monitor.main(process.stdout,
-                                                                u_monitor.CONNECTION_PIPE,
+                                return_value = u_monitor.main(process,
+                                                                u_monitor.CONNECTION_PROCESS,
                                                                 RUN_GUARD_TIME_SECONDS,
                                                                 RUN_INACTIVITY_TIME_SECONDS,
                                                                 None, instance, printer,
