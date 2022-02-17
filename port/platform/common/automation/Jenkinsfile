@@ -3,156 +3,359 @@ import java.net.URLConnection    // For control of the KMTronic power switch
 import hudson.plugins.git.GitSCM // So that we can make scmPlus
 import hudson.plugins.git.UserRemoteConfig // So that we can add master to the scm
 
+// If you change the following line you need to change EXCLUDE_PATTERNS in Doxyfile to match
+ubxlib_dir = "ubxlib"
+working_dir = "_jenkins_work"
+automation_subdir = "port/platform/common/automation"
+scripts_subdir = "${automation_subdir}/scripts"
+pyTasks_subdir = automation_subdir // The "tasks" dir used for PyInvoke is located in automation dir
+
+// Helper function for converting an instance (e.g. [12,1]) to string (e.g. "12.1")
+// Can't use join() on json structs so we need to do this manually
+def instanceToStr(instance) {
+    def str = ""
+    for (entry in instance) {
+        if (str.size() > 0) {
+            str += "."
+        }
+        str += entry;
+    }
+    return str
+}
+
+def isFirmware(platform) {
+    def pf = platform.toLowerCase()
+    return pf != "windows" && pf != ""
+}
+
+// This is helper function for executing commands inside the "ubxlib_builder" docker container.
+// Jenkins does have own support for running docker containers, however starting up an container
+// using this method is very slow. So to speed up the build process we simply use "docker run"
+// in this function instead.
+def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
+	def volume_args = [
+		"${env.HOME}/ubxlib:/home/ubxlib:rw",
+		"${env.WORKSPACE}:${env.WORKSPACE}:rw"
+	].collect { "-v $it" }.join(' ')
+	def env_args = ([
+		"HOME=/home/ubxlib",
+        "BUILD_DIR=${env.WORKSPACE}/_build",
+        "TEST_DIR=${env.WORKSPACE}/_test"
+	] + extra_env).collect { "-e $it" }.join(' ')
+    sh "mkdir -p ${env.HOME}/ubxlib"
+    def uid = sh(script: "id -u", returnStdout: true).trim()
+    def gid = sh(script: "id -g", returnStdout: true).trim()
+    sh "docker run -i -u ${uid}:${gid} --rm -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
+}
+
+// This is the build pipeline for one instance
+// It will be runned on a node with "docker" label and use the "ubxlib_builder"
+// docker image for building.
+// The firmware artifacts for each build will be stashed as "<instance>_fw"
+// so it later on can be used in the test stage which is run on another node
+def dockerBuildPipeline(instance_str, platform, filter) {
+    return {
+        def build_dir = "${working_dir}/${instance_str}/build"
+        node('docker') {
+            stage("Checkout (${env.NODE_NAME})") {
+                dir(ubxlib_dir) {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: scm.branches,
+                        doGenerateSubmoduleConfigurations: true,
+                        extensions: scm.extensions + [[$class: 'SubmoduleOption', parentCredentials: true]],
+                        userRemoteConfigs: scm.userRemoteConfigs
+                    ])
+                }
+            }
+            stage("Build ${platform}") {
+                // Continue even if the build process fails
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    echo "Build dir: ${build_dir}"
+                    def includes = [
+                        "**/*.hex","**/*.bin","**/*.elf","**/*.map"
+                    ].collect { "${build_dir}/$it" }.join(', ') // Add "${build_dir}/" prefix to all entries
+                    def stash_includes = [
+                        // Needed for Zephyr flashing using west command:
+                        "**/CMakeCache.txt", "**/.config", "**/*.yaml",
+                        // Needed for ESP-IDF flashing using esptool.py:
+                        "**/flasher_args.json"
+                    ].collect { "${build_dir}/$it" }.join(', ')
+                    stash_includes += ", ${includes}"
+                    def excludes = [
+                        "**/*prebuilt*", "**/*libfibonacci*", "**/*hci_rpmsg*",
+                        "**/isrList.bin", "**/*Determine*", "**/*partition-table*"
+                    ].join(', ')
+
+                    // Make sure to clean before build
+                    sh "rm -rf ${build_dir}"
+
+                    // Create U_UBXLIB_DEFINES from the Jenkins master secrets and env variable
+                    def extra_env = []
+                    withCredentials([string(credentialsId: 'ubxlib_wifi_passkey', variable: 'WIFI_PASSKEY')]) {
+                        extra_env.add("U_UBXLIB_DEFINES=\"${env.U_UBXLIB_EXTRA_DEFINES};U_WIFI_TEST_CFG_WPA2_PASSPHRASE=${WIFI_PASSKEY}\"")
+                    }
+
+                    // Check if there is a test filter
+                    def filter_arg = filter ? "--filter \"${filter}\"" : ""
+
+                    // Start building
+                    dockerCommand("inv -r ${ubxlib_dir}/${pyTasks_subdir} -e automation.build --build-dir ${build_dir} ${filter_arg} ${instance_str}", ".", extra_env)
+                    stash name: "${instance_str}_fw", includes: stash_includes, excludes: excludes
+                    archiveArtifacts artifacts: includes, excludes: excludes
+                }
+            }
+        }
+    }
+}
+
+// This function returns parallel test pipelines for all instances
+def parallelBuild(json) {
+	def parallel_pipelines = [:]
+	for (instance in json.instances) {
+        def instance_str = instanceToStr(instance.id)
+		if (isFirmware(instance.platform)) { // Only build for embedded devices (windows is built in the test stage for now)
+            parallel_pipelines["$instance_str"] = dockerBuildPipeline(instance_str, instance.platform, json.filter)
+		}
+	}
+
+	parallel parallel_pipelines
+}
+
+// This is the test pipeline for one instance
+// It will do the unstash and flash stage for embedded targets
+// and the test stage for all instance variants
+def testPipeline(instance_str, json_entry, subst_dir, filter) {
+    return {
+        def summary_file = "summary.log"
+        def test_report_file = "test_report.xml"
+        def debug_file = "debug.log"
+
+        def build_dir = "${working_dir}/${instance_str}/build"
+        def hw_label = "INSTANCE_${json_entry.id[0]}"
+        lock(hw_label) {
+            if (isFirmware(json_entry.platform)) {
+                stage("Unstash (${env.NODE_NAME})") {
+                    unstash name: "${instance_str}_fw"
+                }
+
+                stage("Flash (${json_entry.mcu})") {
+                    retry(3) {
+                        bat "inv -r ${ubxlib_dir}/${pyTasks_subdir} -e automation.flash --build-dir ${build_dir} ${instance_str}"
+                    }
+                }
+            }
+            stage('Test') {
+                echo "Stating tests on ${env.NODE_NAME}"
+                def instance_workdir = "${working_dir}/${instance_str}"
+                def test_report_arg = "--test-report ${test_report_file}"
+                def workspace_path = env.WORKSPACE
+                if (json_entry.id[0] <= 9) {
+                    // Some special care is needed for instances <= 9
+                    // * Lint must use subst as the command line otherwise exceeds Windows max lengh
+                    // * Instances <= 9 doesn't write any .xml report data
+                    test_report_arg = ""
+                    workspace_path = subst_dir
+                }
+                try {
+                    // Start the test
+                    def abs_instance_workdir = "${workspace_path}/${instance_workdir}"
+                    def abs_ubxlib_dir = "${workspace_path}/${ubxlib_dir}"
+                    dir("${abs_instance_workdir}") {
+                        ansiColor('xterm') {
+                            // Check if there is a test filter
+                            def filter_arg = filter ? "--filter \"${json_entry.filter}\"" : ""
+                            bat "inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test ${test_report_arg} ${filter_arg} ${instance_str}"
+                        }
+                    }
+                } finally {
+                    // Store summary-, debug- and test report file as artifacts
+                    archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${test_report_file}, ${instance_workdir}/**/${debug_file}", allowEmptyArchive: true
+                    if (test_report_arg != "") {
+                        // Record the test results
+                        junit "${working_dir}/${instance_str}/${test_report_file}"
+                    }
+                }
+            }
+        }
+    }
+}
+
+def parallelTest(json, subst_dir) {
+    // This function returns parallel test pipelines for all instances
+	def parallel_pipelines = [:]
+	for (json_entry in json.instances) {
+        def instance_str = instanceToStr(json_entry.id)
+        def desc = json_entry.description.toLowerCase()
+        if (desc != "reserved") { // Skipp "reserved" instances
+            def stage_name = instance_str
+            if (json_entry.id[0] <= 9) {
+                // For instances <= 9 we show the description from DATABASE.md as stage name
+                stage_name = "${json_entry.description} (${instance_str})"
+            }
+
+            parallel_pipelines[stage_name] = testPipeline(instance_str, json_entry, subst_dir, json.filter)
+        }
+	}
+
+	parallel parallel_pipelines
+}
+
+
 node('TEST-gb-cmb-dt-022')
 {
     def known_branches = [ 'master', 'sho_master' ]
     def git_commit_text
     def changed_files
     def subst_drive = "z:"
-    // If you change the following line you need to change EXCLUDE_PATTERNS in Doxyfile to match
-    def working_dir = "_jenkins_work"
-    def ubxlib_dir = "ubxlib"
-    def automation_subdir = "port\\platform\\common\\automation"
-    def archive_dir = working_dir
-    def summary_file = "summary.log"
-    def test_report_file = "test_report.xml"
-    def debug_file = "debug.log"
     // The KMTronic web relay on 10.20.4.157 controls power to the
     // 12 V supply of each of the EVKs  The last byte of the URL
     // is a bit-map of the outputs where 0 sets off and 1 sets on
     def power_switch_off = new URL("http://10.20.4.157/FFE000")
     def power_switch_on = new URL("http://10.20.4.157/FFE0FF")
-    def return_value = 1
 
-    // Using the try/catch pattern as recommended in this post:
-    // https://stackoverflow.com/questions/48989238/post-equivalent-in-scripted-pipeline
-    // ... in order to have an archive step that is always
-    // run while in the "scripted pipeline" world
-    try {
-        // All the stages go here
-        timeout(time: 100, unit: 'MINUTES') {
-            stage("Info") {
-                environment = bat(script: "@echo off & set", returnStdout: true).trim()
-                println "Environment variables are: \n" + environment
+    // All the stages go here
+    timeout(time: 100, unit: 'MINUTES') {
+        stage("Info") {
+            environment = bat(script: "set", returnStdout: true).trim()
+            println "Environment variables are: \n" + environment
 
-                // For debug purposes, print out the entries in the scm map
-                // passed to us from the CloudBees magic
-                println "scm contains: " + scm.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
-            }
+            // For debug purposes, print out the entries in the scm map
+            // passed to us from the CloudBees magic
+            println "scm contains: " + scm.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
+        }
 
-            stage("Fetch") {
-                dir(ubxlib_dir) {
-                    // Create a modified version of the remote configs in scm to
-                    // add known branches. With these fetched as well as the
-                    // branch-under-test we can get the file difference between the two
-                    println "Creating scmPlus to add fetch of known branches...\n"
-                    refspec = scm.userRemoteConfigs[0].refspec
-                    known_branches.each {
-                        println "Add fetch of ${it}...\n"
-                        if (!scm.userRemoteConfigs[0].refspec.contains("/${it}:")) {
-                            refspec += " refs/heads/${it}:refs/remotes/origin/${it}"
-                        }
-                    }
-
-                    userRemoteConfigPlus = new UserRemoteConfig(scm.userRemoteConfigs[0].url,
-                                                                scm.userRemoteConfigs[0].name,
-                                                                refspec,
-                                                                scm.userRemoteConfigs[0].credentialsId)
-
-                    scmPlus = new GitSCM([userRemoteConfigPlus],
-                                        scm.branches,
-                                        scm.doGenerateSubmoduleConfigurations,
-                                        scm.submoduleCfg,
-                                        scm.browser,
-                                        scm.gitTool,
-                                        scm.extensions)
-
-                    // For debug purposes, print out scmPlus
-                    println "scmPlus contains: " + scmPlus.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
-
-                    // Get the code
-                    println "checkout() branch \"" + scmPlus.branches[0] + "\" and also fetch known branches...\n"
-                    scmMap = checkout scmPlus
-
-                    // Recurse submodules
-                    println "Recursing submodules..."
-                    bat "git submodule update --init"
-
-                    // For debug purposes, print out the entries in the scm
-                    // map returned by checkout
-                    println "checkout() returned: " + scmMap.each{entry -> "$entry.key = $entry.value"}
-
-                    // Use git to get the last commit message, @echo off to avoid capturing the command
-                    // output as well as the returned text
-                    git_commit_text = bat(script: "@echo off & git log -1 --pretty=%%B", returnStdout: true)
-
-                    if (git_commit_text) {
-                        // Convert newlines to "/n" and quotation marks to back-ticks to prevent them
-                        // screwing up the command-line they get passed to lower down
-                        git_commit_text = git_commit_text.replaceAll("\\n", "\\\\n").replaceAll("\"", "`")
-                        println "Last commit message was: \"" + git_commit_text + "\""
-                    } else {
-                        println "Unable to get last commit message."
-                    }
-                }
-            }
-
+        stage("Fetch") {
             dir(ubxlib_dir) {
-                // Prefix each branch name with "origin/" and separate with " "
-                branch_line = known_branches.collect { "origin/$it" }.join(' ')
-                likely_branch = bat(script: "@python ${automation_subdir}\\u_get_likely_base_branch.py --rev origin/${env.JOB_BASE_NAME} ${branch_line}", returnStdout: true).trim()
-            }
-            println "CHANGE_TARGET: ${env.CHANGE_TARGET}, CHANGE_ID: ${env.CHANGE_ID}"
-            println "JOB_BASE_NAME: ${env.JOB_BASE_NAME}, likely_branch: ${likely_branch}"
-            if ((env.CHANGE_TARGET && env.CHANGE_ID) || !env.JOB_BASE_NAME || (env.JOB_BASE_NAME == "master") || !likely_branch) {
-                println "Either this is a pull request or we're on master or the branch name is not specified: all tests will be run."
-            } else {
-                // This is not master and not yet a pull request,
-                // so we can save time by only running selected tests
-                println "This is not master, checking which tests to run..."
-                try {
-                    stage("Check Branch Differences") {
-                        dir(ubxlib_dir) {
-                            // No user direction so use git to get the list
-                            // of file differences from main, @echo off to avoid
-                            // capturing the command output as well as the  returned text
-                            println "Checking for changed files between ${likely_branch} and ${env.JOB_BASE_NAME}..."
-                            changed_files = bat(script: "@echo off & git diff --name-only ${likely_branch}", returnStdout: true).trim()
-                            changed_files = changed_files.replaceAll("\n", " ");
-                            println "Changed file(s) were: " + changed_files
-                        }
+                // Create a modified version of the remote configs in scm to
+                // add known branches. With these fetched as well as the
+                // branch-under-test we can get the file difference between the two
+                println "Creating scmPlus to add fetch of known branches...\n"
+                refspec = scm.userRemoteConfigs[0].refspec
+                known_branches.each {
+                    println "Add fetch of ${it}...\n"
+                    if (!scm.userRemoteConfigs[0].refspec.contains("/${it}:")) {
+                        refspec += " refs/heads/${it}:refs/remotes/origin/${it}"
                     }
-                } catch (e) {
-                    println "Git was unable to determine the files that are different to master."
+                }
+
+                userRemoteConfigPlus = new UserRemoteConfig(scm.userRemoteConfigs[0].url,
+                                                            scm.userRemoteConfigs[0].name,
+                                                            refspec,
+                                                            scm.userRemoteConfigs[0].credentialsId)
+
+                scmPlus = new GitSCM([userRemoteConfigPlus],
+                                    scm.branches,
+                                    scm.doGenerateSubmoduleConfigurations,
+                                    scm.submoduleCfg,
+                                    scm.browser,
+                                    scm.gitTool,
+                                    scm.extensions)
+
+                // For debug purposes, print out scmPlus
+                println "scmPlus contains: " + scmPlus.properties.each{entry -> "$entry.key = $entry.value"} + "\n"
+
+                // Get the code
+                println "checkout() branch \"" + scmPlus.branches[0] + "\" and also fetch known branches...\n"
+                scmMap = checkout scmPlus
+
+                // Recurse submodules
+                println "Recursing submodules..."
+                bat "git submodule update --init"
+
+                // For debug purposes, print out the entries in the scm
+                // map returned by checkout
+                println "checkout() returned: " + scmMap.each{entry -> "$entry.key = $entry.value"}
+
+                // Use git to get the last commit message, @echo off to avoid capturing the command
+                // output as well as the returned text
+                git_commit_text = bat(script: "git log -1 --pretty=%%B", returnStdout: true)
+
+                if (git_commit_text) {
+                    // Convert newlines to "/n" and quotation marks to back-ticks to prevent them
+                    // screwing up the command-line they get passed to lower down
+                    git_commit_text = git_commit_text.replaceAll("\\n", "\\\\n").replaceAll("\"", "`")
+                    println "Last commit message was: \"" + git_commit_text + "\""
+                } else {
+                    println "Unable to get last commit message."
                 }
             }
+        }
 
-            stage("Environment Check") {
-                if (bat(script: "@echo off & python --version", returnStatus: true) != 0) {
-                    error("Python is not available on the build machine.")
+        dir(ubxlib_dir) {
+            // Prefix each branch name with "origin/" and separate with " "
+            branch_line = known_branches.collect { "origin/$it" }.join(' ')
+            likely_branch = bat(script: "@python ${scripts_subdir}/u_get_likely_base_branch.py --rev origin/${env.JOB_BASE_NAME} ${branch_line}", returnStdout: true).trim()
+        }
+        println "CHANGE_TARGET: ${env.CHANGE_TARGET}, CHANGE_ID: ${env.CHANGE_ID}"
+        println "JOB_BASE_NAME: ${env.JOB_BASE_NAME}, likely_branch: ${likely_branch}"
+        if ((env.CHANGE_TARGET && env.CHANGE_ID) || !env.JOB_BASE_NAME || (env.JOB_BASE_NAME == "master") || !likely_branch) {
+            println "Either this is a pull request or we're on master or the branch name is not specified: all tests will be run."
+        } else {
+            // This is not master and not yet a pull request,
+            // so we can save time by only running selected tests
+            println "This is not master, checking which tests to run..."
+            try {
+                stage("Check Branch Differences") {
+                    dir(ubxlib_dir) {
+                        // No user direction so use git to get the list
+                        // of file differences from main, @echo off to avoid
+                        // capturing the command output as well as the  returned text
+                        println "Checking for changed files between ${likely_branch} and ${env.JOB_BASE_NAME}..."
+                        changed_files = bat(script: "@echo off & git diff --name-only ${likely_branch}", returnStdout: true).trim()
+                        changed_files = changed_files.replaceAll("\n", " ");
+                        println "Changed file(s) were: " + changed_files
+                    }
                 }
+            } catch (e) {
+                println "Git was unable to determine the files that are different to master."
             }
+        }
 
-            jenkins_dir = pwd()
+        stage("Test Selection") {
+            // Fetch the test selection as JSON data
+            // The JSON object also contains description, platform etc for each instance fetched from DATABASE.md
+            def output = ''
+            dir("${ubxlib_dir}/${pyTasks_subdir}") {
+                output = bat(script: "@inv automation.get-test-selection --files \"${changed_files}\" --message \"${git_commit_text}\"", returnStdout: true).trim()
+            }
+            println output
+            def jsonStr = output.split('JSON_DATA: ')[1]
+            jsonObj = readJSON text: jsonStr
+            println "Test filter will be: " + jsonObj.filter
+            def pretty_json = groovy.json.JsonOutput.prettyPrint(jsonObj.toString())
+            println "Test selection JSON data: " + pretty_json
+            if (jsonObj.filter instanceof net.sf.json.JSONNull) {
+                // For some idiotic reason comparing a JSONNull with null will return false
+                // For this reason we re-write JSONNull as null
+                jsonObj.filter = null
+            }
+        }
+
+        stage("Build") {
+            parallelBuild(jsonObj)
+        }
+
+        // Build is complete - we will now switch back to the original Jenkins node
+        // We take a lock here that will prevent simultaneous Jenkins jobs on this node to interfere
+        // during the testing phase
+        lock("UBXLIB-TESTAUTOMATION") {
+            def subst_dir = pwd()
             // Delete any previously subst'ed drive, no check for errors 'cos there might not be one
-            script {
-                try {
-                    bat(script: "@echo off & subst ${subst_drive} /D")
-                } catch (err) {
-                    // Do nothing
-                }
+            try {
+                bat(script: "@echo off & subst ${subst_drive} /D")
+            } catch (err) {
+                // Do nothing
             }
             // Now subst the drive
-            if (bat(script: "subst ${subst_drive} ${jenkins_dir}", returnStatus: true) == 0) {
+            if (bat(script: "subst ${subst_drive} ${subst_dir}", returnStatus: true) == 0) {
                 // Need to add the "\" to the drive name or if something CD's to it they may not end up in the root
-                ubxlib_dir = subst_drive + "\\" + ubxlib_dir
-                working_dir = subst_drive + "\\" + working_dir
+                subst_dir = subst_drive + "\\"
             } else {
-                ubxlib_dir = jenkins_dir + "\\" + ubxlib_dir
-                working_dir = jenkins_dir + "\\" + working_dir
-                error("Unable to subst ${subst_drive} for \"${jenkins_dir}\", builds with long path lengths may fail.")
+                error("Unable to subst ${subst_drive} for \"${subst_dir}\", builds with long path lengths may fail.")
             }
-            stage ("Reset USB/Power") {
+
+            stage("USB Reset (${env.NODE_NAME})") {
                 // usbswitchcmd sets a return value of 1 if it was given the
                 // parameter 1 and a return value of 0 if it was given the
                 // parameter 0. However Groovy insists on treating a non-zero
@@ -177,37 +380,10 @@ node('TEST-gb-cmb-dt-022')
                 println "Switching on power to EVKs again returned HTTP response " + power_switch_on.openConnection().getResponseCode() + "."
                 sleep(time: 5, unit: 'SECONDS')
             }
-            dir (working_dir) {
-                if (changed_files) {
-                    stage("Test Selected") {
-                        // Call python to run the necessary builds and tests
-                        return_value = bat(script: "@echo off & cd ${ubxlib_dir}\\${automation_subdir} & python u_run_branch.py -u ${ubxlib_dir} -w ${working_dir} -s ${summary_file} -t ${test_report_file} -d ${debug_file} \"${git_commit_text}\" ${changed_files}", returnStatus: true)
-                        if (return_value != 0) {
-                            error("Running selected ubxlib test(s) returned error " + return_value + ".")
-                        } else {
-                            println "The selected ubxlib test(s) passed."
-                        }
-                    }
-                } else {
-                    stage("Test All") {
-                        // Call python to run all tests
-                        return_value = bat(script: "@echo off & cd ${ubxlib_dir}\\${automation_subdir} & python u_run_branch.py -u ${ubxlib_dir} -w ${working_dir} -s ${summary_file} -t ${test_report_file} -d ${debug_file} \"test: *\"", returnStatus: true)
-                        if (return_value != 0) {
-                            error("Running all ubxlib tests returned " + return_value + " failed test(s).")
-                        } else {
-                            println "All ubxlib tests passed."
-                        }
-                    }
-                }
+
+            stage("Test") {
+                parallelTest(jsonObj, subst_dir)
             }
         }
-    } catch (e) {
-        println "Failed."
-        // Since we're catching the exception in order to report on it,
-        // we need to re-throw it, to ensure that the build is marked as failed
-        throw e
-    } finally {
-        // Archive artifacts from working_dir and one level down ('cos there may be an instance directory below the working directory)
-        archiveArtifacts artifacts: "${archive_dir}\\${summary_file}, ${archive_dir}\\${test_report_file}, ${archive_dir}\\${debug_file}, ${archive_dir}\\**\\${summary_file}, ${archive_dir}\\**\\${test_report_file}, ${archive_dir}\\**\\${debug_file}", allowEmptyArchive: true
     }
 }
