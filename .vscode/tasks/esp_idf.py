@@ -1,9 +1,11 @@
 import os
+import sys
 import shutil
 from invoke import task
 from scripts import u_utils
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
 from scripts.packages import u_package
+from scripts.u_log_readers import UUartReader
 
 ESP_IDF_URL="https://github.com/espressif/esp-idf"
 
@@ -84,3 +86,17 @@ def flash(ctx, serial_port, cmake_dir=DEFAULT_CMAKE_DIR, output_name=DEFAULT_OUT
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     ctx.run(f'{ctx.esp_idf_pre_command} idf.py -C {cmake_dir} -B {build_dir} '\
             f'-p {serial_port} flash')
+
+
+@task(
+    pre=[check_installation],
+)
+def log(ctx, serial_port, baudrate=115200, rts_state=None, dtr_state=None):
+    """Open a log terminal"""
+    with UUartReader(port=serial_port, baudrate=baudrate, rts_state=rts_state, dtr_state=dtr_state) as serial:
+        while True:
+            data = serial.read()
+            if data:
+                sys.stdout.write("".join(map(chr, data)))
+                sys.stdout.flush()
+

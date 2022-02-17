@@ -1,9 +1,21 @@
 import os
 import shutil
+import time
+import sys
+from telnetlib import Telnet
 from invoke import task
 from scripts import u_utils
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
 from scripts.packages import u_package
+from pathlib import Path
+
+# Hack for importing the automations scripts...
+from scripts import u_utils
+from sys import path as sys_path
+sys_path.append(f"{u_utils.AUTOMATION_DIR}")
+
+from u_utils import SwoDecoder
+
 
 STM32CUBE_F4_URL="https://github.com/STMicroelectronics/STM32CubeF4.git"
 
@@ -12,6 +24,19 @@ DEFAULT_OUTPUT_NAME = "runner_stm32f4"
 DEFAULT_BUILD_DIR = os.path.join("_build","stm32cubef4")
 DEFAULT_JOB_COUNT = 8
 DEFAULT_FLASH_FILE = f"runner.elf"
+
+OPENOCD_DISABLE_PORTS_CMDS = [
+    'gdb_port disabled',
+    'tcl_port disabled',
+    'telnet_port disabled'
+]
+
+
+def _to_openocd_args(openocd_cmds):
+    argstr = ''
+    for arg in openocd_cmds:
+        argstr += f'-c "{arg}" '
+    return argstr
 
 @task()
 def check_installation(ctx):
@@ -90,10 +115,49 @@ def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
 def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
           output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
     """Flash a nRF5 SDK based application"""
-    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
-    cmd = f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32f4.cfg'
+    build_dir = Path(build_dir, output_name).absolute().as_posix()
+    cmds = OPENOCD_DISABLE_PORTS_CMDS
     if debugger_serial != "":
-        cmd += f' -c hla_serial {debugger_serial}'
-    cmd += f' -c "program {build_dir}/{file} reset" -c exit'
-    ctx.run(cmd)
+        cmds.append(f'hla_serial {debugger_serial}')
+    cmds += [
+        f'program {build_dir}/{file} reset',
+        'exit'
+    ]
+    args = _to_openocd_args(cmds)
+    ctx.run(f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32f4.cfg {args}')
 
+@task(
+    pre=[check_installation],
+)
+def log(ctx, debugger_serial="", port=40404):
+    """Open a log terminal"""
+    cmds = OPENOCD_DISABLE_PORTS_CMDS
+    if debugger_serial != "":
+        cmds.append(f'hla_serial {debugger_serial}')
+    cmds += [
+        'init',
+        f'tpiu config internal :{port} uart off \$_TARGET_SYSTEM_FREQUENCY \$_TARGET_SWO_FREQUENCY',
+        'itm port 0 on',
+        'reset init',
+        'resume'
+    ]
+    args = _to_openocd_args(cmds)
+    promise = ctx.run(f'openocd -f {u_utils.OPENOCD_CFG_DIR}/stm32f4.cfg {args}', asynchronous=True)
+    # Let OpenOCD startup first
+    time.sleep(5)
+    try:
+        decoder = SwoDecoder(0, True)
+        with Telnet('127.0.0.1', port) as tn:
+            while True:
+                data = tn.read_some()
+                if data == b'':
+                    break
+                decoded_data = decoder.decode(data)
+                sys.stdout.write("".join(map(chr, decoded_data)))
+                sys.stdout.flush()
+
+    finally:
+        if u_utils.is_linux:
+            promise.runner.kill()
+        else:
+            promise.runner.send_interrupt(KeyboardInterrupt())

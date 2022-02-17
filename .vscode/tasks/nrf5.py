@@ -1,8 +1,10 @@
 import os
 import shutil
+import sys
 from invoke import task
 from scripts import u_utils
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
+from scripts.u_log_readers import URttReader
 from scripts.packages import u_package
 
 DEFAULT_MAKEFILE_DIR = f"{u_utils.UBXLIB_DIR}/port/platform/nrf5sdk/mcu/nrf52/gcc/runner"
@@ -94,3 +96,17 @@ def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
     if debugger_serial != "":
         cmd += f" -s {debugger_serial}"
     ctx.run(cmd)
+
+@task(
+    pre=[check_installation],
+)
+def log(ctx, mcu="NRF52840_XXAA", debugger_serial=""):
+    """Open a log terminal"""
+    if debugger_serial == "":
+        debugger_serial = None
+    with URttReader(mcu, jlink_serial=debugger_serial, reset_on_connect=True) as rtt_reader:
+        while True:
+            data = rtt_reader.read()
+            if data:
+                sys.stdout.write("".join(map(chr, data)))
+                sys.stdout.flush()

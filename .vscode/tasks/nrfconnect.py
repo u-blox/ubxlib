@@ -1,7 +1,9 @@
 import os
 import shutil
+import sys
 from invoke import task
 from scripts import u_utils
+from scripts.u_log_readers import URttReader
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
 from scripts.packages import u_package
 
@@ -89,3 +91,15 @@ def flash(ctx, debugger_serial="", output_name=DEFAULT_OUTPUT_NAME,
         debugger_serial = f"--snr {debugger_serial}"
     hex_arg = "" if hex_file == None else f"--hex-file {hex_file}"
     ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild {hex_arg} -d {build_dir} {debugger_serial} --erase')
+
+@task(
+    pre=[check_installation],
+)
+def log(ctx, mcu="NRF5340_XXAA_APP", debugger_serial=None):
+    """Open a log terminal"""
+    with URttReader(mcu, jlink_serial=debugger_serial) as rtt_reader:
+        while True:
+            data = rtt_reader.read()
+            if data:
+                sys.stdout.write("".join(map(chr, data)))
+                sys.stdout.flush()
