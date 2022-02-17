@@ -54,3 +54,13 @@ make:
         type: apt
         package_name: make
         check_command: command -v make
+
+arduino-cli:
+    linux:
+        type: archive
+        version: 0.20.2
+        url: https://github.com/arduino/arduino-cli/releases/download/0.20.2/arduino-cli_0.20.2_Linux_64bit.tar.gz
+    windows:
+        type: archive
+        version: 0.20.2
+        url: https://github.com/arduino/arduino-cli/releases/download/0.20.2/arduino-cli_0.20.2_Windows_64bit.zip

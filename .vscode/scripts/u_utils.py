@@ -13,6 +13,8 @@ from glob import glob
 
 # The root directory of ubxlib
 UBXLIB_DIR = os.path.abspath(os.path.dirname(__file__) + "/../..")
+# Platform directory
+PLATFORM_DIR = UBXLIB_DIR + "/port/platform"
 # Automation script directory
 AUTOMATION_DIR = UBXLIB_DIR + "/port/platform/common/automation"
 # OpenOCD config dir used for automation

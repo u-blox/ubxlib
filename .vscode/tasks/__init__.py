@@ -1,6 +1,6 @@
 from invoke import Collection, Config
 import os
-from . import nrfconnect, nrf5, stm32cubef4, esp_idf, automation
+from . import nrfconnect, nrf5, stm32cubef4, esp_idf, arduino, automation
 
 tasks_dir = os.path.dirname(os.path.abspath(__file__))
 vscode_dir = os.path.abspath(os.path.join(tasks_dir, ".."))
@@ -18,4 +18,5 @@ ns.add_collection(nrfconnect)
 ns.add_collection(nrf5)
 ns.add_collection(stm32cubef4)
 ns.add_collection(esp_idf)
+ns.add_collection(arduino)
 ns.add_collection(automation)
