@@ -4,10 +4,11 @@
 
 import sys # For exit() and stdout
 import argparse
-from os import environ, getcwd
+from os import environ, getcwd, path
 from multiprocessing import Process, freeze_support # Needed to make Windows behave
                                                     # when doing multiprocessing,
 from signal import signal, SIGINT                   # For CTRL-C handling
+from logging import Logger
 import u_data # Gets and displays the instance database
 import u_connection # The connection to use for a given instance
 import u_run_log # The main test result logger used for all external HW
@@ -21,9 +22,13 @@ import u_run_no_floating_point # Run no floating point check
 import u_report # reporting
 import u_utils
 import u_settings
+from u_logging import ULog
 
 # Prefix to put at the start of all prints
-PROMPT = "u_run: "
+PROMPT = "u_run"
+
+# The logger
+U_LOG: Logger = None
 
 # Default BRANCH to use
 BRANCH_DEFAULT = u_settings.BRANCH_DEFAULT #"origin/master"
@@ -50,23 +55,24 @@ def signal_handler(sig, frame):
 
 def main(database, instance, filter_string, clean,
          ubxlib_dir, working_dir, connection_lock,
-         platform_lock, misc_locks, print_queue,
          report_queue, summary_report_file_path,
          test_report_file_path, debug_file_path,
-         keep_going_flag, running_flag, unity_dir):
+         running_flag, unity_dir):
     '''Main as a function'''
     return_value = 1
     connection = None
     platform = None
     summary_report_handle = None
-    test_report_handle = None
-    debug_handle = None
     instance_text = u_utils.get_instance_text(instance)
-    printer_text = []
 
     if not working_dir:
         working_dir = getcwd()
     with u_utils.ChangeDir(working_dir):
+        # Setup our logging ASAP, but we need to switch to workdir first
+        # if debug_file is a relative path
+        ULog.setup_logging(debug_file=debug_file_path)
+        global U_LOG
+        U_LOG = ULog.get_logger(PROMPT)
 
         if running_flag:
             # We're off
@@ -76,32 +82,18 @@ def main(database, instance, filter_string, clean,
         if summary_report_file_path:
             summary_report_handle = open(summary_report_file_path, "w")
             if summary_report_handle:
-                printer_text.append("{}writing summary report to \"{}\".".  \
-                                    format(PROMPT, summary_report_file_path))
+                U_LOG.info("writing summary report to \"{}\".".  \
+                                    format(summary_report_file_path))
             else:
-                printer_text.append("{}unable to open file \"{}\" for summary report.".   \
-                                    format(PROMPT, summary_report_file_path))
+                U_LOG.warning("unable to open file \"{}\" for summary report.".   \
+                                    format(summary_report_file_path))
         if test_report_file_path:
-            test_report_handle = open(test_report_file_path, "wb")
-            if test_report_handle:
-                printer_text.append("{}writing test report to \"{}\".".  \
-                                    format(PROMPT, test_report_file_path))
-            else:
-                printer_text.append("{}unable to open file \"{}\" for test report.".   \
-                                    format(PROMPT, test_report_file_path))
+            test_report_file_path = path.abspath(test_report_file_path)
+            U_LOG.info("writing test report to \"{}\".".  \
+                                format(test_report_file_path))
         if debug_file_path:
-            debug_handle = open(debug_file_path, "w")
-            if debug_handle:
-                printer_text.append("{}writing log output to \"{}\".".  \
-                                    format(PROMPT, debug_file_path))
-            else:
-                printer_text.append("{}unable to open file \"{}\" for log"       \
-                                    " output.".format(PROMPT, debug_file_path))
-
-        # Create a printer and send the initial printer text there
-        printer = u_utils.PrintToQueue(print_queue, debug_handle, True)
-        for line in printer_text:
-            printer.string(line)
+            U_LOG.info("writing log output to \"{}\".".  \
+                                format(debug_file_path))
 
         # Print out what we've been told to do
         text = "running instance " + instance_text
@@ -113,7 +105,7 @@ def main(database, instance, filter_string, clean,
             text += ", ubxlib directory \"" + ubxlib_dir + "\""
         if working_dir:
             text += ", working directory \"" + working_dir + "\""
-        printer.string("{}{}.".format(PROMPT, text))
+        U_LOG.info(text)
 
         # Get the connection for this instance
         connection = u_connection.get_connection(instance)
@@ -142,8 +134,7 @@ def main(database, instance, filter_string, clean,
 
         # With a reporter
         with u_report.ReportToQueue(report_queue, instance,
-                                    summary_report_handle,
-                                    printer) as reporter:
+                                    summary_report_handle) as reporter:
             if connection:
                 # Run the type of build/test specified
                 platform = u_data.get_platform_for_instance(database, instance)
@@ -152,9 +143,6 @@ def main(database, instance, filter_string, clean,
                     # the description from the database to the report
                     description = u_data.get_description_for_instance(database,
                                                                       instance)
-                    mcu = u_data.get_mcu_for_instance(database, instance)
-                    # Zephyr requires a board name also
-                    board = u_data.get_board_for_instance(database, instance)
                     toolchain = u_data.get_toolchain_for_instance(database, instance)
                     if description:
                         reporter.event(u_report.EVENT_TYPE_BUILD,
@@ -169,76 +157,49 @@ def main(database, instance, filter_string, clean,
                     # if the flag is cleared, in case the user decides to abort
                     # a test run.
                     if platform.lower() == "windows":
-                        return_value = u_run_windows.run(instance, mcu, toolchain, connection,
-                                                         connection_lock, platform_lock, misc_locks,
-                                                         clean, defines, printer, reporter,
-                                                         test_report_handle,
-                                                         keep_going_flag, unity_dir)
+                        return_value = u_run_windows.run(instance, toolchain, connection,
+                                                         connection_lock, clean, defines,
+                                                         reporter, test_report_file_path,
+                                                         unity_dir)
                     elif platform != "":
                         # For all external HW the firmware has already been built and flashed
                         # so we just need to listen for the log output
-                        return_value = u_run_log.run(instance, printer, reporter, test_report_handle, keep_going_flag)
+                        return_value = u_run_log.run(instance, reporter, test_report_file_path)
                     else:
-                        printer.string("{}don't know how to handle platform \"{}\".".    \
-                                    format(PROMPT, platform))
+                        U_LOG.warning(f"don't know how to handle platform \"{platform}\".")
                 else:
-                    printer.string("{}this instance has no platform.".format(PROMPT))
+                    U_LOG.warning("this instance has no platform.")
             else:
                 # No connection, must be a local thing
                 if instance[0] == 0:
-                    return_value = u_run_lint.run(instance, defines, ubxlib_dir,
-                                                  printer, reporter,
-                                                  keep_going_flag, unity_dir)
+                    return_value = u_run_lint.run(defines, ubxlib_dir, reporter, unity_dir)
                 elif instance[0] == 1:
-                    return_value = u_run_doxygen.run(instance, ubxlib_dir,
-                                                     printer, reporter)
+                    return_value = u_run_doxygen.run(ubxlib_dir, reporter)
                 elif instance[0] == 2:
-                    return_value = u_run_astyle.run(instance, ubxlib_dir,
-                                                    printer, reporter)
+                    return_value = u_run_astyle.run(ubxlib_dir, reporter)
                 elif instance[0] == 3:
-                    return_value = u_run_pylint.run(instance, ubxlib_dir,
-                                                    printer, reporter, keep_going_flag)
+                    return_value = u_run_pylint.run(ubxlib_dir, reporter)
                 elif instance[0] == 4:
-                    return_value = u_run_static_size.run(instance, defines, ubxlib_dir,
-                                                         printer, reporter,
-                                                         keep_going_flag)
+                    return_value = u_run_static_size.run(defines, ubxlib_dir, reporter)
                 elif instance[0] == 5:
-                    return_value = u_run_no_floating_point.run(instance, defines, ubxlib_dir,
-                                                               printer, reporter,
-                                                               keep_going_flag)
-                elif instance[0] == 6:
-                    printer.string("{}reserved, nothing to do.".format(PROMPT))
-                    return_value = 0
-                elif instance[0] == 7:
-                    printer.string("{}reserved, nothing to do.".format(PROMPT))
-                    return_value = 0
-                elif instance[0] == 8:
-                    printer.string("{}reserved, nothing to do.".format(PROMPT))
-                    return_value = 0
-                elif instance[0] == 9:
-                    printer.string("{}reserved, nothing to do.".format(PROMPT))
+                    return_value = u_run_no_floating_point.run(defines, ubxlib_dir, reporter)
+                elif instance[0] >= 6 and instance[0] <= 9:
+                    U_LOG.info("reserved, nothing to do.")
                     return_value = 0
                 else:
-                    printer.string("{}instance {} has no connection and isn't a"     \
-                                   " local thing.".format(PROMPT, instance_text))
+                    U_LOG.error("instance {} has no connection and isn't a"     \
+                                   " local thing.".format(instance_text))
 
         if platform:
-            printer.string("{}instance {}, platform {} EXITING with"    \
-                           " return value {}.".format(PROMPT, instance_text, platform,
+            U_LOG.info("instance {}, platform {} EXITING with"    \
+                           " return value {}.".format(instance_text, platform,
                                                       return_value))
-        elif connection:
-            printer.string("{}instance {}, EXITING with return value {}.". \
-                           format(PROMPT, instance_text, return_value))
         else:
-            printer.string("{}instance {} EXITING with return value {}.".        \
-                           format(PROMPT, instance_text, return_value))
+            U_LOG.info("instance {} EXITING with return value {}.".
+                           format(instance_text, return_value))
 
         if summary_report_handle:
             summary_report_handle.close()
-        if test_report_handle:
-            test_report_handle.close()
-        if debug_handle:
-            debug_handle.close()
 
         if running_flag:
             # We're done
@@ -314,9 +275,8 @@ if __name__ == "__main__":
 
                 # Call main()
                 RETURN_VALUE = main(DATABASE, INSTANCE, ARGS.f, ARGS.c,
-                                    ARGS.u, ARGS.w, None, None, None,
-                                    None, None, ARGS.s, ARGS.t, ARGS.d,
-                                    None, None, None)
+                                    ARGS.u, ARGS.w, None, None,
+                                    ARGS.s, ARGS.t, ARGS.d, None, None)
         else:
             print("{}must supply an instance.".format(PROMPT))
             PARSER.print_help()

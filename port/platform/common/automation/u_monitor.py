@@ -8,12 +8,14 @@ import re
 import codecs
 import queue
 import threading
+import os
 from datetime import datetime
 from time import time, ctime, sleep
 import subprocess
 import serial                # Pyserial (make sure to do pip install pyserial)
 import u_report
 import u_utils
+from u_logging import ULog
 from typing import List
 from dataclasses import dataclass, field
 from lxml import etree
@@ -22,6 +24,8 @@ import traceback
 
 # Prefix to put at the start of all prints
 PROMPT = "u_monitor"
+# Global logging instance
+U_LOG = None
 
 # The connection types
 CONNECTION_NONE = 0
@@ -62,18 +66,18 @@ def delayed_finish(*args):
     # single entry in the args array.
     args[0].finished = True
 
-def test_error(results: TestResults, printer, prompt, reporter, message):
+def test_error(results: TestResults, reporter, message):
     if reporter:
         reporter.event(u_report.EVENT_TYPE_TEST,
                        u_report.EVENT_ERROR,
                        message)
 
-def reboot_callback(match, results: TestResults, printer, prompt, reporter):
+def reboot_callback(match, results: TestResults, reporter):
     '''Handler for reboots occuring unexpectedly'''
     del match
 
     msg = "target has rebooted"
-    record_outcome(results, "ERROR", printer, prompt, reporter, msg)
+    record_outcome(results, "ERROR", reporter, msg)
     results.reboots += 1
 
     # After one of these messages the target can often spit-out
@@ -82,7 +86,7 @@ def reboot_callback(match, results: TestResults, printer, prompt, reporter):
     finish_timer = threading.Timer(2, delayed_finish, args=[results])
     finish_timer.start()
 
-def run_callback(match, results: TestResults, printer, prompt, reporter):
+def run_callback(match, results: TestResults, reporter):
     '''Handler for an item beginning to run'''
 
     del reporter
@@ -91,15 +95,15 @@ def run_callback(match, results: TestResults, printer, prompt, reporter):
         # There shouldn't be any current test case
         # But if there are we mark it as an error
         msg = "New test started before last one completed"
-        record_outcome(results, "ERROR", printer, prompt, reporter, msg)
+        record_outcome(results, "ERROR", reporter, msg)
 
     results.current = TestCaseResult(name=name, start_time=datetime.now())
-    printer.string("{}progress update - item {}() started on {}.".     \
-                   format(prompt, match.group(1), results.current.start_time.time()))
+    U_LOG.info("progress update - item {}() started on {}.".     \
+                   format(match.group(1), results.current.start_time.time()))
 
     results.items_run += 1
 
-def record_outcome(results: TestResults, status, printer, prompt, reporter, message=None):
+def record_outcome(results: TestResults, status, reporter, message=None):
     '''What it says'''
     ret = results.current
     if status == "PASS":
@@ -123,7 +127,7 @@ def record_outcome(results: TestResults, status, printer, prompt, reporter, mess
                        "passed" if status == "PASS" else status, \
                        results.current.end_time.time(), \
                        results.current.duration)
-        printer.string("{}progress update - item {}.".format(prompt, string))
+        U_LOG.info("progress update - item {}.".format(string))
 
         if message:
             string += f": {message}"
@@ -141,16 +145,16 @@ def record_outcome(results: TestResults, status, printer, prompt, reporter, mess
     return ret
 
 
-def pass_callback(match, results: TestResults, printer, prompt, reporter):
+def pass_callback(_match, results: TestResults, reporter):
     '''Handler for an item passing'''
-    record_outcome(results, "PASS", printer, prompt, reporter)
+    record_outcome(results, "PASS", reporter)
 
-def fail_callback(match, results: TestResults, printer, prompt, reporter):
+def fail_callback(match, results: TestResults, reporter):
     '''Handler for a test failing'''
     msg = match.group(2)
-    record_outcome(results, "FAIL", printer, prompt, reporter, msg)
+    record_outcome(results, "FAIL", reporter, msg)
 
-def finish_callback(match, results: TestResults, printer, prompt, reporter):
+def finish_callback(match, results: TestResults, reporter):
     '''Handler for a run finishing'''
 
     end_time = datetime.now()
@@ -161,9 +165,9 @@ def finish_callback(match, results: TestResults, printer, prompt, reporter):
     results.items_run = int(match.group(1))
     results.items_failed = int(match.group(2))
     results.items_ignored = int(match.group(3))
-    printer.string("{}run completed on {}, {} item(s) run, {} item(s) failed,"\
+    U_LOG.info("run completed on {}, {} item(s) run, {} item(s) failed,"\
                    " {} item(s) ignored, run took {}:{:02d}:{:02d}.". \
-                   format(prompt, end_time.time(), results.items_run,
+                   format(end_time.time(), results.items_run,
                           results.items_failed, results.items_ignored,
                           duration_hours, duration_minutes, duration_seconds))
     if reporter:
@@ -185,17 +189,20 @@ INTERESTING = [[r"abort()", reboot_callback],
                [r"<error> hardfault", reboot_callback],
                # This one for Zephyr aborts
                [r">>> ZEPHYR FATAL ERROR", reboot_callback],
-               # Match, for example "BLAH: Running getSetMnoProfile..." capturing the "getSetMnoProfile" part
+               # Match, for example "BLAH: Running getSetMnoProfile..."
+               # capturing the "getSetMnoProfile" part
                [r"(?:^.*Running) +([^\.]+(?=\.))...$", run_callback],
-               # Match, for example "C:/temp/file.c:890:connectedThings:PASS" capturing the "connectThings" part
+               # Match, for example "C:/temp/file.c:890:connectedThings:PASS"
+               # capturing the "connectThings" part
                [r"(?:^.*?(?:\.c:))(?:[0-9]*:)(.*?):PASS$", pass_callback],
-               # Match, for example "C:/temp/file.c:900:tcpEchoAsync:FAIL:Function sock.  Expression Evaluated To FALSE" capturing the "connectThings" part
+               # Match, for example "C:/temp/file.c:900:tcpEchoAsync:FAIL:Function sock.
+               # Expression Evaluated To FALSE" capturing the "connectThings" part
                [r"(?:^.*?(?:\.c:))(?:[0-9]*:)(.*?):FAIL:(.*)", fail_callback],
                # Match, for example "22 Tests 1 Failures 0 Ignored" capturing the numbers
                [r"(^[0-9]+) Test(?:s*) ([0-9]+) Failure(?:s*) ([0-9]+) Ignored", finish_callback]]
 
 def readline_and_queue(results, read_queue, in_handle, connection_type,
-                       terminator, printer, prompt, reporter):
+                       terminator, reporter):
     '''Read lines from the input and queue them'''
     error_msg = None
     try:
@@ -206,11 +213,13 @@ def readline_and_queue(results, read_queue, in_handle, connection_type,
             # Let others in
             sleep(0.01)
     except subprocess.CalledProcessError as ex:
-        printer.string(f"{prompt}{ex}")
         if ex.returncode != 0:
+            U_LOG.error(f"{ex}")
             error_msg = f"Monitored process terminated with error code: {ex.returncode}"
+        else:
+            U_LOG.warning(f'Monitored process "{ex.cmd}" terminated')
     except Exception as ex:
-        printer.string(f"{prompt}{traceback.format_exc()}")
+        U_LOG.error(traceback.format_exc())
         error_msg = f'Caught exception: "{ex}"'
 
     if error_msg:
@@ -293,12 +302,13 @@ def pwar_readline(in_handle, connection_type, terminator=None):
                 eol = character == terminator
                 if not eol:
                     line = line + character
-            elif return_code == None:
+            elif return_code is None:
                 # Since this is a busy/wait we sleep a bit if there is no data
                 # to offload the CPU
                 sleep(0.01)
             else:
-                cmd = " ".join(in_handle.args)
+                cmd = " ".join(in_handle.args) if isinstance(in_handle.args, list) \
+                    else in_handle.args
                 raise subprocess.CalledProcessError(return_code, cmd)
 
         if eol:
@@ -306,7 +316,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
 
         return_value = line
 
-    if return_value == None or return_value == "":
+    if return_value is None or return_value == "":
         # Typically this function is called from a busy/wait loop
         # so if there currently no data available we sleep a bit
         # to offload the CPU
@@ -315,65 +325,65 @@ def pwar_readline(in_handle, connection_type, terminator=None):
     return return_value
 
 # Start the required executable.
-def start_exe(exe_name, printer, prompt):
+def start_exe(exe_name):
     '''Launch an executable as a sub-process'''
     return_value = None
-    text = "{}trying to launch \"{}\" as an executable...".     \
-           format(prompt, exe_name)
+    text = "trying to launch \"{}\" as an executable...".     \
+           format(exe_name)
     try:
         popen_keywords = {
             'stdout': subprocess.PIPE,
             'stderr': subprocess.STDOUT,
-            'bufsize': 1,
             'shell': True # Jenkins hangs without this
         }
         return_value = subprocess.Popen(exe_name, **popen_keywords)
     except (ValueError, serial.SerialException, WindowsError):
-        printer.string("{} failed.".format(text))
+        U_LOG.error("{} failed.".format(text))
     return return_value
 
 # Send the given string before running, only used on ESP32 platforms.
-def esp32_send_first(send_string, in_handle, connection_type, printer, prompt):
+def esp32_send_first(send_string, in_handle, connection_type):
     '''Send a string before running tests, used on ESP32 platforms'''
     success = False
     try:
         line = ""
         # Read the opening splurge from the target
         # if there is any
-        printer.string("{}reading initial text from input...".\
-                       format(prompt))
+        U_LOG.info("reading initial text from input...")
         sleep(1)
         # Wait for the test selection prompt
         while line is not None and \
               line.find("Press ENTER to see the list of tests.") < 0:
             line = pwar_readline(in_handle, connection_type, "\r")
             if line is not None:
-                printer.string("{}{}".format(prompt, line))
+                U_LOG.info(line)
         # For debug purposes, send a newline to the unit
         # test app to get it to list the tests
-        printer.string("{}listing items...".format(prompt))
+        U_LOG.info("listing items...")
         in_handle.write("\r\n".encode("ascii"))
         line = ""
         while line is not None:
             line = pwar_readline(in_handle, connection_type, "\r")
             if line is not None:
-                printer.string("{}{}".format(prompt, line))
+                U_LOG.info(line)
         # Now send the string
-        printer.string("{}sending {}".format(prompt, send_string))
+        U_LOG.info("sending {}".format(send_string))
         in_handle.write(send_string.encode("ascii"))
         in_handle.write("\r\n".encode("ascii"))
-        printer.string("{}run started on {}.".format(prompt, ctime(time())))
+        U_LOG.info("run started on {}.".format(ctime(time())))
         success = True
     except serial.SerialException as ex:
-        printer.string("{}{} while accessing port {}: {}.".
-                       format(prompt, type(ex).__name__,
+        U_LOG.error("{} while accessing port {}: {}.".
+                       format(type(ex).__name__,
                               in_handle.name, str(ex)))
     return success
 
 def remove_unprintable_chars(text):
+    """Replace unprintable characters with '?'"""
     return str(''.join(ascii.isprint(c) and c or '?' for c in text))
 
-def timeout(connection_type, in_handle, msg):
+def timeout(connection_type, in_handle):
+    """Timeout event"""
     if connection_type == CONNECTION_PROCESS:
         subprocess.Popen.kill(in_handle)
 
@@ -382,14 +392,13 @@ def timeout(connection_type, in_handle, msg):
 # looking for INTERESTING things.
 def watch_items(in_handle, connection_type, results: TestResults,
                 guard_time_seconds, inactivity_time_seconds,
-                terminator, printer, reporter, prompt,
-                keep_going_flag):
+                terminator, reporter):
     '''Watch output'''
     return_value = -1
     start_time = time()
     last_activity_time = time()
 
-    printer.string("{}watching output until run completes...".format(prompt))
+    U_LOG.info("watching output until run completes...")
 
     # Start a thread to read lines from in_handle
     # This is done in a separate thread as it can block or
@@ -398,34 +407,34 @@ def watch_items(in_handle, connection_type, results: TestResults,
     readline_thread = threading.Thread(target=readline_and_queue,
                                        args=(results, read_queue, in_handle,
                                              connection_type, terminator,
-                                             printer, prompt, reporter))
+                                             reporter))
     readline_thread.start()
 
     try:
-        while u_utils.keep_going(keep_going_flag, printer, prompt) and not results.finished:
+        while not results.finished:
 
             # Check for timeouts
             if guard_time_seconds and (time() - start_time >= guard_time_seconds):
                 msg = f"guard timer ({guard_time_seconds} second(s)) expired."
-                record_outcome(results, "ERROR", printer, prompt, reporter, msg)
-                timeout(connection_type, in_handle, msg)
+                record_outcome(results, "ERROR", reporter, msg)
+                timeout(connection_type, in_handle)
                 break
             if inactivity_time_seconds and (time() - last_activity_time >= inactivity_time_seconds):
                 msg = f"inactivity timer ({inactivity_time_seconds} second(s)) expired."
-                record_outcome(results, "ERROR", printer, prompt, reporter, msg)
-                timeout(connection_type, in_handle, msg)
+                record_outcome(results, "ERROR", reporter, msg)
+                timeout(connection_type, in_handle)
                 break
 
             try:
                 line = read_queue.get(timeout=0.5)
                 last_activity_time = time()
-                printer.string("{}{}".format(prompt, line), file_only=True)
+                U_LOG.debug(line)
                 if results.current:
                     results.current.stdout += remove_unprintable_chars(line) + "\n"
                 for entry in INTERESTING:
                     match = re.match(entry[0], line)
                     if match:
-                        entry[1](match, results, printer, prompt, reporter)
+                        entry[1](match, results, reporter)
             except queue.Empty:
                 pass
             # Let others in
@@ -435,8 +444,8 @@ def watch_items(in_handle, connection_type, results: TestResults,
         readline_thread.join()
         return_value = results.items_failed + results.reboots + results.errors
     except (serial.SerialException, EOFError) as ex:
-        printer.string("{}{} while accessing port {}: {}.".
-                       format(prompt, type(ex).__name__,
+        U_LOG.error("{} while accessing port {}: {}.".
+                       format(type(ex).__name__,
                               in_handle.name, str(ex)))
     finally:
         results.finished = True
@@ -444,60 +453,66 @@ def watch_items(in_handle, connection_type, results: TestResults,
     return return_value
 
 def main(connection_handle, connection_type, guard_time_seconds,
-         inactivity_time_seconds, terminator, instance, printer,
-         reporter, test_report_handle, send_string=None,
-         keep_going_flag=None):
+         inactivity_time_seconds, terminator, instance,
+         reporter, test_report_path=None, send_string=None):
     '''Main as a function'''
     # Dictionary in which results are stored
     results =  TestResults()
     return_value = -1
 
     if instance:
-        prompt = PROMPT + "_" + u_utils.get_instance_text(instance) + ": "
+        prompt = PROMPT + "_" + u_utils.get_instance_text(instance)
     else:
-        prompt = PROMPT + ": "
+        prompt = PROMPT
+    global U_LOG
+    U_LOG = ULog.get_logger(prompt)
 
-    # If we have a serial interface we have can chose which tests to run
-    # (at least, on the ESP32 platform) else the lot will just run
-    if (send_string is None or esp32_send_first(send_string, connection_handle,
-                                                connection_type, printer, prompt)):
-        results.overall_start_time = datetime.now()
-        return_value = watch_items(connection_handle, connection_type, results,
-                                   guard_time_seconds, inactivity_time_seconds,
-                                   terminator, printer, reporter, prompt,
-                                   keep_going_flag)
+    # Make sure we delete any old test report before we start
+    if test_report_path and os.path.exists(test_report_path):
+        os.remove(test_report_path)
 
-    # Write the report
-    if test_report_handle:
-        printer.string("{}writing report file...".format(prompt))
-        if instance:
-            instance_str = u_utils.get_instance_text(instance)
-        else:
-            instance_str = "Unknown"
-        # JUnit separates packages using ".".
-        # Since we want to present each instance as one test suite we therefor
-        # replace all "." with "_"
-        instance_str = instance_str.replace(".", "_")
+    try:
+        # If we have a serial interface we have can chose which tests to run
+        # (at least, on the ESP32 platform) else the lot will just run
+        if (send_string is None or esp32_send_first(send_string, connection_handle,
+                                                    connection_type)):
+            results.overall_start_time = datetime.now()
+            return_value = watch_items(connection_handle, connection_type, results,
+                                       guard_time_seconds, inactivity_time_seconds,
+                                       terminator, reporter)
+    finally:
+        # Always try to write the report
+        if test_report_path:
+            U_LOG.info("writing report file...")
+            if instance:
+                instance_str = u_utils.get_instance_text(instance)
+            else:
+                instance_str = "Unknown"
+            # JUnit separates packages using ".".
+            # Since we want to present each instance as one test suite we therefor
+            # replace all "." with "_"
+            instance_str = instance_str.replace(".", "_")
 
-        ts_el = etree.Element("testsuite", name=f"instance {instance_str}",
-                              tests=str(results.items_run),
-                              failures=str(results.items_failed),
-                              errors=str(results.errors))
-        for tc in results.test_cases:
-            tc_el = etree.SubElement(ts_el, "testcase", classname=f"ubxlib.instance_{instance_str}",
-                                     name=tc.name, time=str(tc.duration), status=tc.status)
-            if tc.status == "FAIL":
-                etree.SubElement(tc_el, "failure", message=tc.message)
-            elif tc.status == "ERROR":
-                etree.SubElement(tc_el, "error", message=tc.message)
-            # Dump stdout
-            etree.SubElement(tc_el, "system-out").text = tc.stdout
+            ts_el = etree.Element("testsuite", name=f"instance {instance_str}",
+                                  tests=str(results.items_run),
+                                  failures=str(results.items_failed),
+                                  errors=str(results.errors))
+            for tc in results.test_cases:
+                tc_el = etree.SubElement(ts_el, "testcase", classname=f"ubxlib.instance_{instance_str}",
+                                         name=tc.name, time=str(tc.duration), status=tc.status)
+                if tc.status == "FAIL":
+                    etree.SubElement(tc_el, "failure", message=tc.message)
+                elif tc.status == "ERROR":
+                    etree.SubElement(tc_el, "error", message=tc.message)
+                # Dump stdout
+                etree.SubElement(tc_el, "system-out").text = tc.stdout
 
-        tree = etree.ElementTree(ts_el)
-        # Now write the XML tree to file
-        tree.write(test_report_handle, encoding='utf-8', pretty_print=True)
+            tree = etree.ElementTree(ts_el)
+            with open(test_report_path, "wb") as file:
+                # Now write the XML tree to file
+                tree.write(file, encoding='utf-8', pretty_print=True)
 
-    printer.string("{}end with return value {}.".format(prompt, return_value))
+    U_LOG.info("end with return value {}.".format(return_value))
 
     return return_value
 
@@ -506,7 +521,7 @@ if __name__ == "__main__":
     PROCESS_HANDLE = None
     RETURN_VALUE = -1
     LOG_HANDLE = None
-    TEST_REPORT_HANDLE = None
+    TEST_REPORT_PATH = None
     CONNECTION_TYPE = CONNECTION_NONE
 
     PARSER = argparse.ArgumentParser(description="A script to"    \
@@ -551,49 +566,31 @@ if __name__ == "__main__":
 
     # Open the log file
     if ARGS.l:
-        LOG_HANDLE = open(ARGS.l, "w")
-        if LOG_HANDLE:
-            print("{}: writing log output to \"{}\".".format(PROMPT, ARGS.l))
-        else:
-            SUCCESS = False
-            print("{}: unable to open log file \"{}\" for writing.".
-                  format(PROMPT, ARGS.l))
+        ULog.setup_logging(debug_file=ARGS.l)
+        print(f'writing log output to "{ARGS.l}".')
     if SUCCESS:
-        # Set up a printer, with a None queue
-        # since we're only running one instance
-        # from here
-        PRINTER = u_utils.PrintToQueue(None, LOG_HANDLE)
-
+        U_LOG = ULog.get_logger(PROMPT)
         # Make the connection
         CONNECTION_TYPE = CONNECTION_SERIAL
-        CONNECTION_HANDLE = u_utils.open_serial(ARGS.port, 115200, PRINTER, PROMPT)
+        CONNECTION_HANDLE = u_utils.open_serial(ARGS.port, 115200, U_LOG)
         if CONNECTION_HANDLE is None:
             CONNECTION_TYPE = CONNECTION_TELNET
-            CONNECTION_HANDLE = u_utils.open_telnet(ARGS.port, PRINTER, PROMPT)
+            CONNECTION_HANDLE = u_utils.open_telnet(ARGS.port, U_LOG)
         if CONNECTION_HANDLE is None:
             CONNECTION_TYPE = CONNECTION_PROCESS
-            CONNECTION_HANDLE = start_exe(ARGS.port, PRINTER, PROMPT)
+            CONNECTION_HANDLE = start_exe(ARGS.port)
         if CONNECTION_HANDLE is not None:
             # Open the report file
             if ARGS.x:
-                TEST_REPORT_HANDLE = open(ARGS.x, "wb")
-                if TEST_REPORT_HANDLE:
-                    print("{}: writing test report to \"{}\".".format(PROMPT, ARGS.x))
-                else:
-                    SUCCESS = False
-                    print("{}: unable to open test report file \"{}\" for writing.".
-                          format(PROMPT, ARGS.x))
+                TEST_REPORT_PATH = ARGS.x
+                print(f'writing test report to "{ARGS.x}".')
             if SUCCESS:
                 # Run things
                 RETURN_VALUE = main(CONNECTION_HANDLE, CONNECTION_TYPE, ARGS.t,
-                                    ARGS.i, "\r", None, PRINTER, None,
-                                    TEST_REPORT_HANDLE, send_string=ARGS.s)
+                                    ARGS.i, "\n", None, None,
+                                    TEST_REPORT_PATH, send_string=ARGS.s)
 
             # Tidy up
-            if TEST_REPORT_HANDLE:
-                TEST_REPORT_HANDLE.close()
-            if LOG_HANDLE:
-                LOG_HANDLE.close()
             if CONNECTION_TYPE == CONNECTION_PROCESS:
                 CONNECTION_HANDLE.terminate()
             else:

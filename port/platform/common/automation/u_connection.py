@@ -3,8 +3,13 @@
 '''Manage connections for ubxlib testing.'''
 
 from time import sleep
+from logging import Logger
+import logging
 import u_utils
 import u_settings
+
+# Default logger
+DEFAULT_LOGGER = logging.getLogger()
 
 # The default guard time for waiting for a connection lock in seconds
 CONNECTION_LOCK_GUARD_TIME_SECONDS = (60 * 45)
@@ -141,7 +146,7 @@ def get_usb_cutter_id_str(wanted_connection):
 # is for the caller only, if you call it from a different process
 # you'll get another copy which will contain no lock.
 def lock(connection, connection_lock, guard_time_seconds,
-         printer, prompt, keep_going_flag=None, hw_reset=True):
+         logger: Logger=DEFAULT_LOGGER, hw_reset=True):
     '''Lock the given connection'''
     timeout_seconds = guard_time_seconds
     success = False
@@ -150,71 +155,63 @@ def lock(connection, connection_lock, guard_time_seconds,
         instance_text = u_utils.get_instance_text(get_instance(connection))
         if connection_lock:
             # Wait on the lock
-            printer.string("{}instance {} waiting up to {} second(s)"   \
+            logger.info("instance {} waiting up to {} second(s)"   \
                            " to lock connection...".                    \
-                           format(prompt, instance_text, guard_time_seconds))
+                           format(instance_text, guard_time_seconds))
             count = 0
             while not connection_lock.acquire(False) and                 \
-                ((guard_time_seconds == 0) or (timeout_seconds > 0)) and \
-                u_utils.keep_going(keep_going_flag, printer, prompt):
+                ((guard_time_seconds == 0) or (timeout_seconds > 0)):
                 sleep(1)
                 timeout_seconds -= 1
                 count += 1
                 if count == 30:
-                    printer.string("{}instance {} still waiting {} second(s)"     \
+                    logger.info("instance {} still waiting {} second(s)"     \
                                    " for a connection lock (locker is"            \
                                    " currently {}).".                             \
-                                   format(prompt, instance_text, timeout_seconds,
+                                   format(instance_text, timeout_seconds,
                                           connection_lock))
                     count = 0
             if (guard_time_seconds == 0) or (timeout_seconds > 0):
-                printer.string("{}instance {} has locked a connection ({}).". \
-                               format(prompt, instance_text, connection_lock))
+                logger.info("instance {} has locked a connection ({}).". \
+                               format(instance_text, connection_lock))
                 if hw_reset:
                     kmtronic = get_kmtronic(connection)
                     usb_cutter_id_str = get_usb_cutter_id_str(connection)
                     if kmtronic:
-                        printer.string("{}using KMTronic to reset {}...". \
-                                       format(prompt, instance_text))
-                        u_utils.kmtronic_reset(kmtronic["ip_address"], kmtronic["hex_bitmap"],
-                                               printer, prompt)
+                        logger.info(f"using KMTronic to reset {instance_text}...")
+                        u_utils.kmtronic_reset(kmtronic["ip_address"], kmtronic["hex_bitmap"])
                     if usb_cutter_id_str:
-                        printer.string("{}using USB cutter to reset {}...". \
-                                       format(prompt, instance_text))
-                        u_utils.usb_cutter_reset([usb_cutter_id_str], printer, prompt)
+                        logger.info(f"using USB cutter to reset {instance_text}...")
+                        u_utils.usb_cutter_reset([usb_cutter_id_str], logger=logger)
                 success = True
         else:
             success = True
-            printer.string("{}note: instance {} lock is empty.".           \
-                           format(prompt, instance_text))
+            logger.info(f"note: instance {instance_text} lock is empty.")
 
     return success
 
-def unlock(connection, connection_lock, printer, prompt):
+def unlock(connection, connection_lock, logger: Logger=DEFAULT_LOGGER):
     '''Unlock the given connection'''
 
     if connection:
         instance_text = u_utils.get_instance_text(get_instance(connection))
         if connection_lock:
             connection_lock.release()
-            printer.string("{}instance {} has unlocked a connection.".   \
-                           format(prompt, instance_text))
+            logger.info(f"instance {instance_text} has unlocked a connection.")
 
 class Lock():
     '''Hold a lock as a "with:"'''
     def __init__(self, connection, connection_lock, guard_time_seconds,
-                 printer, prompt, keep_going_flag=None):
+                 logger: Logger=DEFAULT_LOGGER):
         self._connection = connection
         self._connection_lock = connection_lock
         self._guard_time_seconds = guard_time_seconds
-        self._printer = printer
-        self._prompt = prompt
-        self._keep_going_flag = keep_going_flag
+        self._logger = logger
         self._locked = False
     def __enter__(self):
         self._locked = lock(self._connection, self._connection_lock,
-                            self._guard_time_seconds, self._printer,
-                            self._prompt, self._keep_going_flag)
+                            self._guard_time_seconds,
+                            logger=self._logger)
         return self._locked
     def __exit__(self, _type, value, traceback):
         del _type
@@ -222,4 +219,4 @@ class Lock():
         del traceback
         if self._locked:
             unlock(self._connection, self._connection_lock,
-                   self._printer, self._prompt)
+                   logger=self._logger)

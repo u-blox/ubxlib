@@ -4,12 +4,17 @@
 
 import os          # For sep
 import subprocess
+from logging import Logger
 import u_report
 import u_utils
 import u_settings
+from u_logging import ULog
 
 # Prefix to put at the start of all prints
-PROMPT = "u_run_astyle_"
+PROMPT = "u_run_astyle"
+
+# The logger
+U_LOG: Logger = None
 
 # The name of the AStyle configuration file to look for
 # in the root of the ubxlib directory
@@ -27,20 +32,20 @@ ASTYLE_DIRS = u_settings.ASTYLE_DIRS
 # "blah\build" as well as "build" but not "build\blah")
 EXCLUDE_DIRS = u_settings.ASTYLE_EXCLUDE_DIRS
 
-def run(instance, ubxlib_dir, printer, reporter):
+def run(ubxlib_dir, reporter):
     '''Run AStyle'''
     return_value = 1
     got_astyle = False
     call_list = []
-    instance_text = u_utils.get_instance_text(instance)
 
-    prompt = PROMPT + instance_text + ": "
+    global U_LOG
+    U_LOG = ULog.get_logger(PROMPT)
 
     # Print out what we've been told to do
     text = "running AStyle from ubxlib directory \"" + ubxlib_dir +  \
            "\" using configuration file \"" + ubxlib_dir + os.sep +  \
            CONFIG_FILE + "\""
-    printer.string("{}{}.".format(prompt, text))
+    U_LOG.info(text)
 
     reporter.event(u_report.EVENT_TYPE_CHECK,
                    u_report.EVENT_START,
@@ -48,10 +53,10 @@ def run(instance, ubxlib_dir, printer, reporter):
     got_astyle = u_utils.exe_where("astyle", \
                         "ERROR: can't find AStyle, please make"      \
                         " sure that it is installed and on the path.", \
-                        printer, prompt)
+                        logger=U_LOG)
     if got_astyle:
         # Run AStyle
-        printer.string("{}CD to {}...".format(prompt, ubxlib_dir))
+        U_LOG.info(f"CD to {ubxlib_dir}...")
         with u_utils.ChangeDir(ubxlib_dir):
             # Assemble the call list
             call_list.append("astyle")
@@ -71,8 +76,7 @@ def run(instance, ubxlib_dir, printer, reporter):
             tmp = ""
             for item in call_list:
                 tmp += " " + item
-            printer.string("{}in directory {} calling{}".         \
-                           format(prompt, os.getcwd(), tmp))
+            U_LOG.info("in directory {} calling{}".format(os.getcwd(), tmp))
             try:
                 popen_keywords = {
                     'stderr': subprocess.STDOUT,
@@ -83,7 +87,7 @@ def run(instance, ubxlib_dir, printer, reporter):
                 formatted = []
                 for line in text.splitlines():
                     line = line.decode(encoding="utf-8", errors="ignore")
-                    printer.string("{}{}".format(prompt, line))
+                    U_LOG.info(line)
                     # AStyle doesn't return anything other than 0,
                     # need to look for the word "Formatted" to find
                     # a file it has fiddled with
@@ -102,13 +106,12 @@ def run(instance, ubxlib_dir, printer, reporter):
             except subprocess.CalledProcessError as error:
                 reporter.event(u_report.EVENT_TYPE_CHECK,
                                u_report.EVENT_FAILED)
-                printer.string("{}AStyle returned error {}:".
-                               format(prompt, error.returncode))
+                U_LOG.error(f"AStyle returned error {error.returncode}:")
                 for line in error.output.splitlines():
                     line = line.strip()
                     if line:
                         reporter.event_extra_information(line)
-                        printer.string("{}{}".format(prompt, line))
+                        U_LOG.error(line)
     else:
         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                        u_report.EVENT_FAILED,

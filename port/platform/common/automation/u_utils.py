@@ -12,16 +12,19 @@ import os                       # For ChangeDir, has_admin
 import stat                     # To help deltree out
 from collections import deque   # For storing a window of debug
 from telnetlib import Telnet    # For talking to JLink server
+from logging import Logger
+import logging
 import socket
 import shutil                   # To delete a directory tree
 import signal                   # For CTRL_C_EVENT
 import subprocess
 import platform                 # Figure out current OS
-import re                       # Regular Expression
 import serial                   # Pyserial (make sure to do pip install pyserial)
 import psutil                   # For killing things (make sure to do pip install psutil)
 import requests                 # For HTTP comms with a KMTronic box (do pip install requests)
 import u_settings
+
+DEFAULT_LOGGER = logging.getLogger()
 
 # Since this function is used by the global variables below it needs
 # to be placed here.
@@ -207,7 +210,7 @@ def remove_readonly(func, path, exec_info):
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
-def deltree(directory, printer, prompt):
+def deltree(directory, logger: Logger = DEFAULT_LOGGER):
     '''Remove an entire directory tree'''
     tries = 3
     success = False
@@ -225,10 +228,8 @@ def deltree(directory, printer, prompt):
                 shutil.rmtree(directory, onerror=remove_readonly)
                 success = True
             except OSError as ex:
-                if printer and prompt:
-                    printer.string("{}ERROR unable to delete \"{}\" {}: \"{}\"".
-                                   format(prompt, directory,
-                                          ex.errno, ex.strerror))
+                logger.error('ERROR unable to delete "{}" {}: "{}"'.
+                                   format(directory, ex.errno, ex.strerror))
                 sleep(1)
             tries -= 1
     else:
@@ -277,11 +278,12 @@ def has_admin():
 
 
 # Open the required serial port.
-def open_serial(serial_name, speed, printer, prompt, dtr_set_on=None, rts_set_on=None):
+def open_serial(serial_name, speed, logger: Logger = DEFAULT_LOGGER,
+                dtr_set_on=None, rts_set_on=None):
     '''Open serial port'''
     serial_handle = None
-    text = "{}: trying to open \"{}\" as a serial port".    \
-           format(prompt, serial_name)
+    text = "trying to open \"{}\" as a serial port".    \
+           format(serial_name)
     if dtr_set_on is not None:
         text += ", DTR forced"
         if dtr_set_on:
@@ -304,27 +306,27 @@ def open_serial(serial_name, speed, printer, prompt, dtr_set_on=None, rts_set_on
         return_value.port = serial_name
         return_value.open()
         serial_handle = return_value
-        printer.string("{} opened.".format(text))
+        logger.info("{} opened.".format(text))
     except (ValueError, serial.SerialException) as ex:
-        printer.string("{}{} while accessing port {}: {}.".
-                       format(prompt, type(ex).__name__,
+        logger.warning("{} while accessing port {}: {}.".
+                       format(type(ex).__name__,
                               serial_name, str(ex)))
     return serial_handle
 
-def open_telnet(port_number, printer, prompt):
+def open_telnet(port_number, logger: Logger = DEFAULT_LOGGER):
     '''Open telnet port on localhost'''
     telnet_handle = None
-    text = "{}trying to open \"{}\" as a telnet port on localhost...".  \
-           format(prompt, port_number)
+    text = "trying to open \"{}\" as a telnet port on localhost...".  \
+           format(port_number)
     try:
         telnet_handle = Telnet("localhost", int(port_number), timeout=5)
         if telnet_handle is not None:
-            printer.string("{} opened.".format(text))
+            logger.info("{} opened.".format(text))
         else:
-            printer.string("{} failed.".format(text))
+            logger.warning("{} failed.".format(text))
     except (socket.error, socket.timeout, ValueError) as ex:
-        printer.string("{}{} failed to open telnet {}: {}.".
-                       format(prompt, type(ex).__name__,
+        logger.warning("{} failed to open telnet {}: {}.".
+                       format(type(ex).__name__,
                               port_number, str(ex)))
     return telnet_handle
 
@@ -357,49 +359,41 @@ def install_lock_release(install_lock, printer, prompt):
         install_lock.release()
     printer.string("{}install lock released.".format(prompt))
 
-def run_call(call_list, printer, prompt, shell_cmd=False):
+def run_call(call_list, logger: Logger = DEFAULT_LOGGER, shell_cmd=False):
     ''' Run a call_list through subprocess.check_output() '''
     success = False
     try:
-        if printer and prompt:
-            text = ""
-            for item in call_list:
-                if text:
-                    text += " "
-                text += item
-            printer.string("{}in {} calling {}...".
-                           format(prompt, os.getcwd(), text))
+        text = " ".join(call_list)
+        logger.info(f"in {os.getcwd()} calling {text}...")
         # Try to pull the code
         text = subprocess.check_output(subprocess_osify(call_list),
                                        stderr=subprocess.STDOUT,
                                        shell=shell_cmd)
         for line in text.splitlines():
-            if printer and prompt:
-                printer.string("{}{}".format(prompt, line))
+            logger.info(line)
         success = True
     except subprocess.CalledProcessError as error:
-        if printer and prompt:
-            printer.string("{}{} returned error {}: \"{}\"".
-                           format(prompt, call_list[0],
+        logger.error("{} returned error {}: \"{}\"".
+                           format(call_list[0],
                                   error.returncode,
                                   error.output))
     return success
 
-def git_cleanup(printer, prompt, shell_cmd=False):
+def git_cleanup(logger: Logger = DEFAULT_LOGGER, shell_cmd=False):
     ''' Antevir's recommended clean-up procedure '''
-    if printer and prompt:
-        printer.string("{}trying to clean up...".format(prompt))
-    run_call(["git", "reset", "--hard", "HEAD"], printer, prompt, shell_cmd)
+    logger.info(f"trying to clean up...")
+    run_call(["git", "reset", "--hard", "HEAD"], logger=logger, shell_cmd=shell_cmd)
     run_call(["git", "submodule", "foreach", "--recursive", "git", \
-              "reset", "--hard"], printer, prompt, shell_cmd)
+              "reset", "--hard"], logger=logger, shell_cmd=shell_cmd)
     # The "double f" forces cleaning of directories with .git subdirectories
-    run_call(["git", "clean", "-xfdf"], printer, prompt, shell_cmd)
+    run_call(["git", "clean", "-xfdf"], logger=logger, shell_cmd=shell_cmd)
     run_call(["git", "submodule", "foreach", "--recursive", "git", \
-              "clean", "-xfdf"], printer, prompt, shell_cmd)
-    run_call(["git", "submodule", "sync", "--recursive"], printer, prompt, shell_cmd)
-    run_call(["git", "submodule", "update", "--init", "--recursive"], printer, prompt, shell_cmd)
+              "clean", "-xfdf"], logger=logger, shell_cmd=shell_cmd)
+    run_call(["git", "submodule", "sync", "--recursive"], logger=logger, shell_cmd=shell_cmd)
+    run_call(["git", "submodule", "update", "--init", "--recursive"], logger=logger, shell_cmd=shell_cmd)
 
-def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, force=False):
+def fetch_repo(url, directory, branch, logger: Logger = DEFAULT_LOGGER,
+               submodule_init=True, force=False):
     '''Fetch a repo: directory can be relative or absolute, branch can be a hash'''
     got_code = False
     success = False
@@ -407,47 +401,44 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
     dir_text = directory
     if dir_text == ".":
         dir_text = "this directory"
-    if printer and prompt:
-        printer.string("{}in directory {}, fetching"
-                       " {} to {}.".format(prompt, os.getcwd(),
-                                          url, dir_text))
+
+    logger.info("in directory {}, fetching {} to {}.".
+        format(os.getcwd(), url, dir_text))
     if not branch:
         branch = "master"
     if os.path.isdir(directory):
         # Update existing code
         with ChangeDir(directory):
-            if printer and prompt:
-                printer.string("{}updating code in {}...".
-                               format(prompt, dir_text))
+            logger.info(f"updating code in {dir_text}...")
             target = branch
             if branch.startswith("#"):
                 # Actually been given a branch, lose the
                 # preceding #
                 target = branch[1:len(branch)]
             # Jenkins can hang without True here
-            got_code = run_call(["git", "fetch", "origin", target], printer, prompt, True)
+            got_code = run_call(["git", "fetch", "origin", target],
+                                logger=logger, shell_cmd=True)
             if not got_code and force:
                 # If it didn't work, clean up and try again
-                git_cleanup(printer, prompt, True)
-                got_code = run_call(["git", "fetch", "origin", target], printer, prompt, True)
+                git_cleanup(logger=logger, shell_cmd=True)
+                got_code = run_call(["git", "fetch", "origin", target],
+                                    logger=logger, shell_cmd=True)
         if force and not got_code:
             # If we still haven't got the code, delete the
             # directory for a true clean start
-            deltree(directory, printer, prompt)
+            deltree(directory, logger=logger)
     if not os.path.isdir(directory):
         # Clone the repo
-        if printer and prompt:
-            printer.string("{}cloning from {} into {}...".
-                           format(prompt, url, dir_text))
+        logger.info(f"cloning from {url} into {dir_text}...")
         call_list = ["git", "clone", "-q"]
         call_list.append(url)
         call_list.append(directory)
-        got_code = run_call(call_list, printer, prompt, True)
+        got_code = run_call(call_list, logger=logger, shell_cmd=True)
         if got_code and  submodule_init:
             with ChangeDir(directory):
-                printer.string("{}also recursing sub-modules (can take some time)" \
-                               .format(prompt))
-                run_call(["git", "submodule", "update", "--init", "--recursive"], printer, prompt, True)
+                logger.info("also recursing sub-modules (can take some time)")
+                run_call(["git", "submodule", "update", "--init", "--recursive"],
+                         logger=logger, shell_cmd=True)
 
     if got_code and os.path.isdir(directory):
         # Check out the correct branch and recurse submodules
@@ -457,31 +448,29 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
                 # Actually been given a branch, so lose the
                 # "origin/" and the preceding #
                 target = branch[1:len(branch)]
-            if printer and prompt:
-                printer.string("{}checking out {}...".
-                               format(prompt, target))
+            logger.info(f"checking out {target}...")
             call_list = ["git", "-c", "advice.detachedHead=false",
                          "checkout", "--no-progress"]
             if submodule_init:
                 call_list.append("--recurse-submodules")
-                printer.string("{}also recursing sub-modules (can take some time" \
-                               " and gives no feedback).".format(prompt))
+                logger.info("also recursing sub-modules (can take some time" \
+                                   " and gives no feedback).")
             call_list.append(target)
-            success = run_call(call_list, printer, prompt, True)
+            success = run_call(call_list, logger=logger, shell_cmd=True)
             if not success:
                 # If it didn't work, clean up and try again
-                git_cleanup(printer, prompt, True)
-                success = run_call(call_list, printer, prompt, True)
+                git_cleanup(logger=logger, shell_cmd=True)
+                success = run_call(call_list, logger=logger, shell_cmd=True)
 
     return success
 
-def exe_where(exe_name, help_text, printer, prompt, set_env=None):
+def exe_where(exe_name, help_text, set_env=None,
+              logger: Logger = DEFAULT_LOGGER):
     '''Find an executable using where.exe or which on linux'''
     success = False
 
     try:
-        printer.string("{}looking for \"{}\"...".          \
-                       format(prompt, exe_name))
+        logger.info(f'looking for "{exe_name}"...')
         # See here:
         # https://stackoverflow.com/questions/14928860/passing-double-quote-shell-commands-in-python-to-subprocess-popen
         # ...for why the construction "".join() is necessary when
@@ -489,27 +478,28 @@ def exe_where(exe_name, help_text, printer, prompt, set_env=None):
         # It is the only thing that works.
         if is_linux():
             cmd = ["which {}".format(exe_name.replace(":", "/"))]
-            printer.string("{}detected linux, calling \"{}\"...".format(prompt, cmd))
+            logger.info(f'detected linux, calling "{cmd}"...')
         else:
             cmd = ["where", "".join(exe_name)]
-            printer.string("{}detected nonlinux, calling \"{}\"...".format(prompt, cmd))
+            logger.info(f'detected nonlinux, calling "{cmd}"...')
         text = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
                                        env=set_env,
                                        shell=True) # Jenkins hangs without this
         for line in text.splitlines():
-            printer.string("{}{} found in {}".format(prompt, exe_name, line))
+            logger.info("{} found in {}".format(exe_name, line))
         success = True
     except subprocess.CalledProcessError:
         if help_text:
-            printer.string("{}ERROR {} not found: {}".  \
-                           format(prompt, exe_name, help_text))
+            logger.error("ERROR {} not found: {}".  \
+                           format(exe_name, help_text))
         else:
-            printer.string("{}ERROR {} not found".      \
-                           format(prompt, exe_name))
+            logger.error("ERROR {} not found".      \
+                           format(exe_name))
 
     return success
 
-def exe_version(exe_name, version_switch, printer, prompt, set_env=None):
+def exe_version(exe_name, version_switch,
+                logger: Logger=DEFAULT_LOGGER, set_env=None):
     '''Print the version of a given executable'''
     success = False
 
@@ -520,11 +510,11 @@ def exe_version(exe_name, version_switch, printer, prompt, set_env=None):
                                        stderr=subprocess.STDOUT, env=set_env,
                                        shell=True)  # Jenkins hangs without this
         for line in text.splitlines():
-            printer.string("{}{}".format(prompt, line))
+            logger.info(line)
         success = True
     except subprocess.CalledProcessError:
-        printer.string("{}ERROR {} either not found or didn't like {}". \
-                       format(prompt, exe_name, version_switch))
+        logger.error("ERROR {} either not found or didn't like {}". \
+                       format(exe_name, version_switch))
 
     return success
 
@@ -555,7 +545,7 @@ def queue_get_no_exception(the_queue, block=True, timeout=None):
 
     return thing
 
-def capture_env_var(line, env, printer, prompt):
+def capture_env_var(line, env, logger: Logger = DEFAULT_LOGGER):
     '''A bit of exe_run that needs to be called from two places'''
     # Find a KEY=VALUE bit in the line,
     # parse it out and put it in the dictionary
@@ -564,15 +554,15 @@ def capture_env_var(line, env, printer, prompt):
     if len(pair) == 2:
         env[pair[0]] = pair[1].rstrip()
     else:
-        printer.string("{}WARNING: not an environment variable: \"{}\"".
-                       format(prompt, line))
+        logger.warning(f'WARNING: not an environment variable: "{line}"')
 
 # Note: if returned_env is given then "set"
 # will be executed after the exe and the environment
 # variables will be returned in it.  The down-side
 # of this is that the return value of the exe is,
 # of course, lost.
-def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
+def exe_run(call_list, guard_time_seconds=None,
+            logger: Logger = DEFAULT_LOGGER,
             shell_cmd=False, set_env=None, returned_env=None,
             bash_cmd=False, keep_going_flag=None):
     '''Call an executable, printing out what it does'''
@@ -582,11 +572,9 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
     kill_time = None
     read_time = start_time
 
-    if printer and prompt:
-        # Print what we're gonna do
-        printer.string("{}in directory {} calling{}".         \
-                        format(prompt, os.getcwd(), " ".join(call_list)))
-
+    # Print what we're gonna do
+    logger.info("in directory {} calling{}".         \
+                format(os.getcwd(), " ".join(call_list)))
 
     if returned_env is not None:
         # The caller wants the environment after the
@@ -629,9 +617,8 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
         process = subprocess.Popen(subprocess_osify(call_list, shell=shell_cmd),
                                    **popen_keywords)
 
-        if printer:
-            printer.string("{}{}, pid {} started with guard time {} second(s)". \
-                           format(prompt, call_list[0], process.pid,
+        logger.info("{}, pid {} started with guard time {} second(s)". \
+                           format(call_list[0], process.pid,
                                   guard_time_seconds))
         # This is over complex but, unfortunately, necessary.
         # At least one thing that we try to run, nrfjprog, can
@@ -649,15 +636,13 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
                                        args=(process, read_queue))
         read_thread.start()
         while process.poll() is None:
-            if keep_going_flag is None or keep_going(keep_going_flag, printer, prompt):
+            if keep_going_flag is None or keep_going(keep_going_flag, logger=logger):
                 if guard_time_seconds and (kill_time is None) and   \
                    ((time() - start_time > guard_time_seconds) or
                     (time() - read_time > guard_time_seconds)):
                     kill_time = time()
-                    if printer:
-                        printer.string("{}guard time of {} second(s)." \
-                                       " expired, stopping {}...".
-                                       format(prompt, guard_time_seconds,
+                    logger.warning("guard time of {} second(s) expired, stopping {}...".
+                                       format(guard_time_seconds,
                                               call_list[0]))
                     exe_terminate(process.pid)
             else:
@@ -667,12 +652,12 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
             while line is not None:
                 line = line.rstrip()
                 if flibbling:
-                    capture_env_var(line, returned_env, printer, prompt)
+                    capture_env_var(line, returned_env, logger=logger)
                 else:
                     if returned_env is not None and "flibble" in line:
                         flibbling = True
                     else:
-                        printer.string("{}{}".format(prompt, line))
+                        logger.info(line)
                 line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
                 read_time = time()
             sleep(0.1)
@@ -687,12 +672,12 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
         while line is not None:
             line = line.rstrip()
             if flibbling:
-                capture_env_var(line, returned_env, printer, prompt)
+                capture_env_var(line, returned_env, logger=logger)
             else:
                 if returned_env is not None and "flibble" in line:
                     flibbling = True
                 else:
-                    printer.string("{}{}".format(prompt, line))
+                    logger.info(line)
             line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
 
         # There may still be stuff in the buffer after
@@ -702,24 +687,22 @@ def exe_run(call_list, guard_time_seconds=None, printer=None, prompt=None,
         while line:
             line = line.rstrip()
             if flibbling:
-                capture_env_var(line, returned_env, printer, prompt)
+                capture_env_var(line, returned_env, logger=logger)
             else:
                 if returned_env is not None and "flibble" in line:
                     flibbling = True
                 else:
-                    printer.string("{}{}".format(prompt, line))
+                    logger.info(line)
             line = process.stdout.readline().decode().encode("ascii", errors="replace").decode()
 
         if (process.poll() == 0) and kill_time is None:
             success = True
-        if printer:
-            printer.string("{}{}, pid {} ended with return value {}.".    \
-                           format(prompt, call_list[0],
+        logger.info("{}, pid {} ended with return value {}.".    \
+                           format(call_list[0],
                                   process.pid, process.poll()))
     except ValueError as ex:
-        if printer:
-            printer.string("{}failed: {} while trying to execute {}.". \
-                           format(prompt, type(ex).__name__, str(ex)))
+        logger.error("failed: {} while trying to execute {}.". \
+                           format(type(ex).__name__, str(ex)))
     except KeyboardInterrupt as ex:
         process.kill()
         raise KeyboardInterrupt from ex
@@ -748,23 +731,21 @@ def set_process_prio_normal():
 
 class ExeRun():
     '''Run an executable as a "with:"'''
-    def __init__(self, call_list, printer=None, prompt=None, shell_cmd=False, with_stdin=False):
+    def __init__(self, call_list, logger: Logger = DEFAULT_LOGGER,
+                 shell_cmd=False, with_stdin=False):
         self._call_list = call_list
-        self._printer = printer
-        self._prompt = prompt
+        self._logger = logger
         self._shell_cmd = shell_cmd
         self._with_stdin=with_stdin
         self._process = None
     def __enter__(self):
-        if self._printer:
-            text = ""
-            for idx, item in enumerate(self._call_list):
-                if idx == 0:
-                    text = item
-                else:
-                    text += " {}".format(item)
-            self._printer.string("{}starting {}...".format(self._prompt,
-                                                           text))
+        text = ""
+        for idx, item in enumerate(self._call_list):
+            if idx == 0:
+                text = item
+            else:
+                text += " {}".format(item)
+        self._logger.info(f'starting "{text}"...')
         try:
             # Start exe
             popen_keywords = {
@@ -781,15 +762,11 @@ class ExeRun():
                                                               shell=self._shell_cmd),
                                              **popen_keywords)
 
-            if self._printer:
-                self._printer.string("{}{} pid {} started".format(self._prompt,
-                                                                  self._call_list[0],
-                                                                  self._process.pid))
+            self._logger.info("{} pid {} started".format(self._call_list[0],
+                                                         self._process.pid))
         except (OSError, subprocess.CalledProcessError, ValueError) as ex:
-            if self._printer:
-                self._printer.string("{}failed: {} to start {}.". \
-                                     format(self._prompt,
-                                            type(ex).__name__, str(ex)))
+            self._logger.error("failed: {} to start {}.". \
+                                format(type(ex).__name__, str(ex)))
         except KeyboardInterrupt as ex:
             self._process.kill()
             raise KeyboardInterrupt from ex
@@ -799,10 +776,7 @@ class ExeRun():
         del value
         del traceback
         # Stop exe
-        if self._printer:
-            self._printer.string("{}stopping {}...". \
-                                 format(self._prompt,
-                                        self._call_list[0]))
+        self._logger.info(f'stopping "{self._call_list[0]}"...')
         return_value = self._process.poll()
         if not return_value:
             retry = 5
@@ -821,20 +795,14 @@ class ExeRun():
                 self._process.terminate()
                 while self._process.poll() is None:
                     sleep(0.1)
-                if self._printer:
-                    self._printer.string("{}{} pid {} terminated".format(self._prompt,
-                                                                         self._call_list[0],
-                                                                         self._process.pid))
+                self._logger.info("{} pid {} terminated".format(self._call_list[0],
+                                                                self._process.pid))
             else:
-                if self._printer:
-                    self._printer.string("{}{} pid {} CTRL-C'd".format(self._prompt,
-                                                                       self._call_list[0],
-                                                                       self._process.pid))
+                self._logger.info("{} pid {} CTRL-C'd".format(self._call_list[0],
+                                                              self._process.pid))
         else:
-            if self._printer:
-                self._printer.string("{}{} pid {} already ended".format(self._prompt,
-                                                                        self._call_list[0],
-                                                                        self._process.pid))
+            self._logger.info("{} pid {} already ended".format(self._call_list[0],
+                                                               self._process.pid))
 
 # Simple SWO decoder: only handles single bytes of application
 # data at a time, i.e. what ITM_SendChar() sends.
@@ -1184,7 +1152,7 @@ def reset_nrf_target(connection, printer, prompt):
     # Call it
     return exe_run(call_list, 60, printer, prompt)
 
-def usb_cutter_reset(usb_cutter_id_strs, printer, prompt):
+def usb_cutter_reset(usb_cutter_id_strs, logger: Logger=DEFAULT_LOGGER):
     '''Cut and then un-cut USB cables using Cleware USB cutters'''
 
     # First switch the USB cutters off
@@ -1200,19 +1168,18 @@ def usb_cutter_reset(usb_cutter_id_strs, printer, prompt):
             call_list.append(action)
 
             # Set shell to keep Jenkins happy
-            exe_run(call_list, 0, printer, prompt, shell_cmd=True)
+            exe_run(call_list, 0, logger=logger, shell_cmd=True)
 
         # Wait 5ish seconds
-        if printer:
-            printer.string("{}waiting {} second(s)...".         \
-                           format(prompt, HW_RESET_DURATION_SECONDS))
+        logger.info("waiting {} second(s)...".         \
+                        format(HW_RESET_DURATION_SECONDS))
         sleep(HW_RESET_DURATION_SECONDS)
 
         # "0" to switch the USB cutters on again
         action = "0"
         count += 1
 
-def kmtronic_reset(ip_address, hex_bitmap, printer, prompt):
+def kmtronic_reset(ip_address, hex_bitmap, logger: Logger=DEFAULT_LOGGER):
     '''Cut and then un-cut power using a KMTronic box'''
 
     # KMTronic is a web relay box which will be controlling
@@ -1228,26 +1195,19 @@ def kmtronic_reset(ip_address, hex_bitmap, printer, prompt):
 
     try:
         # First switch the given bit positions off
-        if printer:
-            printer.string("{}sending {}".         \
-                           format(prompt, kmtronic_off))
+        logger.info(f"sending {kmtronic_off}")
         response = requests.get(kmtronic_off)
         # Wait 5ish seconds
-        if printer:
-            printer.string("{}...received response {}, waiting {} second(s)...". \
-                           format(prompt, response.status_code, HW_RESET_DURATION_SECONDS))
+
+        logger.info("...received response {}, waiting {} second(s)...". \
+                        format(response.status_code, HW_RESET_DURATION_SECONDS))
         sleep(HW_RESET_DURATION_SECONDS)
         # Switch the given bit positions on
-        if printer:
-            printer.string("{}sending {}".format(prompt, kmtronic_on))
+        logger.info(f"sending {kmtronic_on}")
         response = requests.get(kmtronic_on)
-        if printer:
-            printer.string("{}...received response {}.". \
-                           format(prompt, response.status_code))
+        logger.info(f"...received response {response.status_code}.")
     except requests.ConnectionError:
-        if printer:
-            printer.string("{}unable to connect to KMTronic box at {}.". \
-                           format(prompt, ip_address))
+        logger.error(f"unable to connect to KMTronic box at {ip_address}.")
 
 # Look for a single line anywhere in message
 # beginning with "test: ".  This must be followed by

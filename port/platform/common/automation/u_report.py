@@ -4,7 +4,9 @@
 from time import gmtime, strftime, sleep
 import threading                  # For ReportThread
 from queue import Empty           # For ReportThread
+import logging
 import u_utils
+from u_logging import ULog
 
 # Prefix to put at the start of all prints
 PROMPT = "u_report"
@@ -17,40 +19,54 @@ EVENT_TYPE_BUILD_DOWNLOAD = "build/download"
 EVENT_TYPE_TEST = "test"
 EVENT_TYPE_INFRASTRUCTURE = "infrastructure"
 
+class Event:
+    def __init__(self, string, level=logging.INFO):
+        self._string = string
+        self._level = level
+
+    def __str__(self):
+        return self._string
+
+    def __eq__(self, other):
+        return self._string == other
+
+    def get_log_level(self):
+        return self._level
+
 # Events
-EVENT_START = "start"
-EVENT_COMPLETE = "complete"
-EVENT_FAILED = "*** FAILED ***"
-EVENT_PASSED = "PASSED"
-EVENT_NAME = "name"
-EVENT_INFORMATION = "information"
-EVENT_WARNING = "*** WARNING ***"
-EVENT_ERROR = "*** ERROR ***"
+EVENT_START =       Event("start")
+EVENT_COMPLETE =    Event("complete")
+EVENT_FAILED =      Event("*** FAILED ***",  logging.ERROR)
+EVENT_PASSED =      Event("PASSED")
+EVENT_NAME =        Event("name")
+EVENT_INFORMATION = Event("information")
+EVENT_WARNING =     Event("*** WARNING ***", logging.WARNING)
+EVENT_ERROR =       Event("*** ERROR ***",   logging.ERROR)
 
 # Events that are used by tests only
-EVENT_TEST_SUITE_COMPLETED = "suite completed"
+EVENT_TEST_SUITE_COMPLETED = Event("suite completed")
 
 # Internal event types and events
 EVENT_TYPE_INTERNAL = "report"
-EVENT_INTERNAL_OPEN = "open"
-EVENT_INTERNAL_CLOSE = "close"
-EVENT_INTERNAL_EXTRA_INFORMATION = "info"
+EVENT_INTERNAL_OPEN =  Event("open")
+EVENT_INTERNAL_CLOSE = Event("close")
+EVENT_INTERNAL_EXTRA_INFORMATION = Event("info")
 
 def event_as_string(event):
     '''Return a string version of an event'''
     need_comma = False
     if (event["type"] == EVENT_TYPE_INTERNAL) and               \
        (event["event"] == EVENT_INTERNAL_EXTRA_INFORMATION):
-        string = event["event"]
+        string = str(event["event"])
     else:
-        string = event["type"] + " " + event["event"]
+        string = event["type"] + " " + str(event["event"])
     if "supplementary" in event:
         if event["event"] == EVENT_NAME:
             string += " " + event["supplementary"]
         else:
             string += " (" + event["supplementary"] + ")"
     if "extra_information" in event:
-        string += ": " + event["extra_information"]
+        string += ": " + str(event["extra_information"])
     if (event["type"] == EVENT_TYPE_TEST) and             \
        (event["event"] == EVENT_TEST_SUITE_COMPLETED):
         string += ": "
@@ -61,7 +77,7 @@ def event_as_string(event):
             if need_comma:
                 string += ", "
             if event["tests_failed"] > 0:
-                string += "{} *** FAILED ***".format(event["tests_failed"])
+                string += "{} {}".format(event["tests_failed"], EVENT_FAILED)
             else:
                 string += "{} failed".format(event["tests_failed"])
             need_comma = True
@@ -70,6 +86,7 @@ def event_as_string(event):
                 string += ", "
             string += "{} ignored".format(event["tests_ignored"])
 
+    # If colorize is True return an ANSI colored line based on the event
     return string
 
 class ReportThread(threading.Thread):
@@ -130,16 +147,14 @@ class ReportThread(threading.Thread):
 
 class ReportToQueue():
     '''Write a report to a queue, if there is one'''
-    def __init__(self, queue, instance, file_handle, printer):
+    def __init__(self, queue, instance, file_handle, ):
         self._queue = queue
         self._instance = instance
         self._file_handle = file_handle
-        self._printer = printer
-        self._prompt = PROMPT
+        prompt = PROMPT
         if instance:
-            self._prompt += "_" + u_utils.get_instance_text(instance) + ": "
-        else:
-            self._prompt += ": "
+            prompt += "_" + u_utils.get_instance_text(instance)
+        self._logger = ULog.get_logger(prompt)
     def __enter__(self):
         # Send an open event for this instance
         event = {}
@@ -163,10 +178,13 @@ class ReportToQueue():
         event["instance"] = self._instance
         if self._queue:
             self._queue.put(event.copy())
+
         string = event_as_string(event)
-        if self._printer and not (event["type"] == EVENT_TYPE_INTERNAL and
-                                  event["event"] == EVENT_INTERNAL_EXTRA_INFORMATION):
-            self._printer.string("{}{}.".format(self._prompt, string))
+        if (event["type"] != EVENT_TYPE_INTERNAL or
+            event["event"] != EVENT_INTERNAL_EXTRA_INFORMATION):
+            level = event["event"].get_log_level()
+            self._logger.log(level, string)
+
         string = strftime(u_utils.TIME_FORMAT, event["timestamp"]) + " " + string + ".\n"
         if self._file_handle:
             self._file_handle.write(string)

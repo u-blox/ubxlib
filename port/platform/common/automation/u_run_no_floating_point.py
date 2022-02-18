@@ -3,12 +3,17 @@
 '''Check that no float is supported.'''
 
 import os           # For sep(), getcwd()
+from logging import Logger
 import u_report
 import u_utils
 import u_settings
+from u_logging import ULog
 
 # Prefix to put at the start of all prints
-PROMPT = "u_run_no_float_"
+PROMPT = "u_run_no_float"
+
+# The logger
+U_LOG: Logger = None
 
 # Expected bin directory of GCC ARM compiler
 # e.g. "C:/Program Files (x86)/GNU Tools ARM Embedded/9 2019-q4-major/bin/"
@@ -79,17 +84,17 @@ FLOAT_FUNCTIONS = ["__adddf3",
 # do here is configure it as we wish and wrap it
 # in order to shoot the output into the usual
 # streams for automation
-def run(instance, defines, ubxlib_dir, printer, reporter, keep_going_flag=None):
+def run(defines, ubxlib_dir, reporter):
     '''Build to check static sizes'''
     return_value = -1
-    instance_text = u_utils.get_instance_text(instance)
     cflags = ""
 
-    prompt = PROMPT + instance_text + ": "
+    global U_LOG
+    U_LOG = ULog.get_logger(PROMPT)
 
     # Print out what we've been told to do
     text = "running static size check from ubxlib directory \"" + ubxlib_dir + "\""
-    printer.string("{}{}.".format(prompt, text))
+    U_LOG.info(text)
 
     build_dir = os.getcwd() + os.sep + BUILD_SUBDIR
     map_file_path = build_dir + os.sep + MAP_FILE_NAME
@@ -114,14 +119,13 @@ def run(instance, defines, ubxlib_dir, printer, reporter, keep_going_flag=None):
         "no_float_size"
     ]
     # Set shell to keep Jenkins happy
-    if u_utils.exe_run(call_list, 0, printer, prompt, shell_cmd=True,
-                       keep_going_flag=keep_going_flag):
+    if u_utils.exe_run(call_list, 0, logger=U_LOG, shell_cmd=True):
         reporter.event(u_report.EVENT_TYPE_BUILD,
                        u_report.EVENT_COMPLETE)
         reporter.event(u_report.EVENT_TYPE_TEST,
                        u_report.EVENT_START)
         # Having performed the build, open the .map file
-        printer.string("{} opening map file {}...".format(prompt, map_file_path))
+        U_LOG.info(f"opening map file {map_file_path}...")
         if os.path.exists(map_file_path):
             map_file = open(map_file_path, "r")
             if map_file:
@@ -134,10 +138,9 @@ def run(instance, defines, ubxlib_dir, printer, reporter, keep_going_flag=None):
                     if got_xref:
                         for function in FLOAT_FUNCTIONS:
                             if line.startswith(function):
-                                printer.string("{} found {} in map file which" \
-                                               " indicates floating point is"  \
-                                               " in use: {}".format(prompt,      \
-                                                                    function, line))
+                                U_LOG.info("found {} in map file which" \
+                                           " indicates floating point is"  \
+                                           " in use: {}".format(function, line))
                                 got_fp = True
                     else:
                         if line.startswith("Cross Reference Table"):

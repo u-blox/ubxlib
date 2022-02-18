@@ -4,12 +4,17 @@
 
 import os          # For sep
 import subprocess
+from logging import Logger
 import u_report
 import u_utils
 import u_settings
+from u_logging import ULog
 
 # Prefix to put at the start of all prints
-PROMPT = "u_run_lint_"
+PROMPT = "u_run_lint"
+
+# The logger
+U_LOG: Logger = None
 
 # The path to the Lint directory off the ubxlib root
 LINT_PLATFORM_PATH = os.path.join("port","platform","lint")
@@ -135,28 +140,27 @@ TOOLS_LIST = [{"which_string": "flexelint",
                        " e.g. by installing https://sourceforge.net/projects/"\
                        "unxutils or or add it to the path."}]
 
-def check_installation(tools_list, compiler_dirs_list, printer, prompt):
+def check_installation(tools_list, compiler_dirs_list):
     '''Check that everything required has been installed'''
     success = True
 
     # Check for the tools on the path
-    printer.string("{}checking tools...".format(prompt))
+    U_LOG.info("checking tools...")
     for item in tools_list:
         if not u_utils.exe_where(item["which_string"], item["hint"],
-                                 printer, prompt):
+                                 logger=U_LOG):
             success = False
 
     # Check for existence of the given directories
-    printer.string("{}checking directories...".format(prompt))
+    U_LOG.info("checking directories...")
     for item in compiler_dirs_list:
         if not os.path.exists(item):
-            printer.string("{}compiler include directory \"{}\""
-                           " does not exist.".format(prompt, item))
+            U_LOG.error(f'compiler include directory "{item}" does not exist')
             success = False
 
     return success
 
-def create_lint_config(lint_platform_path, defines, printer, prompt, keep_going_flag):
+def create_lint_config(lint_platform_path, defines):
     '''Create the Lint configuration files'''
     call_list = []
 
@@ -178,8 +182,7 @@ def create_lint_config(lint_platform_path, defines, printer, prompt, keep_going_
     call_list.append(lint_platform_path + os.sep + "co-gcc.mak")
 
     # Call it
-    return u_utils.exe_run(call_list, None, printer, prompt, shell_cmd=True,
-                           keep_going_flag=keep_going_flag)
+    return u_utils.exe_run(call_list, None, shell_cmd=True, logger=U_LOG)
 
 def get_file_list(ubxlib_dir, lint_dirs, use_stubs):
     '''Get the list of files to be Linted'''
@@ -218,42 +221,37 @@ def get_file_list(ubxlib_dir, lint_dirs, use_stubs):
 
     return file_list
 
-def run(instance, defines, ubxlib_dir, printer, reporter,
-        keep_going_flag=None, unity_dir=None):
+def run(defines, ubxlib_dir, reporter, unity_dir=None):
     '''Run Lint'''
     return_value = 1
     call_list = []
-    instance_text = u_utils.get_instance_text(instance)
 
-    prompt = PROMPT + instance_text + ": "
+    global U_LOG
+    U_LOG = ULog.get_logger(PROMPT)
 
     # Print out what we've been told to do
     text = "running Lint from ubxlib directory \"" + ubxlib_dir + "\""
     if unity_dir:
         text += ", using Unity from \"" + unity_dir + "\""
-    printer.string("{}{}.".format(prompt, text))
+    U_LOG.info(text)
 
     reporter.event(u_report.EVENT_TYPE_CHECK,
                    u_report.EVENT_START,
                    "Lint")
     # Check that everything we need is installed
-    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-       check_installation(TOOLS_LIST, COMPILER_INCLUDE_DIRS,
-                          printer, prompt):
+    if check_installation(TOOLS_LIST, COMPILER_INCLUDE_DIRS):
+
         # Fetch Unity, if necessary
-        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-            not unity_dir:
+        if not unity_dir:
             if u_utils.fetch_repo(u_utils.UNITY_URL,
                                   u_utils.UNITY_SUBDIR,
-                                  None, printer, prompt,
+                                  None, logger=U_LOG,
                                   submodule_init=False):
                 unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
         if unity_dir:
             # Create the local Lint configuration files
-            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-               create_lint_config(ubxlib_dir + os.sep +
-                                  LINT_PLATFORM_PATH,
-                                  defines, printer, prompt, keep_going_flag):
+            if create_lint_config(ubxlib_dir + os.sep + LINT_PLATFORM_PATH,
+                                  defines):
                 # Determine if "U_CFG_LINT_USE_STUBS" is in the list of
                 # compiler options
                 use_stubs = False
@@ -282,8 +280,8 @@ def run(instance, defines, ubxlib_dir, printer, reporter,
                 tmp = ""
                 for item in call_list:
                     tmp += " " + item
-                printer.string("{}in directory {} calling{}".         \
-                               format(prompt, os.getcwd(), tmp))
+                U_LOG.info("in directory {} calling{}".         \
+                               format(os.getcwd(), tmp))
                 try:
                     text = subprocess.check_output(u_utils.subprocess_osify(call_list),
                                                    stderr=subprocess.STDOUT,
@@ -291,18 +289,17 @@ def run(instance, defines, ubxlib_dir, printer, reporter,
                     reporter.event(u_report.EVENT_TYPE_CHECK,
                                    u_report.EVENT_PASSED)
                     for line in text.splitlines():
-                        printer.string("{}{}".format(prompt, line.decode()))
+                        U_LOG.info(line.decode())
                     return_value = 0
                 except subprocess.CalledProcessError as error:
                     reporter.event(u_report.EVENT_TYPE_CHECK,
                                    u_report.EVENT_FAILED)
-                    printer.string("{}Lint returned error {}:".
-                                   format(prompt, error.returncode))
+                    U_LOG.error(f"Lint returned error {error.returncode}:")
                     for line in error.output.splitlines():
                         line = line.strip().decode()
                         if line:
                             reporter.event_extra_information(line)
-                            printer.string("{}{}".format(prompt, line))
+                            U_LOG.error(line)
             else:
                 reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                u_report.EVENT_FAILED,

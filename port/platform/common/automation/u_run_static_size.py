@@ -6,9 +6,14 @@ import os           # For sep(), getcwd()
 import u_report
 import u_utils
 import u_settings
+from logging import Logger
+from u_logging import ULog
 
 # Prefix to put at the start of all prints
-PROMPT = "u_run_static_size_"
+PROMPT = "u_run_static_size"
+
+# The logger
+U_LOG: Logger = None
 
 # Expected bin directory of GCC ARM compiler
 # e.g. "C:/Program Files (x86)/GNU Tools ARM Embedded/9 2019-q4-major/bin/"
@@ -31,17 +36,17 @@ BUILD_SUBDIR = "build"
 # do here is configure it as we wish and wrap it
 # in order to shoot the output into the usual
 # streams for automation
-def run(instance, defines, ubxlib_dir, printer, reporter, keep_going_flag=None):
+def run(defines, ubxlib_dir, reporter):
     '''Build to check static sizes'''
     return_value = -1
-    instance_text = u_utils.get_instance_text(instance)
     cflags = ""
 
-    prompt = PROMPT + instance_text + ": "
+    global U_LOG
+    U_LOG = ULog.get_logger(PROMPT)
 
     # Print out what we've been told to do
     text = "running static size check from ubxlib directory \"" + ubxlib_dir + "\""
-    printer.string("{}{}.".format(prompt, text))
+    U_LOG.info(text)
 
     build_dir = os.getcwd() + os.sep + BUILD_SUBDIR
 
@@ -67,8 +72,7 @@ def run(instance, defines, ubxlib_dir, printer, reporter, keep_going_flag=None):
     ]
 
     # Set shell to keep Jenkins happy
-    if u_utils.exe_run(call_list, 0, printer, prompt, shell_cmd=True,
-                       keep_going_flag=keep_going_flag):
+    if u_utils.exe_run(call_list, 0, logger=U_LOG, shell_cmd=True):
         return_value = 0
         reporter.event(u_report.EVENT_TYPE_BUILD,
                        u_report.EVENT_COMPLETE)

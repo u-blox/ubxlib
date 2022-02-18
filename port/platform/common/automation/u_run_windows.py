@@ -1,17 +1,21 @@
 #!/usr/bin/env python
 
 '''Build/run ubxlib for Windows and report results.'''
-
 import os                    # For sep(), getcwd(), listdir()
 from time import time
+from logging import Logger
 import u_connection
 import u_monitor
 import u_report
 import u_utils
 import u_settings
+from u_logging import ULog
 
 # Prefix to put at the start of all prints
 PROMPT = "u_run_windows_"
+
+# The logger
+U_LOG: Logger = None
 
 # The directory where the runner build can be found
 RUNNER_DIR = os.path.join("port", "platform", "windows", "mcu", "win32", "runner")
@@ -65,34 +69,34 @@ TOOLS_LIST = [{"which_string": "cl",
                        " or add it to the path.",
                "version_switch": ""}]
 
-def print_env(returned_env, printer, prompt):
+def print_env(returned_env):
     '''Print a dictionary that contains the new environment'''
-    printer.string("{}environment will be:".format(prompt))
+    U_LOG.info("environment will be:")
     if returned_env:
         for key, value in returned_env.items():
-            printer.string("{}{}={}".format(prompt, key, value))
+            U_LOG.info("{}={}".format(key, value))
     else:
-        printer.string("{}EMPTY".format(prompt))
+        U_LOG.info("EMPTY")
 
-def check_installation(tools_list, env, printer, prompt):
+def check_installation(tools_list, env):
     '''Check that everything required has been installed'''
     success = True
 
     # Check for the tools on the path
-    printer.string("{}checking tools...".format(prompt))
+    U_LOG.info("checking tools...")
     for item in tools_list:
         if u_utils.exe_where(item["which_string"], item["hint"],
-                             printer, prompt, set_env=env):
+                             logger=U_LOG, set_env=env):
             if item["version_switch"]:
                 u_utils.exe_version(item["which_string"],
                                     item["version_switch"],
-                                    printer, prompt, set_env=env)
+                                    logger=U_LOG, set_env=env)
         else:
             success = False
 
     return success
 
-def set_up_environment(printer, prompt, reporter, keep_going_flag):
+def set_up_environment(reporter):
     '''Set up the environment ready for building'''
     returned_env = {}
     count = 0
@@ -102,17 +106,16 @@ def set_up_environment(printer, prompt, reporter, keep_going_flag):
     # variables to fail due to machine loading (see comments
     # against EXE_RUN_QUEUE_WAIT_SECONDS in exe_run) so give this
     # up to three chances to succeed
-    while u_utils.keep_going(keep_going_flag, printer, prompt) and \
-          not returned_env and (count < 3):
+    while not returned_env and (count < 3):
         # set shell to True to keep Jenkins happy
         u_utils.exe_run([MSVC_SETUP_BATCH_FILE], MSVC_SETUP_GUARD_TIME_SECONDS,
-                        printer, prompt, shell_cmd=True,
-                        returned_env=returned_env,
-                        keep_going_flag=keep_going_flag)
+                        logger=U_LOG,
+                        shell_cmd=True,
+                        returned_env=returned_env)
         if not returned_env:
-            printer.string("{}warning: retrying {} to"     \
-                           " capture the environment variables...".
-                           format(prompt, " ".join(MSVC_SETUP_BATCH_FILE)))
+            U_LOG.warning("warning: retrying {} to"     \
+                          " capture the environment variables...".
+                           format(" ".join(MSVC_SETUP_BATCH_FILE)))
         count += 1
     if not returned_env:
         reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
@@ -120,8 +123,7 @@ def set_up_environment(printer, prompt, reporter, keep_going_flag):
                        "{} failed".format(" ".join(MSVC_SETUP_BATCH_FILE)))
     return returned_env
 
-def build(clean, unity_dir, defines, env, printer, prompt,
-          reporter, keep_going_flag):
+def build(clean, unity_dir, defines, env, reporter):
     '''Build using MSVC'''
     defines_text = ""
     call_list = []
@@ -130,16 +132,14 @@ def build(clean, unity_dir, defines, env, printer, prompt,
     exe_file_path = None
 
     # Clear the output folder if we're not just running
-    if not clean or u_utils.deltree(output_dir,
-                                    printer, prompt):
+    if not clean or u_utils.deltree(output_dir, logger=U_LOG):
         # Set up the U_FLAGS environment variable
         for idx, define in enumerate(defines):
             if idx == 0:
                 defines_text += "-D" + define
             else:
                 defines_text += " -D" + define
-        printer.string("{}setting environment variable U_FLAGS={}".
-                       format(prompt, defines_text))
+        U_LOG.info(f'setting environment variable U_FLAGS="{defines_text}"')
         env["U_FLAGS"] = defines_text
         # There is one complication with Unity, which is that the
         # CMakeLists.txt file likely works out its path, relative
@@ -162,9 +162,8 @@ def build(clean, unity_dir, defines, env, printer, prompt,
         # Call CMake
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, CMAKE_GUARD_TIME_SECONDS,
-                           printer, prompt, shell_cmd=True,
-                           set_env=env,
-                           keep_going_flag=keep_going_flag):
+                           logger=U_LOG, shell_cmd=True,
+                           set_env=env):
             # Now run MSVC CMake again to do the build
             call_list = []
             call_list += ["cmake"]
@@ -176,9 +175,8 @@ def build(clean, unity_dir, defines, env, printer, prompt,
             # Call Make to do the build
             # Set shell to keep Jenkins happy
             if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
-                               printer, prompt, shell_cmd=True,
-                               set_env=env,
-                               keep_going_flag=keep_going_flag):
+                               logger=U_LOG, shell_cmd=True,
+                               set_env=env):
                 exe_file_path = output_dir + os.sep + BUILD_CONFIGURATION + \
                                 os.sep + BUILD_TARGET + ".exe"
         else:
@@ -192,28 +190,21 @@ def build(clean, unity_dir, defines, env, printer, prompt,
 
     return exe_file_path
 
-def run(instance, mcu, toolchain, connection, connection_lock, platform_lock,
-        misc_locks, clean, defines, printer, reporter, test_report_handle,
-        keep_going_flag=None, unity_dir=None):
+def run(instance, toolchain, connection, connection_lock,
+        clean, defines, reporter, test_report_file_path,
+        unity_dir=None):
     '''Build/run on Windows'''
     return_value = -1
     exe_file = None
     instance_text = u_utils.get_instance_text(instance)
 
-    # Don't need the platform or misc locks
-    del platform_lock
-    del misc_locks
-
-    # MCU is not relevant for Windows but it is included as a parameter
-    # in case, in future, we wanted to use it to convey win64.
-    del mcu
+    global U_LOG
+    U_LOG = ULog.get_logger(PROMPT + instance_text)
 
     # Only one toolchain for Windows (MSVC), the parameter is again
     # retained to allow us to specify a different one should we wish
     # to do so in future
     del toolchain
-
-    prompt = PROMPT + instance_text + ": "
 
     # Print out what we've been told to do
     text = "running Windows"
@@ -228,37 +219,32 @@ def run(instance, mcu, toolchain, connection, connection_lock, platform_lock,
                 text += ", \"" + define + "\""
     if unity_dir:
         text += ", using Unity from \"" + unity_dir + "\""
-    printer.string("{}{}.".format(prompt, text))
+    U_LOG.info(text)
 
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "Windows")
     # Set up the environment
-    returned_env = set_up_environment(printer, prompt, reporter, keep_going_flag)
+    returned_env = set_up_environment(reporter)
     if returned_env:
         # When building we must use the set of environment variables
         # returned above.
-        print_env(returned_env, printer, prompt)
+        print_env(returned_env)
         # Check that everything we need is installed
         # and configured
-        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-            check_installation(TOOLS_LIST, returned_env, printer, prompt):
+        if check_installation(TOOLS_LIST, returned_env):
             # Fetch Unity, if necessary
-            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                not unity_dir:
+            if not unity_dir:
                 if u_utils.fetch_repo(u_utils.UNITY_URL,
-                                        u_utils.UNITY_SUBDIR,
-                                        None, printer, prompt,
-                                        submodule_init=False):
+                                      u_utils.UNITY_SUBDIR,
+                                      None, logger=U_LOG,
+                                      submodule_init=False):
                     unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
             if unity_dir:
                 # Do the build
                 build_start_time = time()
-                exe_file = build(clean, unity_dir, defines,
-                                    returned_env, printer, prompt, reporter,
-                                    keep_going_flag)
-                if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                    exe_file:
+                exe_file = build(clean, unity_dir, defines, returned_env, reporter)
+                if exe_file:
                     # Build succeeded, need to lock some things before we can run it
                     reporter.event(u_report.EVENT_TYPE_BUILD,
                                     u_report.EVENT_PASSED,
@@ -267,19 +253,18 @@ def run(instance, mcu, toolchain, connection, connection_lock, platform_lock,
                     # Lock the connection in order to run
                     with u_connection.Lock(connection, connection_lock,
                                             CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                            printer, prompt,
-                                            keep_going_flag) as locked_connection:
+                                            logger=U_LOG
+                                            ) as locked_connection:
                         if locked_connection:
                             # Start the .exe and monitor what it spits out
-                            with u_utils.ExeRun([exe_file], printer, prompt) as process:
+                            with u_utils.ExeRun([exe_file], logger=U_LOG) as process:
                                 return_value = u_monitor.main(process,
-                                                                u_monitor.CONNECTION_PROCESS,
-                                                                RUN_GUARD_TIME_SECONDS,
-                                                                RUN_INACTIVITY_TIME_SECONDS,
-                                                                None, instance, printer,
-                                                                reporter,
-                                                                test_report_handle,
-                                                                keep_going_flag=keep_going_flag)
+                                                              u_monitor.CONNECTION_PROCESS,
+                                                              RUN_GUARD_TIME_SECONDS,
+                                                              RUN_INACTIVITY_TIME_SECONDS,
+                                                              None, instance,
+                                                              reporter,
+                                                              test_report_file_path)
                                 if return_value == 0:
                                     reporter.event(u_report.EVENT_TYPE_TEST,
                                                     u_report.EVENT_COMPLETE)
