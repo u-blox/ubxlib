@@ -69,11 +69,13 @@
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_private.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
+#include "freertos/timers.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -490,7 +492,7 @@ int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
 
     if (semaphoreHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
-        if (xSemaphoreGiveFromISR((uPortSemaphoreHandle_t) semaphoreHandle,
+        if (xSemaphoreGiveFromISR((SemaphoreHandle_t) semaphoreHandle,
                                   &yield) == pdTRUE) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
@@ -502,6 +504,72 @@ int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
     }
 
     return (int32_t) errorCode;
+}
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: TIMERS
+ * -------------------------------------------------------------- */
+
+// Create a timer.
+int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
+                         const char *pName,
+                         pTimerCallback_t *pCallback,
+                         void *pCallbackParam,
+                         uint32_t intervalMs,
+                         bool periodic)
+{
+    return uPortPrivateTimerCreate(pTimerHandle,
+                                   pName, pCallback,
+                                   pCallbackParam,
+                                   intervalMs,
+                                   periodic);
+}
+
+// Destroy a timer.
+int32_t uPortTimerDelete(const uPortTimerHandle_t timerHandle)
+{
+    return uPortPrivateTimerDelete(timerHandle);
+}
+
+// Start a timer.
+int32_t uPortTimerStart(const uPortTimerHandle_t timerHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+
+    if (xTimerStart((TimerHandle_t) timerHandle,
+                    (TickType_t) portMAX_DELAY) == pdPASS) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errorCode;
+}
+
+// Stop a timer.
+int32_t uPortTimerStop(const uPortTimerHandle_t timerHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+
+    if (xTimerStop((TimerHandle_t) timerHandle,
+                   (TickType_t) portMAX_DELAY) == pdPASS) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errorCode;
+}
+
+// Change a timer interval.
+int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
+                         uint32_t intervalMs)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+
+    if (xTimerChangePeriod((TimerHandle_t) timerHandle,
+                           intervalMs / portTICK_PERIOD_MS,
+                           (TickType_t) portMAX_DELAY) == pdPASS) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errorCode;
 }
 
 // End of file

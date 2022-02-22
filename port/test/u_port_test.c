@@ -348,6 +348,20 @@ static const char gAes128CbcEncrypted[] =
  */
 static size_t gSystemHeapLost = 0;
 
+/** Timer parameter value array; must have the same number of
+ * entries as gTimerHandle.
+ */
+static int32_t gTimerParameterValue[4] = {0};
+
+/** Index into the gTimerParameterValue array.
+ */
+static size_t gTimerParameterIndex = 0;
+
+/** Timer handle array; must have the same number of
+ * entries as gTimerParameterValue.
+ */
+static uPortTimerHandle_t gTimerHandle[4] = {0};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -999,6 +1013,21 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
 }
 
 #endif // (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
+
+// Timer callback
+static void timerCallback(const uPortTimerHandle_t timerHandle, void *pParameter)
+{
+    //lint -e(507) Suppress size incompatibility, we know what we're doing
+    int32_t parameter = (int32_t) pParameter;
+
+    (void) timerHandle;
+
+    // Increment the gTimerParameterValue entry at index parameter
+    if ((parameter >= 0) &&
+        (parameter < (int32_t) (sizeof(gTimerParameterValue) / sizeof(gTimerParameterValue[0])))) {
+        gTimerParameterValue[parameter]++;
+    }
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -2214,6 +2243,136 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
                                   sizeof(gAes128CbcClear) - 1) == 0);
     } else {
         uPortLog("U_PORT_TEST: AES CBC 128 decryption not supported.\n");
+    }
+
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test timers.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portTimers")
+{
+    int32_t heapUsed;
+    int32_t y;
+    int64_t startTime;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    uPortLog("U_PORT_TEST: testing timers...\n");
+
+    // Create the first timer,
+    y = uPortTimerCreate(&gTimerHandle[gTimerParameterIndex],
+                         NULL, timerCallback, (void *) gTimerParameterIndex,
+                         1000, false);
+    U_PORT_TEST_ASSERT((y == 0) || (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
+    if (y == 0) {
+        // Delete it again, without having started it
+        U_PORT_TEST_ASSERT(uPortTimerDelete(gTimerHandle[gTimerParameterIndex]) == 0);
+        // It should not have expired
+        U_PORT_TEST_ASSERT(gTimerParameterValue[gTimerParameterIndex] == 0);
+
+        // Now create a second one shot timer with a name this time
+        gTimerParameterIndex++;
+        U_PORT_TEST_ASSERT(uPortTimerCreate(&gTimerHandle[gTimerParameterIndex],
+                                            "timer 2", timerCallback,
+                                            (void *) gTimerParameterIndex,
+                                            1000, false) == 0);
+
+        // Start it
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[gTimerParameterIndex]) == 0);
+        // Stop it
+        U_PORT_TEST_ASSERT(uPortTimerStop(gTimerHandle[gTimerParameterIndex]) == 0);
+        // It should not have expired
+        U_PORT_TEST_ASSERT(gTimerParameterValue[gTimerParameterIndex] == 0);
+
+        // Create a third one-shot timer that we will actually let expire
+        // this time
+        gTimerParameterIndex++;
+        U_PORT_TEST_ASSERT(uPortTimerCreate(&gTimerHandle[gTimerParameterIndex],
+                                            "timer 3", timerCallback,
+                                            (void *) gTimerParameterIndex,
+                                            1000, false) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[gTimerParameterIndex]) == 0);
+
+        // Create a fourth timer, this time periodic and of a shorter duration
+        // than the above
+        gTimerParameterIndex++;
+        U_PORT_TEST_ASSERT(uPortTimerCreate(&gTimerHandle[gTimerParameterIndex],
+                                            "timer 4", timerCallback,
+                                            (void *) gTimerParameterIndex,
+                                            300, true) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[gTimerParameterIndex]) == 0);
+
+        // The periodic timer should expire three times in the time that the
+        // one-shot timer expires
+        // Note: this test deliberately allows for slop in the actual timer
+        // values however their relative values should still be correct
+        startTime = uPortGetTickTimeMs();
+        while ((gTimerParameterValue[2] == 0) &&
+               (startTime + 10000 > uPortGetTickTimeMs())) {
+            uPortTaskBlock(100);
+        }
+        U_PORT_TEST_ASSERT((gTimerParameterValue[2] == 1) && (gTimerParameterValue[3] == 3));
+
+        // Stop the periodic timer, make the expiry longer
+        // than the one-shot was, and restart both of them
+        U_PORT_TEST_ASSERT(uPortTimerStop(gTimerHandle[3]) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerChange(gTimerHandle[3], 1200) == 0);
+        // Deliberately start both timers twice to ensure
+        // that a started timer can be started again successfully
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[2]) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[2]) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[3]) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[3]) == 0);
+        // Wait for the periodic timer to expire one more time
+        startTime = uPortGetTickTimeMs();
+        while ((gTimerParameterValue[3] < 4) &&
+               (startTime + 5000 > uPortGetTickTimeMs())) {
+            uPortTaskBlock(100);
+        }
+        U_PORT_TEST_ASSERT(gTimerParameterValue[3] == 4);
+
+        // Stop the one-shot timer, which should have expired now
+        U_PORT_TEST_ASSERT(uPortTimerStop(gTimerHandle[2]) == 0);
+        // Delete the periodic timer without stopping it
+        U_PORT_TEST_ASSERT(uPortTimerDelete(gTimerHandle[3]) == 0);
+        // Delete the one-shot timer
+        U_PORT_TEST_ASSERT(uPortTimerDelete(gTimerHandle[2]) == 0);
+        // Delete the second timer we created, which is still hanging around
+        U_PORT_TEST_ASSERT(uPortTimerDelete(gTimerHandle[1]) == 0);
+
+        // Wait for the deletions to occur and allow some
+        // time also to test if any timers expire more than
+        // they should
+        uPortTaskBlock(1000);
+
+        // Do a final check of all of the gTimerParameterValues:
+        uPortLog("U_PORT_TEST: at the end of the timer test:\n");
+        for (size_t x = 0; x < sizeof(gTimerParameterValue) / sizeof(gTimerParameterValue[0]); x++) {
+            uPortLog("U_PORT_TEST: timer %d expired %d time(s).\n", x + 1,
+                     gTimerParameterValue[x]);
+        }
+        // The first two never expired, the one-shot timer should
+        // have expired twice and the periodic timer four times
+        U_PORT_TEST_ASSERT(gTimerParameterValue[0] == 0);
+        U_PORT_TEST_ASSERT(gTimerParameterValue[1] == 0);
+        U_PORT_TEST_ASSERT(gTimerParameterValue[2] == 2);
+        U_PORT_TEST_ASSERT(gTimerParameterValue[3] == 4);
+    } else {
+        uPortLog("U_PORT_TEST: timers are not supported.\n");
     }
 
     uPortDeinit();

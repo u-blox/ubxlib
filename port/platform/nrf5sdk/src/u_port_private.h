@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,6 +73,18 @@ extern "C" {
 #define U_PORT_TICK_TIMER_LIMIT_DIFF (U_PORT_TICK_TIMER_LIMIT_NORMAL_MODE_BITS - \
                                       U_PORT_TICK_TIMER_LIMIT_UART_MODE_BITS)
 
+#ifndef U_PORT_PRIVATE_TIMER_NAME_MAX_LEN_BYTES
+/** The maximum length of the name of a timer: the name is used for
+ * diagnostic purposes only so it is not allowed to be very long
+ * to save on RAM.
+  */
+# define U_PORT_PRIVATE_TIMER_NAME_MAX_LEN_BYTES 8
+#endif
+
+/** Convert a millisecond value to an RTOS tick.
+ */
+#define MS_TO_TICKS(delayMs)  (( configTICK_RATE_HZ * delayMs + 500 ) / 1000)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -136,6 +148,36 @@ void uPortPrivateTickTimeUartMode();
  * or uPortPrivateGetTickTimeMs().
  */
 void uPortPrivateTickTimeNormalMode();
+
+/** Add a timer entry to the list.
+ *
+ * @param pHandle         a place to put the timer handle.
+ * @param pName           a name for the timer, used for debug
+ *                        purposes only; should be a null-terminated
+ *                        string, may be NULL.  The value will be
+ *                        copied.
+ * @param pCallback       the timer callback routine.
+ * @param pCallbackParam  a parameter that will be provided to the
+ *                        timer callback routine as its second parameter
+ *                        when it is called; may be NULL.
+ * @param intervalMs      the time interval in milliseconds.
+ * @param periodic        if true the timer will be restarted after it
+ *                        has expired, else the timer will be one-shot.
+ * @return                zero on success else negative error code.
+ */
+int32_t uPortPrivateTimerCreate(uPortTimerHandle_t *pHandle,
+                                const char *pName,
+                                pTimerCallback_t *pCallback,
+                                void *pCallbackParam,
+                                uint32_t intervalMs,
+                                bool periodic);
+
+/** Remove a timer entry from the list.
+ *
+ * @param handle  the handle of the timer to be removed.
+ * @return        zero on success else negative error code.
+ */
+int32_t uPortPrivateTimerDelete(const uPortTimerHandle_t handle);
 
 #ifdef __cplusplus
 }

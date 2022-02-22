@@ -15,7 +15,7 @@
  */
 
 /** @file
- * @brief Stuff private to the STM32F4 porting layer.
+ * @brief Stuff private to the ESP32 porting layer.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -28,64 +28,18 @@
 #include "string.h"    // strncpy()
 
 #include "u_cfg_os_platform_specific.h"
-#include "u_cfg_hw_platform_specific.h" // For U_CFG_HW_SWO_CLOCK_HZ
 #include "u_error_common.h"
-#include "u_assert.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_private.h"
 #include "u_port_event_queue.h"
 
-#include "FreeRTOS.h"
-#include "timers.h"
-
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_ll_bus.h"
-
-#include "u_port_private.h"  // Down here 'cos it needs GPIO_TypeDef
+#include "freertos/FreeRTOS.h"
+#include "freertos/timers.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-/** Address of The ITM Enable register.
- */
-#define ITM_ENA   (*(volatile uint32_t *) 0xE0000E00)
-
-/** Address of the ITM Trace Privilege register.
- */
-#define ITM_TPR   (*(volatile uint32_t *) 0xE0000E40)
-
-/** Address of the ITM Trace Control register.
- */
-#define ITM_TCR   (*(volatile uint32_t *) 0xE0000E80)
-
-/** Address of the ITM Lock Status register.
- */
-#define ITM_LSR   (*(volatile uint32_t *) 0xE0000FB0)
-
-/** Address of the Debug register.
- */
-#define DHCSR     (*(volatile uint32_t *) 0xE000EDF0)
-
-/** Address of another Debug register.
- */
-#define DEMCR     (*(volatile uint32_t *) 0xE000EDFC)
-
-/** Address of the Trace Unit Async Clock prescaler register.
- */
-#define TPIU_ACPR (*(volatile uint32_t *) 0xE0040010)
-
-/** Address of the Trace Unit Selected Pin Protocol register.
- */
-#define TPIU_SPPR (*(volatile uint32_t *) 0xE00400F0)
-
-/** Address of the DWT Control register.
- */
-#define DWT_CTRL  (*(volatile uint32_t *) 0xE0001000)
-
-/** Address of the Formattr And Flush Control register.
- */
-#define FFCR      (*(volatile uint32_t *) 0xE0040304)
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -105,38 +59,6 @@ typedef struct uPortPrivateTimer_t {
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// Counter to keep track of RTOS ticks: NOT static
-// so that the stm32f4xx_it.c can update it.
-int32_t gTickTimerRtosCount;
-
-// Get the GPIOx address for a given GPIO port.
-static GPIO_TypeDef *const gpGpioReg[] = {GPIOA,
-                                          GPIOB,
-                                          GPIOC,
-                                          GPIOD,
-                                          GPIOE,
-                                          GPIOF,
-                                          GPIOG,
-                                          GPIOH,
-                                          GPIOI,
-                                          GPIOJ,
-                                          GPIOK
-                                         };
-
-// Get the LL driver peripheral number for a given GPIO port.
-static const int32_t gLlApbGrpPeriphGpioPort[] = {LL_AHB1_GRP1_PERIPH_GPIOA,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOB,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOC,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOD,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOE,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOF,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOG,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOH,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOI,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOJ,
-                                                  LL_AHB1_GRP1_PERIPH_GPIOK
-                                                 };
-
 /** Root of the linked list of timers.
  */
 static uPortPrivateTimer_t *gpTimerList = NULL;
@@ -153,44 +75,6 @@ static int32_t gEventQueueHandle = -1;
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-
-/** This code from https://wiki.segger.com/J-Link_SWO_Viewer.
- * It enables SWO so that logging continues if the target resets
- * without the external debug tool being aware.
- * This can be switched off by overriding U_CFG_HW_SWO_CLOCK_HZ to
- * -1, in which case the external debug tool will set it up instead.
- */
-static void enableSwo()
-{
-#if U_CFG_HW_SWO_CLOCK_HZ >= 0
-
-    uint32_t stimulusRegs;
-
-    // Enable access to SWO registers
-    DEMCR |= (1 << 24);
-    ITM_LSR = 0xC5ACCE55;
-
-    // Initially disable ITM and stimulus port
-    // To make sure that nothing is transferred via SWO
-    // when changing the SWO prescaler etc.
-    stimulusRegs = ITM_ENA;
-    stimulusRegs &= ~(1 << 0); // Disable stimulus port 0
-    ITM_ENA = stimulusRegs;
-    ITM_TCR = 0; // Disable ITM
-
-    // Initialize SWO (prescaler, etc.)
-    TPIU_SPPR = 0x00000002; // Select NRZ mode
-    TPIU_ACPR = (SystemCoreClock / U_CFG_HW_SWO_CLOCK_HZ) - 1;
-    ITM_TPR = 0x00000000;
-    DWT_CTRL = 0x400003FE;
-    FFCR = 0x00000100;
-
-    // Enable ITM and stimulus port
-    ITM_TCR = 0x1000D; // Enable ITM
-    ITM_ENA = stimulusRegs | (1 << 0); // Enable stimulus port 0
-
-#endif
-}
 
 // Find a timer entry in the list.
 // gMutex should be locked before this is called.
@@ -277,29 +161,25 @@ static void timerCallback(TimerHandle_t handle)
  * PUBLIC FUNCTIONS SPECIFIC TO THIS PORT
  * -------------------------------------------------------------- */
 
-// Initalise the private stuff.
+// Initialise the private stuff.
 int32_t uPortPrivateInit()
 {
     int32_t errorCodeOrEventQueueHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
 
     if (gMutex == NULL) {
         errorCodeOrEventQueueHandle = uPortMutexCreate(&gMutex);
-        if (errorCodeOrEventQueueHandle == 0) {
-            if ((errorCodeOrEventQueueHandle == 0) && (gEventQueueHandle < 0)) {
-                // We need an event queue to offload the callback execution
-                // from the FreeRTOS timer task
-                errorCodeOrEventQueueHandle = uPortEventQueueOpen(timerEventHandler, "timerEvent",
-                                                                  sizeof(TimerHandle_t),
-                                                                  U_CFG_OS_TIMER_EVENT_TASK_STACK_SIZE_BYTES,
-                                                                  U_CFG_OS_TIMER_EVENT_TASK_PRIORITY,
-                                                                  U_CFG_OS_TIMER_EVENT_QUEUE_SIZE);
-                if (errorCodeOrEventQueueHandle >= 0) {
-                    gEventQueueHandle = errorCodeOrEventQueueHandle;
-                    errorCodeOrEventQueueHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
-                }
+        if ((errorCodeOrEventQueueHandle == 0) && (gEventQueueHandle < 0)) {
+            // We need an event queue to offload the callback execution
+            // from the FreeRTOS timer task
+            errorCodeOrEventQueueHandle = uPortEventQueueOpen(timerEventHandler, "timerEvent",
+                                                              sizeof(TimerHandle_t),
+                                                              U_CFG_OS_TIMER_EVENT_TASK_STACK_SIZE_BYTES,
+                                                              U_CFG_OS_TIMER_EVENT_TASK_PRIORITY,
+                                                              U_CFG_OS_TIMER_EVENT_QUEUE_SIZE);
+            if (errorCodeOrEventQueueHandle >= 0) {
+                gEventQueueHandle = errorCodeOrEventQueueHandle;
+                errorCodeOrEventQueueHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
-            gTickTimerRtosCount = 0;
-            enableSwo();
         }
     }
 
@@ -316,7 +196,7 @@ void uPortPrivateDeinit()
         // Tidy away the timers
         while (gpTimerList != NULL) {
             xTimerStop((TimerHandle_t) gpTimerList->handle,
-                       (portTickType) portMAX_DELAY);
+                       (TickType_t) portMAX_DELAY);
             timerRemove(gpTimerList->handle);
         }
 
@@ -367,7 +247,7 @@ int32_t uPortPrivateTimerCreate(uPortTimerHandle_t *pHandle,
                 pTimer->pCallback = pCallback;
                 pTimer->pCallbackParam = pCallbackParam;
                 pTimer->handle = (uPortTimerHandle_t) xTimerCreate(_pName,
-                                                                   MS_TO_TICKS(intervalMs),
+                                                                   intervalMs / portTICK_PERIOD_MS,
                                                                    periodic ? pdTRUE : pdFALSE,
                                                                    NULL, timerCallback);
                 if (pTimer->handle != NULL) {
@@ -399,7 +279,7 @@ int32_t uPortPrivateTimerDelete(uPortTimerHandle_t handle)
         // Delete the timer in the RTOS, outside the mutex as it can block
         errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
         if (xTimerDelete((TimerHandle_t) handle,
-                         (portTickType) portMAX_DELAY) == pdPASS) {
+                         (TickType_t) portMAX_DELAY) == pdPASS) {
 
             U_PORT_MUTEX_LOCK(gMutex);
 
@@ -411,42 +291,6 @@ int32_t uPortPrivateTimerDelete(uPortTimerHandle_t handle)
     }
 
     return errorCode;
-}
-
-/* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS SPECIFIC TO THIS PORT: GET TIME TICK
- * -------------------------------------------------------------- */
-
-// Get the current tick converted to a time in milliseconds.
-int64_t uPortPrivateGetTickTimeMs()
-{
-    return gTickTimerRtosCount;
-}
-
-/* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS SPECIFIC TO THIS PORT: MISC
- * -------------------------------------------------------------- */
-
-// Return the base address for a given GPIO pin.
-GPIO_TypeDef *const pUPortPrivateGpioGetReg(int32_t pin)
-{
-    int32_t port = U_PORT_STM32F4_GPIO_PORT(pin);
-
-    U_ASSERT(port >= 0);
-    U_ASSERT(port < sizeof(gpGpioReg) / sizeof(gpGpioReg[0]));
-
-    return gpGpioReg[port];
-}
-
-// Enable the clock to the register of the given GPIO pin.
-void uPortPrivateGpioEnableClock(int32_t pin)
-{
-    int32_t port = U_PORT_STM32F4_GPIO_PORT(pin);
-
-    U_ASSERT(port >= 0);
-    U_ASSERT(port < sizeof(gLlApbGrpPeriphGpioPort) /
-             sizeof(gLlApbGrpPeriphGpioPort[0]));
-    LL_AHB1_GRP1_EnableClock(gLlApbGrpPeriphGpioPort[port]);
 }
 
 // End of file

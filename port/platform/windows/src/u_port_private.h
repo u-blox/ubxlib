@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -118,6 +118,56 @@ int32_t uPortPrivateQueueGetFree(int32_t handle);
  * @return        zero on success else negative error code.
  */
 int32_t uPortPrivateQueueRemove(int32_t handle);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: TIMERS
+ * -------------------------------------------------------------- */
+
+/** Add a timer entry to the list.
+ *
+ * @param pHandle         a place to put the timer handle.
+ * @param pName           a name for the timer, used for debug
+ *                        purposes only; should be a null-terminated
+ *                        string, may be NULL.  The value will be
+ *                        copied.
+ * @param pCallback       the timer callback routine.
+ * @param pCallbackParam  a parameter that will be provided to the
+ *                        timer callback routine as its second parameter
+ *                        when it is called; may be NULL.
+ * @param intervalMs      the time interval in milliseconds.
+ * @param periodic        if true the timer will be restarted after it
+ *                        has expired, else the timer will be one-shot.
+ * @return                zero on success else negative error code.
+ */
+int32_t uPortPrivateTimerCreate(uPortTimerHandle_t *pHandle,
+                                const char *pName,
+                                pTimerCallback_t *pCallback,
+                                void *pCallbackParam,
+                                uint32_t intervalMs,
+                                bool periodic);
+
+/** Remove a timer entry from the list.
+ *
+ * @param handle  the handle of the timer to be removed.
+ * @return        zero on success else negative error code.
+ */
+int32_t uPortPrivateTimerDelete(const uPortTimerHandle_t handle);
+
+/** Start a timer.
+ *
+ * @param handle  the handle of the timer.
+ * @return        zero on success else negative error code.
+ */
+int32_t uPortPrivateTimerStart(const uPortTimerHandle_t handle);
+
+/** Change a timer interval.
+ *
+ * @param handle       the handle of the timer.
+ * @param intervalMs   the new time interval in milliseconds.
+ * @return             zero on success else negative error code.
+ */
+int32_t uPortPrivateTimerChange(const uPortTimerHandle_t handle,
+                                uint32_t intervalMs);
 
 #ifdef __cplusplus
 }

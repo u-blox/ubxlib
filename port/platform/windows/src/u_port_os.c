@@ -91,6 +91,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "stdio.h"     // snprintf()
+#include "assert.h"
 
 #include "windows.h"
 
@@ -213,7 +214,10 @@ bool uPortTaskIsThis(const uPortTaskHandle_t taskHandle)
 // Block the current task for a time.
 void uPortTaskBlock(int32_t delayMs)
 {
-    Sleep((DWORD) delayMs);
+    // Note: has to be SleepEx(), not Sleep(), so that the
+    // thread is left in an alertable state and can therefore
+    // be woken up by timers.
+    SleepEx((DWORD) delayMs, true);
 }
 
 // Get the minimum free stack for a given task.
@@ -491,6 +495,56 @@ int32_t uPortSemaphoreGive(const uPortSemaphoreHandle_t semaphoreHandle)
 int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
 {
     return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: TIMERS
+ * -------------------------------------------------------------- */
+
+// Create a timer.
+int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
+                         const char *pName,
+                         pTimerCallback_t *pCallback,
+                         void *pCallbackParam,
+                         uint32_t intervalMs,
+                         bool periodic)
+{
+    return uPortPrivateTimerCreate(pTimerHandle,
+                                   pName, pCallback,
+                                   pCallbackParam,
+                                   intervalMs,
+                                   periodic);
+}
+
+// Destroy a timer.
+int32_t uPortTimerDelete(const uPortTimerHandle_t timerHandle)
+{
+    return uPortPrivateTimerDelete(timerHandle);
+}
+
+// Start a timer.
+int32_t uPortTimerStart(const uPortTimerHandle_t timerHandle)
+{
+    return uPortPrivateTimerStart(timerHandle);
+}
+
+// Stop a timer.
+int32_t uPortTimerStop(const uPortTimerHandle_t timerHandle)
+{
+    int32_t errroCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+
+    if (CancelWaitableTimer((HANDLE) timerHandle)) {
+        errroCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errroCode;
+}
+
+// Change a timer interval.
+int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
+                         uint32_t intervalMs)
+{
+    return uPortPrivateTimerChange(timerHandle, intervalMs);
 }
 
 // End of file

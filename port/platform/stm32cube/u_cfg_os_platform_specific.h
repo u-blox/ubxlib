@@ -80,6 +80,38 @@
  */
 #define U_CFG_OS_APP_TASK_PRIORITY (U_CFG_OS_PRIORITY_MIN + 1)
 
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS FOR STM32F4: OS TIMERS
+ * -------------------------------------------------------------- */
+
+#ifndef U_CFG_OS_TIMER_MAX_NUM
+/** The maximum number of timers that can be active at any one time.
+  */
+# define U_CFG_OS_TIMER_MAX_NUM 16
+#endif
+
+#ifndef U_CFG_OS_TIMER_EVENT_TASK_STACK_SIZE_BYTES
+/** The amount of stack to allocate to the task context within which
+ * the timer callback runs.
+ */
+# define U_CFG_OS_TIMER_EVENT_TASK_STACK_SIZE_BYTES (1024 * 2)
+#endif
+
+#ifndef U_CFG_OS_TIMER_EVENT_TASK_PRIORITY
+/** The priority assigned to the timer event task: should be as high
+ * as possible.
+ */
+# define U_CFG_OS_TIMER_EVENT_TASK_PRIORITY U_CFG_OS_PRIORITY_MAX
+#endif
+
+#ifndef U_CFG_OS_TIMER_EVENT_QUEUE_SIZE
+/** The number of things that can be in the timer event queue
+ * at any one time.  If this is not big enough then timer expiries
+ * may be lost.
+ */
+# define U_CFG_OS_TIMER_EVENT_QUEUE_SIZE (U_CFG_OS_TIMER_MAX_NUM * 2)
+#endif
+
 #endif // _U_CFG_OS_PLATFORM_SPECIFIC_H_
 
 // End of file

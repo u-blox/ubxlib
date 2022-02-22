@@ -32,6 +32,7 @@
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_gpio.h"
 
+#include "u_port_os.h"
 #include "u_port_private.h" // Down here 'cos it needs GPIO_TypeDef
 
 /* ----------------------------------------------------------------
