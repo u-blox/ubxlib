@@ -79,7 +79,7 @@ FLOAT_FUNCTIONS = ["__adddf3",
 # do here is configure it as we wish and wrap it
 # in order to shoot the output into the usual
 # streams for automation
-def run(instance, defines, ubxlib_dir, working_dir, printer, reporter, keep_going_flag=None):
+def run(instance, defines, ubxlib_dir, printer, reporter, keep_going_flag=None):
     '''Build to check static sizes'''
     return_value = -1
     instance_text = u_utils.get_instance_text(instance)
@@ -89,95 +89,80 @@ def run(instance, defines, ubxlib_dir, working_dir, printer, reporter, keep_goin
 
     # Print out what we've been told to do
     text = "running static size check from ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
-    else:
-        working_dir = os.getcwd()
     printer.string("{}{}.".format(prompt, text))
 
-    build_dir = working_dir + os.sep + BUILD_SUBDIR
+    build_dir = os.getcwd() + os.sep + BUILD_SUBDIR
     map_file_path = build_dir + os.sep + MAP_FILE_NAME
 
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "NoFloat")
 
-    # Switch to the working directory
-    with u_utils.ChangeDir(working_dir):
-        # Add the #defines to C_FLAGS
-        if defines:
-            for define in defines:
-                cflags +=" -D" + define
-
-        # Assemble the call list
-        # Call size on the result
-        call_list = [
-            "make",
-            "-C", ubxlib_dir + os.sep + MAKEFILE_DIR,
-            "CC=" + GNU_INSTALL_ROOT + os.sep + GNU_COMPILER,
-            "SIZE=" + GNU_INSTALL_ROOT + os.sep + GNU_SIZE,
-            "OUTDIR=" + build_dir,
-            "-j8",
-            "no_float_size"
-        ]
-
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".         \
-                       format(prompt, os.getcwd(), tmp))
-
-        # Set shell to keep Jenkins happy
-        if u_utils.exe_run(call_list, 0, printer, prompt, shell_cmd=True,
-                           keep_going_flag=keep_going_flag):
-            reporter.event(u_report.EVENT_TYPE_BUILD,
-                           u_report.EVENT_COMPLETE)
-            reporter.event(u_report.EVENT_TYPE_TEST,
-                           u_report.EVENT_START)
-            # Having performed the build, open the .map file
-            printer.string("{} opening map file {}...".format(prompt, map_file_path))
-            if os.path.exists(map_file_path):
-                map_file = open(map_file_path, "r")
-                if map_file:
-                    # Parse the cross-reference section to seek
-                    # if any of the functions that indicate the
-                    # floating point has been introduced turn up
-                    got_xref = False
-                    got_fp = False
-                    for line in map_file.read().splitlines():
-                        if got_xref:
-                            for function in FLOAT_FUNCTIONS:
-                                if line.startswith(function):
-                                    printer.string("{} found {} in map file which" \
-                                                   " indicates floating point is"  \
-                                                   " in use: {}".format(prompt,      \
-                                                                        function, line))
-                                    got_fp = True
-                        else:
-                            if line.startswith("Cross Reference Table"):
-                                got_xref = True
-                    if not got_xref:
+    # Add the #defines to C_FLAGS
+    if defines:
+        for define in defines:
+            cflags +=" -D" + define
+    # Assemble the call list
+    # Call size on the result
+    call_list = [
+        "make",
+        "-C", ubxlib_dir + os.sep + MAKEFILE_DIR,
+        "CC=" + GNU_INSTALL_ROOT + os.sep + GNU_COMPILER,
+        "SIZE=" + GNU_INSTALL_ROOT + os.sep + GNU_SIZE,
+        "OUTDIR=" + build_dir,
+        "-j8",
+        "no_float_size"
+    ]
+    # Set shell to keep Jenkins happy
+    if u_utils.exe_run(call_list, 0, printer, prompt, shell_cmd=True,
+                       keep_going_flag=keep_going_flag):
+        reporter.event(u_report.EVENT_TYPE_BUILD,
+                       u_report.EVENT_COMPLETE)
+        reporter.event(u_report.EVENT_TYPE_TEST,
+                       u_report.EVENT_START)
+        # Having performed the build, open the .map file
+        printer.string("{} opening map file {}...".format(prompt, map_file_path))
+        if os.path.exists(map_file_path):
+            map_file = open(map_file_path, "r")
+            if map_file:
+                # Parse the cross-reference section to seek
+                # if any of the functions that indicate the
+                # floating point has been introduced turn up
+                got_xref = False
+                got_fp = False
+                for line in map_file.read().splitlines():
+                    if got_xref:
+                        for function in FLOAT_FUNCTIONS:
+                            if line.startswith(function):
+                                printer.string("{} found {} in map file which" \
+                                               " indicates floating point is"  \
+                                               " in use: {}".format(prompt,      \
+                                                                    function, line))
+                                got_fp = True
+                    else:
+                        if line.startswith("Cross Reference Table"):
+                            got_xref = True
+                if not got_xref:
+                    reporter.event(u_report.EVENT_TYPE_TEST,
+                                   u_report.EVENT_FAILED,
+                                   "map file has no cross-reference section")
+                else:
+                    if got_fp:
                         reporter.event(u_report.EVENT_TYPE_TEST,
                                        u_report.EVENT_FAILED,
-                                       "map file has no cross-reference section")
+                                       "floating point seems to be in use")
                     else:
-                        if got_fp:
-                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                           u_report.EVENT_FAILED,
-                                           "floating point seems to be in use")
-                        else:
-                            return_value = 0
-                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                           u_report.EVENT_COMPLETE)
-                    map_file.close()
-            else:
-                reporter.event(u_report.EVENT_TYPE_TEST,
-                               u_report.EVENT_FAILED,
-                               "unable to open map file")
+                        return_value = 0
+                        reporter.event(u_report.EVENT_TYPE_TEST,
+                                       u_report.EVENT_COMPLETE)
+                map_file.close()
         else:
-            reporter.event(u_report.EVENT_TYPE_BUILD,
+            reporter.event(u_report.EVENT_TYPE_TEST,
                            u_report.EVENT_FAILED,
-                           "check debug log for details")
+                           "unable to open map file")
+    else:
+        reporter.event(u_report.EVENT_TYPE_BUILD,
+                       u_report.EVENT_FAILED,
+                       "check debug log for details")
 
     return return_value

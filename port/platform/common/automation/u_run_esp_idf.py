@@ -150,7 +150,7 @@ def install(esp_idf_url, esp_idf_dir, esp_idf_branch,
 
     return returned_env
 
-def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
+def build(esp_idf_dir, build_dir, defines, env, clean,
           printer, prompt, reporter, keep_going_flag):
     '''Build the code'''
     call_list = []
@@ -195,7 +195,7 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
         call_list.append("python")
         call_list.append(esp_idf_dir + os.sep + "tools" + os.sep + "idf.py")
         call_list.append("-C")
-        call_list.append(ubxlib_dir + os.sep +
+        call_list.append(u_utils.UBXLIB_DIR + os.sep +
                          ESP32_PORT_SUBDIR + os.sep +
                          PROJECT_SUBDIR)
         call_list.append("-B")
@@ -205,13 +205,6 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
         call_list.append("-DSDKCONFIG:STRING={}/sdkconfig".format(build_dir))
         call_list.append("size")
         call_list.append("build")
-
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".            \
-                       format(prompt, os.getcwd(), tmp))
 
         # Do the build,
         # set shell to True to keep Jenkins happy
@@ -226,7 +219,7 @@ def build(esp_idf_dir, ubxlib_dir, build_dir, defines, env, clean,
 
     return success
 
-def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
+def download(esp_idf_dir, build_dir, serial_port, env,
              printer, prompt):
     '''Download a build to the target'''
     call_list = []
@@ -237,19 +230,12 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
     call_list.append("-p")
     call_list.append(serial_port)
     call_list.append("-C")
-    call_list.append(ubxlib_dir + os.sep +
+    call_list.append(u_utils.UBXLIB_DIR + os.sep +
                      ESP32_PORT_SUBDIR + os.sep +
                      PROJECT_SUBDIR)
     call_list.append("-B")
     call_list.append(build_dir)
     call_list.append("flash")
-
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".            \
-                   format(prompt, os.getcwd(), tmp))
 
     # Give ourselves priority here or the download can fail
     u_utils.set_process_prio_high()
@@ -265,8 +251,8 @@ def download(esp_idf_dir, ubxlib_dir, build_dir, serial_port, env,
     return return_code
 
 def run(instance, mcu, toolchain, connection, connection_lock,
-        platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle,
+        platform_lock, misc_locks, clean, defines,
+        printer, reporter, test_report_handle,
         keep_going_flag=None):
     '''Build/run on ESP-IDF'''
     return_value = -1
@@ -297,113 +283,108 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                 text += " \"" + define + "\""
             else:
                 text += ", \"" + define + "\""
-    if ubxlib_dir:
-        text += ", ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     printer.string("{}{}.".format(prompt, text))
 
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "ESP-IDF")
-    printer.string("{}CD to {}...".format(prompt, working_dir))
-    with u_utils.ChangeDir(working_dir):
-        # Fetch ESP-IDF into the right sub directory
-        # and install the tools
-        esp_idf_dir = ESP_IDF_ROOT + os.sep + ESP_IDF_LOCATION["subdir"]
-        system_lock = None
+
+    # Fetch ESP-IDF into the right sub directory
+    # and install the tools
+    esp_idf_dir = ESP_IDF_ROOT + os.sep + ESP_IDF_LOCATION["subdir"]
+    system_lock = None
+    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+        misc_locks and ("system_lock" in misc_locks):
+        system_lock = misc_locks["system_lock"]
+    returned_env = install(ESP_IDF_LOCATION["url"], esp_idf_dir,
+                            ESP_IDF_LOCATION["branch"], system_lock,
+                            keep_going_flag, printer, prompt, reporter)
+    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+        returned_env:
+        # From here on the ESP-IDF tools need to set up
+        # and use the set of environment variables
+        # returned above.
+        print_env(returned_env, printer, prompt)
+        # Now do the build
+        build_dir = os.getcwd() + os.sep + BUILD_SUBDIR
+        build_start_time = time()
         if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-           misc_locks and ("system_lock" in misc_locks):
-            system_lock = misc_locks["system_lock"]
-        returned_env = install(ESP_IDF_LOCATION["url"], esp_idf_dir,
-                               ESP_IDF_LOCATION["branch"], system_lock,
-                               keep_going_flag, printer, prompt, reporter)
-        if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-           returned_env:
-            # From here on the ESP-IDF tools need to set up
-            # and use the set of environment variables
-            # returned above.
-            print_env(returned_env, printer, prompt)
-            # Now do the build
-            build_dir = working_dir + os.sep + BUILD_SUBDIR
-            build_start_time = time()
-            if u_utils.keep_going(keep_going_flag, printer, prompt) and \
-               build(esp_idf_dir, ubxlib_dir, build_dir,
-                     defines, returned_env, clean,
-                     printer, prompt, reporter, keep_going_flag):
-                reporter.event(u_report.EVENT_TYPE_BUILD,
-                               u_report.EVENT_PASSED,
-                               "build took {:.0f} second(s)". \
-                               format(time() - build_start_time))
-                with u_connection.Lock(connection, connection_lock,
-                                       CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                       printer, prompt, keep_going_flag) as locked:
-                    if locked:
-                        # Have seen this fail, only with Python 3 for
-                        # some reason, so give it a few goes
+            build(esp_idf_dir, build_dir,
+                  defines, returned_env, clean,
+                  printer, prompt, reporter, keep_going_flag):
+            reporter.event(u_report.EVENT_TYPE_BUILD,
+                           u_report.EVENT_PASSED,
+                           "build took {:.0f} second(s)". \
+                           format(time() - build_start_time))
+            with u_connection.Lock(connection, connection_lock,
+                                    CONNECTION_LOCK_GUARD_TIME_SECONDS,
+                                    printer, prompt, keep_going_flag) as locked:
+                if locked:
+                    # Have seen this fail, only with Python 3 for
+                    # some reason, so give it a few goes
+                    reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                    u_report.EVENT_START)
+                    retries = 0
+                    downloaded = False
+                    while u_utils.keep_going(keep_going_flag, printer, prompt) and \
+                            not downloaded and (retries < 3):
+                        downloaded = download(esp_idf_dir, build_dir,
+                                              connection["serial_port"], returned_env,
+                                              printer, prompt)
+                        if not downloaded:
+                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                            u_report.EVENT_WARNING,
+                                            "unable to download, will retry...")
+                            retries += 1
+                            sleep(5)
+                    if downloaded:
                         reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                       u_report.EVENT_COMPLETE)
+                        reporter.event(u_report.EVENT_TYPE_TEST,
                                        u_report.EVENT_START)
-                        retries = 0
-                        downloaded = False
-                        while u_utils.keep_going(keep_going_flag, printer, prompt) and \
-                              not downloaded and (retries < 3):
-                            downloaded = download(esp_idf_dir, ubxlib_dir, build_dir,
-                                                  connection["serial_port"], returned_env,
-                                                  printer, prompt)
-                            if not downloaded:
-                                reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_WARNING,
-                                               "unable to download, will retry...")
-                                retries += 1
-                                sleep(5)
-                        if downloaded:
-                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                           u_report.EVENT_COMPLETE)
-                            reporter.event(u_report.EVENT_TYPE_TEST,
-                                           u_report.EVENT_START)
-                            # Open the COM port to get debug output
-                            serial_handle = u_utils.open_serial(connection["serial_port"],
-                                                                115200,
-                                                                printer,
-                                                                prompt,
-                                                                dtr_set_on=monitor_dtr_rts_on,
-                                                                rts_set_on=monitor_dtr_rts_on)
-                            if serial_handle is not None:
-                                # Monitor progress
-                                return_value = u_monitor.main(serial_handle,
-                                                              u_monitor.CONNECTION_SERIAL,
-                                                              RUN_GUARD_TIME_SECONDS,
-                                                              RUN_INACTIVITY_TIME_SECONDS,
-                                                              "\r", instance, printer,
-                                                              reporter, test_report_handle,
-                                                              keep_going_flag=keep_going_flag)
-                                serial_handle.close()
-                            else:
-                                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                               u_report.EVENT_FAILED,
-                                               "unable to open serial port " +      \
-                                               connection["serial_port"])
-                            if return_value == 0:
-                                reporter.event(u_report.EVENT_TYPE_TEST,
-                                               u_report.EVENT_COMPLETE)
-                            else:
-                                reporter.event(u_report.EVENT_TYPE_TEST,
-                                               u_report.EVENT_FAILED)
+                        # Open the COM port to get debug output
+                        serial_handle = u_utils.open_serial(connection["serial_port"],
+                                                            115200,
+                                                            printer,
+                                                            prompt,
+                                                            dtr_set_on=monitor_dtr_rts_on,
+                                                            rts_set_on=monitor_dtr_rts_on)
+                        if serial_handle is not None:
+                            # Monitor progress
+                            return_value = u_monitor.main(serial_handle,
+                                                            u_monitor.CONNECTION_SERIAL,
+                                                            RUN_GUARD_TIME_SECONDS,
+                                                            RUN_INACTIVITY_TIME_SECONDS,
+                                                            "\r", instance, printer,
+                                                            reporter, test_report_handle,
+                                                            keep_going_flag=keep_going_flag)
+                            serial_handle.close()
                         else:
-                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                           u_report.EVENT_FAILED,
-                                           "unable to download to the target")
+                            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                            u_report.EVENT_FAILED,
+                                            "unable to open serial port " +      \
+                                            connection["serial_port"])
+                        if return_value == 0:
+                            reporter.event(u_report.EVENT_TYPE_TEST,
+                                            u_report.EVENT_COMPLETE)
+                        else:
+                            reporter.event(u_report.EVENT_TYPE_TEST,
+                                            u_report.EVENT_FAILED)
                     else:
-                        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                       u_report.EVENT_FAILED,
-                                       "unable to lock a connection")
-            else:
-                reporter.event(u_report.EVENT_TYPE_BUILD,
-                               u_report.EVENT_FAILED,
-                               "unable to build, check debug log for details")
+                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                        u_report.EVENT_FAILED,
+                                        "unable to download to the target")
+                else:
+                    reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                    u_report.EVENT_FAILED,
+                                    "unable to lock a connection")
         else:
-            reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                           u_report.EVENT_FAILED,
-                           "tools installation failed")
+            reporter.event(u_report.EVENT_TYPE_BUILD,
+                            u_report.EVENT_FAILED,
+                            "unable to build, check debug log for details")
+    else:
+        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                        u_report.EVENT_FAILED,
+                        "tools installation failed")
 
     return return_value

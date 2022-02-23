@@ -59,7 +59,7 @@ __SETTINGS_POSTFIX_FIX_ME = "_FIX_ME"
 __SETTINGS_POSTFIX_TEST_ONLY_TEMP = "_TEST_ONLY_TEMP"
 
 # The directory for the global configuration files
-__SETTINGS_FILE_DIRECTORY = "~/.ubx_automation"
+__SETTINGS_FILE_DIRECTORY = os.path.expanduser("~/.ubx_automation")
 
 # The root name of the global configuration files
 __SETTINGS_FILE_NAME_ROOT = "settings_v2"
@@ -71,21 +71,21 @@ __SETTINGS_FILE_NAME_ROOT_OLD = "settings"
 __SETTINGS_FILE_NAME_EXT = "json"
 
 # The path to the general global configuration file
-__SETTINGS_FILE_PATH_GENERAL = os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + \
-                                                  __SETTINGS_FILE_NAME_ROOT + "." +    \
-                                                  __SETTINGS_FILE_NAME_EXT)
+__SETTINGS_FILE_PATH_GENERAL = __SETTINGS_FILE_DIRECTORY + os.sep + \
+                               __SETTINGS_FILE_NAME_ROOT + "." +    \
+                               __SETTINGS_FILE_NAME_EXT
 
 # The path to the global configuration file that
 # contains agent specific things
-__SETTINGS_FILE_PATH_AGENT_SPECIFIC = os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep +      \
-                                                         __SETTINGS_FILE_NAME_ROOT +               \
-                                                         __SETTINGS_POSTFIX_AGENT_SPECIFIC.lower()+\
-                                                         "." + __SETTINGS_FILE_NAME_EXT)
+__SETTINGS_FILE_PATH_AGENT_SPECIFIC = __SETTINGS_FILE_DIRECTORY + os.sep +      \
+                                      __SETTINGS_FILE_NAME_ROOT +               \
+                                      __SETTINGS_POSTFIX_AGENT_SPECIFIC.lower()+\
+                                      "." + __SETTINGS_FILE_NAME_EXT
 
 # The path to the old global configuration file
-__SETTINGS_FILE_PATH_OLD = os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + \
-                                              __SETTINGS_FILE_NAME_ROOT_OLD + "." +    \
-                                              __SETTINGS_FILE_NAME_EXT)
+__SETTINGS_FILE_PATH_OLD = __SETTINGS_FILE_DIRECTORY + os.sep + \
+                           __SETTINGS_FILE_NAME_ROOT_OLD + "." +    \
+                           __SETTINGS_FILE_NAME_EXT
 
 # The version of these settings.  This should be
 # incremented ONLY under the following circumstances:
@@ -299,9 +299,13 @@ def __replace_env_var(entry):
         entry[:] = [__replace_env_var(__value) for __value in entry]
     return entry
 
+# Make sure the settings directory exists before we try to create a file lock
+if not os.path.exists(__SETTINGS_FILE_DIRECTORY):
+    os.makedirs(__SETTINGS_FILE_DIRECTORY)
+
 # Ensure exclusive access to avoid collisions when this is included
 # in many scripts, potentially running in their own processes.
-with portalocker.Lock(os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock"),
+with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
                       "w", portalocker.LOCK_EX):
     # Read settings from the global configuration files
     if os.path.isfile(__SETTINGS_FILE_PATH_GENERAL):

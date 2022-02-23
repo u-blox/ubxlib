@@ -14,18 +14,17 @@ PROMPT = "u_run_doxygen_"
 # The name of the Doxygen configuration file to use
 DOXYFILE = u_settings.DOXYGEN_DOXYFILE #"Doxyfile"
 
-def run(instance, ubxlib_dir, working_dir, printer, reporter):
+def run(instance, ubxlib_dir, printer, reporter):
     '''Run Doxygen'''
     return_value = 1
     got_doxygen = False
     instance_text = u_utils.get_instance_text(instance)
 
     prompt = PROMPT + instance_text + ": "
+    working_dir = os.getcwd()
 
     # Print out what we've been told to do
     text = "running Doxygen from ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     printer.string("{}{}.".format(prompt, text))
 
     reporter.event(u_report.EVENT_TYPE_CHECK,

@@ -122,7 +122,7 @@ def check_installation(paths_list, printer, prompt):
     return success
 
 
-def build_gcc(clean, makefile_dir, build_subdir, ubxlib_dir, unity_dir,
+def build_gcc(clean, makefile_dir, build_subdir, unity_dir,
               defines, printer, prompt, reporter, keep_going_flag):
     '''Build on GCC'''
     call_list = []
@@ -156,13 +156,6 @@ def build_gcc(clean, makefile_dir, build_subdir, ubxlib_dir, unity_dir,
             call_list.append("CFLAGS=" + cflags)
         call_list.append("OUTPUT_DIRECTORY=" + outputdir)
 
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".         \
-                        format(prompt, os.getcwd(), tmp))
-
         # Call make to do the build
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
@@ -193,13 +186,6 @@ def download(connection, guard_time_seconds, elf_path, printer, prompt):
         "-c", f"program {elf_path} reset",
         "-c", "exit"
     ]
-
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".         \
-                   format(prompt, os.getcwd(), tmp))
 
     # Call it
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt)
@@ -249,12 +235,13 @@ def swo_decode_process(swo_data_file, swo_decoded_text_file):
 # .gitignore file, and build that instead of "runner".
 
 def run(instance, mcu, toolchain, connection, connection_lock,
-        platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle,
+        platform_lock, misc_locks, clean, defines,
+        printer, reporter, test_report_handle,
         keep_going_flag=None, unity_dir=None):
     '''Build/run on STM32Cube'''
     return_value = -1
-    mcu_dir = ubxlib_dir + os.sep + SDK_DIR + os.sep + "mcu" + os.sep + mcu.lower()
+    mcu_dir = u_utils.UBXLIB_DIR + os.sep + SDK_DIR + os.sep + \
+                "mcu" + os.sep + mcu.lower()
     runner_dir = mcu_dir + os.sep + "runner"
     instance_text = u_utils.get_instance_text(instance)
     elf_path = None
@@ -279,10 +266,6 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                 text += " \"" + define + "\""
             else:
                 text += ", \"" + define + "\""
-    if ubxlib_dir:
-        text += ", ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     if unity_dir:
         text += ", using Unity from \"" + unity_dir + "\""
     printer.string("{}{}.".format(prompt, text))
@@ -300,155 +283,151 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "STM32Cube")
-    if not working_dir:
-        working_dir = "."
 
     try:
-        # Switch to the working directory
-        with u_utils.ChangeDir(working_dir):
-            # Check that everything we need is installed
-            if u_utils.keep_going(keep_going_flag, printer, prompt):
-                if not check_installation(PATHS_LIST, printer, prompt):
+        # Check that everything we need is installed
+        if u_utils.keep_going(keep_going_flag, printer, prompt):
+            if not check_installation(PATHS_LIST, printer, prompt):
+                raise UbxError(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                "there is a problem with the tools installation for STM32F4")
+
+        # Fetch Unity, if necessary
+        if u_utils.keep_going(keep_going_flag, printer, prompt) and not unity_dir:
+            if not u_utils.fetch_repo(u_utils.UNITY_URL,
+                                        u_utils.UNITY_SUBDIR,
+                                        None, printer, prompt,
+                                        submodule_init=False):
+                raise UbxError(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                                "unable to fetch Unity")
+
+            unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
+
+        if u_utils.keep_going(keep_going_flag, printer, prompt):
+            # Do the build
+            build_start_time = time()
+            elf_path = build_gcc(clean, runner_dir, "build", \
+                                unity_dir, defines, printer,prompt, \
+                                reporter, keep_going_flag)
+
+            if elf_path is None:
+                raise UbxError(u_report.EVENT_TYPE_BUILD,
+                                "check debug log for details")
+            reporter.event(u_report.EVENT_TYPE_BUILD,
+                            u_report.EVENT_PASSED,
+                            "build took {:.0f} second(s)".format(time() -
+                                                                build_start_time))
+
+        if u_utils.keep_going(keep_going_flag, printer, prompt):
+            # Lock the connection.
+            with u_connection.Lock(connection, connection_lock,
+                                CONNECTION_LOCK_GUARD_TIME_SECONDS,
+                                printer, prompt, keep_going_flag) as locked_connection:
+                if not locked_connection:
                     raise UbxError(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                   "there is a problem with the tools installation for STM32F4")
+                                    "unable to lock a connection")
 
-            # Fetch Unity, if necessary
-            if u_utils.keep_going(keep_going_flag, printer, prompt) and not unity_dir:
-                if not u_utils.fetch_repo(u_utils.UNITY_URL,
-                                          u_utils.UNITY_SUBDIR,
-                                          None, printer, prompt,
-                                          submodule_init=False):
-                    raise UbxError(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                   "unable to fetch Unity")
-
-                unity_dir = os.getcwd() + os.sep + u_utils.UNITY_SUBDIR
-
-            if u_utils.keep_going(keep_going_flag, printer, prompt):
-                # Do the build
-                build_start_time = time()
-                elf_path = build_gcc(clean, runner_dir, "build", ubxlib_dir, \
-                                    unity_dir, defines, printer,prompt, \
-                                    reporter, keep_going_flag)
-
-                if elf_path is None:
-                    raise UbxError(u_report.EVENT_TYPE_BUILD,
-                                   "check debug log for details")
-                reporter.event(u_report.EVENT_TYPE_BUILD,
-                               u_report.EVENT_PASSED,
-                               "build took {:.0f} second(s)".format(time() -
-                                                                    build_start_time))
-
-            if u_utils.keep_going(keep_going_flag, printer, prompt):
-                # Lock the connection.
-                with u_connection.Lock(connection, connection_lock,
-                                    CONNECTION_LOCK_GUARD_TIME_SECONDS,
-                                    printer, prompt, keep_going_flag) as locked_connection:
-                    if not locked_connection:
-                        raise UbxError(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                        "unable to lock a connection")
-
-                    # I have seen download failures occur if two
-                    # ST-Link connections are initiated at the same time.
-                    with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
-                                    "platform", printer, prompt,
-                                    keep_going_flag) as locked_platform:
-                        if locked_platform:
-                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                        u_report.EVENT_START)
-                            # Do the download.  I have seen the STM32F4 debugger
-                            # barf on occasions so give this two bites of
-                            # the cherry
-                            retries = 2
-                            while u_utils.keep_going(keep_going_flag,
-                                                    printer, prompt) and \
-                                not downloaded and (retries > 0):
-                                downloaded = download(connection,
-                                                    DOWNLOAD_GUARD_TIME_SECONDS,
-                                                    elf_path, printer, prompt)
-                                retries -= 1
-                                if not downloaded:
-                                    if connection and "serial_port" in connection \
-                                    and connection["serial_port"]:
-                                        # Before retrying, reset the USB port
-                                        u_utils.usb_reset("STMicroelectronics STLink" \
-                                                        "Virtual COM Port (" +
-                                                        connection["serial_port"] +
-                                                        ")", printer, prompt)
-                                    sleep(5)
-                            if platform_lock:
-                                # Once the download has been done (or not) the platform lock
-                                # can be released, after a little safety sleep
-                                sleep(1)
-                                platform_lock.release()
-
+                # I have seen download failures occur if two
+                # ST-Link connections are initiated at the same time.
+                with u_utils.Lock(platform_lock, PLATFORM_LOCK_GUARD_TIME_SECONDS,
+                                "platform", printer, prompt,
+                                keep_going_flag) as locked_platform:
+                    if locked_platform:
+                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                    u_report.EVENT_START)
+                        # Do the download.  I have seen the STM32F4 debugger
+                        # barf on occasions so give this two bites of
+                        # the cherry
+                        retries = 2
+                        while u_utils.keep_going(keep_going_flag,
+                                                printer, prompt) and \
+                            not downloaded and (retries > 0):
+                            downloaded = download(connection,
+                                                DOWNLOAD_GUARD_TIME_SECONDS,
+                                                elf_path, printer, prompt)
+                            retries -= 1
                             if not downloaded:
-                                raise UbxError(u_report.EVENT_TYPE_DOWNLOAD)
+                                if connection and "serial_port" in connection \
+                                and connection["serial_port"]:
+                                    # Before retrying, reset the USB port
+                                    u_utils.usb_reset("STMicroelectronics STLink" \
+                                                    "Virtual COM Port (" +
+                                                    connection["serial_port"] +
+                                                    ")", printer, prompt)
+                                sleep(5)
+                        if platform_lock:
+                            # Once the download has been done (or not) the platform lock
+                            # can be released, after a little safety sleep
+                            sleep(1)
+                            platform_lock.release()
 
-                            reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                           u_report.EVENT_COMPLETE)
-                            # Remove us from the list of pending downloads
-                            if download_list:
-                                download_list.remove(instance_text)
-                                # Wait for all the other downloads to complete before
-                                # starting SWO logging
-                                u_utils.wait_for_completion(download_list,
-                                                            "STM32F4 downloads",
-                                                            DOWNLOADS_COMPLETE_GUARD_TIME_SECONDS,
-                                                            printer, prompt, keep_going_flag)
-                            # So that all STM32Cube instances don't start up at
-                            # once, which can also cause problems, wait the
-                            # instance-number number of seconds.
-                            hold_off = instance[0]
-                            if hold_off > 30:
-                                hold_off = 30
-                            sleep(hold_off)
-                            # Create and empty the SWO data file and decoded text file
-                            file_handle = open(SWO_DATA_FILE, "w").close()
-                            file_handle = open(SWO_DECODED_TEXT_FILE, "w").close()
+                        if not downloaded:
+                            raise UbxError(u_report.EVENT_TYPE_DOWNLOAD)
+
+                        reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
+                                        u_report.EVENT_COMPLETE)
+                        # Remove us from the list of pending downloads
+                        if download_list:
+                            download_list.remove(instance_text)
+                            # Wait for all the other downloads to complete before
+                            # starting SWO logging
+                            u_utils.wait_for_completion(download_list,
+                                                        "STM32F4 downloads",
+                                                        DOWNLOADS_COMPLETE_GUARD_TIME_SECONDS,
+                                                        printer, prompt, keep_going_flag)
+                        # So that all STM32Cube instances don't start up at
+                        # once, which can also cause problems, wait the
+                        # instance-number number of seconds.
+                        hold_off = instance[0]
+                        if hold_off > 30:
+                            hold_off = 30
+                        sleep(hold_off)
+                        # Create and empty the SWO data file and decoded text file
+                        file_handle = open(SWO_DATA_FILE, "w").close()
+                        file_handle = open(SWO_DECODED_TEXT_FILE, "w").close()
+                        reporter.event(u_report.EVENT_TYPE_TEST,
+                                    u_report.EVENT_START)
+                        try:
+                            # Start a process which reads the
+                            # SWO output from a file, decodes it and
+                            # writes it back to a file
+                            process = Process(target=swo_decode_process,
+                                            args=(SWO_DATA_FILE,
+                                                    SWO_DECODED_TEXT_FILE))
+                            process.start()
+                            # Now start Open OCD to reset the target
+                            # and capture SWO output
+                            sleep(1)
+                            with u_utils.ExeRun(open_ocd(OPENOCD_COMMANDS,
+                                                        connection),
+                                                printer, prompt):
+                                # Open the SWO decoded text file for
+                                # reading, binary to prevent the line
+                                # endings being munged.
+                                file_handle = open(SWO_DECODED_TEXT_FILE, "rb")
+                                # Monitor progress based on the decoded
+                                # SWO text
+                                return_value = u_monitor.          \
+                                            main(file_handle,
+                                                    u_monitor.CONNECTION_PIPE,
+                                                    RUN_GUARD_TIME_SECONDS,
+                                                    RUN_INACTIVITY_TIME_SECONDS,
+                                                    "\r", instance, printer,
+                                                    reporter,
+                                                    test_report_handle,
+                                                    keep_going_flag=keep_going_flag)
+                                file_handle.close()
+                            process.terminate()
+                        except KeyboardInterrupt:
+                            # Tidy up process on SIGINT
+                            printer.string("{}caught CTRL-C, terminating...".
+                                        format(prompt))
+                            process.terminate()
+                            return_value = -1
+                        if return_value == 0:
                             reporter.event(u_report.EVENT_TYPE_TEST,
-                                        u_report.EVENT_START)
-                            try:
-                                # Start a process which reads the
-                                # SWO output from a file, decodes it and
-                                # writes it back to a file
-                                process = Process(target=swo_decode_process,
-                                                args=(SWO_DATA_FILE,
-                                                        SWO_DECODED_TEXT_FILE))
-                                process.start()
-                                # Now start Open OCD to reset the target
-                                # and capture SWO output
-                                sleep(1)
-                                with u_utils.ExeRun(open_ocd(OPENOCD_COMMANDS,
-                                                            connection),
-                                                    printer, prompt):
-                                    # Open the SWO decoded text file for
-                                    # reading, binary to prevent the line
-                                    # endings being munged.
-                                    file_handle = open(SWO_DECODED_TEXT_FILE, "rb")
-                                    # Monitor progress based on the decoded
-                                    # SWO text
-                                    return_value = u_monitor.          \
-                                                main(file_handle,
-                                                     u_monitor.CONNECTION_PIPE,
-                                                     RUN_GUARD_TIME_SECONDS,
-                                                     RUN_INACTIVITY_TIME_SECONDS,
-                                                     "\r", instance, printer,
-                                                     reporter,
-                                                     test_report_handle,
-                                                     keep_going_flag=keep_going_flag)
-                                    file_handle.close()
-                                process.terminate()
-                            except KeyboardInterrupt:
-                                # Tidy up process on SIGINT
-                                printer.string("{}caught CTRL-C, terminating...".
-                                            format(prompt))
-                                process.terminate()
-                                return_value = -1
-                            if return_value == 0:
-                                reporter.event(u_report.EVENT_TYPE_TEST,
-                                               u_report.EVENT_COMPLETE)
-                            else:
-                                raise UbxError(u_report.EVENT_TYPE_TEST)
+                                            u_report.EVENT_COMPLETE)
+                        else:
+                            raise UbxError(u_report.EVENT_TYPE_TEST)
 
 
     except UbxError as error:

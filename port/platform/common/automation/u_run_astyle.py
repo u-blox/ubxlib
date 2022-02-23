@@ -27,7 +27,7 @@ ASTYLE_DIRS = u_settings.ASTYLE_DIRS
 # "blah\build" as well as "build" but not "build\blah")
 EXCLUDE_DIRS = u_settings.ASTYLE_EXCLUDE_DIRS
 
-def run(instance, ubxlib_dir, working_dir, printer, reporter):
+def run(instance, ubxlib_dir, printer, reporter):
     '''Run AStyle'''
     return_value = 1
     got_astyle = False
@@ -40,8 +40,6 @@ def run(instance, ubxlib_dir, working_dir, printer, reporter):
     text = "running AStyle from ubxlib directory \"" + ubxlib_dir +  \
            "\" using configuration file \"" + ubxlib_dir + os.sep +  \
            CONFIG_FILE + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     printer.string("{}{}.".format(prompt, text))
 
     reporter.event(u_report.EVENT_TYPE_CHECK,

@@ -2,3 +2,4 @@ PyYAML
 invoke
 psutil
 requests
+west
