@@ -45,16 +45,6 @@ def pick_by_os(linux=None, other=None):
         return linux
     return other
 
-# The port that this agent service runs on
-# Deliberately NOT a setting, we need to be sure
-# everyone uses the same value
-AGENT_SERVICE_PORT = 17003
-
-# The maximum number of characters that an agent will
-# use from controller_name when constructing a directory
-# name for a ubxlib branch to be checked out into
-AGENT_WORKING_SUBDIR_CONTROLLER_NAME_MAX_LENGTH = 4
-
 # How long to wait for an install lock in seconds
 INSTALL_LOCK_WAIT_SECONDS = u_settings.INSTALL_LOCK_WAIT_SECONDS #(60 * 60)
 
@@ -65,19 +55,12 @@ UNITY_URL = u_settings.UNITY_URL #"https://github.com/ThrowTheSwitch/Unity"
 # (off the working directory)
 UNITY_SUBDIR = u_settings.UNITY_SUBDIR #"Unity"
 
-# The path to DevCon, a Windows tool that allows
-# USB devices to be reset, amongst other things
-DEVCON_PATH = u_settings.DEVCON_PATH #"devcon.exe"
-
 # The port number for SWO trace capture out of JLink
 JLINK_SWO_PORT = u_settings.JLINK_SWO_PORT #19021
 
 # The format string passed to strftime()
 # for logging prints
 TIME_FORMAT = u_settings.TIME_FORMAT #"%Y-%m-%d_%H:%M:%S"
-
-# The default guard time waiting for a platform lock in seconds
-PLATFORM_LOCK_GUARD_TIME_SECONDS = u_settings.PLATFORM_LOCK_GUARD_TIME_SECONDS #60 * 60
 
 # The default guard time for downloading to a target in seconds
 DOWNLOAD_GUARD_TIME_SECONDS = u_settings.DOWNLOAD_GUARD_TIME_SECONDS #60
@@ -113,10 +96,6 @@ HW_RESET_DURATION_SECONDS = u_settings.HW_RESET_DURATION_SECONDS # e.g. 5
 # host is a NINA-W1 board
 MONITOR_DTR_RTS_OFF_MARKER = "U_CFG_MONITOR_DTR_RTS_OFF"
 
-# Executable file extension. This will be "" for Linux
-# and ".exe" for Windows
-EXE_EXT = pick_by_os(linux="", other=".exe")
-
 # The ubxlib root directory
 UBXLIB_DIR = os.path.abspath(os.path.dirname(__file__) + "/../../../..")
 
@@ -130,15 +109,6 @@ def safe_print(string):
                 print(item, end='')
             except UnicodeEncodeError:
                 print('?', end='')
-
-def keep_going(flag, printer=None, prompt=None):
-    '''Check a keep_going flag'''
-    do_not_stop = True
-    if flag is not None and not flag.is_set():
-        do_not_stop = False
-        if printer and prompt:
-            printer.string("{}aborting as requested.".format(prompt))
-    return do_not_stop
 
 # subprocess arguments behaves a little differently on Linux and Windows
 # depending if a shell is used or not, which can be read here:
@@ -237,46 +207,6 @@ def deltree(directory, logger: Logger = DEFAULT_LOGGER):
 
     return success
 
-# Some list types aren't quite list types: for instance,
-# the lists returned by RPyC look like lists but they
-# aren't of type list and so "in", for instance, will fail.
-# This converts an instance list (i.e. a list-like object
-# containing items that are each another list-like object)
-# into a plain-old two-level list.
-def copy_two_level_list(instances_in):
-    '''Convert instances_in into a true list'''
-    instances_out = []
-    if instances_in:
-        for item1 in instances_in:
-            instances_out1 = []
-            for item2 in item1:
-                instances_out1.append(item2)
-            instances_out.append(copy(instances_out1))
-    return instances_out
-
-# Check if admin privileges are available, from:
-# https://stackoverflow.com/questions/2946746/python-checking-if-a-user-has-administrator-privileges
-def has_admin():
-    '''Check for administrator privileges'''
-    admin = False
-
-    if os.name == 'nt':
-        try:
-            # only Windows users with admin privileges can read the C:\windows\temp
-            if os.listdir(os.sep.join([os.environ.get("SystemRoot", "C:\\windows"), "temp"])):
-                admin = True
-        except PermissionError:
-            pass
-    else:
-        # Pylint will complain about the following line but
-        # that's OK, it is only executed if we're NOT on Windows
-        # and there the geteuid() method will exist
-        if "SUDO_USER" in os.environ and os.geteuid() == 0:
-            admin = True
-
-    return admin
-
-
 # Open the required serial port.
 def open_serial(serial_name, speed, logger: Logger = DEFAULT_LOGGER,
                 dtr_set_on=None, rts_set_on=None):
@@ -329,35 +259,6 @@ def open_telnet(port_number, logger: Logger = DEFAULT_LOGGER):
                        format(type(ex).__name__,
                               port_number, str(ex)))
     return telnet_handle
-
-def install_lock_acquire(install_lock, printer, prompt, keep_going_flag=None):
-    '''Attempt to acquire install lock'''
-    timeout_seconds = INSTALL_LOCK_WAIT_SECONDS
-    success = False
-
-    if install_lock:
-        printer.string("{}waiting for install lock...".format(prompt))
-        while not install_lock.acquire(False) and (timeout_seconds > 0) and \
-              keep_going(keep_going_flag, printer, prompt):
-            sleep(1)
-            timeout_seconds -= 1
-
-        if timeout_seconds > 0:
-            printer.string("{}got install lock.".format(prompt))
-            success = True
-        else:
-            printer.string("{}failed to aquire install lock.".format(prompt))
-    else:
-        printer.string("{}warning, there is no install lock.".format(prompt))
-
-    return success
-
-def install_lock_release(install_lock, printer, prompt):
-    '''Release install lock'''
-
-    if install_lock:
-        install_lock.release()
-    printer.string("{}install lock released.".format(prompt))
 
 def run_call(call_list, logger: Logger = DEFAULT_LOGGER, shell_cmd=False):
     ''' Run a call_list through subprocess.check_output() '''
@@ -564,7 +465,7 @@ def capture_env_var(line, env, logger: Logger = DEFAULT_LOGGER):
 def exe_run(call_list, guard_time_seconds=None,
             logger: Logger = DEFAULT_LOGGER,
             shell_cmd=False, set_env=None, returned_env=None,
-            bash_cmd=False, keep_going_flag=None):
+            bash_cmd=False):
     '''Call an executable, printing out what it does'''
     success = False
     start_time = time()
@@ -636,16 +537,13 @@ def exe_run(call_list, guard_time_seconds=None,
                                        args=(process, read_queue))
         read_thread.start()
         while process.poll() is None:
-            if keep_going_flag is None or keep_going(keep_going_flag, logger=logger):
-                if guard_time_seconds and (kill_time is None) and   \
-                   ((time() - start_time > guard_time_seconds) or
-                    (time() - read_time > guard_time_seconds)):
-                    kill_time = time()
-                    logger.warning("guard time of {} second(s) expired, stopping {}...".
-                                       format(guard_time_seconds,
-                                              call_list[0]))
-                    exe_terminate(process.pid)
-            else:
+            if guard_time_seconds and (kill_time is None) and   \
+               ((time() - start_time > guard_time_seconds) or
+                (time() - read_time > guard_time_seconds)):
+                kill_time = time()
+                logger.warning("guard time of {} second(s) expired, stopping {}...".
+                                   format(guard_time_seconds,
+                                          call_list[0]))
                 exe_terminate(process.pid)
             line = queue_get_no_exception(read_queue, True, EXE_RUN_QUEUE_WAIT_SECONDS)
             read_time = time()
@@ -854,183 +752,6 @@ class SwoDecoder():
                     self._expecting_swit = True
         return decoded_byte_array
 
-class PrintThread(threading.Thread):
-    '''Print thread to organise prints nicely'''
-    def __init__(self, print_queue, file_handle=None,
-                 window_file_handle=None, window_size=10000,
-                 window_update_period_seconds=1):
-        self._queue = print_queue
-        self._lock = RLock()
-        self._queue_forwards = []
-        self._running = False
-        self._file_handle = file_handle
-        self._window = None
-        self._window_file_handle = window_file_handle
-        if self._window_file_handle:
-            self._window = deque(self._window_file_handle, maxlen=window_size)
-        self._window_update_pending = False
-        self._window_update_period_seconds = window_update_period_seconds
-        self._window_next_update_time = time()
-        threading.Thread.__init__(self)
-    def _send_forward(self, flush=False):
-        # Send from any forwarding buffers
-        # self._lock should be acquired before this is called
-        queue_idxes_to_remove = []
-        for idx, queue_forward in enumerate(self._queue_forwards):
-            if flush or time() > queue_forward["last_send"] + queue_forward["buffer_time"]:
-                string_forward = ""
-                len_queue_forward = len(queue_forward["buffer"])
-                count = 0
-                for item in queue_forward["buffer"]:
-                    count += 1
-                    if count < len_queue_forward:
-                        item += "\n"
-                    if queue_forward["prefix_string"]:
-                        item = queue_forward["prefix_string"] + item
-                    string_forward += item
-                queue_forward["buffer"] = []
-                if string_forward:
-                    try:
-                        queue_forward["queue"].put(string_forward)
-                    except TimeoutError:
-                        pass
-                    except (OSError, EOFError, BrokenPipeError):
-                        queue_idxes_to_remove.append(idx)
-                queue_forward["last_send"] = time()
-        for idx in queue_idxes_to_remove:
-            self._queue_forwards.pop(idx)
-    def add_forward_queue(self, queue_forward, prefix_string=None, buffer_time=0):
-        '''Forward things received on the print queue to another queue'''
-        self._lock.acquire()
-        already_done = False
-        for item in self._queue_forwards:
-            if item["queue"] == queue_forward:
-                already_done = True
-                break
-        if not already_done:
-            item = {}
-            item["queue"] = queue_forward
-            item["prefix_string"] = prefix_string
-            item["buffer"] = []
-            item["buffer_time"] = buffer_time
-            item["last_send"] = time()
-            self._queue_forwards.append(item)
-        self._lock.release()
-    def remove_forward_queue(self, queue_forward):
-        '''Stop forwarding things received on the print queue to another queue'''
-        self._lock.acquire()
-        queues = []
-        self._send_forward(flush=True)
-        for item in self._queue_forwards:
-            if item["queue"] != queue_forward:
-                queues.append(item)
-        self._queue_forwards = queues
-        self._lock.release()
-    def stop_thread(self):
-        '''Helper function to stop the thread'''
-        self._lock.acquire()
-        self._running = False
-        # Write anything remaining to the window file
-        if self._window_update_pending:
-            self._window_file_handle.seek(0)
-            for item in self._window:
-                self._window_file_handle.write(item)
-            self._window_file_handle.flush()
-            self._window_update_pending = False
-            self._window_next_update_time = time() + self._window_update_period_seconds
-        self._lock.release()
-    def run(self):
-        '''Worker thread'''
-        self._running = True
-        while self._running:
-            # Print locally and store in any forwarding buffers
-            try:
-                my_string = self._queue.get(block=False, timeout=0.5)
-                print(my_string)
-                if self._file_handle:
-                    self._file_handle.write(my_string + "\n")
-                self._lock.acquire()
-                if self._window is not None:
-                    # Note that my_string can contain multiple lines,
-                    # hence the need to split it here to maintain the
-                    # window
-                    for line in my_string.splitlines():
-                        self._window.append(line + "\n")
-                    self._window_update_pending = True
-                for queue_forward in self._queue_forwards:
-                    queue_forward["buffer"].append(my_string)
-                self._lock.release()
-            except queue.Empty:
-                sleep(0.1)
-            except (OSError, EOFError, BrokenPipeError):
-                # Try to restore stdout
-                sleep(0.1)
-                sys.stdout = sys.__stdout__
-            self._lock.acquire()
-            # Send from any forwarding buffers
-            self._send_forward()
-            # Write the window to file if required
-            if self._window_update_pending and time() > self._window_next_update_time:
-                # If you don't do this you can end up with garbage
-                # at the end of the file
-                self._window_file_handle.truncate()
-                self._window_file_handle.seek(0)
-                for item in self._window:
-                    self._window_file_handle.write(item)
-                self._window_update_pending = False
-                self._window_next_update_time = time() + self._window_update_period_seconds
-            self._lock.release()
-
-class PrintToQueue():
-    '''Print to a queue, if there is one'''
-    def __init__(self, print_queue, file_handle, include_timestamp=False):
-        self._queues = []
-        self._lock = RLock()
-        if print_queue:
-            self._queues.append(print_queue)
-        self._file_handle = file_handle
-        self._include_timestamp = include_timestamp
-    def add_queue(self, print_queue):
-        '''Add a queue to the list of places to print to'''
-        self._lock.acquire()
-        already_done = False
-        for item in self._queues:
-            if item == print_queue:
-                already_done = True
-                break
-        if not already_done:
-            self._queues.append(print_queue)
-        self._lock.release()
-    def remove_queue(self, print_queue):
-        '''Remove a queue from  the list of places to print to'''
-        self._lock.acquire()
-        queues = []
-        for item in self._queues:
-            if item != print_queue:
-                queues.append(item)
-        self._queues = queues
-        self._lock.release()
-    def string(self, string, file_only=False):
-        '''Print a string to the queue(s)'''
-        if self._include_timestamp:
-            string = strftime(TIME_FORMAT, gmtime()) + " " + string
-        if not file_only:
-            self._lock.acquire()
-            queue_idxes_to_remove = []
-            if self._queues:
-                for idx, print_queue in enumerate(self._queues):
-                    try:
-                        print_queue.put(string)
-                    except (EOFError, BrokenPipeError):
-                        queue_idxes_to_remove.append(idx)
-                for idx in queue_idxes_to_remove:
-                    self._queues.pop(idx)
-            else:
-                safe_print(string)
-            self._lock.release()
-        if self._file_handle:
-            self._file_handle.write(string + "\n")
-            self._file_handle.flush()
 
 # This stolen from here:
 # https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python
@@ -1047,110 +768,6 @@ class ChangeDir():
         '''CD back to saved_path'''
         os.chdir(self._saved_path)
 
-class Lock():
-    '''Hold a lock as a "with:"'''
-    def __init__(self, lock, guard_time_seconds,
-                 lock_type, printer, prompt, keep_going_flag=None):
-        self._lock = lock
-        self._guard_time_seconds = guard_time_seconds
-        self._lock_type = lock_type
-        self._printer = printer
-        self._prompt = prompt
-        self._keep_going_flag = keep_going_flag
-        self._locked = False
-    def __enter__(self):
-        if not self._lock:
-            return True
-        # Wait on the lock
-        if not self._locked:
-            timeout_seconds = self._guard_time_seconds
-            self._printer.string("{}waiting up to {} second(s)"      \
-                                 " for a {} lock...".                \
-                                 format(self._prompt,
-                                        self._guard_time_seconds,
-                                        self._lock_type))
-            count = 0
-            while not self._lock.acquire(False) and                            \
-                ((self._guard_time_seconds == 0) or (timeout_seconds > 0)) and \
-                keep_going(self._keep_going_flag, self._printer, self._prompt):
-                sleep(1)
-                timeout_seconds -= 1
-                count += 1
-                if count == 30:
-                    self._printer.string("{}still waiting {} second(s)"     \
-                                         " for a {} lock (locker is"        \
-                                         " currently {}).".                 \
-                                         format(self._prompt, timeout_seconds,
-                                                self._lock_type, self._lock))
-                    count = 0
-            if (self._guard_time_seconds == 0) or (timeout_seconds > 0):
-                self._locked = True
-                self._printer.string("{}{} lock acquired ({}).".              \
-                                     format(self._prompt, self._lock_type,
-                                            self._lock))
-        return self._locked
-    def __exit__(self, _type, value, traceback):
-        del _type
-        del value
-        del traceback
-        if self._lock and self._locked:
-            try:
-                self._lock.release()
-                self._locked = False
-                self._printer.string("{}released a {} lock.".format(self._prompt,
-                                                                    self._lock_type))
-            except RuntimeError:
-                self._locked = False
-                self._printer.string("{}{} lock was already released.". \
-                                     format(self._prompt, self._lock_type))
-
-def wait_for_completion(_list, purpose, guard_time_seconds,
-                        printer, prompt, keep_going_flag):
-    '''Wait for a completion list to empty'''
-    completed = False
-    if len(_list) > 0:
-        timeout_seconds = guard_time_seconds
-        printer.string("{}waiting up to {} second(s)"      \
-                       " for {} completion...".          \
-                       format(prompt, guard_time_seconds, purpose))
-        count = 0
-        while (len(_list) > 0) and                                 \
-              ((guard_time_seconds == 0) or (timeout_seconds > 0)) and \
-              keep_going(keep_going_flag, printer, prompt):
-            sleep(1)
-            timeout_seconds -= 1
-            count += 1
-            if count == 30:
-                list_text = ""
-                for item in _list:
-                    if list_text:
-                        list_text += ", "
-                    list_text += str(item)
-                printer.string("{}still waiting {} second(s)"   \
-                               " for {} to complete (waiting"   \
-                               " for {}).".                     \
-                               format(prompt, timeout_seconds,
-                                      purpose, list_text))
-                count = 0
-        if len(_list) == 0:
-            completed = True
-            printer.string("{}{} completed.".format(prompt, purpose))
-    return completed
-
-def reset_nrf_target(connection, printer, prompt):
-    '''Reset a Nordic NRFxxx target'''
-    call_list = []
-
-    printer.string("{}resetting target...".format(prompt))
-    # Assemble the call list
-    call_list.append("nrfjprog")
-    call_list.append("--reset")
-    if connection and "debugger" in connection and connection["debugger"]:
-        call_list.append("-s")
-        call_list.append(connection["debugger"])
-
-    # Call it
-    return exe_run(call_list, 60, printer, prompt)
 
 def usb_cutter_reset(usb_cutter_id_strs, logger: Logger=DEFAULT_LOGGER):
     '''Cut and then un-cut USB cables using Cleware USB cutters'''
