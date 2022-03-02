@@ -35,6 +35,7 @@
 #  include "u_cfg_override.h" // For a customer's configuration override
 # endif
 
+#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -76,6 +77,41 @@
 /** The timeout on position establishment.
  */
 #define U_GNSS_POS_TEST_TIMEOUT_SECONDS 180
+#endif
+
+#ifndef U_GNSS_POS_RRLP_SIZE_BYTES
+/** The number of bytes of buffer to allow for storing the RRLP
+ * information.
+ */
+#define U_GNSS_POS_RRLP_SIZE_BYTES 1024
+#endif
+
+#ifndef U_GNSS_POS_TEST_RRLP_SVS_THRESHOLD
+/** Minimum number of space vehicles for RRLP testing.
+ */
+#define U_GNSS_POS_TEST_RRLP_SVS_THRESHOLD 3
+#endif
+
+#ifndef U_GNSS_POS_TEST_RRLP_CNO_THRESHOLD
+/** Minimum carrier to noise ratio for RRLP testing.
+ */
+#define U_GNSS_POS_TEST_RRLP_CNO_THRESHOLD 10
+#endif
+
+#ifndef U_GNSS_POS_TEST_RRLP_MULTIPATH_INDEX_LIMIT
+/** Multipath limit for RRLP testing; we don't care
+ * about this when testing this SW, provided it has
+ * a value we're good.
+ */
+#define U_GNSS_POS_TEST_RRLP_MULTIPATH_INDEX_LIMIT 3
+#endif
+
+#ifndef U_GNSS_POS_TEST_RRLP_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT
+/** Pseudo-range RMS error limit for RRLP testing; we don't care
+ * about this when testing this SW, provided it has a value we're
+ * good.
+ */
+#define U_GNSS_POS_TEST_RRLP_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT 63
 #endif
 
 /* ----------------------------------------------------------------
@@ -200,9 +236,9 @@ static char latLongToBits(int32_t thingX1e7,
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Test basic GNSS position establishment.
+/** Test GNSS position establishment.
  */
-U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosBasic")
+U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
 {
     int32_t gnssHandle;
     int32_t latitudeX1e7 = INT_MIN;
@@ -231,7 +267,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosBasic")
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
-        uPortLog("U_GNSS_POS_TEST: testing on transport %s...\n",
+        uPortLog("U_GNSS_POS_TEST: testing position establishment on transport %s...\n",
                  pGnssTestPrivateTransportTypeName(transportTypes[x]));
         // Do the standard preamble
         U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
@@ -336,6 +372,86 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosBasic")
         // test to speed things up
         uGnssTestPrivatePostamble(&gHandles, false);
     }
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_GNSS_POS_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test retrieving RRLP information.
+ */
+U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
+{
+    int32_t gnssHandle;
+    int32_t y;
+    char *pBuffer;
+    int64_t startTime;
+    int32_t heapUsed;
+    size_t iterations;
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+
+    // In case a previous test failed
+    uGnssTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Malloc memory to put the RRLP information in
+    pBuffer = (char *) malloc(U_GNSS_POS_RRLP_SIZE_BYTES);
+    U_PORT_TEST_ASSERT(pBuffer != NULL);
+    //lint -esym(613, pBuffer) Suppress possible use of NULL pointer
+    // for pBuffer from now on
+
+    // Repeat for all transport types
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
+    for (size_t x = 0; x < iterations; x++) {
+        // Do the standard preamble
+        uPortLog("U_GNSS_POS_TEST: testing RRLP retrieval on transport %s...\n",
+                 pGnssTestPrivateTransportTypeName(transportTypes[x]));
+        // Do the standard preamble
+        U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
+                                                    transportTypes[x], &gHandles, true,
+                                                    U_CFG_APP_CELL_PIN_GNSS_POWER,
+                                                    U_CFG_APP_CELL_PIN_GNSS_DATA_READY) == 0);
+        gnssHandle = gHandles.gnssHandle;
+
+        // So that we can see what we're doing
+        uGnssSetUbxMessagePrint(gnssHandle, true);
+
+        uPortLog("U_GNSS_POS_TEST: asking for RRLP information with no thresholds...\n");
+        y = uGnssPosGetRrlp(gnssHandle, pBuffer, U_GNSS_POS_RRLP_SIZE_BYTES,
+                            -1, -1, -1, -1, NULL);
+        uPortLog("U_GNSS_POS_TEST: %d byte(s) of RRLP information was returned.\n", y);
+        // Must contain at least 6 bytes for the header
+        U_PORT_TEST_ASSERT(y >= 6);
+        U_PORT_TEST_ASSERT(y <= U_GNSS_POS_RRLP_SIZE_BYTES);
+
+        startTime = uPortGetTickTimeMs();
+        gStopTimeMs = startTime + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
+        uPortLog("U_GNSS_POS_TEST: asking for RRLP information with thresholds...\n");
+        y = uGnssPosGetRrlp(gnssHandle, pBuffer, U_GNSS_POS_RRLP_SIZE_BYTES,
+                            U_GNSS_POS_TEST_RRLP_SVS_THRESHOLD,
+                            U_GNSS_POS_TEST_RRLP_CNO_THRESHOLD,
+                            U_GNSS_POS_TEST_RRLP_MULTIPATH_INDEX_LIMIT,
+                            U_GNSS_POS_TEST_RRLP_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT,
+                            keepGoingCallback);
+        uPortLog("U_GNSS_POS_TEST: RRLP took %d second(s) to arrive.\n",
+                 (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+        uPortLog("U_GNSS_POS_TEST: %d byte(s) of RRLP information was returned.\n", y);
+        // Must contain at least 6 bytes for the header
+        U_PORT_TEST_ASSERT(y >= 6);
+        U_PORT_TEST_ASSERT(y <= U_GNSS_POS_RRLP_SIZE_BYTES);
+
+        // Do the standard postamble, leaving the module on for the next
+        // test to speed things up
+        uGnssTestPrivatePostamble(&gHandles, false);
+    }
+
+    // Free memory
+    free(pBuffer);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();

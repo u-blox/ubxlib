@@ -38,17 +38,17 @@ extern "C" {
 #define U_PORT_UNITY_TEST_ASSERT(condition) TEST_ASSERT(condition)
 #define U_PORT_UNITY_TEST_ASSERT_EQUAL(expected, actual) TEST_ASSERT_EQUAL(expected, actual)
 
-/** Used by U_RUNNER_NAME_EXPAND.
+/** Used by U_RUNNER_NAME_UID_EXPAND.
  */
-#define U_RUNNER_NAME_EXPAND2(x, y) x ## y
+#define U_RUNNER_NAME_UID_EXPAND2(x, y) x ## y
 
 /** Used by U_RUNNER_NAME_UID.
  */
-#define U_RUNNER_NAME_EXPAND(x, y) U_RUNNER_NAME_EXPAND2(x, y)
+#define U_RUNNER_NAME_UID_EXPAND(x, y) U_RUNNER_NAME_UID_EXPAND2(x, y)
 
 /** Make up a unique function name.
  */
-#define U_RUNNER_NAME_UID(x) U_RUNNER_NAME_EXPAND(x, __LINE__)
+#define U_RUNNER_NAME_UID(x) U_RUNNER_NAME_UID_EXPAND(x, __LINE__)
 
 /** The maximum length of pName (see uRunnerFunctionDescription_t below).
  */
@@ -117,9 +117,13 @@ void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription);
  * list of runnable functions.  A function would be either a
  * ubxlib test or a ubxlib example.
  */
-#define U_RUNNER_FUNCTION(prefix, group, name)                                                            \
-    /* Function prototype */                                                                              \
-    static void U_RUNNER_NAME_UID(prefix) (void);                                                         \
+#ifndef _MSC_VER
+
+// GCC version
+# define U_RUNNER_FUNCTION(prefix, group, name)                                                           \
+    /* Test function prototype */                                                                         \
+    static void U_RUNNER_NAME_UID(prefix)(void);                                                          \
+    /* Registration helper function */                                                                    \
     /* Use constructor attribute so that this is run during C initialisation before anything else runs */ \
     /*lint -esym(528,functionRegistrationHelper*) suppress "symbol not referenced": called at C startup */\
     static void __attribute__((constructor)) U_RUNNER_NAME_UID(functionRegistrationHelper) ()             \
@@ -136,8 +140,52 @@ void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription);
         /* Call the register function with the description so it can keep a list of them */               \
         uRunnerFunctionRegister(&U_RUNNER_NAME_UID(functionDescription));                                 \
     }                                                                                                     \
-    /* Actual start of a function */                                                                      \
-    static void U_RUNNER_NAME_UID(prefix) (void)
+    /* Actual start of the test function */                                                               \
+    static void U_RUNNER_NAME_UID(prefix)(void)
+
+#else  // _MSC_VER
+
+# ifdef __cplusplus
+
+// MSVC version
+
+// MSVC doesn't have a constructor attribute.  It does have a constructor section (.CRT$XCU) into which
+// function pointers to the things that need to be called before main() are put, however since those
+// function pointers are necessarily global they must have unique names, so naming them using
+//  __LINE__ is not gonna work and they can't be static anymore.
+// So instead, under MSVC, we use a C++ class and actual constructors, which means the test .c files
+// MUST BE COMPILED AS C++ code.
+
+// The registration helper class
+class uRunnerRegistrationHelperClass
+{
+public:
+    // Struct to hold function description
+    uRunnerFunctionDescription_t functionDescription;
+    // Constructor which populates the function description and calls uRunnerFunctionRegister
+    uRunnerRegistrationHelperClass(const char *pName, const char *pGroup,
+                                   const pURunnerFunction_t pFunction, const char *pFile,
+                                   int32_t line) : functionDescription{pName, pGroup, pFunction, pFile}
+    {
+        // C++ will have initialised pNext to 0
+        uRunnerFunctionRegister(&functionDescription);
+    };
+};
+
+# define U_RUNNER_FUNCTION(prefix, group, name)                                                           \
+    /* Test function prototype */                                                                         \
+    static void U_RUNNER_NAME_UID(prefix)(void);                                                          \
+    /* Registration helper function, sub-classing our registration helper class */                        \
+    static uRunnerRegistrationHelperClass U_RUNNER_NAME_UID(functionRegistrationHelper)(name,             \
+                                                                                        group,            \
+                                                                                        &U_RUNNER_NAME_UID(prefix), \
+                                                                                        __FILE__,         \
+                                                                                        __LINE__);        \
+    /* Actual start of the test function */                                                               \
+    static void U_RUNNER_NAME_UID(prefix)(void)
+
+# endif // __cplusplus
+#endif // _MSC_VER
 
 /* ----------------------------------------------------------------
  * FUNCTIONS

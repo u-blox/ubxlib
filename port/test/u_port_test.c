@@ -54,6 +54,7 @@
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_gpio.h"
+//lint -esym(766, u_port_uart.h) Suppress not referenced, which will be the case if U_PORT_TEST_CHECK_TIME_TAKEN is defined
 #include "u_port_uart.h"
 #include "u_port_crypto.h"
 #include "u_port_event_queue.h"
@@ -67,6 +68,22 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef _WIN32
+/** Check time delays on all platforms except _WIN32: on _WIN32
+ * the tests are run on the same machine as all of the compilation
+ * processes etc. and hence any attempt to check real-timeness
+ * is futile.
+ */
+# define U_PORT_TEST_CHECK_TIME_TAKEN
+#endif
+
+#ifdef _WIN32
+/** On _WIN32 it is possible to delete a task from another task,
+ * so we can check that.
+ */
+#define U_PORT_TEST_DELETE_OTHER_TASK
+#endif
+
 /** The queue length to create during testing.
  */
 #define U_PORT_TEST_QUEUE_LENGTH 20
@@ -75,9 +92,10 @@
  */
 #define U_PORT_TEST_QUEUE_ITEM_SIZE sizeof(int32_t)
 
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
 /** The guard time for the OS test.
  */
-#define U_PORT_TEST_OS_GUARD_DURATION_MS 7000
+# define U_PORT_TEST_OS_GUARD_DURATION_MS 7000
 
 /** The task block duration to use in testing the
  * time for which a block lasts.  This needs to
@@ -85,14 +103,30 @@
  * in the test duration as measured by the
  * test system which is logging the test output.
  */
-#define U_PORT_TEST_OS_BLOCK_TIME_MS 5000
+# define U_PORT_TEST_OS_BLOCK_TIME_MS 5000
 
 /** Tolerance on block time.  Note that this needs
  * to be large enough to account for the tick coarseness
  * on all platforms.  For instance, on ESP32 the default
  * tick is 10 ms.
  */
-#define U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS 150
+# define U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS 150
+#endif // #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
+
+#if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
+# ifdef U_PORT_TEST_CHECK_TIME_TAKEN
+/** The amount of time to wait for the UART-loopbacked
+ * data to arrive back normally.
+ */
+#  define U_PORT_TEST_UART_TIME_TO_ARRIVE_MS 1000
+# else
+/** The amount of time to wait for the UART-loopbacked
+ * data to arrive back when allowing laziness (e.g. on
+ * a heavily loaded Windoze machine).
+ */
+#  define U_PORT_TEST_UART_TIME_TO_ARRIVE_MS 5000
+# endif
+#endif
 
 /** The number of re-entrancy test tasks to run.
  */
@@ -104,7 +138,7 @@
 
 /** The amount of memory to malloc()ate during re-entrancy
  * testing.
-  */
+ */
 #define U_PORT_TEST_OS_MALLOC_SIZE_INTS ((int32_t) (1024 / sizeof(int32_t)))
 
 /** Number of interations for the event queue test.
@@ -112,15 +146,15 @@
  */
 #define U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS 100
 
+/** The minimum item size for the event queue test: we used
+ * to fix this at 1 however there are some OS's which, internally,
+ * allocate space in words, hence it is 4 for greater compatibility.
+ */
+#define U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES 4
+
 /** How long to wait to receive  a message on a queue in osTestTask.
  */
-#ifdef _WIN32
-// The Windows queue implementation (named pipes) is really slow
-// in the osTestTask test for some reason.
-# define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 500
-#else
-# define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 10
-#endif
+#define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 10
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -314,6 +348,20 @@ static const char gAes128CbcEncrypted[] =
  */
 static size_t gSystemHeapLost = 0;
 
+/** Timer parameter value array; must have the same number of
+ * entries as gTimerHandle.
+ */
+static int32_t gTimerParameterValue[4] = {0};
+
+/** Index into the gTimerParameterValue array.
+ */
+static size_t gTimerParameterIndex = 0;
+
+/** Timer handle array; must have the same number of
+ * entries as gTimerParameterValue.
+ */
+static uPortTimerHandle_t gTimerHandle[4] = {0};
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -470,8 +518,10 @@ static void osReentTask(void *pParameter)
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
     }
 
+#ifndef U_PORT_TEST_DELETE_OTHER_TASK
     // And delete ourselves
     uPortTaskDelete(NULL);
+#endif
 }
 
 // The test task for OS stuff.
@@ -654,11 +704,12 @@ static void eventQueueMinFunction(void *pParam,
     if (gEventQueueMinCounter <
         U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS) {
         // For U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS
-        // we expect to receive paramLength of 1 where
+        // we expect to receive paramLength of
+        // U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES where
         // *pParam is a count of the number of times we've
         // been called.
-        if (paramLength != 1) {
-            gEventQueueMinErrorFlag = 1;
+        if (paramLength != U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES) {
+            gEventQueueMinErrorFlag = U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES;
         }
 
         if (gEventQueueMinErrorFlag == 0) {
@@ -894,8 +945,12 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     U_PORT_TEST_ASSERT(uPortUartEventSend(uartHandle,
                                           (uint32_t) U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) ==
                        0);
+
+#ifndef U_PORT_TEST_CHECK_TIME_TAKEN
     // Some platforms (e.g. Windows) can be a little slow at this
-    uPortTaskBlock(10);
+    uPortTaskBlock(1000);
+#endif
+
     U_PORT_TEST_ASSERT(eventCallbackData.callCount == 1);
 
     // Send data over the UART N times, the callback will check it
@@ -921,7 +976,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     }
 
     // Wait long enough for everything to have been received
-    uPortTaskBlock(1000);
+    uPortTaskBlock(U_PORT_TEST_UART_TIME_TO_ARRIVE_MS);
 
     // Print out some useful stuff
     if (eventCallbackData.errorCode == -5) {
@@ -958,6 +1013,21 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
 }
 
 #endif // (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
+
+// Timer callback
+static void timerCallback(const uPortTimerHandle_t timerHandle, void *pParameter)
+{
+    //lint -e(507) Suppress size incompatibility, we know what we're doing
+    int32_t parameter = (int32_t) pParameter;
+
+    (void) timerHandle;
+
+    // Increment the gTimerParameterValue entry at index parameter
+    if ((parameter >= 0) &&
+        (parameter < (int32_t) (sizeof(gTimerParameterValue) / sizeof(gTimerParameterValue[0])))) {
+        gTimerParameterValue[parameter]++;
+    }
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -1096,6 +1166,13 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // Let them stop
     gWaitForStop = false;
 
+#ifdef U_PORT_TEST_DELETE_OTHER_TASK
+    for (size_t x = 0; (x < sizeof(taskHandle) /
+                        sizeof(taskHandle[0])); x++) {
+        U_PORT_TEST_ASSERT(uPortTaskDelete(taskHandle[x]) == 0);
+    }
+#endif
+
     // Let the idle task tidy-away the tasks
     uPortTaskBlock(U_CFG_OS_YIELD_MS + 1000);
 
@@ -1131,6 +1208,9 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
 U_PORT_TEST_FUNCTION("[port]", "portOs")
 {
     int32_t errorCode;
+//lint -esym(838, startTimeMs) Suppress value not used/ referenced
+//lint -esym(438, startTimeMs, timeNowMs) will be the case if we're not
+//lint -esym(550, startTimeMs, timeNowMs) measuring time delays
     int64_t startTimeMs;
     int64_t timeNowMs;
     int32_t stackMinFreeBytes;
@@ -1282,8 +1362,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     timeNowMs = uPortGetTickTimeMs() - startTimeMs;
     uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"
              " the test took %d ms.\n", (int32_t) timeNowMs);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     U_PORT_TEST_ASSERT((timeNowMs > 0) &&
                        (timeNowMs < U_PORT_TEST_OS_GUARD_DURATION_MS));
+#endif
 
     uPortDeinit();
 
@@ -1351,9 +1433,11 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     startTimeMs = uPortGetTickTimeMs();
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle,
                                              500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     int64_t diffMs = uPortGetTickTimeMs() - startTimeMs;
     uPortLog("U_PORT_TEST: diffMs %d \n", (int32_t)diffMs);
     U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
     uPortLog("U_PORT_TEST: Verify that the semaphore waits with Take and is taken\n");
@@ -1370,8 +1454,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     U_PORT_TEST_ASSERT(gTaskHandle != NULL);
     startTimeMs = uPortGetTickTimeMs();
     U_PORT_TEST_ASSERT(uPortSemaphoreTake(gSemaphoreHandle) == 0);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
     uPortLog("U_PORT_TEST: Verify that the semaphore waits with TryTake and is taken\n");
@@ -1388,8 +1474,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     U_PORT_TEST_ASSERT(gTaskHandle != NULL);
     startTimeMs = uPortGetTickTimeMs();
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
     uPortLog("U_PORT_TEST: Verify that +2 as initialCount works for TryTake\n");
@@ -1397,15 +1485,21 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
     startTimeMs = uPortGetTickTimeMs();
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_PORT_TEST_ASSERT(diffMs < 250);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_PORT_TEST_ASSERT(diffMs < 250);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle,
                                              500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
     uPortLog("U_PORT_TEST: Verify that +2 as limit works for TryTake\n");
@@ -1420,15 +1514,21 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 
     startTimeMs = uPortGetTickTimeMs();
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_PORT_TEST_ASSERT(diffMs < 250);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle, 5000) == 0);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_PORT_TEST_ASSERT(diffMs < 250);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreTryTake(gSemaphoreHandle,
                                              500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
     uPortLog("U_PORT_TEST: Verify that the semaphore waits with Take and is taken\n");
@@ -1449,15 +1549,19 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 
     startTimeMs = uPortGetTickTimeMs();
     U_PORT_TEST_ASSERT(uPortSemaphoreTake(gSemaphoreHandle) == 0);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     diffMs = uPortGetTickTimeMs() - startTimeMs;
     U_PORT_TEST_ASSERT(diffMs < 250);
+#endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
     timeNowMs = uPortGetTickTimeMs() - startTimeTestMs;
     uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"
              " the test took %d ms.\n", (int32_t) timeNowMs);
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     U_PORT_TEST_ASSERT((timeNowMs > 0) &&
                        (timeNowMs < U_PORT_TEST_OS_GUARD_DURATION_MS));
+#endif
 
     uPortDeinit();
 
@@ -1474,7 +1578,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
-#if (U_CFG_TEST_UART_A >= 0)
+#if (U_CFG_TEST_UART_A >= 0) && defined(U_PORT_TEST_CHECK_TIME_TAKEN)
 /** Some ports, e.g. the Nordic one, use the tick time somewhat
  * differently when the UART is running so initialise that
  * here and re-measure time.  Of course, this is only testing
@@ -1576,7 +1680,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
 
     uPortDeinit();
 
-#ifndef ARDUINO
+# ifndef ARDUINO
     // Check for memory leaks except on Arduino; for some
     // reason, under Arduino, 24 bytes are lost to the system
     // here; this doesn't occur under headrev ESP-IDF or on
@@ -1589,9 +1693,9 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
+# else
     (void) heapUsed;
-#endif
+# endif
 }
 #endif
 
@@ -1635,7 +1739,8 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     uPortLog("U_PORT_TEST: %d entries free on \"event queue max\".\n", y);
     U_PORT_TEST_ASSERT((y == U_PORT_TEST_QUEUE_LENGTH) ||
                        (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
-    gEventQueueMinHandle = uPortEventQueueOpen(eventQueueMinFunction, "blah", 1,
+    gEventQueueMinHandle = uPortEventQueueOpen(eventQueueMinFunction, "blah",
+                                               U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES,
                                                U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES,
                                                U_CFG_TEST_OS_TASK_PRIORITY,
                                                U_PORT_TEST_QUEUE_LENGTH);
@@ -1663,11 +1768,12 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                            pParam,
                                            U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES + 1) < 0);
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
-                                           pParam, 2) < 0);
+                                           pParam, U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES + 1) < 0);
 
     // Send the known test pattern N times to eventQueueMaxFunction
     // with the last byte overwritten with a counter, and just send
-    // the counter to eventQueueMinFunction as its single byte
+    // the counter to eventQueueMinFunction as its
+    // U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES payload.
     // The receiving functions will set a flag if they find a
     // problem.
     // Use both the IRQ and non-IRQ versions of the call
@@ -1680,7 +1786,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                                    (void *) pParam,
                                                    U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES) == 0);
             U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
-                                                   (void *) &x, 1) == 0);
+                                                   (void *) &x, U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES) == 0);
         } else {
             y = uPortEventQueueSendIrq(gEventQueueMaxHandle, (void *) pParam,
                                        U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES);
@@ -1689,22 +1795,28 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                         U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES);
             }
             U_PORT_TEST_ASSERT(y == 0);
-            y = uPortEventQueueSendIrq(gEventQueueMinHandle, (void *) &x, 1);
+            y = uPortEventQueueSendIrq(gEventQueueMinHandle, (void *) &x,
+                                       U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES);
             if (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-                y = uPortEventQueueSend(gEventQueueMinHandle, (void *) &x, 1);
+                y = uPortEventQueueSend(gEventQueueMinHandle, (void *) &x,
+                                        U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES);
             }
             U_PORT_TEST_ASSERT(y == 0);
         }
     }
 
     // Bonus iteration with NULL parameter
-    //lint -esym(438, x) Suppress value not used, which
-    // will occur if uPortLog() is compiled out
-    x++;
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMaxHandle,
                                            NULL, 0) == 0);
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
                                            NULL, 0) == 0);
+
+#ifndef U_PORT_TEST_CHECK_TIME_TAKEN
+    // Let everything get to its destination; can be a problem when
+    // running on Windows as a platform if the machine in question
+    // is heavily loaded (a Windows test agent often is)
+    uPortTaskBlock(1000);
+#endif
 
     if (gEventQueueMaxErrorFlag != 0) {
         uPortLog("U_PORT_TEST: event queue max length"
@@ -1754,7 +1866,8 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                            pParam,
                                            U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES) < 0);
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMinHandle,
-                                           pParam, 1) < 0);
+                                           pParam,
+                                           U_PORT_TEST_OS_EVENT_QUEUE_PARAM_MIN_SIZE_BYTES) < 0);
 
     // Free memory
     free(pParam);
@@ -2038,6 +2151,7 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
         // Must be on a platform where the pins can be set at run-time
         // and the flow control pins are connected so test with flow control
         runUartTest(50000, 115200, true);
+        runUartTest(50000, 1000000, true);
     }
 #endif
 
@@ -2129,6 +2243,136 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
                                   sizeof(gAes128CbcClear) - 1) == 0);
     } else {
         uPortLog("U_PORT_TEST: AES CBC 128 decryption not supported.\n");
+    }
+
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test timers.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portTimers")
+{
+    int32_t heapUsed;
+    int32_t y;
+    int64_t startTime;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    uPortLog("U_PORT_TEST: testing timers...\n");
+
+    // Create the first timer,
+    y = uPortTimerCreate(&gTimerHandle[gTimerParameterIndex],
+                         NULL, timerCallback, (void *) gTimerParameterIndex,
+                         1000, false);
+    U_PORT_TEST_ASSERT((y == 0) || (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
+    if (y == 0) {
+        // Delete it again, without having started it
+        U_PORT_TEST_ASSERT(uPortTimerDelete(gTimerHandle[gTimerParameterIndex]) == 0);
+        // It should not have expired
+        U_PORT_TEST_ASSERT(gTimerParameterValue[gTimerParameterIndex] == 0);
+
+        // Now create a second one shot timer with a name this time
+        gTimerParameterIndex++;
+        U_PORT_TEST_ASSERT(uPortTimerCreate(&gTimerHandle[gTimerParameterIndex],
+                                            "timer 2", timerCallback,
+                                            (void *) gTimerParameterIndex,
+                                            1000, false) == 0);
+
+        // Start it
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[gTimerParameterIndex]) == 0);
+        // Stop it
+        U_PORT_TEST_ASSERT(uPortTimerStop(gTimerHandle[gTimerParameterIndex]) == 0);
+        // It should not have expired
+        U_PORT_TEST_ASSERT(gTimerParameterValue[gTimerParameterIndex] == 0);
+
+        // Create a third one-shot timer that we will actually let expire
+        // this time
+        gTimerParameterIndex++;
+        U_PORT_TEST_ASSERT(uPortTimerCreate(&gTimerHandle[gTimerParameterIndex],
+                                            "timer 3", timerCallback,
+                                            (void *) gTimerParameterIndex,
+                                            1000, false) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[gTimerParameterIndex]) == 0);
+
+        // Create a fourth timer, this time periodic and of a shorter duration
+        // than the above
+        gTimerParameterIndex++;
+        U_PORT_TEST_ASSERT(uPortTimerCreate(&gTimerHandle[gTimerParameterIndex],
+                                            "timer 4", timerCallback,
+                                            (void *) gTimerParameterIndex,
+                                            300, true) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[gTimerParameterIndex]) == 0);
+
+        // The periodic timer should expire three times in the time that the
+        // one-shot timer expires
+        // Note: this test deliberately allows for slop in the actual timer
+        // values however their relative values should still be correct
+        startTime = uPortGetTickTimeMs();
+        while ((gTimerParameterValue[2] == 0) &&
+               (startTime + 10000 > uPortGetTickTimeMs())) {
+            uPortTaskBlock(100);
+        }
+        U_PORT_TEST_ASSERT((gTimerParameterValue[2] == 1) && (gTimerParameterValue[3] == 3));
+
+        // Stop the periodic timer, make the expiry longer
+        // than the one-shot was, and restart both of them
+        U_PORT_TEST_ASSERT(uPortTimerStop(gTimerHandle[3]) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerChange(gTimerHandle[3], 1200) == 0);
+        // Deliberately start both timers twice to ensure
+        // that a started timer can be started again successfully
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[2]) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[2]) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[3]) == 0);
+        U_PORT_TEST_ASSERT(uPortTimerStart(gTimerHandle[3]) == 0);
+        // Wait for the periodic timer to expire one more time
+        startTime = uPortGetTickTimeMs();
+        while ((gTimerParameterValue[3] < 4) &&
+               (startTime + 5000 > uPortGetTickTimeMs())) {
+            uPortTaskBlock(100);
+        }
+        U_PORT_TEST_ASSERT(gTimerParameterValue[3] == 4);
+
+        // Stop the one-shot timer, which should have expired now
+        U_PORT_TEST_ASSERT(uPortTimerStop(gTimerHandle[2]) == 0);
+        // Delete the periodic timer without stopping it
+        U_PORT_TEST_ASSERT(uPortTimerDelete(gTimerHandle[3]) == 0);
+        // Delete the one-shot timer
+        U_PORT_TEST_ASSERT(uPortTimerDelete(gTimerHandle[2]) == 0);
+        // Delete the second timer we created, which is still hanging around
+        U_PORT_TEST_ASSERT(uPortTimerDelete(gTimerHandle[1]) == 0);
+
+        // Wait for the deletions to occur and allow some
+        // time also to test if any timers expire more than
+        // they should
+        uPortTaskBlock(1000);
+
+        // Do a final check of all of the gTimerParameterValues:
+        uPortLog("U_PORT_TEST: at the end of the timer test:\n");
+        for (size_t x = 0; x < sizeof(gTimerParameterValue) / sizeof(gTimerParameterValue[0]); x++) {
+            uPortLog("U_PORT_TEST: timer %d expired %d time(s).\n", x + 1,
+                     gTimerParameterValue[x]);
+        }
+        // The first two never expired, the one-shot timer should
+        // have expired twice and the periodic timer four times
+        U_PORT_TEST_ASSERT(gTimerParameterValue[0] == 0);
+        U_PORT_TEST_ASSERT(gTimerParameterValue[1] == 0);
+        U_PORT_TEST_ASSERT(gTimerParameterValue[2] == 2);
+        U_PORT_TEST_ASSERT(gTimerParameterValue[3] == 4);
+    } else {
+        uPortLog("U_PORT_TEST: timers are not supported.\n");
     }
 
     uPortDeinit();

@@ -54,7 +54,6 @@
 #include "u_lib.h"
 #include "u_lib_common_test.h"
 
-#include "assert.h"
 #include "string.h"
 
 #include "u_lib.h"

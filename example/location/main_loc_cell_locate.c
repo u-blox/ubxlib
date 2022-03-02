@@ -151,6 +151,23 @@ static char latLongToBits(int32_t thingX1e7,
     return prefix;
 }
 
+// Print lat/long location as a clickable link.
+static void printLocation(int32_t latitudeX1e7, int32_t longitudeX1e7)
+{
+    char prefixLat;
+    char prefixLong;
+    int32_t wholeLat;
+    int32_t wholeLong;
+    int32_t fractionLat;
+    int32_t fractionLong;
+
+    prefixLat = latLongToBits(latitudeX1e7, &wholeLat, &fractionLat);
+    prefixLong = latLongToBits(longitudeX1e7, &wholeLong, &fractionLong);
+    uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d/%c%d.%07d\n",
+             prefixLat, wholeLat, fractionLat, prefixLong, wholeLong,
+             fractionLong);
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: THE EXAMPLE
  * -------------------------------------------------------------- */
@@ -162,8 +179,6 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
 {
     int32_t networkHandle;
     uLocation_t location;
-    int32_t whole = 0;
-    int32_t fraction = 0;
 
     // Set an out of range value so that we can test it later
     location.timeUtc = -1;
@@ -204,11 +219,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
         if (uLocationGet(networkHandle, U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
                          NULL, U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
                          &location, NULL) == 0) {
-            uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d/%c%d.%07d\n",
-                     latLongToBits(location.latitudeX1e7, &whole, &fraction),
-                     whole, fraction,
-                     latLongToBits(location.longitudeX1e7, &whole, &fraction),
-                     whole, fraction);
+            printLocation(location.latitudeX1e7, location.longitudeX1e7);
         } else {
             uPortLog("Unable to get a location fix!\n");
         }

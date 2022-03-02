@@ -12,6 +12,7 @@ example/mqtt_client/mqtt_main.c
 example/location/main_loc_gnss.c
 example/location/main_loc_gnss_cell.c
 example/location/main_loc_cell_locate.c
+example/location/main_loc_gnss_cloud_locate.c
 example/cell/lte_cfg/lte_cfg_main.c
 ble/test/u_ble_test.c
 ble/test/u_ble_cfg_test.c

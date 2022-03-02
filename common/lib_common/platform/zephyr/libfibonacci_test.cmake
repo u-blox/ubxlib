@@ -14,9 +14,7 @@ set(name fibonacci)
 set(lib_name lib${name})
 set(lib_test_string_def "-DU_COMMON_LIB_TEST_STRING=${lib_common_test_string}")
 
-set(external_project_cflags
-  "${includes} ${definitions} ${options} ${system_includes}  ${lib_test_string_def} "
-  )
+set(external_project_cflags "${definitions} ${options} ${system_includes} ${lib_test_string_def}")
 
 set(library_src_dir   ${UBXLIB_BASE_SUB_PROJ}/common/lib_common/test/test_lib)
 set(library_build_dir ${CMAKE_CURRENT_BINARY_DIR}/${lib_name})
@@ -70,11 +68,13 @@ file(GLOB lib_fib_srcs
 	   "${library_src_dir}/src/*.c"
 	   "${library_src_dir}/api/*.h"
 	   )
-	   
+
 ExternalProject_Add_StepDependencies(lib_fibonacci build  ${lib_fib_srcs})
-		
+
 
 set_target_properties(lib_fibonacci PROPERTIES IMPORTED_LOCATION ${library_build_dir}/${lib_name}_blob.c)
+
+add_dependencies(app lib_fibonacci)
 
 # add the binary blob array to the application
 set_source_files_properties( ${library_build_dir}/${lib_name}_blob.c PROPERTIES GENERATED TRUE)

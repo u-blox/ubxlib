@@ -28,11 +28,11 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memset()
-#include "assert.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -317,26 +317,34 @@ static uMutexFunctionInfo_t *pLockAddWaiting(uMutexInfo_t *pMutexInfo,
 }
 
 // Move a waiting entry to become a locker entry.
-static void lockMoveWaitingToLocker(uMutexInfo_t *pMutexInfo,
+static bool lockMoveWaitingToLocker(uMutexInfo_t *pMutexInfo,
                                     uMutexFunctionInfo_t *pWaiting)
 {
+    bool success = false;
+
     if ((gMutexList != NULL) && (pMutexInfo != NULL)) {
 
         U_MUTEX_DEBUG_PORT_MUTEX_LOCK(gMutexList);
 
         // If there is a locker, free it, it's gone
         freeFunctionInformationBlock(pMutexInfo->pLocker);
-        // Unlink the waiting entry in the list
-        assert(unlinkWaiting(pMutexInfo, pWaiting));
-        // The waiting entry is now the locker
-        pMutexInfo->pLocker = pWaiting;
-        // Zero the counter
-        pMutexInfo->pLocker->counter = 0;
-        // For neatness
-        pMutexInfo->pLocker->pNext = NULL;
+        // Unlink the waiting entry in the list, noting
+        // that it is possible that the mutex has
+        // disappeared in the meantime
+        success = unlinkWaiting(pMutexInfo, pWaiting);
+        if (success) {
+            // The waiting entry is now the locker
+            pMutexInfo->pLocker = pWaiting;
+            // Zero the counter
+            pMutexInfo->pLocker->counter = 0;
+            // For neatness
+            pMutexInfo->pLocker->pNext = NULL;
+        }
 
         U_MUTEX_DEBUG_PORT_MUTEX_UNLOCK(gMutexList);
     }
+
+    return success;
 }
 
 // Free a waiting entry.
@@ -512,7 +520,9 @@ int32_t uMutexDebugLock(uPortMutexHandle_t mutexHandle,
         if (pWaiting != NULL) {
             errorCode = _uPortMutexLock(pMutexInfo->handle);
             if (errorCode == 0) {
-                lockMoveWaitingToLocker(pMutexInfo, pWaiting);
+                if (!lockMoveWaitingToLocker(pMutexInfo, pWaiting)) {
+                    lockFreeWaiting(pMutexInfo, pWaiting);
+                }
             } else {
                 lockFreeWaiting(pMutexInfo, pWaiting);
             }
@@ -543,7 +553,9 @@ int32_t uMutexDebugTryLock(uPortMutexHandle_t mutexHandle,
         if (pWaiting != NULL) {
             errorCode = _uPortMutexTryLock(pMutexInfo->handle, delayMs);
             if (errorCode == 0) {
-                lockMoveWaitingToLocker(pMutexInfo, pWaiting);
+                if (!lockMoveWaitingToLocker(pMutexInfo, pWaiting)) {
+                    lockFreeWaiting(pMutexInfo, pWaiting);
+                }
             } else {
                 lockFreeWaiting(pMutexInfo, pWaiting);
             }

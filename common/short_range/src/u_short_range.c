@@ -1043,4 +1043,64 @@ const uShortRangeModuleInfo_t *uShortRangeGetModuleInfo(int32_t moduleType)
     return NULL;
 }
 
+int32_t uShortRangeGetShoHandle(int32_t networkHandle)
+{
+    int32_t shoHandle = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
+
+        if ((networkHandle >= (int32_t)U_NETWORK_HANDLE_WIFI_MIN) &&
+            (networkHandle <= (int32_t)U_NETWORK_HANDLE_WIFI_MAX)) {
+
+            shoHandle =  networkHandle - (int32_t)U_NETWORK_HANDLE_WIFI_MIN;
+
+        }
+
+    } else if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
+
+        if ((networkHandle >= (int32_t)U_NETWORK_HANDLE_BLE_MIN) &&
+            (networkHandle <= (int32_t)U_NETWORK_HANDLE_BLE_MAX)) {
+
+            shoHandle =  networkHandle - (int32_t)U_NETWORK_HANDLE_BLE_MIN;
+        }
+
+    }
+    return shoHandle;
+}
+
+
+int32_t uShortRangeGetSerialNumber(int32_t shortRangeHandle, char *pSerialNumber)
+{
+    uAtClientHandle_t atHandle;
+    uShortRangePrivateInstance_t *pInstance;
+    int32_t readBytes;
+    int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t retryCount;
+
+    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+
+    if ((pInstance != NULL) &&
+        (pSerialNumber != NULL)) {
+
+        atHandle = pInstance->atHandle;
+
+        for (retryCount = 0; retryCount < 3; retryCount++) {
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+CGSN");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, NULL);
+            readBytes = uAtClientReadBytes(atHandle, pSerialNumber,
+                                           U_SHORT_RANGE_SERIAL_NUMBER_LENGTH, false);
+            uAtClientResponseStop(atHandle);
+            err = uAtClientUnlock(atHandle);
+
+            if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                pSerialNumber[readBytes] = '\0';
+                break;
+            }
+        }
+    }
+
+    return err;
+}
 // End of file

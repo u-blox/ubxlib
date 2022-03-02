@@ -168,7 +168,7 @@ def copy_files(source_list, include_list, ubxlib_dir, forced, include_files):
                 destination_files.append(os.path.join("src", ubxlib_file_path))
                 include_files.append(os.path.basename(ubxlib_file_path))
             else:
-                for file_name in os.listdir(ubxlib_file_path):
+                for file_name in sorted(os.listdir(ubxlib_file_path)):
                     # A directory, go through the files
                     item = os.path.join(ubxlib_file_path, file_name)
                     if os.path.isfile(item) and item.endswith(".h") and item not in ubxlib_files:

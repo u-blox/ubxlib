@@ -70,6 +70,22 @@
             "preLaunchTask": "Predebug evkninab3 runner [Zephyr]"
         },
         {
+            "name": "windows runner [win32]: Run",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/.vscode/_build/windows/ubxlib.exe",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${fileDirname}",
+            "environment": [{
+                "name": "ASAN_SAVE_DUMPS",
+                "value": "${workspaceFolder}/.vscode/_build/windows/ubxlib.dmp"
+            }],
+            "console": "externalTerminal",
+            "requireExactSource": false,
+            "preLaunchTask": "Build windows runner [win32]"
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",

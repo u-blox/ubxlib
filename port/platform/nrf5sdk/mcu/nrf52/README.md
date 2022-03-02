@@ -2,7 +2,6 @@
 These directories provide the configuration and build metadata for the NRF52 MCU under the nRF5 SDK.  The configuration here is sufficient to run the `ubxlib` tests and examples, no attempt is made to optimise the MCU RAM/flash etc. sizes, you need to know how to do that yourself.
 
 - [cfg](cfg): contains the configuration files for the MCU, for the application and for testing (mostly which MCU pins are connected to which module pins).
-- [ses](ses): contains the installation instructions and build files for the nRF5 SDK with the Segger Embedded Studio toolchain.
 - [gcc](gcc): contains the installation instructions and build files for the nRF5 SDK with GCC/Make as the toolchain.
 
 # Hardware Requirements

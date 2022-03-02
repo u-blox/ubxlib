@@ -30,6 +30,7 @@
 #endif
 
 #include "limits.h"    // LONG_MIN, INT_MIN
+#include "stdlib.h"    // malloc()/free()
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
@@ -39,12 +40,13 @@
 #include "u_cfg_app_platform_specific.h"
 
 #include "u_port.h"
-#if U_CFG_ENABLE_LOGGING
 #include "u_port_debug.h"
-#endif
 
 #include "u_network.h"
 #include "u_network_test_shared_cfg.h"
+
+#include "u_mqtt_common.h"
+#include "u_mqtt_client.h"
 
 #include "u_location.h"
 #include "u_location_test_shared_cfg.h"
@@ -66,38 +68,84 @@
  */
 static const uLocationTestCfgList_t gCfgListNone = {0};
 
-#if defined U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
-/** Location assist for Cloud locate.
+#ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
+/** Location assist for Cell locate.
  */
-static const uLocationAssist_t gLocationAssistCloudLocate = {500000, // desiredAccuracyMillimetres
-                                                             60,     // desiredTimeoutSeconds
-                                                             true,   // disable GNSS so that a GNSS network can use it
-                                                             -1
-                                                             };    // networkHandleAssist
+static uLocationAssist_t gLocationAssistCellLocate = {500000, // desiredAccuracyMillimetres
+                                                      60,     // desiredTimeoutSeconds
+                                                      true,   // disable GNSS for Cell Locate so that
+                                                      // a GNSS network can use it
+                                                      -1, -1, -1, -1, -1, NULL, NULL
+                                                      };
+
+/** Location configuration for Cell Locate.
+ */
+static const uLocationTestCfg_t gCfgCellLocate = {U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
+                                                  &gLocationAssistCellLocate,
+                                                  U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
+                                                  NULL, NULL, NULL
+                                                 };
+#endif
+
+#if defined (U_CFG_TEST_CLOUD_LOCATE) && defined (U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID)
+/** Location assist for Cloud locate, which is expected to be
+ * available on any device we run that has a Thingstream Client ID.
+ */
+static uLocationAssist_t gLocationAssistCloudLocate = {-1,   // desiredAccuracyMillimetres and
+                                                       -1,   // desiredTimeoutSeconds are irrelevant
+                                                       true, // disable GNSS for Cell Locate so that Cloud Locate
+                                                       // can ask the GNSS chip for RRLP information
+                                                       -1,   // GNSS handle must be filled in later
+                                                       U_LOCATION_TEST_CLOUD_LOCATE_SVS_THRESHOLD,
+                                                       U_LOCATION_TEST_CLOUD_LOCATE_C_NO_THRESHOLD,
+                                                       U_LOCATION_TEST_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,
+                                                       U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT,
+                                                       U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID),
+                                                       NULL  // mqttClientContext must be filled in later
+                                                       };
 
 /** Location configuration for Cloud Locate.
  */
-static const uLocationTestCfg_t gCfgCloudLocate = {U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
+static const uLocationTestCfg_t gCfgCloudLocate = {U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
                                                    &gLocationAssistCloudLocate,
-                                                   U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
+                                                   NULL,
+                                                   "mqtt.thingstream.io",
+# ifdef U_CFG_APP_CLOUD_LOCATE_MQTT_USERNAME
+                                                   U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CLOUD_LOCATE_MQTT_USERNAME),
+# else
+                                                   NULL,
+# endif
+# ifdef U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD
+                                                   U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CLOUD_LOCATE_MQTT_PASSWORD),
+# else
+                                                   NULL,
+# endif
                                                   };
-#endif
+#endif // defined (U_CFG_TEST_CLOUD_LOCATE) && defined (U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID)
 
 /** Location configuration list for a cellular network.
  */
-#if defined U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
-static const uLocationTestCfgList_t gCfgListCell = {1, &gCfgCloudLocate};
+#if defined (U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN) && defined (U_CFG_TEST_CLOUD_LOCATE) && defined (U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID)
+//lint -e{785} Suppress too few initialisers
+static const uLocationTestCfgList_t gCfgListCell = {2, {&gCfgCellLocate, &gCfgCloudLocate}};
+#elif defined (U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
+//lint -e{785} Suppress too few initialisers
+static const uLocationTestCfgList_t gCfgListCell = {1, {&gCfgCellLocate}};
+#elif defined (U_CFG_TEST_CLOUD_LOCATE) && defined (U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID)
+//lint -e{785} Suppress too few initialisers
+static const uLocationTestCfgList_t gCfgListCell = {1, {&gCfgCloudLocate}};
 #else
 static const uLocationTestCfgList_t gCfgListCell = {0};
 #endif
 
 /** Location configuration for a GNSS network.
  */
-static const uLocationTestCfg_t gCfgGnss = {U_LOCATION_TYPE_GNSS, NULL, NULL};
+static const uLocationTestCfg_t gCfgGnss = {U_LOCATION_TYPE_GNSS, NULL, NULL, NULL, NULL, NULL};
 
 /** Location configuration list for a GNSS network.
  */
-static const uLocationTestCfgList_t gCfgListGnss = {1, &gCfgGnss};
+//lint -e{785} Suppress too few initialisers
+static const uLocationTestCfgList_t gCfgListGnss = {1, {&gCfgGnss}};
 
 /* ----------------------------------------------------------------
  * SHARED VARIABLES
@@ -106,12 +154,12 @@ static const uLocationTestCfgList_t gCfgListGnss = {1, &gCfgGnss};
 /** Location configurations for each network type.
  * ORDER IS IMPORTANT: follows the order of uNetworkType_t.
  */
-const uLocationTestCfgList_t *const gpULocationTestCfg[] = {&gCfgListNone,    // U_NETWORK_TYPE_NONE
-                                                            &gCfgListNone,   // U_NETWORK_TYPE_BLE
-                                                            &gCfgListCell,   // U_NETWORK_TYPE_CELL
-                                                            &gCfgListNone,   // U_NETWORK_TYPE_WIFI
-                                                            &gCfgListGnss
-                                                           };  // U_NETWORK_TYPE_GNSS
+const uLocationTestCfgList_t *gpULocationTestCfg[] = {&gCfgListNone,    // U_NETWORK_TYPE_NONE
+                                                      &gCfgListNone,   // U_NETWORK_TYPE_BLE
+                                                      &gCfgListCell,   // U_NETWORK_TYPE_CELL
+                                                      &gCfgListNone,   // U_NETWORK_TYPE_WIFI
+                                                      &gCfgListGnss    // U_NETWORK_TYPE_GNSS
+                                                     };
 
 /** Number of items in the gpULocationTestCfg array,
  * has to be done in this file and externed or GCC complains about
@@ -122,13 +170,14 @@ const size_t gpULocationTestCfgSize = sizeof (gpULocationTestCfg) /
 
 /** So that we can print the name of the location type being tested.
  */
-const char *const gpULocationTestTypeStr[] = {"none",        // U_LOCATION_TYPE_NONE
-                                              "GNSS",        // U_LOCATION_TYPE_GNSS
-                                              "Cell Locate", // U_LOCATION_TYPE_CLOUD_CELL_LOCATE
-                                              "Google",      // U_LOCATION_TYPE_CLOUD_GOOGLE
-                                              "Skyhook",     // U_LOCATION_TYPE_CLOUD_SKYHOOK
-                                              "Here"         // U_LOCATION_TYPE_CLOUD_HERE
-                                             };
+const char *gpULocationTestTypeStr[] = {"none",         // U_LOCATION_TYPE_NONE
+                                        "GNSS",        // U_LOCATION_TYPE_GNSS
+                                        "Cell Locate", // U_LOCATION_TYPE_CLOUD_CELL_LOCATE
+                                        "Google",      // U_LOCATION_TYPE_CLOUD_GOOGLE
+                                        "Skyhook",     // U_LOCATION_TYPE_CLOUD_SKYHOOK
+                                        "Here",        // U_LOCATION_TYPE_CLOUD_HERE
+                                        "Cloud Locate" // U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE
+                                       };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -205,6 +254,88 @@ void uLocationTestPrintLocation(const uLocation_t *pLocation)
 #else
     (void) pLocation;
 #endif
+}
+
+// Create a deep copy of a uLocationTestCfg_t.
+uLocationTestCfg_t *pULocationTestCfgDeepCopyMalloc(const uLocationTestCfg_t *pCfg)
+{
+    uLocationTestCfg_t *pCfgOut = NULL;
+
+    if (pCfg != NULL) {
+        pCfgOut = (uLocationTestCfg_t *) malloc(sizeof(uLocationTestCfg_t));
+        if (pCfgOut != NULL) {
+            // Copy the outer structure
+            *pCfgOut = *pCfg;
+            pCfgOut->pLocationAssist = NULL;
+            if (pCfg->pLocationAssist != NULL) {
+                // Malloc room for the location assist part in the new structure
+                pCfgOut->pLocationAssist = (uLocationAssist_t *) malloc(sizeof(uLocationAssist_t));
+                if (pCfgOut->pLocationAssist != NULL) {
+                    // Copy the location assist structure
+                    *(pCfgOut->pLocationAssist) = *(pCfg->pLocationAssist);
+                } else {
+                    // If we can't get memory for the location
+                    // assist structure, clean up
+                    free(pCfgOut);
+                    pCfgOut = NULL;
+                }
+            }
+        }
+    }
+
+    return pCfgOut;
+}
+
+// Free a deep copy of a uLocationTestCfg_t.
+void uLocationTestCfgDeepCopyFree(uLocationTestCfg_t *pCfg)
+{
+    if (pCfg != NULL) {
+        // Free the inner structure.
+        free(pCfg->pLocationAssist);
+        // Free the outer structure
+        free(pCfg);
+    }
+}
+
+// Log into an MQTT broker.
+void *pULocationTestMqttLogin(int32_t networkHandle,
+                              const char *pBrokerNameStr,
+                              const char *pUserNameStr,
+                              const char *pPasswordStr,
+                              const char *pClientIdStr)
+{
+    uMqttClientContext_t *pContext;
+    uMqttClientConnection_t connection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
+
+    pContext = pUMqttClientOpen(networkHandle, NULL);
+    if (pContext != NULL) {
+        connection.pBrokerNameStr = pBrokerNameStr;
+        connection.pUserNameStr = pUserNameStr;
+        connection.pPasswordStr = pPasswordStr;
+        connection.pClientIdStr = pClientIdStr;
+        connection.inactivityTimeoutSeconds = U_LOCATION_TEST_MQTT_INACTIVITY_TIMEOUT_SECONDS;
+
+        uPortLog("U_LOCATION_TEST_SHARED: connecting to MQTT broker \"%s\"...\n",
+                 pBrokerNameStr);
+        if (uMqttClientConnect(pContext, &connection) < 0) {
+            uPortLog("U_LOCATION_TEST_SHARED: failed to connect to \"%s\".\n",
+                     pBrokerNameStr);
+            uMqttClientClose(pContext);
+            pContext = NULL;
+        }
+    }
+
+    return (void *) pContext;
+}
+
+// Log out of an MQTT broker.
+void uLocationTestMqttLogout(void *pContext)
+{
+    if (pContext != NULL) {
+        uMqttClientDisconnect((uMqttClientContext_t *) pContext);
+        uMqttClientClose((uMqttClientContext_t *) pContext);
+        uPortLog("U_LOCATION_TEST_SHARED: disconnected from MQTT broker.\n");
+    }
 }
 
 // End of file

@@ -7,6 +7,7 @@ import os # For sep and getcwd() and makedirs()
 from multiprocessing import Manager, freeze_support # To launch u_run_blah.py instances
 import multiprocessing.pool                         # Specific import for daemonic process dodge
 import threading
+import traceback
 import u_data   # Access to the instance database
 import u_connection # To initialise locks
 import u_run    # Actually run stuff
@@ -557,12 +558,12 @@ def session_run(database, instances, filter_string,
                         except Exception as ex:
                             # If an instance threw an exception then flag an
                             # infrastructure error
+                            traceback_str = traceback.format_exc()
                             return_value = -1
-                            printer.string("{}instance {} threw exception \"{}:"    \
-                                           " {}\" but I can't tell you where"       \
-                                           " I'm afraid.".                          \
+                            printer.string("{}instance {} threw exception \"{}: {}\"".
                                            format(PROMPT, instance_text,
                                                   type(ex).__name__, str(ex)))
+                            printer.string(f"{PROMPT} {traceback_str}")
                             if session["reporter"]:
                                 session["reporter"].event(u_report.EVENT_TYPE_INFRASTRUCTURE,
                                                           u_report.EVENT_FAILED,

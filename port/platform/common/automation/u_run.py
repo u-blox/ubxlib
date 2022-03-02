@@ -4,7 +4,7 @@
 
 import sys # For exit() and stdout
 import argparse
-from os import environ
+from os import environ, getcwd
 from multiprocessing import Process, freeze_support # Needed to make Windows behave
                                                     # when doing multiprocessing,
 from signal import signal, SIGINT                   # For CTRL-C handling
@@ -15,6 +15,7 @@ import u_run_nrf5sdk # Build/run stuff on NRF5 (i.e. NRF52)
 import u_run_zephyr # Build/run stuff on Zephyr (i.e. NRF52/53)
 import u_run_stm32cube # Build/run stuff on STM's Cube IDE (i.e. STM32F4)
 import u_run_arduino # Build/run stuff under Arduino
+import u_run_windows # Build/run stuff on Windows
 import u_run_lint # Run Lint check
 import u_run_doxygen # Run a Doxygen check
 import u_run_astyle # Run AStyle check
@@ -101,236 +102,247 @@ def main(database, instance, filter_string, clean,
     instance_text = u_utils.get_instance_text(instance)
     printer_text = []
 
-    if running_flag:
-        # We're off
-        running_flag.set()
+    if not working_dir:
+        working_dir = getcwd()
+    with u_utils.ChangeDir(working_dir):
 
-    # Create the files
-    if summary_report_file_path:
-        summary_report_handle = open(summary_report_file_path, "w")
-        if summary_report_handle:
-            printer_text.append("{}writing summary report to \"{}\".".  \
-                                format(PROMPT, summary_report_file_path))
-        else:
-            printer_text.append("{}unable to open file \"{}\" for summary report.".   \
-                                format(PROMPT, summary_report_file_path))
-    if test_report_file_path:
-        test_report_handle = open(test_report_file_path, "w")
-        if test_report_handle:
-            printer_text.append("{}writing test report to \"{}\".".  \
-                                format(PROMPT, test_report_file_path))
-        else:
-            printer_text.append("{}unable to open file \"{}\" for test report.".   \
-                                format(PROMPT, test_report_file_path))
-    if debug_file_path:
-        debug_handle = open(debug_file_path, "w")
-        if debug_handle:
-            printer_text.append("{}writing log output to \"{}\".".  \
-                                format(PROMPT, debug_file_path))
-        else:
-            printer_text.append("{}unable to open file \"{}\" for log"       \
-                                " output.".format(PROMPT, debug_file_path))
+        if running_flag:
+            # We're off
+            running_flag.set()
 
-    # Create a printer and send the initial printer text there
-    printer = u_utils.PrintToQueue(print_queue, debug_handle, True)
-    for line in printer_text:
-        printer.string(line)
+        # Create the files
+        if summary_report_file_path:
+            summary_report_handle = open(summary_report_file_path, "w")
+            if summary_report_handle:
+                printer_text.append("{}writing summary report to \"{}\".".  \
+                                    format(PROMPT, summary_report_file_path))
+            else:
+                printer_text.append("{}unable to open file \"{}\" for summary report.".   \
+                                    format(PROMPT, summary_report_file_path))
+        if test_report_file_path:
+            test_report_handle = open(test_report_file_path, "w")
+            if test_report_handle:
+                printer_text.append("{}writing test report to \"{}\".".  \
+                                    format(PROMPT, test_report_file_path))
+            else:
+                printer_text.append("{}unable to open file \"{}\" for test report.".   \
+                                    format(PROMPT, test_report_file_path))
+        if debug_file_path:
+            debug_handle = open(debug_file_path, "w")
+            if debug_handle:
+                printer_text.append("{}writing log output to \"{}\".".  \
+                                    format(PROMPT, debug_file_path))
+            else:
+                printer_text.append("{}unable to open file \"{}\" for log"       \
+                                    " output.".format(PROMPT, debug_file_path))
 
-    # Print out what we've been told to do
-    text = "running instance " + instance_text
-    if filter_string:
-        text += " with filter_string \"" + filter_string + "\""
-    if clean:
-        text += ", clean build"
-    if ubxlib_dir:
-        text += ", ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
-    printer.string("{}{}.".format(PROMPT, text))
+        # Create a printer and send the initial printer text there
+        printer = u_utils.PrintToQueue(print_queue, debug_handle, True)
+        for line in printer_text:
+            printer.string(line)
 
-    # Get the connection for this instance
-    connection = u_connection.get_connection(instance)
+        # Print out what we've been told to do
+        text = "running instance " + instance_text
+        if filter_string:
+            text += " with filter_string \"" + filter_string + "\""
+        if clean:
+            text += ", clean build"
+        if ubxlib_dir:
+            text += ", ubxlib directory \"" + ubxlib_dir + "\""
+        if working_dir:
+            text += ", working directory \"" + working_dir + "\""
+        printer.string("{}{}.".format(PROMPT, text))
 
-    # Get the #defines for this instance
-    defines = u_data.get_defines_for_instance(database, instance)
-    if not defines:
-        defines = []
+        # Get the connection for this instance
+        connection = u_connection.get_connection(instance)
 
-    # If there is a cellular module on this instance, add its
-    # name to the defines list
-    cellular_module_name = u_data.get_cellular_module_for_instance(database, instance)
-    if cellular_module_name:
-        defines.append("U_CFG_TEST_CELL_MODULE_TYPE=" + cellular_module_name)
+        # Get the #defines for this instance
+        defines = u_data.get_defines_for_instance(database, instance)
+        if not defines:
+            defines = []
 
-    # If there is a short-range module on this instance, add its
-    # name to the defines list
-    short_range_module_name = u_data.get_short_range_module_for_instance(database, instance)
-    if short_range_module_name:
-        defines.append("U_CFG_TEST_SHORT_RANGE_MODULE_TYPE=" + short_range_module_name)
+        # If there is a cellular module on this instance, add its
+        # name to the defines list
+        cellular_module_name = u_data.get_cellular_module_for_instance(database, instance)
+        if cellular_module_name:
+            defines.append("U_CFG_TEST_CELL_MODULE_TYPE=" + cellular_module_name)
 
-    # If there is a GNSS module on this instance, add its
-    # name to the defines list
-    gnss_module_name = u_data.get_gnss_module_for_instance(database, instance)
-    if gnss_module_name:
-        defines.append("U_CFG_TEST_GNSS_MODULE_TYPE=" + gnss_module_name)
+        # If there is a short-range module on this instance, add its
+        # name to the defines list
+        short_range_module_name = u_data.get_short_range_module_for_instance(database, instance)
+        if short_range_module_name:
+            defines.append("U_CFG_TEST_SHORT_RANGE_MODULE_TYPE=" + short_range_module_name)
 
-    # Also, when running testing it is best to run the
-    # the "port" tests first as, if there's a problem with the
-    # port, you want to notice it first.
-    # This also acts as a flag to indicate that we're running
-    # under u_runner automation
-    defines.append("U_RUNNER_TOP_STR=port")
+        # If there is a GNSS module on this instance, add its
+        # name to the defines list
+        gnss_module_name = u_data.get_gnss_module_for_instance(database, instance)
+        if gnss_module_name:
+            defines.append("U_CFG_TEST_GNSS_MODULE_TYPE=" + gnss_module_name)
 
-    # When running tests on cellular LTE modules, so
-    # SARA-R4 or SARA-R5, we need to set the RF band we
-    # are running in to NOT include the public network,
-    # since otherwise the modules can sometimes wander off
-    # onto it.
-    defines.append("U_CELL_TEST_CFG_BANDMASK1=0x000010ULL")
+        # Also, when running testing it is best to run the
+        # the "port" tests first as, if there's a problem with the
+        # port, you want to notice it first.
+        # This also acts as a flag to indicate that we're running
+        # under u_runner automation
+        defines.append("U_RUNNER_TOP_STR=port")
 
-    # Defines may be provided via an environment
-    # variable, in a list separated with semicolons, e.g.:
-    # set U_UBXLIB_DEFINES=THING_1;ANOTHER_THING=123;ONE_MORE=boo
-    # Add these in.
-    if UBXLIB_DEFINES_VAR in environ and environ[UBXLIB_DEFINES_VAR].strip():
-        defines.extend(environ[UBXLIB_DEFINES_VAR].strip().split(";"))
+        # When running tests on cellular LTE modules, so
+        # SARA-R4 or SARA-R5, we need to set the RF band we
+        # are running in to NOT include the public network,
+        # since otherwise the modules can sometimes wander off
+        # onto it.
+        defines.append("U_CELL_TEST_CFG_BANDMASK1=0x000010ULL")
 
-    # Merge in any filter string we might have
-    defines = merge_filter(defines, filter_string)
+        # Defines may be provided via an environment
+        # variable, in a list separated with semicolons, e.g.:
+        # set U_UBXLIB_DEFINES=THING_1;ANOTHER_THING=123;ONE_MORE=boo
+        # Add these in.
+        if UBXLIB_DEFINES_VAR in environ and environ[UBXLIB_DEFINES_VAR].strip():
+            defines.extend(environ[UBXLIB_DEFINES_VAR].strip().split(";"))
 
-    # It is sometimes useful for the platform tools to be able
-    # to detect that they are running under automation (e.g. this
-    # is used to switch ESP-IDF to using u_runner rather than the
-    # usual ESP-IDF unit test menu system).
-    # For this purpose we add ENV_UBXLIB_AUTO to the environment
-    environ[ENV_UBXLIB_AUTO] = "1"
+        # Merge in any filter string we might have
+        defines = merge_filter(defines, filter_string)
 
-    # With a reporter
-    with u_report.ReportToQueue(report_queue, instance,
-                                summary_report_handle,
-                                printer) as reporter:
-        if connection:
-            # Run the type of build/test specified
-            platform = u_data.get_platform_for_instance(database, instance)
-            if platform:
-                # Since there will be many different platforms, add
-                # the description from the database to the report
-                description = u_data.get_description_for_instance(database,
-                                                                  instance)
-                mcu = u_data.get_mcu_for_instance(database, instance)
-                # Zephyr requires a board name also
-                board = u_data.get_board_for_instance(database, instance)
-                toolchain = u_data.get_toolchain_for_instance(database, instance)
-                if description:
-                    reporter.event(u_report.EVENT_TYPE_BUILD,
-                                   u_report.EVENT_NAME,
-                                   description)
-                # A NOTE ABOUT keep_going_flag: the keep_going_flag is passed
-                # into any instance that will take more than a few seconds
-                # to run.  Each instance receiving it should ensure that
-                # anything that can be safely stopped and is likely to run
-                # for more than about 10ish seconds should be stopped
-                # if the flag is cleared, in case the user decides to abort
-                # a test run.
-                if platform.lower() == "esp-idf":
-                    return_value = u_run_esp_idf.run(instance, mcu, toolchain, connection,
-                                                     connection_lock, platform_lock,
-                                                     misc_locks, clean, defines,
-                                                     ubxlib_dir, working_dir,
-                                                     printer, reporter, test_report_handle,
-                                                     keep_going_flag)
-                elif platform.lower() == "nrf5sdk":
-                    return_value = u_run_nrf5sdk.run(instance, mcu, toolchain, connection,
-                                                     connection_lock, platform_lock,
-                                                     misc_locks, clean, defines, ubxlib_dir,
-                                                     working_dir, printer, reporter,
-                                                     test_report_handle, keep_going_flag,
-                                                     unity_dir)
-                elif platform.lower() == "zephyr":
-                    return_value = u_run_zephyr.run(instance, mcu, board, toolchain, connection,
-                                                    connection_lock, platform_lock,
-                                                    misc_locks, clean, defines, ubxlib_dir,
-                                                    working_dir, printer, reporter,
-                                                    test_report_handle, keep_going_flag)
-                elif platform.lower() == "stm32cube":
-                    return_value = u_run_stm32cube.run(instance, mcu, toolchain, connection,
-                                                       connection_lock, platform_lock,
-                                                       misc_locks, clean, defines, ubxlib_dir,
-                                                       working_dir, printer, reporter,
-                                                       test_report_handle, keep_going_flag,
-                                                       unity_dir)
-                elif platform.lower() == "arduino":
-                    return_value = u_run_arduino.run(instance, mcu, board, toolchain, connection,
-                                                     connection_lock, platform_lock,
-                                                     misc_locks, clean, defines, ubxlib_dir,
-                                                     working_dir, printer, reporter,
-                                                     test_report_handle, keep_going_flag,
-                                                     unity_dir)
+        # It is sometimes useful for the platform tools to be able
+        # to detect that they are running under automation (e.g. this
+        # is used to switch ESP-IDF to using u_runner rather than the
+        # usual ESP-IDF unit test menu system).
+        # For this purpose we add ENV_UBXLIB_AUTO to the environment
+        environ[ENV_UBXLIB_AUTO] = "1"
+
+        # With a reporter
+        with u_report.ReportToQueue(report_queue, instance,
+                                    summary_report_handle,
+                                    printer) as reporter:
+            if connection:
+                # Run the type of build/test specified
+                platform = u_data.get_platform_for_instance(database, instance)
+                if platform:
+                    # Since there will be many different platforms, add
+                    # the description from the database to the report
+                    description = u_data.get_description_for_instance(database,
+                                                                      instance)
+                    mcu = u_data.get_mcu_for_instance(database, instance)
+                    # Zephyr requires a board name also
+                    board = u_data.get_board_for_instance(database, instance)
+                    toolchain = u_data.get_toolchain_for_instance(database, instance)
+                    if description:
+                        reporter.event(u_report.EVENT_TYPE_BUILD,
+                                       u_report.EVENT_NAME,
+                                       description)
+
+                    # A NOTE ABOUT keep_going_flag: the keep_going_flag is passed
+                    # into any instance that will take more than a few seconds
+                    # to run.  Each instance receiving it should ensure that
+                    # anything that can be safely stopped and is likely to run
+                    # for more than about 10ish seconds should be stopped
+                    # if the flag is cleared, in case the user decides to abort
+                    # a test run.
+                    if platform.lower() == "esp-idf":
+                        return_value = u_run_esp_idf.run(instance, mcu, toolchain, connection,
+                                                         connection_lock, platform_lock,
+                                                         misc_locks, clean, defines,
+                                                         printer, reporter,
+                                                         test_report_handle,
+                                                         keep_going_flag)
+                    elif platform.lower() == "nrf5sdk":
+                        return_value = u_run_nrf5sdk.run(instance, mcu, toolchain, connection,
+                                                         connection_lock, platform_lock,
+                                                         misc_locks, clean, defines,
+                                                         printer, reporter,
+                                                         test_report_handle, keep_going_flag,
+                                                         unity_dir)
+                    elif platform.lower() == "zephyr":
+                        return_value = u_run_zephyr.run(instance, mcu, board, toolchain, connection,
+                                                        connection_lock, platform_lock,
+                                                        misc_locks, clean, defines,
+                                                        printer, reporter,
+                                                        test_report_handle, keep_going_flag)
+                    elif platform.lower() == "stm32cube":
+                        return_value = u_run_stm32cube.run(instance, mcu, toolchain, connection,
+                                                           connection_lock, platform_lock,
+                                                           misc_locks, clean, defines,
+                                                           printer, reporter,
+                                                           test_report_handle, keep_going_flag,
+                                                           unity_dir)
+                    elif platform.lower() == "arduino":
+                        return_value = u_run_arduino.run(instance, mcu, board, toolchain, connection,
+                                                         connection_lock, platform_lock,
+                                                         misc_locks, clean, defines,
+                                                         printer, reporter,
+                                                         test_report_handle, keep_going_flag,
+                                                         unity_dir)
+                    elif platform.lower() == "windows":
+                        return_value = u_run_windows.run(instance, mcu, toolchain, connection,
+                                                         connection_lock, platform_lock, misc_locks,
+                                                         clean, defines, printer, reporter,
+                                                         test_report_handle,
+                                                         keep_going_flag, unity_dir)
+                    else:
+                        printer.string("{}don't know how to handle platform \"{}\".".    \
+                                    format(PROMPT, platform))
                 else:
-                    printer.string("{}don't know how to handle platform \"{}\".".    \
-                                   format(PROMPT, platform))
+                    printer.string("{}this instance has no platform.".format(PROMPT))
             else:
-                printer.string("{}this instance has no platform.".format(PROMPT))
+                # No connection, must be a local thing
+                if instance[0] == 0:
+                    return_value = u_run_lint.run(instance, defines, ubxlib_dir,
+                                                  printer, reporter,
+                                                  keep_going_flag, unity_dir)
+                elif instance[0] == 1:
+                    return_value = u_run_doxygen.run(instance, ubxlib_dir,
+                                                     printer, reporter)
+                elif instance[0] == 2:
+                    return_value = u_run_astyle.run(instance, ubxlib_dir,
+                                                    printer, reporter)
+                elif instance[0] == 3:
+                    return_value = u_run_pylint.run(instance, ubxlib_dir,
+                                                    printer, reporter, keep_going_flag)
+                elif instance[0] == 4:
+                    return_value = u_run_static_size.run(instance, defines, ubxlib_dir,
+                                                         printer, reporter,
+                                                         keep_going_flag)
+                elif instance[0] == 5:
+                    return_value = u_run_no_floating_point.run(instance, defines, ubxlib_dir,
+                                                               printer, reporter,
+                                                               keep_going_flag)
+                elif instance[0] == 6:
+                    printer.string("{}reserved, nothing to do.".format(PROMPT))
+                    return_value = 0
+                elif instance[0] == 7:
+                    printer.string("{}reserved, nothing to do.".format(PROMPT))
+                    return_value = 0
+                elif instance[0] == 8:
+                    printer.string("{}reserved, nothing to do.".format(PROMPT))
+                    return_value = 0
+                elif instance[0] == 9:
+                    printer.string("{}reserved, nothing to do.".format(PROMPT))
+                    return_value = 0
+                else:
+                    printer.string("{}instance {} has no connection and isn't a"     \
+                                   " local thing.".format(PROMPT, instance_text))
+
+        if platform:
+            printer.string("{}instance {}, platform {} EXITING with"    \
+                           " return value {}.".format(PROMPT, instance_text, platform,
+                                                      return_value))
+        elif connection:
+            printer.string("{}instance {}, EXITING with return value {}.". \
+                           format(PROMPT, instance_text, return_value))
         else:
-            # No connection, must be a local thing
-            if instance[0] == 0:
-                return_value = u_run_lint.run(instance, defines, ubxlib_dir,
-                                              working_dir, printer, reporter,
-                                              keep_going_flag, unity_dir)
-            elif instance[0] == 1:
-                return_value = u_run_doxygen.run(instance, ubxlib_dir, working_dir,
-                                                 printer, reporter)
-            elif instance[0] == 2:
-                return_value = u_run_astyle.run(instance, ubxlib_dir, working_dir,
-                                                printer, reporter)
-            elif instance[0] == 3:
-                return_value = u_run_pylint.run(instance, ubxlib_dir, working_dir,
-                                                printer, reporter, keep_going_flag)
-            elif instance[0] == 4:
-                return_value = u_run_static_size.run(instance, defines, ubxlib_dir,
-                                                     working_dir, printer, reporter,
-                                                     keep_going_flag)
-            elif instance[0] == 5:
-                return_value = u_run_no_floating_point.run(instance, defines, ubxlib_dir,
-                                                           working_dir, printer, reporter,
-                                                           keep_going_flag)
-            elif instance[0] == 6:
-                printer.string("{}reserved, nothing to do.".format(PROMPT))
-                return_value = 0
-            elif instance[0] == 7:
-                printer.string("{}reserved, nothing to do.".format(PROMPT))
-                return_value = 0
-            elif instance[0] == 8:
-                printer.string("{}reserved, nothing to do.".format(PROMPT))
-                return_value = 0
-            elif instance[0] == 9:
-                printer.string("{}reserved, nothing to do.".format(PROMPT))
-                return_value = 0
-            else:
-                printer.string("{}instance {} has no connection and isn't a"     \
-                               " local thing.".format(PROMPT, instance_text))
+            printer.string("{}instance {} EXITING with return value {}.".        \
+                           format(PROMPT, instance_text, return_value))
 
-    if platform:
-        printer.string("{}instance {}, platform {} EXITING with"    \
-                       " return value {}.".format(PROMPT, instance_text, platform,
-                                                  return_value))
-    elif connection:
-        printer.string("{}instance {}, EXITING with return value {}.". \
-                       format(PROMPT, instance_text, return_value))
-    else:
-        printer.string("{}instance {} EXITING with return value {}.".        \
-                       format(PROMPT, instance_text, return_value))
+        if summary_report_handle:
+            summary_report_handle.close()
+        if test_report_handle:
+            test_report_handle.close()
+        if debug_handle:
+            debug_handle.close()
 
-    if summary_report_handle:
-        summary_report_handle.close()
-    if test_report_handle:
-        test_report_handle.close()
-    if debug_handle:
-        debug_handle.close()
-
-    if running_flag:
-        # We're done
-        running_flag.clear()
+        if running_flag:
+            # We're done
+            running_flag.clear()
 
     return return_value
 

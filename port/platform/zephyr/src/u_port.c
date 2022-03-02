@@ -32,6 +32,7 @@
 
 #include "u_port_debug.h"
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
@@ -65,9 +66,11 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
                            size_t stackSizeBytes,
                            int32_t priority)
 {
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
     (void) stackSizeBytes;
     (void) priority;
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
     if (pEntryPoint != NULL) {
         errorCode = U_ERROR_COMMON_SUCCESS;
         pEntryPoint(pParameter);
@@ -79,13 +82,16 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 // Initialise the porting layer.
 int32_t uPortInit()
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_SUCCESS;
-    errorCode = uPortUartInit();
-    if (errorCode == U_ERROR_COMMON_SUCCESS) {
-        errorCode = uPortEventQueuePrivateInit();
+    uErrorCode_t errorCode;
+
+    // Workaround for Zephyr thread resource pool bug
+    uPortOsPrivateInit();
+    errorCode = uPortEventQueuePrivateInit();
+    if (errorCode == 0) {
+        errorCode = uPortUartInit();
     }
-    if (errorCode == U_ERROR_COMMON_SUCCESS) {
-        uPortOsPrivateInit();
+    if (errorCode == 0) {
+        errorCode = uPortPrivateInit();
     }
     return errorCode;
 }
@@ -93,8 +99,10 @@ int32_t uPortInit()
 // Deinitialise the porting layer.
 void uPortDeinit()
 {
+    uPortPrivateDeinit();
     uPortUartDeinit();
     uPortEventQueuePrivateDeinit();
+    // Workaround for Zephyr thread resource pool bug
     uPortOsPrivateDeinit();
 }
 

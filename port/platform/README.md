@@ -12,6 +12,7 @@ The MCUs supported by the platforms are as follows:
 - ST Microelectronics' [STM32Cube IDE](stm32cube): STM32F4.
 - Nordic [nRF5 SDK](nrf5sdk): NRF52.
 - [zephyr](zephyr): NRF52 and NRF53.
+- not really an MCU but [windows](windows) is supported for development/test purposes.
 
 # Structure
 Each platform sub-directory includes the following items:

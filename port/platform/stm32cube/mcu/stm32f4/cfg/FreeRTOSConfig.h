@@ -85,7 +85,7 @@ extern uint32_t SystemCoreClock;
 #define configMAX_CO_ROUTINE_PRIORITIES (2)
 
 /* Software timer definitions. */
-#define configUSE_TIMERS             0
+#define configUSE_TIMERS             1
 #define configTIMER_TASK_PRIORITY    (2)
 #define configTIMER_QUEUE_LENGTH     10
 #define configTIMER_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 2)

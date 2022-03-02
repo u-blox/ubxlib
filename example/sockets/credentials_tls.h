@@ -42,11 +42,11 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 // The credentials that may be required to talk to the uxblib echo server.
-extern const char *const gpUEchoServerClientCertPem;
+extern const char *gpUEchoServerClientCertPem;
 extern const char gUEchoServerClientCertHash[];
-extern const char *const gpUEchoServerClientKeyPem;
+extern const char *gpUEchoServerClientKeyPem;
 extern const char gUEchoServerClientKeyHash[];
-extern const char *const gpUEchoServerServerCertPem;
+extern const char *gpUEchoServerServerCertPem;
 extern const char gUEchoServerServerCertHash[];
 
 #ifdef __cplusplus

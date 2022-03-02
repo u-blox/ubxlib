@@ -34,9 +34,10 @@ extern "C" {
 
 #ifndef U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES
 /** The maximum size of ubx-format message body to be read using
- * these functions.
+ * these functions.  The maximum length of an RRLP message
+ * (UBX-RXM-MEASX) is the governing factor here.
  */
-# define U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES 256
+# define U_GNSS_MAX_UBX_PROTOCOL_MESSAGE_BODY_LENGTH_BYTES 1024
 #endif
 
 /** Determine if the given feature is supported or not

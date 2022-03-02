@@ -1,0 +1,66 @@
+
+unity:
+    type: git
+    url: https://github.com/ThrowTheSwitch/Unity
+    version: v2.5.0
+
+nrfconnectsdk:
+    type: nrfconnectsdk
+    version: v1.6.1
+
+arm_embedded_gcc:
+    type: archive
+    version: 10-2020-q4-major
+    skip_first_subdir: True
+    windows:
+        url: https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-win32.zip
+    linux:
+        url: https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
+
+openocd:
+    type: archive
+    version: v0.11.0-3
+    skip_first_subdir: True
+    windows:
+        url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.11.0-3/xpack-openocd-0.11.0-3-win32-x64.zip
+    linux:
+        url: https://github.com/xpack-dev-tools/openocd-xpack/releases/download/v0.11.0-3/xpack-openocd-0.11.0-3-linux-x64.tar.gz
+    add_to_path: bin
+
+nrf5sdk:
+    type: archive
+    url: "https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/nRF5_SDK_15.3.0_59ac345.zip"
+    version: 15.3.0_59ac345
+    skip_first_subdir: True
+
+stm32cubef4:
+    type: git
+    url: https://github.com/STMicroelectronics/STM32CubeF4.git
+    version: v1.26.1
+
+esp_idf:
+    type: esp_idf
+    url: https://github.com/espressif/esp-idf
+    version: v4.3.2
+
+make:
+    windows:
+        type: archive
+        version: v4.3.1
+        url: http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-make-4.3-1-any.pkg.tar.xz
+        post_install_command: mv mingw64\bin\mingw32-make.exe mingw64\bin\make.exe
+        add_to_path: mingw64\bin
+    linux:
+        type: apt
+        package_name: make
+        check_command: command -v make
+
+arduino-cli:
+    linux:
+        type: archive
+        version: 0.20.2
+        url: https://github.com/arduino/arduino-cli/releases/download/0.20.2/arduino-cli_0.20.2_Linux_64bit.tar.gz
+    windows:
+        type: archive
+        version: 0.20.2
+        url: https://github.com/arduino/arduino-cli/releases/download/0.20.2/arduino-cli_0.20.2_Windows_64bit.zip

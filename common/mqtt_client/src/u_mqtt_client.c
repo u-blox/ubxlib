@@ -58,7 +58,7 @@
 
 #include "u_cell_sec_tls.h"
 #include "u_cell_mqtt.h"
-
+#include "u_wifi_mqtt.h"
 #include "u_network_handle.h"
 
 /* ----------------------------------------------------------------
@@ -154,6 +154,7 @@ uMqttClientContext_t *pUMqttClientOpen(int32_t networkHandle,
                                        const uSecurityTlsSettings_t *pSecurityTlsSettings)
 {
     uMqttClientContext_t *pContext = NULL;
+    void *pPriv = NULL;
 
     gLastOpenError = U_ERROR_COMMON_NOT_SUPPORTED;
     if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
@@ -162,11 +163,17 @@ uMqttClientContext_t *pUMqttClientOpen(int32_t networkHandle,
         if (uCellMqttIsSupported(networkHandle)) {
             gLastOpenError = U_ERROR_COMMON_SUCCESS;
         }
+    } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
+        // For WiFi
+        if (uWifiMqttInit(networkHandle, &pPriv) == 0) {
+            gLastOpenError = U_ERROR_COMMON_SUCCESS;
+        }
     } else {
         // Other underlying network types may need to do
         // do something here, currently returning not
         // implemented in any case
         gLastOpenError = U_ERROR_COMMON_NOT_IMPLEMENTED;
+
     }
 
     if (gLastOpenError == U_ERROR_COMMON_SUCCESS) {
@@ -178,6 +185,7 @@ uMqttClientContext_t *pUMqttClientOpen(int32_t networkHandle,
             pContext->pSecurityContext = NULL;
             pContext->totalMessagesSent = 0;
             pContext->totalMessagesReceived = 0;
+            pContext->pPriv = pPriv;
             if (uPortMutexCreate((uPortMutexHandle_t *) & (pContext->mutexHandle)) == 0) {
                 gLastOpenError = U_ERROR_COMMON_SUCCESS;
                 if (pSecurityTlsSettings != NULL) {
@@ -232,6 +240,8 @@ void uMqttClientClose(uMqttClientContext_t *pContext)
 
         if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
             uCellMqttDeinit(pContext->networkHandle);
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            uWifiMqttClose(pContext);
         }
 
         if (pContext->pSecurityContext != NULL) {
@@ -261,6 +271,9 @@ int32_t uMqttClientConnect(const uMqttClientContext_t *pContext,
             errorCode = cellConnect(pContext->networkHandle,
                                     pConnection,
                                     pContext->pSecurityContext);
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+
+            errorCode = uWifiMqttConnect(pContext, pConnection);
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -281,6 +294,8 @@ int32_t uMqttClientDisconnect(const uMqttClientContext_t *pContext)
 
         if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
             errorCode = uCellMqttDisconnect(pContext->networkHandle);
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            errorCode = uWifiMqttDisconnect(pContext);
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -300,6 +315,8 @@ bool uMqttClientIsConnected(const uMqttClientContext_t *pContext)
 
         if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
             isConnected = uCellMqttIsConnected(pContext->networkHandle);
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            isConnected = uWifiMqttIsConnected(pContext);
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -328,9 +345,14 @@ int32_t uMqttClientPublish(uMqttClientContext_t *pContext,
                                          pTopicNameStr,
                                          pMessage, messageSizeBytes,
                                          (uCellMqttQos_t) qos, retain);
-            if (errorCode == 0) {
-                pContext->totalMessagesSent++;
-            }
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            errorCode = uWifiMqttPublish(pContext,
+                                         pTopicNameStr,
+                                         pMessage, messageSizeBytes,
+                                         (uMqttQos_t)qos, retain);
+        }
+        if (errorCode == 0) {
+            pContext->totalMessagesSent++;
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -355,6 +377,10 @@ int32_t uMqttClientSubscribe(const uMqttClientContext_t *pContext,
             errorCode = uCellMqttSubscribe(pContext->networkHandle,
                                            pTopicFilterStr,
                                            (uCellMqttQos_t) maxQos);
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            errorCode = uWifiMqttSubscribe(pContext,
+                                           pTopicFilterStr,
+                                           (uMqttQos_t)maxQos);
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -377,6 +403,8 @@ int32_t uMqttClientUnsubscribe(const uMqttClientContext_t *pContext,
         if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
             errorCode = uCellMqttUnsubscribe(pContext->networkHandle,
                                              pTopicFilterStr);
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            errorCode = uWifiMqttUnsubscribe(pContext, pTopicFilterStr);
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -401,6 +429,10 @@ int32_t uMqttClientSetMessageCallback(const uMqttClientContext_t *pContext,
             errorCode = uCellMqttSetMessageCallback(pContext->networkHandle,
                                                     pCallback,
                                                     pCallbackParam);
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            errorCode = uWifiMqttSetMessageCallback(pContext,
+                                                    pCallback,
+                                                    pCallbackParam);
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -421,6 +453,8 @@ int32_t uMqttClientGetUnread(const uMqttClientContext_t *pContext)
 
         if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
             errorCodeOrUnread = uCellMqttGetUnread(pContext->networkHandle);
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            errorCodeOrUnread = uWifiMqttGetUnread(pContext);
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -453,9 +487,16 @@ int32_t uMqttClientMessageRead(uMqttClientContext_t *pContext,
                                              pMessage,
                                              pMessageSizeBytes,
                                              (uCellMqttQos_t *) pQos);
-            if (errorCode == 0) {
-                pContext->totalMessagesReceived++;
-            }
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            errorCode = uWifiMqttMessageRead(pContext,
+                                             pTopicNameStr,
+                                             topicNameSizeBytes,
+                                             pMessage,
+                                             pMessageSizeBytes,
+                                             (uMqttQos_t *) pQos);
+        }
+        if (errorCode == 0) {
+            pContext->totalMessagesReceived++;
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -522,6 +563,10 @@ int32_t uMqttClientSetDisconnectCallback(const uMqttClientContext_t *pContext,
 
         if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
             errorCode = uCellMqttSetDisconnectCallback(pContext->networkHandle,
+                                                       pCallback,
+                                                       pCallbackParam);
+        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+            errorCode = uWifiMqttSetDisconnectCallback(pContext,
                                                        pCallback,
                                                        pCallbackParam);
         }

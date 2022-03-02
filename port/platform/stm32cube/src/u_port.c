@@ -27,7 +27,9 @@
 
 #include "u_cfg_hw_platform_specific.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port.h"
+#include "u_port_os.h"
 #include "u_port_gpio.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
@@ -40,7 +42,6 @@
 #include "cmsis_os.h"
 
 #include "stdio.h"
-#include "assert.h"
 
 #include "u_port_private.h" // Down here 'cos it needs GPIO_TypeDef
 
@@ -83,7 +84,7 @@ static void systemClockConfig(void)
     RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
     RCC_OscInitStruct.PLL.PLLQ = 7;
     if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
-        assert(false);
+        U_ASSERT(false);
     }
 
     // Initialize the CPU, AHB and APB bus clocks
@@ -94,7 +95,7 @@ static void systemClockConfig(void)
     RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
     RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV4;
     if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK) {
-        assert(false);
+        U_ASSERT(false);
     }
 }
 
@@ -104,7 +105,7 @@ void assert_failed(uint8_t *pFile, uint32_t line)
     // printf() rather than uPortLog so that it is always
     // emitted, irrespective of whether debug is on or not
     printf("assert %s: %lu\n", pFile, line);
-    assert(false);
+    U_ASSERT(false);
 }
 #endif /* USE_FULL_ASSERT */
 
@@ -157,9 +158,9 @@ int32_t uPortInit()
     int32_t errorCode = 0;
 
     if (!gInitialised) {
-        errorCode = uPortPrivateInit();
+        errorCode = uPortEventQueuePrivateInit();
         if (errorCode == 0) {
-            errorCode = uPortEventQueuePrivateInit();
+            errorCode = uPortPrivateInit();
             if (errorCode == 0) {
                 errorCode = uPortUartInit();
             }
@@ -175,8 +176,8 @@ void uPortDeinit()
 {
     if (gInitialised) {
         uPortUartDeinit();
-        uPortEventQueuePrivateDeinit();
         uPortPrivateDeinit();
+        uPortEventQueuePrivateDeinit();
         gInitialised = false;
     }
 }

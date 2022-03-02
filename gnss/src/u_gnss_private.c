@@ -33,11 +33,12 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memmove(), strstr()
-#include "assert.h"
 
 #include "u_cfg_sw.h"
 
 #include "u_error_common.h"
+
+#include "u_assert.h"
 
 #include "u_port.h"
 #include "u_port_os.h"
@@ -306,7 +307,7 @@ static int32_t sendReceiveUbxMessageAt(const uAtClientHandle_t atHandle,
     bool atPrintOn = uAtClientPrintAtGet(atHandle);
     bool atDebugPrintOn = uAtClientDebugGet(atHandle);
 
-    assert(pResponse != NULL);
+    U_ASSERT(pResponse != NULL);
 
     // Need a buffer to hex encode the message into
     // and receive the response into

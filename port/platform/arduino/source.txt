@@ -37,6 +37,7 @@ wifi/src/u_wifi_cfg.c
 wifi/src/u_wifi_net.c
 wifi/src/u_wifi_private.c
 wifi/src/u_wifi_sock.c
+wifi/src/u_wifi_mqtt.c
 common/network/src/u_network.c
 common/network/src/u_network_private_short_range.c
 common/network/src/u_network_private_ble_extmod.c
@@ -50,6 +51,7 @@ common/security/src/u_security_credential.c
 common/security/src/u_security_tls.c
 common/location/src/u_location.c
 common/location/src/u_location_shared.c
+common/location/src/u_location_private_cloud_locate.c
 common/at_client/src/u_at_client.c
 common/ubx_protocol/src/u_ubx_protocol.c
 common/short_range/src/u_short_range.c
@@ -61,6 +63,7 @@ common/utils/src/u_ringbuffer.c
 common/utils/src/u_hex_bin_convert.c
 common/utils/src/u_time.c
 common/mqtt_client/src/u_mqtt_client.c
+common/assert/src/u_assert.c
 port/platform/common/event_queue/u_port_event_queue.c
 port/platform/common/mbedtls/u_port_crypto.c
 port/clib/u_port_clib_mktime64.c
@@ -69,4 +72,5 @@ port/platform/esp-idf/src/u_port_debug.c
 port/platform/esp-idf/src/u_port_os.c
 port/platform/esp-idf/src/u_port_gpio.c
 port/platform/esp-idf/src/u_port_uart.c
+port/platform/esp-idf/src/u_port_private.c
 port/platform/common/mutex_debug/u_mutex_debug.c

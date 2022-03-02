@@ -194,7 +194,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
         U_PORT_TEST_ASSERT(y > 0);
         U_PORT_TEST_ASSERT(y < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
         uPortLog("U_GNSS_INFO_TEST: GNSS chip ID string is 0x");
-        for (size_t x = 0; x < y; x++) {
+        for (size_t x = 0; x < (size_t) y; x++) {
             uPortLog("%02x", *(pBuffer + x));
         }
         uPortLog(".\n");

@@ -300,7 +300,7 @@ static size_t stripWhitespace(char *pString, size_t stringLength)
     char *pFrom = pString;
 
     for (size_t x = 0; x < stringLength; x++) {
-        if (isprint((int32_t) *pFrom) && !isblank((int32_t) *pFrom)) {
+        if (isprint((int32_t) (uint8_t) *pFrom) && !isblank((int32_t) (uint8_t) *pFrom)) {
             *(pString + newLength) = *pFrom;
             newLength++;
         }

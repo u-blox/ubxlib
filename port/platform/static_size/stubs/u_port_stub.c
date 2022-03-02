@@ -226,6 +226,44 @@ int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
     return 0;
 }
 
+int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
+                         const char *pName,
+                         pTimerCallback_t *pCallback,
+                         void *pCallbackParam,
+                         uint32_t intervalMs,
+                         bool periodic)
+{
+    (void) pTimerHandle;
+    (void) pName;
+    (void) pCallback;
+    (void) pCallbackParam;
+    (void) intervalMs;
+    (void) periodic;
+    return 0;
+}
+int32_t uPortTimerDelete(const uPortTimerHandle_t timerHandle)
+{
+    (void) timerHandle;
+    return 0;
+}
+int32_t uPortTimerStart(const uPortTimerHandle_t timerHandle)
+{
+    (void) timerHandle;
+    return 0;
+}
+int32_t uPortTimerStop(const uPortTimerHandle_t timerHandle)
+{
+    (void) timerHandle;
+    return 0;
+}
+int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
+                         uint32_t intervalMs)
+{
+    (void) timerHandle;
+    (void) intervalMs;
+    return 0;
+}
+
 void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
                                   size_t *pSize,
                                   uPortExeChunkFlags_t flags,

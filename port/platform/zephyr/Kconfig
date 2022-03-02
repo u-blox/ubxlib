@@ -1,0 +1,63 @@
+config UBXLIB
+        bool "u-blox ubxlib support"
+        default n
+        select MBEDTLS
+        select MBEDTLS_MAC_SHA256_ENABLED
+        select MBEDTLS_CIPHER_AES_ENABLED
+
+        help
+          Enable ubxlib for use with u-blox modules
+
+if UBXLIB
+
+config UBXLIB_CELL
+        bool "Cellular support"
+        default y
+        help
+          This will enable cell API (must be selected at the moment)
+
+config UBXLIB_GNSS
+        bool "GNSS support"
+        default y
+        help
+          This will enable GNSS API (must be selected at the moment)
+
+menuconfig UBXLIB_SHORTRANGE
+        bool "Short range support"
+        default y
+        help
+          This will enable BLE and Wifi API (must be selected at the moment)
+
+if UBXLIB_SHORTRANGE
+config UBXLIB_OPEN_CPU_BLE
+        bool "Enable ubxlib OpenCPU BLE components"
+        default n
+        depends on BT
+        depends on BT_PERIPHERAL
+        depends on BT_CENTRAL
+        select BT_GATT_DYNAMIC_DB
+        select BT_GATT_CLIENT
+        help
+          This will enable BLE SPS
+
+menuconfig UBXLIB_EDM_STREAM_DEBUG
+        bool "Enable logging of EDM stream events"
+        default n
+if UBXLIB_EDM_STREAM_DEBUG
+config UBXLIB_EDM_STREAM_DEBUG_COLOR
+        bool "Enable ANSI color coding for EDM debug"
+        default y
+config UBXLIB_EDM_STREAM_DEBUG_DUMP_DATA
+        bool "Dump EDM data"
+        default n
+endif
+endif
+
+config UBXLIB_TEST
+        bool "Compile the ubxlib tests"
+        select TEST
+        select IRQ_OFFLOAD # To be able to test semaphore from ISR
+        select CPLUSPLUS # Unity requires cpp
+        default n
+
+endif # UBXLIB

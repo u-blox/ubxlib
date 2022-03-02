@@ -42,10 +42,46 @@ extern "C" {
 # define U_LOCATION_TIMEOUT_SECONDS 240
 #endif
 
+#ifndef U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD
+/** The number of satellites to request as being visible and
+ * meet the criter for RRLP information to be valid for
+ * Cloud Locate.
+ */
+# define U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD 5
+#endif
+
+#ifndef U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD
+/** The minimum carrier to noise ratio for the RRLP information
+ * for a given satellite to be considered valid for Cloud Locate.
+ */
+# define U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD 30
+#endif
+
+#ifndef U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT
+/** The limit to use for multipath index for the RRLP
+ * information for a given satellite to be considered valid for
+ * Cloud Locate.
+ */
+# define U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT 1
+#endif
+
+#ifndef U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT
+/** The limit to use for pseudorange RMS error index for the RRLP
+ * information for a given satellite to be considered valid for
+ * Cloud Locate.
+ */
+# define U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT 3
+#endif
+
 #ifndef U_LOCATION_ASSIST_DEFAULTS
 /** Default values for uLocationAssist_t.
  */
-# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false, -1}
+# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false, -1,                                         \
+                                     U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD,                     \
+                                     U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD,                    \
+                                     U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,             \
+                                     U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT, \
+                                     NULL, NULL}
 #endif
 
 /* ----------------------------------------------------------------
@@ -61,18 +97,22 @@ typedef enum {
     U_LOCATION_TYPE_CLOUD_CELL_LOCATE, /**< supported on cellular network
                                             instances only. */
     U_LOCATION_TYPE_CLOUD_GOOGLE, /**< not currently supported, will be
-                                       supported on Wifi modules in future. */
+                                       supported on Wi-Fi modules in future. */
     U_LOCATION_TYPE_CLOUD_SKYHOOK, /**< not currently supported, will be
-                                        supported on Wifi modules in future. */
+                                        supported on Wi-Fi modules in future. */
     U_LOCATION_TYPE_CLOUD_HERE,  /**< not currently supported, will be
-                                      supported on Wifi modules in future. */
+                                      supported on Wi-Fi modules in future. */
+    U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,  /**< supported on cellular and Wi-Fi
+                                              network instances. */
     U_LOCATION_TYPE_MAX_NUM
 } uLocationType_t;
 
 /** Definition of additional information where a variety of location
  * establishment mechanisms can be employed.
- * Note: if this is updated then U_LOCATION_ASSIST_DEFAULTS should be
- * updated also.
+ * IMPORTANT: this structure is subject to change as new location APIs
+ * are added.  We will always update U_LOCATION_ASSIST_DEFAULTS to match,
+ * will only add to the end of the structure and will not remove things
+ * from it.
  */
 typedef struct {
     int32_t desiredAccuracyMillimetres; /**< the desired location accuracy
@@ -86,17 +126,63 @@ typedef struct {
                                         system as to how urgently location
                                         establishment is required. */
     bool disableGnss;             /**< in some cases a GNSS chip may be available
-                                       to a network (e.g. attached to a cellular
-                                       module) and it will normally be used by
-                                       that network in location establishment,
+                                       via another network (e.g. attached to a
+                                       cellular module) and it will normally be
+                                       used by that network in location establishment,
                                        however that can prevent the GNSS chip
                                        being used directly by this code.  If
                                        you wish to use the GNSS chip directly
                                        from this code then set this to true. */
+
+    /* The following fields are [currently] ONLY used by U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE. */
+
     int32_t networkHandleAssist; /**< the network handle to use for
-                                      assistance information.  This field
-                                      is not currently used and should be set
-                                      to the default of -1. */
+                                      assistance information, currently only used
+                                      by the Cloud Locate service,
+                                      U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE.  For this
+                                      service the handle of the GNSS network MUST
+                                      be copied into this field.*/
+    int32_t svsThreshold; /**< the number of space vehicles (AKA satellites)
+                               that must be visible, only currently used by
+                               U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE; use -1
+                               for "don't care".  The recommended value is 5. */
+    int32_t cNoThreshold; /**< the minimum carrier to noise for a given
+                               satellite, only currently used by
+                               U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE, range
+                               0 to 63; specify -1 for "don't care".  The
+                               ideal value to use is 35 but that requires
+                               clear sky and a good antenna, hence the
+                               recommended value is 30; lower threshold
+                               values may work, just less reliably. */
+    int32_t multipathIndexLimit; /**< the maximum multipath index that
+                                      must be met for a given satellite,
+                                      only currently used by
+                                      U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
+                                      1 = low, 2 = medium, 3 = high; specify
+                                      -1 for "don't care".  The recommended
+                                      value is 1. */
+    int32_t pseudorangeRmsErrorIndexLimit; /**< the maximum pseudorange RMS
+                                                error index that must be met
+                                                for a given satellite, only
+                                                currently used by
+                                                U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE;
+                                                specify -1 for "don't care".
+                                                The recommended value is 3. */
+    const char *pClientIdStr; /**< the Client ID of your device, obtained from your
+                                   Thingstream portal, ONLY required if you are
+                                   using the Cloud Locate service and want to
+                                   receive-back the location that Cloud Locate has
+                                   determined; must be null-terminated, will look
+                                   something like
+                                   "device:4afce48b-6153-0657-8efb-58a87a9f3e46";
+                                   if you only need the cloud to know the location
+                                   of the device, the device itself doesn't care,
+                                   set this to NULL (which is the default). */
+    void *pMqttClientContext; /**< the context of an MQTT client, *required* by
+                                   U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE to communicate
+                                   with the u-blox Cloud Locate service; the
+                                   MQTT client MUST have been logged-in to the
+                                   Cloud Locate service BEFORE calling this API. */
 } uLocationAssist_t;
 
 /** Definition of a location.
@@ -183,36 +269,55 @@ typedef enum {
  *                                how this can be used depends upon the
  *                                type of networkHandle:
  *                                - GNSS:     ignored, U_LOCATION_TYPE_GNSS
- *                                            will always be used.
- *                                - cellular: ignored,
-                                              U_LOCATION_TYPE_CLOUD_CELL_LOCATE
- *                                            will always be used and
- *                                            pAuthenticationTokenStr must
- *                                            be populated with a valid
- *                                            Cell Locate authentication
- *                                            token.
- *                                - Wifi:     none currently supported: the
- *                                            following location types will be
- *                                            supported in future:
- *                                            U_LOCATION_TYPE_CLOUD_GOOGLE,
- *                                            U_LOCATION_TYPE_CLOUD_SKYHOOK and
- *                                            U_LOCATION_TYPE_CLOUD_HERE.
- *                                            pAuthenticationTokenStr
- *                                            must be populated with a valid
- *                                            authentication token for the
- *                                            chosen service.
+ *                                            will always be used, but
+ *                                            please set U_LOCATION_TYPE_GNSS
+ *                                            to ensure forwards-compatibility.
+ *                                - cellular: U_LOCATION_TYPE_CLOUD_CELL_LOCATE
+ *                                            or U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE
+ *                                            are supported; both use u-blox
+ *                                            services, the former to obtain
+ *                                            position even when GNSS is absent,
+ *                                            the latter to quickly and efficiently
+ *                                            establish GNSS position in the cloud.
+ *                                            For the Cell Locate service pAuthenticationTokenStr
+ *                                            must be populated with a valid Cell
+ *                                            Locate authentication token.  For
+ *                                            the Cloud Locate service pLocationAssist
+ *                                            fields networkHandleAssist and
+ *                                            pMqttClientContext MUST be populated, and
+ *                                            the MQTT login to the Thingstream
+ *                                            server MUST already have been performed;
+ *                                            the field pClientIdStr should be populated
+ *                                            if you want the location to be returned
+ *                                            by this function (as well as being available
+ *                                            in the cloud).
+ *                                - Wi-Fi:    only U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is
+ *                                            currently supported, for which pLocationAssist
+ *                                            fields networkHandleAssist and
+ *                                            pMqttClientContext MUST be populated, and
+ *                                            the MQTT login to the Thingstream
+ *                                            server MUST already have been performed;
+ *                                            the field pClientIdStr should be populated
+ *                                            if you want the location to be returned
+ *                                            by this function (as well as being available
+ *                                            in the cloud).
  *                                - BLE:      no form of BLE location is currently
  *                                            supported.
  * @param pLocationAssist         additional information for the location
  *                                establishment process, useful where several
  *                                different location establishment strategies
  *                                are possible; currently only used with Cell
- *                                Locate. May be NULL, in which case the values of
- *                                U_LOCATION_ASSIST_DEFAULTS will be assumed.
+ *                                Locate and Cloud Locate.  If this is NULL,
+ *                                the values of U_LOCATION_ASSIST_DEFAULTS will
+ *                                be assumed (and Cloud Locate will not work).
  * @param pAuthenticationTokenStr the null-terminated authentication token,
- *                                must be non-NULL if a cloud service is being
- *                                used to establish location.
- * @param pLocation               a place to put the location; may be NULL.
+ *                                required by some cloud services (e.g.
+ *                                Cell Locate).
+ * @param pLocation               a place to put the location; may be NULL. In
+ *                                particular, when using the Cloud Locate service,
+ *                                leave this as NULL if the location is not
+ *                                required by this device (i.e. it is sufficient
+ *                                for it to be known in the cloud).
  * @param pKeepGoingCallback      a callback function that governs how long
  *                                location establishment is allowed to take.
  *                                This function is called while waiting for
@@ -226,7 +331,11 @@ typedef enum {
  *                                in which case location establishment will
  *                                stop when U_LOCATION_TIMEOUT_SECONDS have
  *                                elapsed.  The single int32_t parameter is
- *                                the network handle.
+ *                                the network handle, but note that if
+ *                                pLocationAssist->networkHandleAssist is
+ *                                set then the network handle may be that
+ *                                of the assisting network, depending on
+ *                                what stage location establishment is at.
  * @return                        zero on success or negative error code
  *                                on failure.
  */
@@ -259,12 +368,13 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
  * @param pLocationAssist         additional information for the location
  *                                establishment process, useful where several
  *                                different location establishment strategies
- *                                are possible (e.g. when using Cell Locate);
- *                                may be NULL in which case
- *                                U_LOCATION_ASSIST_DEFAULTS will be assumed.
+ *                                are possible; currently only used with Cell
+ *                                Locate and Cloud Locate.  If this is NULL,
+ *                                the values of U_LOCATION_ASSIST_DEFAULTS will
+ *                                be assumed (and Cloud Locate will not work).
  * @param pAuthenticationTokenStr the null-terminated authentication token,
- *                                must be non-NULL if a cloud service is being
- *                                used to establish location.
+ *                                required by some cloud services (e.g.
+ *                                Cell Locate).
  * @param pCallback               a callback that will be called when
  *                                location has been determined.  The
  *                                first parameter to the callback is the

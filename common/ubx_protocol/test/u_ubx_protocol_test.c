@@ -105,8 +105,8 @@ U_PORT_TEST_FUNCTION("[ubxProtocol]", "ubxProtocolBackToBack")
             //lint -e(613) Suppress possible nullness in pBodyIn, it is checked above
             *(pBodyIn + y) = (char) y;
         }
-        classIn = (char) x;
-        idIn = (char) (x + 16);
+        classIn = x % 0xFF;
+        idIn = (x + 16) % 0xFF;
         U_PORT_TEST_ASSERT(uUbxProtocolEncode(classIn, idIn, pBodyIn, x,
                                               pBuffer) == x + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
         //lint -e(650) Suppress constant out of range; it isn't

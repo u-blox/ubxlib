@@ -74,17 +74,9 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Used for keepGoingCallback() timeout.
- */
-static int64_t gStopTimeMs;
-
 /** Handles.
  */
 static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
-
-/** A variable to track errors in the callbacks.
- */
-static int32_t gCallbackErrorCode = 0;
 
 /** For tracking heap lost to allocations made
  * by the C library in new tasks: newlib does NOT
@@ -92,9 +84,23 @@ static int32_t gCallbackErrorCode = 0;
  */
 static size_t gSystemHeapLost = 0;
 
+# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+
+/** Used for keepGoingCallback() timeout.
+ */
+static int64_t gStopTimeMs;
+
+/** A variable to track errors in the callbacks.
+ */
+static int32_t gCallbackErrorCode = 0;
+
+# endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
 
 // Callback function for the cellular power-down process
 static bool keepGoingCallback(int32_t cellHandle)
@@ -111,8 +117,6 @@ static bool keepGoingCallback(int32_t cellHandle)
 
     return keepGoing;
 }
-
-# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
 
 // Test power on/off and aliveness, parameterised by the VInt pin.
 static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,

@@ -756,9 +756,10 @@ void uAtClientCommandStopReadResponse(uAtClientHandle_t atHandle);
  *                 case of an AT command such as "AT+CGSN"
  *                 which just returns the IMEI of a cellular
  *                 module, e.g. "357862090123456".
+ * @return         0 if pPrefix is matched otherwise negative value.
  */
-void uAtClientResponseStart(uAtClientHandle_t atHandle,
-                            const char *pPrefix);
+int32_t uAtClientResponseStart(uAtClientHandle_t atHandle,
+                               const char *pPrefix);
 
 /** Read an integer parameter from the received AT response.
  * Both negative and positive integers are supported however

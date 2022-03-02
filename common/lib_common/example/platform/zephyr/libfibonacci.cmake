@@ -60,9 +60,11 @@ file(GLOB lib_fib_srcs
 	   "${library_src_dir}/src/*.c"
 	   "${library_src_dir}/api/*.h"
 	   )
-	   
+
 ExternalProject_Add_StepDependencies(lib_fibonacci build  ${lib_fib_srcs})
-		
+
+add_dependencies(app lib_fibonacci)
+
 set_target_properties(lib_fibonacci PROPERTIES IMPORTED_LOCATION ${library_build_dir}/libfibonacci_blob.c)
 
 # add the binary blob array to the application

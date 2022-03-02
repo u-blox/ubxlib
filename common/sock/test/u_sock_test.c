@@ -342,7 +342,7 @@ static void printAddress(const uSockAddress_t *pAddress,
 
     if (pAddress->ipAddress.type == U_SOCK_ADDRESS_TYPE_V4) {
         for (int32_t x = 3; x >= 0; x--) {
-            uPortLog("%u",
+            uPortLog("%u", (uint8_t)
                      (pAddress->ipAddress.address.ipv4 >> (x * 8)) & 0xFF);
             if (x > 0) {
                 uPortLog(".");
@@ -356,8 +356,8 @@ static void printAddress(const uSockAddress_t *pAddress,
             uPortLog("[");
         }
         for (int32_t x = 3; x >= 0; x--) {
-            uPortLog("%x:%x", pAddress->ipAddress.address.ipv6[x] >> 16,
-                     pAddress->ipAddress.address.ipv6[x] & 0xFFFF);
+            uPortLog("%x:%x", (uint16_t) (pAddress->ipAddress.address.ipv6[x] >> 16),
+                     (uint16_t) pAddress->ipAddress.address.ipv6[x]);
             if (x > 0) {
                 uPortLog(":");
             }
@@ -2220,8 +2220,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                 stackMinFreeBytes = uPortEventQueueStackMinFree(gTestConfig.eventQueueHandle);
                 uPortLog("U_SOCK_TEST: event queue task had %d byte(s)"
                          " free at a minimum.\n", stackMinFreeBytes);
-                U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
-
+                U_PORT_TEST_ASSERT((stackMinFreeBytes > 0) ||
+                                   (stackMinFreeBytes == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
 
                 // Close the socket
                 U_PORT_TEST_ASSERT(uSockClose(gTestConfig.descriptor) == 0);
@@ -2471,8 +2471,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
             stackMinFreeBytes = uPortEventQueueStackMinFree(gTestConfig.eventQueueHandle);
             uPortLog("U_SOCK_TEST: event queue task had %d byte(s)"
                      " free at a minimum.\n", stackMinFreeBytes);
-            U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
-
+            U_PORT_TEST_ASSERT((stackMinFreeBytes > 0) ||
+                               (stackMinFreeBytes == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
 
             // Close the socket
             U_PORT_TEST_ASSERT(!closedCallbackCalled);

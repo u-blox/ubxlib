@@ -319,8 +319,12 @@ int32_t uPortEventQueueOpen(void (*pFunction) (void *, size_t),
                                                                            priority,
                                                                            &(pEventQueue->task));
                             if (handleOrError == U_ERROR_COMMON_SUCCESS) {
-                                // Pause to allow the task to run
-                                uPortTaskBlock(U_CFG_OS_YIELD_MS);
+                                // Wait for the eventQueueTask to lock the mutex,
+                                // which shows it is running
+                                while (uPortMutexTryLock(pEventQueue->taskRunningMutex, 0) == 0) {
+                                    uPortMutexUnlock(pEventQueue->taskRunningMutex);
+                                    uPortTaskBlock(U_CFG_OS_YIELD_MS);
+                                }
                                 // Add the event queue structure to the list
                                 pEventQueue->handle = handle;
                                 gpEventQueue[handle] = pEventQueue;

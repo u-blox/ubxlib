@@ -547,7 +547,7 @@ static void print(const char *pStr, size_t length)
         c = *pStr++;
         if (!isprint((int32_t) c)) {
             // Print the hex
-            uPortLog("[%02x]", c);
+            uPortLog("[%02x]", (unsigned char) c);
         } else {
             // Print the ASCII character
             uPortLog("%c", c);
@@ -1487,17 +1487,14 @@ U_PORT_TEST_FUNCTION("[cellSecC2c]", "cellSecC2cAtClient")
             // choice, the callback itself
             // has to know how to behave, we
             // can't dictate that.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
             U_PORT_TEST_ASSERT(uAtClientSetUrcHandler(atClientHandle,
                                                       pTestAt->pUrcPrefix,
                                                       urcHandler,
-                                                      //lint -e(605) Suppress "increase in pointer capability":
+                                                      //lint -e(1773) Suppress "attempt to cast away const":
                                                       // pTestAt definitely points to a const but the URC handler
                                                       // parameter is a generic part of a callback which can't know
                                                       // that.
-                                                      (const void *) pTestAt) == 0);
-#pragma GCC diagnostic pop
+                                                      (void *) pTestAt) == 0);
             pLastAtPrefix = pTestAt->pUrcPrefix;
         }
 

@@ -30,6 +30,7 @@
 #include "u_port_os.h"
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
+#include "u_port_private.h"
 
 #include "freertos/FreeRTOS.h" // For xPortGetFreeHeapSize()
 #ifdef ARDUINO
@@ -104,8 +105,9 @@ int32_t uPortInit()
     int32_t errorCode = 0;
 
     if (!gInitialised) {
+        errorCode = uPortEventQueuePrivateInit();;
         if (errorCode == 0) {
-            errorCode = uPortEventQueuePrivateInit();;
+            errorCode = uPortPrivateInit();
             if (errorCode == 0) {
                 errorCode = uPortUartInit();
             }
@@ -121,6 +123,7 @@ void uPortDeinit()
 {
     if (gInitialised) {
         uPortUartDeinit();
+        uPortPrivateDeinit();
         uPortEventQueuePrivateDeinit();
         gInitialised = false;
     }

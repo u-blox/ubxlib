@@ -238,7 +238,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
 {
     int32_t cellHandle;
     const uCellPrivateModule_t *pModule;
-    int32_t numSupportedRats = 0;
+    size_t numSupportedRats = 0;
     uCellNetRat_t supportedRats[U_CELL_NET_RAT_MAX_NUM];
     int32_t heapUsed;
 
@@ -318,17 +318,18 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
 {
     int32_t cellHandle;
     const uCellPrivateModule_t *pModule;
-    int32_t numSupportedRats = 0;
+    size_t numSupportedRats = 0;
     uCellNetRat_t setRats[U_CELL_PRIVATE_MAX_NUM_SIMULTANEOUS_RATS];
     uCellNetRat_t supportedRats[U_CELL_NET_RAT_MAX_NUM];
     uCellNetRat_t rat;
     uCellNetRat_t ratTmp;
     size_t count;
-    int32_t rank;
+    size_t rank;
     int32_t found;
     int32_t numRats;
     int32_t repeats;
     int32_t y;
+    int32_t readRank;
     int32_t heapUsed;
 
     // In case a previous test failed
@@ -432,7 +433,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
         if (rank < pModule->maxNumSimultaneousRats) {
             uPortLog("U_CELL_CFG_TEST: rank of RAT %d is expected to be "
                      "%d and is %d.\n", supportedRats[rank], rank, y);
-            U_PORT_TEST_ASSERT(y == rank);
+            U_PORT_TEST_ASSERT(y == (int32_t) rank);
             setRats[rank] = supportedRats[rank];
         } else {
             uPortLog("U_CELL_CFG_TEST: asking for the RAT at rank %d is "
@@ -524,17 +525,17 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
                             found = z;
                         }
                     }
-                    rank = uCellCfgGetRatRank(cellHandle, supportedRats[x]);
+                    readRank = uCellCfgGetRatRank(cellHandle, supportedRats[x]);
                     if (found < 0) {
-                        if (rank >= 0) {
+                        if (readRank >= 0) {
                             uPortLog("  RAT %d is expected to be not ranked but is ranked at %d.\n",
-                                     supportedRats[x], rank);
+                                     supportedRats[x], readRank);
                             U_PORT_TEST_ASSERT(false);
                         }
                     } else {
                         uPortLog("  rank of RAT %d is expected to be %d and is %d.\n",
-                                 supportedRats[x], found, rank);
-                        U_PORT_TEST_ASSERT(found == rank);
+                                 supportedRats[x], found, readRank);
+                        U_PORT_TEST_ASSERT(found == readRank);
                     }
                 }
             }

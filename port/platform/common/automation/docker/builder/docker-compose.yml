@@ -1,0 +1,14 @@
+version: '3.7'
+
+# Define services
+services:
+  ubxlib_builder:
+    image: ubxlib_builder
+    build: .
+    environment:
+      SSH_AUTH_SOCK: '/run/user/keyring/ssh'
+    volumes:
+      - '/opt/ubxlib_sdks:/home/ubxlib/ubxlib_sdks'
+      - '$SSH_AUTH_SOCK:/run/user/keyring/ssh'
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t

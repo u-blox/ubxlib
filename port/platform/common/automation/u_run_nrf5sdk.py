@@ -25,15 +25,6 @@ GNU_PREFIX = u_settings.NRF5SDK_GNU_PREFIX # e.g. "arm-none-eabi"
 # Expected version of GCC ARM compiler
 GNU_VERSION = u_settings.NRF5SDK_GNU_VERSION # e.g. "9.2.1"
 
-# Expected path to Segger Embedded Studio command-line builder directory
-SES_PATH = u_settings.NRF5SDK_SES_PATH # e.g. "C:\\Program Files\\Segger\\SEGGER Embedded Studio for ARM 4.52c\\bin"
-
-# Expected name of Segger Embedded Studio command-line builder executable
-SES_NAME = u_settings.NRF5SDK_SES_NAME # e.g. "embuild.exe"
-
-# The build configuration to use from the Segger Embedded Studio project file
-SES_BUILD_CONFIGURATION = u_settings.NRF5SDK_SES_BUILD_CONFIGURATION # e.g. "Debug"
-
 # Expected location of nRF5 SDK installation
 NRF5SDK_PATH = u_settings.NRF5SDK_NRF5_PATH # e.g. "C:/nrf5"
 
@@ -46,21 +37,8 @@ JLINK_EXIT_DELAY_SECONDS = u_settings.JLINK_EXIT_DELAY_SECONDS # e.g. 10
 # The directory where the runner build for GCC can be found
 RUNNER_DIR_GCC = u_settings.NRF5SDK_NRF52_RUNNER_DIR_GCC # e.g. "port/platform/nrf5sdk/mcu/nrf52/gcc/runner"
 
-# The directory where the runner build for SES can be found
-RUNNER_DIR_SES = u_settings.NRF5SDK_NRF52_RUNNER_DIR_SES # e.g. "port/platform/nrf5sdk/mcu/nrf52/ses/runner"
-
-# The name of the SES project, without the .emProject extension
-# so that it can also be used as the name of the binary
-PROJECT_NAME_SES = u_settings.NRF5SDK_PROJECT_NAME_SES # e.g. "u_pca10056"
-
 # Prefix of the build sub-directory name for GCC
 BUILD_SUBDIR_PREFIX_GCC = u_settings.NRF5SDK_BUILD_SUBDIR_PREFIX_GCC # e.g. "build_"
-
-# The name of the output folder that the Segger Embedded Studio project uses
-BUILD_SUBDIR_SES = u_settings.NRF5SDK_BUILD_SUBDIR_SES # e.g. "Output"
-
-# The maximum number of U_FLAGx defines that the SES project file can take
-SES_MAX_NUM_DEFINES = u_settings.NRF5SDK_SES_MAX_NUM_DEFINES # e.g. 20
 
 # The guard time for this build in seconds,
 # noting that it can be quite long when
@@ -99,15 +77,6 @@ TOOLS_LIST = [{"type": "gcc", "which_string": "make",
                        " to reflect where it is (e.g."                       \
                        " C:/Program Files (x86)/GNU Tools ARM Embedded/9 2019-q4-major/bin/)" \
                        " (and GNU_PREFIX to something like arm-none-eabi).",
-               "version_switch": None},
-              {"type": "ses", "which_string": SES_PATH + ":" + SES_NAME,
-               "hint": "can't find the Segger Embedded Studio, command-line" \
-                       " builder, expected to be found at SES_PATH,"         \
-                       " please EITHER  install it (no need to add it to"    \
-                       " the path) or change the variable SES_PATH"          \
-                       " to reflect where it is (e.g."                       \
-                       " C:\\Program Files\\Segger\\SEGGER Embedded Studio"  \
-                       " for ARM 4.50\\bin\\embuild.exe).",
                "version_switch": None},
               {"type": None, "which_string": "nrfjprog{}".format(u_utils.EXE_EXT),
                "hint": "couldn't find the nRF5 SDK at NRF5_PATH,"            \
@@ -168,23 +137,16 @@ def download(connection, guard_time_seconds, hex_path, printer, prompt):
         call_list.append("-s")
         call_list.append(connection["debugger"])
 
-    # Print what we're gonna do
-    tmp = ""
-    for item in call_list:
-        tmp += " " + item
-    printer.string("{}in directory {} calling{}".         \
-                   format(prompt, os.getcwd(), tmp))
-
     # Call it
     return u_utils.exe_run(call_list, guard_time_seconds, printer, prompt)
 
-def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
+def build_gcc(clean, build_subdir, unity_dir,
               defines, printer, prompt, reporter, keep_going_flag):
     '''Build on GCC'''
     call_list = []
     hex_file_path = None
 
-    makefile = ubxlib_dir + os.sep + RUNNER_DIR_GCC + os.sep + "Makefile"
+    makefile = u_utils.UBXLIB_DIR + os.sep + RUNNER_DIR_GCC + os.sep + "Makefile"
     outputdir = os.getcwd() + os.sep + build_subdir
 
     # The Nordic Makefile.common that is included by our Makefile
@@ -230,13 +192,6 @@ def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
         call_list.append("GNU_PREFIX=" + GNU_PREFIX)
         call_list.append("GNU_INSTALL_ROOT=" + GNU_INSTALL_ROOT)
 
-        # Print what we're gonna do
-        tmp = ""
-        for item in call_list:
-            tmp += " " + item
-        printer.string("{}in directory {} calling{}".         \
-                        format(prompt, os.getcwd(), tmp))
-
         # Call make to do the build
         # Set shell to keep Jenkins happy
         if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
@@ -251,91 +206,9 @@ def build_gcc(clean, build_subdir, ubxlib_dir, unity_dir,
 
     return hex_file_path
 
-def build_ses(clean, ubxlib_dir, unity_dir, defines,
-              printer, prompt, reporter, keep_going_flag):
-    '''Build on SES'''
-    call_list = []
-    ses_dir = ubxlib_dir + os.sep + RUNNER_DIR_SES
-    output_dir = os.getcwd() + os.sep + BUILD_SUBDIR_SES
-    too_many_defines = False
-    hex_file_path = None
-
-    # Put the path to SES builder at the front of the call list
-    call_list.append(SES_PATH + os.sep + SES_NAME)
-
-    # Then the -config switch with the configuration and project name
-    call_list.append("-config")
-    call_list.append("".join(SES_BUILD_CONFIGURATION))
-    call_list.append("".join((ses_dir + os.sep + PROJECT_NAME_SES + ".emProject").
-                             replace("\\", "/")))
-
-    # Set the output directory
-    call_list.append("-property")
-    call_list.append("".join(("build_output_directory=" + output_dir).
-                             replace("\\", "/")))
-    call_list.append("-property")
-    call_list.append("".join(("build_intermediate_directory=" + output_dir +
-                              os.sep + "obj").replace("\\", "/")))
-
-    # Add verbose echo otherwise SES builder can be a tad quiet
-    call_list.append("-echo")
-    call_list.append("-verbose")
-
-    if defines:
-        # Create the U_FLAGS entries
-        for idx, define in enumerate(defines):
-            if idx >= SES_MAX_NUM_DEFINES:
-                too_many_defines = True
-                string = "{}{} #defines supplied but only"     \
-                         " {} are supported by this Segger"    \
-                         " Embedded Studio project file".      \
-                         format(prompt, len(defines), SES_MAX_NUM_DEFINES)
-                reporter.event(u_report.EVENT_TYPE_BUILD,
-                               u_report.EVENT_ERROR,
-                               string)
-                printer.string(string)
-                break
-            # Note that the quotes which are required on the
-            # command-line when including a define of the format
-            # BLAH=XXX are not required here.
-            call_list.append("-D")
-            call_list.append("U_FLAG" + str(idx) + "=" + define)
-
-    if not too_many_defines:
-        # Add the nRF5 SDK path and Unity paths,
-        # making sure that SES gets "/" as it likes
-        # and not "\"
-        call_list.append("-D")
-        call_list.append("NRF5_PATH=" + "".join(NRF5SDK_PATH.replace("\\", "/")))
-        call_list.append("-D")
-        call_list.append("UNITY_PATH=" + "".join((unity_dir).replace("\\", "/")))
-
-        # Clear the output folder if we're not just running
-        if not clean or u_utils.deltree(BUILD_SUBDIR_SES,
-                                        printer, prompt):
-            # Print what we're gonna do
-            tmp = ""
-            for item in call_list:
-                tmp += " " + item
-            printer.string("{}in directory {} calling{}".         \
-                           format(prompt, os.getcwd(), tmp))
-
-            # Call Segger Embedded Studio builder to do the build
-            # Set shell to keep Jenkins happy
-            if u_utils.exe_run(call_list, BUILD_GUARD_TIME_SECONDS,
-                               printer, prompt, shell_cmd=True,
-                               keep_going_flag=keep_going_flag):
-                hex_file_path = output_dir + os.sep + PROJECT_NAME_SES + ".hex"
-        else:
-            reporter.event(u_report.EVENT_TYPE_BUILD,
-                           u_report.EVENT_ERROR,
-                           "unable to clean build directory")
-
-    return hex_file_path
-
 def run(instance, mcu, toolchain, connection, connection_lock,
-        platform_lock, misc_locks, clean, defines, ubxlib_dir,
-        working_dir, printer, reporter, test_report_handle,
+        platform_lock, misc_locks, clean, defines,
+        printer, reporter, test_report_handle,
         keep_going_flag=None, unity_dir=None):
     '''Build/run on nRF5'''
     return_value = -1
@@ -362,10 +235,6 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                 text += " \"" + define + "\""
             else:
                 text += ", \"" + define + "\""
-    if ubxlib_dir:
-        text += ", ubxlib directory \"" + ubxlib_dir + "\""
-    if working_dir:
-        text += ", working directory \"" + working_dir + "\""
     if unity_dir:
         text += ", using Unity from \"" + unity_dir + "\""
     printer.string("{}{}.".format(prompt, text))
@@ -373,9 +242,10 @@ def run(instance, mcu, toolchain, connection, connection_lock,
     reporter.event(u_report.EVENT_TYPE_BUILD,
                    u_report.EVENT_START,
                    "nRF5SDK/" + toolchain)
-    # Switch to the working directory
-    with u_utils.ChangeDir(working_dir):
-        # Check that everything we need is installed
+    # Check that everything we need is installed
+    if u_utils.keep_going(keep_going_flag, printer, prompt) and \
+        check_installation(toolchain, TOOLS_LIST, printer, prompt):
+        # Fetch Unity, if necessary
         if u_utils.keep_going(keep_going_flag, printer, prompt) and \
            check_installation(toolchain, TOOLS_LIST, printer, prompt):
             # Fetch Unity, if necessary
@@ -392,11 +262,8 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                 if u_utils.keep_going(keep_going_flag, printer, prompt):
                     if toolchain.lower() == "gcc":
                         build_subdir_gcc = BUILD_SUBDIR_PREFIX_GCC + instance_text.replace(".", "_")
-                        hex_file_path = build_gcc(clean, build_subdir_gcc, ubxlib_dir, unity_dir,
+                        hex_file_path = build_gcc(clean, build_subdir_gcc, unity_dir,
                                                   defines, printer, prompt, reporter, keep_going_flag)
-                    elif toolchain.lower() == "ses":
-                        hex_file_path = build_ses(clean, ubxlib_dir, unity_dir, defines,
-                                                  printer, prompt, reporter, keep_going_flag)
                 if hex_file_path:
                     # Build succeeded, need to lock a connection to do the download
                     reporter.event(u_report.EVENT_TYPE_BUILD,
@@ -427,36 +294,36 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                                     sleep(5)
                             if downloaded:
                                 reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_COMPLETE)
+                                                u_report.EVENT_COMPLETE)
 
                                 # Now the target can be reset
                                 u_utils.reset_nrf_target(connection,
-                                                         printer, prompt)
+                                                            printer, prompt)
                                 reporter.event(u_report.EVENT_TYPE_TEST,
-                                               u_report.EVENT_START)
+                                                u_report.EVENT_START)
 
                                 with URttReader("NRF52840_XXAA",
                                                 jlink_serial=connection["debugger"],
                                                 printer=printer,
                                                 prompt=prompt) as rtt_reader:
                                     return_value = u_monitor.main(rtt_reader,
-                                                                  u_monitor.CONNECTION_RTT,
-                                                                  RUN_GUARD_TIME_SECONDS,
-                                                                  RUN_INACTIVITY_TIME_SECONDS,
-                                                                  "\n", instance, printer,
-                                                                  reporter,
-                                                                  test_report_handle)
+                                                                    u_monitor.CONNECTION_RTT,
+                                                                    RUN_GUARD_TIME_SECONDS,
+                                                                    RUN_INACTIVITY_TIME_SECONDS,
+                                                                    "\n", instance, printer,
+                                                                    reporter,
+                                                                    test_report_handle)
 
                                 if return_value == 0:
                                     reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_COMPLETE)
+                                                    u_report.EVENT_COMPLETE)
                                 else:
                                     reporter.event(u_report.EVENT_TYPE_TEST,
-                                                   u_report.EVENT_FAILED)
+                                                    u_report.EVENT_FAILED)
                             else:
                                 reporter.event(u_report.EVENT_TYPE_DOWNLOAD,
-                                               u_report.EVENT_FAILED,
-                                               "check debug log for details")
+                                                u_report.EVENT_FAILED,
+                                                "check debug log for details")
                             # Wait for a short while before giving
                             # the connection lock away to make sure
                             # that everything really has shut down
@@ -464,20 +331,20 @@ def run(instance, mcu, toolchain, connection, connection_lock,
                             sleep(5)
                         else:
                             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                                           u_report.EVENT_FAILED,
-                                           "unable to lock a connection")
-                else:
-                    return_value = 1
-                    reporter.event(u_report.EVENT_TYPE_BUILD,
-                                   u_report.EVENT_FAILED,
-                                   "check debug log for details")
+                                            u_report.EVENT_FAILED,
+                                            "unable to lock a connection")
             else:
-                reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                               u_report.EVENT_FAILED,
-                               "unable to fetch Unity")
+                return_value = 1
+                reporter.event(u_report.EVENT_TYPE_BUILD,
+                                u_report.EVENT_FAILED,
+                                "check debug log for details")
         else:
             reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
-                           u_report.EVENT_FAILED,
-                           "there is a problem with the tools installation for nRF5 SDK")
+                            u_report.EVENT_FAILED,
+                            "unable to fetch Unity")
+    else:
+        reporter.event(u_report.EVENT_TYPE_INFRASTRUCTURE,
+                        u_report.EVENT_FAILED,
+                        "there is a problem with the tools installation for nRF5 SDK")
 
     return return_value

@@ -34,13 +34,14 @@
 
 #include "u_error_common.h"
 
+#include "u_assert.h"
+
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_debug.h"
 
 #include "u_runner.h"
 
-#include "assert.h"
 #include "nrf_delay.h"
 
 /* ----------------------------------------------------------------
@@ -144,7 +145,7 @@ int main(void)
                        U_CFG_OS_APP_TASK_PRIORITY);
 
     // Should never get here
-    assert(false);
+    U_ASSERT(false);
 
     return 0;
 }

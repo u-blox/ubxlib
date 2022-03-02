@@ -325,8 +325,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
 # else
                           NULL);
 # endif
-#endif
     U_PORT_TEST_ASSERT(y == 0);
+#endif
 
     // Do the standard postamble, leaving the module on for the next
     // test to speed things up

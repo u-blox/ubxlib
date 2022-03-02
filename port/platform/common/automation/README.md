@@ -60,7 +60,7 @@ The "some text" is intended to be the text of the last commit message.  When [u_
 
 So, when submitting a branch the u-blox Jenkins configuration will parse the commit text to find a `test:` line and conduct those tests on the branch, returning the results to Github.
 
-If the commit text does *not* contain a line starting with `test:` (the usual case) then the file list must be provided.  Again, when [u_run_branch.py](u_run_branch.py) is called from Jenkins, [Jenkinsfile](Jenkinsfile), will grab the list of changed files between `master` and the branch from Github.  [u_run_branch.py](u_run_branch.py) then calls the [u_select.py](u_select.py) script to determine what tests should be run on which instance IDs to verify that the branch is good.  See the comments in [u_select.py](u_select.py) to determine how it does this.  It is worth noting that the list of tests/instances selected by [u_select.py](u_select.py) will always be the largest one: e.g. if a file in the `ble` directory has been changed then all the instances in [DATABASE.md](DATABASE.md) that have `ble` in their "APIs available" column will be selected.  To narrow the tests/instances that are run further, use the `test:` line in your most recent commit message to specify it yourself.
+If the commit text does *not* contain a line starting with `test:` (the usual case) then the file list must be provided.  Again, when [u_run_branch.py](u_run_branch.py) is called from Jenkins, [Jenkinsfile](Jenkinsfile), will determine the likely base branch (`master` or `sho_master`) using [u_get_likely_base_branch.py], grab the list of changed files between this base and the branch from Github.  [u_run_branch.py](u_run_branch.py) then calls the [u_select.py](u_select.py) script to determine what tests should be run on which instance IDs to verify that the branch is good.  See the comments in [u_select.py](u_select.py) to determine how it does this.  It is worth noting that the list of tests/instances selected by [u_select.py](u_select.py) will always be the largest one: e.g. if a file in the `ble` directory has been changed then all the instances in [DATABASE.md](DATABASE.md) that have `ble` in their "APIs available" column will be selected.  To narrow the tests/instances that are run further, use the `test:` line in your most recent commit message to specify it yourself.
 
 [u_run_branch.py](u_run_branch.py) then calls [u_agent.py](u_agent.py) which calls [u_run.py](u_run.py), the thing that ultimately does the work, for each instance ID.  [u_run.py](u_run.py) will return a value which is zero for success or otherwise the number of failures that occurred during the run.  Search the output from the script for the word `EXITING` to find its return value.
 
@@ -134,6 +134,8 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 [u_select.py](u_select.py): see above.
 
 [u_utils.py](u_utils.py): utility functions used by all of the above.
+
+[u_get_likely_base_branch.py](u_get_likely_base_branch.py): script used for guessing the base branch for a commit. This is used by `Jenkinsfile` to determine if the base branch is `sho_master` or `master`.
 
 # Maintenance
 - If you add a new API make sure that it is listed in the `APIs available` column of at least one row in [DATABASE.md](DATABASE.md), otherwise [u_select.py](u_select.py) will **not**  select it for testing on a Pull Request.

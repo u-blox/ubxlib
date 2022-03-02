@@ -78,6 +78,13 @@
 # define U_GNSS_POS_CALLBACK_TASK_STACK_DELAY_SECONDS 5
 #endif
 
+#ifndef U_GNSS_POS_RRLP_HEADER_SIZE_BYTES
+/** The number of bytes of UBX protocol header that
+ * will be added to the front of the raw RRLP binary data.
+ */
+#define U_GNSS_POS_RRLP_HEADER_SIZE_BYTES (U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES - 2)
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -288,7 +295,7 @@ int32_t uGnssPosGet(int32_t gnssHandle,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
-    char message[4]; // Room for the body of a UBX-CFG-ANT message
+    uint8_t message[4]; // Room for the body of a UBX-CFG-ANT message
 #endif
     int64_t startTime;
 
@@ -300,17 +307,19 @@ int32_t uGnssPosGet(int32_t gnssHandle,
         if (pInstance != NULL) {
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
             if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
-                // Temporary change: on old versions of the
-                // SARA-R10M8S module the LNA in the GNSS
-                // chip is not automatically switched on by the
-                // firmware in the cellular module, so we need
+                // Temporary change: on prototype versions of the
+                // SARA-R10M8S module (production week (printed on the
+                // module label, upper right) earlier than 20/27)
+                // the LNA in the GNSS chip is not automatically switched
+                // on by the firmware in the cellular module, so we need
                 // to switch it on ourselves by sending UBX-CFG-ANT
                 // with contents 02000f039
                 message[0] = 0x02;
                 message[1] = 0;
-                message[2] = (char) 0xf0;
+                message[2] = 0xf0;
                 message[3] = 0x39;
-                uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13, message, 4);
+                uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13,
+                                           (const char *) message, 4);
             }
 #endif
             startTime = uPortGetTickTimeMs();
@@ -353,7 +362,7 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
     //lint -esym(593, pParameters) Suppress not free'd - posGetTask() does that
     uGnssPosGetTaskParameters_t *pParameters;
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
-    char message[4]; // Room for the body of a UBX-CFG-ANT message
+    uint8_t message[4]; // Room for the body of a UBX-CFG-ANT message
 #endif
 
     if (gUGnssPrivateMutex != NULL) {
@@ -380,17 +389,19 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
                     if (pParameters != NULL) {
 #ifdef U_CFG_SARA_R5_M8_WORKAROUND
                         if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
-                            // Temporary change: on old versions of the
-                            // SARA-R10M8S module the LNA in the GNSS
-                            // chip is not automatically switched on by the
-                            // firmware in the cellular module, so we need
+                            // Temporary change: on prototype versions of the
+                            // SARA-R10M8S module (production week (printed on the
+                            // module label, upper right) earlier than 20/27)
+                            // the LNA in the GNSS chip is not automatically switched
+                            // on by the firmware in the cellular module, so we need
                             // to switch it on ourselves by sending UBX-CFG-ANT
                             // with contents 02000f039
                             message[0] = 0x02;
                             message[1] = 0;
-                            message[2] = (char) 0xf0;
+                            message[2] = 0xf0;
                             message[3] = 0x39;
-                            uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13, message, 4);
+                            uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13,
+                                                       (const char *) message, 4);
                         }
 #endif
                         // Fill in the callback and start a task
@@ -453,6 +464,162 @@ void uGnssPosGetStop(int32_t gnssHandle)
 
         U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
     }
+}
+
+// Get RRLP information from the GNSS chip.
+int32_t uGnssPosGetRrlp(int32_t gnssHandle, char *pBuffer,
+                        size_t sizeBytes, int32_t svsThreshold,
+                        int32_t cNoThreshold,
+                        int32_t multipathIndexLimit,
+                        int32_t pseudorangeRmsErrorIndexLimit,
+                        bool (*pKeepGoingCallback) (int32_t))
+{
+    int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uGnssPrivateInstance_t *pInstance;
+    int64_t startTime;
+    int32_t svs;
+    int32_t numBytes;
+    int32_t z;
+    int32_t numMeetingCriteria;
+    bool goodSatellite;
+    int32_t ca = 0;
+    int32_t cb = 0;
+    // Access the buffer as a uint8_t to avoid maths funnies with
+    // chars being signed or unsigned
+    uint8_t *pBufferUint8 = (uint8_t *) pBuffer;
+#ifdef U_CFG_SARA_R5_M8_WORKAROUND
+    uint8_t message[4]; // Room for the body of a UBX-CFG-ANT message
+#endif
+
+    if (gUGnssPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUGnssPrivateMutex);
+
+        errorCodeOrLength = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pInstance = pUGnssPrivateGetInstance(gnssHandle);
+        if ((pInstance != NULL) && (pBufferUint8 != NULL) &&
+            (sizeBytes >= U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES)) {
+
+#ifdef U_CFG_SARA_R5_M8_WORKAROUND
+            if (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT) {
+                // Temporary change: on prototype versions of the
+                // SARA-R10M8S module (production week (printed on the
+                // module label, upper right) earlier than 20/27)
+                // the LNA in the GNSS chip is not automatically switched
+                // on by the firmware in the cellular module, so we need
+                // to switch it on ourselves by sending UBX-CFG-ANT
+                // with contents 02000f039
+                message[0] = 0x02;
+                message[1] = 0;
+                message[2] = 0xf0;
+                message[3] = 0x39;
+                uGnssPrivateSendUbxMessage(pInstance, 0x06, 0x13,
+                                           (const char *) message, 4);
+            }
+#endif
+
+            startTime = uPortGetTickTimeMs();
+            errorCodeOrLength = (int32_t) U_ERROR_COMMON_TIMEOUT;
+            while ((errorCodeOrLength == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
+                   (((pKeepGoingCallback == NULL) &&
+                     (uPortGetTickTimeMs() - startTime) / 1000 < U_GNSS_POS_TIMEOUT_SECONDS) ||
+                    ((pKeepGoingCallback != NULL) && pKeepGoingCallback(gnssHandle)))) {
+
+                numBytes = uGnssPrivateSendReceiveUbxMessage(pInstance,
+                                                             0x02, 0x14, NULL, 0,
+                                                             pBuffer + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES,
+                                                             sizeBytes - U_GNSS_POS_RRLP_HEADER_SIZE_BYTES);
+                if (numBytes > 0) {
+                    // Got something, is it good enough?
+                    // 34 since that's the furthest we need to read to check on the number of satellites
+                    if ((((svsThreshold >= 0) || (cNoThreshold >= 0) ||
+                          (multipathIndexLimit >= 0) || (pseudorangeRmsErrorIndexLimit >= 0)) && (numBytes >= 34))) {
+                        // The number of satellites is at offset 34
+                        svs = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 34);
+                        uPortLog("U_GNSS_POS: RRLP information for %d satellite(s).\n", svs);
+                        if ((svsThreshold >= 0) && (svs < svsThreshold)) {
+                            // Not enough satellites in the first place
+                            numBytes = -1;
+                        }
+                        if ((numBytes > 0) &&
+                            ((cNoThreshold >= 0) || (multipathIndexLimit >= 0) || (pseudorangeRmsErrorIndexLimit >= 0))) {
+                            numMeetingCriteria = svs;
+                            // 65 since that's the furthest we need to check on the criteria
+                            for (int8_t x = 0; (x < svs) && (numBytes >= 65 + (x * 24)); x++) {
+                                goodSatellite = true;
+                                // Carrier to noise ratio is at offset 46 + (x * 24)
+                                if (cNoThreshold >= 0) {
+                                    z = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 46 + (x * 24));
+                                    uPortLog("U_GNSS_POS: RRLP CNo for satellite %d is %d.\n", x + 1, z);
+                                    if (z < cNoThreshold) {
+                                        goodSatellite = false;
+                                    }
+                                }
+                                // Multipath index is at offset 47 + (x * 24)
+                                if (goodSatellite && (multipathIndexLimit >= 0)) {
+                                    z = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 47 + (x * 24));
+                                    uPortLog("U_GNSS_POS: RRLP multipath for satellite %d is %d.\n", x + 1, z);
+                                    if (z > multipathIndexLimit) {
+                                        goodSatellite = false;
+                                    }
+                                }
+                                // Pseudorange RMS error index is at offset 65 + (x * 24)
+                                if (goodSatellite && (pseudorangeRmsErrorIndexLimit >= 0)) {
+                                    z = *(pBufferUint8 + U_GNSS_POS_RRLP_HEADER_SIZE_BYTES + 65 + (x * 24));
+                                    uPortLog("U_GNSS_POS: pseudorange RMS error index for satellite %d is %d.\n",
+                                             x + 1, z);
+                                    if (z > pseudorangeRmsErrorIndexLimit) {
+                                        goodSatellite = false;
+                                    }
+                                }
+                                if (!goodSatellite) {
+                                    numMeetingCriteria--;
+                                    uPortLog("U_GNSS_POS: only up to %d satellite(s) meet the criteria.\n",
+                                             numMeetingCriteria);
+                                    if (numMeetingCriteria < svsThreshold) {
+                                        // Force exit
+                                        numBytes = -1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (numBytes > 0) {
+                    // Got a good measurement!
+                    // Since the Cloud Locate service expects the
+                    // UBX protocol header information we need to
+                    // re-construct that on the front of the message
+                    *pBufferUint8 = 0xb5;
+                    *(pBufferUint8 + 1) = 0x62;
+                    *(pBufferUint8 + 2) = 0x02;
+                    *(pBufferUint8 + 3) = 0x14;
+                    // Little-endian length of the body
+                    *(pBufferUint8 + 4) = (uint8_t) numBytes;
+                    *(pBufferUint8 + 5) = (uint8_t) ((uint32_t) numBytes >> 8);
+                    // Cloud Locate also needs the two-byte CRC which
+                    // is across the class, ID, length and body so
+                    // reconstruct that here
+                    pBufferUint8 += 2;
+                    for (int32_t x = 0; x < numBytes + 4; x++) {
+                        ca += *pBufferUint8;
+                        cb += ca;
+                        pBufferUint8++;
+                    }
+                    // Write in the CRC
+                    *pBufferUint8++ = (uint8_t) (ca & 0xff);
+                    *pBufferUint8 = (uint8_t) (cb & 0xff);
+
+                    errorCodeOrLength = numBytes + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES;
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUGnssPrivateMutex);
+    }
+
+    return errorCodeOrLength;
 }
 
 // End of file

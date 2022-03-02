@@ -35,23 +35,23 @@ The key APIs provided by this repo, and their relationships with each other, are
 
 # Which APIs Are Supported On Which u-blox Modules?
 
-|           |             | `ubxlib` hosts ||||
-|-----------|:-----------:|--------------|-----|-----|-----|
-|                         |              |C030 board|NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B10 series|
-|                         |              |**MCU**||||
-|                         |              |ST-Micro STM32F4|Espressif ESP32<br />|Nordic nRF52|Nordic nRF53|
-|                         |              |**Toolchain**||||
-|                         |              |Cube|ESP-IDF<br />Arduino-ESP32|GCC<br />SES (nRF5)<br />nRF Connect|nRF Connect|
-|                         |              |**RTOS/SDK**||||
-|                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|
+|           |             | `ubxlib` hosts |||||
+|-----------|:-----------:|--------------|-----|-----|-----|-----|
+|                         |              |C030 board|NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B10 series|PC|
+|                         |              |**MCU**|||||
+|                         |              |ST-Micro STM32F4|Espressif ESP32<br />|Nordic nRF52|Nordic nRF53|win32|
+|                         |              |**Toolchain**|||||
+|                         |              |Cube|ESP-IDF<br />Arduino-ESP32|GCC<br />nRF Connect|nRF Connect|MSVC|
+|                         |              |**RTOS/SDK**|||||
+|                         |              |FreeRTOS|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|Windows|
 | **`ubxlib` peripherals**   |**API**       |||||
-|SARA-U2 series<br />| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>|Yes|Yes|Yes|Yes|
-|SARA-R4 series<br />SARA-R5 series<br />| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[security](/common/security "security API")<br>[mqtt_client](/common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|
-|SARA-R510M8S<br />SARA-R422M8S|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
-|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](/ble "ble API")<br />[network](/common/network "network API")|Yes|Yes|N/A|N/A|
-|NINA-W13|[wifi](/wifi)<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Yes|N/A|Yes|Yes|
-|NINA-W15|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Yes|N/A|N/A|N/A|
-|M8 series|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|
+|SARA-U2 series<br />| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>|Yes|Yes|Yes|Yes|Yes|
+|SARA-R4 series<br />SARA-R5 series<br />| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[security](/common/security "security API")<br>[mqtt_client](/common/mqtt_client "MQTT client API")<br />|Yes|Yes|Yes|Yes|Yes|
+|SARA-R510M8S<br />SARA-R422M8S|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|Yes|
+|NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|[ble](/ble "ble API")<br />[network](/common/network "network API")|Yes|Yes|N/A|N/A|Yes|
+|NINA-W13|[wifi](/wifi)<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Yes|N/A|Yes|Yes|Yes|
+|NINA-W15|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|Yes|N/A|N/A|N/A|Yes|
+|M8 series|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|Yes|Yes|Yes|Yes|Yes|
 
 \* Through the u-blox Cell Locate service.
 
@@ -82,6 +82,7 @@ In order for u-blox to support multiple platforms with this code there is also a
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wi-Fi APIs
 ¦   +---ubx_protocol           <-- internal API used by the GNSS API
 ¦   +---error                  <-- u_error_common.h: error codes common across APIs
+¦   +---assert                 <-- u_assert.h: assert hook
 ¦   +---utils                  <-- contains common utilities
 ¦   ...
 +---cell                       <-- API for cellular (if you need more than network provides)
@@ -148,5 +149,6 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 - The [stm32cube platform directory](/port/platform/stm32cube/src) necessarily includes porting files from the STM32F4 SDK that are copyright ST Microelectronics.
 - The `go` echo servers in [common/sock/test/echo_server](/common/sock/test/echo_server) are based on those used in testing of [AWS FreeRTOS](https://github.com/aws/amazon-freertos).
 - The `setjmp()/longjmp()` implementation in [port/clib/u_port_setjmp.S](/port/clib/u_port_setjmp.S), used when testing the Zephyr platform, is copyright Nick Clifton, Cygnus Solutions and part of [newlib](https://sourceware.org/newlib/libc.html).
+- The `base64` implementation in [common/utils/src/base64.h](/common/utils/src/base64.h) is copyright [William Sherif](https://github.com/superwills/NibbleAndAHalf).
 
 In all cases copyright, and our thanks, remain with the original authors.

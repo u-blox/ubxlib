@@ -68,6 +68,10 @@ typedef void *uPortQueueHandle_t;
  */
 typedef void *uPortTaskHandle_t;
 
+/** Timer handle.
+ */
+typedef void *uPortTimerHandle_t;
+
 typedef enum {
     U_PORT_NO_EXECUTABLE_CHUNK      =  -1,
     U_PORT_EXECUTABLE_CHUNK_INDEX_0 =   0,
@@ -79,6 +83,10 @@ typedef enum {
  *  set during runtime.
  */
 typedef uint32_t uPortExeChunkFlags_t;
+
+/** The function signature for a timer callback.
+ */
+typedef void (pTimerCallback_t) (const uPortTimerHandle_t, void *);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: TASKS
@@ -213,6 +221,16 @@ int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
  */
 int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
                           void *pEventData);
+
+/** Receive from the given queue from ISR
+ *
+ * @param queueHandle the handle of the queue.
+ * @param pEventData  pointer to a place to put incoming data.
+ * @return            zero on success else negative error code.
+ */
+int32_t uPortQueueReceiveIrq(const uPortQueueHandle_t queueHandle,
+                             void *pEventData);
+
 
 /** Try to receive from the given queue, waiting for the given
  * time for something to arrive.
@@ -351,6 +369,93 @@ int32_t uPortSemaphoreGive(const uPortSemaphoreHandle_t semaphoreHandle);
  * @return                 zero on success else negative error code.
  */
 int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: TIMERS
+ * -------------------------------------------------------------- */
+
+/** Create a timer.  uPortTimerStart() must be called to start the timer
+ * once it has been successfully created.  It is good practice to create
+ * all required timers at initialisation and delete them on exit, only
+ * starting/stopping them inbetween, to avoid potential race conditions
+ * with timer creation/deletion and timer expiries.
+ * IMPORTANT: there is a single timer task/queue and the execution of a timer
+ * callback will take time in that queue, potentially delaying the execution
+ * of the next timer callback.  The task/queue is implemented as a separate
+ * entity to the rest of the OS, so it doesn't take time away from a
+ * customer's timer functions, but the "ubxlib" users of this timer API
+ * should respect each others' need for accurate timer callback execution
+ * by keeping their callbacks short in duration and certainly never blocking.
+ * It is NOT currently a requirement that this API is implemented: where
+ * it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
+ *
+ * @param pTimerHandle              a place to put the timer handle.
+ * @param pName                     a name for the timer, used for debug
+ *                                  purposes only; should be a null-terminated
+ *                                  string, may be NULL.  The value will be
+ *                                  copied.
+ * @param pCallback                 the timer callback routine.  The stack size
+ *                                  of the context within which the callback
+ *                                  is called will be specific to your OS and
+ *                                  configured in your OS; should not be NULL.
+ * @param pCallbackParam            a parameter that will be provided to the
+ *                                  timer callback routine as its second parameter
+ *                                  when it is called; may be NULL.
+ * @param intervalMs                the time interval in milliseconds.
+ * @param periodic                  if true the timer will be restarted after it
+ *                                  has expired, else the timer will be one-shot.
+ * @return                          zero on success else negative error code.
+ */
+int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
+                         const char *pName,
+                         pTimerCallback_t pCallback,
+                         void *pCallbackParam,
+                         uint32_t intervalMs,
+                         bool periodic);
+
+/** Destroy a timer.  If the timer is already running it will be stopped
+ * and then destroyed.  It is NOT currently a requirement that this API is
+ * implemented: where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * should be returned.
+ *
+ * @param timerHandle       the handle of the timer.
+ * @return                  zero on success else negative error code.
+ */
+int32_t uPortTimerDelete(const uPortTimerHandle_t timerHandle);
+
+/** Start a timer.  If the timer is already running it is restarted.
+ * It is NOT currently a requirement that this API is implemented: where it
+ * is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
+ *
+ * @param timerHandle       the handle of the timer.
+ * @return                  zero on success else negative error code.
+ */
+int32_t uPortTimerStart(const uPortTimerHandle_t timerHandle);
+
+/** Stop a timer.  If the timer is not running this function returns
+ * success.  It is NOT currently a requirement that this API is
+ * implemented: where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * should be returned.
+ *
+ * @param timerHandle       the handle of the timer.
+ * @return                  zero on success else negative error code.
+ */
+int32_t uPortTimerStop(const uPortTimerHandle_t timerHandle);
+
+/** Change a timer interval.  It is OS dependent as to whether the
+ * interval of a timer that is currently running is changed by this
+ * or not; it is wise to stop the timer first if you care about
+ * that.  It is NOT currently a requirement that this API is implemented:
+ * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED should be
+ * returned.  If the other timer API functions are supported then this
+ * one must also be supported.
+ *
+ * @param timerHandle       the handle of the timer.
+ * @param intervalMs        the new time interval in milliseconds.
+ * @return                  zero on success else negative error code.
+ */
+int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
+                         uint32_t intervalMs);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: ACQUIRING EXECUTABLE MEMORY

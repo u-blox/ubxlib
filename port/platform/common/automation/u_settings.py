@@ -59,7 +59,7 @@ __SETTINGS_POSTFIX_FIX_ME = "_FIX_ME"
 __SETTINGS_POSTFIX_TEST_ONLY_TEMP = "_TEST_ONLY_TEMP"
 
 # The directory for the global configuration files
-__SETTINGS_FILE_DIRECTORY = "~/.ubx_automation"
+__SETTINGS_FILE_DIRECTORY = os.path.expanduser("~/.ubx_automation")
 
 # The root name of the global configuration files
 __SETTINGS_FILE_NAME_ROOT = "settings_v2"
@@ -71,21 +71,21 @@ __SETTINGS_FILE_NAME_ROOT_OLD = "settings"
 __SETTINGS_FILE_NAME_EXT = "json"
 
 # The path to the general global configuration file
-__SETTINGS_FILE_PATH_GENERAL = os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + \
-                                                  __SETTINGS_FILE_NAME_ROOT + "." +    \
-                                                  __SETTINGS_FILE_NAME_EXT)
+__SETTINGS_FILE_PATH_GENERAL = __SETTINGS_FILE_DIRECTORY + os.sep + \
+                               __SETTINGS_FILE_NAME_ROOT + "." +    \
+                               __SETTINGS_FILE_NAME_EXT
 
 # The path to the global configuration file that
 # contains agent specific things
-__SETTINGS_FILE_PATH_AGENT_SPECIFIC = os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep +      \
-                                                         __SETTINGS_FILE_NAME_ROOT +               \
-                                                         __SETTINGS_POSTFIX_AGENT_SPECIFIC.lower()+\
-                                                         "." + __SETTINGS_FILE_NAME_EXT)
+__SETTINGS_FILE_PATH_AGENT_SPECIFIC = __SETTINGS_FILE_DIRECTORY + os.sep +      \
+                                      __SETTINGS_FILE_NAME_ROOT +               \
+                                      __SETTINGS_POSTFIX_AGENT_SPECIFIC.lower()+\
+                                      "." + __SETTINGS_FILE_NAME_EXT
 
 # The path to the old global configuration file
-__SETTINGS_FILE_PATH_OLD = os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + \
-                                              __SETTINGS_FILE_NAME_ROOT_OLD + "." +    \
-                                              __SETTINGS_FILE_NAME_EXT)
+__SETTINGS_FILE_PATH_OLD = __SETTINGS_FILE_DIRECTORY + os.sep + \
+                           __SETTINGS_FILE_NAME_ROOT_OLD + "." +    \
+                           __SETTINGS_FILE_NAME_EXT
 
 # The version of these settings.  This should be
 # incremented ONLY under the following circumstances:
@@ -144,6 +144,8 @@ __DEFAULT_SETTINGS["CONNECTION_INSTANCE_21" + __SETTINGS_POSTFIX_AGENT_SPECIFIC]
     {"serial_port":"COM51"}
 __DEFAULT_SETTINGS["CONNECTION_INSTANCE_22" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     {"serial_port": "COM63"}
+__DEFAULT_SETTINGS["CONNECTION_INSTANCE_23" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
+    {"serial_port": "COM99"}
 # u_data.py
 __DEFAULT_SETTINGS["DATA_FILE"] = "DATABASE.md"
 __DEFAULT_SETTINGS["CELLULAR_MODULE_TYPE_PREFIX"] = "U_CELL_MODULE_TYPE_"
@@ -159,18 +161,6 @@ __DEFAULT_SETTINGS["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py
 __DEFAULT_SETTINGS["STATIC_SIZE_ARM_GNU_INSTALL_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin"
-__DEFAULT_SETTINGS["STATIC_SIZE_MAP_FILE_NAME"] = "static_size.map"
-__DEFAULT_SETTINGS["STATIC_SIZE_C_FLAGS"] =                             \
-    "-Os -g0 -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16"
-__DEFAULT_SETTINGS["STATIC_SIZE_LD_FLAGS"] = "-Os -g0 -Wl,-Map=" + \
-    __DEFAULT_SETTINGS["STATIC_SIZE_MAP_FILE_NAME"] + \
-    " -Wl,--cref -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 --specs=nano.specs -lc -lnosys -lm"
-__DEFAULT_SETTINGS["STATIC_SIZE_NO_FLOAT_MAP_FILE_NAME"] = "static_size_no_float.map"
-__DEFAULT_SETTINGS["STATIC_SIZE_NO_FLOAT_C_FLAGS"] = "-Os -g0 -mcpu=cortex-m4+nofp"
-__DEFAULT_SETTINGS["STATIC_SIZE_NO_FLOAT_LD_FLAGS"] = "-Os -g0 -Wl,-Map=" + \
-    __DEFAULT_SETTINGS["STATIC_SIZE_NO_FLOAT_MAP_FILE_NAME"] +              \
-    " -Wl,--cref -mcpu=cortex-m4+nofp --specs=nano.specs -lc -lnosys"
-__DEFAULT_SETTINGS["STATIC_SIZE_LD_FLAGS_SUB_DIR"] = "port/platform/static_size"
 # u_run_esp_idf.py
 __DEFAULT_SETTINGS["ESP_IDF_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = "c:\\esp32"
 __DEFAULT_SETTINGS["ESP_IDF_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =           \
@@ -196,19 +186,11 @@ __DEFAULT_SETTINGS["NRF5SDK_GNU_INSTALL_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFI
     "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin/"
 __DEFAULT_SETTINGS["NRF5SDK_GNU_PREFIX"] = "arm-none-eabi"
 __DEFAULT_SETTINGS["NRF5SDK_GNU_VERSION"] = "10.2.1"
-__DEFAULT_SETTINGS["NRF5SDK_SES_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =                   \
-    "C:\\Program Files\\Segger\\SEGGER Embedded Studio for ARM 4.52c\\bin"
-__DEFAULT_SETTINGS["NRF5SDK_SES_NAME"] = "embuild.exe"
-__DEFAULT_SETTINGS["NRF5SDK_SES_BUILD_CONFIGURATION"] = "Debug"
 __DEFAULT_SETTINGS["NRF5SDK_NRF5_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = "C:/nrf5"
 __DEFAULT_SETTINGS["NRF5SDK_NRF52_RUN_JLINK"] = ["-Device", "NRF52840_XXAA", "-If", "SWD",
             "-Speed", "4000", "-Autoconnect", "1", "-ExitOnError", "1"]
 __DEFAULT_SETTINGS["NRF5SDK_NRF52_RUNNER_DIR_GCC"] = "port/platform/nrf5sdk/mcu/nrf52/gcc/runner"
-__DEFAULT_SETTINGS["NRF5SDK_NRF52_RUNNER_DIR_SES"] = "port/platform/nrf5sdk/mcu/nrf52/ses/runner"
-__DEFAULT_SETTINGS["NRF5SDK_PROJECT_NAME_SES"] = "u_pca10056"
 __DEFAULT_SETTINGS["NRF5SDK_BUILD_SUBDIR_PREFIX_GCC"] = "build_"
-__DEFAULT_SETTINGS["NRF5SDK_BUILD_SUBDIR_SES"] = "Output"
-__DEFAULT_SETTINGS["NRF5SDK_SES_MAX_NUM_DEFINES"] = 20
 __DEFAULT_SETTINGS["NRF5SDK_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run_zephyr.py
 __DEFAULT_SETTINGS["ZEPHYR_NRFCONNECT_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =              \
@@ -226,28 +208,13 @@ __DEFAULT_SETTINGS["ZEPHYR_BUILD_SUBDIR"] = "build"
 __DEFAULT_SETTINGS["ZEPHYR_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run_pylint.py
 # u_run_stm32cube.py
+__DEFAULT_SETTINGS["STM32CUBE_ARM_GNU_INSTALL_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
+    "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin"
 __DEFAULT_SETTINGS["STM32CUBE_STM32CUBE_FW_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =          \
     "C:\\STM32Cube_FW_F4"
-__DEFAULT_SETTINGS["STM32CUBE_STM32CUBE_IDE_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =         \
-    "C:\\ST\\STM32CubeIDE_1.4.0\\STM32CubeIDE"
-__DEFAULT_SETTINGS["STM32CUBE_STM32_PROGRAMMER_CLI_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =  \
-    __DEFAULT_SETTINGS["STM32CUBE_STM32CUBE_IDE_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] +     \
-    "\\plugins\\" + "com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer." +                   \
-    "win32_1.4.0.202007081208\\tools\\bin\\STM32_Programmer_CLI.exe"
-__DEFAULT_SETTINGS["STM32CUBE_OPENOCD_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =               \
-    __DEFAULT_SETTINGS["STM32CUBE_STM32CUBE_IDE_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] +     \
-    "\\plugins\\" + "com.st.stm32cube.ide.mcu.externaltools.openocd." +                          \
-    "win32_1.4.0.202007081208\\tools\\bin\\openocd.exe"
-__DEFAULT_SETTINGS["STM32CUBE_OPENOCD_SCRIPTS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =       \
-    __DEFAULT_SETTINGS["STM32CUBE_STM32CUBE_IDE_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] +     \
-    "\\plugins\\" + "com.st.stm32cube.ide.mcu.debug." +                                          \
-    "openocd_1.4.0.202007081208\\resources\\openocd\\st_scripts"
-__DEFAULT_SETTINGS["STM32CUBE_OPENOCD_STLINK_INTERFACE_SCRIPT"] = "stlink.cfg"
+__DEFAULT_SETTINGS["STM32CUBE_XPACK_OPENOCD_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
+    "C:\\Tools\\xpack-openocd-0.11.0-3\\bin\\openocd.exe"
 __DEFAULT_SETTINGS["STM32CUBE_OPENOCD_STM32F4_TARGET_SCRIPT"] = "stm32f4x.cfg"
-__DEFAULT_SETTINGS["STM32CUBE_IDE_WORKSPACE_SUBDIR"] = "workspace_1.4.0"
-__DEFAULT_SETTINGS["STM32CUBE_SDK_DIR"] = "port\\platform\\stm32cube"
-__DEFAULT_SETTINGS["STM32CUBE_PROJECT_NAME"] = "runner"
-__DEFAULT_SETTINGS["STM32CUBE_PROJECT_CONFIGURATION"] = "Debug"
 __DEFAULT_SETTINGS["STM32CUBE_SYSTEM_CORE_CLOCK_HZ"] = 168000000
 __DEFAULT_SETTINGS["STM32CUBE_SWO_CLOCK_HZ"] = 125000
 __DEFAULT_SETTINGS["STM32CUBE_SWO_DATA_FILE"] = "swo.dat"
@@ -256,13 +223,28 @@ __DEFAULT_SETTINGS["STM32CUBE_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run_arduino.py
 __DEFAULT_SETTINGS["ARDUINO_INSTALL_GUARD_TIME_SECONDS"] = 60 * 60
 __DEFAULT_SETTINGS["ARDUINO_BOARDS_URLS"] = \
-["https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"]
+    ["https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"]
 __DEFAULT_SETTINGS["ARDUINO_DOWNLOAD_GUARD_TIME_SECONDS"] = 60 * 5
 __DEFAULT_SETTINGS["ARDUINO_CLI_EXE"] = "arduino-cli"
 __DEFAULT_SETTINGS["ARDUINO_LIBRARY_CREATE_GUARD_TIME_SECONDS"] = 60 * 5
 __DEFAULT_SETTINGS["ARDUINO_BUILD_SUBDIR"] = "build"
 __DEFAULT_SETTINGS["ARDUINO_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 __DEFAULT_SETTINGS["ARDUINO_SUB_DIR"] = "port/platform/arduino"
+# u_run_windows.py
+__DEFAULT_SETTINGS["WINDOWS_MSVC_BUILD_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =         \
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools"
+__DEFAULT_SETTINGS["WINDOWS_MSVC_SETUP_BATCH_FILE" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =         \
+    __DEFAULT_SETTINGS["WINDOWS_MSVC_BUILD_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] +     \
+    "\\Common7\\Tools\\VsDevCmd.bat"
+__DEFAULT_SETTINGS["WINDOWS_MSVC_CMAKE_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =               \
+    __DEFAULT_SETTINGS["WINDOWS_MSVC_BUILD_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] +     \
+    "\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe"
+__DEFAULT_SETTINGS["WINDOWS_MSVC_CMAKE_GENERATOR" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =          \
+    "Visual Studio 17 2022"
+__DEFAULT_SETTINGS["WINDOWS_MSVC_SETUP_GUARD_TIME_SECONDS"] = 60 * 10
+__DEFAULT_SETTINGS["WINDOWS_CMAKE_GUARD_TIME_SECONDS"] = 60 * 10
+__DEFAULT_SETTINGS["WINDOWS_BUILD_SUBDIR"] = "build"
+__DEFAULT_SETTINGS["WINDOWS_BUILD_GUARD_TIME_SECONDS"] = 60 * 30
 # u_run.py
 __DEFAULT_SETTINGS["BRANCH_DEFAULT"] = "origin/master"
 # u_utils.py
@@ -317,9 +299,13 @@ def __replace_env_var(entry):
         entry[:] = [__replace_env_var(__value) for __value in entry]
     return entry
 
+# Make sure the settings directory exists before we try to create a file lock
+if not os.path.exists(__SETTINGS_FILE_DIRECTORY):
+    os.makedirs(__SETTINGS_FILE_DIRECTORY)
+
 # Ensure exclusive access to avoid collisions when this is included
 # in many scripts, potentially running in their own processes.
-with portalocker.Lock(os.path.expanduser(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock"),
+with portalocker.Lock(__SETTINGS_FILE_DIRECTORY + os.sep + "settings.lock",
                       "w", portalocker.LOCK_EX):
     # Read settings from the global configuration files
     if os.path.isfile(__SETTINGS_FILE_PATH_GENERAL):

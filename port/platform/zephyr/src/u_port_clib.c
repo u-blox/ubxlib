@@ -25,8 +25,9 @@
 #endif
 
 #include "random/rand32.h"
-#include "assert.h"
 #include "string.h"
+
+#include "u_assert.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -115,11 +116,11 @@ void free(void *p)
     if (ptr != NULL) {
         ptr -= U_MALLOC_FENCE_HEADER_SIZE;
         // Check header magic
-        assert(*((uint32_t *)&ptr[0]) == U_MALLOC_FENCE_HEADER_MAGIC);
+        U_ASSERT(*((uint32_t *)&ptr[0]) == U_MALLOC_FENCE_HEADER_MAGIC);
         uint32_t *pSize = (uint32_t *)&ptr[4];
         uint32_t trailerOffset = *pSize + U_MALLOC_FENCE_HEADER_SIZE;
         // Check trailer magic
-        assert(*((uint32_t *)&ptr[trailerOffset]) == U_MALLOC_FENCE_TRAILER_MAGIC);
+        U_ASSERT(*((uint32_t *)&ptr[trailerOffset]) == U_MALLOC_FENCE_TRAILER_MAGIC);
         // Keep track of total amount of allocations
         size_t allocSize = *pSize + U_MALLOC_FENCE_HEADER_SIZE + U_MALLOC_FENCE_TRAILER_SIZE;
         atomic_sub(&gTotAllocSize, allocSize);

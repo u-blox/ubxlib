@@ -30,8 +30,10 @@
 #endif
 
 #include "stddef.h"    // NULL, size_t etc.
+#include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "assert.h"
+
+#include "u_assert.h"
 
 #include "u_hex_bin_convert.h"
 
@@ -59,7 +61,7 @@ static const char gHex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
 // bonnet about pHex not being free()'d when it IS being free()'d.
 size_t uBinToHex(const char *pBin, size_t binLength, char *pHex)
 {
-    assert(pHex != NULL);
+    U_ASSERT(pHex != NULL);
 
     for (size_t x = 0; x < binLength; x++) {
         *pHex = gHex[((unsigned char) * pBin) >> 4];
@@ -80,7 +82,7 @@ size_t uHexToBin(const char *pHex, size_t hexLength, char *pBin)
     size_t length;
     char z[2];
 
-    assert(pBin != NULL);
+    U_ASSERT(pBin != NULL);
 
     for (length = 0; (length < hexLength / 2) && success; length++) {
         z[0] = *pHex - '0';

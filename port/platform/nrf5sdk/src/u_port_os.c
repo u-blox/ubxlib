@@ -62,25 +62,25 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "assert.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_private.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
 #include "queue.h"
+#include "timers.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-#define MS_TO_TICKS(delayMs)  (( configTICK_RATE_HZ * delayMs + 500 ) / 1000)
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -148,7 +148,7 @@ void uPortTaskBlock(int32_t delayMs)
 {
     // Make sure the scheduler has been started
     // or this will fly off into space
-    assert(xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED);
+    U_ASSERT(xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED);
     vTaskDelay(delayMs);
 }
 
@@ -256,6 +256,24 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
         if (xQueueReceive((QueueHandle_t) queueHandle,
                           pEventData,
                           (portTickType) portMAX_DELAY) == pdTRUE) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Receive from the given queue, nonblocking.
+int32_t uPortQueueReceiveIrq(const uPortQueueHandle_t queueHandle,
+                             void *pEventData)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((queueHandle != NULL) && (pEventData != NULL)) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        if (xQueueReceiveFromISR((QueueHandle_t) queueHandle,
+                                 pEventData,
+                                 NULL) == pdTRUE) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -495,6 +513,72 @@ int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
 }
 
 /* ----------------------------------------------------------------
+ * FUNCTIONS: TIMERS
+ * -------------------------------------------------------------- */
+
+// Create a timer.
+int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
+                         const char *pName,
+                         pTimerCallback_t *pCallback,
+                         void *pCallbackParam,
+                         uint32_t intervalMs,
+                         bool periodic)
+{
+    return uPortPrivateTimerCreate(pTimerHandle,
+                                   pName, pCallback,
+                                   pCallbackParam,
+                                   intervalMs,
+                                   periodic);
+}
+
+// Destroy a timer.
+int32_t uPortTimerDelete(const uPortTimerHandle_t timerHandle)
+{
+    return uPortPrivateTimerDelete(timerHandle);
+}
+
+// Start a timer.
+int32_t uPortTimerStart(const uPortTimerHandle_t timerHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+
+    if (xTimerStart((TimerHandle_t) timerHandle,
+                    (portTickType) portMAX_DELAY) == pdPASS) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errorCode;
+}
+
+// Stop a timer.
+int32_t uPortTimerStop(const uPortTimerHandle_t timerHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+
+    if (xTimerStop((TimerHandle_t) timerHandle,
+                   (portTickType) portMAX_DELAY) == pdPASS) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errorCode;
+}
+
+// Change a timer interval.
+int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
+                         uint32_t intervalMs)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+
+    if (xTimerChangePeriod((TimerHandle_t) timerHandle,
+                           MS_TO_TICKS(intervalMs),
+                           (portTickType) portMAX_DELAY) == pdPASS) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errorCode;
+}
+
+/* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: HOOKS
  * -------------------------------------------------------------- */
 
@@ -505,7 +589,7 @@ void vApplicationStackOverflowHook(TaskHandle_t taskHandle,
 {
     uPortLog("U_PORT: task handle 0x%08x, \"%s\", overflowed its stack.\n",
              (int32_t) taskHandle, pTaskName);
-    assert(false);
+    U_ASSERT(false);
 }
 
 // Malloc failed hook, employed when configUSE_MALLOC_FAILED_HOOK is
@@ -517,7 +601,7 @@ void vApplicationMallocFailedHook( void )
              " check HEAP_SIZE in the Makefile for a GCC build or"
              " the value of arm_linker_heap_size in the project"
              " file for an SES build.\n");
-    assert(false);
+    U_ASSERT(false);
 }
 
 // End of file

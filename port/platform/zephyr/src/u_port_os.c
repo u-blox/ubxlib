@@ -62,16 +62,17 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
-#include "assert.h"
 #include "stdlib.h"
 #include "string.h"    // memset
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
+#include "u_port_private.h"
 
 #include <zephyr.h>
 
@@ -147,7 +148,7 @@ static uPortOsThreadInstance_t *getNewThreadInstance(size_t stackSizeBytes)
             // Other architectures may have other alignment requirements so just add
             // a simple check that we don't waste a huge amount dynamic memory due to
             // aligment.
-            assert(Z_KERNEL_STACK_OBJ_ALIGN <= 512);
+            U_ASSERT(Z_KERNEL_STACK_OBJ_ALIGN <= 512);
             // Z_KERNEL_STACK_SIZE_ADJUST() will add extra space that Zephyr may require and
             // to make sure correct allignment we allocate Z_KERNEL_STACK_OBJ_ALIGN extra.
             stackAllocSize = Z_KERNEL_STACK_OBJ_ALIGN + Z_KERNEL_STACK_SIZE_ADJUST(stackSizeBytes);
@@ -407,6 +408,22 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
     return (int32_t) errorCode;
 }
 
+// Receive from the given queue, non-blocking.
+int32_t uPortQueueReceiveIrq(const uPortQueueHandle_t queueHandle,
+                             void *pEventData)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((queueHandle != NULL) && (pEventData != NULL)) {
+        errorCode = U_ERROR_COMMON_PLATFORM;
+        if (0 == k_msgq_get((struct k_msgq *)queueHandle, pEventData, K_NO_WAIT)) {
+            errorCode = U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return (int32_t) errorCode;
+}
+
 // Receive from the given queue, with a wait time.
 int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
                              int32_t waitMs, void *pEventData)
@@ -629,6 +646,58 @@ int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle)
 {
     return uPortSemaphoreGive(semaphoreHandle);
 }
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: TIMERS
+ * -------------------------------------------------------------- */
+
+// Create a timer.
+int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
+                         const char *pName,
+                         pTimerCallback_t *pCallback,
+                         void *pCallbackParam,
+                         uint32_t intervalMs,
+                         bool periodic)
+{
+    // Zephyr does not support use of a name for a timer
+    (void) pName;
+
+    return uPortPrivateTimerCreate(pTimerHandle,
+                                   pCallback,
+                                   pCallbackParam,
+                                   intervalMs,
+                                   periodic);
+}
+
+// Destroy a timer.
+int32_t uPortTimerDelete(const uPortTimerHandle_t timerHandle)
+{
+    return uPortPrivateTimerDelete(timerHandle);
+}
+
+// Start a timer.
+int32_t uPortTimerStart(const uPortTimerHandle_t timerHandle)
+{
+    return uPortPrivateTimerStart(timerHandle);
+}
+
+// Stop a timer.
+int32_t uPortTimerStop(const uPortTimerHandle_t timerHandle)
+{
+    k_timer_stop((struct k_timer *) timerHandle);
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
+}
+
+// Change a timer interval.
+int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
+                         uint32_t intervalMs)
+{
+    return uPortPrivateTimerChange(timerHandle, intervalMs);
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: CHUNK
+ * -------------------------------------------------------------- */
 
 // Simple implementation of making a chunk of RAM executable in Zephyr
 void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,

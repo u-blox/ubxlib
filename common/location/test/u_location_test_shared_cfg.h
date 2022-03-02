@@ -51,6 +51,53 @@ extern "C" {
 # define U_LOCATION_TEST_MAX_RADIUS_MILLIMETRES (10000 * 1000)
 #endif
 
+#ifndef U_LOCATION_TEST_CLOUD_LOCATE_SVS_THRESHOLD
+/** The number of satellites to request as being visible and meet
+ * the criteria for RRLP information to be valid when testing
+ * Cloud Locate.
+ */
+# define U_LOCATION_TEST_CLOUD_LOCATE_SVS_THRESHOLD U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD
+#endif
+
+#ifndef U_LOCATION_TEST_CLOUD_LOCATE_C_NO_THRESHOLD
+/** The threshold to use for carrier to noise ratio for the RRLP
+ * information for a given satellite to be considered valid when
+ * testing Cloud Locate.  Note that we use lower than the recommended
+ * value here to be quite sure we always get something that meets
+ * the criteria, avoiding occasional irritating failures in
+ * regression testing.
+ */
+# define U_LOCATION_TEST_CLOUD_LOCATE_C_NO_THRESHOLD 20
+#endif
+
+#ifndef U_LOCATION_TEST_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT
+/** The limit to use for multipath index for the RRLP
+ * information for a given satellite to be considered valid when
+ * testing Cloud Locate.
+ */
+# define U_LOCATION_TEST_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT
+#endif
+
+#ifndef U_LOCATION_TEST_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT
+/** The limit to use for pseudorange RMS error index for the RRLP
+ * information for a given satellite to be considered valid when
+ * testing Cloud Locate.
+ */
+# define U_LOCATION_TEST_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT U_LOCATION_CLOUD_LOCATE_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT
+#endif
+
+#ifndef U_LOCATION_TEST_MQTT_INACTIVITY_TIMEOUT_SECONDS
+/** A bit of a balancing act this.  The MQTT server will not allow
+ * a device to connect if it is already connected (e.g. it may have
+ * failed a test and so not disconnected and now it's trying again).
+ * The inactivity timeout is intended to guard against this, but of
+ * course if it is too short we'll end up being disconnected before
+ * location establishment has succeeded.
+ */
+# define U_LOCATION_TEST_MQTT_INACTIVITY_TIMEOUT_SECONDS (U_LOCATION_TEST_CFG_TIMEOUT_SECONDS +     \
+                                                          (U_LOCATION_TEST_CFG_TIMEOUT_SECONDS / 2))
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -60,8 +107,11 @@ extern "C" {
  */
 typedef struct {
     uLocationType_t locationType;
-    const uLocationAssist_t *pLocationAssist;
+    uLocationAssist_t *pLocationAssist;
     const char *pAuthenticationTokenStr;
+    const char *pServerUrlStr;
+    const char *pUserNameStr;
+    const char *pPasswordStr;
 } uLocationTestCfg_t;
 
 /** Type to hold the list of location configuration data supported by
@@ -69,7 +119,7 @@ typedef struct {
  */
 typedef struct {
     size_t numEntries;
-    const uLocationTestCfg_t *pCfgData;
+    const uLocationTestCfg_t *pCfgData[U_LOCATION_TYPE_MAX_NUM];
 } uLocationTestCfgList_t;
 
 /* ----------------------------------------------------------------
@@ -79,7 +129,7 @@ typedef struct {
 /** Location configurations for each network type.
  * ORDER IS IMPORTANT: follows the order of uNetworkType_t.
  */
-extern const uLocationTestCfgList_t *const gpULocationTestCfg[];
+extern const uLocationTestCfgList_t *gpULocationTestCfg[];
 
 /** Number of items in the gpULocationTestCfg array.
  */
@@ -89,7 +139,7 @@ extern const size_t gpULocationTestCfgSize;
  * U_LOCATION_TYPE_MAX_NUM entries.
  * ORDER IS IMPORTANT: follows the order of uLocationType_t.
  */
-extern const char *const gpULocationTestTypeStr[];
+extern const char *gpULocationTestTypeStr[];
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -108,6 +158,45 @@ void uLocationTestResetLocation(uLocation_t *pLocation);
  * @param pLocation  a pointer to the location structure to print.
  */
 void uLocationTestPrintLocation(const uLocation_t *pLocation);
+
+/** Create a deep copy of a uLocationTestCfg_t.
+ * IMPORTANT: make sure that you call uLocationTestCfgDeepCopyFree()
+ * to free the memory allocated to the copy afterwards.
+ *
+ * @param pCfg  a pointer to the location test configuration to copy.
+ * @return      a pointer to the malloc()ated copy of the location
+ *              test configuration or NULL on failure.
+ */
+uLocationTestCfg_t *pULocationTestCfgDeepCopyMalloc(const uLocationTestCfg_t *pCfg);
+
+/** Free a deep copy of a uLocationTestCfg_t.
+ *
+ * @param pCfg  the location test configuration to free.
+ */
+void uLocationTestCfgDeepCopyFree(uLocationTestCfg_t *pCfg);
+
+/** Log into an MQTT broker with the given client ID.
+ *
+ * @param networkHandle    the network handle to use for
+ *                         the MQTT transport.
+ * @param pBrokerNameStr   the URL of the MQTT broker.
+ * @param pUserNameStr     the username to log in with.
+ * @param pPasswordStr     the password to log in with.
+ * @param pClientIdStr     the MQTT client ID to use.
+ * @return                 a pointer to the MQTT context,
+ *                         or NULL on failure.
+ */
+void *pULocationTestMqttLogin(int32_t networkHandle,
+                              const char *pBrokerNameStr,
+                              const char *pUserNameStr,
+                              const char *pPasswordStr,
+                              const char *pClientIdStr);
+
+/** Log out of an MQTT broker.
+ *
+ * @param pContext  a pointer to the MQTT context.
+ */
+void uLocationTestMqttLogout(void *pContext);
 
 #ifdef __cplusplus
 }
