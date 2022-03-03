@@ -520,8 +520,14 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
             printer.string("{}cloning from {} into {}...".
                            format(prompt, url, dir_text))
         try:
-            text = subprocess.check_output(subprocess_osify(["git", "clone", "-q",
-                                                             url, directory]),
+            call_list = ["git", "clone", "-q"]
+            if submodule_init:
+                call_list.append("--recurse-submodules")
+                printer.string("{}also recursing sub-modules (can take some time" \
+                               " and gives no feedback).".format(prompt))
+            call_list.append(url)
+            call_list.append(directory)
+            text = subprocess.check_output(subprocess_osify(call_list),
                                            stderr=subprocess.STDOUT,
                                            shell=True) # Jenkins hangs without this
             for line in text.splitlines():
