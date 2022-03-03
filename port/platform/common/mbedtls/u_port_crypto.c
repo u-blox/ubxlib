@@ -28,7 +28,6 @@
 
 #include "mbedtls/sha256.h"
 #include "mbedtls/md.h"
-#include "mbedtls/md_internal.h"
 #include "mbedtls/aes.h"
 
 #include "u_error_common.h"
@@ -86,7 +85,8 @@ int32_t uPortCryptoHmacSha256(const char *pKey,
                               char *pOutput)
 {
     // mbedTLS has it sorted
-    return mbedtls_md_hmac(&mbedtls_sha256_info,
+    const mbedtls_md_info_t *pInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+    return mbedtls_md_hmac(pInfo,
                            (const unsigned char *) pKey,
                            keyLengthBytes,
                            (const unsigned char *) pInput,

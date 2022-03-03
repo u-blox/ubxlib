@@ -59,7 +59,8 @@ DEFINES += \
 	-DUSE_HAL_DRIVER \
 	-DUSE_FULL_LL_DRIVER \
 	-DSTM32F437xx \
-	-DDEBUG
+	-DDEBUG \
+	-DMBEDTLS_USER_CONFIG_FILE=\"user_mbedtls_config.h\"
 
 override CFLAGS += \
 	$(DEFINES) -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -std=gnu11 -g3 -O0 -Wall \
