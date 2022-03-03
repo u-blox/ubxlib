@@ -7,3 +7,4 @@ pyserial
 pylink-square
 coloredlogs
 portalocker
+lxml

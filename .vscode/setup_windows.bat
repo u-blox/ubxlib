@@ -17,3 +17,4 @@ IF %ERRORLEVEL% NEQ 0 (
 echo Found
 
 pip3 install -r ../port/platform/common/automation/requirements.txt
+pip3 install windows-curses
