@@ -6,7 +6,7 @@ Follow the instructions to build for the ESP-IDF platform:
 
 https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html#get-started-step-by-step
 
-The builds here are tested with the most recent ESP-IDF master branch.
+The builds here are tested with the most recent v4.4 release of ESP-IDF from [Github](https://github.com/espressif/esp-idf/tree/v4.4).
 
 # Integration
 To use this port in your ESP32 application you need to include the [port/platform/esp-idf/mcu/esp32/components](components) directory in your `EXTRA_COMPONENT_DIRS` and add `ubxlib` to `COMPONENTS`. As an example you can have a look at [runner/CMakeLists.txt](runner/CMakeLists.txt). There are also some required `sdkconfig`, but you currently need to check [runner/sdkconfig.defaults](runner/sdkconfig.defaults) to get these correct.

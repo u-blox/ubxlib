@@ -169,7 +169,7 @@ __DEFAULT_SETTINGS["ESP_IDF_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =  
 __DEFAULT_SETTINGS["ESP_IDF_LOCATION"] =                                     \
     {"url": "https://github.com/espressif/esp-idf",
      "subdir": "esp-idf-latest",
-     "branch": "master"}
+     "branch": "#v4.4"}
 __DEFAULT_SETTINGS["ESP_IDF_PROJECT_SUBDIR"] = "runner"
 __DEFAULT_SETTINGS["ESP_IDF_TEST_COMPONENT"] = "ubxlib_runner"
 __DEFAULT_SETTINGS["ESP_IDF_BUILD_SUBDIR"] = "build"

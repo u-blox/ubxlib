@@ -430,6 +430,48 @@ def install_lock_release(install_lock, printer, prompt):
         install_lock.release()
     printer.string("{}install lock released.".format(prompt))
 
+def run_call(call_list, printer, prompt, shell_cmd=False):
+    ''' Run a call_list through subprocess.check_output() '''
+    success = False
+    try:
+        if printer and prompt:
+            text = ""
+            for item in call_list:
+                if text:
+                    text += " "
+                text += item
+            printer.string("{}in {} calling {}...".
+                           format(prompt, os.getcwd(), text))
+        # Try to pull the code
+        text = subprocess.check_output(subprocess_osify(call_list),
+                                       stderr=subprocess.STDOUT,
+                                       shell=shell_cmd)
+        for line in text.splitlines():
+            if printer and prompt:
+                printer.string("{}{}".format(prompt, line))
+        success = True
+    except subprocess.CalledProcessError as error:
+        if printer and prompt:
+            printer.string("{}{} returned error {}: \"{}\"".
+                           format(prompt, call_list[0],
+                                  error.returncode,
+                                  error.output))
+    return success
+
+def git_cleanup(printer, prompt, shell_cmd=False):
+    ''' Antevir's recommended clean-up procedure '''
+    if printer and prompt:
+        printer.string("{}trying to clean up...".format(prompt))
+    run_call(["git", "reset", "--hard", "HEAD"], printer, prompt, shell_cmd)
+    run_call(["git", "submodule", "foreach", "--recursive", "git", \
+              "reset", "--hard"], printer, prompt, shell_cmd)
+    # The "double f" forces cleaning of directories with .git subdirectories
+    run_call(["git", "clean", "-xfdf"], printer, prompt, shell_cmd)
+    run_call(["git", "submodule", "foreach", "--recursive", "git", \
+              "clean", "-xfdf"], printer, prompt, shell_cmd)
+    run_call(["git", "submodule", "sync", "--recursive"], printer, prompt, shell_cmd)
+    run_call(["git", "submodule", "update", "--init", "--recursive"], printer, prompt, shell_cmd)
+
 def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, force=False):
     '''Fetch a repo: directory can be relative or absolute, branch can be a hash'''
     got_code = False
@@ -455,62 +497,13 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
                 # Actually been given a branch, lose the
                 # preceding #
                 target = branch[1:len(branch)]
-            # Try this once and, if it fails and force is set,
-            # do a git reset --hard and try again
-            tries = 1
-            if force:
-                tries += 1
-            while tries > 0:
-                try:
-                    call_list = []
-                    call_list.append("git")
-                    call_list.append("fetch")
-                    call_list.append("origin")
-                    call_list.append(target)
-                    if printer and prompt:
-                        text = ""
-                        for item in call_list:
-                            if text:
-                                text += " "
-                            text += item
-                        printer.string("{}in {} calling {}...".
-                                       format(prompt, os.getcwd(), text))
-                    # Try to pull the code
-                    text = subprocess.check_output(subprocess_osify(call_list),
-                                                   stderr=subprocess.STDOUT,
-                                                   shell=True) # Jenkins hangs without this
-                    for line in text.splitlines():
-                        if printer and prompt:
-                            printer.string("{}{}".format(prompt, line))
-                    got_code = True
-                except subprocess.CalledProcessError as error:
-                    if printer and prompt:
-                        printer.string("{}git returned error {}: \"{}\"".
-                                       format(prompt, error.returncode,
-                                              error.output))
-                if got_code:
-                    tries = 0
-                else:
-                    if force:
-                        # git reset --hard
-                        printer.string("{}in directory {} calling git reset --hard...".   \
-                                       format(prompt, os.getcwd()))
-                        try:
-                            text = subprocess.check_output(subprocess_osify(["git", "reset",
-                                                            "--hard"]),
-                                                           stderr=subprocess.STDOUT,
-                                                           shell=True) # Jenkins hangs without this
-                            for line in text.splitlines():
-                                if printer and prompt:
-                                    printer.string("{}{}".format(prompt, line))
-                        except subprocess.CalledProcessError as error:
-                            if printer and prompt:
-                                printer.string("{}git returned error {}: \"{}\"".
-                                               format(prompt, error.returncode,
-                                                      error.output))
-                        force = False
-                    tries -= 1
-        if not got_code:
+            # Jenkins can hang without True here
+            got_code = run_call(["git", "fetch", "origin", target], printer, prompt, True)
+            if not got_code and force:
+                # If it didn't work, clean up and try again
+                git_cleanup(printer, prompt, True)
+                got_code = run_call(["git", "fetch", "origin", target], printer, prompt, True)
+        if force and not got_code:
             # If we still haven't got the code, delete the
             # directory for a true clean start
             deltree(directory, printer, prompt)
@@ -519,26 +512,15 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
         if printer and prompt:
             printer.string("{}cloning from {} into {}...".
                            format(prompt, url, dir_text))
-        try:
-            call_list = ["git", "clone", "-q"]
-            if submodule_init:
-                call_list.append("--recurse-submodules")
-                printer.string("{}also recursing sub-modules (can take some time" \
-                               " and gives no feedback).".format(prompt))
-            call_list.append(url)
-            call_list.append(directory)
-            text = subprocess.check_output(subprocess_osify(call_list),
-                                           stderr=subprocess.STDOUT,
-                                           shell=True) # Jenkins hangs without this
-            for line in text.splitlines():
-                if printer and prompt:
-                    printer.string("{}{}".format(prompt, line))
-            got_code = True
-        except subprocess.CalledProcessError as error:
-            if printer and prompt:
-                printer.string("{}git returned error {}: \"{}\"".
-                               format(prompt, error.returncode,
-                                      error.output))
+        call_list = ["git", "clone", "-q"]
+        call_list.append(url)
+        call_list.append(directory)
+        got_code = run_call(call_list, printer, prompt, True)
+        if got_code and  submodule_init:
+            with ChangeDir(directory):
+                printer.string("{}also recursing sub-modules (can take some time)" \
+                               .format(prompt))
+                run_call(["git", "submodule", "update", "--init", "--recursive"], printer, prompt, True)
 
     if got_code and os.path.isdir(directory):
         # Check out the correct branch and recurse submodules
@@ -551,34 +533,19 @@ def fetch_repo(url, directory, branch, printer, prompt, submodule_init=True, for
             if printer and prompt:
                 printer.string("{}checking out {}...".
                                format(prompt, target))
-            try:
-                call_list = ["git", "-c", "advice.detachedHead=false",
-                             "checkout", "--no-progress"]
-                if submodule_init:
-                    call_list.append("--recurse-submodules")
-                    printer.string("{}also recursing sub-modules (can take some time" \
-                                   " and gives no feedback).".format(prompt))
-                call_list.append(target)
-                if printer and prompt:
-                    text = ""
-                    for item in call_list:
-                        if text:
-                            text += " "
-                        text += item
-                    printer.string("{}in {} calling {}...".
-                                   format(prompt, os.getcwd(), text))
-                text = subprocess.check_output(subprocess_osify(call_list),
-                                               stderr=subprocess.STDOUT,
-                                               shell=True) # Jenkins hangs without this
-                for line in text.splitlines():
-                    if printer and prompt:
-                        printer.string("{}{}".format(prompt, line))
-                success = True
-            except subprocess.CalledProcessError as error:
-                if printer and prompt:
-                    printer.string("{}git returned error {}: \"{}\"".
-                                   format(prompt, error.returncode,
-                                          error.output))
+            call_list = ["git", "-c", "advice.detachedHead=false",
+                         "checkout", "--no-progress"]
+            if submodule_init:
+                call_list.append("--recurse-submodules")
+                printer.string("{}also recursing sub-modules (can take some time" \
+                               " and gives no feedback).".format(prompt))
+            call_list.append(target)
+            success = run_call(call_list, printer, prompt, True)
+            if not success:
+                # If it didn't work, clean up and try again
+                git_cleanup(printer, prompt, True)
+                success = run_call(call_list, printer, prompt, True)
+
     return success
 
 def exe_where(exe_name, help_text, printer, prompt, set_env=None):
