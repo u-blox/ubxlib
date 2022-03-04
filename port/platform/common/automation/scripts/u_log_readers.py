@@ -1,3 +1,5 @@
+"""Log readers used by the log pytask commands to read out log from targets"""
+
 import time
 from serial import Serial
 from pylink import JLink
@@ -7,7 +9,12 @@ class URttReader:
     """A simple JLink RTT reader"""
     def __init__(self, device, jlink_serial=None,
                  jlink_logfile=None, reset_on_connect=False):
-        """device: The JLink device to connect"""
+        """
+        device: The JLink target device to connect
+        jlink_serial: Optional JLink serial number
+        jlink_logfile: If you want to log the JLink com you can specify a logfile
+        reset_on_connect: When set to True a target reset will be triggered on connect() call
+        """
         self.device = device
         self.serial = jlink_serial
         self.jlink = JLink()
@@ -22,6 +29,7 @@ class URttReader:
         self.close()
 
     def connect(self):
+        """Connect JLink to the target"""
         self.jlink.open(serial_no=self.serial)
         if self.jlink_logfile:
             self.jlink.set_log_file(self.jlink_logfile)
@@ -29,7 +37,7 @@ class URttReader:
         self.jlink.set_tif(JLinkInterfaces.SWD)
         self.jlink.connect(self.device)
         if self.reset_on_connect:
-            print(f"Resetting target")
+            print("Resetting target")
             self.jlink.reset(halt=False)
         print("Enabling RTT")
         self.jlink.rtt_start(None)
@@ -48,16 +56,15 @@ class URttReader:
         start_time = time.time()
         while time.time() - start_time < timeout:
             data = self.jlink.rtt_read(0, 4096)
-            if (len(data) > 0):
+            if len(data) > 0:
                 # We got the data
                 return data
-            else:
-                # No data - try again later
-                time.sleep(0.1)
+            # No data - try again later
+            time.sleep(0.1)
         return None
 
 
-class UUartReader(Serial):
+class UUartReader(Serial): # pylint: disable=too-many-ancestors
     """A PySerial wrapper that will set RTS and DTR state on open
     dtr_state: Set to True to turn on DTR on open, false to to turn off
                DTR on open. If not specified (or set to None) DTR will be
@@ -66,7 +73,7 @@ class UUartReader(Serial):
                RTS on open. If not specified (or set to None) RTS will be
                left untouched on open.
     """
-    def __init__(self, dtr_state=None, rts_state=None, *args, **kwargs):
+    def __init__(self, *args, dtr_state=None, rts_state=None, **kwargs):
         self.dtr_state=dtr_state
         self.rts_state=rts_state
         super(UUartReader, self).__init__(*args, **kwargs)
@@ -80,5 +87,3 @@ class UUartReader(Serial):
         if self.rts_state is not None:
             print("Setting RTS {}".format("on" if self.rts_state else "off"))
             self.rts = self.rts_state
-
-

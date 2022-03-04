@@ -194,7 +194,8 @@ def run(instance, toolchain, connection, connection_lock,
     exe_file = None
     instance_text = u_utils.get_instance_text(instance)
 
-    global U_LOG
+    # "global" should be avoided, but we make an exception for the logger
+    global U_LOG # pylint: disable=global-statement
     U_LOG = ULog.get_logger(PROMPT + instance_text)
 
     # Only one toolchain for Windows (MSVC), the parameter is again

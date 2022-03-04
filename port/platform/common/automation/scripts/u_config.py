@@ -18,7 +18,7 @@ def parse_platform_specific(cfg, is_linux):
     """
     newcfg = cfg.copy()
     for key, value in cfg.items():
-        if key == "linux" or key == "windows":
+        if key in ("linux", "windows"):
             is_linux_setting = key == "linux"
             if is_linux == is_linux_setting:
                 newcfg.update(value)
@@ -34,7 +34,6 @@ def load_config_yaml(file_path, is_linux):
     * If the yaml file contains environmental variables these will first be expanded.
     * The yaml file can also contain platform specific config.
       Please see parse_platform_specific() how these are handled."""
-    with open(file_path, 'r') as f:
-        cfg = yaml.safe_load(os.path.expandvars(f.read()))
+    with open(file_path, 'r') as file:
+        cfg = yaml.safe_load(os.path.expandvars(file.read()))
     return parse_platform_specific(cfg, is_linux)
-

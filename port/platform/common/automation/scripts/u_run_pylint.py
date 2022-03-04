@@ -46,7 +46,8 @@ def run(ubxlib_dir, reporter):
     got_pylint = False
     min_rating = 10
 
-    global U_LOG
+    # "global" should be avoided, but we make an exception for the logger
+    global U_LOG # pylint: disable=global-statement
     U_LOG = ULog.get_logger(PROMPT)
 
     # Print out what we've been told to do

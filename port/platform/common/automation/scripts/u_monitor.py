@@ -65,7 +65,7 @@ def delayed_finish(*args):
     # single entry in the args array.
     args[0].finished = True
 
-def test_error(results: TestResults, reporter, message):
+def test_error(_results: TestResults, reporter, message):
     if reporter:
         reporter.event(u_report.EVENT_TYPE_TEST,
                        u_report.EVENT_ERROR,
@@ -266,7 +266,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
             line = None
         return_value = line
         # Serial ports just use read()
-    elif connection_type == CONNECTION_SERIAL or connection_type == CONNECTION_RTT:
+    elif connection_type in (CONNECTION_SERIAL, CONNECTION_RTT):
         eol = False
         try:
             while not eol and line is not None:
@@ -463,7 +463,9 @@ def main(connection_handle, connection_type, guard_time_seconds,
         prompt = PROMPT + "_" + u_utils.get_instance_text(instance)
     else:
         prompt = PROMPT
-    global U_LOG
+
+    # "global" should be avoided, but we make an exception for the logger
+    global U_LOG # pylint: disable=global-statement
     U_LOG = ULog.get_logger(prompt)
 
     # Make sure we delete any old test report before we start

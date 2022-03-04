@@ -22,7 +22,8 @@ def run(ubxlib_dir, reporter):
     return_value = 1
     got_doxygen = False
 
-    global U_LOG
+    # "global" should be avoided, but we make an exception for the logger
+    global U_LOG # pylint: disable=global-statement
     U_LOG = ULog.get_logger(PROMPT)
 
     working_dir = os.getcwd()

@@ -23,7 +23,8 @@ def run(instance, reporter, test_report_file_path):
     return_value = -1
     instance_text = u_utils.get_instance_text(instance)
 
-    global U_LOG
+    # "global" should be avoided, but we make an exception for the logger
+    global U_LOG # pylint: disable=global-statement
     U_LOG = ULog.get_logger(PROMPT + instance_text)
 
     cmd = ["inv", "-r", f"{u_utils.AUTOMATION_DIR}", "automation.log", instance_text]
