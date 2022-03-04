@@ -1,8 +1,13 @@
 from os import environ
 from invoke import task, Exit
 from pathlib import PurePath
-from scripts import u_utils, u_data, u_connection, u_select
+
+from scripts import u_utils, u_data, u_connection, u_select, u_report
+from scripts import u_run_log, u_run_windows, u_run_lint, u_run_doxygen, u_run_astyle
+from scripts import u_run_pylint, u_run_static_size, u_run_no_floating_point
+
 from scripts.packages import u_package
+from scripts.u_logging import ULog
 from . import nrf5, esp_idf, nrfconnect, stm32cubef4, arduino
 from enum import Enum
 import sys
@@ -18,6 +23,7 @@ class Command(Enum):
     BUILD = 1
     FLASH = 2
     LOG = 3
+    TEST = 4
 
 def eprint(*args, **kwargs):
     """Helper function for writing to stderr"""
@@ -30,6 +36,11 @@ def parse_instance(str):
     except:
         raise Exit(f"Invalid instance format: '{str}'")
     return instance
+
+def check_return_code(ret):
+    """Checks that return code is 0 otherwise an Exit exception is thrown"""
+    if ret != 0:
+        raise Exit(f"Return code: '{ret}'")
 
 def instance_command(ctx, instance_str, cmd):
     db_data = u_data.get(DATABASE)
@@ -44,11 +55,13 @@ def instance_command(ctx, instance_str, cmd):
 
     # Read out instance info from DATABASE.md
     platform = u_data.get_platform_for_instance(db_data, instance)
-    if not platform:
+    if not platform and instance[0] > 9:
         raise Exit(f"Unknown platform for: '{instance_str}'")
     board = u_data.get_board_for_instance(db_data, instance)
     defines = u_data.get_defines_for_instance(db_data, instance)
     mcu = u_data.get_mcu_for_instance(db_data, instance)
+    toolchain = u_data.get_toolchain_for_instance(db_data, instance)
+    description = u_data.get_description_for_instance(db_data, instance)
 
     # Defines may be provided via an environment
     # variable, in a list separated with semicolons, e.g.:
@@ -58,7 +71,7 @@ def instance_command(ctx, instance_str, cmd):
         defines.extend(environ[UBXLIB_DEFINES_VAR].strip().split(";"))
 
     # Merge in any filter string we might have
-    if cmd == Command.BUILD and ctx.filter:
+    if (cmd == Command.BUILD or cmd == Command.TEST) and ctx.filter:
         defines = u_utils.merge_filter(defines, ctx.filter)
 
     # For ESP targets: Check if RTS and DTR should be set when opening log UART
@@ -81,6 +94,8 @@ def instance_command(ctx, instance_str, cmd):
             nrf5.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
         elif cmd == Command.LOG:
             nrf5.log(ctx, debugger_serial=serial)
+        elif cmd == Command.TEST:
+            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
 
     elif platform == "zephyr":
         nrfconnect.check_installation(ctx)
@@ -98,6 +113,8 @@ def instance_command(ctx, instance_str, cmd):
             nrfconnect.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, hex_file=hex_file)
         elif cmd == Command.LOG:
             nrfconnect.log(ctx, debugger_serial=serial)
+        elif cmd == Command.TEST:
+            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
 
     elif platform == "esp-idf":
         esp_idf.check_installation(ctx)
@@ -111,6 +128,8 @@ def instance_command(ctx, instance_str, cmd):
             esp_idf.log(ctx, serial_port=connection["serial_port"],
                         dtr_state=monitor_dtr_rts_on,
                         rts_state=monitor_dtr_rts_on)
+        elif cmd == Command.TEST:
+            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
 
     elif platform == "stm32cube":
         stm32cubef4.check_installation(ctx)
@@ -121,6 +140,8 @@ def instance_command(ctx, instance_str, cmd):
         elif cmd == Command.LOG:
             port = instance[0] + 40404
             stm32cubef4.log(ctx, debugger_serial=serial, port=port)
+        elif cmd == Command.TEST:
+            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
 
     elif platform == "arduino":
         arduino.check_installation(ctx)
@@ -135,9 +156,40 @@ def instance_command(ctx, instance_str, cmd):
             arduino.log(ctx, serial_port=connection["serial_port"],
                         dtr_state=monitor_dtr_rts_on,
                         rts_state=monitor_dtr_rts_on)
+        elif cmd == Command.TEST:
+            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+
+    elif platform == "windows":
+        if cmd == Command.TEST:
+            check_return_code(u_run_windows.run(instance, toolchain, connection,
+                                                None, False, defines,
+                                                ctx.reporter, ctx.test_report,
+                                                None))
+        else:
+            raise Exit(f"Unsupported command for platform: '{platform}'")
+
+    elif instance[0] < 10:
+        # Handle Lint, AStyle and so on...
+        if cmd != Command.TEST:
+            raise Exit(f"'{description}' only supports 'test' command")
+        if instance[0] == 0:
+            return_code = u_run_lint.run(defines, u_utils.UBXLIB_DIR, ctx.reporter, None)
+        elif instance[0] == 1:
+            return_code = u_run_doxygen.run(u_utils.UBXLIB_DIR, ctx.reporter)
+        elif instance[0] == 2:
+            return_code = u_run_astyle.run(u_utils.UBXLIB_DIR, ctx.reporter)
+        elif instance[0] == 3:
+            return_code = u_run_pylint.run(u_utils.UBXLIB_DIR, ctx.reporter)
+        elif instance[0] == 4:
+            return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
+        elif instance[0] == 5:
+            return_code = u_run_no_floating_point.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
+        elif instance[0] >= 6 and instance[0] <= 9:
+            raise Exit(f"Instance {instance_str} reserved, nothing to do.")
+        check_return_code(return_code)
 
     else:
-        raise Exit(f"Unsupported platform: '{platform}'")
+        raise Exit(f"Unsupported platform: '{desc}'")
 
 
 @task()
@@ -178,6 +230,23 @@ def flash(ctx, instance, build_dir=None):
 def log(ctx, instance):
     """Show a real-time log output for an automation instance"""
     instance_command(ctx, instance, Command.LOG)
+
+@task()
+def test(ctx, instance, summary_file="summary.txt", debug_file="debug.log",
+         test_report=None, filter=None):
+    """Start the tests for an automation instance"""
+    # The testing phase uses the loggin facility
+    ULog.setup_logging(debug_file=debug_file)
+    _instance = parse_instance(instance)
+
+    # With a reporter
+    with open(summary_file, 'w') as summary_handle:
+        with u_report.ReportToQueue(None, _instance,
+                                    summary_handle) as reporter:
+            ctx.filter = filter
+            ctx.reporter = reporter
+            ctx.test_report = test_report
+            instance_command(ctx, instance, Command.TEST)
 
 @task()
 def get_test_selection(ctx, message="", files="", run_everything=False):
