@@ -68,7 +68,7 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 #define MQTT_PUBLISH_TOTAL_MSG_COUNT 4
-#define MQTT_RETRY_COUNT 15
+#define MQTT_RETRY_COUNT 60
 
 //lint -esym(767, LOG_TAG) Suppress LOG_TAG defined differently in another module
 //lint -esym(750, LOG_TAG) Suppress LOG_TAG not referenced
