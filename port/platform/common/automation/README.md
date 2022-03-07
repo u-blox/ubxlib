@@ -1,8 +1,19 @@
 # Introduction
 The files in here are used internally within u-blox to automate testing of `ubxlib`.  They are not supported externally.  However, if you find them useful please help yourselves.
 
+# Installation
+To run the test automation or other PyInvoke tasks locally you need to setup a few things.
+The following steps should work for both Windows and Ubuntu:
+1. Make sure you have Python 3.x installed and that it is in your `PATH` environment.
+2. Make sure that `pip3` is accessable through your `PATH` environment.
+3. For Windows make sure that your `<python3_dir>/Scripts` is accessable through your `PATH` environment.
+4. Run either [setup_linux.sh](setup_linux.sh) or [setup_windows.bat](setup_windows.bat) depending on your platform. These scripts will install all Python modules needed for the test automation. The modules we are using are listed in [requirements.txt](requirements.txt)
+5. Verify that you can execute the command `invoke` from your terminal. If the command is not found, for Windows double check step 3. For Ubuntu just logout and login again (Python modules are placed in `~/.local/bin` and this directory is only added to PATH if it existed when user logs in).
+
+**NOTE** You may need to re-run `setup_windows.bat`/`setup_linux.sh` when test automation is upgraded as new Python module may be added.
+
 # The Test Instances
-The automated testystem runs several test instances all defined in [DATABASE.md](DATABASE.md). Each row in [DATABASE.md](DATABASE.md) corresponds to an instance that runs in parallel on Jenkins. The test process for each instance is devided into the stages: build, flash and test. However, some of the instances only use the test stage.
+The automated testsystem runs several test instances all defined in [DATABASE.md](DATABASE.md). Each row in [DATABASE.md](DATABASE.md) corresponds to an instance that runs in parallel on Jenkins. The test process for each instance is divided into the stages: build, flash and test. However, some of the instances only use the test stage.
 
 Each test instance (i.e. each row in [DATABASE.md](DATABASE.md) or each parallel test) has an ID with format `x.y.z` where x-z are integer values. `x` is mandatory while `y` and `z` are optional. The `x` is used for referring to a specific HW configuration and `y` & `z` are used to for defining variants of tests performed on the same HW config.
 
@@ -106,6 +117,14 @@ As default all tests will be executed, but if you only want to run specific test
 
 The `automation` tasks works as an abstract layer to the platform (i.e. `arduino.<command>`, `nrf5.<command>`, ...) tasks.
 This means that when you call `automation.build 12` the task will check [DATABASE.md](DATABASE.md) to find what platform instance 12 is. In this case it will be `ESP-IDF` so then the `automation.build` task will in turn call `esp-idf.build` to build the firmware.
+
+# u_packages
+When you run the PyInvoke tasks one of the first things that will happen is to check if the required toolchains are installed. If they are not, the required toolchains will automatically downloaded and installed. This is done by our u_packages module (see [scripts/packages](scripts/packages)). The input to this module is the [u_packages.yml](u_packages.yml) described below.
+
+## [u_packages.yml](u_packages.yml)
+This file is used to tell what toolchain packages to install. By default these packages will be placed in `${HOME}/.ubxlibpkg` for Linux and `${UserProfile}/.ubxlibpkg` for Windows. If you want to place the packages somewhere else you can use the `UBXLIB_PKG_DIR` environmental variable.
+Each package has a version number and each version of a package is stored in a separate folder.
+When you switch version in `u_packages.yml` the package manager will first check if the specific version can be found in the local package dir and if not the user will be prompted whether to automatically install it.
 
 # Running Tests Locally
 As described in the previous section Jenkins uses the `automation.<command>` PyInvoke tasks. These tasks can be run locally and this is described in [`automation` Tasks](#automation-tasks) section.
