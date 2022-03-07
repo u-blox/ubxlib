@@ -6,6 +6,9 @@
 
 set -e
 
+# Get the script directory
+SCRIPT_DIR=$(dirname "$0")
+
 echo "Update APT package cache..."
 sudo apt update
 echo ""
@@ -20,7 +23,7 @@ sudo apt install --no-install-recommends git cmake ninja-build gperf \
 
 echo ""
 echo "Install Python modules needed for ubxlib"
-pip3 install -r ../port/platform/common/automation/requirements.txt
+pip3 install -r $SCRIPT_DIR/requirements.txt
 
 echo ""
 read -p "Do you want to set python3 as default python command? (y/n) " RESP

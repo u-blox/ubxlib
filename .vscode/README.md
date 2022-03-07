@@ -13,7 +13,7 @@ Note: currently building/running/debugging is only supported on the following pl
 
 ## Setup
 1. Make sure you have Python 3.x installed and that it is in your `PATH` environment. Also make sure that `pip3` is accessable through your `PATH` environment.
-2. Run either [setup_linux.sh](setup_linux.sh) or [setup_windows.bat](setup_windows.sh) depending on your platform.
+2. Run either [setup_linux.sh](../port/platform/common/automation/setup_linux.sh) or [setup_windows.bat](../port/platform/common/automation/setup_windows.sh) located in [port/platform/common/automation](../port/platform/common/automation) depending on your platform.
 3. In vscode use `Open workspace from file` and open [ubxlib-runner.code-workspace](/ubxlib-runner.code-workspace).
 4. Make sure that all the extensions recommended by the workspace are installed.
 

@@ -1,5 +1,7 @@
 @echo off
 
+SET SCRIPTS_DIR=%~dp0
+
 echo|set /p="Looking for python: "
 WHERE python > nul
 IF %ERRORLEVEL% NEQ 0 (
@@ -16,5 +18,5 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 echo Found
 
-pip3 install -r ../port/platform/common/automation/requirements.txt
+pip3 install -r %SCRIPTS_DIR%/requirements.txt
 pip3 install windows-curses
