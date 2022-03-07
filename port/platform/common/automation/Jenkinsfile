@@ -86,6 +86,10 @@ def dockerBuildPipeline(instance_str, platform, filter) {
                         "**/*prebuilt*", "**/*libfibonacci*", "**/*hci_rpmsg*",
                         "**/isrList.bin", "**/*Determine*", "**/*partition-table*"
                     ].join(', ')
+                    def stash_excludes = [
+                        "**/*prebuilt*", "**/*libfibonacci*", "**/*hci_rpmsg*",
+                        "**/isrList.bin", "**/*Determine*"
+                    ].join(', ')
 
                     // Make sure to clean before build
                     sh "rm -rf ${build_dir}"
@@ -101,7 +105,7 @@ def dockerBuildPipeline(instance_str, platform, filter) {
 
                     // Start building
                     dockerCommand("inv -r ${ubxlib_dir}/${pyTasks_subdir} -e automation.build --build-dir ${build_dir} ${filter_arg} ${instance_str}", ".", extra_env)
-                    stash name: "${instance_str}_fw", includes: stash_includes, excludes: excludes
+                    stash name: "${instance_str}_fw", includes: stash_includes, excludes: stash_excludes
                     archiveArtifacts artifacts: includes, excludes: excludes
                 }
             }
