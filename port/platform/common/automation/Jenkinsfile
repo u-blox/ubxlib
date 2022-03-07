@@ -317,7 +317,10 @@ node('TEST-gb-cmb-dt-022')
             // The JSON object also contains description, platform etc for each instance fetched from DATABASE.md
             def output = ''
             dir("${ubxlib_dir}/${pyTasks_subdir}") {
-                output = bat(script: "@inv automation.get-test-selection --files \"${changed_files}\" --message \"${git_commit_text}\"", returnStdout: true).trim()
+                // If changed_files is null we run everything
+                def changed_files_arg = changed_files ? "--files \"${changed_files}\"" : ""
+                def run_everything_arg = changed_files ? "" : "--run-everything"
+                output = bat(script: "@inv automation.get-test-selection ${changed_files_arg} ${run_everything_arg} --message \"${git_commit_text}\"", returnStdout: true).trim()
             }
             println output
             def jsonStr = output.split('JSON_DATA: ')[1]
