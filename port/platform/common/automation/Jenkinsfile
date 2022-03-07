@@ -150,7 +150,7 @@ def testPipeline(instance_str, json_entry, subst_dir, filter) {
                 }
             }
             stage('Test') {
-                echo "Stating tests on ${env.NODE_NAME}"
+                echo "Starting tests on ${env.NODE_NAME}"
                 def instance_workdir = "${working_dir}/${instance_str}"
                 def test_report_arg = "--test-report ${test_report_file}"
                 def workspace_path = env.WORKSPACE
