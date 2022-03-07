@@ -65,8 +65,7 @@ typedef void (*uEdmBtConnectionStatusCallback_t)(int32_t edmStreamHandle,
 
 typedef void (*uEdmDataEventCallback_t)(int32_t edmStreamHandle,
                                         int32_t edmChannel,
-                                        int32_t length,
-                                        char *pData,
+                                        uShortRangePbufList_t *pBufList,
                                         void *pCallbackParameter);
 
 /* ----------------------------------------------------------------

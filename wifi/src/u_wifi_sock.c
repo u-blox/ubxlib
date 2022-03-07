@@ -51,11 +51,10 @@
 #include "u_sock.h"
 
 #include "u_short_range_module_type.h"
+#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
-
-#include "u_ringbuffer.h"
 
 #include "u_wifi_module_type.h"
 #include "u_wifi_sock.h"
@@ -66,20 +65,6 @@
  * ------------------------------------------------------------- */
 
 #define U_WIFI_MAX_INSTANCE_COUNT 2
-
-// For UDP a header is added for each datagram in the RX ringbuffer
-// The header looks like this:
-// struct {
-//     uint16_t magic;  // Constant value for detecting corruption
-//     uint16_t length; // Length of the datagram
-// }
-#define U_DATAGRAM_HDR_SIZE  4
-#define U_DATAGRAM_HDR_MAGIC 0xCAFE
-
-#ifndef MIN
-# define MIN(a, b)    (((a) < (b)) ? (a) : (b))
-#endif
-
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -113,8 +98,8 @@ typedef struct {
     bool closing;
     uSockAddress_t remoteAddress;
     uint16_t localPort;
-    char *pRxBuffer;
-    uRingBuffer_t rxRingBuffer;
+    uShortRangePbufList_t *pTcpRxBuff;
+    uShortRangePktList_t udpPktList;
     int32_t intOpts[WIFI_INT_OPT_MAX];
     uWifiSockCallback_t pAsyncClosedCallback; /**< Set to NULL if socket is not in use. */
     uWifiSockCallback_t pDataCallback; /**< Set to NULL if socket is not in use. */
@@ -168,11 +153,6 @@ static void freeSocket(uWifiSockSocket_t *pSock)
             uPortSemaphoreDelete(pSock->semaphore);
             pSock->semaphore = NULL;
         }
-        if (pSock->pRxBuffer != NULL) {
-            free(pSock->pRxBuffer);
-            pSock->pRxBuffer = NULL;
-            uRingBufferDelete(&pSock->rxRingBuffer);
-        }
     }
 }
 
@@ -188,18 +168,16 @@ static uWifiSockSocket_t *pAllocateSocket(int32_t wifiHandle)
             pSock->sockHandle = index;
             pSock->wifiHandle = wifiHandle;
             pSock->semaphore = NULL;
-            pSock->pRxBuffer = NULL;
             tmp = uPortSemaphoreCreate(&(pSock->semaphore), 0, 1);
             if (tmp != (int32_t) U_ERROR_COMMON_SUCCESS) {
                 outOfMemory = true;
                 break;
             }
-            pSock->pRxBuffer = (char *)malloc(U_WIFI_SOCK_BUFFER_SIZE);
-            if (pSock->pRxBuffer == NULL) {
-                outOfMemory = true;
-                break;
+            if (pSock->protocol == U_SOCK_PROTOCOL_TCP) {
+                pSock->pTcpRxBuff = NULL;
+            } else if (pSock->protocol == U_SOCK_PROTOCOL_UDP) {
+                memset((void *)(&pSock->udpPktList), 0, sizeof(uShortRangePktList_t));
             }
-            uRingBufferCreate(&pSock->rxRingBuffer, pSock->pRxBuffer, U_WIFI_SOCK_BUFFER_SIZE);
             break;
         }
     }
@@ -518,8 +496,9 @@ static void edmIpConnectionCallback(int32_t edmHandle,
     }
 }
 
-static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel, int32_t length,
-                              char *pData, void *pCallbackParameter)
+static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel,
+                              uShortRangePbufList_t *pBufList,
+                              void *pCallbackParameter)
 {
     (void)edmHandle;
     volatile int32_t wifiHandle;
@@ -538,24 +517,18 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel, int32_t len
     if (pSock) {
         sockHandle = pSock->sockHandle;
         if (pSock->protocol == U_SOCK_PROTOCOL_UDP) {
-            // UDP is packet based so we need to add a header in the ring buffer
-            // so that we can separate each datagram
-            if ((int32_t)uRingBufferAvailableSize(&pSock->rxRingBuffer) >= length + U_DATAGRAM_HDR_SIZE) {
-                static const uint16_t magic = U_DATAGRAM_HDR_MAGIC;
-                const uint16_t shortLength = (uint16_t)length;
-                // We have checked the ring buffer size above so if uRingBufferAdd returns false
-                // there are something really wrong going on...
-                U_ASSERT(uRingBufferAdd(&pSock->rxRingBuffer, (const char *)&magic, sizeof(magic)));
-                U_ASSERT(uRingBufferAdd(&pSock->rxRingBuffer, (const char *)&shortLength, sizeof(shortLength)));
-                U_ASSERT(uRingBufferAdd(&pSock->rxRingBuffer, pData, length));
-            } else {
-                // If the buffer can't fit the data we will just drop it for now
-                uPortLog("U_WIFI_SOCK: RX FIFO full, dropping %d bytes!\n", length);
+
+            if (uShortRangeInsertPktToPktList(&pSock->udpPktList,
+                                              pBufList) != (int32_t)U_ERROR_COMMON_SUCCESS) {
+                uPortLog("U_WIFI_SOCK: UDP pkt insert failed\n");
+                uShortRangeFreePbufList(pBufList);
             }
         } else {
-            // If the buffer can't fit the data we will just drop it for now
-            if (!uRingBufferAdd(&pSock->rxRingBuffer, pData, length)) {
-                uPortLog("U_WIFI_SOCK: RX FIFO full, dropping %d bytes!\n", length);
+
+            if (pSock->pTcpRxBuff == NULL) {
+                pSock->pTcpRxBuff = pBufList;
+            } else {
+                uShortRangeMergePbufList(pSock->pTcpRxBuff, pBufList);
             }
         }
 
@@ -1151,6 +1124,7 @@ int32_t uWifiSockRead(int32_t wifiHandle,
     int32_t errnoLocal;
     uWifiSockSocket_t *pSock = NULL;
     uShortRangePrivateInstance_t *pInstance = NULL;
+    uShortRangePbufList_t *pList;
 
     if (uShortRangeLock() != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return -U_SOCK_EIO;
@@ -1164,10 +1138,16 @@ int32_t uWifiSockRead(int32_t wifiHandle,
     }
 
     if (errnoLocal == U_SOCK_ENONE) {
-        errnoLocal = (int32_t)uRingBufferRead(&pSock->rxRingBuffer, (char *)pData, dataSizeBytes);
+        pList = pSock->pTcpRxBuff;
+        errnoLocal = (int32_t)uShortRangeMovePayloadFromPbufList(pList, (char *)pData, dataSizeBytes);
         if (errnoLocal == 0) {
             // If there are no data available we must return U_SOCK_EWOULDBLOCK
             errnoLocal = -U_SOCK_EWOULDBLOCK;
+        }
+
+        if ((pList != NULL) && (pList->totalLen == 0)) {
+            uShortRangeFreePbufList(pList);
+            pSock->pTcpRxBuff = NULL;
         }
     }
 
@@ -1298,47 +1278,22 @@ int32_t uWifiSockReceiveFrom(int32_t wifiHandle,
 
     // Read the data
     if (errnoLocal == U_SOCK_ENONE) {
-        size_t dataLength = uRingBufferDataSize(&pSock->rxRingBuffer);
-        if (dataLength > 0) {
-            uint16_t magic;
-            uint16_t datagramLength;
-            size_t remainingDatagramBytes;
-            // Nothing should fail below unless there is a corruption
-            // Start by reading out our datagram header
-            U_ASSERT(dataLength > U_DATAGRAM_HDR_SIZE);
-            errnoLocal = (int32_t)uRingBufferRead(&pSock->rxRingBuffer, (char *)&magic, sizeof(magic));
-            U_ASSERT(errnoLocal == sizeof(magic));
-            errnoLocal = (int32_t)uRingBufferRead(&pSock->rxRingBuffer, (char *)&datagramLength,
-                                                  sizeof(datagramLength));
-            U_ASSERT(errnoLocal == sizeof(datagramLength));
-            U_ASSERT(uRingBufferDataSize(&pSock->rxRingBuffer) >= datagramLength);
 
-            // Next step is to read out the datagram data
-            dataSizeBytes = MIN(dataSizeBytes, datagramLength);
-            remainingDatagramBytes = datagramLength;
-            errnoLocal = (int32_t)uRingBufferRead(&pSock->rxRingBuffer, (char *)pData, dataSizeBytes);
-            U_ASSERT(errnoLocal == dataSizeBytes);
-            remainingDatagramBytes -= errnoLocal;
+        errnoLocal = uShortRangeReadPktFromPktList(&pSock->udpPktList, (char *)pData, &dataSizeBytes, NULL);
 
-            while (remainingDatagramBytes) {
-                // If the datagram couldn't be fitted in the callers buffer we need to flush
-                // the remaining datagram data
-                char dummy[32];
-                size_t readLength = remainingDatagramBytes;
-                if (readLength > sizeof(dummy)) {
-                    readLength = sizeof(dummy);
-                }
-                remainingDatagramBytes -= uRingBufferRead(&pSock->rxRingBuffer, dummy, readLength);
-            }
-
-            if (pRemoteAddress) {
-                // At the moment we only receive packets from the address from first
-                // call to uWifiSockSendTo()
-                *pRemoteAddress = pSock->remoteAddress;
-            }
-        } else {
-            // If there are no data available we must return U_SOCK_EWOULDBLOCK
+        if ((errnoLocal == (int32_t)U_ERROR_COMMON_NO_MEMORY) ||
+            (errnoLocal == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER)) {
             errnoLocal = -U_SOCK_EWOULDBLOCK;
+        } else if (errnoLocal == (int32_t)U_ERROR_COMMON_TEMPORARY_FAILURE) {
+            errnoLocal = -U_SOCK_EMSGSIZE;
+        } else if (errnoLocal == (int32_t)U_ERROR_COMMON_SUCCESS) {
+            errnoLocal = (int32_t)dataSizeBytes;
+        }
+
+        if (pRemoteAddress) {
+            // At the moment we only receive packets from the address from first
+            // call to uWifiSockSendTo()
+            *pRemoteAddress = pSock->remoteAddress;
         }
     }
 

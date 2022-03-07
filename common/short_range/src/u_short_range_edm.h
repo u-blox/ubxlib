@@ -38,7 +38,9 @@
 
 //lint -esym(755, U_SHORT_RANGE_EDM_MTU_IP_MAX_SIZE) Suppress lack of a reference
 #define U_SHORT_RANGE_EDM_MTU_IP_MAX_SIZE     635
-
+#define U_SHORT_RANGE_EDM_HEADER_SIZE         3 // (ID + TYPE)(2 bytes)  + CHANNEL ID (1 byte)
+#define U_SHORT_RANGE_EDM_BLK_SIZE            64
+#define U_SHORT_RANGE_EDM_BLK_COUNT           (U_SHORT_RANGE_EDM_MAX_SIZE / U_SHORT_RANGE_EDM_BLK_SIZE)
 
 typedef enum {
     U_SHORT_RANGE_EDM_EVENT_CONNECT_BT,
@@ -72,13 +74,11 @@ typedef struct uShortRangeEdmDisconnectEvent_t {
 
 typedef struct uShortRangeEdmDataEvent_t {
     uint8_t channel;
-    uint16_t length;
-    char *pData;
+    uShortRangePbufList_t *pBufList;
 } uShortRangeEdmDataEvent_t;
 
 typedef struct uShortRangeEdmAtEvent_t {
-    uint16_t length;
-    char *pData;
+    uShortRangePbufList_t *pBufList;
 } uShortRangeEdmAtEvent_t;
 
 typedef struct {
@@ -117,15 +117,17 @@ void uShortRangeEdmResetParser(void);
  *
  * @note  Do not call this function if parser is not available,
  *        Check if parser is available with uShortRangeEdmParserAvailable
- *        If a packet is invalid it will be silently dropped
+ *        If a packet is invalid it will be silently dropped.
  *
- * @param  c Input character
+ * @param  c Input character.
  *
- * @return Pointer to event, NULL if no event was generated.
+ * @param  ppResultEvent Address of pointer to event, NULL if no event was generated
  *         An event is created when the last character in a EDM packet
- *         is parsed and the packet is valid
+ *         is parsed and the packet is valid.
+ *
+ * @return True when input character c is consumed else false.
  */
-uShortRangeEdmEvent_t *uShortRangeEdmParse(char c);
+bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent);
 
 /**
  *
@@ -197,3 +199,5 @@ int32_t uShortRangeEdmZeroCopyHeadData(uint8_t channel, uint32_t size, char *pHe
 int32_t uShortRangeEdmZeroCopyTail(char *pTail);
 
 #endif
+
+// End of file

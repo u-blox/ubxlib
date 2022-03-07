@@ -51,6 +51,7 @@
 #if (U_CFG_TEST_UART_A >= 0) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE)
 #include "u_port_uart.h"
 #include "u_port_debug.h"
+#include "u_short_range_pbuf.h"
 #include "u_short_range_edm_stream.h"
 #endif
 

@@ -46,11 +46,11 @@
 #include "u_port_event_queue.h"
 #include "u_cfg_os_platform_specific.h"
 
-#include "u_ringbuffer.h"
 #include "u_at_client.h"
 #include "u_ble_data.h"
 #include "u_ble_private.h"
 #include "u_short_range_module_type.h"
+#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
@@ -83,8 +83,7 @@ typedef struct {
 typedef struct uBleDataSpsChannel_s {
     int32_t                       channel;
     uShortRangePrivateInstance_t  *pInstance;
-    char                          pRxBuffer[U_BLE_DATA_BUFFER_SIZE];
-    uRingBuffer_t                 rxRingBuffer;
+    uShortRangePbufList_t         *pSpsRxBuff;
     uint32_t                      txTimeout;
     struct uBleDataSpsChannel_s   *pNext;
 } uBleDataSpsChannel_t;
@@ -121,8 +120,8 @@ static void atConnectionEvent(int32_t shortRangeHandle,
                               uShortRangeConnectionEventType_t eventType,
                               uShortRangeConnectDataBt_t *pConnectData,
                               void *pCallbackParameter);
-static void dataCallback(int32_t handle, int32_t channel, int32_t length,
-                         char *pData, void *pParameters);
+static void dataCallback(int32_t handle, int32_t channel, uShortRangePbufList_t *pBufList,
+                         void *pParameters);
 static void onBleDataEvent(void *pParam, size_t eventSize);
 static int32_t setBleConfig(const uAtClientHandle_t atHandle,
                             int32_t parameter, uint32_t value);
@@ -201,7 +200,7 @@ static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
     }
 
     if (pChannel != NULL) {
-        uRingBufferCreate(&(pChannel->rxRingBuffer), pChannel->pRxBuffer, sizeof(pChannel->pRxBuffer));
+        pChannel->pSpsRxBuff = NULL;
         pChannel->channel = channel;
         pChannel->pInstance = pInstance;
         pChannel->pNext = NULL;
@@ -258,7 +257,8 @@ static void deleteSpsChannel(const uShortRangePrivateInstance_t *pInstance,
             // This happens when the list only has one item
             *ppListHead = NULL;
         }
-        uRingBufferDelete(&pChannel->rxRingBuffer);
+        uShortRangeFreePbufList(pChannel->pSpsRxBuff);
+
         free(pChannel);
     }
 
@@ -272,7 +272,7 @@ static void deleteAllSpsChannels(uBleDataSpsChannel_t **ppListHead)
     while (pChannel != NULL) {
         uBleDataSpsChannel_t *pChanToFree;
 
-        uRingBufferDelete(&pChannel->rxRingBuffer);
+        uShortRangeFreePbufList(pChannel->pSpsRxBuff);
         pChanToFree = pChannel;
         pChannel = pChannel->pNext;
         free(pChanToFree);
@@ -387,33 +387,37 @@ static void atConnectionEvent(int32_t shortRangeHandle,
     }
 }
 
-static void dataCallback(int32_t handle, int32_t channel, int32_t length,
-                         char *pData, void *pParameters)
+static void dataCallback(int32_t handle, int32_t channel, uShortRangePbufList_t *pBufList,
+                         void *pParameters)
 {
     (void)handle;
     uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *)pParameters;
 
-    if (pInstance != NULL) {
-        if (pInstance->pBtDataCallback != NULL) {
-            pInstance->pBtDataCallback(channel, length, pData, pInstance->pBtDataCallbackParameter);
-        } else if (pInstance->pBtDataAvailableCallback != NULL) {
-            uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
+    if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-            if (pChannel != NULL) {
-                bool bufferWasEmtpy = (uRingBufferDataSize(&(pChannel->rxRingBuffer)) == 0);
-                // If the buffer can't fit the data we will just drop it for now
-                if (!uRingBufferAdd(&(pChannel->rxRingBuffer), pData, length)) {
-                    uPortLog("U_BLE_DATA: RX FIFO full, dropping %d bytes!\n", length);
-                }
+        if (pInstance != NULL) {
 
-                if (bufferWasEmtpy) {
-                    bleDataEvent_t event;
-                    event.channel = channel;
-                    event.pInstance = pInstance;
-                    uPortEventQueueSend(gBleDataEventQueue, &event, sizeof(event));
+            if (pInstance->pBtDataAvailableCallback != NULL) {
+                uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
+
+                if (pChannel != NULL) {
+                    bool bufferWasEmtpy = (pChannel->pSpsRxBuff == NULL);
+                    if (pChannel->pSpsRxBuff == NULL) {
+                        pChannel->pSpsRxBuff = pBufList;
+                    } else {
+                        uShortRangeMergePbufList(pChannel->pSpsRxBuff, pBufList);
+                    }
+
+                    if (bufferWasEmtpy) {
+                        bleDataEvent_t event;
+                        event.channel = channel;
+                        event.pInstance = pInstance;
+                        uPortEventQueueSend(gBleDataEventQueue, &event, sizeof(event));
+                    }
                 }
             }
         }
+        uShortRangeUnlock();
     }
 }
 
@@ -614,14 +618,23 @@ int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(shoHandle);
+    uShortRangePbufList_t *pList;
     int32_t sizeOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
-    if (pInstance != NULL) {
-        uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
+    if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        if (pChannel != NULL) {
-            sizeOrErrorCode = (int32_t)uRingBufferRead(&(pChannel->rxRingBuffer), pData, length);
+        if (pInstance != NULL) {
+            uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
+            if (pChannel != NULL) {
+                pList = pChannel->pSpsRxBuff;
+                sizeOrErrorCode = (int32_t)uShortRangeMovePayloadFromPbufList(pList, pData, length);
+                if ((pList != NULL) && (pList->totalLen == 0)) {
+                    uShortRangeFreePbufList(pList);
+                    pChannel->pSpsRxBuff = NULL;
+                }
+            }
         }
+        uShortRangeUnlock();
     }
 
     return sizeOrErrorCode;

@@ -40,11 +40,11 @@
 #include "u_port_uart.h"
 #include "u_port_debug.h"
 #include "u_at_client.h"
+#include "u_short_range_pbuf.h"
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 #include "u_short_range_edm.h"
-
 #include "string.h" // For memcpy()
 
 // To enable anonymous unions inclusion for
@@ -139,8 +139,7 @@ typedef struct {
 
 typedef struct {
     int32_t channel;
-    char *pData;
-    int32_t length;
+    uShortRangePbufList_t *pBufList;
 } uShortRangeEdmStreamDataEvent_t;
 
 typedef struct {
@@ -199,7 +198,6 @@ typedef struct uEdmStreamInstance_t {
 
 static uPortMutexHandle_t gMutex = NULL;
 static uShortRangeEdmStreamInstance_t gEdmStream;
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -227,6 +225,18 @@ static inline void dumpHexData(const uint8_t *pBuffer, size_t length)
 {
     for (int i = 0; i < length; i++) {
         uPortLog("%02x ", pBuffer[i]);
+    }
+}
+
+static inline void dumpPbufList(uShortRangePbufList_t *pPbufList)
+{
+    uShortRangePbuf_t *temp;
+
+    if (pPbufList != NULL) {
+        for (temp = pPbufList->pBufHead; temp != NULL; temp = temp->pNext) {
+
+            dumpHexData(temp->pData, temp->len);
+        }
     }
 }
 #endif
@@ -335,22 +345,22 @@ static void dataEventHandler(uShortRangeEdmStreamDataEvent_t *pDataEvent)
 
             case U_SHORT_RANGE_CONNECTION_TYPE_BT:
                 if (gEdmStream.pBtDataCallback != NULL) {
-                    gEdmStream.pBtDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
-                                               pDataEvent->pData, gEdmStream.pBtDataCallbackParam);
+                    gEdmStream.pBtDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->pBufList,
+                                               gEdmStream.pBtDataCallbackParam);
                 }
                 break;
 
             case U_SHORT_RANGE_CONNECTION_TYPE_IP:
                 if (gEdmStream.pIpDataCallback != NULL) {
-                    gEdmStream.pIpDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
-                                               pDataEvent->pData, gEdmStream.pIpDataCallbackParam);
+                    gEdmStream.pIpDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->pBufList,
+                                               gEdmStream.pIpDataCallbackParam);
                 }
                 break;
 
             case U_SHORT_RANGE_CONNECTION_TYPE_MQTT:
                 if (gEdmStream.pMqttDataCallback != NULL) {
-                    gEdmStream.pMqttDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
-                                                 pDataEvent->pData, gEdmStream.pMqttDataCallbackParam);
+                    gEdmStream.pMqttDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->pBufList,
+                                                 gEdmStream.pMqttDataCallbackParam);
                 }
                 break;
 
@@ -404,12 +414,15 @@ static void eventHandler(void *pParam, size_t paramLength)
 static bool enqueueEdmAtEvent(uShortRangeEdmEvent_t *pEvent)
 {
     bool success = false;
-
+    uShortRangePbufList_t *pBufList;
     uShortRangeEdmStreamEvent_t event;
 
-    gEdmStream.atResponseLength = pEvent->params.atEvent.length;
+    pBufList = pEvent->params.atEvent.pBufList;
+    gEdmStream.atResponseLength = (int32_t)pBufList->totalLen;
     gEdmStream.atResponseRead = 0;
-    memcpy(gEdmStream.pAtResponseBuffer, pEvent->params.atEvent.pData, gEdmStream.atResponseLength);
+    uShortRangeMovePayloadFromPbufList(pBufList, gEdmStream.pAtResponseBuffer,
+                                       gEdmStream.atResponseLength);
+    uShortRangeFreePbufList(pBufList);
 
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
     uEdmChLogStart(LOG_CH_AT_RX, "\"");
@@ -655,19 +668,20 @@ static bool enqueueEdmDataEvent(uShortRangeEdmEvent_t *pEvent)
     uShortRangeEdmStreamEvent_t event;
     event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_DATA;
     event.data.channel = pEvent->params.dataEvent.channel;
-    event.data.pData = pEvent->params.dataEvent.pData;
-    event.data.length = pEvent->params.dataEvent.length;
+    event.data.pBufList = pEvent->params.dataEvent.pBufList;
+
+    if (event.data.pBufList != NULL) {
 
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
 # ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA
-    uEdmChLogStart(LOG_CH_DATA, "RX (%d bytes): ", event.data.length);
-    dumpHexData(event.data.pData, event.data.length);
-    uEdmChLogEnd("");
+        uEdmChLogStart(LOG_CH_DATA, "RX (%d bytes): ", (event.data.pBufList)->totalLen);
+        dumpPbufList(event.data.pBufList);
+        uEdmChLogEnd("");
 # else
-    uEdmChLogLine(LOG_CH_DATA, "RX (%d bytes)", event.data.length);
+        uEdmChLogLine(LOG_CH_DATA, "RX (%d bytes)", (event.data.pBufList)->totalLen);
 # endif
 #endif
-
+    }
     if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
                             &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
         success = true;
@@ -747,7 +761,14 @@ static void uartCallback(int32_t uartHandle, uint32_t eventBitmask,
             // Check if there are any existing characters in the buffer and parse them
             while (uShortRangeEdmParserReady() && (consumed < charsInBuffer)) {
                 //lint -esym(727, buffer)
-                uShortRangeEdmEvent_t *pEvent = uShortRangeEdmParse(buffer[consumed++]);
+                uShortRangeEdmEvent_t *pEvent = NULL;
+                // when there is no memory available in the pool to intake
+                // the data, this call would return false.In such
+                // cases hardware flow control will be triggered if
+                // UART H/W Rx FIFO is full.
+                if (uShortRangeEdmParse(buffer[consumed], &pEvent)) {
+                    consumed++;
+                }
                 if (pEvent != NULL) {
                     processEdmEvent(pEvent);
                 }
@@ -885,7 +906,9 @@ int32_t uShortRangeEdmStreamInit()
         errorCodeOrHandle = (uErrorCode_t)uPortMutexCreate(&gMutex);
         gEdmStream.handle = -1;
     }
-
+    if (errorCodeOrHandle == U_ERROR_COMMON_SUCCESS) {
+        errorCodeOrHandle = (uErrorCode_t)uShortRangeMemPoolInit();
+    }
     uShortRangeEdmResetParser();
 
     return (int32_t) errorCodeOrHandle;
@@ -894,6 +917,7 @@ int32_t uShortRangeEdmStreamInit()
 void uShortRangeEdmStreamDeinit()
 {
     uShortRangeEdmResetParser();
+    uShortRangeMemPoolDeInit();
 
     if (gMutex != NULL) {
 
