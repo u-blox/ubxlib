@@ -147,7 +147,7 @@ def instance_command(ctx, instance_str, cmd):
         arduino.check_installation(ctx)
         if cmd == Command.BUILD:
             arduino.build(ctx, libraries_dir=f"{ctx.build_dir}/libraries", board=board,
-                          output_name="app", build_dir=ctx.build_dir, u_flags=defines)
+                          output_name="", build_dir=ctx.build_dir, u_flags=defines)
         elif cmd == Command.FLASH:
             arduino.flash(ctx, serial_port=connection["serial_port"], board=board,
                           output_name="app", build_dir=ctx.build_dir)

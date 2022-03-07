@@ -122,9 +122,10 @@ def build(ctx, sketch_path=DEFAULT_SKETCH_PATH,
         cflags = u_flags["cflags"]
 
     for sketch in sketch_paths:
-        print(f"Building {sketch} in {build_dir}...")
+        sketch_build_dir = os.path.join(build_dir, os.path.basename(os.path.split(sketch)[0]))
+        print(f"Building {sketch} in {sketch_build_dir}...")
         cmd = f"{ctx.arduino_cli} compile --libraries {libraries_dir} --fqbn {board} " \
-            f"--build-path {build_dir} --build-cache-path {build_dir} " \
+            f"--build-path {sketch_build_dir} --build-cache-path {sketch_build_dir} " \
             f"--build-property \"compiler.c.extra_flags={cflags}\" " \
             f"--build-property \"compiler.cpp.extra_flags={cflags}\" "
         ctx.run(f"{cmd} {sketch}")
