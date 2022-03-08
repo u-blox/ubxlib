@@ -249,6 +249,16 @@ def test(ctx, instance, summary_file="summary.txt", debug_file="debug.log",
             instance_command(ctx, instance, Command.TEST)
 
 @task()
+def run(ctx, instance, build_dir=None, summary_file="summary.txt",
+        debug_file="debug.log", test_report=None, filter=None):
+    """This will build, flash and start test in one command"""
+    build(ctx, instance, build_dir=build_dir, filter=filter)
+    flash(ctx, instance, build_dir=build_dir)
+    test(ctx, instance, build_dir=build_dir, filter=filter,
+         summary_file=summary_file, debug_file=debug_file,
+         test_report=test_report)
+
+@task()
 def get_test_selection(ctx, message="", files="", run_everything=False):
     # Get the instance DATABASE by parsing the data file
     db_data = u_data.get(DATABASE)
