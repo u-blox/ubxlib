@@ -105,6 +105,19 @@ Added the following directories to PATH:
 inv --help automation.build 12.0
 ```
 
+### Shell Tab Completion for invoke Command
+Since the PyInvoke task name are quite long, it can be convenient to enable shell tab completion.
+The `invoke` command is already prepared for this, but you need to do some steps to enable it:
+1. Generate the needed shell script for your shell by using executing `invoke --print-completion-script <name of your shell> > ~/.invoke-completion.sh`.
+I.e. for bash you would run:
+```
+invoke --print-completion-script bash > ~/.invoke-completion.sh
+```
+2. You need to source the script generated in step 1 at startup of each shell session. For bash you can do this by adding the following line to `~/.bashrc`:
+```
+source ~/.invoke-completion.sh
+```
+
 ## `automation` Tasks
 The Jenkins pipeline will only use the `automation` PyInvoke tasks. The flow in Jenkins is:
 1. Decide what instances and tests to run by calling `automation.get-test-selection`.
