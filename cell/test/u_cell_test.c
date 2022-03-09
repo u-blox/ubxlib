@@ -108,7 +108,7 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     uAtClientHandle_t atClientHandleB;
     int32_t cellHandleB;
 # endif
-    uAtClientHandle_t atClientHandle = (uAtClientHandle_t) -1;
+    uAtClientHandle_t atClientHandle = NULL;
     int32_t heapUsed;
 
     // Whatever called us likely initialised the
@@ -174,7 +174,7 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     cellHandleB = uCellAdd(U_CELL_MODULE_TYPE_SARA_R5, atClientHandleB,
                            -1, -1, -1, false);
     U_PORT_TEST_ASSERT(cellHandleB >= 0);
-    atClientHandle = (uAtClientHandle_t) -1;
+    atClientHandle = NULL;
     U_PORT_TEST_ASSERT(uCellAtClientHandleGet(cellHandleB,
                                               &atClientHandle) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleB);
@@ -194,7 +194,7 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     cellHandleA = uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
                            -1, -1, -1, false);
     U_PORT_TEST_ASSERT(cellHandleA >= 0);
-    atClientHandle = (uAtClientHandle_t) -1;
+    atClientHandle = NULL;
     U_PORT_TEST_ASSERT(uCellAtClientHandleGet(cellHandleA,
                                               &atClientHandle) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleA);
