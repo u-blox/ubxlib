@@ -1,5 +1,11 @@
 {
 	"version": "2.0.0",
+	"options": {
+		"env": {
+			// Can't use this since windows must use ${env:PYTASKS_DIR} and linux $PYTASKS_DIR
+			"PYTASKS_DIR": "${workspaceFolder}/port/platform/common/automation"
+		}
+	},
 	"tasks": [
         {
             "type": "shell",
@@ -66,7 +72,7 @@
             "label": "Build nrf5340dk runner [Zephyr]",
             "type": "shell",
             "options": { "cwd": "${workspaceFolder}/.vscode" },
-            "command": "inv nrfconnect.build --board-name=nrf5340dk_nrf5340_cpuapp --output-name=runner_nrf5340dk_nrf5340_cpuapp",
+            "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrfconnect.build --board-name=nrf5340dk_nrf5340_cpuapp --output-name=runner_nrf5340dk_nrf5340_cpuapp",
             "group": { "kind": "build", "isDefault": true },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
@@ -104,8 +110,8 @@
         {
             "label": "Build evkninab3 runner [nRF5 SDK]",
             "type": "shell",
-            "options": {"cwd": ".vscode"},
-            "command": "inv nrf5.build",
+            "options": {"cwd": "${workspaceFolder}/.vscode"},
+            "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrf5.build",
             "group": { "kind": "build", "isDefault": true },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
@@ -137,7 +143,7 @@
             "label": "Build evkninab3 runner [Zephyr]",
             "type": "shell",
             "options": { "cwd": "${workspaceFolder}/.vscode" },
-            "command": "inv nrfconnect.build --board-name=ubx_evkninab3_nrf52840 --output-name=runner_ubx_evkninab3_nrf52840",
+            "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrfconnect.build --board-name=ubx_evkninab3_nrf52840 --output-name=runner_ubx_evkninab3_nrf52840",
             "group": { "kind": "build", "isDefault": true },
             "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
@@ -146,7 +152,7 @@
             "label": "Build stm32f4 runner [STM32CubeF4]",
             "type": "shell",
             "options": { "cwd": "${workspaceFolder}/.vscode" },
-            "command": "inv stm32cubef4.build",
+            "command": "inv -r ${workspaceFolder}/port/platform/common/automation stm32cubef4.build",
             "group": { "kind": "build", "isDefault": true },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
@@ -154,8 +160,17 @@
             "label": "Build esp32 runner [ESP-IDF]",
             "type": "shell",
             "options": { "cwd": "${workspaceFolder}/.vscode" },
-            "command": "inv esp-idf.build",
+            "command": "inv -r ${workspaceFolder}/port/platform/common/automation esp-idf.build",
             "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
+            "label": "Build arduino runner",
+            "type": "shell",
+            "options": {"cwd": "${workspaceFolder}/.vscode"},
+            "command": "inv -r ${workspaceFolder}/port/platform/common/automation arduino.build",
+            "group": { "kind": "build", "isDefault": true },
+            "presentation": { "group": "ubxlib" },
             "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
         },
         {

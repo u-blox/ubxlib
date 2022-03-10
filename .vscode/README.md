@@ -12,15 +12,10 @@ Note: currently building/running/debugging is only supported on the following pl
 - `Windows` [[windows](/port/platform/windows)]
 
 ## Setup
-1. Make sure you have Python 3.x installed and that it is in your `PATH` environment. Also make sure that `pip3` is accessable through your `PATH` environment.
-2. Run either [setup_linux.sh](setup_linux.sh) or [setup_windows.bat](setup_windows.sh) depending on your platform.
-3. In vscode use `Open workspace from file` and open [ubxlib-runner.code-workspace](/ubxlib-runner.code-workspace).
-4. Make sure that all the extensions recommended by the workspace are installed.
-
-## [u_packages.yml](u_packages.yml)
-This file is used to tell what toolchain packages to install. By default these packages will be placed in `${HOME}/.ubxlibpkg` for Linux and `${UserProfile}/.ubxlibpkg` for Windows. If you want to place the packages somewhere else you can use the `UBXLIB_PKG_DIR` environmental variable.
-Each package has a version number and each version of a package is stored in a separate folder.
-When you switch version in `u_packages.yml` the package manager will first check if the specific version can be found in the local package dir and if not the user will be prompted whether to automatically install it.
+1. Follow the install instructions in [port/platform/common/automation/README.md](../port/platform/common/automation/README.md#install) .
+2. In vscode use `Open workspace from file` and open [ubxlib-runner.code-workspace](/ubxlib-runner.code-workspace).
+3. Make sure that all the extensions recommended by the workspace are installed.
+4. Install JLink driver from SEGGER: https://www.segger.com/downloads/jlink/
 
 ## `u_flags.yml`
 When you try to build any of the targets a `u_flags.yml` will be created in the `.vscode` directory. This can be used for setting `U_FLAGS` defines (or any C define for that matter).
