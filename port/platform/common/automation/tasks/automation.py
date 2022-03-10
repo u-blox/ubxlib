@@ -254,7 +254,7 @@ def run(ctx, instance, build_dir=None, summary_file="summary.txt",
     """This will build, flash and start test in one command"""
     build(ctx, instance, build_dir=build_dir, filter=filter)
     flash(ctx, instance, build_dir=build_dir)
-    test(ctx, instance, build_dir=build_dir, filter=filter,
+    test(ctx, instance, filter=filter,
          summary_file=summary_file, debug_file=debug_file,
          test_report=test_report)
 
