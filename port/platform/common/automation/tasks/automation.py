@@ -189,7 +189,7 @@ def instance_command(ctx, instance_str, cmd):
         check_return_code(return_code)
 
     else:
-        raise Exit(f"Unsupported platform: '{desc}'")
+        raise Exit(f"Unsupported platform: '{platform}'")
 
 
 @task()
