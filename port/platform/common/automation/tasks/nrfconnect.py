@@ -97,6 +97,8 @@ def flash(ctx, debugger_serial="", output_name=DEFAULT_OUTPUT_NAME,
 )
 def log(ctx, mcu="NRF5340_XXAA_APP", debugger_serial=None):
     """Open a log terminal"""
+    if debugger_serial == "":
+        debugger_serial = None
     with URttReader(mcu, jlink_serial=debugger_serial) as rtt_reader:
         while True:
             data = rtt_reader.read()
