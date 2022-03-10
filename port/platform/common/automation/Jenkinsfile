@@ -273,7 +273,7 @@ node('TEST-gb-cmb-dt-022')
 
                 // Use git to get the last commit message, @echo off to avoid capturing the command
                 // output as well as the returned text
-                git_commit_text = bat(script: "git log -1 --pretty=%%B", returnStdout: true)
+                git_commit_text = bat(script: "@echo off & git log -1 --pretty=%%B", returnStdout: true)
 
                 if (git_commit_text) {
                     // Convert newlines to "/n" and quotation marks to back-ticks to prevent them
