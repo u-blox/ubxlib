@@ -163,6 +163,17 @@ void uPortTaskBlock(int32_t delayMs);
  */
 int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle);
 
+/** Get the current task handle.
+ * It is NOT a requirement that this API is implemented:
+ * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * should be returned.
+ *
+ * @param pTaskHandle    a place to put the task handle; cannot
+ *                       be NULL.
+ * @return               zero on success else negative error code.
+ */
+int32_t uPortTaskGetHandle(uPortTaskHandle_t *pTaskHandle);
+
 /* ----------------------------------------------------------------
  * FUNCTIONS: QUEUES
  * -------------------------------------------------------------- */
