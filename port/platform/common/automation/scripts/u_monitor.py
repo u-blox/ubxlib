@@ -184,6 +184,8 @@ def finish_callback(match, results: TestResults, reporter):
 INTERESTING = [[r"abort()", reboot_callback],
                # This one for ESP32 aborts
                [r"Guru Meditation Error", reboot_callback],
+               # This one for ESP32 asserts
+               [r"assert failed:", reboot_callback],
                # This one for NRF52 aborts
                [r"<error> hardfault", reboot_callback],
                # This one for Zephyr aborts
