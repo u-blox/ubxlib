@@ -904,11 +904,13 @@ int32_t uShortRangeEdmStreamInit()
 
     if (gMutex == NULL) {
         errorCodeOrHandle = (uErrorCode_t)uPortMutexCreate(&gMutex);
+
+        if (errorCodeOrHandle == U_ERROR_COMMON_SUCCESS) {
+            errorCodeOrHandle = (uErrorCode_t)uShortRangeMemPoolInit();
+        }
         gEdmStream.handle = -1;
     }
-    if (errorCodeOrHandle == U_ERROR_COMMON_SUCCESS) {
-        errorCodeOrHandle = (uErrorCode_t)uShortRangeMemPoolInit();
-    }
+
     uShortRangeEdmResetParser();
 
     return (int32_t) errorCodeOrHandle;
@@ -917,11 +919,11 @@ int32_t uShortRangeEdmStreamInit()
 void uShortRangeEdmStreamDeinit()
 {
     uShortRangeEdmResetParser();
-    uShortRangeMemPoolDeInit();
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
+        uShortRangeMemPoolDeInit();
 
         if (gEdmStream.eventQueueHandle >= 0) {
             uPortEventQueueClose(gEdmStream.eventQueueHandle);
