@@ -431,7 +431,8 @@ def watch_items(in_handle, connection_type, results: TestResults,
                 last_activity_time = time()
                 U_LOG.debug(line)
                 if results.current:
-                    results.current.stdout += remove_unprintable_chars(line) + "\n"
+                    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+                    results.current.stdout += timestamp + " " + remove_unprintable_chars(line) + "\n"
                 for entry in INTERESTING:
                     match = re.match(entry[0], line)
                     if match:
