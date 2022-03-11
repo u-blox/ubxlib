@@ -6,5 +6,6 @@ west
 pyserial
 pylink-square
 coloredlogs
+verboselogs
 portalocker
 lxml
