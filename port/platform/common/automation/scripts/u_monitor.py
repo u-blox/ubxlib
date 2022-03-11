@@ -429,7 +429,7 @@ def watch_items(in_handle, connection_type, results: TestResults,
             try:
                 line = read_queue.get(timeout=0.5)
                 last_activity_time = time()
-                U_LOG.debug(line)
+                U_LOG.info(line)
                 if results.current:
                     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
                     results.current.stdout += timestamp + " " + remove_unprintable_chars(line) + "\n"
