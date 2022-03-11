@@ -229,6 +229,19 @@ int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle)
     return U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
+// Get the current task handle.
+int32_t uPortTaskGetHandle(uPortTaskHandle_t *pTaskHandle)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if (pTaskHandle != NULL) {
+        *pTaskHandle = (uPortTaskHandle_t) GetCurrentThreadId();
+        errorCode = U_ERROR_COMMON_SUCCESS;
+    }
+
+    return (int32_t) errorCode;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: QUEUES
  * -------------------------------------------------------------- */

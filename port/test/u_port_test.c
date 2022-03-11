@@ -534,6 +534,7 @@ static void osTestTask(void *pParameters)
     int32_t index = 0;
     int32_t x = 0;
     int32_t y;
+    uPortTaskHandle_t taskHandle = NULL;
 #if U_CFG_OS_CLIB_LEAKS
     int32_t heapClibLoss;
 
@@ -563,6 +564,10 @@ static void osTestTask(void *pParameters)
 #endif
 
     U_PORT_TEST_ASSERT(uPortTaskIsThis(gTaskHandle));
+    U_PORT_TEST_ASSERT(uPortTaskGetHandle(NULL) < 0);
+    U_PORT_TEST_ASSERT(uPortTaskGetHandle(&taskHandle) == 0);
+    uPortLog("U_PORT_TEST: uPortTaskGetHandle() returned 0x%08x\n", taskHandle);
+    U_PORT_TEST_ASSERT(gTaskHandle == taskHandle);
 
     uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex.\n");
     U_PORT_TEST_ASSERT(gMutexHandle != NULL);

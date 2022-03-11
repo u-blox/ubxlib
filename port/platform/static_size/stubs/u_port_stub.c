@@ -106,6 +106,11 @@ int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle)
     (void) taskHandle;
     return 0;
 }
+int32_t uPortTaskGetHandle(uPortTaskHandle_t *pTaskHandle)
+{
+    (void) pTaskHandle;
+    return 0;
+}
 int32_t uPortQueueCreate(size_t queueLength,
                          size_t itemSizeBytes,
                          uPortQueueHandle_t *pQueueHandle)

@@ -176,6 +176,7 @@ override CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 override CFLAGS += -fno-builtin -fshort-enums
 override CFLAGS += -DUNITY_INCLUDE_CONFIG_H
 override CFLAGS += -DDEBUG_NRF
+override CFLAGS += -DMBEDTLS_USER_CONFIG_FILE=\"user_mbedtls_config.h\"
 
 # C++ flags common to all targets
 CXXFLAGS += $(OPT)

@@ -94,7 +94,7 @@
 /** The priority of the task running the examples and tests: should
  * be low but must be higher than the minimum.
  */
-#define U_CFG_OS_APP_TASK_PRIORITY CONFIG_ESP32_PTHREAD_TASK_PRIO_DEFAULT
+#define U_CFG_OS_APP_TASK_PRIORITY CONFIG_PTHREAD_TASK_PRIO_DEFAULT
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR ESP32: OS TIMERS
