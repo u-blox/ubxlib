@@ -103,7 +103,8 @@ def log(ctx, mcu="NRF5340_XXAA_APP", debugger_serial=None):
         while True:
             data = rtt_reader.read()
             if data:
-                sys.stdout.write("".join(map(chr, data)))
+                text = bytearray(data).decode(sys.stdout.encoding, "backslashreplace")
+                sys.stdout.write(text)
                 sys.stdout.flush()
 
 @task(
