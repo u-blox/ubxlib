@@ -95,9 +95,10 @@ static uCellNetStatus_t gLastNetStatus = U_CELL_NET_STATUS_UNKNOWN;
  */
 static bool gConnectCallbackCalled = false;
 
-/** The last status value passed to gConnectCallbackCalled.
+/** Whether gConnectCallbackCalled has been called with isConnected
+ * true.
  */
-static bool gIsConnected = false;
+static bool gHasBeenConnected = false;
 
 /** A variable to track errors in the callbacks.
  */
@@ -167,7 +168,9 @@ static void connectCallback(bool isConnected, void *pParameter)
     }
 
     gConnectCallbackCalled = true;
-    gIsConnected = isConnected;
+    if (isConnected) {
+        gHasBeenConnected = true;
+    }
 }
 
 /* ----------------------------------------------------------------
@@ -295,11 +298,11 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
         U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_CSCON)) {
         // Check that the connect status callback has been called.
         U_PORT_TEST_ASSERT(gConnectCallbackCalled);
-        U_PORT_TEST_ASSERT(gIsConnected);
+        U_PORT_TEST_ASSERT(gHasBeenConnected);
         U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
     } else {
         U_PORT_TEST_ASSERT(!gConnectCallbackCalled);
-        U_PORT_TEST_ASSERT(!gIsConnected);
+        U_PORT_TEST_ASSERT(!gHasBeenConnected);
     }
 
     // Check that we have an active RAT
@@ -425,7 +428,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
                        (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME) &&
                        (gLastNetStatus != U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING));
 
-    // Note: can't check that gIsConnected is false here as the RRC
+    // Note: can't check that gHasBeenConnected is false here as the RRC
     // connection may not yet be closed.
     U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
 
