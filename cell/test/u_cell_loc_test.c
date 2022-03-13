@@ -533,8 +533,16 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
     U_PORT_TEST_ASSERT(gErrorCode == 0);
     U_PORT_TEST_ASSERT(gTimeUtc > U_CELL_LOC_TEST_MIN_UTC_TIME);
 
-    // Do the standard postamble, leaving the module on for the next
-    // test to speed things up
+    // SARA-R5, in particular, can get into a bit of a tizzy if the module is left
+    // connected here, after cell locate has done its stuff: when the next test begins
+    // the SARA-R5 sometimes reconnects to the network (visible with a +CSON: 1) in
+    // the middle of our initial AT command sequence (AT&Kx etc.) and then stops
+    // cooperating at all when the AT+CFUN=4 is sent just a second later at the end of
+    // that initialisation sequence. To avoid that corner case, disconnect from the
+    // network here.
+    uCellNetDisconnect(cellHandle, NULL);
+
+    // Do the standard postamble
     uCellTestPrivatePostamble(&gHandles, false);
 
     // Check for memory leaks
