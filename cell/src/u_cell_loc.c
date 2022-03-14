@@ -123,7 +123,7 @@ typedef enum {
  */
 typedef struct {
     int32_t cellHandle;
-    volatile int32_t errorCode;
+    int32_t errorCode;
     int32_t latitudeX1e7;
     int32_t longitudeX1e7;
     int32_t altitudeMillimetres;
@@ -136,7 +136,7 @@ typedef struct {
 /** Union of the posible fix data storage types.
  */
 typedef union {
-    uCellLocFixDataStorageBlock_t *pBlock;
+    volatile uCellLocFixDataStorageBlock_t *pBlock;
     void (*pCallback) (int32_t cellHandle,
                        int32_t errorCode,
                        int32_t latitudeX1e7,
@@ -465,9 +465,9 @@ static void UULOCIND_urc(uAtClientHandle_t atHandle, void *pParam)
                 // The result integer gives a sub-status that is only relevant to
                 // the server-comms-related statuses and, if more then 0, often represents
                 // a fatal error.  While it may be related to any one of them the root
-                // causes it is likely to be the same for each and so it is simpler for
-                // everyone just to report the detailed status without tying it to which
-                // direction the problem is in.
+                // cause is likely to be the same for each and so it is simpler for
+                // everyone just to report the detailed status without tying to figure out
+                // which direction the problem is in.
                 if (result > 0) {
                     pContext->fixStatus = (int32_t) U_LOCATION_STATUS_UNKNOWN_COMMS_ERROR;
                     if (result <= 11) {
@@ -1000,7 +1000,7 @@ int32_t uCellLocGet(int32_t cellHandle,
     uCellPrivateInstance_t *pInstance = NULL;
     uCellPrivateLocContext_t *pContext;
     uCellLocFixDataStorage_t *pFixDataStorage;
-    uCellLocFixDataStorageBlock_t fixDataStorageBlock;
+    volatile uCellLocFixDataStorageBlock_t fixDataStorageBlock;
     int64_t startTime;
 
     fixDataStorageBlock.errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
