@@ -1,8 +1,10 @@
 import os
-import logging
 import sys
-import coloredlogs
+import logging
 from logging import StreamHandler
+
+import verboselogs
+import coloredlogs
 
 # The logging format used when writing to file
 FILE_FMT='%(asctime)s %(name)-12s %(levelname)-7s - %(message)s'
@@ -12,6 +14,8 @@ CONSOLE_FMT='%(asctime)s %(name)-12s - %(message)s'
 
 
 class ULog():
+    """A static class for initializing Python logging module the way we like"""
+
     class UNameFilter(logging.Filter):
         """Logging filter that replaces record name with filename"""
         def filter(self, record):
@@ -25,6 +29,7 @@ class ULog():
             self.stdout = stdout
 
         def emit(self, record):
+            """This function will be called by the logging module"""
             msg = self.format(record)
             stdout_fd = self.stdout.fileno()
             os.write(stdout_fd, str.encode(msg + "\n"))
@@ -36,10 +41,12 @@ class ULog():
             self._buffer = ""
 
         def write(self, string):
+            """This function will be called by the logging module"""
             self._buffer += string
             self.flush()
 
         def flush(self):
+            """This function will be called by the logging module"""
             if len(self._buffer) > 0:
                 last_is_eol = self._buffer[-1] == '\n'
                 lines = self._buffer.splitlines()
@@ -69,17 +76,24 @@ class ULog():
         if ULog._logging_is_setup:
             raise Exception("Logging is already setup")
 
+        verboselogs.install()
+
         # Get the root logger
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
 
         # Setup colored logs
+        styles = coloredlogs.DEFAULT_LEVEL_STYLES
+        styles["notice"] = dict(background='blue', color='white')
+        styles["success"] = dict(background='green', color='white')
+        styles["warning"] = dict(background='yellow', color='white')
+        styles["error"] = dict(background='red', color='white')
         coloredlogs.install()
 
         # Setup the console handler
         console_handle = ULog.UConsoleHandler(sys.stdout)
         console_handle.setLevel(logging.INFO)
-        console_handle.setFormatter(coloredlogs.ColoredFormatter(fmt=CONSOLE_FMT))
+        console_handle.setFormatter(coloredlogs.ColoredFormatter(fmt=CONSOLE_FMT, level_styles=styles))
         # Replace the default console handler with our own
         # Ours prevents loops when stdio redirect are used
         logger.handlers = [console_handle]
