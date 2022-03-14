@@ -1879,6 +1879,9 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
 
     uPortDeinit();
 
+    // Give the RTOS idle task time to tidy-away the tasks
+    uPortTaskBlock(1000);
+
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
     uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
