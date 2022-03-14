@@ -214,10 +214,26 @@ bool uPortTaskIsThis(const uPortTaskHandle_t taskHandle)
 // Block the current task for a time.
 void uPortTaskBlock(int32_t delayMs)
 {
+    int64_t startTimeMs;
+    int64_t thisSleepMs;
+
     // Note: has to be SleepEx(), not Sleep(), so that the
     // thread is left in an alertable state and can therefore
     // be woken up by timers.
-    SleepEx((DWORD) delayMs, true);
+    while (delayMs > 0) {
+        startTimeMs = GetTickCount64();
+        SleepEx((DWORD) delayMs, true);
+        // Sleep() may return early due to IO completion functions
+        // going off; if this happens, go back to sleep again
+        // for the remainder of the period
+        thisSleepMs = GetTickCount64() - startTimeMs;
+        if (thisSleepMs >= 0) {
+            delayMs -= (int32_t) thisSleepMs;
+        } else {
+            // If the tick count happens to wrap then exit
+            delayMs = 0;
+        }
+    }
 }
 
 // Get the minimum free stack for a given task.

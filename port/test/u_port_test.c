@@ -92,18 +92,18 @@
  */
 #define U_PORT_TEST_QUEUE_ITEM_SIZE sizeof(int32_t)
 
-#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
-/** The guard time for the OS test.
- */
-# define U_PORT_TEST_OS_GUARD_DURATION_MS 7000
-
 /** The task block duration to use in testing the
  * time for which a block lasts.  This needs to
  * be quite long as any error must be visible
  * in the test duration as measured by the
  * test system which is logging the test output.
  */
-# define U_PORT_TEST_OS_BLOCK_TIME_MS 5000
+#define U_PORT_TEST_OS_BLOCK_TIME_MS 5000
+
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
+/** The guard time for the OS test.
+ */
+# define U_PORT_TEST_OS_GUARD_DURATION_MS 7000
 
 /** Tolerance on block time.  Note that this needs
  * to be large enough to account for the tick coarseness
@@ -1678,7 +1678,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     timeDelta = uPortGetTickTimeMs() - startTimeMs;
     uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"
              " the test took %d second(s).\n", (int32_t) (timeDelta / 1000));
-    uPortLog("U_PORT_TEST: *** IMPORTANT *** please visually check"
+    uPortLog("U_PORT_TEST: ***IMPORTANT*** please visually check"
              " that the duration of this test as seen by the PC-side"
              " of the test system is also %d second(s).\n",
              (int32_t) (timeDelta / 1000));
@@ -1701,6 +1701,30 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
 # else
     (void) heapUsed;
 # endif
+}
+#endif
+
+#ifndef U_PORT_TEST_CHECK_TIME_TAKEN
+/** If checking of time taken is NOT being done, at least
+ * run uPortTaskBlock for a given time period so that
+ * the user is able to visually check that it's not, for
+ * instance, LESS than expected.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portOsBlock")
+{
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    uPortLog("U_PORT_TEST: waiting %d ms...\n",
+             U_PORT_TEST_OS_BLOCK_TIME_MS);
+
+    uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
+
+    uPortLog("U_PORT_TEST: ***IMPORTANT*** please visually check"
+             " that the duration of this test as seen by the"
+             " PC-side of the test is not less than %d second(s).\n",
+             U_PORT_TEST_OS_BLOCK_TIME_MS / 1000);
+
+    uPortDeinit();
 }
 #endif
 
