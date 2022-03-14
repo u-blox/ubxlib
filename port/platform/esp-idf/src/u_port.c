@@ -25,6 +25,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_compiler.h" // For U_INLINE
 #include "u_error_common.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -33,9 +34,7 @@
 #include "u_port_private.h"
 
 #include "freertos/FreeRTOS.h" // For xPortGetFreeHeapSize()
-#ifdef ARDUINO
 #include "freertos/task.h"
-#endif
 
 #include "esp_timer.h" // For esp_timer_get_time()
 #include "esp_system.h" // For esp_get_minimum_free_heap_size()
@@ -54,6 +53,10 @@
 
 // Keep track of whether we've been initialised or not.
 static bool gInitialised = false;
+
+/** Mutex required for the ESP-IDF modified taskENTER_CRITICAL().
+ */
+static portMUX_TYPE gSpinlock = portMUX_INITIALIZER_UNLOCKED;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -145,6 +148,28 @@ int32_t uPortGetHeapMinFree()
 int32_t uPortGetHeapFree()
 {
     return (int32_t) xPortGetFreeHeapSize();
+}
+
+// Enter a critical section.
+// Implementation note: FreeRTOS only locks-out tasks
+// with interrupt priority up
+// to configMAX_SYSCALL_INTERRUPT_PRIORITY, interrupts
+// at a higher priority than that are NOT masked
+// during a critical section, so beware!
+// Also be careful if you have an interrupt watchdog
+// running to make sure it is respected, see
+// CONFIG_ESP_INT_WDT_TIMEOUT_MS in the ESP-IDF
+// documentation.
+U_INLINE int32_t uPortEnterCritical()
+{
+    taskENTER_CRITICAL(&gSpinlock);
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
+}
+
+// Leave a critical section.
+U_INLINE void uPortExitCritical()
+{
+    taskEXIT_CRITICAL(&gSpinlock);
 }
 
 // End of file

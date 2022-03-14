@@ -27,6 +27,7 @@
 #include "malloc.h"    // For mallinfo
 
 #include "u_cfg_sw.h"
+#include "u_compiler.h" // For U_INLINE
 #include "u_cfg_hw_platform_specific.h"
 #include "u_error_common.h"
 
@@ -51,6 +52,10 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+/** Key for Zephyr's irq_lock().
+ */
+static uint32_t gIrqLockKey;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -141,4 +146,16 @@ int32_t uPortGetHeapFree()
     return heapFreeOrError;
 }
 
+// Enter a critical section.
+U_INLINE int32_t uPortEnterCritical()
+{
+    gIrqLockKey = irq_lock();
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
+}
+
+// Leave a critical section.
+U_INLINE void uPortExitCritical()
+{
+    irq_unlock(gIrqLockKey);
+}
 // End of file

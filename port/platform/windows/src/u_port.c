@@ -28,10 +28,12 @@
 #include "windows.h"
 
 #include "u_cfg_sw.h"
+#include "u_compiler.h" // For U_INLINE
 #include "u_cfg_hw_platform_specific.h"
 #include "u_cfg_os_platform_specific.h"
 
 #include "u_error_common.h"
+#include "u_assert.h"
 
 #include "u_port_debug.h"
 #include "u_port.h"
@@ -39,6 +41,10 @@
 #include "u_port_uart.h"
 #include "u_port_private.h"
 #include "u_port_event_queue_private.h"
+
+// A place to put the ID of the main thread, held over in
+// u_port_private.c.
+extern DWORD *gpMainThreadId;
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -91,7 +97,7 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
                                     (DWORD) U_CFG_OS_APP_TASK_STACK_SIZE_BYTES,
                                     (LPTHREAD_START_ROUTINE) pEntryPoint, pParameter,
                                     0,     // default creation flags
-                                    NULL);
+                                    gpMainThreadId);
         if (threadHandle != NULL) {
             errorCode = U_ERROR_COMMON_SUCCESS;
             if (!SetThreadPriority(threadHandle,
@@ -154,6 +160,18 @@ int32_t uPortGetHeapFree()
 {
     // TODO
     return U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
+// Enter a critical section.
+int32_t uPortEnterCritical()
+{
+    return uPortPrivateEnterCritical();
+}
+
+// Leave a critical section.
+void uPortExitCritical()
+{
+    U_ASSERT(uPortPrivateExitCritical() == 0);
 }
 
 // End of file

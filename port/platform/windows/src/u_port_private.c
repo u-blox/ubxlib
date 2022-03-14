@@ -83,6 +83,10 @@ typedef struct uPortPrivateTimer_t {
  * VARIABLES
  * -------------------------------------------------------------- */
 
+/** Mutex to protect the linked list of threads.
+ */
+static uPortMutexHandle_t gMutexThread = NULL;
+
 /** Mutex to protect the linked list of queues.
  */
 static uPortMutexHandle_t gMutexQueue = NULL;
@@ -122,6 +126,44 @@ static const int32_t localToWinPriority[] = {-2,  // 0
                                              1,   // 14
                                              1    // 15
                                              };
+
+/** List of thread IDs.  We only need to keep track of the IDs
+ * in order to implement a version of crtitical section
+ * on Windows, hence just a simple array.
+ * From this article:
+ * https://devblogs.microsoft.com/oldnewthing/20040223-00/?p=40503
+ * ...zero would appear to be the invalid thread ID,
+ * which is fortunate, 'cos it's a bit like NULL and
+ * we use that to indicate "self".
+ */
+static DWORD gThreadIds[U_PORT_MAX_NUM_TASKS] = {0};
+
+/** A place to put the ID of the main thread, not static
+ * because it is needed by uPortPlatformStart() over in
+ * u_port.c, which kicks it off; it is the first entry in
+ * the array of threads.
+ */
+DWORD *gpMainThreadId = &(gThreadIds[0]);
+
+/* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: THREADS
+ * -------------------------------------------------------------- */
+
+// Find an entry in the array of thread IDs.
+// gMutexThread should be locked before this is called.
+static DWORD *pThreadIdFind(int32_t threadId)
+{
+    DWORD *pFound = NULL;
+
+    for (size_t x = 0; (pFound == NULL) &&
+         (x < sizeof(gThreadIds) / sizeof(gThreadIds[0])); x++) {
+        if (gThreadIds[x] == threadId) {
+            pFound = &(gThreadIds[x]);
+        }
+    }
+
+    return pFound;
+}
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: QUEUES
@@ -325,15 +367,28 @@ int32_t uPortPrivateInit(void)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
 
-    if (gMutexQueue == NULL) {
+    if (gMutexThread == NULL) {
+        errorCode = uPortMutexCreate(&gMutexThread);
+    }
+
+    if ((errorCode == 0) && (gMutexQueue == NULL)) {
         errorCode = uPortMutexCreate(&gMutexQueue);
     }
 
     if ((errorCode == 0) && (gMutexTimer == NULL)) {
         errorCode = uPortMutexCreate(&gMutexTimer);
-        if (errorCode != 0) {
+    }
+
+    if (errorCode != 0) {
+        // Tidy up on error
+        if (gMutexThread != NULL) {
+            uPortMutexDelete(gMutexThread);
+        }
+        if (gMutexQueue != NULL) {
             uPortMutexDelete(gMutexQueue);
-            gMutexQueue = NULL;
+        }
+        if (gMutexTimer != NULL) {
+            uPortMutexDelete(gMutexTimer);
         }
     }
 
@@ -343,13 +398,6 @@ int32_t uPortPrivateInit(void)
 // Deinitialise the private bits of the porting layer.
 void uPortPrivateDeinit(void)
 {
-    if (gMutexQueue != NULL) {
-        U_PORT_MUTEX_LOCK(gMutexQueue);
-        U_PORT_MUTEX_UNLOCK(gMutexQueue);
-        uPortMutexDelete(gMutexQueue);
-        gMutexQueue = NULL;
-    }
-
     if (gMutexTimer != NULL) {
         U_PORT_MUTEX_LOCK(gMutexTimer);
         // Tidy away the timers
@@ -361,6 +409,211 @@ void uPortPrivateDeinit(void)
         uPortMutexDelete(gMutexTimer);
         gMutexTimer = NULL;
     }
+
+    if (gMutexQueue != NULL) {
+        U_PORT_MUTEX_LOCK(gMutexQueue);
+        U_PORT_MUTEX_UNLOCK(gMutexQueue);
+        uPortMutexDelete(gMutexQueue);
+        gMutexQueue = NULL;
+    }
+
+    if (gMutexThread != NULL) {
+        U_PORT_MUTEX_LOCK(gMutexThread);
+        U_PORT_MUTEX_UNLOCK(gMutexThread);
+        uPortMutexDelete(gMutexThread);
+        gMutexThread = NULL;
+    }
+}
+
+// Enter a critical section.
+int32_t uPortPrivateEnterCritical()
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    HANDLE threadHandle;
+    DWORD thisThreadId = GetCurrentThreadId();
+
+    if (gMutexThread != NULL) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+
+        U_PORT_MUTEX_LOCK(gMutexThread);
+
+        // Suspend all of the tasks in the list except ourselves
+        for (size_t x = 0; (errorCode == 0) &&
+             (x < sizeof(gThreadIds) / sizeof(gThreadIds[0])); x++) {
+            if ((gThreadIds[x] != 0) && (gThreadIds[x] != thisThreadId)) {
+                threadHandle = OpenThread(THREAD_SUSPEND_RESUME, false, gThreadIds[x]);
+                // Note: if we get INVALID_HANDLE_VALUE back from OpenThread then the
+                // thread must have exited already
+                if (threadHandle != INVALID_HANDLE_VALUE) {
+                    if ((SuspendThread(threadHandle) < 0) && (GetLastError() != ERROR_INVALID_HANDLE)) {
+                        // If SuspendThread returns -1 and it's NOT because
+                        // the handle has become invalid (e.g. if the thread
+                        // has been terminated or has terminated itself
+                        // between us opening a handle on it and trying to
+                        // terminate it) then this one has failed, no point
+                        // in continuing
+                        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                    }
+                    CloseHandle(threadHandle);
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutexThread);
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Leave a critical section.
+int32_t uPortPrivateExitCritical()
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    HANDLE threadHandle;
+    DWORD thisThreadId = GetCurrentThreadId();
+
+    if (gMutexThread != NULL) {
+        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+
+        U_PORT_MUTEX_LOCK(gMutexThread);
+
+        // Resume all of the tasks in the list except ourselves
+        for (size_t x = 0; (errorCode == 0) &&
+             (x < sizeof(gThreadIds) / sizeof(gThreadIds[0])); x++) {
+            if ((gThreadIds[x] != 0) && (gThreadIds[x] != thisThreadId)) {
+                threadHandle = OpenThread(THREAD_SUSPEND_RESUME, false, gThreadIds[x]);
+                // Note: if we get INVALID_HANDLE_VALUE back from OpenThread then the
+                // thread must have been terminated
+                if (threadHandle != INVALID_HANDLE_VALUE) {
+                    if ((ResumeThread(threadHandle) < 0) && (GetLastError() != ERROR_INVALID_HANDLE)) {
+                        // If ResumeThread returns -1 and it's NOT because
+                        // the handle has become invalid (e.g. if the thread
+                        // has been terminated between us opening a handle on
+                        // it and trying to terminate it) then this one
+                        // has failed, no point in continuing
+                        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                    }
+                    CloseHandle(threadHandle);
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutexThread);
+    }
+
+    return (int32_t) errorCode;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS SPECIFIC TO THIS PORT, TASKS
+ * -------------------------------------------------------------- */
+
+// Create a task.
+int32_t uPortPrivateTaskCreate(void (*pFunction)(void *),
+                               size_t stackSizeBytes,
+                               void *pParameter,
+                               int32_t priority,
+                               uPortTaskHandle_t *pTaskHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    DWORD *pThreadId = NULL;
+    HANDLE threadHandle;
+
+    // Important: it is possible for this to be called at start
+    // of day, e.g. by the uMutexDebug initialisation code,
+    // before port initialsation has been called, hence we only
+    // lock the mutex if it has been set up.
+    if (gMutexThread != NULL) {
+        // Can't use the lock macro here as it adds bracketing
+        // for safety and calling it within braces in this
+        // way would mess us up
+        uPortMutexLock(gMutexThread);
+    }
+
+    // Find a free entry in the array
+    pThreadId = pThreadIdFind(0);
+    if (pThreadId != NULL) {
+        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+        threadHandle = CreateThread(NULL, // default security attributes
+                                    (DWORD) stackSizeBytes,
+                                    (LPTHREAD_START_ROUTINE) pFunction, pParameter,
+                                    0,     // default creation flags
+                                    pThreadId);
+        if (threadHandle != INVALID_HANDLE_VALUE) {
+            if (SetThreadPriority(threadHandle,
+                                  (DWORD) uPortPrivateTaskPriorityConvert(priority))) {
+                *pTaskHandle = (uPortTaskHandle_t) * pThreadId;
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            } else {
+                TerminateThread(threadHandle, 0);
+            }
+            // Don't need this handle any more: this does
+            // not delete the thread, don't worry
+            CloseHandle(threadHandle);
+        }
+    }
+
+    if (gMutexThread != NULL) {
+        uPortMutexUnlock(gMutexThread);
+    }
+
+    return (int32_t) errorCode;
+}
+
+// Delete the given task.
+int32_t uPortPrivateTaskDelete(const uPortTaskHandle_t taskHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    DWORD *pThreadId = NULL;
+    DWORD threadId = (DWORD) taskHandle;
+    HANDLE threadHandle;
+
+    if (gMutexThread != NULL) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+
+        U_PORT_MUTEX_LOCK(gMutexThread);
+
+        if (taskHandle == NULL) {
+            threadId = GetCurrentThreadId();
+        }
+        // Find the entry in the array, only so that we can clear it
+        pThreadId = pThreadIdFind(threadId);
+        if (pThreadId != NULL) {
+            if (taskHandle == NULL) {
+                // Current thread: just exit, unlocking gMutexThread first
+                *pThreadId = 0;
+                uPortMutexUnlock(gMutexThread);
+                ExitThread(0);
+                // CODE EXECUTION NEVER GETS HERE
+            } else {
+                threadHandle = OpenThread(THREAD_TERMINATE, false, threadId);
+                if (threadHandle != INVALID_HANDLE_VALUE) {
+                    if (TerminateThread(threadHandle, 0) || (GetLastError() == ERROR_INVALID_HANDLE)) {
+                        // Success if the terminate succeeds or if it returns
+                        // the error "invalid handle", as that must mean the
+                        // task has terminated itself between us opening a
+                        // handle on it and trying to terminate it
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
+                    CloseHandle(threadHandle);
+                } else {
+                    // OpenThread returns INVALID_HANDLE_VALUE if the
+                    // thread in question has already terminated so
+                    // this is actually a success
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
+            }
+
+            // Clear the entry in the array
+            if (errorCode == 0) {
+                *pThreadId = 0;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutexThread);
+    }
+
+    return (int32_t) errorCode;
 }
 
 // Convert to Windows thread priority.

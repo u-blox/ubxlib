@@ -138,8 +138,6 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
                         uPortTaskHandle_t *pTaskHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-    HANDLE threadHandle;
-    DWORD threadId;
 
     // Could do this with SetThreadDescription() but that's not
     // available in the win32 API version packaged by all compilers.
@@ -148,24 +146,11 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
     if ((pFunction != NULL) && (pTaskHandle != NULL) &&
         (priority >= U_CFG_OS_PRIORITY_MIN) &&
         (priority <= U_CFG_OS_PRIORITY_MAX)) {
-
-        threadHandle = CreateThread(NULL, // default security attributes
-                                    (DWORD) stackSizeBytes,
-                                    (LPTHREAD_START_ROUTINE) pFunction, pParameter,
-                                    0,     // default creation flags
-                                    &threadId);
-        if (threadHandle != INVALID_HANDLE_VALUE) {
-            if (SetThreadPriority(threadHandle,
-                                  (DWORD) uPortPrivateTaskPriorityConvert(priority))) {
-                *pTaskHandle = (uPortTaskHandle_t) threadId;
-                errorCode = U_ERROR_COMMON_SUCCESS;
-            } else {
-                TerminateThread(threadHandle, 0);
-            }
-            // Don't need this handle any more: this does
-            // not delete the thread, don't worry
-            CloseHandle(threadHandle);
-        }
+        errorCode = uPortPrivateTaskCreate(pFunction,
+                                           stackSizeBytes,
+                                           pParameter,
+                                           priority,
+                                           pTaskHandle);
     }
 
     return (int32_t) errorCode;
@@ -174,35 +159,7 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
 // Delete the given task.
 int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_PLATFORM;
-    HANDLE threadHandle;
-
-    if (taskHandle == NULL) {
-        ExitThread(0);
-        errorCode = U_ERROR_COMMON_SUCCESS;
-    } else {
-        // This doesn't perform any clean-up, it is
-        // essential that the caller performs any clean-up
-        // required (e.g. deallocating memory) first.
-        threadHandle = OpenThread(THREAD_TERMINATE, false, (DWORD) taskHandle);
-        if (threadHandle != INVALID_HANDLE_VALUE) {
-            if (TerminateThread(threadHandle, 0) || (GetLastError() == ERROR_INVALID_HANDLE)) {
-                // Success if the terminate succeeds or if it returns
-                // the error "invalid handle", as that must mean the
-                // task has terminated itself between us opening a
-                // handle on it and trying to terminate it
-                errorCode = U_ERROR_COMMON_SUCCESS;
-            }
-            CloseHandle(threadHandle);
-        } else {
-            // OpenThread returns INVALID_HANDLE_VALUE if the
-            // thread in question has already terminated so
-            // this is actually a success
-            errorCode = U_ERROR_COMMON_SUCCESS;
-        }
-    }
-
-    return (int32_t) errorCode;
+    return uPortPrivateTaskDelete(taskHandle);
 }
 
 // Check if the current task handle is equal to the given task handle.
