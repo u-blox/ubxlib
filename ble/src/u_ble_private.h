@@ -62,11 +62,11 @@ int32_t uShoToBleHandle(int32_t shortRangeHandle);
 
 /** Initialize data part of BLE
  */
-void uBleDataPrivateInit(void);
+void uBleSpsPrivateInit(void);
 
 /** De-Initialize data part of BLE
  */
-void uBleDataPrivateDeinit(void);
+void uBleSpsPrivateDeinit(void);
 
 /** Translate MAC address in byte array to string
  *

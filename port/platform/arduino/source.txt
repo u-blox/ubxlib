@@ -9,8 +9,8 @@ ble/src/u_ble_extmod.c
 ble/src/u_ble_intmod.c
 ble/src/u_ble_cfg_extmod.c
 ble/src/u_ble_cfg_intmod.c
-ble/src/u_ble_data_extmod.c
-ble/src/u_ble_data_intmod.c
+ble/src/u_ble_sps_extmod.c
+ble/src/u_ble_sps_intmod.c
 ble/src/u_ble_private.c
 cell/src/u_cell.c
 cell/src/u_cell_pwr.c

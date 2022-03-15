@@ -71,7 +71,7 @@
 
 #include "u_short_range_test_selector.h"
 
-#include "u_ble_data.h"
+#include "u_ble_sps.h"
 #include "u_ble_test_private.h"
 
 /* ----------------------------------------------------------------
@@ -116,7 +116,7 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
 }
 
 
-U_PORT_TEST_FUNCTION("[bleData]", "bleData")
+U_PORT_TEST_FUNCTION("[bleSps]", "bleSps")
 {
     int32_t heapUsed;
     heapUsed = uPortGetHeapFree();
@@ -132,32 +132,32 @@ U_PORT_TEST_FUNCTION("[bleData]", "bleData")
 #endif
 
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.bleHandle,
                                                            connectionCallback,
                                                            NULL) == 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.bleHandle,
                                                            connectionCallback,
                                                            NULL) != 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.bleHandle,
                                                            NULL, NULL) == 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.bleHandle,
                                                            connectionCallback,
                                                            NULL) == 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.bleHandle,
                                                            NULL, NULL) == 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
                                                         NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
                                                         NULL) != 0);
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.bleHandle, NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
                                                         NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.bleHandle, NULL, NULL) == 0);
 
     uBleTestPrivatePostamble(&gHandles);
 
@@ -183,7 +183,7 @@ U_PORT_TEST_FUNCTION("[bleData]", "bleData")
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
  */
-U_PORT_TEST_FUNCTION("[bleData]", "bleDataCleanUp")
+U_PORT_TEST_FUNCTION("[bleSps]", "bleSpsCleanUp")
 {
     int32_t x;
 

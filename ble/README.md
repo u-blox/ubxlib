@@ -7,7 +7,7 @@ The BLE APIs are split into the following groups:
 - `cfg`: configuration of the short range module or internal setup.
 - `data`: for exchanging data.
 
-If all you would like to do is bring up a connection as simply as possible and then get on with exchanging data, please consider using the [common/network](/common/network) API to set everything up instead, then use the [u_ble_data.h](api/u_ble_data.h) API for transport.
+If all you would like to do is bring up a connection as simply as possible and then get on with exchanging data, please consider using the [common/network](/common/network) API to set everything up instead, then use the [u_ble_sps.h](api/u_ble_sps.h) API for transport.
 
 This API is designed to work in either of two ways:
 1.  with an external short range module connected over UART, this is if:

@@ -61,7 +61,7 @@
 #endif
 
 #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
-#include "u_ble_data.h"
+#include "u_ble_sps.h"
 #include "u_error_common.h"
 #endif
 
@@ -181,7 +181,7 @@ static void print(const char *pStr, size_t length)
     uPortLog("\n");
 }
 
-static void sendBleData(int32_t handle)
+static void sendBleSps(int32_t handle)
 {
     uint32_t tries = 0;
     int32_t testDataOffset = 0;
@@ -189,7 +189,7 @@ static void sendBleData(int32_t handle)
     while ((tries++ < 15) && (gBytesSent < gTotalBytes)) {
         // -1 to omit gTestData string terminator
         int32_t bytesSentNow =
-            uBleDataSend(handle, gChannel, gTestData + testDataOffset, sizeof gTestData - 1 - testDataOffset);
+            uBleSpsSend(handle, gChannel, gTestData + testDataOffset, sizeof gTestData - 1 - testDataOffset);
 
         if (bytesSentNow >= 0) {
             gBytesSent += bytesSentNow;
@@ -212,7 +212,7 @@ static void sendBleData(int32_t handle)
 
 //lint -e{818} Suppress 'pData' could be declared as const:
 // need to follow function signature
-static void bleDataCallback(int32_t channel, void *pParameters)
+static void bleSpsCallback(int32_t channel, void *pParameters)
 {
     char buffer[100];
     int32_t length;
@@ -228,7 +228,7 @@ static void bleDataCallback(int32_t channel, void *pParameters)
     U_PORT_TEST_ASSERT(channel == gChannel);
 
     do {
-        length = uBleDataReceive(gBleHandle, channel, buffer, sizeof buffer);
+        length = uBleSpsReceive(gBleHandle, channel, buffer, sizeof buffer);
         if (length > 0) {
             int32_t errorOrigDataStartIndex = -1;
             int32_t errorRecDataStartIndex = -1;
@@ -294,7 +294,7 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
         uPortLog("U_NETWORK_TEST: connected %s handle %d (channel %d).\n", address, connHandle, channel);
     } else if (type == 1) {
         gConnHandle = -1;
-        if (connHandle != U_BLE_DATA_INVALID_HANDLE) {
+        if (connHandle != U_BLE_SPS_INVALID_HANDLE) {
             uPortLog("U_NETWORK_TEST: disconnected connection handle %d.\n", connHandle);
         } else {
             uPortLog("U_NETWORK_TEST: connection attempt failed\n");
@@ -517,7 +517,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t timeoutCount;
-    uBleDataSpsHandles_t spsHandles;
+    uBleSpsHandles_t spsHandles;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -561,22 +561,22 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                 gIndexInBlock = 0;
                 U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gBleConnectionSem, 0, 1) == 0);
 
-                uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
+                uBleSpsSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
                                                     connectionCallback,
                                                     &gUNetworkTestCfg[x].handle);
-                uBleDataSetDataAvailableCallback(gUNetworkTestCfg[x].handle, bleDataCallback,
+                uBleSpsSetDataAvailableCallback(gUNetworkTestCfg[x].handle, bleSpsCallback,
                                                  &gUNetworkTestCfg[x].handle);
                 gBleHandle = gUNetworkTestCfg[x].handle;
 
                 for (int32_t i = 0; i < 3; i++) {
                     if (i > 0) {
-                        if (uBleDataPresetSpsServerHandles(gUNetworkTestCfg[x].handle, &spsHandles) ==
+                        if (uBleSpsPresetSpsServerHandles(gUNetworkTestCfg[x].handle, &spsHandles) ==
                             U_ERROR_COMMON_NOT_IMPLEMENTED) {
                             continue;
                         }
                     }
                     if (i > 1) {
-                        if (uBleDataDisableFlowCtrlOnNext(gUNetworkTestCfg[x].handle) ==
+                        if (uBleSpsDisableFlowCtrlOnNext(gUNetworkTestCfg[x].handle) ==
                             U_ERROR_COMMON_NOT_IMPLEMENTED) {
                             continue;
                         }
@@ -587,11 +587,11 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                         // and the second for using non-default.
                         if (a == 0) {
                             uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
-                            result = uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                            result = uBleSpsConnectSps(gUNetworkTestCfg[x].handle,
                                                         gRemoteSpsAddress,
                                                         NULL);
                         } else {
-                            uBleDataConnParams_t connParams;
+                            uBleSpsConnParams_t connParams;
                             connParams.scanInterval = 64;
                             connParams.scanWindow = 64;
                             connParams.createConnectionTmo = 5000;
@@ -600,7 +600,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                             connParams.connLatency = 0;
                             connParams.linkLossTimeout = 2000;
                             uPortLog("U_NETWORK_TEST: Connecting SPS with conn params: %s\n", gRemoteSpsAddress);
-                            result = uBleDataConnectSps(gUNetworkTestCfg[x].handle,
+                            result = uBleSpsConnectSps(gUNetworkTestCfg[x].handle,
                                                         gRemoteSpsAddress, &connParams);
                         }
 
@@ -621,13 +621,13 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                         U_PORT_TEST_ASSERT(false);
                     }
                     if (i == 0) {
-                        uBleDataGetSpsServerHandles(gUNetworkTestCfg[x].handle, gChannel, &spsHandles);
+                        uBleSpsGetSpsServerHandles(gUNetworkTestCfg[x].handle, gChannel, &spsHandles);
                     }
 
-                    uBleDataSetSendTimeout(gUNetworkTestCfg[x].handle, gChannel, 100);
+                    uBleSpsSetSendTimeout(gUNetworkTestCfg[x].handle, gChannel, 100);
                     uPortTaskBlock(100);
                     timeoutCount = 0;
-                    sendBleData(gUNetworkTestCfg[x].handle);
+                    sendBleSps(gUNetworkTestCfg[x].handle);
                     while (gBytesReceived < gBytesSent) {
                         uPortTaskBlock(10);
                         if (timeoutCount++ > 100) {
@@ -638,7 +638,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                     U_PORT_TEST_ASSERT(gBytesSent == gBytesReceived);
                     U_PORT_TEST_ASSERT(gErrors == 0);
                     // Disconnect
-                    U_PORT_TEST_ASSERT(uBleDataDisconnect(gUNetworkTestCfg[x].handle, gConnHandle) == 0);
+                    U_PORT_TEST_ASSERT(uBleSpsDisconnect(gUNetworkTestCfg[x].handle, gConnHandle) == 0);
                     for (int32_t i = 0; (i < 40) && (gConnHandle != -1); i++) {
                         uPortTaskBlock(100);
                     }
@@ -647,8 +647,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                     U_PORT_TEST_ASSERT(gConnHandle == -1);
                 }
 
-                uBleDataSetDataAvailableCallback(gUNetworkTestCfg[x].handle, NULL, NULL);
-                uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle, NULL, NULL);
+                uBleSpsSetDataAvailableCallback(gUNetworkTestCfg[x].handle, NULL, NULL);
+                uBleSpsSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle, NULL, NULL);
 
                 U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gBleConnectionSem) == 0);
                 gBleConnectionSem = NULL;

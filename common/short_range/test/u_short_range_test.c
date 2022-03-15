@@ -56,7 +56,7 @@
 #endif
 
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
-#include "u_ble_data.h"
+#include "u_ble_sps.h"
 #include "u_short_range_private.h"
 #endif
 #include "u_short_range_test_private.h"

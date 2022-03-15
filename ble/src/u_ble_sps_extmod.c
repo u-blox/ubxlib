@@ -47,7 +47,7 @@
 #include "u_cfg_os_platform_specific.h"
 
 #include "u_at_client.h"
-#include "u_ble_data.h"
+#include "u_ble_sps.h"
 #include "u_ble_private.h"
 #include "u_short_range_module_type.h"
 #include "u_short_range_pbuf.h"
@@ -61,8 +61,8 @@
 
 #define U_SHORT_RANGE_BT_ADDRESS_SIZE 14
 
-#define U_BLE_DATA_EVENT_STACK_SIZE 1536
-#define U_BLE_DATA_EVENT_PRIORITY (U_CFG_OS_PRIORITY_MAX - 5)
+#define U_BLE_SPS_EVENT_STACK_SIZE 1536
+#define U_BLE_SPS_EVENT_PRIORITY (U_CFG_OS_PRIORITY_MAX - 5)
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -77,21 +77,21 @@ typedef struct {
     int32_t mtu;
     void (*pCallback) (int32_t, char *, int32_t, int32_t, int32_t, void *);
     void *pCallbackParameter;
-} uBleDataSpsConnection_t;
+} uBleSpsConnection_t;
 
 // Linked list with channel info like rx buffer and tx timeout
-typedef struct uBleDataSpsChannel_s {
+typedef struct uBleSpsChannel_s {
     int32_t                       channel;
     uShortRangePrivateInstance_t  *pInstance;
     uShortRangePbufList_t         *pSpsRxBuff;
     uint32_t                      txTimeout;
-    struct uBleDataSpsChannel_s   *pNext;
-} uBleDataSpsChannel_t;
+    struct uBleSpsChannel_s   *pNext;
+} uBleSpsChannel_t;
 
 typedef struct {
     int32_t channel;
     uShortRangePrivateInstance_t *pInstance;
-} bleDataEvent_t;
+} bleSpsEvent_t;
 
 /* ----------------------------------------------------------------
  * STATIC PROTOTYPES
@@ -103,12 +103,12 @@ static void UUBTACLC_urc(uAtClientHandle_t atHandle, void *pParameter);
 // follow prototype
 static void UUBTACLD_urc(uAtClientHandle_t atHandle, void *pParameter);
 static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
-                             int32_t channel, uBleDataSpsChannel_t **ppListHead);
-static uBleDataSpsChannel_t *getSpsChannel(const uShortRangePrivateInstance_t *pInstance,
-                                           int32_t channel, uBleDataSpsChannel_t *pListHead);
+                             int32_t channel, uBleSpsChannel_t **ppListHead);
+static uBleSpsChannel_t *getSpsChannel(const uShortRangePrivateInstance_t *pInstance,
+                                           int32_t channel, uBleSpsChannel_t *pListHead);
 static void deleteSpsChannel(const uShortRangePrivateInstance_t *pInstance,
-                             int32_t channel, uBleDataSpsChannel_t **ppListHead);
-static void deleteAllSpsChannels(uBleDataSpsChannel_t **ppListHead) ;
+                             int32_t channel, uBleSpsChannel_t **ppListHead);
+static void deleteAllSpsChannels(uBleSpsChannel_t **ppListHead) ;
 static void spsEventCallback(uAtClientHandle_t atHandle, void *pParameter);
 static void btEdmConnectionCallback(int32_t edmStreamHandle,
                                     int32_t edmChannel,
@@ -122,24 +122,24 @@ static void atConnectionEvent(int32_t shortRangeHandle,
                               void *pCallbackParameter);
 static void dataCallback(int32_t handle, int32_t channel, uShortRangePbufList_t *pBufList,
                          void *pParameters);
-static void onBleDataEvent(void *pParam, size_t eventSize);
+static void onBleSpsEvent(void *pParam, size_t eventSize);
 static int32_t setBleConfig(const uAtClientHandle_t atHandle,
                             int32_t parameter, uint32_t value);
 
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
-static uBleDataSpsChannel_t *gpChannelList = NULL;
-static int32_t gBleDataEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
-static uPortMutexHandle_t gBleDataMutex;
-static const uBleDataConnParams_t gConnParamsDefault = {
-    U_BLE_DATA_CONN_PARAM_SCAN_INT_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_SCAN_WIN_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_TMO_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_CONN_INT_MIN_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_CONN_INT_MAX_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_CONN_LATENCY_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_LINK_LOSS_TMO_DEFAULT
+static uBleSpsChannel_t *gpChannelList = NULL;
+static int32_t gBleSpsEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+static uPortMutexHandle_t gBleSpsMutex;
+static const uBleSpsConnParams_t gConnParamsDefault = {
+    U_BLE_SPS_CONN_PARAM_SCAN_INT_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_SCAN_WIN_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_TMO_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_CONN_INT_MIN_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_CONN_INT_MAX_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_CONN_LATENCY_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_LINK_LOSS_TMO_DEFAULT
 };
 
 /* ----------------------------------------------------------------
@@ -178,14 +178,14 @@ static void UUBTACLD_urc(uAtClientHandle_t atHandle,
 
 // Allocate and add SPS channel info to linked list
 static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
-                             int32_t channel, uBleDataSpsChannel_t **ppListHead)
+                             int32_t channel, uBleSpsChannel_t **ppListHead)
 {
-    uBleDataSpsChannel_t *pChannel = *ppListHead;
+    uBleSpsChannel_t *pChannel = *ppListHead;
 
-    U_PORT_MUTEX_LOCK(gBleDataMutex);
+    U_PORT_MUTEX_LOCK(gBleSpsMutex);
 
     if (pChannel == NULL) {
-        pChannel = (uBleDataSpsChannel_t *)malloc(sizeof(uBleDataSpsChannel_t));
+        pChannel = (uBleSpsChannel_t *)malloc(sizeof(uBleSpsChannel_t));
         *ppListHead = pChannel;
     } else {
         uint32_t nbrOfChannels = 1;
@@ -193,8 +193,8 @@ static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
             pChannel = pChannel->pNext;
             nbrOfChannels++;
         }
-        if (nbrOfChannels < U_BLE_DATA_MAX_CONNECTIONS) {
-            pChannel->pNext = (uBleDataSpsChannel_t *)malloc(sizeof(uBleDataSpsChannel_t));
+        if (nbrOfChannels < U_BLE_SPS_MAX_CONNECTIONS) {
+            pChannel->pNext = (uBleSpsChannel_t *)malloc(sizeof(uBleSpsChannel_t));
         }
         pChannel = pChannel->pNext;
     }
@@ -204,21 +204,21 @@ static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
         pChannel->channel = channel;
         pChannel->pInstance = pInstance;
         pChannel->pNext = NULL;
-        pChannel->txTimeout = U_BLE_DATA_DEFAULT_SEND_TIMEOUT_MS;
+        pChannel->txTimeout = U_BLE_SPS_DEFAULT_SEND_TIMEOUT_MS;
     } else {
-        uPortLog("U_BLE_DATA: Failed to create data channel!\n");
+        uPortLog("U_BLE_SPS: Failed to create data channel!\n");
     }
 
-    U_PORT_MUTEX_UNLOCK(gBleDataMutex);
+    U_PORT_MUTEX_UNLOCK(gBleSpsMutex);
 }
 
 // Get SPS channel info related to channel at instance
-static uBleDataSpsChannel_t *getSpsChannel(const uShortRangePrivateInstance_t *pInstance,
-                                           int32_t channel, uBleDataSpsChannel_t *pListHead)
+static uBleSpsChannel_t *getSpsChannel(const uShortRangePrivateInstance_t *pInstance,
+                                           int32_t channel, uBleSpsChannel_t *pListHead)
 {
-    uBleDataSpsChannel_t *pChannel;
+    uBleSpsChannel_t *pChannel;
 
-    U_PORT_MUTEX_LOCK(gBleDataMutex);
+    U_PORT_MUTEX_LOCK(gBleSpsMutex);
 
     pChannel = pListHead;
     while (pChannel != NULL) {
@@ -228,19 +228,19 @@ static uBleDataSpsChannel_t *getSpsChannel(const uShortRangePrivateInstance_t *p
         pChannel = pChannel->pNext;
     }
 
-    U_PORT_MUTEX_UNLOCK(gBleDataMutex);
+    U_PORT_MUTEX_UNLOCK(gBleSpsMutex);
 
     return pChannel;
 }
 
 // Delete SPS channel info (after disconnection)
 static void deleteSpsChannel(const uShortRangePrivateInstance_t *pInstance,
-                             int32_t channel, uBleDataSpsChannel_t **ppListHead)
+                             int32_t channel, uBleSpsChannel_t **ppListHead)
 {
-    uBleDataSpsChannel_t *pChannel;
-    uBleDataSpsChannel_t *pPrevChannel = NULL;
+    uBleSpsChannel_t *pChannel;
+    uBleSpsChannel_t *pPrevChannel = NULL;
 
-    U_PORT_MUTEX_LOCK(gBleDataMutex);
+    U_PORT_MUTEX_LOCK(gBleSpsMutex);
 
     pChannel = *ppListHead;
     while ((pChannel != NULL) &&
@@ -262,15 +262,15 @@ static void deleteSpsChannel(const uShortRangePrivateInstance_t *pInstance,
         free(pChannel);
     }
 
-    U_PORT_MUTEX_UNLOCK(gBleDataMutex);
+    U_PORT_MUTEX_UNLOCK(gBleSpsMutex);
 }
 
-static void deleteAllSpsChannels(uBleDataSpsChannel_t **ppListHead)
+static void deleteAllSpsChannels(uBleSpsChannel_t **ppListHead)
 {
-    uBleDataSpsChannel_t *pChannel = *ppListHead;
+    uBleSpsChannel_t *pChannel = *ppListHead;
 
     while (pChannel != NULL) {
-        uBleDataSpsChannel_t *pChanToFree;
+        uBleSpsChannel_t *pChanToFree;
 
         uShortRangeFreePbufList(pChannel->pSpsRxBuff);
         pChanToFree = pChannel;
@@ -283,7 +283,7 @@ static void deleteAllSpsChannels(uBleDataSpsChannel_t **ppListHead)
 static void spsEventCallback(uAtClientHandle_t atHandle,
                              void *pParameter)
 {
-    uBleDataSpsConnection_t *pStatus = (uBleDataSpsConnection_t *)pParameter;
+    uBleSpsConnection_t *pStatus = (uBleSpsConnection_t *)pParameter;
 
     (void) atHandle;
 
@@ -319,13 +319,13 @@ static void btEdmConnectionCallback(int32_t edmStreamHandle,
     uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pCallbackParameter;
 
     if (pInstance != NULL && pInstance->atHandle != NULL) {
-        uBleDataSpsConnection_t *pStatus = (uBleDataSpsConnection_t *)
+        uBleSpsConnection_t *pStatus = (uBleSpsConnection_t *)
                                            pInstance->pPendingSpsConnectionEvent;
         bool send = false;
 
         if (pStatus == NULL) {
             //lint -esym(593, pStatus) Suppress pStatus not being free()ed here
-            pStatus = (uBleDataSpsConnection_t *) malloc(sizeof(*pStatus));
+            pStatus = (uBleSpsConnection_t *) malloc(sizeof(*pStatus));
         } else {
             send = true;
         }
@@ -363,12 +363,12 @@ static void atConnectionEvent(int32_t shortRangeHandle,
     bool send = false;
 
     if (pInstance->pSpsConnectionCallback != NULL) {
-        uBleDataSpsConnection_t *pStatus = (uBleDataSpsConnection_t *)
+        uBleSpsConnection_t *pStatus = (uBleSpsConnection_t *)
                                            pInstance->pPendingSpsConnectionEvent;
 
         if (pStatus == NULL) {
             //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
-            pStatus = (uBleDataSpsConnection_t *) malloc(sizeof(*pStatus));
+            pStatus = (uBleSpsConnection_t *) malloc(sizeof(*pStatus));
         } else {
             send = true;
         }
@@ -398,7 +398,7 @@ static void dataCallback(int32_t handle, int32_t channel, uShortRangePbufList_t 
         if (pInstance != NULL) {
 
             if (pInstance->pBtDataAvailableCallback != NULL) {
-                uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
+                uBleSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
 
                 if (pChannel != NULL) {
                     bool bufferWasEmtpy = (pChannel->pSpsRxBuff == NULL);
@@ -409,10 +409,10 @@ static void dataCallback(int32_t handle, int32_t channel, uShortRangePbufList_t 
                     }
 
                     if (bufferWasEmtpy) {
-                        bleDataEvent_t event;
+                        bleSpsEvent_t event;
                         event.channel = channel;
                         event.pInstance = pInstance;
-                        uPortEventQueueSend(gBleDataEventQueue, &event, sizeof(event));
+                        uPortEventQueueSend(gBleSpsEventQueue, &event, sizeof(event));
                     }
                 }
             }
@@ -421,11 +421,11 @@ static void dataCallback(int32_t handle, int32_t channel, uShortRangePbufList_t 
     }
 }
 
-static void onBleDataEvent(void *pParam, size_t eventSize)
+static void onBleSpsEvent(void *pParam, size_t eventSize)
 {
     (void)eventSize;
 
-    bleDataEvent_t *pEvent = (bleDataEvent_t *)pParam;
+    bleSpsEvent_t *pEvent = (bleSpsEvent_t *)pParam;
     if (pEvent->pInstance->pBtDataAvailableCallback != NULL) {
         pEvent->pInstance->pBtDataAvailableCallback(pEvent->channel,
                                                     pEvent->pInstance->pBtDataCallbackParameter);
@@ -435,8 +435,8 @@ static void onBleDataEvent(void *pParam, size_t eventSize)
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
-                                            uBleDataConnectionStatusCallback_t pCallback,
+int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
+                                            uBleSpsConnectionStatusCallback_t pCallback,
                                             void *pCallbackParameter)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -507,15 +507,15 @@ static int32_t setBleConfig(const uAtClientHandle_t atHandle, int32_t parameter,
     error = uAtClientUnlock(atHandle);
 
     if (error != (int32_t) U_ERROR_COMMON_SUCCESS) {
-        uPortLog("U_BLE_DATA: Could not set BLE config param %d with value %d\n", parameter, value);
+        uPortLog("U_BLE_SPS: Could not set BLE config param %d with value %d\n", parameter, value);
     }
 
     return error;
 }
 
-int32_t uBleDataConnectSps(int32_t bleHandle,
+int32_t uBleSpsConnectSps(int32_t bleHandle,
                            const char *pAddress,
-                           const uBleDataConnParams_t *pConnParams)
+                           const uBleSpsConnParams_t *pConnParams)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -537,7 +537,7 @@ int32_t uBleDataConnectSps(int32_t bleHandle,
                 memcpy((url + 6), pAddress, 13);
                 atHandle = pInstance->atHandle;
 
-                uPortLog("U_BLE_DATA: Setting config\n");
+                uPortLog("U_BLE_SPS: Setting config\n");
 
                 if (pConnParams == NULL) {
                     pConnParams = &gConnParamsDefault;
@@ -567,7 +567,7 @@ int32_t uBleDataConnectSps(int32_t bleHandle,
                 }
 
                 if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                    uPortLog("U_BLE_DATA: Sending AT+UDCP\n");
+                    uPortLog("U_BLE_SPS: Sending AT+UDCP\n");
 
                     uAtClientLock(atHandle);
                     uAtClientCommandStart(atHandle, "AT+UDCP=");
@@ -587,7 +587,7 @@ int32_t uBleDataConnectSps(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleDataDisconnect(int32_t bleHandle, int32_t connHandle)
+int32_t uBleSpsDisconnect(int32_t bleHandle, int32_t connHandle)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -614,7 +614,7 @@ int32_t uBleDataDisconnect(int32_t bleHandle, int32_t connHandle)
     return errorCode;
 }
 
-int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t length)
+int32_t uBleSpsReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t length)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(shoHandle);
@@ -624,7 +624,7 @@ int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
         if (pInstance != NULL) {
-            uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
+            uBleSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
             if (pChannel != NULL) {
                 pList = pChannel->pSpsRxBuff;
                 sizeOrErrorCode = (int32_t)uShortRangeMovePayloadFromPbufList(pList, pData, length);
@@ -640,7 +640,7 @@ int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t
     return sizeOrErrorCode;
 }
 
-int32_t uBleDataSend(int32_t bleHandle, int32_t channel, const char *pData, int32_t length)
+int32_t uBleSpsSend(int32_t bleHandle, int32_t channel, const char *pData, int32_t length)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -651,7 +651,7 @@ int32_t uBleDataSend(int32_t bleHandle, int32_t channel, const char *pData, int3
         pInstance = pUShortRangePrivateGetInstance(shoHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
+            uBleSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
             errorCode = uShortRangeEdmStreamWrite(pInstance->streamHandle, channel, pData, length,
                                                   pChannel->txTimeout);
         }
@@ -662,7 +662,7 @@ int32_t uBleDataSend(int32_t bleHandle, int32_t channel, const char *pData, int3
     return errorCode;
 }
 
-int32_t uBleDataSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeout)
+int32_t uBleSpsSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeout)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t returnValue = (int32_t)U_ERROR_COMMON_UNKNOWN;
@@ -672,7 +672,7 @@ int32_t uBleDataSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t time
 
         pInstance = pUShortRangePrivateGetInstance(shoHandle);
         if (pInstance != NULL) {
-            uBleDataSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
+            uBleSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
 
             if (pChannel != NULL) {
                 pChannel->txTimeout = timeout;
@@ -687,7 +687,7 @@ int32_t uBleDataSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t time
 }
 
 U_DEPRECATED
-int32_t uBleDataSetCallbackData(int32_t bleHandle,
+int32_t uBleSpsSetCallbackData(int32_t bleHandle,
                                 void (*pCallback) (int32_t, size_t, char *, void *),
                                 void *pCallbackParameter)
 {
@@ -722,8 +722,8 @@ int32_t uBleDataSetCallbackData(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
-                                         uBleDataAvailableCallback_t pCallback,
+int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
+                                         uBleSpsAvailableCallback_t pCallback,
                                          void *pCallbackParameter)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
@@ -739,14 +739,14 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
                 pInstance->pBtDataAvailableCallback = pCallback;
                 pInstance->pBtDataCallbackParameter = pCallbackParameter;
 
-                if (gBleDataEventQueue == (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
-                    gBleDataEventQueue = uPortEventQueueOpen(onBleDataEvent,
-                                                             "uBleDataEventQueue", sizeof(bleDataEvent_t),
-                                                             U_BLE_DATA_EVENT_STACK_SIZE,
-                                                             U_BLE_DATA_EVENT_PRIORITY,
-                                                             2 * U_BLE_DATA_MAX_CONNECTIONS);
-                    if (gBleDataEventQueue < 0) {
-                        gBleDataEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+                if (gBleSpsEventQueue == (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
+                    gBleSpsEventQueue = uPortEventQueueOpen(onBleSpsEvent,
+                                                             "uBleSpsEventQueue", sizeof(bleSpsEvent_t),
+                                                             U_BLE_SPS_EVENT_STACK_SIZE,
+                                                             U_BLE_SPS_EVENT_PRIORITY,
+                                                             2 * U_BLE_SPS_MAX_CONNECTIONS);
+                    if (gBleSpsEventQueue < 0) {
+                        gBleSpsEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
                     }
                 }
 
@@ -762,9 +762,9 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
                     uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle,
                                                              U_SHORT_RANGE_CONNECTION_TYPE_BT,
                                                              NULL, NULL);
-                if (gBleDataEventQueue != (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
-                    uPortEventQueueClose(gBleDataEventQueue);
-                    gBleDataEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+                if (gBleSpsEventQueue != (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
+                    uPortEventQueueClose(gBleSpsEventQueue);
+                    gBleSpsEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
                 }
             }
         }
@@ -775,30 +775,30 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
     return errorCode;
 }
 
-void uBleDataPrivateInit(void)
+void uBleSpsPrivateInit(void)
 {
-    if (uPortMutexCreate(&gBleDataMutex) != (int32_t)U_ERROR_COMMON_SUCCESS) {
-        gBleDataMutex = NULL;
+    if (uPortMutexCreate(&gBleSpsMutex) != (int32_t)U_ERROR_COMMON_SUCCESS) {
+        gBleSpsMutex = NULL;
     }
 }
 
-void uBleDataPrivateDeinit(void)
+void uBleSpsPrivateDeinit(void)
 {
-    if (gBleDataEventQueue != (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
-        uPortEventQueueClose(gBleDataEventQueue);
-        gBleDataEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
+    if (gBleSpsEventQueue != (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
+        uPortEventQueueClose(gBleSpsEventQueue);
+        gBleSpsEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     }
     deleteAllSpsChannels(&gpChannelList);
-    if (gBleDataMutex != NULL) {
-        uPortMutexDelete(gBleDataMutex);
-        gBleDataMutex = NULL;
+    if (gBleSpsMutex != NULL) {
+        uPortMutexDelete(gBleSpsMutex);
+        gBleSpsMutex = NULL;
     }
 }
 
 //lint -esym(818, pHandles) Suppress pHandles could be const, need to
 // follow prototype
-int32_t uBleDataGetSpsServerHandles(int32_t bleHandle, int32_t channel,
-                                    uBleDataSpsHandles_t *pHandles)
+int32_t uBleSpsGetSpsServerHandles(int32_t bleHandle, int32_t channel,
+                                    uBleSpsHandles_t *pHandles)
 {
     (void)channel;
     (void)bleHandle;
@@ -806,14 +806,14 @@ int32_t uBleDataGetSpsServerHandles(int32_t bleHandle, int32_t channel,
     return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uBleDataPresetSpsServerHandles(int32_t bleHandle, const uBleDataSpsHandles_t *pHandles)
+int32_t uBleSpsPresetSpsServerHandles(int32_t bleHandle, const uBleSpsHandles_t *pHandles)
 {
     (void)bleHandle;
     (void)pHandles;
     return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uBleDataDisableFlowCtrlOnNext(int32_t bleHandle)
+int32_t uBleSpsDisableFlowCtrlOnNext(int32_t bleHandle)
 {
     (void)bleHandle;
     return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
