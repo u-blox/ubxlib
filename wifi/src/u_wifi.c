@@ -40,7 +40,6 @@
 
 #include "u_wifi_module_type.h"
 #include "u_wifi.h"
-#include "u_wifi_private.h"
 
 
 /* ----------------------------------------------------------------
@@ -59,19 +58,6 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-uWifiModuleType_t shortRangeToWifiModule(uShortRangeModuleType_t module)
-{
-    const uShortRangeModuleInfo_t *pModuleInfo;
-    pModuleInfo = uShortRangeGetModuleInfo(module);
-    if (!pModuleInfo) {
-        return U_WIFI_MODULE_TYPE_INVALID;
-    }
-    if (!pModuleInfo->supportsWifi) {
-        return U_WIFI_MODULE_TYPE_UNSUPPORTED;
-    }
-    return (uWifiModuleType_t)module;
-}
-
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -86,54 +72,6 @@ int32_t uWifiInit()
 void uWifiDeinit()
 {
     uShortRangeDeinit();
-}
-
-// Add a wifi instance.
-int32_t uWifiAdd(uWifiModuleType_t moduleType,
-                 uAtClientHandle_t atHandle)
-{
-    int32_t handle;
-    // First make sure the moduleType value is really valid
-    // If not shortRangeToWifiModule() will return a negative value
-    // that uShortRangeAdd() will reject
-    moduleType = shortRangeToWifiModule((uShortRangeModuleType_t)moduleType);
-    handle = uShortRangeAdd((uShortRangeModuleType_t)moduleType, atHandle);
-    if (handle >= 0) {
-        // If the module was added successfully we convert the handle to a wifi handle
-        handle = uShoToWifiHandle(handle);
-    }
-    return handle;
-}
-
-// Remove a wifi instance.
-void uWifiRemove(int32_t wifiHandle)
-{
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
-    uShortRangeRemove(shoHandle);
-}
-
-// Get the handle of the AT client.
-int32_t uWifiAtClientHandleGet(int32_t wifiHandle,
-                               uAtClientHandle_t *pAtHandle)
-{
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
-    return uShortRangeAtClientHandleGet(shoHandle, pAtHandle);
-}
-
-uWifiModuleType_t uWifiDetectModule(int32_t wifiHandle)
-{
-    int32_t errorCode;
-    uWifiModuleType_t wifiModule = U_WIFI_MODULE_TYPE_INVALID;
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
-    errorCode = uShortRangeLock();
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        uShortRangeModuleType_t shortRangeModule = uShortRangeDetectModule(shoHandle);
-        wifiModule = shortRangeToWifiModule(shortRangeModule);
-        uShortRangeUnlock();
-    }
-
-    return wifiModule;
 }
 
 // End of file

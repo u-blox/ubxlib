@@ -57,6 +57,8 @@
 
 #include "u_at_client.h"
 
+#include "u_short_range.h"
+
 #include "u_wifi.h"
 #include "u_wifi_net.h"
 #include "u_wifi_test_private.h"
@@ -88,6 +90,13 @@ static volatile uint32_t gNetStatusMask = 0;
 static volatile int32_t gLookForDisconnectReasonBitMask = 0;
 static volatile int32_t gDisconnectReasonFound = 0;
 static uWifiNetScanResult_t gScanResult;
+static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                        .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                        .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                        .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                        .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                        .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                      };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -166,8 +175,10 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
     gNetStatusMask = 0;
     gWifiConnected = 0;
     gWifiDisconnected = 0;
+
     // Do the standard preamble
     if (0 != uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                      &uart,
                                       &gHandles)) {
         testError = U_WIFI_TEST_ERROR_PREAMBLE;
     }
@@ -290,6 +301,7 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetInitialisation")
 
     // Do the standard preamble
     if (0 != uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                      &uart,
                                       &gHandles)) {
         testError = U_WIFI_TEST_ERROR_PREAMBLE;
     }
@@ -368,6 +380,7 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetScan")
     uWifiTestError_t testError = U_WIFI_TEST_ERROR_NONE;
 
     result = uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                      &uart,
                                       &gHandles);
     U_PORT_TEST_ASSERT(result == 0);
 

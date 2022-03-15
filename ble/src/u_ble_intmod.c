@@ -36,10 +36,6 @@
 
 #include "u_error_common.h"
 
-#include "u_at_client.h"
-#include "u_short_range_module_type.h"
-
-#include "u_ble_module_type.h"
 #include "u_ble.h"
 #include "u_ble_private.h"
 
@@ -59,12 +55,6 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-uBleModuleType_t shortRangeToBleModule(uShortRangeModuleType_t module)
-{
-    (void)module;
-    return U_BLE_MODULE_TYPE_INVALID;
-}
-
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -81,47 +71,6 @@ void uBleDeinit(void)
 {
     uBleSpsPrivateDeinit();
     return uPortGattDeinit();
-}
-
-// Add a ble instance.
-// lint -esym(818, atHandle)
-int32_t uBleAdd(uBleModuleType_t moduleType,
-                uAtClientHandle_t atHandle)
-{
-    int32_t errorCode;
-    (void)atHandle;
-
-    if (moduleType != U_BLE_MODULE_TYPE_INTERNAL) {
-        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-    } else {
-        errorCode = uPortGattAdd();
-    }
-
-    return errorCode;
-}
-
-// Remove a ble instance.
-void uBleRemove(int32_t bleHandle)
-{
-    (void)bleHandle;
-}
-
-// Get the handle of the AT client.
-//lint -esym(818, pAtHandle)
-int32_t uBleAtClientHandleGet(int32_t bleHandle,
-                              uAtClientHandle_t *pAtHandle)
-{
-    (void)bleHandle;
-    (void)pAtHandle;
-    return (int32_t)U_ERROR_COMMON_NOT_FOUND;
-}
-
-uBleModuleType_t uBleDetectModule(int32_t bleHandle)
-{
-    if (bleHandle == 0) {
-        return U_BLE_MODULE_TYPE_INTERNAL;
-    }
-    return U_BLE_MODULE_TYPE_INVALID;
 }
 
 #endif

@@ -60,6 +60,7 @@
 #include "u_short_range_edm_stream.h"
 
 #include "u_wifi.h"
+#include "u_wifi_private.h"
 
 #include "u_wifi_test_private.h"
 
@@ -77,8 +78,7 @@
 
 /** UART handle for one AT client.
  */
-static int32_t gUartHandle = -1;
-static int32_t gEdmStreamHandle = -1;
+static uWifiTestPrivate_t gHandles = {-1, -1, NULL, -1};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -104,112 +104,59 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiInitialisation")
 
 /** Add a wifi instance and remove it again.
  */
-U_PORT_TEST_FUNCTION("[wifi]", "wifiAdd")
+U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
 {
-    int32_t wifiHandle;
-    uAtClientHandle_t atClientHandle;
-    uAtClientHandle_t atClientHandleCheck = (uAtClientHandle_t) -1;
     int32_t heapUsed;
-
-    // Whatever called us likely initialised the
-    // port so deinitialise it here to obtain the
-    // correct initial heap size
+    uAtClientHandle_t atClient = NULL;
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
+    int32_t shortRangeHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uPortDeinit();
+
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-
-    gUartHandle = uPortUartOpen(U_CFG_APP_SHORT_RANGE_UART,
-                                U_SHORT_RANGE_UART_BAUD_RATE,
-                                NULL,
-                                U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES,
-                                U_CFG_APP_PIN_SHORT_RANGE_TXD,
-                                U_CFG_APP_PIN_SHORT_RANGE_RXD,
-                                U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                U_CFG_APP_PIN_SHORT_RANGE_RTS);
-    U_PORT_TEST_ASSERT(gUartHandle >= 0);
-
-    U_PORT_TEST_ASSERT(uShortRangeEdmStreamInit() == 0);
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
-    U_PORT_TEST_ASSERT(uWifiInit() == 0);
-
-    gEdmStreamHandle = uShortRangeEdmStreamOpen(gUartHandle);
-    U_PORT_TEST_ASSERT(gEdmStreamHandle >= 0);
-
-    uPortLog("U_WIFI_TEST: adding an AT client on UART %d...\n",
-             U_CFG_APP_SHORT_RANGE_UART);
-    atClientHandle = uAtClientAdd(gEdmStreamHandle, U_AT_CLIENT_STREAM_TYPE_EDM,
-                                  NULL, U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
-    U_PORT_TEST_ASSERT(atClientHandle != NULL);
-
-    uPortLog("U_WIFI_TEST: adding a wifi instance on that AT client...\n");
-    wifiHandle = uWifiAdd(U_WIFI_MODULE_TYPE_NINA_W15, atClientHandle);
-    U_PORT_TEST_ASSERT(wifiHandle >= 0);
-    U_PORT_TEST_ASSERT(uWifiAtClientHandleGet(wifiHandle,
-                                              &atClientHandleCheck) == 0);
-    U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
-
-    uPortLog("U_WIFI_TEST: adding another instance on the same AT client,"
-             " should fail...\n");
-    U_PORT_TEST_ASSERT(uWifiAdd(U_WIFI_MODULE_TYPE_NINA_W15, atClientHandle));
-
-    uPortLog("U_WIFI_TEST: removing wifi instance...\n");
-    uWifiRemove(wifiHandle);
-
-    uPortLog("U_WIFI_TEST: adding it again...\n");
-    wifiHandle = uWifiAdd(U_WIFI_MODULE_TYPE_NINA_W15, atClientHandle);
-    U_PORT_TEST_ASSERT(wifiHandle >= 0);
-
-    atClientHandleCheck = (uAtClientHandle_t) -1;
-    U_PORT_TEST_ASSERT(uWifiAtClientHandleGet(wifiHandle,
-                                              &atClientHandleCheck) == 0);
-    U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
-
-    uPortLog("U_WIFI_TEST: deinitialising wifi API...\n");
-    uWifiDeinit();
-
-    uShortRangeEdmStreamClose(gEdmStreamHandle);
-    gEdmStreamHandle = -1;
-    uShortRangeEdmStreamDeinit();
-
-    uPortLog("U_WIFI_TEST: removing AT client...\n");
-    uAtClientRemove(atClientHandle);
-
-    uAtClientDeinit();
-
-    uPortUartClose(gUartHandle);
-    gUartHandle = -1;
-
-    uPortDeinit();
-
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    uPortLog("U_WIFI_TEST: we have leaked %d byte(s).\n", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
-    (void) heapUsed;
-#endif
-}
-
-
-U_PORT_TEST_FUNCTION("[wifi]", "wifiDetect")
-{
-    int32_t heapUsed;
-    uWifiTestPrivate_t handles;
-    heapUsed = uPortGetHeapFree();
-
     U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                &handles) == 0);
+                                                &uart,
+                                                &gHandles) == 0);
+    shortRangeHandle = uWifiToShoHandle(gHandles.wifiHandle);
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(shortRangeHandle) == gHandles.uartHandle);
+    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(shortRangeHandle) == gHandles.edmStreamHandle);
+    uShortRangeAtClientHandleGet(shortRangeHandle, &atClient);
+    U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+    U_PORT_TEST_ASSERT(uShortRangeAttention(shortRangeHandle) == 0);
 
-    uWifiTestPrivatePostamble(&handles);
+    uPortLog("U_WIFI: calling uShortRangeOpenUart with same arg twice,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uShortRangeOpenUart((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                           &uart) < 0);
 
+    uWifiTestPrivatePostamble(&gHandles);
+
+    uPortLog("U_WIFI: calling uShortRangeOpenUart with NULL uart arg,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                NULL,
+                                                &gHandles) < 0);
+    uPortLog("U_WIFI: calling uShortRangeOpenUart with wrong module type,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
+                                                &uart,
+                                                &gHandles) < 0);
+    uart.uartPort = -1;
+    uPortLog("U_WIFI: calling uShortRangeOpenUart with invalid uart arg,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &uart,
+                                                &gHandles) < 0);
+
+    uWifiTestPrivateCleanup(&gHandles);
 #ifndef __XTENSA__
     // Check for memory leaks
     // TODO: this if'ed out for ESP32 (xtensa compiler) at
@@ -225,6 +172,7 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiDetect")
     (void) heapUsed;
 #endif
 }
+
 
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
@@ -232,32 +180,7 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiDetect")
  */
 U_PORT_TEST_FUNCTION("[wifi]", "wifiCleanUp")
 {
-    int32_t x;
-
-    uWifiDeinit();
-    if (gUartHandle >= 0) {
-        uPortUartClose(gUartHandle);
-    }
-    if (gEdmStreamHandle >= 0) {
-        uShortRangeEdmStreamClose(gEdmStreamHandle);
-    }
-    uAtClientDeinit();
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_WIFI_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
-    uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        uPortLog("U_WIFI_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    uWifiTestPrivateCleanup(&gHandles);
 }
 
 #endif // U_SHORT_RANGE_TEST_WIFI()

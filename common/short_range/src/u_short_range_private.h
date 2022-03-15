@@ -43,9 +43,7 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 typedef enum {
-    U_SHORT_RANGE_MODE_COMMAND = 0,
-    U_SHORT_RANGE_MODE_DATA = 1,
-    U_SHORT_RANGE_MODE_EDM = 2
+    U_SHORT_RANGE_MODE_EDM = 0
 } uShortRangeModes_t;
 
 /** The characteristics that may differ between short range modules.
@@ -94,11 +92,8 @@ typedef struct uShortRangePrivateConnection_t {
 //lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallbackParameter) Suppress not reference, it is
 typedef struct uShortRangePrivateInstance_t {
     int32_t handle; /**< The handle for this instance. */
-    int32_t refCounter; /**< Reference counter.
-                             Each time uShortRangeAdd() is called with the same atHandle this counter is incremented.
-                             When user then call uShortRangeRemove() this counter will be decremented and when it reaches 0
-                             the short range instance will be deallocated */
     uShortRangeModes_t mode;
+    int32_t uartHandle;
     const uShortRangePrivateModule_t *pModule; /**< Pointer to the module type. */
     uAtClientHandle_t atHandle; /**< The AT client handle to use. */
     int32_t streamHandle; /**< Handle to the underlaying stream. */
@@ -124,9 +119,6 @@ typedef struct uShortRangePrivateInstance_t {
 //lint -esym(768, uShortRangePrivateInstance_t::pBtDataAvailableCallback)
     void (*pBtDataAvailableCallback)(int32_t, void *);
     void *pBtDataCallbackParameter;
-    void (*pDataCallback) (int32_t, size_t, char *, void *);
-    void *pDataCallbackParameter;
-    char *pBuffer;
     struct uShortRangePrivateInstance_t *pNext;
 } uShortRangePrivateInstance_t;
 

@@ -162,6 +162,14 @@ static volatile bool mqttSessionDisconnected = false;
 static volatile int32_t gWifiConnected = 0;
 static volatile uint32_t gNetStatusMask = 0;
 
+static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                        .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                        .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                        .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                        .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                        .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                      };
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -586,6 +594,7 @@ static void startWifi(void)
     // Do the standard preamble
     //lint -e(40) suppress undeclared identifier 'U_CFG_TEST_SHORT_RANGE_MODULE_TYPE'
     if (0 != uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                      &uart,
                                       &gHandles)) {
         testError = U_WIFI_TEST_ERROR_PREAMBLE;
     }

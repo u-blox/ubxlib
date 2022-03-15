@@ -39,10 +39,10 @@ extern "C" {
 /** Struct to contain all the stuff needed by the common functions.
  */
 typedef struct {
-    int32_t uartHandle; /**< The handle returned by uPortUartOpen(). */
-    int32_t edmStreamHandle; /**< The handle returned by uShortRangeEdmStreamOpen(). */
-    uAtClientHandle_t atClientHandle; /**< The handle returned by uAtClientAdd(). */
-    int32_t bleHandle;  /**< The handle returned by uBleAdd(). */
+    int32_t uartHandle; /**< The handle returned by uShortRangeGetUartHandle(). */
+    int32_t edmStreamHandle; /**< The handle returned by uShortRangeGetEdmStreamHandle(). */
+    uAtClientHandle_t atClientHandle; /**< The handle returned by uShortRangeAtClientHandleGet(). */
+    int32_t bleHandle;  /**< The converted ble handle returned by uShortRangeOpenUart(). */
 } uBleTestPrivate_t;
 
 /* ----------------------------------------------------------------
@@ -59,6 +59,7 @@ typedef struct {
  * RAT and bands for testing.
  *
  * @param moduleType  the module type.
+ * @param pUartConfig the uart config.
  * @param pParameters the place to put the parameters.
  * @return            zero on success else negative error code.
  */
@@ -68,6 +69,7 @@ typedef struct {
 //                                          U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 //                                          is not defined
 int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
+                                const uShortRangeUartConfig_t *pUartConfig,
                                 uBleTestPrivate_t *pParameters);
 
 /** The standard postamble for a cell test.

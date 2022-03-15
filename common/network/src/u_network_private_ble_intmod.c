@@ -39,8 +39,6 @@
 
 #include "u_error_common.h"
 
-#include "u_at_client.h"
-
 #include "u_ble_module_type.h"
 #include "u_ble.h"
 #include "u_ble_cfg.h"
@@ -87,7 +85,13 @@ void uNetworkDeinitBle(void)
 // Add a BLE network instance.
 int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
 {
-    return uBleAdd((uBleModuleType_t)pConfiguration->module, NULL);
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+
+    if ((uBleModuleType_t)pConfiguration->module == U_BLE_MODULE_TYPE_INTERNAL) {
+        errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+    }
+
+    return errorCode;
 }
 
 // Remove a BLE network instance.

@@ -161,6 +161,14 @@ static const char gAllChars[] = "the quick brown fox jumps over the lazy dog "
                                 "\x1d\x1e!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~\x7f"
                                 "\r\nOK\r\n \r\nERROR\r\n \r\nABORTED\r\n";
 
+static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                        .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                        .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                        .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                        .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                        .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                      };
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -402,6 +410,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
 
     // Do the standard preamble
     returnCode = uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                          &uart,
                                           &gHandles);
     TEST_CHECK_TRUE(returnCode == 0);
 
@@ -635,6 +644,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
 
     // Do the standard preamble
     returnCode = uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                          &uart,
                                           &gHandles);
     TEST_CHECK_TRUE(returnCode == 0);
 

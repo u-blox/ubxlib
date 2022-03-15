@@ -73,53 +73,6 @@ int32_t uWifiInit();
  */
 void uWifiDeinit();
 
-/** Add a wifi instance.
- *
- * @param moduleType       the short range module type.
- * @param atHandle         the handle of the AT client to use.  This must
- *                         already have been created by the caller with
- *                         a buffer of size U_BLE_AT_BUFFER_LENGTH_BYTES.
- *                         If a wifi instance has already been added
- *                         for this atHandle an error will be returned.
- * @return                 on success the handle of the wifi instance,
- *                         else negative error code.
- */
-int32_t uWifiAdd(uWifiModuleType_t moduleType,
-                 uAtClientHandle_t atHandle);
-
-/** Remove a wifi instance.  It is up to the caller to ensure
- * that the short range module for the given instance has been disconnected
- * and/or powered down etc.; all this function does is remove the logical
- * instance.
- *
- * @param wifiHandle  the handle of the wifi instance to remove.
- */
-void uWifiRemove(int32_t wifiHandle);
-
-/** Detect the module connected to the handle. Will attempt to change the mode on
- * the module to communicate with it. No change to UART configuration is done,
- * so even if this fails with U_WIFI_MODULE_TYPE_INVALID, as last attempt to recover,
- * it could work to re-init the UART on a different baud rate. This should recover
- * that module if another rate than the default one has been used.
- * If the response is U_WIFI_MODULE_TYPE_UNSUPPORTED, the module repondes as expected but
- * does not support wifi.
- *
- * @param wifiHandle   the handle of the wifi instance.
- * @return             Module on success, U_WIFI_MODULE_TYPE_INVALID or U_WIFI_MODULE_TYPE_UNSUPPORTED
- *                     on failure.
- */
-uWifiModuleType_t uWifiDetectModule(int32_t wifiHandle);
-
-/** Get the handle of the AT client used by the given
- * wifi instance.
- *
- * @param wifiHandle      the handle of the wifi instance.
- * @param[out] pAtHandle  a place to put the AT client handle.
- * @return                zero on success else negative error code.
- */
-int32_t uWifiAtClientHandleGet(int32_t wifiHandle,
-                               uAtClientHandle_t *pAtHandle);
-
 #ifdef __cplusplus
 }
 #endif

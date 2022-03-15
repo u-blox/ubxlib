@@ -46,6 +46,7 @@
 
 #include "u_ble_module_type.h"
 #include "u_ble.h"
+#include "u_ble_private.h"
 #include "u_ble_cfg.h"
 
 #include "u_network.h"
@@ -175,8 +176,7 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
         pInstance->netShoHandle = errorCode;
 
         if (errorCode >= 0) {
-            uAtClientHandle_t atHandle = uNetworkGetAtClientShortRange(pInstance->netShoHandle);
-            errorCode = uBleAdd((uBleModuleType_t) pConfiguration->module, atHandle);
+            errorCode = uShoToBleHandle(errorCode);
             pInstance->bleHandle = errorCode;
         }
 
@@ -184,11 +184,7 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
             errorCode = pInstance->bleHandle;
         } else {
             // Something went wrong - cleanup...
-            if (pInstance->bleHandle >= 0) {
-                uBleRemove(pInstance->bleHandle);
-            }
-
-            if (pInstance->netShoHandle >= 0) {
+            if ((pInstance->bleHandle >= 0) || (pInstance->netShoHandle >= 0)) {
                 uNetworkRemoveShortRange(pInstance->netShoHandle);
             }
             clearInstance(pInstance);
@@ -207,7 +203,6 @@ int32_t uNetworkRemoveBle(int32_t handle)
     // Find the instance in the list
     pInstance = pGetInstance(handle);
     if (pInstance != NULL) {
-        uBleRemove(pInstance->bleHandle);
         uNetworkRemoveShortRange(pInstance->netShoHandle);
         clearInstance(pInstance);
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;

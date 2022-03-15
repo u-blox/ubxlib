@@ -528,8 +528,7 @@ int32_t uBleSpsConnectSps(int32_t bleHandle,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
-            if (pInstance->mode == U_SHORT_RANGE_MODE_COMMAND ||
-                pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
+            if (pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
                 char url[20];
                 memset(url, 0, 20);
                 char start[] = "sps://";
@@ -777,8 +776,8 @@ int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
 
 void uBleSpsPrivateInit(void)
 {
-    if (uPortMutexCreate(&gBleSpsMutex) != (int32_t)U_ERROR_COMMON_SUCCESS) {
-        gBleSpsMutex = NULL;
+    if (gBleSpsMutex == NULL) {
+        uPortMutexCreate(&gBleSpsMutex);
     }
 }
 

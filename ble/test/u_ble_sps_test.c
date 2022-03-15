@@ -122,10 +122,19 @@ U_PORT_TEST_FUNCTION("[bleSps]", "bleSps")
     heapUsed = uPortGetHeapFree();
 
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                               &uart,
                                                &gHandles) == 0);
 #elif U_CFG_BLE_MODULE_INTERNAL
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_BLE_MODULE_TYPE_INTERNAL,
+                                               NULL,
                                                &gHandles) == 0);
 #else
 #error "Either U_CFG_TEST_SHORT_RANGE_MODULE_TYPE or U_CFG_BLE_MODULE_INTERNAL must be defined"

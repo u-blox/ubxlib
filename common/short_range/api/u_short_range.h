@@ -87,6 +87,10 @@ typedef enum {
     U_SHORT_RANGE_ERROR_INVALID_MODE = U_ERROR_SHORT_RANGE_MAX - 3, /**< -4099 if U_ERROR_BASE is 0. */
     U_SHORT_RANGE_ERROR_NOT_DETECTED = U_ERROR_SHORT_RANGE_MAX - 4, /**< -4100 if U_ERROR_BASE is 0. */
     U_SHORT_RANGE_ERROR_WRONG_TYPE = U_ERROR_SHORT_RANGE_MAX - 5, /**< -4101 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_UART = U_ERROR_SHORT_RANGE_MAX - 6, /**< -4102 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_EDM = U_ERROR_SHORT_RANGE_MAX - 7, /**< -4103 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_ATCLIENT = U_ERROR_SHORT_RANGE_MAX - 8, /**< -4104 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_INTERNAL = U_ERROR_SHORT_RANGE_MAX - 9, /**< -4105 if U_ERROR_BASE is 0. */
 } uShortRangeErrorCode_t;
 
 typedef enum {
@@ -183,6 +187,15 @@ typedef struct {
     bool supportsWifi;
 } uShortRangeModuleInfo_t;
 
+typedef struct {
+    int32_t uartPort;
+    int32_t baudRate;
+    int32_t pinTx;
+    int32_t pinRx;
+    int32_t pinCts;
+    int32_t pinRts;
+} uShortRangeUartConfig_t;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -213,28 +226,24 @@ int32_t uShortRangeLock();
  */
 int32_t uShortRangeUnlock();
 
-/** Add a short range instance.
+/** Open UART for a short range module and configures it for EDM stream handling
  *
  * @param moduleType       the short range module type.
- * @param atHandle         the handle of the AT client to use.  This must
- *                         already have been created by the caller with
- *                         a buffer of size U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES.
- *                         If a short range instance has already been added
- *                         for this atHandle an error will be returned.
+ * @param pUartConfig      the UART configuration to be used.
+ *                         if a short range instance has already been added
+ *                         for this pUartConfig an error will be returned.
  * @return                 on success the handle of the short range instance,
  *                         else negative error code.
  */
-int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
-                       uAtClientHandle_t atHandle);
+int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
+                            const uShortRangeUartConfig_t *pUartConfig);
 
-/** Remove a short range instance.  It is up to the caller to ensure
- * that the short range module for the given instance has been disconnected
- * and/or powered down etc.; all this function does is remove the logical
- * instance.
+/** Closes and disconnects all associated handles, such as UART and EDM, for the short range instance
  *
- * @param shortRangeHandle  the handle of the short range instance to remove.
+ * @param shortRangeHandle the handle of the short range instance to close.
  */
-void uShortRangeRemove(int32_t shortRangeHandle);
+
+void uShortRangeClose(int32_t shortRangeHandle);
 
 /** Detect the module connected to the handle. Will attempt to change the mode on
  * the module to communicate with it. No change to UART configuration is done,
@@ -256,31 +265,6 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle);
  *                          on failure.
  */
 int32_t uShortRangeAttention(int32_t shortRangeHandle);
-
-/** Change to command mode by sending a escape sequence, can be used at
- * startup if uShortRangeAttention is unresponsive.
- *
- * @param shortRangeHandle  the handle of the short range instance.
- * @param pAtHandle         the place to put the new atHandle, cannot be NULL.
- * @return                  zero on success or negative error code
- *                          on failure.
- */
-int32_t uShortRangeCommandMode(int32_t shortRangeHandle, uAtClientHandle_t *pAtHandle);
-
-
-/** Change to data mode, no commands will be accepted in this mode and
- * the caller can send, and must handle the incoming, data directly on
- * the stream.
- *
- * @note: A delay of 50 ms is required before start of data transmission
- * @note: The original atHandle is no longer valid after this is called, at client is
- *        re-added when calling uShortRangeCommandMode.
- *
- * @param shortRangeHandle  the handle of the short range instance.
- * @return                  zero on success or negative error code
- *                          on failure.
- */
-int32_t uShortRangeDataMode(int32_t shortRangeHandle);
 
 /** Set a callback for Bluetooth connection status.
 *
@@ -363,6 +347,22 @@ int32_t uShortRangeGetSerialNumber(int32_t shortRangeHandle, char *pSerialNumber
  *                          else negative error code.
  */
 int32_t uShortRangeGetShoHandle(int32_t networkHandle);
+
+/** Get the edm stream handle corresponding to short range handle.
+ *
+ * @param shortRangeHandle  the handle of the short range instance
+ * @return                  an edm stream handle on success
+ *                          else negative error code.
+ */
+int32_t uShortRangeGetEdmStreamHandle(int32_t shortRangeHandle);
+
+/** Get the UART handle corresponding to short range handle.
+ *
+ * @param shortRangeHandle  the handle of the short range instance
+ * @return                  an UART handle on success
+ *                          else negative error code.
+ */
+int32_t uShortRangeGetUartHandle(int32_t shortRangeHandle);
 
 
 

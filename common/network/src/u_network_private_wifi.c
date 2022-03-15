@@ -51,6 +51,7 @@
 
 #include "u_wifi_module_type.h"
 #include "u_wifi.h"
+#include "u_wifi_private.h"
 #include "u_wifi_net.h"
 
 #include "u_network.h"
@@ -381,8 +382,7 @@ int32_t uNetworkAddWifi(const uNetworkConfigurationWifi_t *pConfiguration)
         pInstance->netShoHandle = errorCode;
 
         if (errorCode >= 0) {
-            uAtClientHandle_t atHandle = uNetworkGetAtClientShortRange(pInstance->netShoHandle);
-            errorCode = uWifiAdd((uWifiModuleType_t) pConfiguration->module, atHandle);
+            errorCode = uShoToWifiHandle(errorCode);
             pInstance->wifiHandle = errorCode;
         }
 
@@ -405,11 +405,7 @@ int32_t uNetworkAddWifi(const uNetworkConfigurationWifi_t *pConfiguration)
                 pInstance->statusQueue = NULL;
             }
 
-            if (pInstance->wifiHandle >= 0) {
-                uWifiRemove(pInstance->wifiHandle);
-            }
-
-            if (pInstance->netShoHandle >= 0) {
+            if ((pInstance->wifiHandle >= 0) || (pInstance->netShoHandle >= 0)) {
                 uNetworkRemoveShortRange(pInstance->netShoHandle);
             }
             clearInstance(pInstance);
@@ -431,7 +427,6 @@ int32_t uNetworkRemoveWifi(int32_t handle)
         uWifiNetSetConnectionStatusCallback(pInstance->wifiHandle, NULL, NULL);
         uPortQueueDelete(pInstance->statusQueue);
         pInstance->statusQueue = NULL;
-        uWifiRemove(pInstance->wifiHandle);
         uNetworkRemoveShortRange(pInstance->netShoHandle);
         clearInstance(pInstance);
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
