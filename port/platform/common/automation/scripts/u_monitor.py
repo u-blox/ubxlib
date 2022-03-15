@@ -88,7 +88,6 @@ def reboot_callback(match, results: TestResults, reporter):
 def run_callback(match, results: TestResults, reporter):
     '''Handler for an item beginning to run'''
 
-    del reporter
     name = match.group(1)
     if results.current:
         # There shouldn't be any current test case
