@@ -67,7 +67,7 @@ typedef void (*pURunnerFunction_t)(void);
 typedef struct uRunnerFunctionDescription_t {
     const char *pName;
     const char *pGroup;
-    const pURunnerFunction_t pFunction;
+    pURunnerFunction_t pFunction;
     const char *pFile;
     int32_t line;
     struct uRunnerFunctionDescription_t *pNext;
@@ -117,7 +117,7 @@ void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription);
  * list of runnable functions.  A function would be either a
  * ubxlib test or a ubxlib example.
  */
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(__cplusplus)
 
 // GCC version
 # define U_RUNNER_FUNCTION(prefix, group, name)                                                           \
@@ -129,25 +129,26 @@ void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription);
     static void __attribute__((constructor)) U_RUNNER_NAME_UID(functionRegistrationHelper) ()             \
     {                                                                                                     \
         /* Static description of the function to pass to the register function */                         \
-        static uRunnerFunctionDescription_t U_RUNNER_NAME_UID(functionDescription) = {                    \
-            .pName = name,                                                                                \
-            .pGroup = group,                                                                              \
-            .pFunction = &U_RUNNER_NAME_UID(prefix),                                                      \
-            .pFile = __FILE__,                                                                            \
-            .line = __LINE__,                                                                             \
-            .pNext = NULL                                                                                 \
-        };                                                                                                \
+        static uRunnerFunctionDescription_t U_RUNNER_NAME_UID(functionDescription);                       \
+                                                                                                          \
+        U_RUNNER_NAME_UID(functionDescription).pName     =  name;                                         \
+        U_RUNNER_NAME_UID(functionDescription).pGroup    =  group;                                        \
+        U_RUNNER_NAME_UID(functionDescription).pFunction = &U_RUNNER_NAME_UID(prefix);                    \
+        U_RUNNER_NAME_UID(functionDescription).pFile     =  __FILE__;                                     \
+        U_RUNNER_NAME_UID(functionDescription).line      =  __LINE__;                                     \
+        U_RUNNER_NAME_UID(functionDescription).pNext     =  0;                                            \
+                                                                                                          \
         /* Call the register function with the description so it can keep a list of them */               \
         uRunnerFunctionRegister(&U_RUNNER_NAME_UID(functionDescription));                                 \
     }                                                                                                     \
     /* Actual start of the test function */                                                               \
     static void U_RUNNER_NAME_UID(prefix)(void)
 
-#else  // _MSC_VER
+#else  // !defined(_MSC_VER) && !defined(__cplusplus)
 
 # ifdef __cplusplus
 
-// MSVC version
+// MSVC/C++ version
 
 // MSVC doesn't have a constructor attribute.  It does have a constructor section (.CRT$XCU) into which
 // function pointers to the things that need to be called before main() are put, however since those
@@ -160,28 +161,39 @@ void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription);
 class uRunnerRegistrationHelperClass
 {
 public:
-    // Struct to hold function description
-    uRunnerFunctionDescription_t functionDescription;
     // Constructor which populates the function description and calls uRunnerFunctionRegister
-    uRunnerRegistrationHelperClass(const char *pName, const char *pGroup,
+    uRunnerRegistrationHelperClass(uRunnerFunctionDescription_t *pFunctionDescription,
+                                   const char *pName, const char *pGroup,
                                    const pURunnerFunction_t pFunction, const char *pFile,
-                                   int32_t line) : functionDescription{pName, pGroup, pFunction, pFile}
+                                   int32_t line)
     {
-        // C++ will have initialised pNext to 0
-        uRunnerFunctionRegister(&functionDescription);
+        if (0 != pFunctionDescription) {
+            pFunctionDescription->pName     = pName;
+            pFunctionDescription->pGroup    = pGroup;
+            pFunctionDescription->pFunction = pFunction;
+            pFunctionDescription->pFile     = pFile;
+            pFunctionDescription->line      = line;
+            pFunctionDescription->pNext     = 0;
+
+            uRunnerFunctionRegister(pFunctionDescription);
+        }
     };
 };
 
-# define U_RUNNER_FUNCTION(prefix, group, name)                                                           \
-    /* Test function prototype */                                                                         \
-    static void U_RUNNER_NAME_UID(prefix)(void);                                                          \
-    /* Registration helper function, sub-classing our registration helper class */                        \
-    static uRunnerRegistrationHelperClass U_RUNNER_NAME_UID(functionRegistrationHelper)(name,             \
-                                                                                        group,            \
-                                                                                        &U_RUNNER_NAME_UID(prefix), \
-                                                                                        __FILE__,         \
-                                                                                        __LINE__);        \
-    /* Actual start of the test function */                                                               \
+# define U_RUNNER_FUNCTION(prefix, group, name)                                                               \
+    /* Test function prototype */                                                                             \
+    static void U_RUNNER_NAME_UID(prefix)(void);                                                              \
+    static uRunnerFunctionDescription_t U_RUNNER_NAME_UID(functionDescription);                               \
+    /* Registration helper function, sub-classing our registration helper class */                            \
+    /*lint -esym(528,functionRegistrationHelper*) suppress "symbol not referenced": called at C startup */    \
+    /*lint -esym(1502,uRunnerRegistrationHelperClass) suppress "no static members" */                         \
+    static uRunnerRegistrationHelperClass U_RUNNER_NAME_UID(functionRegistrationHelper)(&U_RUNNER_NAME_UID(functionDescription),  \
+                                                                                         name,                \
+                                                                                         group,               \
+                                                                                        &U_RUNNER_NAME_UID(prefix),  \
+                                                                                         __FILE__,            \
+                                                                                         __LINE__);           \
+    /* Actual start of the test function */                                                                   \
     static void U_RUNNER_NAME_UID(prefix)(void)
 
 # endif // __cplusplus
