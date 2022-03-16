@@ -1,8 +1,9 @@
 """Log readers used by the log pytask commands to read out log from targets"""
 
 import time
+import os
 from serial import Serial
-from pylink import JLink
+from pylink import JLink, jlock
 from pylink.enums import JLinkInterfaces
 
 class URttReader:
@@ -30,6 +31,21 @@ class URttReader:
 
     def connect(self):
         """Connect JLink to the target"""
+
+        if self.serial is not None:
+            # This is a workaround for handling stale JLink locks that can happen
+            # if system is rebooted during the time a JLink lock is held.
+            # When this happens the file lock will point at a PID that was valid
+            # before the reboot but may now be a service process etc after the reboot.
+            lock = jlock.JLock(self.serial)
+            if os.path.exists(lock.path):
+                try:
+                    os.remove(lock.path)
+                except PermissionError:
+                    # If the lock is currently held we will get PermissionError
+                    # But we will do nothing here and let jlink.open() detect this instead
+                    pass
+
         self.jlink.open(serial_no=self.serial)
         if self.jlink_logfile:
             self.jlink.set_log_file(self.jlink_logfile)
