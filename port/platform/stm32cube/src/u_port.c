@@ -25,6 +25,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
+#include "u_compiler.h" // For U_INLINE
 #include "u_cfg_hw_platform_specific.h"
 #include "u_error_common.h"
 #include "u_assert.h"
@@ -37,6 +38,7 @@
 #include "u_heap_check.h"
 
 #include "FreeRTOS.h" // For xPortGetFreeHeapSize()
+#include "task.h"     // For taskENTER_CRITICAL()/taskEXIT_CRITICAL()
 #include "stm32f437xx.h"
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
@@ -204,6 +206,29 @@ int32_t uPortGetHeapMinFree()
 int32_t uPortGetHeapFree()
 {
     return (int32_t) xPortGetFreeHeapSize();
+}
+
+// Enter a critical section.
+// Implementation note: FreeRTOS only locks-out tasks
+// with interrupt priority up
+// to configMAX_SYSCALL_INTERRUPT_PRIORITY, interrupts
+// at a higher priority than that are NOT masked
+// during a critical section, so beware!
+// Also note that the system tick is disabled
+// during a critical section (that's how it does
+// what it does) and in the case of this STM32F4
+// port that will stop time since uPortGetTickTimeMs()
+// is incremented by the system tick.
+U_INLINE int32_t uPortEnterCritical()
+{
+    taskENTER_CRITICAL();
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
+}
+
+// Leave a critical section.
+U_INLINE void uPortExitCritical()
+{
+    taskEXIT_CRITICAL();
 }
 
 // End of file

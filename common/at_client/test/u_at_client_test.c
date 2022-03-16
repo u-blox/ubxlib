@@ -482,8 +482,6 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
     int32_t heapUsed;
 #endif
 
-    (void) uartHandle;
-
     if (eventBitmask & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) {
         pCheckCommandResponse = (uAtClientTestCheckCommandResponse_t *) pParameters;
         // Loop until no received characters left to process
@@ -1169,6 +1167,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     char buffer[5]; // Enough characters for a 3 digit index as a string
     char t = 'T';
     char r = 'R';
+    bool restoreStopTag;
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
 
@@ -1304,16 +1303,27 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
             if (pCommandResponse->response.numLines > 0) {
                 // Stop the command part
                 uAtClientCommandStop(atClientHandle);
+                restoreStopTag = false;
                 for (size_t l = 0; l < pCommandResponse->response.numLines; l++) {
                     pLine = &(pCommandResponse->response.lines[l]);
                     uAtClientResponseStart(atClientHandle, pLine->pPrefix);
-                    uPortLog("U_AT_CLIENT_TEST_%d: waiting for line %d...\n",
-                             x + 1, l + 1);
+                    uPortLog("U_AT_CLIENT_TEST_%d: waiting for line %d (with %d parameters, timeout %d)...\n",
+                             x + 1, l + 1, pLine->numParameters, uAtClientTimeoutGet(atClientHandle));
                     for (size_t p = 0; p < pLine->numParameters; p++) {
                         lastError = uAtClientTestCheckParam(atClientHandle,
                                                             &(pLine->parameters[p]),
                                                             buffer);
+                        // If we've been ignoring stop tags don't forget to
+                        // restore them again or we will miss the "OK" on the
+                        // end of the response
+                        if ((pLine->parameters[p].type == U_AT_CLIENT_TEST_PARAMETER_RESPONSE_STRING_IGNORE_STOP_TAG) ||
+                            (pLine->parameters[p].type == U_AT_CLIENT_TEST_PARAMETER_RESPONSE_BYTES_IGNORE_STOP_TAG)) {
+                            restoreStopTag = true;
+                        }
                     }
+                }
+                if (restoreStopTag) {
+                    uAtClientRestoreStopTag(atClientHandle);
                 }
                 uAtClientResponseStop(atClientHandle);
             } else {

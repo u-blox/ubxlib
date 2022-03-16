@@ -168,7 +168,7 @@ def testPipeline(instance_str, json_entry, subst_dir, filter) {
                     dir("${abs_instance_workdir}") {
                         ansiColor('xterm') {
                             // Check if there is a test filter
-                            def filter_arg = filter ? "--filter \"${json_entry.filter}\"" : ""
+                            def filter_arg = filter ? "--filter \"${filter}\"" : ""
                             bat "inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test ${test_report_arg} ${filter_arg} ${instance_str}"
                         }
                     }

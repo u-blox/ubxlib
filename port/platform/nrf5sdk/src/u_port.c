@@ -26,6 +26,7 @@
 #include "stdbool.h"
 
 #include "u_cfg_sw.h"
+#include "u_compiler.h" // For U_INLINE
 #include "u_cfg_hw_platform_specific.h"
 
 #include "u_error_common.h"
@@ -187,6 +188,19 @@ int32_t uPortGetHeapMinFree()
 int32_t uPortGetHeapFree()
 {
     return (int32_t) xPortGetFreeHeapSize();
+}
+
+// Enter a critical section.
+U_INLINE int32_t uPortEnterCritical()
+{
+    taskENTER_CRITICAL();
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
+}
+
+// Leave a critical section.
+U_INLINE void uPortExitCritical()
+{
+    taskEXIT_CRITICAL();
 }
 
 // End of file

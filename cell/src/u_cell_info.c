@@ -137,7 +137,7 @@ static int32_t getString(uAtClientHandle_t atHandle,
     if ((bytesRead >= 0) && (errorCodeOrSize == 0)) {
         uPortLog("U_CELL_INFO: ID string, length %d character(s),"
                  " returned by %s is \"%s\".\n",
-                 errorCodeOrSize, pCmd, pBuffer);
+                 bytesRead, pCmd, pBuffer);
         errorCodeOrSize = bytesRead;
     } else {
         errorCodeOrSize = (int32_t) U_CELL_ERROR_AT;

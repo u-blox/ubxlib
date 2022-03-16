@@ -92,18 +92,18 @@
  */
 #define U_PORT_TEST_QUEUE_ITEM_SIZE sizeof(int32_t)
 
-#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
-/** The guard time for the OS test.
- */
-# define U_PORT_TEST_OS_GUARD_DURATION_MS 7000
-
 /** The task block duration to use in testing the
  * time for which a block lasts.  This needs to
  * be quite long as any error must be visible
  * in the test duration as measured by the
  * test system which is logging the test output.
  */
-# define U_PORT_TEST_OS_BLOCK_TIME_MS 5000
+#define U_PORT_TEST_OS_BLOCK_TIME_MS 5000
+
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
+/** The guard time for the OS test.
+ */
+# define U_PORT_TEST_OS_GUARD_DURATION_MS 7000
 
 /** Tolerance on block time.  Note that this needs
  * to be large enough to account for the tick coarseness
@@ -155,6 +155,54 @@
 /** How long to wait to receive  a message on a queue in osTestTask.
  */
 #define U_PORT_OS_TEST_TASK_TRY_RECEIVE_MS 10
+
+#ifndef U_PORT_TEST_CRITICAL_SECTION_TEST_TASK_START_TIME_SECONDS
+/** How long to wait for the critical section test task to start,
+ * leaving plenty of time for Windows.
+ */
+# define U_PORT_TEST_CRITICAL_SECTION_TEST_TASK_START_TIME_SECONDS 10
+#endif
+
+#ifndef U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS
+/** How long to wait to check that the critical section is no longer
+ * in effect: needs to be large to allow for Windows slop and small
+ * enough not to cause any platform-specific watchdog to fire on an
+ * embedded target.
+ */
+# ifdef _WIN32
+#  define U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS 5000
+# else
+#  define U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS 20
+# endif
+#endif
+
+#ifndef U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS
+/** How long to wait to check the critical section: needs to be
+ * large to allow for Windows slop and small enough not to cause
+ * any platform-specific watchdog to fire on an embedded target.
+ */
+# ifdef _WIN32
+#  define U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS 5000
+# else
+#  define U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS U_CFG_OS_YIELD_MS
+# endif
+#endif
+
+#ifndef U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_LOOPS
+/** If time does not pass during a critical section (e.g. on
+ * our STM32F4 port it does not) then we can't use
+ * U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS so in those
+ * cases we just have to busy-wait for this number of loops.
+ * Question is, what should the value be?  It is obviously a
+ * compromise between platforms/CPU-clock-rates, needs to be big
+ * enough for at least one RTOS tick to have passed and not so
+ * large as to trip-up any interrupt watchdog (ESP-IDF has one
+ * of those).
+ */
+//lint -esym(750, U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_LOOPS) Suppress
+// not referenced, which might be the case if we're on Windows
+# define U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_LOOPS 1000000
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -361,6 +409,10 @@ static size_t gTimerParameterIndex = 0;
  * entries as gTimerParameterValue.
  */
 static uPortTimerHandle_t gTimerHandle[4] = {0};
+
+/** A variable to use during critical section testing.
+ */
+static uint32_t gVariable = 0;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -1034,6 +1086,22 @@ static void timerCallback(const uPortTimerHandle_t timerHandle, void *pParameter
     }
 }
 
+// The test task for critical sections: if it can lock
+// gMutex it increments the uint32_t variable it was passed
+// in pParameter in a loop, else it exits
+static void criticalSectionTestTask(void *pParameter)
+{
+    volatile uint32_t *pVariable = (uint32_t *) pParameter;
+
+    while (uPortMutexTryLock(gMutexHandle, 0) == 0) {
+        uPortMutexUnlock(gMutexHandle);
+        (*pVariable)++;
+        uPortTaskBlock(10);
+    }
+
+    uPortTaskDelete(NULL);
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
  * -------------------------------------------------------------- */
@@ -1179,7 +1247,7 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
 #endif
 
     // Let the idle task tidy-away the tasks
-    uPortTaskBlock(U_CFG_OS_YIELD_MS + 1000);
+    uPortTaskBlock(1000);
 
 #if U_CFG_OS_CLIB_LEAKS
     // Take account of any heap lost through the
@@ -1678,7 +1746,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     timeDelta = uPortGetTickTimeMs() - startTimeMs;
     uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"
              " the test took %d second(s).\n", (int32_t) (timeDelta / 1000));
-    uPortLog("U_PORT_TEST: *** IMPORTANT *** please visually check"
+    uPortLog("U_PORT_TEST: ***IMPORTANT*** please visually check"
              " that the duration of this test as seen by the PC-side"
              " of the test system is also %d second(s).\n",
              (int32_t) (timeDelta / 1000));
@@ -1701,6 +1769,30 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
 # else
     (void) heapUsed;
 # endif
+}
+#endif
+
+#ifndef U_PORT_TEST_CHECK_TIME_TAKEN
+/** If checking of time taken is NOT being done, at least
+ * run uPortTaskBlock for a given time period so that
+ * the user is able to visually check that it's not, for
+ * instance, LESS than expected.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portOsBlock")
+{
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    uPortLog("U_PORT_TEST: waiting %d ms...\n",
+             U_PORT_TEST_OS_BLOCK_TIME_MS);
+
+    uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
+
+    uPortLog("U_PORT_TEST: ***IMPORTANT*** please visually check"
+             " that the duration of this test as seen by the"
+             " PC-side of the test is not less than %d second(s).\n",
+             U_PORT_TEST_OS_BLOCK_TIME_MS / 1000);
+
+    uPortDeinit();
 }
 #endif
 
@@ -1878,6 +1970,9 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     free(pParam);
 
     uPortDeinit();
+
+    // Give the RTOS idle task time to tidy-away the tasks
+    uPortTaskBlock(1000);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
@@ -2379,6 +2474,117 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
     } else {
         uPortLog("U_PORT_TEST: timers are not supported.\n");
     }
+
+    uPortDeinit();
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
+/** Test critical sections.
+ */
+U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
+{
+    int32_t errorCode;
+    int32_t heapUsed;
+    uint32_t y;
+    int64_t startTimeMs;
+    int32_t errorFlag = 0x00;
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+
+    uPortLog("U_PORT_TEST: testing critical sections, may take up to %d second(s)...\n",
+             ((U_PORT_TEST_CRITICAL_SECTION_TEST_TASK_START_TIME_SECONDS * 1000) +
+              (U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS * 2)) / 1000);
+
+    // Create the mutex that allows us to synchronise with the critical
+    // section test task
+    U_PORT_TEST_ASSERT(uPortMutexCreate(&gMutexHandle) == 0);
+    U_PORT_TEST_ASSERT(gMutexHandle != NULL);
+
+    // Create the task
+    U_PORT_TEST_ASSERT(uPortTaskCreate(criticalSectionTestTask, "critTestTask",
+                                       U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES,
+                                       (void *) &gVariable,
+                                       U_CFG_TEST_OS_TASK_PRIORITY,
+                                       &gTaskHandle) == 0);
+    U_PORT_TEST_ASSERT(gTaskHandle != NULL);
+
+    // The task should lock the mutex and begin incrementing the
+    // variable we pointed it at
+    for (size_t x = 0; (gVariable == 0) &&
+         (x < U_PORT_TEST_CRITICAL_SECTION_TEST_TASK_START_TIME_SECONDS); x++) {
+        uPortTaskBlock(1000);
+    }
+    U_PORT_TEST_ASSERT(gVariable > 0);
+
+    // Start the critical section
+    startTimeMs = uPortGetTickTimeMs();
+    errorCode = uPortEnterCritical();
+    // Note: don't assert inside here as we don't want to leave this test
+    // with the critical section active, instead just set errorFlag to indicate
+    // an error that we can assert on once we've left the critical section
+    if (!((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED))) {
+        errorFlag |= 0x01;
+    }
+    if (errorCode == 0) {
+        // With the critical section running, check that the variable doesn't change
+        y = gVariable;
+#ifndef _WIN32
+        // We can't call task block in here, and we can't guarantee that
+        // uPortGetTickTimeMs() will advance, so just busy-wait for a long time
+        for (size_t volatile z = 0; z < U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_LOOPS; z++) {}
+#else
+        // On Windoze we can use the tick and we need to in order that we wait a nice
+        // long time to _prove_ that the critical section has worked
+        //lint -e{441, 550} Suppress loop variable not used in 2nd part of for()
+        for (size_t x = 0; (gVariable == y) &&
+             (uPortGetTickTimeMs() - startTimeMs <
+              U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
+            uPortTaskBlock(100);
+        }
+#endif
+        if (gVariable != y) {
+            errorFlag |= 0x02;
+        }
+
+        // Leave the critical section
+        uPortExitCritical();
+
+        // Now check the error flag
+        uPortLog("U_PORT_TEST: error flag is 0x%08x.\n", errorFlag);
+        U_PORT_TEST_ASSERT(errorFlag == 0);
+
+        // gVariable should start changing again
+        startTimeMs = uPortGetTickTimeMs();
+        //lint -e{441, 550} Suppress loop variable not used in 2nd part of for()
+        for (size_t x = 0; (gVariable == y) &&
+             (uPortGetTickTimeMs() - startTimeMs <
+              U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS); x++) {
+            uPortTaskBlock(10);
+        }
+        U_PORT_TEST_ASSERT(gVariable != y);
+    } else {
+        uPortLog("U_PORT_TEST: critical sections not implemented on this platform,"
+                 " so not testing them.\n");
+    }
+
+    // Lock the mutex, which should cause the critical section test task to exit
+    U_PORT_TEST_ASSERT(uPortMutexLock(gMutexHandle) == 0);
+    // Allow time for the idle task to clean up the task
+    uPortTaskBlock(1000);
+    // Now it can be deleted
+    uPortMutexDelete(gMutexHandle);
+    gMutexHandle = NULL;
 
     uPortDeinit();
 

@@ -5,6 +5,7 @@ from time import gmtime, strftime, sleep
 import threading                  # For ReportThread
 from queue import Empty           # For ReportThread
 import logging
+import verboselogs
 from scripts import u_utils
 from scripts.u_logging import ULog
 
@@ -20,7 +21,7 @@ EVENT_TYPE_TEST = "test"
 EVENT_TYPE_INFRASTRUCTURE = "infrastructure"
 
 class Event:
-    def __init__(self, string, level=logging.INFO):
+    def __init__(self, string, level=verboselogs.NOTICE):
         self._string = string
         self._level = level
 
@@ -33,11 +34,16 @@ class Event:
     def get_log_level(self):
         return self._level
 
+class Ansi:
+    LIGHT_GREEN = "\033[0;32m"
+    LIGHT_CYAN = "\033[1;36m"
+    END = "\033[0m"
+
 # Events
 EVENT_START =       Event("start")
 EVENT_COMPLETE =    Event("complete")
 EVENT_FAILED =      Event("*** FAILED ***",  logging.ERROR)
-EVENT_PASSED =      Event("PASSED")
+EVENT_PASSED =      Event("PASSED", verboselogs.SUCCESS)
 EVENT_NAME =        Event("name")
 EVENT_INFORMATION = Event("information")
 EVENT_WARNING =     Event("*** WARNING ***", logging.WARNING)
@@ -86,7 +92,6 @@ def event_as_string(event):
                 string += ", "
             string += "{} ignored".format(event["tests_ignored"])
 
-    # If colorize is True return an ANSI colored line based on the event
     return string
 
 class ReportThread(threading.Thread):

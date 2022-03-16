@@ -123,6 +123,34 @@ int32_t uPortGetHeapMinFree();
  */
 int32_t uPortGetHeapFree();
 
+/** Enter a critical section: no interrupts should go off, no
+ * tasks will be rescheduled, until uPortExitCritical() is
+ * called. Note that OS-related port APIs (i.e. no uPortTask*,
+ * uPortMutex*, uPortSemaphore*, uPortQueue*, uPortEventQueue*
+ * or uPortTimer* functions) should NOT be called within the
+ * critical section; depending on the platform that may cause
+ * an assert or may cause the rescheduling you don't want to
+ * happen anyway.  So don't do that.  Also, time may not pass,
+ * i.e. uPortGetTickTimeMs() may not advance, during the critical
+ * section.
+ *
+ * It is NOT a requirement that this API is implemented:
+ * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * should be returned.
+ *
+ * @return zero on success else negative error code.
+ */
+int32_t uPortEnterCritical();
+
+/** Leave a critical section: use this AS SOON AS POSSIBLE
+ * after uPortEnterCritical().
+ *
+ * It is NOT a requirement that this API is implemented:
+ * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * should be returned by uPortEnterCritical().
+ */
+void uPortExitCritical();
+
 #ifdef __cplusplus
 }
 #endif

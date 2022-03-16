@@ -29,6 +29,12 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_PORT_MAX_NUM_TASKS
+/** The maximum number of tasks that can be created.
+ */
+# define U_PORT_MAX_NUM_TASKS 64
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -46,6 +52,52 @@ int32_t uPortPrivateInit(void);
 /** Deinitialise the private bits of the porting layer.
  */
 void uPortPrivateDeinit(void);
+
+/** Enter a critical section: no tasks will be rescheduled.
+ * until uPortExitCritical() is called.
+ *
+ * @return zero on success else negative error code.
+ */
+int32_t uPortPrivateEnterCritical();
+
+/** Leave a critical section.
+ *
+ * @return zero on success else negative error code.
+ */
+int32_t uPortPrivateExitCritical();
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: TASKS
+ * -------------------------------------------------------------- */
+
+/** Create and start a task.
+ *
+ * @param pFunction      the function that forms the task.
+ * @param stackSizeBytes the number of bytes of memory to dynamically
+ *                       allocate for stack.
+ * @param pParameter     a pointer that will be passed to pFunction
+ *                       when the task is started.
+ *                       The thing at the end of this pointer must be
+ *                       there for the lifetime of the task, it is
+ *                       not copied.  May be NULL.
+ * @param priority       the priority at which to run the task.
+ * @param pTaskHandle    a place to put the handle of the created
+ *                       task.
+ * @return               zero on success else negative error code.
+ */
+int32_t uPortPrivateTaskCreate(void (*pFunction)(void *),
+                               size_t stackSizeBytes,
+                               void *pParameter,
+                               int32_t priority,
+                               uPortTaskHandle_t *pTaskHandle);
+
+/** Delete the given task.
+ *
+ * @param taskHandle  the handle of the task to be deleted.
+ *                    Use NULL to delete the current task.
+ * @return            zero on success else negative error code.
+ */
+int32_t uPortPrivateTaskDelete(const uPortTaskHandle_t taskHandle);
 
 /** For convenience the task priorities are kept in a 0 to 15 range,
  * however within the Windows thread API the priorities are -2 to

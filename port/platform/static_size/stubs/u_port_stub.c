@@ -64,6 +64,13 @@ int32_t uPortGetHeapFree()
 {
     return 0;
 }
+int32_t uPortEnterCritical()
+{
+    return 0;
+}
+void uPortExitCritical()
+{
+}
 
 // From u_port_debug.h.
 void uPortLogF(const char *pFormat, ...)

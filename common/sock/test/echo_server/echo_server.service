@@ -1,0 +1,11 @@
+[Unit]
+Description=echo servers
+
+[Service]
+# Modify this to point to wherever you've copied the echo server stuff
+Type=forking
+WorkingDirectory=/home/rmea/echo_server/
+ExecStart=/home/rmea/echo_server/echo_server.sh
+
+[Install]
+WantedBy=multi-user.target

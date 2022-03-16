@@ -134,10 +134,15 @@ int32_t uGnssPosGet(int32_t gnssHandle,
                     int32_t *pSvs, int64_t *pTimeUtc,
                     bool (*pKeepGoingCallback) (int32_t));
 
-/** Get the current position, non-blocking version.  Note that
- * this function creates a mutex for thread-safety which remains
- * in memory even after pCallback has been called; calling
- * uGnssPosGetStop() will free it again.
+/** A non-blocking version of uGnssPosGet(), i.e. this is still a
+ * one-shot operation but the answer arrives via a callback.  Should
+ * you wish to cancel a request, or start a new request without waiting
+ * for the answer to the previous request, then you must call
+ * uGnssPosGetStop() first (otherwise U_ERROR_COMMON_NO_MEMORY will
+ * be returned).  uGnssPosGetStart() creates a mutex for thread-safety
+ * which remains in memory until the GNSS API is deinitialised; should
+ * you wish to free the memory occupied by the mutex then calling
+ * uGnssPosGetStop() will also do that.
  *
  * @param gnssHandle the handle of the GNSS instance to use.
  * @param pCallback  a callback that will be called when a fix has been

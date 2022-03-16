@@ -104,9 +104,11 @@ def log(ctx, mcu="NRF52840_XXAA", debugger_serial=""):
     """Open a log terminal"""
     if debugger_serial == "":
         debugger_serial = None
+
     with URttReader(mcu, jlink_serial=debugger_serial, reset_on_connect=True) as rtt_reader:
         while True:
             data = rtt_reader.read()
             if data:
-                sys.stdout.write("".join(map(chr, data)))
+                text = bytearray(data).decode(sys.stdout.encoding, "backslashreplace")
+                sys.stdout.write(text)
                 sys.stdout.flush()

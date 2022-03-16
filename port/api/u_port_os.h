@@ -92,7 +92,7 @@ typedef void (pTimerCallback_t) (const uPortTimerHandle_t, void *);
  * FUNCTIONS: TASKS
  * -------------------------------------------------------------- */
 
-/** Create task, and start, a task.
+/** Create, and start, a task.
  *
  * @param pFunction      the function that forms the task.
  * @param pName          a null-terminated string naming the task,
@@ -290,7 +290,11 @@ int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle);
  */
 int32_t uPortMutexCreate(uPortMutexHandle_t *pMutexHandle);
 
-/** Destroy a mutex.
+/** Destroy a mutex.  Note that it is not permitted to delete a
+ * mutex which is currently locked, hence it is good practice
+ * in any de-initialisation code to lock and then unlock a mutex
+ * before destroying it, just to be sure there is no asynchronous
+ * thing that hasn't quite finished yet.
  *
  * @param mutexHandle the handle of the mutex.
  * @return            zero on success else negative error code.

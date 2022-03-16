@@ -49,7 +49,7 @@ WORKDIR /workdir
 #***************************************************
 
 RUN pip3 install \
-        pyserial pylint psutil pylink-square requests_toolbelt rpyc debugpy invoke coloredlogs && \
+        pyserial pylint psutil pylink-square requests_toolbelt rpyc debugpy invoke coloredlogs verboselogs && \
     apt-get update && apt-get install -y --no-install-recommends  \
         usbutils gawk iputils-ping openssh-client \
 # Needed for OpenOCD

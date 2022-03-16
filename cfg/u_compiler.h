@@ -52,6 +52,20 @@
 # define U_WEAK __attribute__ ((weak))
 #endif
 
+/** U_INLINE: the macro that should make a compiler ALWAYS inline a
+ * function, no matter what optimisation level it is set to.
+ */
+#ifdef _MSC_VER
+/** Microsoft Visual C++ definition: no need to inline, lots of
+ * oomph on Windows.
+ */
+# define U_INLINE
+#else
+/** Default (GCC) definition.
+ */
+# define U_INLINE __attribute__ ((always_inline)) inline
+#endif
+
 #endif // _U_COMPILER_H_
 
 // End of file
