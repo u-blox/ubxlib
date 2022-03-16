@@ -14,13 +14,21 @@ The running echo servers can be found at the following addresses:
 # Installation
 The [README.md](https://github.com/aws/amazon-freertos/tree/main/tools/echo_server#readme) at the above link was used to install TCP and secure TCP versions of the echo server.  The certificates generated for the secure TCP echo server can be found in the [certs](certs) directory.  Then [echo-server.go](echo-server.go) was copied and adapted to form [echo-server-udp.go](echo-server-udp.go).
 
-The files in this directory (and sub-directories) were built, installed and run \[using `nohup` on Linux\] as follows:
-
+- Make sure that `golang` is installed on your Linux server.
+- Copy this directory to a directory on your Linux server.
+- `cd` to that directory and run:
 ```
 go build echo_server.go
-nohup ./echo_server -config config.json >/dev/null 2>&1 &
-nohup ./echo_server -config config_secure.json >/dev/null 2>&1 &
-
 go build echo_server_udp.go
-nohup ./echo_server_udp -config config_udp.json >/dev/null 2>&1 &
 ```
+- To just run all three echo servers manually, execute `sh ./echo_server.sh` (see note below if you get strange errors).
+- To start the echo servers as a service at boot, kill the processes that started running as a result of the above line (`ps aux` and `kill xxx` where `xxx` is the `PID`), modify the file `echo_server.service` to point to the location where you have copied this directory, copy `echo_server.service` to `/etc/systemd/system` and then:
+```
+sudo chmod u+x echo_server.sh
+sudo systemctl daemon-reload
+sudo systemctl start echo_server
+sudo systemctl enable echo_server
+```
+- To test that it is working (or at least the TCP flavour is), open PuTTY or similar and connect a RAW socket to the server on port 5055 (for the TCP echo server): what you type in the PuTTY terminal should be echo'ed back to you (on a line-buffered basis).
+
+Note: if you have FTP'ed `echo_server.sh` or `echo_server.service` across to your echo server from Windows they may well have the wrong line endings and strange things may happen; to give them the correct line endings, open the file in `nano`, press `CTRL-O` to write the file and then, before actually writing it, press `ALT-D` to switch to native Linux format and press \<enter\> to save the file.
