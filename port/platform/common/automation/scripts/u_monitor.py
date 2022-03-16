@@ -12,6 +12,7 @@ import os
 from datetime import datetime
 from time import time, ctime, sleep
 import subprocess
+import psutil
 import serial                # Pyserial (make sure to do pip install pyserial)
 from scripts import u_report, u_utils
 from scripts.u_logging import ULog
@@ -88,7 +89,6 @@ def reboot_callback(match, results: TestResults, reporter):
 def run_callback(match, results: TestResults, reporter):
     '''Handler for an item beginning to run'''
 
-    del reporter
     name = match.group(1)
     if results.current:
         # There shouldn't be any current test case
@@ -383,10 +383,20 @@ def remove_unprintable_chars(text):
     """Replace unprintable characters with '?'"""
     return str(''.join(ascii.isprint(c) and c or '?' for c in text))
 
+def terminate(in_handle):
+    """Helper function for terminating a process and all its children"""
+    try:
+        process = psutil.Process(in_handle.pid)
+    except (psutil.NoSuchProcess, ProcessLookupError):
+        return
+    for proc in process.children(recursive=True):
+        proc.terminate()
+    process.terminate()
+
 def timeout(connection_type, in_handle):
     """Timeout event"""
     if connection_type == CONNECTION_PROCESS:
-        subprocess.Popen.kill(in_handle)
+        terminate(in_handle)
 
 
 # Watch the output from the items being run
@@ -596,7 +606,7 @@ if __name__ == "__main__":
 
             # Tidy up
             if CONNECTION_TYPE == CONNECTION_PROCESS:
-                CONNECTION_HANDLE.terminate()
+                terminate(CONNECTION_HANDLE)
             else:
                 CONNECTION_HANDLE.close()
 
