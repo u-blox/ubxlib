@@ -40,7 +40,7 @@ You may now build the code at that command prompt; create a build directory for 
 # Visual Studio Code
 Visual Studio Code supports use of CMake directly: instead of running `cmake` from the command prompt as above, instead launch Visual Studio Code by entering `code`. Open your build folder, e.g. the `runner` directory below this, in Visual Studio Code, give it a moment and a prompt should pop-up in the bottom right-hand corner of the screen from the `CMake Tools` extension, asking if you want to configure the folder: click `Yes`.  Depending on how many compilers you have installed you may be given LOTS of options: select the **x86** version of the Microsoft Visual C++ toolchain you installed, e.g. the x86 version of Microsoft Visual Studio build tools 2022.
 
-When this has run you should see your build targets left-hand window of the `CMake Tool` extension view; for instance in the case of the `runner` build you will see the `ubxlib_test_main` target.  Right-click on the `.exe` entry for that target to build it and then again to debug it.
+When this has run you should see your build targets in the left-hand window of the `CMake Tool` extension view; for instance in the case of the `runner` build you will see the `ubxlib_test_main` target.  Right-click on the `.exe` entry for that target to build it and then again to debug it.
 
 Note that if you run your code under a debugger on Windows, unlike with an embedded platform, the timer tick is not paused when you pause the debugger.
 

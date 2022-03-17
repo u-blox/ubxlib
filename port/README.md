@@ -28,6 +28,7 @@ For ports that use CMake [ubxlib.cmake](ubxlib.cmake) can be used to collect the
 `ubxlib.cmake` is typically included in a port specific CMake file and will then define a couple of variables that the calling CMake file can make use of (see the [esp32 component CMakeLists.txt](platform/esp-idf/mcu/esp32/components/ubxlib/CMakeLists.txt) as example).
 
 Before including `ubxlib.cmake` you must set the variable `UBXLIB_BASE` to root directory of `ubxlib`.
+
 You must also specify what `ubxlib` features to enable using the `UBXLIB_FEATURES` variable described below.
 
 ## UBXLIB_FEATURES
