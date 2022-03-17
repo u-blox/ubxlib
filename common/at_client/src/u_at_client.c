@@ -725,6 +725,13 @@ static void mutexStackPush(uAtClientMutexStack_t *pStack,
     // there must only ever be one entry in the stack so that
     // no thread-safety issues can occur
     uPortEnterCritical();
+    // NOTE: these asserts are, necessarily and obviously,
+    // within a critical section.  The default U_ASSERT handler
+    // simply prints something out and, when that is done while
+    // in a critical section, it may cause a subsequent assert:
+    // for instance with newlib under GCC you will see an
+    // assert going off in lock.c because newlib wants to
+    // lock the stdout stream for the print.
     U_ASSERT(pStack->pNextFree >= pStack->stack);
     U_ASSERT(pStack->pNextFree < pStack->stack + (sizeof(pStack->stack) / sizeof(pStack->stack[0])));
     *(pStack->pNextFree) = mutex;
