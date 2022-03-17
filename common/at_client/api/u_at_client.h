@@ -325,7 +325,7 @@ extern "C" {
  * or STM32F4 and more again in the version pre-built for
  * Arduino.
  */
-# define U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES  2048
+# define U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES  2304
 #endif
 
 #ifndef U_AT_CLIENT_URC_TASK_PRIORITY

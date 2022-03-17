@@ -77,16 +77,6 @@ extern "C" {
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B) || \
      ((moduleType) == U_CELL_MODULE_TYPE_SARA_R422))
 
-/** Return true if the given module type supports 3GPP power saving.
- */
-#define U_CELL_PRIVATE_MODULE_HAS_3GPP_POWER_SAVING(moduleType)  \
-    (((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||      \
-     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_02B) ||      \
-     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R412M_03B) ||      \
-     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R410M_03B) ||      \
-     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R422)      ||      \
-     ((moduleType) == U_CELL_MODULE_TYPE_SARA_R5))
-
 /** Return true if the supported RATS bitmap includes LTE.
  */
 #define U_CELL_PRIVATE_SUPPORTED_RATS_LTE(supportedRatsBitmap)  \
@@ -192,7 +182,11 @@ typedef enum {
     U_CELL_PRIVATE_FEATURE_AT_PROFILES,
     U_CELL_PRIVATE_FEATURE_SECURITY_ZTP,
     U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG,
-    U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING
+    U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING,
+    U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING,
+    U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET,
+    U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC,
+    U_CELL_PRIVATE_FEATURE_EDRX
 } uCellPrivateFeature_t;
 
 /** The characteristics that may differ between cellular modules.
@@ -284,6 +278,35 @@ typedef struct {
     int32_t fixStatus;                       /**< status of a location fix. */
 } uCellPrivateLocContext_t;
 
+/** Type to keep track of the deep sleep state.
+ */
+//lint -esym(769, uCellPrivateDeepSleepState_t::U_CELL_PRIVATE_MAX_NUM_SLEEP_STATES) Suppress not referenced
+typedef enum {
+    U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNKNOWN,
+    U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE, /**< Deep sleep is not available, deep sleep is not possible. */
+    U_CELL_PRIVATE_DEEP_SLEEP_STATE_AVAILABLE,   /**< Deep sleep is available, could sleep at any time. */
+    U_CELL_PRIVATE_DEEP_SLEEP_STATE_PROTOCOL_STACK_ASLEEP,   /**< +UUPSMR: 1 has been received. */
+    U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP,      /**< VInt is "off", the module is in deep sleep. */
+    U_CELL_PRIVATE_MAX_NUM_SLEEP_STATES
+} uCellPrivateDeepSleepState_t;
+
+/** Structure to keep track of all things deep sleep related.
+ */
+typedef struct {
+    // *INDENT-OFF* (otherwise AStyle makes a mess of this)
+    bool powerSaving3gppAgreed; /**< 3GPP power saving has been agreed with the network. */
+    bool powerSaving3gppOnNotOffCereg; /**< Whether 3GPP power saving is on or off according to the +CEREG URC. */
+    int32_t activeTimeSecondsCereg; /**< The assigned active time according to the +CEREG URC. */
+    int32_t periodicWakeupSecondsCereg; /**< The assigned periodic wake-up time according to the +CEREG URC. */
+    void (*p3gppPowerSavingCallback) (int32_t, bool, int32_t, int32_t, void *); /**< User callback called when +CEREG is seen. */
+    void *p3gppPowerSavingCallbackParam; /**< User parameter to p3gppPowerSavingCallback. */
+    void (*pEDrxCallback) (int32_t, uCellNetRat_t, bool, int32_t, int32_t, int32_t, void *); /**< User callback called when E-DRX parameters changes. */
+    void *pEDrxCallbackParam; /**< User parameter to pEDrxCallback. */
+    void (*pWakeUpCallback) (int32_t, void *); /**< A callback that can be called when a module is awoken from deep sleep. */
+    void *pWakeUpCallbackParam; /**< Parameter provided by the user and passed to pWakeUpCallback when called. */
+    // *INDENT-ON*
+} uCellPrivateSleep_t;
+
 /** Definition of a cellular instance.
  */
 typedef struct uCellPrivateInstance_t {
@@ -296,6 +319,9 @@ typedef struct uCellPrivateInstance_t {
                                  PWR_ON pin of the cellular module. */
     int32_t pinVInt;        /**< The pin that is connected to the
                                  VINT pin of the cellular module. */
+    int32_t pinDtrPowerSaving; /**< The pin that is connected to the
+                                    cellular module's DTR pin, ONLY used
+                                    for UPSV mode 3, -1 otherwise. */
     char mccMnc[U_CELL_NET_MCC_MNC_LENGTH_BYTES]; /**< The MCC MNC if manual
                                                        network selection has
                                                        been requested (set
@@ -325,25 +351,17 @@ typedef struct uCellPrivateInstance_t {
     volatile void *pMqttContext; /**< Hook for MQTT context, volatile as it
                                       can be populared by a URC in a different thread. */
     uCellPrivateLocContext_t *pLocContext; /**< Hook for a location context. **/
-    bool socketsHexMode; /**< set to true for sockets to use hex mode. */
-    const char *pFileSystemTag; /**< the tagged area of the file system currently being addressed. */
+    bool socketsHexMode; /**< Set to true for sockets to use hex mode. */
+    const char *pFileSystemTag; /**< The tagged area of the file system currently being addressed. */
+    uCellPrivateDeepSleepState_t deepSleepState; /**< The current deep sleep state. */
+    bool inWakeUpCallback; /**< So that we can avoid recursion. */
+    uCellPrivateSleep_t *pSleepContext; /**< Context for sleep stuff. */
     struct uCellPrivateInstance_t *pNext;
-    int32_t dtrPowerSavingPin;
 } uCellPrivateInstance_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
-
-/** Return true if the given buffer contains only numeric
- * characters (i.e. 0 to 9).
- *
- * @param pBuffer     pointer to the buffer.
- * @param bufferSize  number of characters at pBuffer.
- * @return            true if all the characters in pBuffer are
- *                    numeric characters, else false.
- */
-bool uCellPrivateIsNumeric(const char *pBuffer, size_t bufferSize);
 
 /** The characteristics of the supported module types, compiled
  * into the driver.
@@ -365,6 +383,16 @@ extern uPortMutexHandle_t gUCellPrivateMutex;
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
+
+/** Return true if the given buffer contains only numeric
+ * characters (i.e. 0 to 9).
+ *
+ * @param pBuffer     pointer to the buffer.
+ * @param bufferSize  number of characters at pBuffer.
+ * @return            true if all the characters in pBuffer are
+ *                    numeric characters, else false.
+ */
+bool uCellPrivateIsNumeric(const char *pBuffer, size_t bufferSize);
 
 /** Find a cellular instance in the list by instance handle.
  * Note: gUCellPrivateMutex should be locked before this is called.
@@ -443,6 +471,16 @@ int32_t uCellPrivateGetImei(const uCellPrivateInstance_t *pInstance,
  */
 bool uCellPrivateIsRegistered(const uCellPrivateInstance_t *pInstance);
 
+/** Convert the module's RA numbering to our RAT numbering.
+ *
+ * @param moduleType  the module type (since the numbering is different
+ *                    in some cases).
+ * @param moduleRat   the RAT number used by the module.
+ * @return            the RAT number in ubxlib numbering.
+ */
+uCellNetRat_t uCellPrivateModuleRatToCellRat(uCellModuleType_t moduleType,
+                                             int32_t moduleRat);
+
 /** Get the active RAT.
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
@@ -487,28 +525,79 @@ void uCellPrivateScanFree(uCellPrivateNet_t **ppScanResults);
 const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle);
 
 /** Remove the chip to chip security context for the given instance.
+ * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateC2cRemoveContext(uCellPrivateInstance_t *pInstance);
 
 /** Remove the location context for the given instance.
+ * Note: gUCellPrivateMutex should be locked before this is called.
  *
  * @param pInstance   a pointer to the cellular instance.
  */
 void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance);
 
-/** Callback to wake up the cellular module from UART power
- * saving where sending a character to the UART is good enough to
- * wake it up.
+/** Remove the sleep context for the given instance.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ */
+void uCellPrivateSleepRemoveContext(uCellPrivateInstance_t *pInstance);
+
+/** [Re]attach a PDP context to an internal module profile.  This
+ * is required by some module types (e.g. SARA-R4 and SARA-R5 modules)
+ * when a PDP context is either first established or has been lost, e.g.
+ * due to network coverage issues or sleep, and then has been regained
+ * once more.  The profile used internally to the module for sockets
+ * connections, MQTT, etc. is NOT automatically reattached to the regained
+ * context.
+ *
+ * @param pInstance   a pointer to the cellular instance.
+ * @param contextId   the ID for the PDP context.
+ * @param profileId   the ID of the profile to associate with the PDP context.
+ * @param tries       the number of times to try doing this, should be at
+ *                    least 1.
+ * @param pKeepGoing  a callback which should return true if the profile
+ *                    activation process is to continue, or can be NULL.
+ * @return            zero on success else negative error code.
+ */
+int32_t uCellPrivateActivateProfile(const uCellPrivateInstance_t *pInstance,
+                                    int32_t contextId, int32_t profileId, size_t tries,
+                                    bool (*pKeepGoing) (const uCellPrivateInstance_t *));
+
+/** Determine whether deep sleep is active, i.e. VInt has gone
+ * low; the +UUPSMR URC doesn't count here, it's only actual deep sleep
+ * that we care about.
+ *
+ * @param pInstance  a pointer to the cellular instance.
+ * @return           true if the deep sleep is active, else false.
+ */
+bool uCellPrivateIsDeepSleepActive(uCellPrivateInstance_t *pInstance);
+
+/** Callback to wake up the cellular module from power saving.
  *
  * @param atHandle   the handle of the AT client that is talking
  *                   to the module.
- * @param pParam     the parameter for the callback, ignored.
- * @return           0 on successful wake-up, else negative error.
+ * @param pInstance  the parameter for the callback, should be a
+ *                   pointer to the instance data.
+ * @return           zero on successful wake-up, else negative error.
  */
-int32_t uCellPrivateUartWakeUpCallback(uAtClientHandle_t atHandle,
-                                       void *pParam);
+int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle,
+                                   void *pInstance);
+
+/** Determine the deep sleep state.  This is not at all straightforward.
+ * If deep sleep is supported then a check is made as to whether the
+ * 3GPP sleep or E-DRX parameters have been set.  If they are then it may
+ * be possible to go to sleep if an EUTRAN RAT is in the list of supported
+ * RATs.  Something like that anyway.  This should be called after
+ * power-on and after a RAT change; it doesn't talk to the module,
+ * simply works on the current state of the module as known to this code.
+ * Note: gUCellPrivateMutex should be locked before this is called.
+ *
+ * @param pInstance a pointer to the cellular instance.
+ */
+void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance);
 
 #ifdef __cplusplus
 }

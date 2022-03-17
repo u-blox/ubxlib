@@ -21,9 +21,79 @@
 
 /** @file
  * @brief This header file defines the APIs that initialse and
- * control power to a cellular module. These functions are
- * are thread-safe with the proviso that there is only one
- * cellular module underlying them.
+ * control power to a cellular module and enable it to save power
+ * through sleep.  These functions are thread-safe.
+ *
+ * NOTES ON POWER SAVING
+ * A u-blox cellular module has two sleep states and three ways to
+ * get to them.  You can read more detail below but, in summary:
+ *
+ * - this code automatically configures the cellular module for
+ *   "32 kHz sleep"; it can do this because this sleep mode has no
+ *   adverse effect on the application, does not need to be configured
+ *   by the application, etc.,
+ * - a typical application may then configure E-DRX, with timings of the
+ *   application's choosing, to save more power by allowing the module
+ *   to switch its radio off for longer periods,
+ * - a very sleepy application, one which perhaps wakes up just a few
+ *   times a day, may instead configure 3GPP sleep to save the most
+ *   power, provided that application is happy to lose all module state
+ *   (sockets, MQTT broker connections, etc.) on entry to sleep.
+ *
+ * The sleep states are as follows:
+ *
+ * "UART sleep"/"32 kHz sleep": in this sleep state the speed of the
+ * module's clocks are reduced to save a lot of power.  Because of
+ * these reduced clock rates the module is not able to drive the
+ * UART HW, hence this is often termed "UART sleep".  However, all
+ * of the module's RAM is still on, state is fully retained, the module
+ * is still actually running, is still connected to the network, and
+ * it can be woken-up quickly by toggling lines of the UART AT interface.
+ *
+ * "deep sleep": in this sleep state the module is basically off,
+ * almost all state is lost, what is retained is only a basic notion
+ * of time and whether the module was attached to the cellular
+ * network when deep sleep began.  The IP stack on the module, the
+ * MQTT client on the module, etc, are all reset by deep sleep.
+ *
+ * The ways of entering these sleep states are as follows:
+ *
+ * "AT+UPSV": this command permits the module to enter "32 kHz sleep"
+ * after a given amount of inactivity.  This code enables AT+UPSV power
+ * saving automatically with a timer of 6 seconds and wakes the module
+ * up again as required by the application.  You need do nothing.
+ *
+ * "E-DRX": this is 3GPP-defined and forms an agreement with the network
+ * that the module will be out of contact for short periods (think 10's
+ * or 100's, at most 1000's of seconds) so that the module can save power.
+ * The functions with "EDrx" in the name below allow you to initiate and
+ * manage E-DRX.  This is something you, the application writer, must
+ * do, since the timings, the required wakefulness, is something only
+ * the application can know.  During the "sleep" periods of E-DRX,
+ * because this code always engages "AT+UPSV", the module is in 32 kHz
+ * sleep but it can also power the cellular radio down and hence save
+ * a lot more power.  And because this code only allows the module to
+ * go into 32 kHz sleep during the E-DRX sleep periods the application
+ * never has to worry about state being lost.
+ *
+ * "3GPP power saving made (PSM)": also a 3GPP-defined mechanism, this
+ * forms an agreement with the network that the module will be out of
+ * contact for long periods (think hours or days).  The functions below
+ * with "3gppPowerSaving" in the name allow you to initiate and manage
+ * 3GPP power saving.  During the sleep periods of 3GPP power saving mode
+ * the module enters deep sleep, all state aside from the knowledge of
+ * its cellular connection with the network is lost; module sockets/MQTT,
+ * etc. are reset.  It is like the module is actually switched off except
+ * that the network _knows_ it is off and maintains that knowledge so
+ * that when the module leaves deep sleep it doesn't necessarily have
+ * to contact the network to tell it, the two are behaving according to
+ * their 3GPP power saving agreement.  Since the module is almost entirely
+ * off during 3GPP sleep things such as waiting for an answer from a cloud
+ * service, waiting for an attached GNSS module to do something, all of
+ * these long-term things, will be curtailed if the deep sleep were to
+ * be entered; it is up to the application writer to ensure that 3GPP
+ * power saving is configured appropriately, considering what the cellular
+ * module has been asked to do.
  */
 
 #ifdef __cplusplus
@@ -160,13 +230,13 @@ bool uCellPwrIsAlive(int32_t cellHandle);
  *                           callback function returns false
  *                           then the power-on process will
  *                           be abandoned.  Even when
- *                           this callback returns false it
+ *                           this callback returns false
  *                           this function may still take some
  *                           10's of seconds to return in order
  *                           to ensure that the module is in a
  *                           cleanly powered (or not) state.
  *                           If this function is forced to return
- *                           It is advisable to call
+ *                           it is advisable to call
  *                           uCellPwrIsAlive() to confirm
  *                           the final state of the module. The
  *                           single int32_t parameter is the
@@ -284,7 +354,7 @@ bool uCellPwrRebootIsRequired(int32_t cellHandle);
  *                           to ensure that the module is in a
  *                           cleanly powered (or not) state.
  *                           If this function is forced to return
- *                           It is advisable to call
+ *                           it is advisable to call
  *                           uCellPwrIsAlive() to confirm
  *                           the final state of the module. The
  *                           single int32_t parameter is the
@@ -313,22 +383,32 @@ int32_t uCellPwrReboot(int32_t cellHandle,
  */
 int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset);
 
-/** Set the DTR power-saving pin.  Power saving is normally handled
- * automatically but there is a specific case with the SARA-R5 modules
- * where the UART flow control lines are in use which prevents that
- * working.  Instead, and only for SARA-R5 modules, the DTR pin can
- * be used to control power saving by calling this function.
+/** Set the DTR power-saving pin.  "UPSV" or UART power saving is
+ * normally handled automatically, using activity on the UART transmit
+ * data line to wake-up the module but there is a specific case with
+ * the SARA-R5 module that needs to be handled differently: when
+ * the UART flow control lines are connected and UART power saving
+ * is entered the CTS line of the SARA-R5 module floats high and this
+ * prevents "AT" being sent to the module to wake it up again. This
+ * can be avoided by temporarily suspending CTS operation through
+ * the uPortUartCtsSuspend() API but there are some RTOSs (e.g.
+ * Zephyr) that do not support temporary suspension of CTS.  For
+ * these cases, and only for SARA-R5 modules, the DTR pin can
+ * be used to control UART power saving inatead by calling this function.
  * This must be called BEFORE the module is first powered-on, e.g.
- * just after uCellAdd().
+ * just after uCellAdd(); for the common network API this is done
+ * by defining the pin of this MCU that is connected to the DTR pin
+ * as the value of the conditional compilation flag U_CFG_APP_PIN_CELL_DTR
+ * and passing this conditional compilation flag into the build.
  * Note: the same problem exists for SARA-U201 modules and, in theory,
  * the same solution applies.  However, since we are not able to
  * regression test that configuration it is not currently marked as
- * supported
- * Note: the cellular module _remembers_ the power saving mode and so,
- * if you should ever change a module from DTR power saving to a
- * different power saving mode, you must keep the DTR pin of the
- * module asserted (i.e. tied low) in order that the AT+UPSV command
- * to change to one of the other modes can be sent.
+ * supported in the configuration structure in u_cell_private.c.
+ * Note: the cellular module _remembers_ the UART power saving mode
+ * and so, if you should ever change a module from DTR power saving
+ * to a different UART power saving mode, you must keep the DTR pin
+ * of the module asserted (i.e. tied low) in order that the AT+UPSV
+ * command to change to one of the other modes can be sent.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pin         the pin of this MCU that is connected to
@@ -336,8 +416,7 @@ int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset);
  * @return            zero on success or negative error
  *                    code on failure.
  */
-int32_t uCellPwrSetDtrPowerSavingPin(int32_t cellHandle,
-                                     int32_t pin);
+int32_t uCellPwrSetDtrPowerSavingPin(int32_t cellHandle, int32_t pin);
 
 /** Get the DTR power-saving pin.
  *
@@ -348,6 +427,436 @@ int32_t uCellPwrSetDtrPowerSavingPin(int32_t cellHandle,
  *                    or negative error code.
  */
 int32_t uCellPwrGetDtrPowerSavingPin(int32_t cellHandle);
+
+/** Set the parameters for 3GPP power saving, only valid when in
+ * Cat-M1/NB1 mode and only effective when the module is connected
+ * to the cellular network.
+ * If the module is registered with the network and there is no
+ * radio activity (i.e. transmission to or reception from the
+ * cellular network) for the duration of the active time then the
+ * module will enter deep sleep.  When deep sleep is entered
+ * it is as if the module has been switched off except that
+ * its registration status with the cellular network is
+ * preserved, it does not have to go through the registration/
+ * activation process with the network on return from deep sleep.
+ * HOWEVER all application-level context INSIDE the module, e.g.
+ * open sockets, MQTT connections, etc., are lost: if these are
+ * important to you then consider using uCellPwrSetRequestedEDrx()
+ * instead.
+ * The values represent a request to the network; the network may
+ * apply limits to the accepted values. The current 3GPP power
+ * saving parameters as agreed with the network may be read with
+ * a call to uCellPwrGet3gppPowerSaving().
+ * Returning the module to normal operation requires a call to
+ * uCellPwrWakeUpFromDeepSleep(), which is performed AUTOMATICALLY
+ * by this code when any API is called.  Note that this means it
+ * is a requirement that pinPwrOn is connected to this MCU and was
+ * set in the call to uCellAdd(), as that pin is used to wake the
+ * module from deep sleep, and also either that the VInt pin is
+ * connected to this MCU and was set in the uCellAdd() call, so
+ * that this code can detect when deep sleep has been entered.
+ * Some modules (e.g. SARA-R4) require a re-boot for the setting
+ * to be applied; it is best to check this by calling
+ * uCellPwrRebootIsRequired() once this function returns.
+ * 3GPP power saving is only supported when UART power saving is also
+ * allowed to operate, i.e. do not define
+ * U_CFG_CELL_DISABLE_UART_POWER_SAVING if you want 3GPP sleep to
+ * work.
+ * Note: there is a corner case with SARA-R422 which is that, after
+ * waking up from deep sleep, it will not re-enter deep sleep until
+ * a radio connection has been made and then released.
+ *
+ * @param cellHandle            the handle of the cellular
+ *                              instance.
+ * @param rat                   the radio access technology
+ *                              the setting will be applied to
+ *                              e.g. U_CELL_NET_RAT_CATM1 or
+ *                              U_CELL_NET_RAT_NB1 or the
+ *                              return value of
+ *                              uCellNetGetActiveRat() if
+ *                              registered with the network.
+ * @param onNotOff              true to switch 3GPP power saving
+ *                              on, in which case activeTimeSeconds
+ *                              and periodicWakeupSeconds must be
+ *                              positive values, else false
+ *                              to switch 3GPP power saving off.
+ * @param activeTimeSeconds     the period of inactivity after
+ *                              which the module may go to
+ *                              3GPP power saving mode. The
+ *                              activity time cannot be set
+ *                              to less than
+ *                              U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS
+ *                              in order for the wake-up code
+ *                              to work.
+ * @param periodicWakeupSeconds the period at which the module
+ *                              wishes to wake up to inform
+ *                              the cellular network that it
+ *                              is still connected; this should
+ *                              be set to around 1.5 times your
+ *                              application's natural periodicity,
+ *                              as a safety-net; the wake-up only
+ *                              occurs if the module has not already
+ *                              woken up for other reasons in time.
+ * @return                      zero on success or negative
+ *                              error code on failure.
+ */
+int32_t  uCellPwrSetRequested3gppPowerSaving(int32_t cellHandle,
+                                             uCellNetRat_t rat,
+                                             bool onNotOff,
+                                             int32_t activeTimeSeconds,
+                                             int32_t periodicWakeupSeconds);
+
+/** Get the currently requested parameters for 3GPP power saving
+ * for the current RAT.
+ *
+ * @param cellHandle             the handle of the cellular
+ *                               instance.
+ * @param pOnNotOff              a place to put whether 3GPP power
+ *                               saving is on or off, may be NULL.
+ * @param pActiveTimeSeconds     a place to put the period of
+ *                               inactivity after which the module
+ *                               may go to 3GPP power saving
+ *                               mode; may be NULL.
+ * @param pPeriodicWakeupSeconds a place to put the period at
+ *                               which the module wishes to
+ *                               wake-up to inform the cellular
+ *                               network that it is still
+ *                               connected; may be NULL.
+ * @return                       zero on success or negative
+ *                               error code on failure.
+ */
+int32_t uCellPwrGetRequested3gppPowerSaving(int32_t cellHandle,
+                                            bool *pOnNotOff,
+                                            int32_t *pActiveTimeSeconds,
+                                            int32_t *pPeriodicWakeupSeconds);
+
+/** Get the 3GPP power saving parameters as agreed with the cellular
+ * network for the current RAT.
+ *
+ * @param cellHandle             the handle of the cellular
+ *                               instance.
+ * @param pOnNotOff              a place to put whether 3GPP power
+ *                               saving is on or off, may be NULL.
+ * @param pActiveTimeSeconds     a place to put the period of
+ *                               inactivity after which the module
+ *                               may go to 3GPP power saving
+ *                               mode; may be NULL.
+ * @param pPeriodicWakeupSeconds a place to put the period at
+ *                               which the module wishes to
+ *                               wake-up to inform the cellular
+ *                               network that it is still
+ *                               connected; may be NULL.
+ * @return                       zero on success or negative
+ *                               error code on failure.
+ */
+int32_t uCellPwrGet3gppPowerSaving(int32_t cellHandle,
+                                   bool *pOnNotOff,
+                                   int32_t *pActiveTimeSeconds,
+                                   int32_t *pPeriodicWakeupSeconds);
+
+/** Set a callback which will be called when the assigned 3GPP
+ * power saving parameters are changed by the network, either when
+ * the are first set up or on a cell/tracking area change.
+ * The callback is implemented using the uAtClientCallback() queue,
+ * see the AT client API for details. The callback should not block;
+ * use the callback to signal something else to do any heavy-lifting
+ * and then return, otherwise important operations such as reacting
+ * to URCs sent by the module will be adversely affected.
+ *
+ * @param cellHandle          the handle of the cellular instance.
+ * @param pCallback           a callback which will be called when
+ *                            the assigned 3GPP power saving parameters
+ *                            are changed by the network; the first
+ *                            parameter will be cellHandle, the second
+ *                            indicates whether 3GPP power saving
+ *                            is enabled or not, the third will be the
+ *                            assigned active time in seconds, the
+ *                            fourth the assigned periodic wake-up time
+ *                            in seconds and the fifth will be
+ *                            pCallbackParam. Use NULL to remove a
+ *                            previous callback.
+ * @param pCallbackParam      a parameter that will be passed
+ *                            to pCallback as its last parameter
+ *                            when it is called; may be NULL.
+ * @return                    zero on success or negative error
+ *                            code on failure.
+ */
+int32_t uCellPwrSet3gppPowerSavingCallback(int32_t cellHandle,
+                                           void (*pCallback) (int32_t cellHandle,
+                                                              bool onNotOff,
+                                                              int32_t activeTimeSeconds,
+                                                              int32_t periodicWakeupSeconds,
+                                                              void *pCallbackParam),
+                                           void *pCallbackParam);
+
+/** Set the requested E-DRX parameters.  E-DRX is only effective
+ * when the module is connected to the cellular network.  When
+ * E-DRX is activated then, when the module returns to idle after
+ * a radio transmission, it will listen for downlink messages for
+ * an additional pagingWindowSeconds and then it will be allowed to
+ * enter a low power state but not the deep sleep state of 3GPP
+ * power saving and hence the module internal state (sockets, MQTT
+ * connectivity, etc.) is preserved; this power saving behaviour
+ * is more suitable when an application is using the sockets, MQTT,
+ * location etc. APIs of ubxlib.  After eDrxSeconds have passed the
+ * module will wake up for pagingWindowSeconds again to listen for
+ * downlink messages from the network, then the eDrxSeconds timer
+ * will start again, etc.  That module will wake up to send any
+ * uplink messages that are required, they are unaffected, and any
+ * responses to those messages arriving within a few seconds,
+ * before the module returns to idle, will also arrive immediately,
+ * it is the latency of _occasional_ downlink communication that
+ * changes with the E-DRX period; you should set eDrxSeconds to
+ * less than any minimum downlink latency that your application
+ * might require (if any).
+ * The values represent a request to the network; the network
+ * may apply limits to the accepted values.  The current E-DRX
+ * parameters as agreed with the network may be read with a call to
+ * uCellPwrGetEDrx().  Some modules, e.g. SARA-R4, will ONLY
+ * allow the E-DRX values to be set when the module is NOT registered
+ * with the network, hence it is necessary to pass the RAT that
+ * will be used into this function call as the coding of the E-DRX
+ * values transmitted to the network are RAT dependent and this
+ * code cannot discover the current RAT when not registered.
+ * If you are using a module type which supports setting the E-DRX
+ * parameters while connected to the network (e.g. SARA-R5) then
+ * you may pass the return value of uCellNetGetActiveRat() as
+ * the RAT.  Some module types (e.g. SARA-R4) must be re-booted
+ * for the settings to be applied; please check if this is the
+ * case with a call to uCellPwrRebootIsRequired() after calling
+ * this function.
+ * E-DRX is only supported by this code when UART power saving is
+ * also allowed to operate, i.e. do not define
+ * U_CFG_CELL_DISABLE_UART_POWER_SAVING if you want E-DRX to
+ * work.
+ * Note: there is a corner case if both 3GPP power saving and E-DRX
+ * are applied, which is that if the module enters deep sleep
+ * as a result of 3GPP power saving and then is awoken to do
+ * something that does _not_ cause radio activity (e.g. read from
+ * a GNSS module that is attached to the cellular module, read
+ * from the cellular file system, etc.) then the module will NOT
+ * re-enter E-DRX immediately. This is because E-DRX is only entered
+ * after *leaving* connected state and wake-up from deep sleep after
+ * 3GPP power saving is specifically designed not to send any radio
+ * transmission to the network in order to save power, hence it
+ * does not enter, and so does not leave connected state.  Only
+ * after a radio transmission is sent will E-DRX be entered once
+ * more.
+ *
+ * @param cellHandle            the handle of the cellular
+ *                              instance.
+ * @param rat                   the radio access technology
+ *                              the setting will be applied to
+ *                              e.g. U_CELL_NET_RAT_CATM1 or
+ *                              U_CELL_NET_RAT_NB1 or the
+ *                              return value of
+ *                              uCellNetGetActiveRat() if
+ *                              registered with the network.
+ * @param onNotOff              true to switch E-DRX on, in
+ *                              which case eDrxSeconds and
+ *                              pagingWindowSeconds must be
+ *                              positive values, else false
+ *                              to switch E-DRX off.
+ * @param eDrxSeconds           the E-DRX value in seconds.
+ * @param pagingWindowSeconds   the period of inactivity after
+ *                              which the module should go to
+ *                              sleep.
+ *                              IMPORTANT: not all platforms
+ *                              support this parameter, it is
+ *                              ignored where this is the case.
+ * @return                      zero on success or negative
+ *                              error code on failure.
+ */
+int32_t uCellPwrSetRequestedEDrx(int32_t cellHandle,
+                                 uCellNetRat_t rat,
+                                 bool onNotOff,
+                                 int32_t eDrxSeconds,
+                                 int32_t pagingWindowSeconds);
+
+/** Get the requested E-DRX parameters for the given RAT.
+ *
+ * @param cellHandle             the handle of the cellular
+ *                               instance.
+ * @param rat                    the radio access technology
+ *                               e.g. U_CELL_NET_RAT_CATM1 or
+ *                               U_CELL_NET_RAT_NB1 or the
+ *                               return value of
+ *                               uCellNetGetActiveRat() if
+ *                               registered with the network.
+ * @param pOnNotOff              a place to put whether E-DRX
+ *                               has been requested to be on or
+ *                               off, may be NULL.
+ * @param pEDrxSeconds           a place to put the requested
+ *                               E-DRX value in seconds; may be
+ *                               NULL.
+ * @param pPagingWindowSeconds   a place to put the requested
+ *                               paging window value in seconds;
+ *                               may be NULL. IMPORTANT: not all
+ *                               platforms support reading this
+ *                               parameter, even if they support
+ *                               setting it, in which case -1 will
+ *                               be returned for this value.
+ * @return                       zero on success or negative
+ *                               error code on failure.
+ */
+int32_t uCellPwrGetRequestedEDrx(int32_t cellHandle,
+                                 uCellNetRat_t rat,
+                                 bool *pOnNotOff,
+                                 int32_t *pEDrxSeconds,
+                                 int32_t *pPagingWindowSeconds);
+
+/** Get the E-DRX parameters as agreed with the cellular network.
+ * for the given RAT.  The module must be connected to the cellular
+ * network for this to work.
+ *
+ * @param cellHandle             the handle of the cellular
+ *                               instance.
+ * @param rat                    the radio access technology
+ *                               e.g. U_CELL_NET_RAT_CATM1 or
+ *                               U_CELL_NET_RAT_NB1 or the
+ *                               return value of
+ *                               uCellNetGetActiveRat() if
+ *                               registered with the network.
+ * @param pOnNotOff              a place to put whether E-DRX
+ *                               is on or off, may be NULL.
+ * @param pEDrxSeconds           a place to put the E-DRX value
+ *                               in seconds; may be NULL.
+ * @param pPagingWindowSeconds   a place to put the paging window
+ *                               vaue in seconds; may be NULL.
+ * @return                       zero on success or negative error
+ *                               code on failure.
+ */
+int32_t uCellPwrGetEDrx(int32_t cellHandle,
+                        uCellNetRat_t rat,
+                        bool *pOnNotOff,
+                        int32_t *pEDrxSeconds,
+                        int32_t *pPagingWindowSeconds);
+
+/** Set a callback which will be called when the E-DRX parameters
+ * change.  After setting the requested E-DRX parameters with a
+ * call to uCellPwrSetRequestedEDrx(), the parameters (even the
+ * requested values) may not be changed by the module immediately,
+ * and they may be changed at any time by the network.  Use this
+ * callback to find out when new values are assigned.
+ * The callback is implemented using the uAtClientCallback() queue,
+ * see the AT client API for details. The callback should not block;
+ * use the callback to signal something else to do any heavy-lifting
+ * and then return, otherwise important operations such as reacting
+ * to URCs sent by the module will be adversely affected.
+ *
+ * @param cellHandle          the handle of the cellular instance.
+ * @param pCallback           a callback which will be called when
+ *                            the E-DRX parameters change; the first
+ *                            parameter will be cellHandle, the
+ *                            second the RAT to which the E-DRX
+ *                            parameters apply, the third whether
+ *                            E-DRX is on or off for that RAT, the
+ *                            fourth the requested E-DRX value in
+ *                            seconds, the fifth the assigned E-DRX value
+ *                            in seconds, the sixth the assigned
+ *                            paging window value in seconds and the
+ *                            seventh pCallbackParam. Use NULL to
+ *                            remove a previous callback.
+ * @param pCallbackParam      a parameter that will be passed
+ *                            to pCallback as its last parameter
+ *                            when it is called; may be NULL.
+ * @return                    zero on success or negative error
+ *                            code on failure.
+ */
+int32_t uCellPwrSetEDrxCallback(int32_t cellHandle,
+                                void (*pCallback) (int32_t cellHandle,
+                                                   uCellNetRat_t rat,
+                                                   bool onNotOff,
+                                                   int32_t eDrxSecondsRequested,
+                                                   int32_t eDrxSecondsAssigned,
+                                                   int32_t pagingWindowSecondsAssigned,
+                                                   void *pCallbackParam),
+                                void *pCallbackParam);
+
+/** Set callback for wake-up from deep sleep.  The callback will be
+ * called when the module has returned from deep sleep and may be used
+ * to set back up any configuration that would have been lost due to
+ * the module being effectively off.  Only modules that have their VInt
+ * pin connected to this MCU and that pin was set in the uCellAdd()
+ * call are able to support this indication.  The callback is implemented
+ * using the uAtClientCallback() queue, see the AT client API for details.
+ * The callback should not block; use the callback to signal something
+ * else to do the heavy-lifting and then return, otherwise important
+ * operations such as reacting to URCs sent by the module will be
+ * adversely affected.
+ *
+ * @param cellHandle           the handle of the cellular instance.
+ * @param pCallback            a callback which will be called when
+ *                             the module leaves deep sleep; use
+ *                             NULL to remove a previous wake-up
+ *                             callback; the first parameter to the
+ *                             callback will be cellHandle, the
+ *                             second will be pCallbackParam.
+ * @param pCallbackParam       a parameter that will be passed
+ *                             to pCallbackParam as its second
+ *                             parameter when it is called; may be
+ *                             NULL.
+ * @return                     zero on success or negative error
+ *                             code on failure.
+ */
+int32_t uCellPwrSetDeepSleepWakeUpCallback(int32_t cellHandle,
+                                           void (*pCallback) (int32_t cellHandle,
+                                                              void *pCallbackParam),
+                                           void *pCallbackParam);
+
+/** Get whether deep sleep is currently active or not: if the module's
+ * VInt pin is connected to a pin of this MCU and that pin was set
+ * in the uCellAdd() then pSleepActive will be set to true if the
+ * module is actually in deep sleep.
+ *
+ * @param cellHandle   the handle of the cellular instance.
+ * @param pSleepActive a place to put whether deep sleep is active
+ *                     or not (true IF SLEEP IS ACTIVE, i.e. the
+ *                     module is effectively off, else false); may
+ *                     be NULL (e.g. if you just want to find out
+ *                     if the callback is supported).
+ * @return             zero on success else negative error code
+ *                     if the module does not support indicating
+ *                     its sleep state.
+ */
+int32_t uCellPwrGetDeepSleepActive(int32_t cellHandle,
+                                   bool *pSleepActive);
+
+/** Wake the module from deep sleep.  THERE SHOULD BE NO NEED
+ * FOR THE USER TO CALL THIS; it will be called automatically by
+ * the AT client if it needs to do something after the module
+ * has entered deep sleep.
+ *
+ * @param cellHandle         the handle of the cellular instance.
+ * @param pKeepGoingCallback waking from deep sleep usually takes
+ *                           between 5 and 15 seconds but it is
+ *                           possible for it to take longer.  If
+ *                           this callback function is non-NULL
+ *                           then it will be called during the
+ *                           wake-up process and may be used to
+ *                           feed a watchdog timer.  The callback
+ *                           function should return true to
+ *                           allow the wake-up process to
+ *                           be completed normally.  If the
+ *                           callback function returns false
+ *                           then the wake-up process will
+ *                           be abandoned.  Even when
+ *                           this callback returns false it
+ *                           this function may still take some
+ *                           10's of seconds to return in order
+ *                           to ensure that the module is in a
+ *                           cleanly powered (or not) state.
+ *                           If this function is forced to return
+ *                           it is advisable to call
+ *                           uCellPwrIsAlive() to confirm
+ *                           the final state of the module. The
+ *                           single int32_t parameter is the
+ *                           cell handle.
+ * @return                   zero on success or negative error
+ *                           code on failure.
+ */
+int32_t uCellPwrWakeUpFromDeepSleep(int32_t cellHandle,
+                                    bool (*pKeepGoingCallback) (int32_t));
 
 #ifdef __cplusplus
 }

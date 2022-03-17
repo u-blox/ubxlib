@@ -106,8 +106,7 @@ static const char *const pRatStr[] = {"unknown or not used",
  * -------------------------------------------------------------- */
 
 // Set the given context.
-static void contextSet(int32_t cellHandle,
-                       int32_t contextId,
+static void contextSet(int32_t cellHandle, int32_t contextId,
                        const char *pApn)
 {
     uCellPrivateInstance_t *pInstance;
@@ -188,7 +187,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
     bool setRat = false;
     uint64_t bandMask1;
     uint64_t bandMask2;
-    bool rebootRequired = false;
+    bool onNotOff = false;
     char imsi[U_CELL_INFO_IMSI_SIZE];
 
     // Set some defaults
@@ -339,7 +338,6 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                                 }
                                 if (setRat && (primaryRat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED)) {
                                     errorCode = uCellCfgSetRat(cellHandle, primaryRat);
-                                    rebootRequired = true;
                                 } else {
                                     // If we haven't set or read a sole RAT then
                                     // the module doesn't support it, just carry on
@@ -367,7 +365,6 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                                         errorCode = uCellCfgSetBandMask(cellHandle, primaryRat,
                                                                         U_CELL_TEST_CFG_BANDMASK1,
                                                                         U_CELL_TEST_CFG_BANDMASK2);
-                                        rebootRequired = true;
                                     }
                                 }
                                 if (errorCode == 0) {
@@ -377,10 +374,32 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                                     contextSet(cellHandle, U_CELL_NET_CONTEXT_ID,
                                                U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_EUTRAN_APN));
                                 }
+                                if (errorCode == 0) {
+                                    // On EUTRAN, make sure that 3GPP power saving
+                                    // is off as it can mess things up badly if we
+                                    // switch off spontaneously
+                                    onNotOff = false;
+                                    if ((uCellPwrGetRequested3gppPowerSaving(cellHandle,
+                                                                             &onNotOff,
+                                                                             NULL, NULL) == 0) &&
+                                        onNotOff) {
+                                        errorCode = uCellPwrSetRequested3gppPowerSaving(cellHandle,
+                                                                                        primaryRat,
+                                                                                        false, -1, -1);
+                                    }
+                                    // Also need LWM2M to be off as that will stop us sleeping
+                                    // when the time comes to test 3GPP power saving
+                                    if (errorCode == 0) {
+                                        // Don't fail on an error here as some module
+                                        // types won't let LWM2M be switched off early
+                                        // in the boot process, it has to be done later.
+                                        uCellTestPrivateLwm2mDisable(cellHandle);
+                                    }
+                                }
                             }
 
                             // Re-boot if we've made a change
-                            if ((errorCode == 0) && rebootRequired) {
+                            if ((errorCode == 0) && uCellPwrRebootIsRequired(cellHandle)) {
                                 errorCode = uCellPwrReboot(cellHandle, NULL);
                             }
                         }
@@ -467,6 +486,63 @@ uCellNetRat_t uCellTestPrivateInitRatGet(uint32_t supportedRatsBitmap)
 
     return rat;
 #endif
+}
+
+// Make sure the LWM2M client in the module is off.
+int32_t uCellTestPrivateLwm2mDisable(int32_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+    int32_t lwm2mClientState = -1;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_CELL_ERROR_AT;
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+ULWM2M?");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+ULWM2M:");
+            lwm2mClientState = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
+            uAtClientUnlock(atHandle);
+            // 0 means enabled, 1 means disabled; some modules
+            // don't support reading the LWM2M client state at all,
+            // in which case we just need to blindly switch it
+            // off each time, there's nothing else we can do
+            if (lwm2mClientState != 1) {
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+ULWM2M=");
+                uAtClientWriteInt(atHandle, 1);
+                uAtClientCommandStopReadResponse(atHandle);
+                if (uAtClientUnlock(atHandle) == 0) {
+                    if (lwm2mClientState == 0) {
+                        // If the LWM2M client was previously enabled
+                        // then we should reboot to effect the
+                        // change; if the module was the kind which
+                        // doesn't support reading the LWM2M client
+                        // state, we can't tell if it was on or off
+                        // before, then we don't do a reboot here as
+                        // we would be rebooting the module every time
+                        pInstance->rebootIsRequired = true;
+                    }
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
+            } else {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
 }
 
 // End of file

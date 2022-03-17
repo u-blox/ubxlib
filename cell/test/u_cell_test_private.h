@@ -128,6 +128,20 @@ const char *pUCellTestPrivateRatStr(uCellNetRat_t rat);
 //                                            is not defined
 uCellNetRat_t uCellTestPrivateInitRatGet(uint32_t supportedRatsBitmap);
 
+/** We don't support LWM2M (yet) but on some module types it is
+ * on by default and interferes with the normal behvaviour of 3GPP
+ * power saving (by blocking sleep).  This function can be used to switch
+ * the LWM2M client in the module off.  Also not that on some module
+ * types (e.g. SARA-R41x) LWM2M is re-enabled on every re-boot/power-cycle.
+ * A re-boot of the module may be required if LWM2M was enabled when
+ * this was called and had to be disabled; this can be checked with
+ * a call to uCellPwrRebootIsRequired().
+ *
+ * @param cellHandle  the handle of the cellular module.
+ * @return            true on success else negative error code.
+ */
+int32_t uCellTestPrivateLwm2mDisable(int32_t cellHandle);
+
 #ifdef __cplusplus
 }
 #endif

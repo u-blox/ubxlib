@@ -3,3 +3,4 @@ These directories provide examples that are specific to u-blox cellular modules,
 
 # Examples
 - [lte_cfg](lte_cfg) contains an example of how to configure an LTE cellular module (e.g. SARA-R4 or SARA-R5) to obtain network service in exactly the way you like using `ubxlib`.  If you are having trouble getting network service or you want to learn how to programmatical configure the cellular network settings, this example may be of use to you.
+- [power_saving](power_saving) contains examples of how to configure a cellular module for 3GPP power saving and E-DRX (also a form of power saving).
