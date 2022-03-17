@@ -157,30 +157,44 @@
 #define U_AT_CLIENT_DATA_BUFFER_PTR(pBufStruct) (((char *) (pBufStruct)) +          \
                                                  sizeof(uAtClientReceiveBuffer_t))
 
-/** Macro to lock the client mutex: this checks if we're
- * in a wake-up handler and, if so, it locks the wake-up
- * handler muted instead of the usual one (which will be
- * already locked).
+/** Macro to lock the client mutex: as well as the normal case of
+ * locking pClient->mutex this has to deal with the situation where
+ * we're in the wake-up handler.  In that case we need to block
+ * all "normal" access but only allow the wake-up task to call
+ * back into here.  If the waking-up task is active and the task
+ * asking for the lock is not that task then, as well as waiting
+ * on the normal mutex that task needs to be held back until the
+ * wake-up handler has completed its work.
+ * The task scheduler is suspended while the checks are performed
+ * to prevent race conditions.
+ * Note this means URCs will be held back during the time we are
+ * doing the wake-up.
  */
-#define U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient) if ((pClient->pWakeUp != NULL) &&              \
-                                                   (pClient->pWakeUp->inWakeUpHandler)) {     \
-                                                   uPortMutexLock(pClient->pWakeUp->mutex);   \
-                                               } else {                                       \
-                                                   uPortMutexLock(pClient->mutex);            \
-                                               } {
+#define U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient)   {                                                                         \
+                                                    uPortMutexHandle_t _mutex = pClient->mutex;                            \
+                                                    uPortTaskHandle_t _task;                                               \
+                                                    uPortTaskGetHandle(&_task);                                            \
+                                                    if (uPortEnterCritical() == 0) {                                       \
+                                                        if ((pClient->pWakeUp != NULL) &&                                  \
+                                                            (pClient->pWakeUp->wakeUpTask != NULL)) {                      \
+                                                            if (_task == pClient->pWakeUp->wakeUpTask) {                   \
+                                                                _mutex = pClient->pWakeUp->mutex;                          \
+                                                                uPortExitCritical();                                       \
+                                                            } else {                                                       \
+                                                                uPortExitCritical();                                       \
+                                                                uPortMutexLock(pClient->pWakeUp->inWakeUpHandlerMutex);    \
+                                                                uPortMutexUnlock(pClient->pWakeUp->inWakeUpHandlerMutex);  \
+                                                            }                                                              \
+                                                        } else {                                                           \
+                                                            uPortExitCritical();                                           \
+                                                        }                                                                  \
+                                                    }                                                                      \
+                                                    uPortMutexLock(_mutex);
 
-/** Macro to unlock the client mutex: this checks if we're
- * in a wake-up handler and, if so, it unlocks the wake-up
- * handler muted instead of the usual one (which must stay
- * locked so that it can be unlocked when we unwind from
- * the wake-up handler).
+/** Macro to unlock the client mutex: just uses the _mutex variable
+ * that the U_AT_CLIENT_LOCK_CLIENT_MUTEX() macro set up.
  */
-#define U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient) } if ((pClient->pWakeUp != NULL) &&             \
-                                                       (pClient->pWakeUp->inWakeUpHandler)) {    \
-                                                     uPortMutexUnlock(pClient->pWakeUp->mutex);  \
-                                                 } else {                                        \
-                                                     uPortMutexUnlock(pClient->mutex);           \
-                                                 }
+#define U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient)    uPortMutexUnlock(_mutex);  }
 
 #ifndef U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS
 /** When performing hysteresis of the activity pin, the interval to use for each
@@ -188,6 +202,14 @@
  */
 # define U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS 10
 #endif
+
+/** The mutex stack, used when locking the stream mutex, required
+ * because when the wake-up handler is active there will be two
+ * stream mutexes that may be locked: the normal one and the
+ * wake-up one; we keep a stack of the locked stream mutex so that
+ * we know which one to unlock.
+ */
+#define U_AT_CLIENT_MUTEX_STACK_MAX_SIZE 2
 
 // Do some cross-checking
 #if (U_AT_CLIENT_CALLBACK_TASK_PRIORITY >= U_AT_CLIENT_URC_TASK_PRIORITY)
@@ -312,7 +334,9 @@ typedef struct {
     int32_t (*pHandler) (uAtClientHandle_t, void *);
     void *pParam;
     uPortMutexHandle_t mutex;
-    bool inWakeUpHandler;
+    uPortMutexHandle_t streamMutex;
+    uPortMutexHandle_t inWakeUpHandlerMutex;
+    uPortTaskHandle_t wakeUpTask;
     int32_t inactivityTimeoutMs;
     int32_t atTimeoutSavedMs;
 } uAtClientWakeUp_t;
@@ -327,6 +351,13 @@ typedef struct {
     int32_t hysteresisMs;
 } uAtClientActivityPin_t;
 
+/** Struct defining a stack of mutexes.
+ */
+typedef struct {
+    uPortMutexHandle_t stack[U_AT_CLIENT_MUTEX_STACK_MAX_SIZE];
+    uPortMutexHandle_t *pNextFree;
+} uAtClientMutexStack_t;
+
 /** Definition of an AT client instance.
  */
 typedef struct uAtClientInstance_t {
@@ -334,6 +365,7 @@ typedef struct uAtClientInstance_t {
     uAtClientStream_t streamType; /** The type of API that streamHandle applies to. */
     uPortMutexHandle_t mutex; /** Mutex for threadsafeness. */
     uPortMutexHandle_t streamMutex; /** Mutex for the data stream. */
+    uPortMutexHandle_t urcPermittedMutex; /** Mutex that we can use to avoid trampling on a URC. */
     uAtClientReceiveBuffer_t *pReceiveBuffer; /** Pointer to the receive buffer structure. */
     bool debugOn; /** Whether general debug is on or off. */
     bool printAtOn; /** Whether printing of AT commands and responses is on or off. */
@@ -355,6 +387,7 @@ typedef struct uAtClientInstance_t {
     size_t urcMaxStringLength; /** The longest URC string to monitor for. */
     size_t maxRespLength; /** The max length of OK, (CME) (CMS) ERROR and URCs. */
     bool delimiterRequired; /** Is a delimiter to be inserted before the next parameter or not. */
+    uAtClientMutexStack_t lockedStreamMutexStack; /** A place to store locked stream mutexes. */
     const char *(*pInterceptTx) (uAtClientHandle_t,
                                  const char **,
                                  size_t *,
@@ -598,14 +631,19 @@ static void removeClient(uAtClientInstance_t *pClient)
 {
     uAtClientUrc_t *pUrc;
 
-    // Lock the stream first to avoid pulling
-    // the rug out from under a URC
+    // Must not be in a wake-up handler
+    U_ASSERT((pClient->pWakeUp == NULL) ||
+             ((uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) == 0) &&
+              // This just to unlock the mutex if the try succeeded
+              (uPortMutexUnlock(pClient->pWakeUp->inWakeUpHandlerMutex) == 0)));
+
+    // Avoid pulling the rug out from under a URC
+    U_PORT_MUTEX_LOCK(pClient->urcPermittedMutex);
+
+    // Lock the stream also, for safety
     U_PORT_MUTEX_LOCK(pClient->streamMutex);
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
-
-    // Must not be in a wake-up handler
-    U_ASSERT((pClient->pWakeUp == NULL) || (!pClient->pWakeUp->inWakeUpHandler));
 
     // Remove it from the list
     removeAtClientInstance(pClient);
@@ -631,18 +669,8 @@ static void removeClient(uAtClientInstance_t *pClient)
         free(pUrc);
     }
 
-    // Remove any wake-up handler
-    if (pClient->pWakeUp != NULL) {
-        uPortMutexDelete(pClient->pWakeUp->mutex);
-        free(pClient->pWakeUp);
-    }
-
     // Remove any activity pin
     free(pClient->pActivityPin);
-
-    // Delete the stream mutex
-    U_PORT_MUTEX_UNLOCK(pClient->streamMutex);
-    uPortMutexDelete(pClient->streamMutex);
 
     // Free the receive buffer if it was malloc()ed.
     if (pClient->pReceiveBuffer->isMalloced) {
@@ -653,8 +681,144 @@ static void removeClient(uAtClientInstance_t *pClient)
     U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
     uPortMutexDelete(pClient->mutex);
 
+    // Remove any wake-up handler: this must be
+    // done after the lock is lifted since that
+    // may want to unlock pClient->pWakeUp->mutex
+    if (pClient->pWakeUp != NULL) {
+        U_PORT_MUTEX_LOCK(pClient->pWakeUp->inWakeUpHandlerMutex);
+        U_PORT_MUTEX_UNLOCK(pClient->pWakeUp->inWakeUpHandlerMutex);
+        uPortMutexDelete(pClient->pWakeUp->inWakeUpHandlerMutex);
+        U_PORT_MUTEX_LOCK(pClient->pWakeUp->mutex);
+        U_PORT_MUTEX_UNLOCK(pClient->pWakeUp->mutex);
+        uPortMutexDelete(pClient->pWakeUp->mutex);
+        U_PORT_MUTEX_LOCK(pClient->pWakeUp->streamMutex);
+        U_PORT_MUTEX_UNLOCK(pClient->pWakeUp->streamMutex);
+        uPortMutexDelete(pClient->pWakeUp->streamMutex);
+        free(pClient->pWakeUp);
+    }
+
+    // Delete the stream mutex
+    U_PORT_MUTEX_UNLOCK(pClient->streamMutex);
+    uPortMutexDelete(pClient->streamMutex);
+
+    // Delete the URC active mutex
+    U_PORT_MUTEX_UNLOCK(pClient->urcPermittedMutex);
+    uPortMutexDelete(pClient->urcPermittedMutex);
+
     // And finally free the client context.
     free(pClient);
+}
+
+// Initialse a mutex stack.
+static void mutexStackInit(uAtClientMutexStack_t *pStack)
+{
+    if (pStack->pNextFree == NULL) {
+        pStack->pNextFree = pStack->stack;
+    }
+}
+
+// Push an entry to a stack of mutexes.
+static void mutexStackPush(uAtClientMutexStack_t *pStack,
+                           uPortMutexHandle_t mutex)
+{
+    // If uPortEnterCritical() is not implemented then
+    // there must only ever be one entry in the stack so that
+    // no thread-safety issues can occur
+    uPortEnterCritical();
+    U_ASSERT(pStack->pNextFree >= pStack->stack);
+    U_ASSERT(pStack->pNextFree < pStack->stack + (sizeof(pStack->stack) / sizeof(pStack->stack[0])));
+    *(pStack->pNextFree) = mutex;
+    (pStack->pNextFree)++;
+    uPortExitCritical();
+}
+
+// Pop an entry from a stack of mutexes.
+static uPortMutexHandle_t mutexStackPop(uAtClientMutexStack_t *pStack)
+{
+    uPortMutexHandle_t mutex = NULL;
+
+    // If uPortEnterCritical() is not implemented then
+    // there must only ever be one entry in the stack so that
+    // no thread-safety issues can occur
+    // Note: we allow this to be called "out of step" with
+    // the push operation, i.e. it can return a value of
+    // NULL if there is nothing to pop, it is up to the
+    // caller to handle that case
+    uPortEnterCritical();
+    if (pStack->pNextFree > pStack->stack) {
+        (pStack->pNextFree)--;
+        mutex = *(pStack->pNextFree);
+    }
+    uPortExitCritical();
+
+    return mutex;
+}
+
+// Lock an AT stream, returning the one that was locked.
+static uPortMutexHandle_t streamLock(const uAtClientInstance_t *pClient)
+{
+    uPortMutexHandle_t streamMutex = pClient->streamMutex;
+    uPortTaskHandle_t task;
+
+    // Just like the U_AT_CLIENT_LOCK_CLIENT_MUTEX macro,
+    // lock the normal streamMutex unless we have a
+    // wake-up handler and it is active, in which case
+    // lock the streamMutex of the wake-up context if
+    // we are in that task; if we're NOT in that task
+    // then wait for the inWakeUpHandlerMutex to be
+    // released in order to be sure that everything
+    // has gone back to normal before we do anything
+    // (and use the normal streamMutex)
+    uPortTaskGetHandle(&task);
+    if (uPortEnterCritical() == 0) {
+        if ((pClient->pWakeUp != NULL) && (pClient->pWakeUp->wakeUpTask != NULL)) {
+            if (task == pClient->pWakeUp->wakeUpTask) {
+                streamMutex = pClient->pWakeUp->streamMutex;
+                uPortExitCritical();
+            } else {
+                uPortExitCritical();
+                uPortMutexLock(pClient->pWakeUp->inWakeUpHandlerMutex);
+                uPortMutexUnlock(pClient->pWakeUp->inWakeUpHandlerMutex);
+            }
+        } else {
+            uPortExitCritical();
+        }
+    }
+
+    uPortMutexLock(streamMutex);
+
+    return streamMutex;
+}
+
+// Try to lock an AT stream, returning the one that was locked or NULL.
+static uPortMutexHandle_t streamTryLock(const uAtClientInstance_t *pClient,
+                                        int32_t timeoutMs)
+{
+    uPortMutexHandle_t streamMutex = pClient->streamMutex;
+
+    // Same logic as streamLock()
+    if (uPortEnterCritical() == 0) {
+        if ((pClient->pWakeUp != NULL) && (pClient->pWakeUp->wakeUpTask != NULL)) {
+            if (uPortTaskIsThis(pClient->pWakeUp->wakeUpTask)) {
+                streamMutex = pClient->pWakeUp->streamMutex;
+                uPortExitCritical();
+            } else {
+                uPortExitCritical();
+                // Note: we can't "try" this one, if we're not in the
+                // wake-up task we really have to wait for it to exit
+                uPortMutexLock(pClient->pWakeUp->inWakeUpHandlerMutex);
+                uPortMutexUnlock(pClient->pWakeUp->inWakeUpHandlerMutex);
+            }
+        } else {
+            uPortExitCritical();
+        }
+    }
+
+    if (uPortMutexTryLock(streamMutex, timeoutMs) < 0) {
+        streamMutex = NULL;
+    }
+
+    return streamMutex;
 }
 
 // Find one character buffer inside another.
@@ -1630,6 +1794,29 @@ static bool processResponse(uAtClientInstance_t *pClient,
 }
 
 // Write data to the stream.
+//
+// Design note concerning the wake-up handler
+// process below; first the needs:
+// - the wake-up handler must be allowed to call back
+//   into this AT interface, one level of recursion.
+// - the wake-up handler must be allowed to launch
+//   asynchronous callbacks that may also call into
+//   this AT interface.
+// - these asynchronous callbacks must be blocked
+//   from doing AT things while the wake-up process
+//   is occurring and then be allowed to continue
+//   once the wake-up has been completed.
+// Given those needs, the design here is: when wake-up
+// is required inWakeUpHandlerMutex is locked and
+// the current task ID saved before the wake-up function
+// is called. The U_AT_CLIENT_LOCK_CLIENT_MUTEX that
+// gates every AT client API call checks the current
+// task ID against this saved task ID and, if it
+// matches, it blocks against a separate wake-up mutex
+// rather than the normal mutex.  If the task ID does
+// not match then it _also_ blocks on inWakeUpHandlerMutex
+// before proceeding, hence holding off processing until
+// the wake-up process has completed.
 static size_t write(uAtClientInstance_t *pClient,
                     const char *pData, size_t length,
                     bool andFlush)
@@ -1642,36 +1829,62 @@ static size_t write(uAtClientInstance_t *pClient,
     int64_t wakeUpDurationMs = 0;
     uAtClientScope_t savedScope;
     uAtClientTag_t savedStopTag;
+    bool savedDelimiterRequired;
+    uAtClientDeviceError_t savedDeviceError;
 
     while (((pData < pDataStart + length) || andFlush) &&
            (pClient->error == U_ERROR_COMMON_SUCCESS)) {
         lengthToWrite = length - (pData - pDataStart);
         if ((pClient->pWakeUp != NULL) && (pClient->lastTxTimeMs >= 0) &&
             (uPortGetTickTimeMs() > pClient->lastTxTimeMs + pClient->pWakeUp->inactivityTimeoutMs) &&
-            !pClient->pWakeUp->inWakeUpHandler) {
-            pClient->pWakeUp->inWakeUpHandler = true;
+            (uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) == 0)) {
             // We have a wake-up handler, the inactivity timeout
-            // has expired and we're not already in the wake-up
-            // handler, so we need to call it
+            // has expired and we've managed to lock the wake-up
+            // handler mutex (if we aren't able to lock the wake-up
+            // handler mutex  then we must already be in the wake-up
+            // handler, having recursed, so can just continue); now
+            // we need to call the wake-up handler function.
+            // Set wakeUpTask to the current task handle so
+            // that any future calls can be locked against the
+            // separate pWakeUp->mutex if they come from the task
+            // we're in at the moment, the one dealing with the wake-up
+            uPortTaskGetHandle(&(pClient->pWakeUp->wakeUpTask));
+            // The pClient->mutex will have been locked on the way
+            // into here by U_AT_CLIENT_LOCK_CLIENT_MUTEX.
             // Remember the lock time and measure how long
-            // waking up takes in order to correct for it
+            // waking-up takes in order to correct for it
             savedLockTimeMs = pClient->lockTimeMs;
             wakeUpDurationMs = uPortGetTickTimeMs();
             // Remember the dynamic things that the
             // wake-up handler might overwrite
             savedScope = pClient->scope;
             savedStopTag = pClient->stopTag;
-            // Reset the scope and stopTag
+            savedDelimiterRequired = pClient->delimiterRequired;
+            savedDeviceError = pClient->deviceError;
+            // Reset the scope, stopTag and delimiterRequired
             pClient->scope = U_AT_CLIENT_SCOPE_NONE;
             pClient->stopTag.pTagDef = &gNoStopTag;
             pClient->stopTag.found = false;
+            pClient->delimiterRequired = false;
+            // Now actually call the wake-up callback which may recurse
+            // back into here
             if (pClient->pWakeUp->pHandler((uAtClientHandle_t) pClient,
                                            pClient->pWakeUp->pParam) != 0) {
                 setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
             }
+            // At this point all of the calls back into here
+            // performed as part of the wake-up process will have
+            // been completed; there may have been calls from other
+            // tasks but they will have been blocked on the normal
+            // mutex before reaching here.
+            // We can now set the wakeUpTask back to NULL and all
+            // blocking will be on the normal mutex again
+            pClient->pWakeUp->wakeUpTask = NULL;
             // Put all the saved things back
             pClient->scope = savedScope;
             pClient->stopTag = savedStopTag;
+            pClient->delimiterRequired = savedDelimiterRequired;
+            pClient->deviceError = savedDeviceError;
             // Set the adjusted lock time, allowing for potential
             // wrap in uPortGetTickTimeMs()
             wakeUpDurationMs = uPortGetTickTimeMs() - wakeUpDurationMs;
@@ -1680,8 +1893,10 @@ static size_t write(uAtClientInstance_t *pClient,
             } else {
                 pClient->lockTimeMs = uPortGetTickTimeMs();
             }
-            pClient->pWakeUp->inWakeUpHandler = false;
+            // We are no longer in the wake-up handler
+            uPortMutexUnlock(pClient->pWakeUp->inWakeUpHandlerMutex);
         }
+
         if (pClient->error == U_ERROR_COMMON_SUCCESS) {
             if (pClient->pInterceptTx != NULL) {
                 if (pData < pDataStart + length) {
@@ -1789,16 +2004,13 @@ static bool findUrcHandler(const uAtClientInstance_t *pClient,
 }
 
 // Try to lock the stream: this does NOT clear errors.
-// Returns zero on success.
-// Don't need to worry about being in a wake-up handler
-// here since we would definitely already be locked
-// in that case.
-static int32_t tryLock(uAtClientInstance_t *pClient)
+// Returns the stream mutex that was locked or NULL.
+static uPortMutexHandle_t tryLock(uAtClientInstance_t *pClient)
 {
-    int32_t outcome;
+    uPortMutexHandle_t streamMutex;
 
-    outcome = uPortMutexTryLock(pClient->streamMutex, 0);
-    if (outcome == 0) {
+    streamMutex = streamTryLock(pClient, 0);
+    if (streamMutex != NULL) {
         pClient->lockTimeMs = uPortGetTickTimeMs();
         if (pClient->pActivityPin != NULL) {
             // If an activity pin is set then switch it on
@@ -1814,15 +2026,19 @@ static int32_t tryLock(uAtClientInstance_t *pClient)
         }
     }
 
-    return outcome;
+    return streamMutex;
 }
 
 // Unlock the stream without kicking off
 // any further data reception.  This is used
 // directly in taskUrc to avoid recursion.
-static void unlockNoDataCheck(uAtClientInstance_t *pClient)
+static void unlockNoDataCheck(uAtClientInstance_t *pClient,
+                              uPortMutexHandle_t streamMutex)
 {
-    if ((pClient->pWakeUp != NULL) && (pClient->pWakeUp->inWakeUpHandler)) {
+    if ((pClient->pWakeUp != NULL) &&
+        ((uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) != 0) ||
+         // This just to unlock the mutex if the try actually succeeded
+         (uPortMutexUnlock(pClient->pWakeUp->inWakeUpHandlerMutex) != 0))) {
         // If we're in a wake-up handler then restore any
         // saved timeout value from there, if there is one,
         // but don't do any unlocking as that will happen
@@ -1850,10 +2066,10 @@ static void unlockNoDataCheck(uAtClientInstance_t *pClient)
                 pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
             }
         }
-        // Only unlock the stream if we're not in a wake-up
-        // handler
-        uPortMutexUnlock(pClient->streamMutex);
     }
+
+    // Now unlock the stream
+    uPortMutexUnlock(streamMutex);
 }
 
 // Convert a string which should contain
@@ -1945,17 +2161,21 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
 {
     uAtClientInstance_t *pClient;
     uAtClientReceiveBuffer_t *pReceiveBuffer;
+    uPortMutexHandle_t streamMutex;
     int32_t sizeOrError;
 
     pClient = (uAtClientInstance_t *) pParameters;
 
     if ((pClient != NULL) &&
         (pClient->streamHandle == streamHandle) &&
-        (eventBitmask & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+        (eventBitmask & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) &&
+        (uPortMutexTryLock(pClient->urcPermittedMutex, 0) == 0)) {
+
         // Potential URC data is available.  However,
         // the main thread may already have taken the lock
         // and be processing it, in which case just return.
-        if (tryLock(pClient) == 0) {
+        streamMutex = tryLock(pClient);
+        if (streamMutex != NULL) {
             // Loop until no received characters left to process
             pReceiveBuffer = pClient->pReceiveBuffer;
             while (((sizeOrError = getReceiveSize(pClient)) > 0) ||
@@ -2019,8 +2239,10 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
             // checking for more data, which would try
             // to queue stuff on this task and I'm not
             // sure that's safe
-            unlockNoDataCheck(pClient);
+            unlockNoDataCheck(pClient, streamMutex);
         }
+
+        uPortMutexUnlock(pClient->urcPermittedMutex);
     }
 }
 
@@ -2157,6 +2379,7 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
             // Nope, create one
             pClient = (uAtClientInstance_t *) malloc(sizeof(uAtClientInstance_t));
             if (pClient != NULL) {
+                memset(pClient, 0, sizeof(*pClient));
                 pClient->pReceiveBuffer = (uAtClientReceiveBuffer_t *) pReceiveBuffer;
                 // Make sure we have a receive buffer
                 if (pClient->pReceiveBuffer == NULL) {
@@ -2169,96 +2392,72 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                     if (uPortMutexCreate(&(pClient->mutex)) == 0) {
                         // Create the client's stream mutex
                         if (uPortMutexCreate(&(pClient->streamMutex)) == 0) {
-                            // Set all the initial values before we set
-                            // the event handlers which might call us
-                            pClient->streamHandle = streamHandle;
-                            pClient->streamType = streamType;
-                            pClient->debugOn = false;
-                            pClient->printAtOn = false;
-                            pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
-                            pClient->atTimeoutSavedMs = -1;
-                            pClient->numConsecutiveAtTimeouts = 0;
-                            pClient->pConsecutiveTimeoutsCallback = NULL;
-                            pClient->delimiter = U_AT_CLIENT_DEFAULT_DELIMITER;
-                            pClient->delayMs = U_AT_CLIENT_DEFAULT_DELAY_MS;
-                            clearError(pClient);
-                            // This will also set stopTag
-                            setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
-                            pClient->pUrcList = NULL;
-                            pClient->lastResponseStopMs = 0;
-                            pClient->lockTimeMs = 0;
-                            pClient->lastTxTimeMs = -1;
-                            pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
-                            pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
-                            pClient->delimiterRequired = false;
-                            pClient->pInterceptTx = NULL;
-                            pClient->pInterceptRx = NULL;
-                            pClient->pWakeUp = NULL;
-                            pClient->pActivityPin = NULL;
-                            pClient->pNext = NULL;
-                            // Set up the buffer and its protection markers
-                            pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
-                                                                      U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
-                            bufferReset(pClient, true);
-                            memcpy(pClient->pReceiveBuffer->mk0, U_AT_CLIENT_MARKER,
-                                   U_AT_CLIENT_MARKER_SIZE);
-                            memcpy(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
-                                   pClient->pReceiveBuffer->dataBufferSize,
-                                   U_AT_CLIENT_MARKER, U_AT_CLIENT_MARKER_SIZE);
-                            // Now add an event handler for characters
-                            // received on the stream
-                            switch (streamType) {
-                                case U_AT_CLIENT_STREAM_TYPE_UART:
-                                    errorCode = uPortUartEventCallbackSet(streamHandle,
-                                                                          U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
-                                                                          urcCallback, pClient,
-                                                                          U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
-                                                                          U_AT_CLIENT_URC_TASK_PRIORITY);
-                                    break;
-                                case U_AT_CLIENT_STREAM_TYPE_EDM:
-                                    errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient);
-                                    break;
-                                default:
-                                    // streamType is checked on entry
-                                    break;
-                            }
-                            if (errorCode == 0) {
-                                // Add the instance to the list
-                                addAtClientInstance(pClient);
-                            } else {
-                                // Couldn't create the stream event callback, delete
-                                // the stream and general mutexes, the buffer
-                                // (if necessary) and the client.
-                                uPortMutexDelete(pClient->streamMutex);
-                                uPortMutexDelete(pClient->mutex);
-                                if (receiveBufferIsMalloced) {
-                                    free(pClient->pReceiveBuffer);
+                            // Create the mutex that allows us to tell if the URC callback is active
+                            if (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0) {
+                                // Set all the non-zero initial values before we set
+                                // the event handlers which might call us
+                                pClient->streamHandle = streamHandle;
+                                pClient->streamType = streamType;
+                                pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
+                                pClient->atTimeoutSavedMs = -1;
+                                pClient->delimiter = U_AT_CLIENT_DEFAULT_DELIMITER;
+                                mutexStackInit(&(pClient->lockedStreamMutexStack));
+                                pClient->delayMs = U_AT_CLIENT_DEFAULT_DELAY_MS;
+                                clearError(pClient);
+                                // This will also set stopTag
+                                setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
+                                pClient->lastTxTimeMs = -1;
+                                pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
+                                pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
+                                // Set up the buffer and its protection markers
+                                pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
+                                                                          U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
+                                bufferReset(pClient, true);
+                                memcpy(pClient->pReceiveBuffer->mk0, U_AT_CLIENT_MARKER,
+                                       U_AT_CLIENT_MARKER_SIZE);
+                                memcpy(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
+                                       pClient->pReceiveBuffer->dataBufferSize,
+                                       U_AT_CLIENT_MARKER, U_AT_CLIENT_MARKER_SIZE);
+                                // Now add an event handler for characters
+                                // received on the stream
+                                switch (streamType) {
+                                    case U_AT_CLIENT_STREAM_TYPE_UART:
+                                        errorCode = uPortUartEventCallbackSet(streamHandle,
+                                                                              U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
+                                                                              urcCallback, pClient,
+                                                                              U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
+                                                                              U_AT_CLIENT_URC_TASK_PRIORITY);
+                                        break;
+                                    case U_AT_CLIENT_STREAM_TYPE_EDM:
+                                        errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient);
+                                        break;
+                                    default:
+                                        // streamType is checked on entry
+                                        break;
                                 }
-                                free(pClient);
-                                pClient = NULL;
+                                if (errorCode == 0) {
+                                    // Add the instance to the list
+                                    addAtClientInstance(pClient);
+                                }
                             }
-                        } else {
-                            // Couldn't create the stream mutex, delete
-                            // the general mutex, the buffer (if necessary)
-                            // and the client.
-                            uPortMutexDelete(pClient->mutex);
-                            if (receiveBufferIsMalloced) {
-                                free(pClient->pReceiveBuffer);
-                            }
-                            free(pClient);
-                            pClient = NULL;
                         }
-                    } else {
-                        // Couldn't create the mutex, delete the
-                        // buffer (if necessary) and the client.
-                        if (receiveBufferIsMalloced) {
-                            free(pClient->pReceiveBuffer);
-                        }
-                        free(pClient);
-                        pClient = NULL;
                     }
-                } else {
-                    // Don't have a buffer, delete the client.
+                }
+
+                if (errorCode != 0) {
+                    // Clean up on failure
+                    if (pClient->urcPermittedMutex != NULL) {
+                        uPortMutexDelete(pClient->urcPermittedMutex);
+                    }
+                    if (pClient->streamMutex != NULL) {
+                        uPortMutexDelete(pClient->streamMutex);
+                    }
+                    if (pClient->mutex != NULL) {
+                        uPortMutexDelete(pClient->mutex);
+                    }
+                    if (receiveBufferIsMalloced) {
+                        free(pClient->pReceiveBuffer);
+                    }
                     free(pClient);
                     pClient = NULL;
                 }
@@ -2329,23 +2528,27 @@ int32_t uAtClientTimeoutGet(const uAtClientHandle_t atHandle)
 void uAtClientTimeoutSet(uAtClientHandle_t atHandle, int32_t timeoutMs)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+    uPortMutexHandle_t streamMutex;
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
-    // Try, without blocking, to lock this AT client's
-    // stream mutex
-    if (uPortMutexTryLock(pClient->streamMutex, 0) == 0) {
+    // Try, without blocking, to lock this AT client's stream mutex
+    streamMutex = streamTryLock(pClient, 0);
+    if (streamMutex != NULL) {
         // We were able to lock the stream mutex, we're obviously
         // not currently in a lock, so set the timeout
         // forever and unlock the mutex again
         pClient->atTimeoutMs = timeoutMs;
-        uPortMutexUnlock(pClient->streamMutex);
+        uPortMutexUnlock(streamMutex);
     } else {
         // We were not able to lock the stream mutex so we must
         // be in a lock.  In this case save the current
         // timeout before changing it so that we can put
         // it back once the stream mutex is unlocked
-        if ((pClient->pWakeUp != NULL) && pClient->pWakeUp->inWakeUpHandler) {
+        if ((pClient->pWakeUp != NULL) &&
+            ((uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) != 0) ||
+             // This just to unlock the mutex if the try actually succeeded
+             (uPortMutexUnlock(pClient->pWakeUp->inWakeUpHandlerMutex) != 0))) {
             // If we're in a wake-up handler stash the saved timeout
             // in the wake-up structure so that we can restore
             // it when we unwind back out without overwriting one
@@ -2419,28 +2622,25 @@ void uAtClientDelaySet(uAtClientHandle_t atHandle,
 void uAtClientLock(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+    uPortMutexHandle_t streamMutex;
 
     // IMPORTANT: this can't lock pClient->mutex as it
     // needs to wait on the stream mutex and if it locked
     // pClient->mutex that would prevent uAtClientUnlock()
     // from working.
-    if ((pClient != NULL) && pClient->streamMutex != NULL) {
-        // Only lock the mutex if we're not in a wake-up
-        // callback (since it will already be locked in
-        // that case)
-        if ((pClient->pWakeUp == NULL) || !pClient->pWakeUp->inWakeUpHandler) {
-            uPortMutexLock(pClient->streamMutex);
-            if (pClient->pActivityPin != NULL) {
-                while (uPortGetTickTimeMs() - pClient->pActivityPin->lastToggleTime <
-                       pClient->pActivityPin->hysteresisMs) {
-                    uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
-                }
-                // If an activity pin is set then switch it on
-                if (uPortGpioSet(pClient->pActivityPin->pin,
-                                 (int32_t) pClient->pActivityPin->highIsOn) == 0) {
-                    pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
-                    uPortTaskBlock(pClient->pActivityPin->readyMs);
-                }
+    if ((pClient != NULL) && (pClient->streamMutex != NULL)) {
+        streamMutex = streamLock(pClient);
+        mutexStackPush(&(pClient->lockedStreamMutexStack), streamMutex);
+        if (pClient->pActivityPin != NULL) {
+            while (uPortGetTickTimeMs() - pClient->pActivityPin->lastToggleTime <
+                   pClient->pActivityPin->hysteresisMs) {
+                uPortTaskBlock(U_AT_CLIENT_ACTIVITY_PIN_HYSTERESIS_INTERVAL_MS);
+            }
+            // If an activity pin is set then switch it on
+            if (uPortGpioSet(pClient->pActivityPin->pin,
+                             (int32_t) pClient->pActivityPin->highIsOn) == 0) {
+                pClient->pActivityPin->lastToggleTime = uPortGetTickTimeMs();
+                uPortTaskBlock(pClient->pActivityPin->readyMs);
             }
         }
         clearError(pClient);
@@ -2453,40 +2653,42 @@ void uAtClientLock(uAtClientHandle_t atHandle)
 int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
-    uErrorCode_t error;
     int32_t sizeBytes;
+    uPortMutexHandle_t streamMutex;
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
-    unlockNoDataCheck(pClient);
+    streamMutex = mutexStackPop(&(pClient->lockedStreamMutexStack));
+    if (streamMutex != NULL) {
+        unlockNoDataCheck(pClient, streamMutex);
 
-    switch (pClient->streamType) {
-        case U_AT_CLIENT_STREAM_TYPE_UART:
-            sizeBytes = uPortUartGetReceiveSize(pClient->streamHandle);
-            if ((sizeBytes > 0) ||
-                (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
-                uPortUartEventSend(pClient->streamHandle,
-                                   U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
-            }
-            break;
-        case U_AT_CLIENT_STREAM_TYPE_EDM:
-            sizeBytes = uShortRangeEdmStreamAtGetReceiveSize(pClient->streamHandle);
-            if ((sizeBytes > 0) ||
-                (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
-                uShortRangeEdmStreamAtEventSend(pClient->streamHandle,
-                                                U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
-            }
-            break;
-        default:
-            break;
+        switch (pClient->streamType) {
+            case U_AT_CLIENT_STREAM_TYPE_UART:
+                sizeBytes = uPortUartGetReceiveSize(pClient->streamHandle);
+                if ((sizeBytes > 0) ||
+                    (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
+                    uPortUartEventSend(pClient->streamHandle,
+                                       U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+                }
+                break;
+            case U_AT_CLIENT_STREAM_TYPE_EDM:
+                sizeBytes = uShortRangeEdmStreamAtGetReceiveSize(pClient->streamHandle);
+                if ((sizeBytes > 0) ||
+                    (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
+                    uShortRangeEdmStreamAtEventSend(pClient->streamHandle,
+                                                    U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+                }
+                break;
+            default:
+                break;
+        }
+
+        U_ASSERT(U_AT_CLIENT_GUARD_CHECK(pClient->pReceiveBuffer));
     }
-
-    error = pClient->error;
-    U_ASSERT(U_AT_CLIENT_GUARD_CHECK(pClient->pReceiveBuffer));
 
     U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
-    return (int32_t) error;
+    return (int32_t) pClient->error;
 }
 
 // Start an AT command sequence.
@@ -3140,7 +3342,7 @@ int32_t uAtClientCallback(uAtClientHandle_t atHandle,
     return errorCode;
 }
 
-// Get the stack high watermark for the AT callback task
+// Get the stack high watermark for the AT callback task.
 int32_t uAtClientCallbackStackMinFree()
 {
     int32_t sizeOrErrorCode;
@@ -3152,6 +3354,71 @@ int32_t uAtClientCallbackStackMinFree()
     U_PORT_MUTEX_UNLOCK(gMutexEventQueue);
 
     return sizeOrErrorCode;
+}
+
+// Handle a URC "in-line".
+int32_t uAtClientUrcDirect(uAtClientHandle_t atHandle,
+                           const char *pPrefix,
+                           void (*pHandler) (uAtClientHandle_t,
+                                             void *),
+                           void *pHandlerParam)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+    size_t strlenPrefix;
+    bool prefixFound = false;
+
+    // IMPORTANT: this can't lock pClient->mutex as it
+    // checks for URCs asynchronously (as well as directly)
+
+    if ((pPrefix != NULL) && (pHandler != NULL)) {
+        errorCode = (int32_t) pClient->error;
+        if (pClient->error == U_ERROR_COMMON_SUCCESS) {
+            strlenPrefix = strlen(pPrefix);
+
+            // Clear out any previous scope
+            setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
+
+            // Bring all the available data into the buffer
+            bufferRewind(pClient);
+            bufferFill(pClient, false);
+
+            // Set us to information response mode, i.e. a
+            // line with a CR/LF on the end
+            setScope(pClient, U_AT_CLIENT_SCOPE_INFORMATION);
+
+            // Look for the URC prefix
+            while ((pClient->error == U_ERROR_COMMON_SUCCESS) &&
+                   (!pClient->stopTag.found) && !prefixFound) {
+                // Remove the CR/LF's that should be at the start
+                while (bufferMatch(pClient, U_AT_CLIENT_CRLF,
+                                   U_AT_CLIENT_CRLF_LENGTH_BYTES)) {}
+                prefixFound = bufferMatch(pClient, pPrefix, strlenPrefix);
+                // If no prefix was found, check for a URC; yes,
+                // another URC might arrive while we're waiting for
+                // _this_ URC. If we don't find a URC either then
+                // try to bring in more stuff, blocking until done
+                if (!prefixFound && !bufferMatchOneUrc(pClient) &&
+                    !bufferFill(pClient, true)) {
+                    // nuffin: set an error to get us out of here
+                    setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+                }
+            }
+
+            if (prefixFound) {
+                // Found it, call the handler
+                pHandler(pClient, pHandlerParam);
+                // Consume up to the CR/LF stop tag
+                if (consumeToStopTag(pClient)) {
+                    setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
+                }
+            } else {
+                errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
+            }
+        }
+    }
+
+    return errorCode;
 }
 
 /* ----------------------------------------------------------------
@@ -3285,41 +3552,77 @@ int32_t uAtClientSetWakeUpHandler(uAtClientHandle_t atHandle,
                                   void *pHandlerParam,
                                   int32_t inactivityTimeoutMs)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+    uPortTaskHandle_t dummy;
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
-    if (pHandler == NULL) {
-        if (pClient->pWakeUp != NULL) {
-            // Mustn't be in the wake-up handler
-            U_ASSERT(!pClient->pWakeUp->inWakeUpHandler);
-            uPortMutexDelete(pClient->pWakeUp->mutex);
-            free(pClient->pWakeUp);
-            pClient->pWakeUp = NULL;
-        }
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-    } else {
-        if (pClient->pWakeUp == NULL) {
-            pClient->pWakeUp = (uAtClientWakeUp_t *) malloc(sizeof(*(pClient->pWakeUp)));
+    // Make sure that the uPortTaskGetHandle(), uPortEnterCritical()
+    // and uPortExitCritical() APIs are supported because
+    // the wake-up process requires them.
+    if ((uPortTaskGetHandle(&dummy) == 0) && (uPortEnterCritical() == 0)) {
+        uPortExitCritical();
+        errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        if (pHandler == NULL) {
+            // Switching the wake-up handler off
             if (pClient->pWakeUp != NULL) {
-                if (uPortMutexCreate(&(pClient->pWakeUp->mutex)) < 0) {
-                    // Clean up if we couldn't create the mutex
-                    free(pClient->pWakeUp);
-                    pClient->pWakeUp = NULL;
-                }
+                // Mustn't be in the wake-up handler
+                U_ASSERT(uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) == 0);
+                // Delete all the mutexes
+                uPortMutexUnlock(pClient->pWakeUp->inWakeUpHandlerMutex);
+                uPortMutexDelete(pClient->pWakeUp->inWakeUpHandlerMutex);
+                U_PORT_MUTEX_LOCK(pClient->pWakeUp->streamMutex);
+                U_PORT_MUTEX_UNLOCK(pClient->pWakeUp->streamMutex);
+                uPortMutexDelete(pClient->pWakeUp->streamMutex);
+                U_PORT_MUTEX_LOCK(pClient->pWakeUp->mutex);
+                U_PORT_MUTEX_UNLOCK(pClient->pWakeUp->mutex);
+                uPortMutexDelete(pClient->pWakeUp->mutex);
+                free(pClient->pWakeUp);
+                pClient->pWakeUp = NULL;
             }
-        } else {
-            // Mustn't be in the wake-up handler
-            U_ASSERT(!pClient->pWakeUp->inWakeUpHandler);
-        }
-        if (pClient->pWakeUp != NULL) {
-            pClient->pWakeUp->pHandler = pHandler;
-            pClient->pWakeUp->pParam = pHandlerParam;
-            pClient->pWakeUp->inactivityTimeoutMs = inactivityTimeoutMs;
-            pClient->pWakeUp->atTimeoutSavedMs = -1;
-            pClient->pWakeUp->inWakeUpHandler = false;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        } else {
+            if (pClient->pWakeUp == NULL) {
+                pClient->pWakeUp = (uAtClientWakeUp_t *) malloc(sizeof(*(pClient->pWakeUp)));
+                if (pClient->pWakeUp != NULL) {
+                    memset(pClient->pWakeUp, 0, sizeof(*pClient->pWakeUp));
+                    if (uPortMutexCreate(&(pClient->pWakeUp->inWakeUpHandlerMutex)) == 0) {
+                        if (uPortMutexCreate(&(pClient->pWakeUp->mutex)) == 0) {
+                            if (uPortMutexCreate(&(pClient->pWakeUp->streamMutex)) == 0) {
+                                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                            }
+                        }
+                    }
+                    if (errorCode != 0) {
+                        // Clean up if we couldn't create a mutex
+                        if (pClient->pWakeUp->inWakeUpHandlerMutex != NULL) {
+                            uPortMutexDelete(pClient->pWakeUp->inWakeUpHandlerMutex);
+                        }
+                        if (pClient->pWakeUp->mutex != NULL) {
+                            uPortMutexDelete(pClient->pWakeUp->mutex);
+                        }
+                        if (pClient->pWakeUp->streamMutex != NULL) {
+                            uPortMutexDelete(pClient->pWakeUp->streamMutex);
+                        }
+                        free(pClient->pWakeUp);
+                        pClient->pWakeUp = NULL;
+                    }
+                }
+            } else {
+                // re-use the existing wake-up context, just
+                // mustn't be in the wake-up handler
+                U_ASSERT(uPortMutexTryLock(pClient->pWakeUp->inWakeUpHandlerMutex, 0) == 0);
+                uPortMutexUnlock(pClient->pWakeUp->inWakeUpHandlerMutex);
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+            if (pClient->pWakeUp != NULL) {
+                pClient->pWakeUp->pHandler = pHandler;
+                pClient->pWakeUp->pParam = pHandlerParam;
+                pClient->pWakeUp->inactivityTimeoutMs = inactivityTimeoutMs;
+                pClient->pWakeUp->atTimeoutSavedMs = -1;
+                pClient->pWakeUp->wakeUpTask = NULL;
+            }
         }
     }
 

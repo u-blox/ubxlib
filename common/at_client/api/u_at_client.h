@@ -1045,6 +1045,53 @@ int32_t uAtClientCallback(uAtClientHandle_t atHandle,
  */
 int32_t uAtClientCallbackStackMinFree();
 
+/** It should NOT normally be necessary to use this, URCs should
+ * be handled with the uAtClientSetUrcHandler() function since they
+ * arrive asynchronously.  However, there are cases (e.g. in
+ * code handling wake-up from deep sleep when asynchronous URCs
+ * are held back held back for processing after wake-up has been
+ * completed) where it is necessary to wait for a URC "in-line".
+ * For those cases the same URC handler callback as would be
+ * written for the uAtClientSetUrcHandler() case can be called
+ * directly using this function, just like a
+ * uAtClientResponseStart()/Stop() but for the URC case. Make
+ * sure that this is used within the SAME AT client locks that
+ * caused the URC to be generated, otherwise the asynchronous
+ * URC handler may jump in, process the URC string and throw it
+ * away (as it will not be recognised as a URC by it).
+ * In other words, an exchange might look something like this:
+ *
+ * Lock the AT client:
+ * uAtClientLock(client);
+ * ...do normal stuff:
+ * uAtClientCommandStart(client, "AT+THINGY=");
+ * ...write things...
+ * uAtClientCommandStop(client);
+ * uAtClientResponseStart(client, "+THINGY:");
+ * ...read things...
+ * uAtClientResponseStop(client);
+ * ...now do the "URC direct" bit within the same AT client lock:
+ * uAtClientUrcDirect(client, "+URCTHINGY:", myUrcFunction,
+ *                    (void *) pMyUrcFunctionParameter);
+ * ...only now unlock the AT client:
+ * uAtClientUnlock(client);
+ *
+ * @param atHandle        the handle of the AT client.
+ * @param pPrefix         the prefix for the URC; cannot by NULL.
+ * @param pHandler        the function to be called if the prefix
+ *                        is found; cannot be NULL.
+ * @param pHandlerParam   void * parameter to be passed to the
+ *                        function call as the second parameter;
+ *                        may be NULL.
+ * @return                zero if pPrefix is matched otherwise
+ *                        negative value..
+ */
+int32_t uAtClientUrcDirect(uAtClientHandle_t atHandle,
+                           const char *pPrefix,
+                           void (*pHandler) (uAtClientHandle_t,
+                                             void *),
+                           void *pHandlerParam);
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MISC
  * -------------------------------------------------------------- */
@@ -1248,6 +1295,11 @@ void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
  * are required and return an integer; if the return value is zero
  * then the power-up is assumed to have succeeded and operations
  * will continue, else an error is assumed to have occurred.
+ *
+ * Note: if you have your own port, for this function to work
+ * the port API functions uPortTaskGetHandle(),
+ * uPortEnterCritical() and uPortExitCritical() must be
+ * implemented.
  *
  * IMPORTANT: the wake-up handler may send and receive AT
  * commands and may expect URCs to be processed but should not
