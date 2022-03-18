@@ -208,7 +208,7 @@ def parallelTest(json, subst_dir) {
 
 node('TEST-gb-cmb-dt-022')
 {
-    def known_branches = [ 'master', 'sho_master' ]
+    def known_branches = [ 'master', 'development' ]
     def git_commit_text
     def changed_files
     def subst_drive = "z:"
