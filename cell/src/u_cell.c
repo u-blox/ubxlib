@@ -175,6 +175,8 @@ void uCellDeinit()
             uCellPrivateC2cRemoveContext(pInstance);
             // Free any location context and associated URC
             uCellPrivateLocRemoveContext(pInstance);
+            // Free any sleep context
+            uCellPrivateSleepRemoveContext(pInstance);
             free(pInstance);
         }
 
@@ -225,6 +227,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 pInstance->pinEnablePower = pinEnablePower;
                 pInstance->pinPwrOn = pinPwrOn;
                 pInstance->pinVInt = pinVInt;
+                pInstance->pinDtrPowerSaving = -1;
                 for (size_t x = 0;
                      x < sizeof(pInstance->networkStatus) / sizeof(pInstance->networkStatus[0]);
                      x++) {
@@ -237,7 +240,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 pInstance->pLocContext = NULL;
                 pInstance->socketsHexMode = false;
                 pInstance->pFileSystemTag = NULL;
-                pInstance->dtrPowerSavingPin = -1;
+                pInstance->inWakeUpCallback = false;
+                pInstance->pSleepContext = NULL;
                 pInstance->pNext = NULL;
 
                 // Now set up the pins
@@ -347,7 +351,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     // process if it turns out that the configuration of
                     // flow control lines is such that such power saving
                     // cannot be supported
-                    uAtClientSetWakeUpHandler(atHandle, uCellPrivateUartWakeUpCallback, NULL,
+                    uAtClientSetWakeUpHandler(atHandle, uCellPrivateWakeUpCallback, pInstance,
                                               (U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000) - 500);
 #endif
                     // ...and finally add it to the list
@@ -386,6 +390,8 @@ void uCellRemove(int32_t cellHandle)
             uCellPrivateC2cRemoveContext(pInstance);
             // Free any location context and associated URC
             uCellPrivateLocRemoveContext(pInstance);
+            // Free any sleep context
+            uCellPrivateSleepRemoveContext(pInstance);
             free(pInstance);
         }
 

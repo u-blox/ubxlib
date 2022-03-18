@@ -38,8 +38,9 @@
 #include "u_error_common.h"
 
 #include "u_port.h"
-#include "u_port_os.h"     // Required by u_cell_private.h
+#include "u_port_os.h"
 #include "u_port_uart.h"
+#include "u_port_gpio.h"
 #include "u_port_crypto.h"
 
 #include "u_at_client.h"
@@ -51,6 +52,7 @@
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
 #include "u_cell_sec_c2c.h"
+#include "u_cell_pwr_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -109,7 +111,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)         |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX) |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                  |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
         )
     },
     {
@@ -133,7 +137,9 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          // (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)                 |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
         )
     },
     {
@@ -148,13 +154,16 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
         )
     },
     {
         U_CELL_MODULE_TYPE_SARA_R5, 1500 /* Pwr On pull ms */, 2000 /* Pwr off pull ms */,
         6 /* Boot wait */, 10 /* Min awake */, 20 /* Pwr down wait */, 15 /* Reboot wait */, 10 /* AT timeout */,
-        20 /* Cmd wait ms */, 5000 /* Resp max wait ms */, 4 /* radioOffCfun */, 150 /* resetHoldMilliseconds */,
+        20 /* Cmd wait ms */, 3000 /* Resp max wait ms */, 4 /* radioOffCfun */, 150 /* resetHoldMilliseconds */,
         1 /* Simultaneous RATs */,
         (1UL << (int32_t) U_CELL_NET_RAT_CATM1) /* RATs */,
         ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
@@ -175,7 +184,11 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_AT_PROFILES)                         |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_ZTP)                        |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DTR_POWER_SAVING)                    |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
         )
     },
     {
@@ -185,14 +198,17 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
         2 /* Simultaneous RATs */,
         ((1UL << (int32_t) U_CELL_NET_RAT_CATM1)          |
          (1UL << (int32_t) U_CELL_NET_RAT_NB1)) /* RATs */,
-        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                          |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                                |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)  |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                 |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                      |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                        |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                               |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
+        ((1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MNO_PROFILE)                         |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CSCON)                               |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT)                                |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_UCGED5)                              |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
         )
     },
     {
@@ -215,7 +231,15 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)                     |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)                       |
          (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)            |
-         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG) /* features */
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)                     |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_DEEP_SLEEP_URC)                      |
+         // SARA-R422 _does_ support 3GPP power saving, however the tests fail at the
+         // moment because a second attempt to enter 3GPP power saving, after waking-up
+         // from sleep to do something, fails, hence the support is disabled until
+         // we determine why that is
+         //(1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)                   |
+         //(1UL << (int32_t) U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING_PAGING_WINDOW_SET) |
+         (1UL << (int32_t) U_CELL_PRIVATE_FEATURE_EDRX) /* features */
         )
     }
 };
@@ -227,6 +251,43 @@ const uCellPrivateModule_t gUCellPrivateModuleList[] = {
 const size_t gUCellPrivateModuleListSize = sizeof(gUCellPrivateModuleList) /
                                            sizeof(gUCellPrivateModuleList[0]);
 
+/** Table to convert the RAT values used in the module to
+ * uCellNetRat_t, U201 version.  As well as being used when reading
+ * the RAT configuration this is also used when the module has read
+ * the active RAT (AT+COPS) and hence has more nuance than the
+ * table going in the other direction: for instance the module
+ * could determine that it has EDGE coverage but EDGE is not
+ * a RAT that can be configured by itself.
+ */
+static const uCellNetRat_t gModuleRatToCellRatU201[] = {
+    U_CELL_NET_RAT_GSM_GPRS_EGPRS,       // 0: 2G
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,  // 1: GSM compact
+    U_CELL_NET_RAT_UTRAN,                // 2: UTRAN
+    U_CELL_NET_RAT_EGPRS,                // 3: EDGE
+    U_CELL_NET_RAT_HSDPA,                // 4: UTRAN with HSDPA
+    U_CELL_NET_RAT_HSUPA,                // 5: UTRAN with HSUPA
+    U_CELL_NET_RAT_HSDPA_HSUPA,          // 6: UTRAN with HSDPA and HSUPA
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,  // 7: LTE cat-M1
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,  // 8: LTE NB1
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED   // 9: 2G again
+};
+
+/** Table to convert the RAT values used in the
+ * module to uCellNetRat_t, R4/R5 version.
+ */
+static const uCellNetRat_t gModuleRatToCellRatR4R5[] = {
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 0: 2G
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 1: GSM compact
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 2: UTRAN
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 3: EDGE
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 4: UTRAN with HSDPA
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 5: UTRAN with HSUPA
+    U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, // 6: UTRAN with HSDPA and HSUPA
+    U_CELL_NET_RAT_CATM1,               // 7: LTE cat-M1
+    U_CELL_NET_RAT_NB1,                 // 8: LTE NB1
+    U_CELL_NET_RAT_GSM_GPRS_EGPRS       // 9: 2G again
+};
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -234,6 +295,46 @@ const size_t gUCellPrivateModuleListSize = sizeof(gUCellPrivateModuleList) /
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+// Context activation result, UPSDA style, where the parameter is
+// a pointer to an int32_t which will be set to the result code from
+// the UPSDA action, should be 0 for success.
+static void UUPSDA_urc(uAtClientHandle_t atHandle, void *pParameter)
+{
+    int32_t result;
+
+    result = uAtClientReadInt(atHandle);
+
+    if (result == 0) {
+        // Tidy up by reading and throwing away the IP address
+        uAtClientReadString(atHandle, NULL,
+                            U_CELL_NET_IP_ADDRESS_SIZE, false);
+    }
+
+    *((int32_t *) pParameter) = result;
+}
+
+// Do a wake-up from deep sleep.
+static int32_t deepSleepWakeUp(uCellPrivateInstance_t *pInstance)
+{
+    int32_t errorCode;
+    uCellNetRat_t rat;
+
+    errorCode = uCellPwrPrivateOn(pInstance, NULL, false);
+    if (errorCode == 0) {
+        rat = uCellPrivateGetActiveRat(pInstance);
+        if (U_CELL_PRIVATE_RAT_IS_EUTRAN(rat)) {
+            // If we're on an EUTRAN RAT, so we must have been context-activated,
+            // the PDP context will still be there but the internal "profile" used
+            // by the on-board IP stack and MQTT stack etc. of the module, needs
+            // to be re-attached to the PDP context on return from power saving
+            uCellPrivateActivateProfile(pInstance, U_CELL_NET_CONTEXT_ID,
+                                        U_CELL_NET_PROFILE_ID, 1, NULL);
+        }
+    }
+
+    return errorCode;
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS THAT ARE PRIVATE TO CELLULAR
@@ -450,6 +551,27 @@ bool uCellPrivateIsRegistered(const uCellPrivateInstance_t *pInstance)
     return U_CELL_PRIVATE_STATUS_MEANS_REGISTERED(pInstance->networkStatus[U_CELL_NET_REG_DOMAIN_PS]);
 }
 
+// Convert module RAT to our RAT.
+uCellNetRat_t uCellPrivateModuleRatToCellRat(uCellModuleType_t moduleType,
+                                             int32_t moduleRat)
+{
+    uCellNetRat_t cellRat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
+
+    if (moduleRat >= 0) {
+        if (moduleType == U_CELL_MODULE_TYPE_SARA_U201) {
+            if (moduleRat < (int32_t) (sizeof(gModuleRatToCellRatU201) / sizeof(gModuleRatToCellRatU201[0]))) {
+                cellRat = gModuleRatToCellRatU201[moduleRat];
+            }
+        } else {
+            if (moduleRat < (int32_t) (sizeof(gModuleRatToCellRatR4R5) / sizeof(gModuleRatToCellRatR4R5[0]))) {
+                cellRat = gModuleRatToCellRatR4R5[moduleRat];
+            }
+        }
+    }
+
+    return cellRat;
+}
+
 // Get the active RAT.
 // Uses the packet switched domain, circuit switched is no use
 // for this API.
@@ -570,42 +692,145 @@ void uCellPrivateLocRemoveContext(uCellPrivateInstance_t *pInstance)
     }
 }
 
-// Callback to wake up the cellular module from UART power saving.
-int32_t uCellPrivateUartWakeUpCallback(uAtClientHandle_t atHandle,
-                                       void *pParam)
+// Remove the sleep context for the given instance.
+void uCellPrivateSleepRemoveContext(uCellPrivateInstance_t *pInstance)
+{
+    if (pInstance != NULL) {
+        // Free the context
+        free(pInstance->pSleepContext);
+        pInstance->pSleepContext = NULL;
+    }
+}
+
+// [Re]attach a PDP context to an internal module profile.
+int32_t uCellPrivateActivateProfile(const uCellPrivateInstance_t *pInstance,
+                                    int32_t contextId, int32_t profileId, size_t tries,
+                                    bool (*pKeepGoing) (const uCellPrivateInstance_t *))
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    int32_t uupsdaUrcResult = -1;
+
+    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                           U_CELL_PRIVATE_FEATURE_CONTEXT_MAPPING_REQUIRED)) {
+        errorCode = (int32_t) U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE;
+        for (size_t x = tries; (x > 0) && (errorCode != 0) &&
+             ((pKeepGoing == NULL) || pKeepGoing(pInstance)); x--) {
+            // Need to map the context to an internal modem profile
+            // e.g. AT+UPSD=0,100,1
+            uAtClientLock(atHandle);
+            // The IP type used here must be the same as
+            // that used by AT+CGDCONT, hence set it to IP
+            // to be sure as some versions of SARA-R5 software
+            // have the default as IPV4V6.
+            uAtClientCommandStart(atHandle, "AT+UPSD=");
+            uAtClientWriteInt(atHandle, profileId);
+            uAtClientWriteInt(atHandle, 0);
+            uAtClientWriteInt(atHandle, 0);
+            uAtClientCommandStopReadResponse(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UPSD=");
+            uAtClientWriteInt(atHandle, profileId);
+            uAtClientWriteInt(atHandle, 100);
+            uAtClientWriteInt(atHandle, contextId);
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+            if ((errorCode == 0) &&
+                (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5)) {
+                errorCode = (int32_t) U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE;
+                // SARA-R5 pattern: the context also has to be
+                // activated and we're not actually done
+                // until the +UUPSDA URC comes back,
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UPSDA=");
+                uAtClientWriteInt(atHandle, profileId);
+                uAtClientWriteInt(atHandle, 3);
+                uAtClientCommandStopReadResponse(atHandle);
+                // We wait for the URC "in-line" because this
+                // function may be called when waking the
+                // module up from sleep, at which point URCs
+                // handled asynchronously would be held back
+                // Should be pretty quick
+                uAtClientTimeoutSet(atHandle, 3000);
+                uAtClientUrcDirect(atHandle, "+UUPSDA:", UUPSDA_urc,
+                                   &uupsdaUrcResult);
+                if (uupsdaUrcResult == 0) {
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
+                uAtClientUnlock(atHandle);
+            }
+        }
+    }
+
+    return errorCode;
+}
+
+// Determine whether deep sleep is active, i.e. the module is asleep.
+bool uCellPrivateIsDeepSleepActive(uCellPrivateInstance_t *pInstance)
+{
+    bool sleepActive = false;
+    uCellPrivateSleep_t *pContext = pInstance->pSleepContext;
+
+    if (((pContext != NULL) && pContext->powerSaving3gppAgreed &&
+         (pInstance->pinVInt >= 0) &&
+         (uPortGpioGet(pInstance->pinVInt) == (int32_t) !U_CELL_VINT_PIN_ON_STATE))) {
+        pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP;
+        // If we've configured sleep and VInt has gone to its off state,
+        // then we are asleep.
+        sleepActive = true;
+    }
+
+    return sleepActive;
+}
+
+// Callback to wake up the cellular module from power saving.
+// IMPORTANT: nothing called from here should rely on callbacks
+// sent via the uAtClientCallback() mechanism or URCS; these will
+// be held back during the time that the module is being woken from
+// deep sleep, which would lead to a lock-up.
+int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle, void *pInstance)
 {
     int32_t errorCode = (int32_t) U_CELL_ERROR_AT;
+    uCellPrivateInstance_t *_pInstance = (uCellPrivateInstance_t *) pInstance;
     uAtClientDeviceError_t deviceError;
     int32_t atStreamHandle;
     uAtClientStream_t atStreamType = U_AT_CLIENT_STREAM_TYPE_MAX;
 
-    (void) pParam;
-
+    _pInstance->inWakeUpCallback = true;
     atStreamHandle = uAtClientStreamGet(atHandle, &atStreamType);
     if (atStreamType == U_AT_CLIENT_STREAM_TYPE_UART) {
         // Disable CTS, in case it gets in our way
         uPortUartCtsSuspend(atStreamHandle);
     }
 
-    // Poke the AT interface a few times at short intervals
-    // to either awaken the module or make sure it is awake
-    for (size_t x = 0;
-         (x < U_CELL_PRIVATE_UART_WAKE_UP_RETRIES + 1) && (errorCode != 0);
-         x++) {
-        uAtClientLock(atHandle);
-        if (x == 0) {
-            uAtClientTimeoutSet(atHandle, U_CELL_PRIVATE_UART_WAKE_UP_FIRST_WAIT_MS);
-        } else {
-            uAtClientTimeoutSet(atHandle, U_CELL_PRIVATE_UART_WAKE_UP_RETRY_INTERVAL_MS);
+    if (uCellPrivateIsDeepSleepActive(_pInstance)) {
+        // We know that the module has gone into 3GPP sleep, wake it up.
+        errorCode = deepSleepWakeUp(_pInstance);
+    } else {
+        // Poke the AT interface a few times at short intervals
+        // to either awaken the module or make sure it is awake
+        for (size_t x = 0;
+             (x < U_CELL_PRIVATE_UART_WAKE_UP_RETRIES + 1) && (errorCode != 0);
+             x++) {
+            uAtClientLock(atHandle);
+            if (x == 0) {
+                uAtClientTimeoutSet(atHandle, U_CELL_PRIVATE_UART_WAKE_UP_FIRST_WAIT_MS);
+            } else {
+                uAtClientTimeoutSet(atHandle, U_CELL_PRIVATE_UART_WAKE_UP_RETRY_INTERVAL_MS);
+            }
+            uAtClientCommandStart(atHandle, "AT");
+            uAtClientCommandStopReadResponse(atHandle);
+            uAtClientDeviceErrorGet(atHandle, &deviceError);
+            // Doesn't matter what the response is, even an error is OK,
+            // provided there is a response we're happy
+            if ((uAtClientUnlock(atHandle) == 0) ||
+                (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR)) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
         }
-        uAtClientCommandStart(atHandle, "AT");
-        uAtClientCommandStopReadResponse(atHandle);
-        uAtClientDeviceErrorGet(atHandle, &deviceError);
-        // Doesn't matter what the response is, even an error is OK,
-        // provided there is a response we're happy
-        if ((uAtClientUnlock(atHandle) == 0) ||
-            (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_NO_ERROR)) {
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        // If the AT-poking wake-up didn't work, check again if we've
+        // gone to deep sleep and, if so, do the wake-up
+        if ((errorCode != 0) && (uCellPrivateIsDeepSleepActive(_pInstance))) {
+            errorCode = deepSleepWakeUp(_pInstance);
         }
     }
 
@@ -614,7 +839,42 @@ int32_t uCellPrivateUartWakeUpCallback(uAtClientHandle_t atHandle,
         uPortUartCtsResume(atStreamHandle);
     }
 
+    _pInstance->inWakeUpCallback = false;
+
     return errorCode;
+}
+
+// Determine the deep sleep state.
+void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance)
+{
+    uCellPrivateSleep_t *pContext = pInstance->pSleepContext;
+
+    // If the sleep state has already been set to "asleep", or
+    // "protocol stack asleep" (which will have occurred because the
+    // deep sleep URC was received), then we don't need to do anything.
+    if ((pInstance->deepSleepState != U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP) &&
+        (pInstance->deepSleepState != U_CELL_PRIVATE_DEEP_SLEEP_STATE_PROTOCOL_STACK_ASLEEP)) {
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)) {
+            // If 3GPP power saving is not supported then deep sleep is plainly unavailable
+            pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE;
+        } else {
+            if (pContext == NULL) {
+                // If there is no sleep context then we assume sleep is unavailable
+                pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE;
+            } else {
+                // If 3GPP sleep has not been agreed with the network then sleep is unavailable.
+                // Note: must have called uCellPwrPrivateGet3gppPowerSaving() beforehand
+                // to set the powerSaving3gppAgreed flags appropriately.
+                if (!pContext->powerSaving3gppAgreed) {
+                    pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_UNAVAILABLE;
+                } else {
+                    // Otherwise sleep can occur
+                    pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_AVAILABLE;
+                }
+            }
+        }
+    }
 }
 
 // End of file

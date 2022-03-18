@@ -283,7 +283,8 @@ int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle);
  * FUNCTIONS: MUTEXES
  * -------------------------------------------------------------- */
 
-/** Create a mutex.
+/** Create a mutex.  Note that the mutex created is NOT a recursive
+ * mutex, a task may only lock it once.
  *
  * @param pMutexHandle a place to put the mutex handle.
  * @return             zero on success else negative error code.

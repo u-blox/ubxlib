@@ -31,7 +31,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 - The BLE and Wi-Fi APIs are internally common within u-blox and so they both use the common [short_range](/common/short_range) API.
 - The [at_client](/common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
 - The [ubx_protocol](/common/ubx_protocol) API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
-- The [port](/port) API permits all of the above to run on different hosts.
+- The [port](/port) API permits all of the above to run on different hosts; this API is not really intended for customer use - you can use it if you wish but it is quite restricted and is intended only to provide what `ubxlib` needs in the form that `ubxlib` needs it.
 
 # Which APIs Are Supported On Which u-blox Modules?
 
@@ -76,13 +76,13 @@ In order for u-blox to support multiple platforms with this code there is also a
 ¦   ¦   +---test                   the implementation and a test directory with the tests
 ¦   +---sock                   <-- the sockets API for cell, Wi-Fi (and in the future BLE)
 ¦   +---security               <-- common API for u-blox security and TLS security/credential storage
-¦   +---mqtt_client            <-- common MQTT client API for cell (and in the future Wi-Fi)
-¦   +---location               <-- common location API, can use GNSS, Cell Locate and in the future Wi-Fi/BLE stations, etc.
+¦   +---mqtt_client            <-- common MQTT client API
+¦   +---location               <-- common location API, can use GNSS, Cell Locate, Cloud Locate and in the future Wi-Fi/BLE stations, etc.
 ¦   +---short_range            <-- internal API used by the BLE and Wi-Fi APIs (see below)
 ¦   +---at_client              <-- internal API used by the BLE, cell and Wi-Fi APIs
 ¦   +---ubx_protocol           <-- internal API used by the GNSS API
 ¦   +---error                  <-- u_error_common.h: error codes common across APIs
-¦   +---assert                 <-- u_assert.h: assert hook
+¦   +---assert                 <-- assert hook
 ¦   +---utils                  <-- contains common utilities
 ¦   ...
 +---cell                       <-- API for cellular (if you need more than network provides)

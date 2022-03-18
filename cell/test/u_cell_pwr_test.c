@@ -38,6 +38,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"    // For memset()/memcmp()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h"
@@ -53,22 +54,117 @@
 
 #include "u_at_client.h"
 
+#include "u_sock.h"
+
 #include "u_cell_module_type.h"
 #include "u_cell.h"
 #include "u_cell_net.h"     // Required by u_cell_private.h
 #include "u_cell_private.h" // So that we can get at some innards
 #include "u_cell_pwr.h"
+#include "u_cell_info.h"  // In order to fetch the IMEI as a test command for power saving
+#include "u_cell_sock.h"  // So that we can transfer some data during E-DRX tests
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
+
+#include "u_sock_test_shared_cfg.h"   // For some of the test macros
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS
+/** The active time to use during 3GPP power saving testing,
+ * a value known to work with the Nutaq test network we use in our
+ * test system.
+ */
+# define U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS 10
+#endif
+
+#ifndef U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS
+/** The periodic wake-up to use during 3GPP power saving testing,
+ * a value known to work with the Nutaq test network we use in our
+ * test system.
+ */
+# define U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS 300
+#endif
+
+#ifndef U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS
+/** How long to wait for the module to return to idle, 10 seconds for the
+ * RRC connection to drop on the Nutaq box we use in testing, plus
+ * a little bit of margin to be sure.
+ */
+#define U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS 12
+#endif
+
+#ifndef U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS
+/** How much longer to wait than the active time for a module to
+ * actually go to sleep after the RRC disconnect.
+ */
+#define U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS 10
+#endif
+
+#ifndef U_CELL_PWR_TEST_EDRX_SECONDS
+/** The E-DRX time to use during testing in seconds.
+ */
+# define U_CELL_PWR_TEST_EDRX_SECONDS 10
+#endif
+
+#ifndef U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS
+/** How much longer to wait then the E-DRX timer for a
+ * module to actually go to sleep.
+ */
+#define U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS 2
+#endif
+
+#ifndef U_CELL_PWR_TEST_PAGING_WINDOW_SECONDS
+/** The paging window to use when testing E-DRX in seconds.
+ */
+# define U_CELL_PWR_TEST_PAGING_WINDOW_SECONDS 1
+#endif
+
+#ifndef U_CELL_PWR_TEST_ECHO_STRING
+/** String to send to the echo server during power saving testing.
+ */
+# define U_CELL_PWR_TEST_ECHO_STRING "Hello world!"
+#endif
+
+#ifndef U_CELL_PWR_TEST_ECHO_STRING_LENGTH_BYTES
+/** The length of U_CELL_PWR_TEST_ECHO_STRING, not including
+ * terminator, i.e. as strlen() would return.
+ */
+# define U_CELL_PWR_TEST_ECHO_STRING_LENGTH_BYTES 12
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
+
+/** Structure to hold E-DRX values.
+ */
+typedef struct {
+    int32_t eDrxSecondsRequested;
+    int32_t eDrxSecondsExpected;
+} uCellPwrTestEdrxValues_t;
+
+/** Structure to hold all 3GPP power saving parameters, for use with
+ * the calllback.
+ */
+typedef struct {
+    bool onNotOff;
+    int32_t activeTimeSeconds;
+    int32_t periodicWakeupSeconds;
+} uCellPwrTest3gppPowerSavingParameters_t;
+
+/** Structure to hold all E-DRX parameters, for use with the calllback.
+ */
+typedef struct {
+    uCellNetRat_t rat;
+    bool onNotOff;
+    int32_t eDrxSecondsRequested;
+    int32_t eDrxSecondsAssigned;
+    int32_t pagingWindowSecondsAssigned;
+} uCellPwrTestEdrxParameters_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
@@ -84,8 +180,6 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
  */
 static size_t gSystemHeapLost = 0;
 
-# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
-
 /** Used for keepGoingCallback() timeout.
  */
 static int64_t gStopTimeMs;
@@ -94,13 +188,36 @@ static int64_t gStopTimeMs;
  */
 static int32_t gCallbackErrorCode = 0;
 
-# endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
+
+/** TCP socket handle.
+ */
+static int32_t gSockHandle = -1;
+
+/** Test values for requested and expected E-DRX on Cat-M1;
+ * just a few spot-checks
+ */
+static uCellPwrTestEdrxValues_t gEDrxSecondsCatM1[] = {
+    {   7,   10},
+    { 103,  122},
+    {2622, 2621}
+};
+
+/** Place to store the E-DRX parameters as received by the
+ * E-DRX callback function.
+ */
+static uCellPwrTestEdrxParameters_t gEDrxParameters;
+
+/** Place to store the 3GPP power sacing parameters as received
+ * by the callback function.
+ */
+uCellPwrTest3gppPowerSavingParameters_t g3gppPowerSavingCallbackParameter = {0};
+
+# endif // U_CFG_CELL_DISABLE_UART_POWER_SAVING
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-
-# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
 
 // Callback function for the cellular power-down process
 static bool keepGoingCallback(int32_t cellHandle)
@@ -117,6 +234,8 @@ static bool keepGoingCallback(int32_t cellHandle)
 
     return keepGoing;
 }
+
+# if U_CFG_APP_PIN_CELL_PWR_ON >= 0
 
 // Test power on/off and aliveness, parameterised by the VInt pin.
 static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
@@ -291,7 +410,282 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
     uCellRemove(cellHandle);
 }
 
+# if (U_CFG_APP_PIN_CELL_VINT >= 0) && !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
+// Callback for when the 3GPP power saving parameters are indicated
+// by the network
+static void powerSaving3gppCallback(int32_t cellHandle, bool onNotOff,
+                                    int32_t activeTimeSeconds,
+                                    int32_t periodicWakeupSeconds,
+                                    void *pParameter)
+{
+    if (cellHandle != *((int32_t *) pParameter)) {
+        gCallbackErrorCode = 2;
+    }
+
+    g3gppPowerSavingCallbackParameter.onNotOff = onNotOff;
+    g3gppPowerSavingCallbackParameter.activeTimeSeconds = activeTimeSeconds;
+    g3gppPowerSavingCallbackParameter.periodicWakeupSeconds = periodicWakeupSeconds;
+}
+
+// 3GPP power saving wake-up callback where the second parameter is a pointer
+// to an int32_t.
+static void wakeCallback(int32_t cellHandle, void *pParam)
+{
+    U_PORT_TEST_ASSERT(cellHandle == gHandles.cellHandle);
+    (*((int32_t *) pParam))++;
+
+    // Re-disable that remarkably persistent LWM2M client for
+    // modules which forget that it was disabled
+    uCellTestPrivateLwm2mDisable(cellHandle);
+}
+#  endif // if (U_CFG_APP_PIN_CELL_VINT >= 0) && !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
+
 # endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+
+# ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
+// Connect to a cellular network.
+static int32_t connectNetwork(int32_t cellHandle)
+{
+    gStopTimeMs = uPortGetTickTimeMs() +
+                  (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
+
+    return uCellNetConnect(cellHandle, NULL,
+# ifdef U_CELL_TEST_CFG_APN
+                           U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+# else
+                           NULL,
+# endif
+# ifdef U_CELL_TEST_CFG_USERNAME
+                           U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_USERNAME),
+# else
+                           NULL,
+# endif
+# ifdef U_CELL_TEST_CFG_PASSWORD
+                           U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_PASSWORD),
+# else
+                           NULL,
+# endif
+                           keepGoingCallback);
+}
+
+// Callback for base station connection status where the parameter is a
+// pointer to an int32_t.
+static void connectCallback(bool isConnected, void *pParameter)
+{
+    if (isConnected) {
+        (*((int32_t *) pParameter))++;
+    } else {
+        (*((int32_t *) pParameter))--;
+    }
+}
+
+// Connect to an echo server, so that we can exchange data during tests.
+static int32_t connectToEchoServer(int32_t cellHandle, uSockAddress_t *pEchoServerAddress)
+{
+    int32_t sockHandle = -1;
+
+    // Init cell sockets so that we can run a data transfer
+    U_PORT_TEST_ASSERT(uCellSockInit() == 0);
+    U_PORT_TEST_ASSERT(uCellSockInitInstance(cellHandle) == 0);
+
+    // Look up the address of the server we use for TCP echo
+    if (uCellSockGetHostByName(cellHandle, U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                               &(pEchoServerAddress->ipAddress)) == 0) {
+        // Add the port number we will use
+        pEchoServerAddress->port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
+
+        uPortLog("U_CELL_PWR_TEST: connecting to %s:%d...\n",
+                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME, pEchoServerAddress->port);
+
+        // Create a TCP socket
+        sockHandle = uCellSockCreate(cellHandle, U_SOCK_TYPE_STREAM, U_SOCK_PROTOCOL_TCP);
+        if (sockHandle >= 0) {
+            // ...and connect it
+            uCellSockConnect(cellHandle, sockHandle, pEchoServerAddress);
+        }
+
+        uPortLog("U_CELL_PWR_TEST: socket connected is %d.\n", sockHandle);
+    }
+
+    return sockHandle;
+}
+
+// Exchange some data with the echo server
+static int32_t echoData(int32_t cellHandle, int32_t sockHandle)
+{
+    int32_t y;
+    int32_t z;
+    size_t count;
+    char buffer[U_CELL_PWR_TEST_ECHO_STRING_LENGTH_BYTES];
+
+    uPortLog("U_CELL_PWR_TEST: sending \"%s\" (%d byte(s)) on socket %d...\n",
+             U_CELL_PWR_TEST_ECHO_STRING, sizeof(buffer), sockHandle);
+
+    y = 0;
+    count = 0;
+    while ((y < sizeof(buffer)) && (count < 100)) {
+        z = uCellSockWrite(cellHandle, sockHandle,
+                           U_CELL_PWR_TEST_ECHO_STRING + y,
+                           sizeof(buffer) - y);
+        if (z > 0) {
+            y += z;
+        } else {
+            uPortTaskBlock(500);
+        }
+        count++;
+    }
+    if (y == sizeof(buffer)) {
+        uPortLog("U_CELL_PWR_TEST: %d byte(s) sent.\n", y);
+    }
+
+    // Get the data back again
+    uPortLog("U_CELL_PWR_TEST: receiving echoed data back...\n");
+    y = 0;
+    count = 0;
+    memset(buffer, 0, sizeof(buffer));
+    while ((y < sizeof(buffer)) && (count < 100)) {
+        z = uCellSockRead(cellHandle, sockHandle,
+                          buffer + y, sizeof(buffer) - y);
+        if (z > 0) {
+            y += z;
+        } else {
+            uPortTaskBlock(500);
+        }
+        count++;
+    }
+    uPortLog("U_CELL_PWR_TEST: %d byte(s) received back.\n", y);
+
+    // Compare the data
+    return memcmp(buffer, U_CELL_PWR_TEST_ECHO_STRING, sizeof(buffer));
+}
+
+// Disconnect the given socket
+static void disconnectFromEchoServer(int32_t cellHandle,
+                                     int32_t *pSockHandle)
+{
+    // Close the socket
+    uCellSockClose(cellHandle, *pSockHandle, NULL);
+    *pSockHandle = -1;
+    // Deinit cell sockets
+    uCellSockDeinit();
+}
+
+// Calllback for when E-DRX parameters are changed.
+static void eDrxCallback(int32_t cellHandle, uCellNetRat_t rat,
+                         bool onNotOff,
+                         int32_t eDrxSecondsRequested,
+                         int32_t eDrxSecondsAssigned,
+                         int32_t pagingWindowSecondsAssigned,
+                         void *pParameter)
+{
+    if (cellHandle != *((int32_t *) pParameter)) {
+        gCallbackErrorCode = 1;
+    }
+
+    gEDrxParameters.rat = rat;
+    gEDrxParameters.onNotOff = onNotOff;
+    gEDrxParameters.eDrxSecondsRequested = eDrxSecondsRequested;
+    gEDrxParameters.eDrxSecondsAssigned = eDrxSecondsAssigned;
+    gEDrxParameters.pagingWindowSecondsAssigned = pagingWindowSecondsAssigned;
+}
+
+// Set some E-DRX parameters and return what was actually assigned.
+// On entry the values at the pointers should be set to the values
+// that the requested values would resolve to: e.g. an E-DRX value
+// of 7 seconds would be expected to end up as a requested
+// value of 10 seconds, since that's the nearest coded value.
+// On exit the values at the pointers will be the assigned values.
+static bool setEdrx(int32_t cellHandle, int32_t *pSockHandle,
+                    uSockAddress_t *pEchoServerAddress,
+                    uCellNetRat_t rat, bool onNotOff,
+                    int32_t eDrxSeconds, int32_t pagingWindowSeconds,
+                    bool *pOnNotOff, int32_t *pEDrxSeconds,
+                    int32_t *pPagingWindowSeconds)
+{
+    bool onNotOffExpected = *pOnNotOff;
+    int32_t eDrxSecondsExpected = *pEDrxSeconds;
+    int32_t pagingWindowSecondsExpected = *pPagingWindowSeconds;
+    bool rebooted = false;
+
+    *pOnNotOff = !onNotOff;
+    *pEDrxSeconds = -1;
+    *pPagingWindowSeconds = -1;
+
+    memset(&gEDrxParameters, 0, sizeof(gEDrxParameters));
+    gCallbackErrorCode = 0;
+
+    uPortLog("U_CELL_PWR_TEST: **REQUESTING** E-DRX %s, %d second(s), paging window"
+             " %d second(s).\n", onNotOff ? "on" : "off",
+             eDrxSeconds, pagingWindowSeconds);
+    U_PORT_TEST_ASSERT(uCellPwrSetRequestedEDrx(cellHandle, rat,
+                                                onNotOff,
+                                                eDrxSeconds,
+                                                pagingWindowSeconds) == 0);
+    if (uCellPwrRebootIsRequired(cellHandle)) {
+        U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+        // Re-make the cellular connection 'cos the request to get
+        // the assigned E-DRX parameters won't work otherwise
+        U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+        if ((pSockHandle != NULL) && (*pSockHandle >= 0) && (pEchoServerAddress != NULL)) {
+            // And reconnect the socket
+            *pSockHandle = connectToEchoServer(cellHandle, pEchoServerAddress);
+        }
+        // LWM2M activity can get in the way of 3GPP power saving and
+        // some module types don't store the disabledness of the LWM2M
+        // client in NVRAM, so we need to disable it again after a reboot
+        uCellTestPrivateLwm2mDisable(cellHandle);
+        rebooted = true;
+    }
+
+    // Wait for the callback to be called if we have an expected value to check
+    if (eDrxSecondsExpected >= 0) {
+        uPortLog("U_CELL_PWR_TEST: waiting for the URC...\n");
+        for (size_t x = 0; (x < 60) && (gEDrxParameters.rat != rat) &&
+             (gEDrxParameters.onNotOff != onNotOff) &&
+             (gEDrxParameters.eDrxSecondsRequested != eDrxSecondsExpected) &&
+             (gEDrxParameters.eDrxSecondsAssigned != eDrxSecondsExpected) &&
+             // Not all modules support setting or getting paging window so
+             // need to allow it to be -1
+             ((gEDrxParameters.pagingWindowSecondsAssigned != -1) ||
+              (gEDrxParameters.pagingWindowSecondsAssigned != pagingWindowSecondsExpected)); x++) {
+            uPortTaskBlock(1000);
+        }
+        U_PORT_TEST_ASSERT(gCallbackErrorCode == 0);
+
+        // Now we get the requested E-DRX parameters and they should be correct
+        U_PORT_TEST_ASSERT(uCellPwrGetRequestedEDrx(cellHandle, rat,
+                                                    &onNotOff,
+                                                    &eDrxSeconds,
+                                                    &pagingWindowSeconds) == 0);
+        uPortLog("U_CELL_PWR_TEST: E-DRX set to %s, %d second(s), paging window"
+                 " %d second(s).\n", onNotOff ? "on" : "off", eDrxSeconds,
+                 pagingWindowSeconds);
+        U_PORT_TEST_ASSERT(onNotOff == onNotOffExpected);
+        U_PORT_TEST_ASSERT(eDrxSeconds == eDrxSecondsExpected);
+        // Not all modules support setting or getting paging window so
+        // it is not possible to check it
+        U_PORT_TEST_ASSERT((pagingWindowSeconds == -1) ||
+                           (pagingWindowSecondsExpected == -1) ||
+                           (pagingWindowSeconds == pagingWindowSecondsExpected));
+
+        // Finally get the assigned E-DRX parameters
+        U_PORT_TEST_ASSERT(uCellPwrGetEDrx(cellHandle,
+                                           uCellNetGetActiveRat(cellHandle),
+                                           pOnNotOff, pEDrxSeconds,
+                                           pPagingWindowSeconds) == 0);
+        U_PORT_TEST_ASSERT(*pOnNotOff == onNotOffExpected);
+        U_PORT_TEST_ASSERT(*pEDrxSeconds == eDrxSecondsExpected);
+        // Not all modules support setting or getting paging window so
+        // need to allow it to be -1
+        U_PORT_TEST_ASSERT((*pPagingWindowSeconds == -1) ||
+                           (pagingWindowSecondsExpected == -1) ||
+                           (*pPagingWindowSeconds == pagingWindowSecondsExpected));
+    }
+
+    return rebooted;
+}
+
+# endif // U_CFG_CELL_DISABLE_UART_POWER_SAVING
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -370,7 +764,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
-#endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
+# endif // if U_CFG_APP_PIN_CELL_PWR_ON >= 0
 
 /** Test reboot.
  */
@@ -460,6 +854,626 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
+# ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
+#  if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && (U_CFG_APP_PIN_CELL_VINT >= 0)
+
+/** Test 3GPP power saving.
+ */
+U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
+{
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    const uCellPrivateModule_t *pModule;
+    int32_t cellHandle;
+    int32_t x;
+    uCellNetRat_t rat;
+    bool onNotOff3gppSleepSaved;
+    int32_t activeTimeSecondsSaved;
+    int32_t periodicWakeupSecondsSaved;
+    bool onNotOffEDrxSaved = false;
+    int32_t eDrxSecondsSaved;
+    int32_t pagingWindowSecondsSaved;
+    bool onNotOff = false;
+    bool sleepActive = false;
+    int32_t activeTimeSeconds = 0;
+    int32_t periodicWakeupSeconds = 0;
+    volatile int32_t wakeCallbackParam = 0;
+    char buffer[U_CELL_INFO_IMEI_SIZE];
+    uSockAddress_t echoServerAddress;
+    volatile int32_t connectionCallbackParameter = -1;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+    cellHandle = gHandles.cellHandle;
+
+    // Get the private module data as we need it for testing
+    pModule = pUCellPrivateGetModule(gHandles.cellHandle);
+    U_PORT_TEST_ASSERT(pModule != NULL);
+    //lint -esym(613, pModule) Suppress possible use of NULL pointer
+    // for pModule from now on
+
+    // Also in case a previous test failed
+    if (gSockHandle >= 0) {
+        disconnectFromEchoServer(cellHandle, &gSockHandle);
+    }
+
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+    // Use a callback to track our connectivity state, if we can
+    //lint -e(1773) Suppress complaints about
+    // passing the pointer as non-volatile
+    if (uCellNetSetBaseStationConnectionStatusCallback(cellHandle,
+                                                       connectCallback,
+                                                       (void *) &connectionCallbackParameter) == 0) {
+        connectionCallbackParameter = 0;
+    }
+#  pragma GCC diagnostic pop
+
+    // Make a cellular connection
+    U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+
+    // If we're on an EUTRAN RAT then 3GPP power saving will be supported
+    rat = uCellNetGetActiveRat(cellHandle);
+    if (((rat == U_CELL_NET_RAT_LTE) || (rat == U_CELL_NET_RAT_CATM1) ||
+         (rat == U_CELL_NET_RAT_NB1)) &&
+        // ...except we currently check the support flag as 3GPP
+        // sleep for SARA-R422 is temporarily disabled
+        U_CELL_PRIVATE_HAS(pModule,
+                           U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)) {
+        uPortLog("U_CELL_PWR_TEST: testing 3GPP power saving...\n");
+
+        // LWM2M activity can get in the way of 3GPP power saving and
+        // some module types don't store the disabledness of the LWM2M
+        // client in NVRAM, so we need to keep disabling it during
+        // this test
+        uCellTestPrivateLwm2mDisable(cellHandle);
+
+        // Set a callback for when the 3GPP power saving parameters are
+        // signalled by the network
+        U_PORT_TEST_ASSERT(uCellPwrSet3gppPowerSavingCallback(cellHandle,
+                                                              powerSaving3gppCallback,
+                                                              (void *) &cellHandle) == 0);
+
+        // Read out the original settings
+        U_PORT_TEST_ASSERT(uCellPwrGetRequested3gppPowerSaving(cellHandle,
+                                                               &onNotOff3gppSleepSaved,
+                                                               &activeTimeSecondsSaved,
+                                                               &periodicWakeupSecondsSaved) == 0);
+
+        // Also read out the original E-DRX settings, as, if E-DRX is
+        // active, 3GPP power saving might not
+        U_PORT_TEST_ASSERT(uCellPwrGetEDrx(cellHandle, rat, &onNotOffEDrxSaved,
+                                           &eDrxSecondsSaved, &pagingWindowSecondsSaved) == 0);
+        // Make sure that E-DRX is off
+        if (onNotOffEDrxSaved) {
+            if (uCellPwrSetRequestedEDrx(cellHandle, rat,
+                                         false, eDrxSecondsSaved,
+                                         pagingWindowSecondsSaved) == U_CELL_ERROR_CONNECTED) {
+                // Must be on one of them thar modules that doesn't
+                // like setting E-DRX when connected, so disconnect
+                // and try again
+                U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+                U_PORT_TEST_ASSERT(uCellPwrSetRequestedEDrx(cellHandle, rat,
+                                                            false, eDrxSecondsSaved,
+                                                            pagingWindowSecondsSaved) == 0);
+                if (uCellPwrRebootIsRequired(cellHandle)) {
+                    // If necessary reboot
+                    U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+                }
+                // Remake the cellular connection
+                U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+            } else {
+                if (uCellPwrRebootIsRequired(cellHandle)) {
+                    // If necessary reboot and remake the cellular connection
+                    U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+                    U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+                }
+            }
+            // Check what we got
+            U_PORT_TEST_ASSERT(uCellPwrGetEDrx(cellHandle, rat,
+                                               &onNotOff, NULL, NULL) == 0);
+            U_PORT_TEST_ASSERT(!onNotOff);
+        }
+
+        // Start with 3GPP power saving off
+        U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
+                                                               false, -1, -1) == 0);
+        if (uCellPwrRebootIsRequired(cellHandle)) {
+            U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+            U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+            uCellTestPrivateLwm2mDisable(cellHandle);
+        }
+        U_PORT_TEST_ASSERT(uCellPwrGetRequested3gppPowerSaving(cellHandle, &onNotOff,
+                                                               NULL, NULL) == 0);
+        U_PORT_TEST_ASSERT(!onNotOff);
+        if (uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0) {
+            U_PORT_TEST_ASSERT(!sleepActive);
+        }
+
+        // Test getting the power saving parameters with all NULL variables
+        U_PORT_TEST_ASSERT(uCellPwrGetRequested3gppPowerSaving(cellHandle, NULL,
+                                                               NULL, NULL) == 0);
+
+        // Now set some power saving parameters without switching power saving on
+        U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
+                                                               false,
+                                                               U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS,
+                                                               U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS) == 0);
+        U_PORT_TEST_ASSERT(uCellPwrGetRequested3gppPowerSaving(cellHandle, &onNotOff,
+                                                               &activeTimeSeconds,
+                                                               &periodicWakeupSeconds) == 0);
+        uPortLog("U_CELL_PWR_TEST: active time set to %d second(s),"
+                 " perodic wake-up %d second(s) (power saving %s).\n",
+                 activeTimeSeconds, periodicWakeupSeconds, onNotOff ? "on" : "off");
+        U_PORT_TEST_ASSERT(!onNotOff);
+        U_PORT_TEST_ASSERT(activeTimeSeconds == U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS);
+        U_PORT_TEST_ASSERT(periodicWakeupSeconds == U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS);
+
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+        // Set a wake-up callback
+        //lint -e(1773) Suppress complaints about
+        // passing the pointer as non-volatile
+        U_PORT_TEST_ASSERT(uCellPwrSetDeepSleepWakeUpCallback(cellHandle, wakeCallback,
+                                                              (void *) &wakeCallbackParam) == 0);
+#  pragma GCC diagnostic pop
+
+        // Now actually enable 3GPP power saving
+        uPortLog("U_CELL_PWR_TEST: **REQUESTING** 3GPP power saving on...\n");
+        U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
+                                                               true,
+                                                               U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS,
+                                                               U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS) == 0);
+        if (uCellPwrRebootIsRequired(cellHandle)) {
+            U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+            U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+            uCellTestPrivateLwm2mDisable(cellHandle);
+        }
+        activeTimeSeconds = 0;
+        periodicWakeupSeconds = 0;
+        U_PORT_TEST_ASSERT(uCellPwrGetRequested3gppPowerSaving(cellHandle, &onNotOff,
+                                                               &activeTimeSeconds,
+                                                               &periodicWakeupSeconds) == 0);
+        U_PORT_TEST_ASSERT(onNotOff);
+        U_PORT_TEST_ASSERT(activeTimeSeconds == U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS);
+        U_PORT_TEST_ASSERT(periodicWakeupSeconds == U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS);
+
+        // Wait for us to return to idle
+        uPortLog("U_CELL_PWR_TEST: waiting up to %d seconds(s) for return"
+                 " to idle...\n", U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS);
+        if (connectionCallbackParameter >= 0) {
+            for (x = 0; (connectionCallbackParameter > 0) &&
+                 (x < U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS); x++) {
+                uPortTaskBlock(1000);
+            }
+        } else {
+            // No callback, just have to wait
+            uPortTaskBlock(U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS);
+        }
+
+        // Get the assigned 3GPP power saving parameters; the new settings may
+        // take a while to be propagated to the network so try this a few times
+        uPortLog("U_CELL_PWR_TEST: waiting for the network to agree...\n");
+        onNotOff = false;
+        activeTimeSeconds = 0;
+        periodicWakeupSeconds = 0;
+        for (x = 0; (x < 10) && ((onNotOff != true) ||
+                                 (activeTimeSeconds != U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS) ||
+                                 (periodicWakeupSeconds != U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS)); x++) {
+            U_PORT_TEST_ASSERT(uCellPwrGet3gppPowerSaving(cellHandle, &onNotOff,
+                                                          &activeTimeSeconds,
+                                                          &periodicWakeupSeconds) == 0);
+            uPortTaskBlock(1000);
+        }
+        U_PORT_TEST_ASSERT(onNotOff);
+        U_PORT_TEST_ASSERT(activeTimeSeconds == U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS);
+        U_PORT_TEST_ASSERT(periodicWakeupSeconds == U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS);
+
+        // Wait for the active time to expire, with some margin,
+        // and check that the module is asleep
+        uPortLog("U_CELL_PWR_TEST: waiting up to %d second(s) for sleep...\n",
+                 activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                 U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS);
+        if (uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0) {
+            // A sleep activity indication is supported so we can wait for that
+            for (x = 0; !sleepActive && (x < activeTimeSeconds +
+                                         U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                                         U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS); x++) {
+                U_PORT_TEST_ASSERT(uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0);
+                uPortTaskBlock(1000);
+            }
+            U_PORT_TEST_ASSERT(sleepActive);
+            uPortLog("U_CELL_PWR_TEST: module has fallen asleep.\n");
+        } else {
+            // No indication is available, just have to block
+            uPortTaskBlock((activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                            U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS) * 1000);
+        }
+
+        // Perform an operation that sends an AT command to the module:
+        // this should work
+        uPortLog("U_CELL_PWR_TEST: requesting the IMEI when the module is asleep...\n");
+        U_PORT_TEST_ASSERT(uCellInfoGetImei(cellHandle, buffer) == 0);
+        uPortLog("U_CELL_PWR_TEST: wake-up callback has been called %d time(s).\n",
+                 wakeCallbackParam);
+        // Wait a moment for the wake-up callback to propagate
+        uPortTaskBlock(1000);
+        U_PORT_TEST_ASSERT(wakeCallbackParam == 1);
+
+        // We should still be registered on an EUTRAN RAT
+        rat = uCellNetGetActiveRat(cellHandle);
+        U_PORT_TEST_ASSERT((rat == U_CELL_NET_RAT_LTE) || (rat == U_CELL_NET_RAT_CATM1) ||
+                           (rat == U_CELL_NET_RAT_NB1));
+
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
+            // SARA-R422 does not re-enter 3GPP power saving unless there has been
+            // an RRC connection/disconnection, so do a DNS lookup to stimulate that
+            U_PORT_TEST_ASSERT(uCellSockGetHostByName(cellHandle,
+                                                      U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                                                      &echoServerAddress.ipAddress) == 0);
+        }
+
+        // Wait for the module to go to sleep again
+        uPortLog("U_CELL_PWR_TEST: waiting up to %d second(s) for sleep again...\n",
+                 activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                 U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS);
+        if (uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0) {
+            for (x = 0; !sleepActive && (x < activeTimeSeconds +
+                                         U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                                         U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS); x++) {
+                U_PORT_TEST_ASSERT(uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0);
+                uPortTaskBlock(1000);
+            }
+            U_PORT_TEST_ASSERT(sleepActive);
+            uPortLog("U_CELL_PWR_TEST: module has fallen asleep again.\n");
+        } else {
+            // No indication is available, just have to block
+            uPortTaskBlock((activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                            U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS) * 1000);
+        }
+
+        // Wake the module up using the pwr API call this time; the
+        // wake-up callback should have been called
+        uPortLog("U_CELL_PWR_TEST: waking the module by calling the pwr API directly...\n");
+        U_PORT_TEST_ASSERT(uCellPwrWakeUpFromDeepSleep(cellHandle, NULL) == 0);
+        uPortLog("U_CELL_PWR_TEST: wake-up callback has been called %d time(s).\n",
+                 wakeCallbackParam);
+        // Wait a moment for the wake-up callback to propagate
+        uPortTaskBlock(1000);
+        U_PORT_TEST_ASSERT(wakeCallbackParam == 2);
+
+        // We should still be registered on an EUTRAN RAT
+        rat = uCellNetGetActiveRat(cellHandle);
+        U_PORT_TEST_ASSERT((rat == U_CELL_NET_RAT_LTE) || (rat == U_CELL_NET_RAT_CATM1) ||
+                           (rat == U_CELL_NET_RAT_NB1));
+
+        if (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422) {
+            // SARA-R422 does not re-enter 3GPP power saving unless there has been
+            // an RRC connection/disconnection, so do a DNS lookup to stimulate that
+            U_PORT_TEST_ASSERT(uCellSockGetHostByName(cellHandle,
+                                                      U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                                                      &echoServerAddress.ipAddress) == 0);
+        }
+
+        // Wait for the module to fall sleep again
+        uPortLog("U_CELL_PWR_TEST: waiting up to %d second(s) for sleep...\n",
+                 activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                 U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS);
+
+        if (uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0) {
+            for (x = 0; !sleepActive && (x < activeTimeSeconds +
+                                         U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                                         U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS); x++) {
+                U_PORT_TEST_ASSERT(uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0);
+                uPortTaskBlock(1000);
+            }
+            U_PORT_TEST_ASSERT(sleepActive);
+            uPortLog("U_CELL_PWR_TEST: module has successfully gone to sleepy-byes.\n");
+        } else {
+            // No indication is available, just have to block
+            uPortTaskBlock((activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                            U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS) * 1000);
+        }
+
+        // We should still be registered on an EUTRAN RAT
+        rat = uCellNetGetActiveRat(cellHandle);
+        U_PORT_TEST_ASSERT((rat == U_CELL_NET_RAT_LTE) || (rat == U_CELL_NET_RAT_CATM1) ||
+                           (rat == U_CELL_NET_RAT_NB1));
+
+        // Do a DNS look-up to check that we can still do radio-ey things.
+        U_PORT_TEST_ASSERT(uCellSockGetHostByName(cellHandle,
+                                                  U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                                                  &echoServerAddress.ipAddress) == 0);
+
+        uPortLog("U_CELL_PWR_TEST: wake-up callback has been called %d time(s).\n",
+                 wakeCallbackParam);
+        // It is possible for uCellSockGetHostByName() to take longer than the active time
+        // and hence the wake-up callback may actually be called four times
+        U_PORT_TEST_ASSERT((wakeCallbackParam == 3) || (wakeCallbackParam == 4));
+
+        // Remove the deep sleep callback
+        U_PORT_TEST_ASSERT(uCellPwrSetDeepSleepWakeUpCallback(cellHandle, NULL, NULL) == 0);
+
+        // Disconnect and reconnect to the network so that a +CEREG is sent
+        // and hence the powerSaving3gppCallback() should be called
+        U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+        U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+
+        uPortLog("U_CELL_PWR_TEST: 3GPP power saving callback has power saving %s,"
+                 " active time %d second(s), periodic wake-up %d second(s).",
+                 g3gppPowerSavingCallbackParameter.onNotOff ? "on" : "off",
+                 g3gppPowerSavingCallbackParameter.activeTimeSeconds,
+                 g3gppPowerSavingCallbackParameter.periodicWakeupSeconds);
+        U_PORT_TEST_ASSERT(g3gppPowerSavingCallbackParameter.onNotOff == onNotOff);
+        U_PORT_TEST_ASSERT(g3gppPowerSavingCallbackParameter.activeTimeSeconds == activeTimeSeconds);
+        // Some modules don't include the periodic wake-up in their CEREG so need to allow
+        // that to be -1
+        U_PORT_TEST_ASSERT((g3gppPowerSavingCallbackParameter.periodicWakeupSeconds ==
+                            periodicWakeupSeconds) ||
+                           (g3gppPowerSavingCallbackParameter.periodicWakeupSeconds == -1));
+
+        // Put the original saved settings back again
+        U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
+                                                               onNotOff3gppSleepSaved,
+                                                               activeTimeSecondsSaved,
+                                                               periodicWakeupSecondsSaved) == 0);
+        if (onNotOffEDrxSaved) {
+            // Disconnect the network before putting the E-DRX settings back as some
+            // modules require that
+            U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+            U_PORT_TEST_ASSERT(uCellPwrSetRequestedEDrx(cellHandle, rat,
+                                                        onNotOffEDrxSaved, eDrxSecondsSaved,
+                                                        pagingWindowSecondsSaved) == 0);
+        }
+        if (uCellPwrRebootIsRequired(cellHandle)) {
+            U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+        }
+
+    } else {
+        uPortLog("U_CELL_PWR_TEST: not on an EUTRAN RAT, or 3GPP power saving not"
+                 " supported, 3GPP power saving cannot be tested.\n");
+    }
+
+    uCellNetSetBaseStationConnectionStatusCallback(cellHandle, NULL, NULL);
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to the C library during this"
+             " test and we have leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+}
+
+#  endif // if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && (U_CFG_APP_PIN_CELL_VINT >= 0)
+
+/** Test E-DRX.
+ */
+U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
+{
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    int32_t cellHandle;
+    int32_t x;
+    uCellNetRat_t rat;
+    bool onNotOffEDrxSaved;
+    int32_t eDrxSecondsSaved;
+    int32_t pagingWindowSecondsSaved;
+    bool onNotOff3gppSleepSaved = false;
+    int32_t activeTimeSecondsSaved;
+    int32_t periodicWakeupSecondsSaved;
+    bool onNotOff;
+    int32_t eDrxSeconds;
+    int32_t pagingWindowSeconds;
+    volatile int32_t connectionCallbackParameter = -1;
+    uSockAddress_t echoServerAddress;
+    uCellPwrTestEdrxValues_t *pTestEdrx = NULL;
+    size_t testEdrxLength = 0;
+    bool rebooted = false;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+    cellHandle = gHandles.cellHandle;
+
+    // Also in case a previous test failed
+    if (gSockHandle >= 0) {
+        disconnectFromEchoServer(cellHandle, &gSockHandle);
+    }
+
+    // Set a callback for when E-DRX parameters are changed
+    U_PORT_TEST_ASSERT(uCellPwrSetEDrxCallback(cellHandle, eDrxCallback,
+                                               (void *) &cellHandle) == 0);
+
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+    // Use a callback to track our connectivity state, if we can
+    //lint -e(1773) Suppress complaints about
+    // passing the pointer as non-volatile
+    if (uCellNetSetBaseStationConnectionStatusCallback(cellHandle,
+                                                       connectCallback,
+                                                       (void *) &connectionCallbackParameter) == 0) {
+        connectionCallbackParameter = 0;
+    }
+#  pragma GCC diagnostic pop
+
+    // Make a cellular connection
+    U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+
+    // Now we can tell which RAT we're on
+    rat = uCellNetGetActiveRat(cellHandle);
+
+    // Connect to an echo server so that we can exchange data during the test
+    gSockHandle = connectToEchoServer(cellHandle, &echoServerAddress);
+    U_PORT_TEST_ASSERT(gSockHandle >= 0);
+
+    // Read out the original E-DRX settings
+    x = uCellPwrGetRequestedEDrx(cellHandle, rat,
+                                 &onNotOffEDrxSaved,
+                                 &eDrxSecondsSaved,
+                                 &pagingWindowSecondsSaved);
+    if (x == 0) {
+        // Also read out the original 3GPP power saving settings and switch
+        // if off, as if 3GPP power saving is active it will mess us up
+        uCellPwrGetRequested3gppPowerSaving(cellHandle,
+                                            &onNotOff3gppSleepSaved,
+                                            &activeTimeSecondsSaved,
+                                            &periodicWakeupSecondsSaved);
+        if (onNotOff3gppSleepSaved) {
+            U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
+                                                                   false, -1, -1) == 0);
+            if (uCellPwrRebootIsRequired(cellHandle)) {
+                // If necessary reboot and remake the cellular connection
+                U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+                U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
+                gSockHandle = connectToEchoServer(cellHandle, &echoServerAddress);
+            }
+        }
+
+        // First, try to set the E-DRX settings to what they are already
+        // as a check to see if the module we're using permits E-DRX
+        // to be set while it is connected
+        x = uCellPwrSetRequestedEDrx(cellHandle, rat, onNotOffEDrxSaved,
+                                     eDrxSecondsSaved, pagingWindowSecondsSaved);
+        if (x == (int32_t) U_CELL_ERROR_CONNECTED) {
+            // Setting E-DRX while connected is not supported, disconnect
+            // from the network
+            uPortLog("U_CELL_PWR_TEST: setting E-DRX while connected to the"
+                     " network is not supported by this module.\n");
+            U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+            if (connectionCallbackParameter >= 0) {
+                uCellNetSetBaseStationConnectionStatusCallback(cellHandle, NULL, NULL);
+                connectionCallbackParameter = -1;
+            }
+        } else {
+            U_PORT_TEST_ASSERT(x == 0);
+        }
+
+        // Start with E-DRX off
+        onNotOff = true;
+        eDrxSeconds = U_CELL_PWR_TEST_EDRX_SECONDS;
+        // Can't reliably set paging window as some modules have it fixed
+        pagingWindowSeconds = -1;
+        rebooted = setEdrx(cellHandle, &gSockHandle, &echoServerAddress,
+                           rat, onNotOff, U_CELL_PWR_TEST_EDRX_SECONDS,
+                           U_CELL_PWR_TEST_PAGING_WINDOW_SECONDS,
+                           &onNotOff, &eDrxSeconds, &pagingWindowSeconds);
+
+        if (gSockHandle >= 0) {
+            // Send something to prove we're connected
+            U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
+        }
+
+        uPortLog("U_CELL_PWR_TEST: waiting for idle...\n",
+                 U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS);
+        // Wait us to return to idle
+        if (connectionCallbackParameter >= 0) {
+            for (x = 0; (connectionCallbackParameter > 0) &&
+                 (x < U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS); x++) {
+                uPortTaskBlock(1000);
+            }
+        } else {
+            // No callback, just have to wait
+            uPortTaskBlock(U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS * 1000);
+        }
+        uPortLog("U_CELL_PWR_TEST: waiting up to %d second(s) so that we likely"
+                 " enter E-DRX...\n", pagingWindowSeconds +
+                 U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS);
+        uPortTaskBlock((pagingWindowSeconds + U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS) * 1000);
+
+        // Send something again to prove that we can still connect
+        U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
+
+        // Test getting the E-DRX parameters with all NULL variables
+        U_PORT_TEST_ASSERT(uCellPwrGetRequestedEDrx(cellHandle, rat,
+                                                    NULL, NULL, NULL) == 0);
+
+        if (!rebooted) {
+            // Spot-check some E-DRX values, but only if we don't have to
+            // reboot between each one as then the test takes ages
+            // TODO NB1
+            if (rat == U_CELL_NET_RAT_CATM1) {
+                pTestEdrx = gEDrxSecondsCatM1;
+                testEdrxLength = sizeof(gEDrxSecondsCatM1) / sizeof(gEDrxSecondsCatM1[0]);
+            }
+            if ((pTestEdrx != NULL) && (testEdrxLength > 0)) {
+                for (size_t y = 0; y < testEdrxLength; y++) {
+                    onNotOff = true;
+                    eDrxSeconds = (pTestEdrx + y)->eDrxSecondsExpected;
+                    pagingWindowSeconds = -1;
+                    setEdrx(cellHandle,  &gSockHandle, &echoServerAddress, rat,
+                            onNotOff, (pTestEdrx + y)->eDrxSecondsRequested, -1,
+                            &onNotOff, &eDrxSeconds, &pagingWindowSeconds);
+                }
+            }
+        }
+
+        // Send something to prove we're still connected
+        U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
+        // Disconnect from the echo server and then the network
+        disconnectFromEchoServer(cellHandle, &gSockHandle);
+        U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
+
+        // Put the original saved settings back again
+        U_PORT_TEST_ASSERT(uCellPwrSetRequestedEDrx(cellHandle, rat,
+                                                    onNotOffEDrxSaved,
+                                                    eDrxSecondsSaved,
+                                                    pagingWindowSecondsSaved) == 0);
+        if (onNotOff3gppSleepSaved) {
+            U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
+                                                                   onNotOff3gppSleepSaved,
+                                                                   activeTimeSecondsSaved,
+                                                                   periodicWakeupSecondsSaved) == 0);
+        }
+        if (uCellPwrRebootIsRequired(cellHandle)) {
+            U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
+        }
+    } else {
+        uPortLog("U_CELL_PWR_TEST: looks like E-DRX is not supported"
+                 " (uCellPwrGetRequestedEDrx() returned %d).\n", x);
+        U_PORT_TEST_ASSERT(x == U_ERROR_COMMON_NOT_SUPPORTED);
+    }
+
+    // Don't remove the callbacks this time
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+}
+# endif //U_CFG_CELL_DISABLE_UART_POWER_SAVING
+
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
@@ -467,6 +1481,22 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
 U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrCleanUp")
 {
     int32_t x;
+    bool onNotOff = false;
+
+    // Make completely sure 3GPP power saving is off as it can mess us up
+    if (gHandles.cellHandle >= 0) {
+        uCellPwrGetRequested3gppPowerSaving(gHandles.cellHandle,
+                                            &onNotOff,
+                                            NULL, NULL);
+        if (onNotOff) {
+            uCellPwrSetRequested3gppPowerSaving(gHandles.cellHandle,
+                                                uCellNetGetActiveRat(gHandles.cellHandle),
+                                                false, -1, -1);
+            if (uCellPwrRebootIsRequired(gHandles.cellHandle)) {
+                uCellPwrReboot(gHandles.cellHandle, NULL);
+            }
+        }
+    }
 
     uCellTestPrivateCleanup(&gHandles);
 

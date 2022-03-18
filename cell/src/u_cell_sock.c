@@ -1916,6 +1916,12 @@ int32_t uCellSockGetHostByName(int32_t cellHandle,
                 }
             }
             atHandle = pInstance->atHandle;
+
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+CGDCONT?");
+            uAtClientCommandStopReadResponse(atHandle);
+            uAtClientUnlock(atHandle);
+
             uAtClientLock(atHandle);
             // Needs more time
             uAtClientTimeoutSet(atHandle,
