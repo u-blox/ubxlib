@@ -261,11 +261,12 @@ static void printLocation(int32_t latitudeX1e7, int32_t longitudeX1e7)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 {
-    int32_t networkHandleCell;
-    int32_t networkHandleGnss;
+    uDeviceHandle_t devHandleCell = NULL;
+    uDeviceHandle_t devHandleGnss = NULL;
     uLocationAssist_t locationAssist = U_LOCATION_ASSIST_DEFAULTS;
     uMqttClientConnection_t mqttConnection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
     uLocation_t location;
+    int32_t returnCode;
 
     // Set an out of range value so that we can test it later
     location.timeUtc = -1;
@@ -275,27 +276,29 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
     uNetworkInit();
 
     // Add a cellular network instance
-    networkHandleCell = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                    (void *) &gConfigCell);
-    uPortLog("Added cellular network with handle %d.\n", networkHandleCell);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                             (void *) &gConfigCell,
+                             &devHandleCell);
+    uPortLog("Added cellular with return code %d.\n", returnCode);
 
     // In this example we assume the GNSS module is inside the
     // cellular module (e.g. SARA-R510M8S or SARA-R422M8S) and so
     // we need to copy the cellular handle into the GNSS configuration
     // in order that it knows to use it
-    gConfigGnss.networkHandleAt = networkHandleCell;
+    gConfigGnss.devHandleAt = devHandleCell;
 
     // Add a GNSS network instance
-    networkHandleGnss = uNetworkAdd(U_NETWORK_TYPE_GNSS,
-                                    (void *) &gConfigGnss);
-    uPortLog("Added GNSS network with handle %d.\n", networkHandleGnss);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_GNSS,
+                             (void *) &gConfigGnss,
+                             &devHandleGnss);
+    uPortLog("Added GNSS with return code %d.\n", returnCode);
 
     // You may configure the networks as required
     // here using any of the GNSS or cell API calls.
 
     // Bring up the cellular network layer
     uPortLog("Bringing up cellular...\n");
-    if (uNetworkUp(networkHandleCell) == 0) {
+    if (uNetworkUp(devHandleCell) == 0) {
 
         // You may use the cellular network, as normal,
         // at any time, for example connect and
@@ -303,7 +306,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 
         // Bring up the GNSS network layer
         uPortLog("Bringing up GNSS...\n");
-        if (uNetworkUp(networkHandleGnss) == 0) {
+        if (uNetworkUp(devHandleGnss) == 0) {
 
             // Here you may use the GNSS API with the network handle
             // if you wish to configure the GNSS chip etc.
@@ -314,7 +317,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 
             // First, give it the network handle for the GNSS chip
             // to be used with the Cloud Locate service
-            locationAssist.networkHandleAssist = networkHandleGnss;
+            locationAssist.devHandleAssist = devHandleGnss;
             // Then set the number of satellites that GNSS must be
             // able to see before it is worth including that measurement
             // in the estimate
@@ -322,7 +325,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
             // Cloud Locate requires an MQTT Now connection to a thing
             // in your Thingstream account that is enabled for the
             // u-blox Cloud Locate service
-            locationAssist.pMqttClientContext = pUMqttClientOpen(networkHandleCell, NULL);
+            locationAssist.pMqttClientContext = pUMqttClientOpen(devHandleCell, NULL);
             if (locationAssist.pMqttClientContext != NULL) {
                 // Populate the MQTT connection structure with the
                 // credentials of your thing
@@ -347,7 +350,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 
                     // Now put the lot together by running the Cloud Locate service,
                     // giving it the location assist structure
-                    if (uLocationGet(networkHandleCell,
+                    if (uLocationGet(devHandleCell,
                                      U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
                                      &locationAssist, NULL,
                                      &location, NULL) == 0) {
@@ -370,14 +373,14 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 
             // When finished with the GNSS network layer
             uPortLog("Taking down GNSS...\n");
-            uNetworkDown(networkHandleGnss);
+            uNetworkDown(devHandleGnss);
         } else {
             uPortLog("Unable to bring up GNSS!\n");
         }
 
         // When finished with the cellular network layer
         uPortLog("Taking down cellular network...\n");
-        uNetworkDown(networkHandleCell);
+        uNetworkDown(devHandleCell);
 
     } else {
         uPortLog("Unable to bring up the cellular network!\n");

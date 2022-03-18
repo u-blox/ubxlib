@@ -46,7 +46,7 @@ extern "C" {
 
 /** Run Cloud Locate.
  *
- * @param networkHandle                 the handle of the thing
+ * @param devHandle                     the handle of the thing
  *                                      providing the MQTT
  *                                      connection (e.g. the cellular
  *                                      or Wi-Fi module).
@@ -117,8 +117,8 @@ extern "C" {
  *                                      elapsed.  The single int32_t
  *                                      parameter is the network handle.
  */
-int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
-                                    int32_t gnssHandle,
+int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
+                                    uDeviceHandle_t gnssHandle,
                                     uMqttClientContext_t *pMqttClientContext,
                                     int32_t svsThreshold,
                                     int32_t cNoThreshold,
@@ -126,7 +126,7 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
                                     int32_t pseudorangeRmsErrorIndexLimit,
                                     const char *pClientIdStr,
                                     uLocation_t *pLocation,
-                                    bool (*pKeepGoingCallback) (int32_t));
+                                    bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 #ifdef __cplusplus
 }

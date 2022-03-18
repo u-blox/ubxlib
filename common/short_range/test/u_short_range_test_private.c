@@ -79,40 +79,42 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
                                        uShortRangeTestPrivate_t *pParameters)
 {
     int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    int32_t shortRangeHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     const uShortRangePrivateModule_t *pModule;
 
     // Set some defaults
     pParameters->uartHandle = -1;
     pParameters->edmStreamHandle = -1;
     pParameters->atClientHandle = NULL;
-    pParameters->shortRangeHandle = -1;
+    pParameters->devHandle = NULL;
 
     // Initialise the porting layer
     if (uPortInit() == 0) {
         uPortLog("U_SHORT_RANGE_TEST_PRIVATE: opening UART %d...\n",
                  U_CFG_APP_SHORT_RANGE_UART);
 
-        shortRangeHandle = uShortRangeOpenUart(moduleType, pUartConfig, true);
+        errorCodeOrHandle = uShortRangeOpenUart(moduleType, pUartConfig, true,
+                                                &pParameters->devHandle);
 
-        if (shortRangeHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
-            pParameters->shortRangeHandle = shortRangeHandle;
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            errorCodeOrHandle = uShortRangeGetUartHandle(pParameters->devHandle);
         }
-
-        errorCodeOrHandle = uShortRangeGetUartHandle(pParameters->shortRangeHandle);
 
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             pParameters->uartHandle = errorCodeOrHandle;
         }
 
-        errorCodeOrHandle = uShortRangeGetEdmStreamHandle(pParameters->shortRangeHandle);
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            errorCodeOrHandle = uShortRangeGetEdmStreamHandle(pParameters->devHandle);
+        }
 
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             pParameters->edmStreamHandle = errorCodeOrHandle;
         }
 
-        errorCodeOrHandle = uShortRangeAtClientHandleGet(pParameters->shortRangeHandle,
-                                                         &pParameters->atClientHandle);
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            errorCodeOrHandle = uShortRangeAtClientHandleGet(pParameters->devHandle,
+                                                             &pParameters->atClientHandle);
+        }
 
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             // So that we can see what we're doing
@@ -121,10 +123,10 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
             uAtClientDebugSet(pParameters->atClientHandle, true);
         }
 
-        if (shortRangeHandle >= 0) {
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             if (moduleType != U_SHORT_RANGE_MODULE_TYPE_INVALID) {
                 errorCodeOrHandle = (int32_t) U_ERROR_COMMON_UNKNOWN;
-                pModule = pUShortRangePrivateGetModule(shortRangeHandle);
+                pModule = pUShortRangePrivateGetModule(pParameters->devHandle);
                 if (pModule != NULL) {
                     uPortLog("U_SHORT_RANGE_TEST_PRIVATE: Module: %d\n", pModule->moduleType);
                     errorCodeOrHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -137,8 +139,6 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
         }
     }
 
-    errorCodeOrHandle = shortRangeHandle;
-
     return errorCodeOrHandle;
 }
 
@@ -146,7 +146,7 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
  */
 void uShortRangeTestPrivatePostamble(uShortRangeTestPrivate_t *pParameters)
 {
-    uShortRangeClose(pParameters->shortRangeHandle);
+    uShortRangeClose(pParameters->devHandle);
     memset(pParameters, 0, sizeof(*pParameters));
 }
 
@@ -154,7 +154,7 @@ void uShortRangeTestPrivatePostamble(uShortRangeTestPrivate_t *pParameters)
  */
 void uShortRangeTestPrivateCleanup(uShortRangeTestPrivate_t *pParameters)
 {
-    uShortRangeClose(pParameters->shortRangeHandle);
+    uShortRangeClose(pParameters->devHandle);
     memset(pParameters, 0, sizeof(*pParameters));
 
     uShortRangeDeinit();

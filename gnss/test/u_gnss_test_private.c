@@ -96,7 +96,7 @@ int32_t uGnssTestPrivateCellularOff()
     int32_t errorCode;
     int32_t uartHandle = -1;
     uAtClientHandle_t atClientHandle = NULL;
-    int32_t cellHandle = -1;
+    uDeviceHandle_t cellHandle = NULL;
 
     uPortLog("U_GNSS_TEST_PRIVATE: making sure cellular is off...\n");
 
@@ -134,7 +134,8 @@ int32_t uGnssTestPrivateCellularOff()
                                  atClientHandle,
                                  U_CFG_APP_PIN_CELL_ENABLE_POWER,
                                  U_CFG_APP_PIN_CELL_PWR_ON,
-                                 U_CFG_APP_PIN_CELL_VINT, false);
+                                 U_CFG_APP_PIN_CELL_VINT, false,
+                                 &cellHandle);
 #if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
             if (errorCode == 0) {
                 errorCode = uCellPwrSetDtrPowerSavingPin(cellHandle, U_CFG_APP_PIN_CELL_DTR);
@@ -144,7 +145,6 @@ int32_t uGnssTestPrivateCellularOff()
     }
 
     if (errorCode >= 0) {
-        cellHandle = errorCode;
         if (uCellPwrIsPowered(cellHandle) && uCellPwrIsAlive(cellHandle)) {
             // Finally, power it off
 # if U_CFG_APP_PIN_CELL_PWR_ON >= 0
@@ -215,8 +215,8 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
     // Set some defaults
     pParameters->uartHandle = -1;
     pParameters->pAtClientHandle = NULL;
-    pParameters->cellHandle = -1;
-    pParameters->gnssHandle = -1;
+    pParameters->cellHandle = NULL;
+    pParameters->gnssHandle = NULL;
 
     uPortLog("U_GNSS_TEST_PRIVATE: test preamble start.\n");
 
@@ -271,14 +271,15 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
             // Now add GNSS on the transport
             if (uGnssInit() == 0) {
                 uPortLog("U_GNSS_TEST_PRIVATE: adding a GNSS instance...\n");
-                pParameters->gnssHandle = uGnssAdd(moduleType,
-                                                   transportType,
-                                                   //lint -e(644) Suppress transportHandle might not be
-                                                   // initialised: it is checked through errorCode
-                                                   transportHandle,
-                                                   U_CFG_APP_PIN_GNSS_ENABLE_POWER, false);
-                if (pParameters->gnssHandle >= 0) {
-                    if ((pParameters->cellHandle >= 0) &&
+                errorCode = uGnssAdd(moduleType,
+                                     transportType,
+                                     //lint -e(644) Suppress transportHandle might not be
+                                     // initialised: it is checked through errorCode
+                                     transportHandle,
+                                     U_CFG_APP_PIN_GNSS_ENABLE_POWER, false,
+                                     &pParameters->gnssHandle);
+                if (errorCode >= 0) {
+                    if ((pParameters->cellHandle != NULL) &&
                         !uCellLocGnssInsideCell(pParameters->cellHandle)) {
                         // If we're talking via cellular and the GNSS chip
                         // isn't inside the cellular module, need to configure the
@@ -307,23 +308,23 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
 void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
                                bool powerOff)
 {
-    if (powerOff && (pParameters->gnssHandle >= 0)) {
+    if (powerOff && (pParameters->gnssHandle != NULL)) {
         uGnssPwrOff(pParameters->gnssHandle);
     }
 
     uPortLog("U_GNSS_TEST_PRIVATE: deinitialising GNSS API...\n");
     // Let uGnssDeinit() remove the GNSS handle
     uGnssDeinit();
-    pParameters->gnssHandle = -1;
+    pParameters->gnssHandle = NULL;
 
-    if (pParameters->cellHandle >= 0) {
+    if (pParameters->cellHandle != NULL) {
         // Cellular was in use, call the cellular test postamble
         uCellTestPrivate_t parameters = U_CELL_TEST_PRIVATE_DEFAULTS;
         parameters.uartHandle = pParameters->uartHandle;
         parameters.atClientHandle = (uAtClientHandle_t) pParameters->pAtClientHandle;
         parameters.cellHandle = pParameters->cellHandle;
         uCellTestPrivatePostamble(&parameters, powerOff);
-        pParameters->cellHandle = -1;
+        pParameters->cellHandle = NULL;
     } else {
         uPortUartClose(pParameters->uartHandle);
     }
@@ -336,16 +337,16 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
 void uGnssTestPrivateCleanup(uGnssTestPrivate_t *pParameters)
 {
     uGnssDeinit();
-    pParameters->gnssHandle = -1;
+    pParameters->gnssHandle = NULL;
 
-    if (pParameters->cellHandle >= 0) {
+    if (pParameters->cellHandle != NULL) {
         // Cellular was in use, call the cellular test clean-up
         uCellTestPrivate_t parameters = U_CELL_TEST_PRIVATE_DEFAULTS;
         parameters.uartHandle = pParameters->uartHandle;
         parameters.atClientHandle = (uAtClientHandle_t) pParameters->pAtClientHandle;
         parameters.cellHandle = pParameters->cellHandle;
         uCellTestPrivateCleanup(&parameters);
-        pParameters->cellHandle = -1;
+        pParameters->cellHandle = NULL;
     } else {
         if (pParameters->uartHandle >= 0) {
             uPortUartClose(pParameters->uartHandle);

@@ -101,7 +101,7 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
  */
 U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateInstance_t *pInstance;
     int32_t heapUsed;
     int32_t x;

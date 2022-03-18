@@ -45,30 +45,32 @@ void uNetworkDeinitCell(void)
 
 }
 
-int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration)
+int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
+                        uDeviceHandle_t *pDevHandle)
 {
     (void) pConfiguration;
+    (void) pDevHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkRemoveCell(int32_t handle)
+int32_t uNetworkRemoveCell(uDeviceHandle_t devHandle)
 {
-    (void) handle;
+    (void) devHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkUpCell(int32_t handle,
+int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
                        const uNetworkConfigurationCell_t *pConfiguration)
 {
-    (void) handle;
+    (void) devHandle;
     (void) pConfiguration;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkDownCell(int32_t handle,
+int32_t uNetworkDownCell(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationCell_t *pConfiguration)
 {
-    (void) handle;
+    (void) devHandle;
     (void) pConfiguration;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }

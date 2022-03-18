@@ -103,13 +103,15 @@ U_PORT_TEST_FUNCTION("[cell]", "cellInitialisation")
 U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
 {
     uAtClientHandle_t atClientHandleA;
-    int32_t cellHandleA;
+    uDeviceHandle_t devHandleA;
 # if (U_CFG_TEST_UART_B >= 0)
     uAtClientHandle_t atClientHandleB;
-    int32_t cellHandleB;
+    uDeviceHandle_t devHandleB;
 # endif
+    uDeviceHandle_t dummyHandle;
     uAtClientHandle_t atClientHandle = NULL;
     int32_t heapUsed;
+    int32_t errorCode;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -140,17 +142,17 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     U_PORT_TEST_ASSERT(atClientHandleA != NULL);
 
     uPortLog("U_CELL_TEST: adding a cellular instance on that AT client...\n");
-    cellHandleA = uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
-                           -1, -1, -1, false);
-    U_PORT_TEST_ASSERT(cellHandleA >= 0);
-    U_PORT_TEST_ASSERT(uCellAtClientHandleGet(cellHandleA,
+    errorCode = uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
+                         -1, -1, -1, false, &devHandleA);
+    U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_SUCCESS);
+    U_PORT_TEST_ASSERT(uCellAtClientHandleGet(devHandleA,
                                               &atClientHandle) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleA);
 
     uPortLog("U_CELL_TEST: adding another instance on the same AT client,"
              " should fail...\n");
     U_PORT_TEST_ASSERT(uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
-                                -1, -1, -1, false) < 0);
+                                -1, -1, -1, false, &dummyHandle) < 0);
 
 # if (U_CFG_TEST_UART_B >= 0)
     // If we have a second UART port, add a second cellular API on it
@@ -171,31 +173,32 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     U_PORT_TEST_ASSERT(atClientHandleB != NULL);
 
     uPortLog("U_CELL_TEST: adding a cellular instance on that AT client...\n");
-    cellHandleB = uCellAdd(U_CELL_MODULE_TYPE_SARA_R5, atClientHandleB,
-                           -1, -1, -1, false);
-    U_PORT_TEST_ASSERT(cellHandleB >= 0);
+    errorCode = uCellAdd(U_CELL_MODULE_TYPE_SARA_R5, atClientHandleB,
+                         -1, -1, -1, false, &devHandleB);
+    U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_SUCCESS);
     atClientHandle = NULL;
-    U_PORT_TEST_ASSERT(uCellAtClientHandleGet(cellHandleB,
+    U_PORT_TEST_ASSERT(uCellAtClientHandleGet(devHandleB,
                                               &atClientHandle) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleB);
 
     uPortLog("U_CELL_TEST: adding another instance on the same AT client,"
              " should fail...\n");
     U_PORT_TEST_ASSERT(uCellAdd(U_CELL_MODULE_TYPE_SARA_R5, atClientHandleB,
-                                -1, -1, -1, false) < 0);
+                                -1, -1, -1, false, &dummyHandle) < 0);
 
     // Don't remove this one, let uCellDeinit() do it
 # endif
 
     uPortLog("U_CELL_TEST: removing first cellular instance...\n");
-    uCellRemove(cellHandleA);
+    uCellRemove(devHandleA);
 
     uPortLog("U_CELL_TEST: adding it again...\n");
-    cellHandleA = uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
-                           -1, -1, -1, false);
-    U_PORT_TEST_ASSERT(cellHandleA >= 0);
+    errorCode = uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
+                         -1, -1, -1, false, &devHandleA);
+    U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_SUCCESS);
+    U_PORT_TEST_ASSERT(devHandleA != NULL);
     atClientHandle = NULL;
-    U_PORT_TEST_ASSERT(uCellAtClientHandleGet(cellHandleA,
+    U_PORT_TEST_ASSERT(uCellAtClientHandleGet(devHandleA,
                                               &atClientHandle) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleA);
 

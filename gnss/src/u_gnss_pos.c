@@ -92,9 +92,9 @@
 /** Parameters to pass to the asynchronous position establishment task.
  */
 typedef struct {
-    int32_t gnssHandle;
+    uDeviceHandle_t gnssHandle;
     uGnssPrivateInstance_t *pInstance;
-    void (*pCallback) (int32_t gnssHandle,
+    void (*pCallback) (uDeviceHandle_t gnssHandle,
                        int32_t errorCode,
                        int32_t latitudeX1e7,
                        int32_t longitudeX1e7,
@@ -284,13 +284,13 @@ static void posGetTask(void *pParameter)
  * -------------------------------------------------------------- */
 
 // Get the current position.
-int32_t uGnssPosGet(int32_t gnssHandle,
+int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
                     int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                     int32_t *pAltitudeMillimetres,
                     int32_t *pRadiusMillimetres,
                     int32_t *pSpeedMillimetresPerSecond,
                     int32_t *pSvs, int64_t *pTimeUtc,
-                    bool (*pKeepGoingCallback) (int32_t))
+                    bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
@@ -346,8 +346,8 @@ int32_t uGnssPosGet(int32_t gnssHandle,
 }
 
 // Get the current position, non-blocking version.
-int32_t uGnssPosGetStart(int32_t gnssHandle,
-                         void (*pCallback) (int32_t gnssHandle,
+int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
+                         void (*pCallback) (uDeviceHandle_t gnssHandle,
                                             int32_t errorCode,
                                             int32_t latitudeX1e7,
                                             int32_t longitudeX1e7,
@@ -449,7 +449,7 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
 }
 
 // Cancel a uGnssPosGetStart().
-void uGnssPosGetStop(int32_t gnssHandle)
+void uGnssPosGetStop(uDeviceHandle_t gnssHandle)
 {
     uGnssPrivateInstance_t *pInstance;
 
@@ -467,12 +467,12 @@ void uGnssPosGetStop(int32_t gnssHandle)
 }
 
 // Get RRLP information from the GNSS chip.
-int32_t uGnssPosGetRrlp(int32_t gnssHandle, char *pBuffer,
+int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer,
                         size_t sizeBytes, int32_t svsThreshold,
                         int32_t cNoThreshold,
                         int32_t multipathIndexLimit,
                         int32_t pseudorangeRmsErrorIndexLimit,
-                        bool (*pKeepGoingCallback) (int32_t))
+                        bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;

@@ -100,7 +100,7 @@
 
 static long gErrorLine = 0;
 
-static uWifiTestPrivate_t gHandles = { -1, -1, NULL, -1 };
+static uWifiTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 /** UDP socket handle.
  */
 static int32_t gSockHandleUdp = -1;
@@ -175,9 +175,9 @@ static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
 
 // Callback for data being available, UDP.
 
-static void dataCallbackUdp(int32_t wifiHandle, int32_t sockHandle)
+static void dataCallbackUdp(uDeviceHandle_t devHandle, int32_t sockHandle)
 {
-    if (wifiHandle != gHandles.wifiHandle) {
+    if (devHandle != gHandles.devHandle) {
         gCallbackErrorNum = 1;
     } else if (sockHandle != gSockHandleUdp)  {
         gCallbackErrorNum = 2;
@@ -187,9 +187,9 @@ static void dataCallbackUdp(int32_t wifiHandle, int32_t sockHandle)
 }
 
 // Callback for data being available, TCP.
-static void dataCallbackTcp(int32_t wifiHandle, int32_t sockHandle)
+static void dataCallbackTcp(uDeviceHandle_t devHandle, int32_t sockHandle)
 {
-    if (wifiHandle != gHandles.wifiHandle) {
+    if (devHandle != gHandles.devHandle) {
         gCallbackErrorNum = 3;
     } else if (sockHandle != gSockHandleTcp)  {
         gCallbackErrorNum = 4;
@@ -198,9 +198,9 @@ static void dataCallbackTcp(int32_t wifiHandle, int32_t sockHandle)
 }
 
 // Callback for socket closed, UDP.
-static void closedCallbackUdp(int32_t wifiHandle, int32_t sockHandle)
+static void closedCallbackUdp(uDeviceHandle_t devHandle, int32_t sockHandle)
 {
-    if (wifiHandle != gHandles.wifiHandle) {
+    if (devHandle != gHandles.devHandle) {
         gCallbackErrorNum = 5;
     } else if (sockHandle != gSockHandleUdp)  {
         gCallbackErrorNum = 6;
@@ -210,13 +210,13 @@ static void closedCallbackUdp(int32_t wifiHandle, int32_t sockHandle)
 }
 
 // Callback for socket closed, TCP.
-static void closedCallbackTcp(int32_t wifiHandle, int32_t sockHandle)
+static void closedCallbackTcp(uDeviceHandle_t devHandle, int32_t sockHandle)
 {
 #if !U_CFG_OS_CLIB_LEAKS
-    uPortLog(LOG_TAG "Wifi socket closed wifiHandle: %d, sockHandle: %d\n", wifiHandle,
+    uPortLog(LOG_TAG "Wifi socket closed devHandle: %d, sockHandle: %d\n", devHandle,
              sockHandle);
 #endif
-    if (wifiHandle != gHandles.wifiHandle) {
+    if (devHandle != gHandles.devHandle) {
         gCallbackErrorNum = 7;
     } else if (sockHandle != gSockHandleTcp)  {
         gCallbackErrorNum = 8;
@@ -226,9 +226,9 @@ static void closedCallbackTcp(int32_t wifiHandle, int32_t sockHandle)
 }
 
 // Callback for async socket closed, UDP
-static void asyncClosedCallbackUdp(int32_t wifiHandle, int32_t sockHandle)
+static void asyncClosedCallbackUdp(uDeviceHandle_t devHandle, int32_t sockHandle)
 {
-    if (wifiHandle != gHandles.wifiHandle) {
+    if (devHandle != gHandles.devHandle) {
         gCallbackErrorNum = 9;
     } else if (sockHandle != gSockHandleUdp)  {
         gCallbackErrorNum = 10;
@@ -238,9 +238,9 @@ static void asyncClosedCallbackUdp(int32_t wifiHandle, int32_t sockHandle)
 }
 
 // Callback for async socket closed, TCP
-static void asyncClosedCallbackTcp(int32_t wifiHandle, int32_t sockHandle)
+static void asyncClosedCallbackTcp(uDeviceHandle_t devHandle, int32_t sockHandle)
 {
-    if (wifiHandle != gHandles.wifiHandle) {
+    if (devHandle != gHandles.devHandle) {
         gCallbackErrorNum = 11;
     } else if (sockHandle != gSockHandleTcp)  {
         gCallbackErrorNum = 12;
@@ -249,7 +249,7 @@ static void asyncClosedCallbackTcp(int32_t wifiHandle, int32_t sockHandle)
     gAsyncClosedCallbackCalledTcp = true;
 }
 
-static void wifiConnectionCallback(int32_t wifiHandle,
+static void wifiConnectionCallback(uDeviceHandle_t devHandle,
                                    int32_t connId,
                                    int32_t status,
                                    int32_t channel,
@@ -257,7 +257,7 @@ static void wifiConnectionCallback(int32_t wifiHandle,
                                    int32_t disconnectReason,
                                    void *pCallbackParameter)
 {
-    (void)wifiHandle;
+    (void)devHandle;
     (void)connId;
     (void)channel;
     (void)pBssid;
@@ -292,12 +292,12 @@ static void wifiConnectionCallback(int32_t wifiHandle,
     }
 }
 
-static void wifiNetworkStatusCallback(int32_t wifiHandle,
+static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
                                       int32_t interfaceType,
                                       uint32_t statusMask,
                                       void *pCallbackParameter)
 {
-    (void)wifiHandle;
+    (void)devHandle;
     (void)interfaceType;
     (void)statusMask;
     (void)pCallbackParameter;
@@ -317,18 +317,18 @@ static void connectWifi()
     int32_t waitCtr = 0;
 
     // Add unsolicited response cb for connection status
-    tmp = uWifiNetSetConnectionStatusCallback(gHandles.wifiHandle,
+    tmp = uWifiNetSetConnectionStatusCallback(gHandles.devHandle,
                                               wifiConnectionCallback, NULL);
     TEST_CHECK_TRUE(tmp == 0);
     if (!TEST_HAS_ERROR()) {
         // Add unsolicited response cb for IP status
-        tmp = uWifiNetSetNetworkStatusCallback(gHandles.wifiHandle,
+        tmp = uWifiNetSetNetworkStatusCallback(gHandles.devHandle,
                                                wifiNetworkStatusCallback, NULL);
         TEST_CHECK_TRUE(tmp == 0);
     }
     if (!TEST_HAS_ERROR()) {
         // Connect to wifi network
-        tmp = uWifiNetStationConnect(gHandles.wifiHandle,
+        tmp = uWifiNetStationConnect(gHandles.devHandle,
                                      U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
                                      U_WIFI_NET_AUTH_WPA_PSK,
                                      U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
@@ -358,7 +358,7 @@ static void disconnectWifi()
     int32_t tmp;
     int32_t waitCtr = 0;
 
-    tmp = uWifiNetStationDisconnect(gHandles.wifiHandle);
+    tmp = uWifiNetStationDisconnect(gHandles.devHandle);
     TEST_CHECK_TRUE(tmp == 0);
 
     while (!TEST_HAS_ERROR() && gWifiConnected) {
@@ -371,11 +371,11 @@ static void disconnectWifi()
         waitCtr++;
     }
     // Remove callbacks (regardless if there was an error)
-    tmp = uWifiNetSetConnectionStatusCallback(gHandles.wifiHandle,
+    tmp = uWifiNetSetConnectionStatusCallback(gHandles.devHandle,
                                               NULL, NULL);
     TEST_CHECK_TRUE(tmp == 0);
 
-    tmp = uWifiNetSetNetworkStatusCallback(gHandles.wifiHandle,
+    tmp = uWifiNetSetNetworkStatusCallback(gHandles.devHandle,
                                            NULL, NULL);
     TEST_CHECK_TRUE(tmp == 0);
 }
@@ -425,14 +425,14 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
         TEST_CHECK_TRUE(false);
     }
 
-    if (!TEST_HAS_ERROR() && (0 != uWifiSockInitInstance(gHandles.wifiHandle))) {
+    if (!TEST_HAS_ERROR() && (0 != uWifiSockInitInstance(gHandles.devHandle))) {
         uPortLog(LOG_TAG "Unable to init socket instance\n");
         TEST_CHECK_TRUE(false);
     }
 
     // Create a TCP socket
     if (!TEST_HAS_ERROR()) {
-        gSockHandleTcp = uWifiSockCreate(gHandles.wifiHandle, U_SOCK_TYPE_STREAM,
+        gSockHandleTcp = uWifiSockCreate(gHandles.devHandle, U_SOCK_TYPE_STREAM,
                                          U_SOCK_PROTOCOL_TCP);
         if (gSockHandleTcp < 0) {
             uPortLog(LOG_TAG "Unable to create socket, return code: %d\n", gSockHandleTcp);
@@ -440,15 +440,15 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
         }
     }
     if (!TEST_HAS_ERROR()) {
-        uWifiSockRegisterCallbackData(gHandles.wifiHandle, gSockHandleTcp,
+        uWifiSockRegisterCallbackData(gHandles.devHandle, gSockHandleTcp,
                                       dataCallbackTcp);
-        uWifiSockRegisterCallbackClosed(gHandles.wifiHandle, gSockHandleTcp,
+        uWifiSockRegisterCallbackClosed(gHandles.devHandle, gSockHandleTcp,
                                         closedCallbackTcp);
     }
 
     if (!TEST_HAS_ERROR()) {
         uSockAddress_t localAddress;
-        returnCode = uWifiSockGetLocalAddress(gHandles.wifiHandle,
+        returnCode = uWifiSockGetLocalAddress(gHandles.devHandle,
                                               gSockHandleTcp,
                                               &localAddress);
         TEST_CHECK_TRUE(returnCode == 0);
@@ -459,7 +459,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     uSockAddress_t remoteAddress;
     // Lookup the IP address for the host name
     if (!TEST_HAS_ERROR()) {
-        returnCode = uWifiSockGetHostByName(gHandles.wifiHandle,
+        returnCode = uWifiSockGetHostByName(gHandles.devHandle,
                                             U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                                             &remoteAddress.ipAddress);
         remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
@@ -468,7 +468,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
 
     // Connect the TCP socket
     if (!TEST_HAS_ERROR()) {
-        returnCode = uWifiSockConnect(gHandles.wifiHandle, gSockHandleTcp, &remoteAddress);
+        returnCode = uWifiSockConnect(gHandles.devHandle, gSockHandleTcp, &remoteAddress);
         if (returnCode != 0) {
             uPortLog(LOG_TAG "Unable to connect socket, return code: %d\n", returnCode);
             TEST_CHECK_TRUE(false);
@@ -489,7 +489,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
                 bytesToWrite = 1ul + ((uint32_t)rand() % ((sizeof(gAllChars) - bytesWritten) - 1ul));
             }
             chunkCounter++;
-            returnCode = uWifiSockWrite(gHandles.wifiHandle, gSockHandleTcp,
+            returnCode = uWifiSockWrite(gHandles.devHandle, gSockHandleTcp,
                                         gAllChars + bytesWritten, bytesToWrite);
             if (returnCode > 0) {
                 bytesWritten += returnCode;
@@ -526,7 +526,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
             }
             chunkCounter++;
 
-            returnCode = uWifiSockRead(gHandles.wifiHandle, gSockHandleTcp,
+            returnCode = uWifiSockRead(gHandles.devHandle, gSockHandleTcp,
                                        pBuffer + bytesRead, bytesToRead);
             if (returnCode > 0) {
                 bytesRead += returnCode;
@@ -561,7 +561,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
 
     // Close TCP socket with asynchronous callback
     uPortLog(LOG_TAG "closing sockets...\n");
-    returnCode = uWifiSockClose(gHandles.wifiHandle, gSockHandleTcp,
+    returnCode = uWifiSockClose(gHandles.devHandle, gSockHandleTcp,
                                 &asyncClosedCallbackTcp);
     if (!TEST_HAS_ERROR()) {
         // Try to close the socket regardless if there are any previous errors.
@@ -573,12 +573,12 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     }
 
     //Socket cleanup
-    uWifiSockRegisterCallbackData(gHandles.wifiHandle, gSockHandleTcp,
+    uWifiSockRegisterCallbackData(gHandles.devHandle, gSockHandleTcp,
                                   NULL);
-    uWifiSockRegisterCallbackClosed(gHandles.wifiHandle, gSockHandleTcp,
+    uWifiSockRegisterCallbackClosed(gHandles.devHandle, gSockHandleTcp,
                                     NULL);
 
-    if (uWifiSockDeinitInstance(gHandles.wifiHandle) != 0) {
+    if (uWifiSockDeinitInstance(gHandles.devHandle) != 0) {
         uPortLog(LOG_TAG "Unable to deinit socket instance\n");
         TEST_CHECK_TRUE(false);
     }
@@ -659,14 +659,14 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
         TEST_CHECK_TRUE(false);
     }
 
-    if (!TEST_HAS_ERROR() && (0 != uWifiSockInitInstance(gHandles.wifiHandle))) {
+    if (!TEST_HAS_ERROR() && (0 != uWifiSockInitInstance(gHandles.devHandle))) {
         uPortLog(LOG_TAG "Unable to init socket instance\n");
         TEST_CHECK_TRUE(false);
     }
 
     // Create a UDP socket
     if (!TEST_HAS_ERROR()) {
-        gSockHandleUdp = uWifiSockCreate(gHandles.wifiHandle, U_SOCK_TYPE_DGRAM,
+        gSockHandleUdp = uWifiSockCreate(gHandles.devHandle, U_SOCK_TYPE_DGRAM,
                                          U_SOCK_PROTOCOL_UDP);
         if (gSockHandleUdp < 0) {
             uPortLog(LOG_TAG "Unable to create socket, return code: %d\n", gSockHandleUdp);
@@ -674,9 +674,9 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
         }
     }
     if (!TEST_HAS_ERROR()) {
-        uWifiSockRegisterCallbackData(gHandles.wifiHandle, gSockHandleUdp,
+        uWifiSockRegisterCallbackData(gHandles.devHandle, gSockHandleUdp,
                                       dataCallbackUdp);
-        uWifiSockRegisterCallbackClosed(gHandles.wifiHandle, gSockHandleUdp,
+        uWifiSockRegisterCallbackClosed(gHandles.devHandle, gSockHandleUdp,
                                         closedCallbackUdp);
     }
 
@@ -686,7 +686,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
 
     // Lookup the IP address for the host name
     if (!TEST_HAS_ERROR()) {
-        returnCode = uWifiSockGetHostByName(gHandles.wifiHandle,
+        returnCode = uWifiSockGetHostByName(gHandles.devHandle,
                                             U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
                                             &remoteAddress.ipAddress);
         remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
@@ -705,7 +705,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
         //lint -e{668} suppress Possibly passing a. null pointer to function memset - we are not!
         memset(pBuffer, 0, U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES);
         for (size_t x = 0; !TEST_HAS_ERROR() && (x < U_SOCK_TEST_UDP_RETRIES); x ++) {
-            returnCode = uWifiSockSendTo(gHandles.wifiHandle, gSockHandleUdp,
+            returnCode = uWifiSockSendTo(gHandles.devHandle, gSockHandleUdp,
                                          &remoteAddress,
                                          gAllChars, sizeof(gAllChars));
             if (returnCode != sizeof(gAllChars)) {
@@ -719,7 +719,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
             for (size_t a = 100; (a > 0) && !gDataCallbackCalledUdp; a--) {
                 uPortTaskBlock(100);
             }
-            returnCode = uWifiSockReceiveFrom(gHandles.wifiHandle,
+            returnCode = uWifiSockReceiveFrom(gHandles.devHandle,
                                               gSockHandleUdp,
                                               &rxAddress,
                                               pBuffer,
@@ -749,7 +749,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
 
     // Close UDP socket with asynchronous callback
     uPortLog(LOG_TAG "closing sockets...\n");
-    returnCode = uWifiSockClose(gHandles.wifiHandle, gSockHandleUdp,
+    returnCode = uWifiSockClose(gHandles.devHandle, gSockHandleUdp,
                                 &asyncClosedCallbackUdp);
     if (!TEST_HAS_ERROR()) {
         // Try to close the socket regardless if there are any previous errors.
@@ -761,12 +761,12 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     }
 
     //Socket cleanup
-    uWifiSockRegisterCallbackData(gHandles.wifiHandle, gSockHandleUdp,
+    uWifiSockRegisterCallbackData(gHandles.devHandle, gSockHandleUdp,
                                   NULL);
-    uWifiSockRegisterCallbackClosed(gHandles.wifiHandle, gSockHandleUdp,
+    uWifiSockRegisterCallbackClosed(gHandles.devHandle, gSockHandleUdp,
                                     NULL);
 
-    if (uWifiSockDeinitInstance(gHandles.wifiHandle) != 0) {
+    if (uWifiSockDeinitInstance(gHandles.devHandle) != 0) {
         uPortLog(LOG_TAG "Unable to deinit socket instance\n");
         TEST_CHECK_TRUE(false);
     }

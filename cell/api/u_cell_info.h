@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the APIs that obtain general
@@ -70,7 +71,7 @@ extern "C" {
  * @return            zero on success, negative error code on
  *                    failure.
  */
-int32_t uCellInfoRefreshRadioParameters(int32_t cellHandle);
+int32_t uCellInfoRefreshRadioParameters(uDeviceHandle_t cellHandle);
 
 /** Get the RSSI that pertained after the last call to
  * uCellInfoRefreshRadioParameters().  Note that RSSI may not
@@ -82,7 +83,7 @@ int32_t uCellInfoRefreshRadioParameters(int32_t cellHandle);
  *                    measurement is currently available.
  *                    Note that RSSI values are NEGATIVE.
  */
-int32_t uCellInfoGetRssiDbm(int32_t cellHandle);
+int32_t uCellInfoGetRssiDbm(uDeviceHandle_t cellHandle);
 
 /** Get the RSRP that pertained after the last call to
  * uCellInfoRefreshRadioParameters().  Note that RSRP may not
@@ -94,7 +95,7 @@ int32_t uCellInfoGetRssiDbm(int32_t cellHandle);
  *                    measurement is currently available.
  *                    Note that RSRP values are NEGATIVE.
  */
-int32_t uCellInfoGetRsrpDbm(int32_t cellHandle);
+int32_t uCellInfoGetRsrpDbm(uDeviceHandle_t cellHandle);
 
 /** Get the RSRQ that pertained after the last call to
  * uCellInfoRefreshRadioParameters().  Note that RSRQ may not be
@@ -108,7 +109,7 @@ int32_t uCellInfoGetRsrpDbm(int32_t cellHandle);
  *                    negative but small positive values are
  *                    also possible.
  */
-int32_t uCellInfoGetRsrqDb(int32_t cellHandle);
+int32_t uCellInfoGetRsrqDb(uDeviceHandle_t cellHandle);
 
 /** Get the RxQual that pertained after the last call to
  * uCellInfoRefreshRadioParameters().  This is a number
@@ -121,7 +122,7 @@ int32_t uCellInfoGetRsrqDb(int32_t cellHandle);
  * @return            the RxQual, 0 to 7, or negative if no
  *                    RxQual is available.
  */
-int32_t uCellInfoGetRxQual(int32_t cellHandle);
+int32_t uCellInfoGetRxQual(uDeviceHandle_t cellHandle);
 
 /** Get the SNR that pertained after the last call to
  * uCellInfoRefreshRadioParameters(). Note that the format of
@@ -140,7 +141,7 @@ int32_t uCellInfoGetRxQual(int32_t cellHandle);
  * @return            zero on success, negative error code on
  *                    failure.
  */
-int32_t uCellInfoGetSnrDb(int32_t cellHandle,
+int32_t uCellInfoGetSnrDb(uDeviceHandle_t cellHandle,
                           int32_t *pSnrDb);
 
 /** Get the cell ID that pertained after the last call to
@@ -150,7 +151,7 @@ int32_t uCellInfoGetSnrDb(int32_t cellHandle,
  * @return            the cell ID, or negative error code on
  *                    failure.
  */
-int32_t uCellInfoGetCellId(int32_t cellHandle);
+int32_t uCellInfoGetCellId(uDeviceHandle_t cellHandle);
 
 /** Get the EARFCN that pertained after the last call to
  * uCellInfoRefreshRadioParameters().
@@ -159,7 +160,7 @@ int32_t uCellInfoGetCellId(int32_t cellHandle);
  * @return            the EARFCN, or -1 if the module is not
  *                    registered with the cellular network.
  */
-int32_t uCellInfoGetEarfcn(int32_t cellHandle);
+int32_t uCellInfoGetEarfcn(uDeviceHandle_t cellHandle);
 
 /** Get the IMEI of the cellular module.
  *
@@ -172,7 +173,7 @@ int32_t uCellInfoGetEarfcn(int32_t cellHandle);
  * @return            zero on success, negative error code on
  *                    failure.
  */
-int32_t uCellInfoGetImei(int32_t cellHandle,
+int32_t uCellInfoGetImei(uDeviceHandle_t cellHandle,
                          char *pImei);
 
 /** Get the IMSI of the SIM in the cellular module.
@@ -186,7 +187,7 @@ int32_t uCellInfoGetImei(int32_t cellHandle,
  * @return            zero on success, negative error code on
  *                    failure.
  */
-int32_t uCellInfoGetImsi(int32_t cellHandle,
+int32_t uCellInfoGetImsi(uDeviceHandle_t cellHandle,
                          char *pImsi);
 
 /** Get the ICCID string of the SIM in the cellular module.  Note
@@ -207,7 +208,7 @@ int32_t uCellInfoGetImsi(int32_t cellHandle,
  *                    storage is safe.
  * @return            zero on success, negative error code on failure.
  */
-int32_t uCellInfoGetIccidStr(int32_t cellHandle,
+int32_t uCellInfoGetIccidStr(uDeviceHandle_t cellHandle,
                              char *pStr, size_t size);
 
 /** Get the manufacturer identification string from the cellular
@@ -227,7 +228,7 @@ int32_t uCellInfoGetIccidStr(int32_t cellHandle,
  *                    strlen() would return), on failure negative
  *                    error code.
  */
-int32_t uCellInfoGetManufacturerStr(int32_t cellHandle,
+int32_t uCellInfoGetManufacturerStr(uDeviceHandle_t cellHandle,
                                     char *pStr, size_t size);
 
 /** Get the model identification string from the cellular module.
@@ -246,7 +247,7 @@ int32_t uCellInfoGetManufacturerStr(int32_t cellHandle,
  *                    strlen() would return), on failure negative
  *                    error code.
  */
-int32_t uCellInfoGetModelStr(int32_t cellHandle,
+int32_t uCellInfoGetModelStr(uDeviceHandle_t cellHandle,
                              char *pStr, size_t size);
 
 /** Get the firmware version string from the cellular module.
@@ -265,7 +266,7 @@ int32_t uCellInfoGetModelStr(int32_t cellHandle,
  *                    strlen() would return), on failure negative
  *                    error code.
  */
-int32_t uCellInfoGetFirmwareVersionStr(int32_t cellHandle,
+int32_t uCellInfoGetFirmwareVersionStr(uDeviceHandle_t cellHandle,
                                        char *pStr, size_t size);
 
 /** Get the UTC time according to cellular.  This feature requires
@@ -276,7 +277,7 @@ int32_t uCellInfoGetFirmwareVersionStr(int32_t cellHandle,
  * @return            on success the Unix UTC time, else negative
  *                    error code.
  */
-int64_t uCellInfoGetTimeUtc(int32_t cellHandle);
+int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle);
 
 /** Get the UTC time string according to cellular. This feature requires
  * a connection to have been activated and support for this feature
@@ -296,7 +297,7 @@ int64_t uCellInfoGetTimeUtc(int32_t cellHandle);
  *                    strlen() would return), on failure negative
  *                    error code.
  */
-int32_t uCellInfoGetTimeUtcStr(int32_t cellHandle,
+int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle,
                                char *pStr, size_t size);
 
 /** Determine if RTS flow control, i.e. a signal from
@@ -307,7 +308,7 @@ int32_t uCellInfoGetTimeUtcStr(int32_t cellHandle,
  * @return           true if RTS flow control is enabled,
  *                   else false.
  */
-bool uCellInfoIsRtsFlowControlEnabled(int32_t cellHandle);
+bool uCellInfoIsRtsFlowControlEnabled(uDeviceHandle_t cellHandle);
 
 /** Determine if CTS flow control, i.e. a signal from
  * this software to the cellular module that this sofware is
@@ -317,7 +318,7 @@ bool uCellInfoIsRtsFlowControlEnabled(int32_t cellHandle);
  * @return           true if CTS flow control is enabled,
  *                   else false.
  */
-bool uCellInfoIsCtsFlowControlEnabled(int32_t cellHandle);
+bool uCellInfoIsCtsFlowControlEnabled(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }

@@ -53,8 +53,6 @@
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
 
-#include "u_network_handle.h"
-
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -68,10 +66,6 @@
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
-
-/** The next instance handle to use.
- */
-static int32_t gNextInstanceHandle = 0;
 
 // Macro magic for gStringToModule
 #define U_YES true
@@ -163,7 +157,6 @@ static void removeShortRangeInstance(uShortRangePrivateInstance_t *pInstance)
     }
 
     free(pInstance);
-    gNextInstanceHandle--;
 }
 
 //lint -e{818} suppress "could be declared as pointing to const": it is!
@@ -178,11 +171,13 @@ static void restarted(const uAtClientHandle_t atHandle,
 
 static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
                               uAtClientHandle_t atHandle,
-                              int32_t uartHandle)
+                              int32_t uartHandle,
+                              uDeviceHandle_t *pDevHandle)
 {
     int32_t handleOrErrorCode;
     const uShortRangePrivateModule_t *pModule = NULL;
     uShortRangePrivateInstance_t *pInstance;
+    uDeviceInstance_t *pDevInstance;
 
     if (gUShortRangePrivateMutex == NULL) {
         return (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -199,6 +194,10 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
         (atHandle == NULL) || (pModule == NULL)) {
         return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     }
+    pDevInstance = uDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE);
+    if (pDevInstance == NULL) {
+        return (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    }
 
     // Check if there is already an instance for the AT client
     pInstance = pGetShortRangeInstanceAtHandle(atHandle);
@@ -210,14 +209,6 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
             uAtClientStream_t streamType;
             // Fill the values in
             memset(pInstance, 0, sizeof(*pInstance));
-            // Find a free handle
-            do {
-                pInstance->handle = gNextInstanceHandle;
-                gNextInstanceHandle++;
-                if (gNextInstanceHandle > (int32_t) U_NETWORK_HANDLE_RANGE) {
-                    gNextInstanceHandle = 0;
-                }
-            } while (pUShortRangePrivateGetInstance(pInstance->handle) != NULL);
 
             for (int32_t i = 0; i < U_SHORT_RANGE_MAX_CONNECTIONS; i++) {
                 pInstance->connections[i].connHandle = -1;
@@ -249,7 +240,10 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
     }
 
     if (pInstance) {
-        handleOrErrorCode = pInstance->handle;
+        handleOrErrorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        pDevInstance->pContext = (void *)pInstance;
+        //lint -e740 Disable Unusual pointer cast
+        *pDevHandle = (uDeviceHandle_t)pDevInstance;
     } else {
         handleOrErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     }
@@ -416,7 +410,7 @@ static void UUDPC_urc(uAtClientHandle_t atHandle,
             err |= parseBdAddr(address, conData.address);
             err |= parseUudpcProfile(profile, &conData.profile);
             if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                pInstance->pBtConnectionStatusCallback(pInstance->handle, connHandle,
+                pInstance->pBtConnectionStatusCallback(pInstance->bleHandle, connHandle,
                                                        U_SHORT_RANGE_EVENT_CONNECTED,
                                                        &conData,
                                                        pInstance->pBtConnectionStatusCallbackParameter);
@@ -482,14 +476,14 @@ static void UUDPC_urc(uAtClientHandle_t atHandle,
             (protocol == U_SHORT_RANGE_IP_PROTOCOL_UDP)) {
             pInstance->connections[id].type = U_SHORT_RANGE_CONNECTION_TYPE_IP;
             if (pInstance->pIpConnectionStatusCallback != NULL) {
-                pInstance->pIpConnectionStatusCallback(pInstance->handle, connHandle,
+                pInstance->pIpConnectionStatusCallback(pInstance->wifiHandle, connHandle,
                                                        U_SHORT_RANGE_EVENT_CONNECTED, &conData,
                                                        pInstance->pIpConnectionStatusCallbackParameter);
             }
         } else if (protocol == U_SHORT_RANGE_IP_PROTOCOL_MQTT) {
             pInstance->connections[id].type = U_SHORT_RANGE_CONNECTION_TYPE_MQTT;
             if (pInstance->pMqttConnectionStatusCallback != NULL) {
-                pInstance->pMqttConnectionStatusCallback(pInstance->handle, connHandle,
+                pInstance->pMqttConnectionStatusCallback(pInstance->wifiHandle, connHandle,
                                                          U_SHORT_RANGE_EVENT_CONNECTED, &conData,
                                                          pInstance->pMqttConnectionStatusCallbackParameter);
             }
@@ -513,7 +507,7 @@ static void UUDPD_urc(uAtClientHandle_t atHandle,
         switch (pInstance->connections[id].type) {
             case U_SHORT_RANGE_CONNECTION_TYPE_BT:
                 if (pInstance->pBtConnectionStatusCallback != NULL) {
-                    pInstance->pBtConnectionStatusCallback(pInstance->handle, connHandle,
+                    pInstance->pBtConnectionStatusCallback(pInstance->bleHandle, connHandle,
                                                            U_SHORT_RANGE_EVENT_DISCONNECTED, NULL,
                                                            pInstance->pBtConnectionStatusCallbackParameter);
                 }
@@ -521,7 +515,7 @@ static void UUDPD_urc(uAtClientHandle_t atHandle,
 
             case U_SHORT_RANGE_CONNECTION_TYPE_IP:
                 if (pInstance->pIpConnectionStatusCallback != NULL) {
-                    pInstance->pIpConnectionStatusCallback(pInstance->handle, connHandle,
+                    pInstance->pIpConnectionStatusCallback(pInstance->wifiHandle, connHandle,
                                                            U_SHORT_RANGE_EVENT_DISCONNECTED, NULL,
                                                            pInstance->pIpConnectionStatusCallbackParameter);
                 }
@@ -529,7 +523,7 @@ static void UUDPD_urc(uAtClientHandle_t atHandle,
 
             case U_SHORT_RANGE_CONNECTION_TYPE_MQTT:
                 if (pInstance->pMqttConnectionStatusCallback != NULL) {
-                    pInstance->pMqttConnectionStatusCallback(pInstance->handle, connHandle,
+                    pInstance->pMqttConnectionStatusCallback(pInstance->wifiHandle, connHandle,
                                                              U_SHORT_RANGE_EVENT_DISCONNECTED, NULL,
                                                              pInstance->pMqttConnectionStatusCallbackParameter);
                 }
@@ -605,12 +599,12 @@ static int32_t restartModuleHelper(const uShortRangePrivateInstance_t *pInstance
 }
 
 // Reboot and enter edm
-static int32_t restartModuleAndEnterEDM(int32_t shortRangeHandle)
+static int32_t restartModuleAndEnterEDM(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_UNKNOWN;
     uShortRangePrivateInstance_t *pInstance;
 
-    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+    pInstance = pUShortRangePrivateGetInstance(devHandle);
 
     if (pInstance != NULL) {
         errorCode = restartModuleHelper(pInstance);
@@ -739,12 +733,11 @@ int32_t uShortRangeUnlock()
 
 int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
                             const uShortRangeUartConfig_t *pUartConfig,
-                            bool restart)
+                            bool restart, uDeviceHandle_t *pDevHandle)
 {
     int32_t uartHandle = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     int32_t edmStreamHandle = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     uAtClientHandle_t atClientHandle = NULL;
-    int32_t shortRangeHandle = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     int32_t handleOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (gUShortRangePrivateMutex == NULL) {
@@ -752,7 +745,7 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
     }
 
     // TODO: once we allow multiple edm streams this should be removed
-    if (gNextInstanceHandle != 0) {
+    if (gpUShortRangePrivateInstanceList != NULL) {
         return (int32_t) U_SHORT_RANGE_ERROR_INIT_INTERNAL;
     }
 
@@ -808,7 +801,8 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
 
     handleOrErrorCode = uShortRangeAdd(moduleType,
                                        atClientHandle,
-                                       uartHandle);
+                                       uartHandle,
+                                       pDevHandle);
 
     if (handleOrErrorCode < (int32_t) U_ERROR_COMMON_SUCCESS) {
         uAtClientRemove(atClientHandle);
@@ -818,29 +812,27 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
         return (int32_t) U_SHORT_RANGE_ERROR_INIT_INTERNAL;
     }
 
-    //lint -e(838) Suppress previously assigned value has not been used
-    shortRangeHandle = handleOrErrorCode;
     uShortRangeEdmStreamSetAtHandle(edmStreamHandle, atClientHandle);
 
     if (restart) {
-        if (restartModuleAndEnterEDM(shortRangeHandle) != (int32_t) U_ERROR_COMMON_SUCCESS) {
-            uShortRangeClose(shortRangeHandle);
+        if (restartModuleAndEnterEDM(*pDevHandle) != (int32_t) U_ERROR_COMMON_SUCCESS) {
+            uShortRangeClose(*pDevHandle);
             return (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
         }
-    } else if (moduleType != uShortRangeDetectModule(shortRangeHandle)) {
-            uShortRangeClose(shortRangeHandle);
-            handleOrErrorCode = (int32_t) U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+    } else if (moduleType != uShortRangeDetectModule(*pDevHandle)) {
+        uShortRangeClose(*pDevHandle);
+        handleOrErrorCode = (int32_t) U_SHORT_RANGE_ERROR_INIT_INTERNAL;
     }
 
     if (moduleType != getModule(atClientHandle)) {
-        uShortRangeClose(shortRangeHandle);
+        uShortRangeClose(*pDevHandle);
         handleOrErrorCode = (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
     }
 
     return handleOrErrorCode;
 }
 
-void uShortRangeClose(int32_t shortRangeHandle)
+void uShortRangeClose(uDeviceHandle_t devHandle)
 {
     uShortRangePrivateInstance_t *pInstance;
 
@@ -849,7 +841,7 @@ void uShortRangeClose(int32_t shortRangeHandle)
         return;
     }
 
-    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+    pInstance = pUShortRangePrivateGetInstance(devHandle);
 
     if (pInstance != NULL) {
         uAtClientIgnoreAsync(pInstance->atHandle);
@@ -859,10 +851,11 @@ void uShortRangeClose(int32_t shortRangeHandle)
         uAtClientRemove(pInstance->atHandle);
         uPortUartClose(pInstance->uartHandle);
         removeShortRangeInstance(pInstance);
+        uDeviceDestroyInstance(U_DEVICE_INSTANCE(devHandle));
     }
 }
 
-int32_t uShortRangeSetIpConnectionStatusCallback(int32_t shortRangeHandle,
+int32_t uShortRangeSetIpConnectionStatusCallback(uDeviceHandle_t devHandle,
                                                  uShortRangeIpConnectionStatusCallback_t pCallback,
                                                  void *pCallbackParameter)
 {
@@ -870,9 +863,12 @@ int32_t uShortRangeSetIpConnectionStatusCallback(int32_t shortRangeHandle,
     uShortRangePrivateInstance_t *pInstance;
 
     if (gUShortRangePrivateMutex != NULL) {
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL && pCallback != NULL) {
+            // TODO: Removed when network API has been adjusted
+            pInstance->wifiHandle = devHandle;
+
             pInstance->pIpConnectionStatusCallback = pCallback;
             pInstance->pIpConnectionStatusCallbackParameter = pCallbackParameter;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -887,7 +883,7 @@ int32_t uShortRangeSetIpConnectionStatusCallback(int32_t shortRangeHandle,
     return errorCode;
 }
 
-int32_t uShortRangeSetBtConnectionStatusCallback(int32_t shortRangeHandle,
+int32_t uShortRangeSetBtConnectionStatusCallback(uDeviceHandle_t devHandle,
                                                  uShortRangeBtConnectionStatusCallback_t pCallback,
                                                  void *pCallbackParameter)
 {
@@ -895,7 +891,10 @@ int32_t uShortRangeSetBtConnectionStatusCallback(int32_t shortRangeHandle,
     uShortRangePrivateInstance_t *pInstance;
 
     if (gUShortRangePrivateMutex != NULL) {
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        // TODO: Removed when network API has been adjusted
+        pInstance->bleHandle = devHandle;
+
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL && pCallback != NULL) {
             pInstance->pBtConnectionStatusCallback = pCallback;
@@ -912,7 +911,7 @@ int32_t uShortRangeSetBtConnectionStatusCallback(int32_t shortRangeHandle,
     return errorCode;
 }
 
-int32_t uShortRangeSetMqttConnectionStatusCallback(int32_t shortRangeHandle,
+int32_t uShortRangeSetMqttConnectionStatusCallback(uDeviceHandle_t devHandle,
                                                    uShortRangeIpConnectionStatusCallback_t pCallback,
                                                    void *pCallbackParameter)
 {
@@ -920,9 +919,12 @@ int32_t uShortRangeSetMqttConnectionStatusCallback(int32_t shortRangeHandle,
     uShortRangePrivateInstance_t *pInstance;
 
     if (gUShortRangePrivateMutex != NULL) {
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL && pCallback != NULL) {
+            // TODO: Removed when network API has been adjusted
+            pInstance->wifiHandle = devHandle;
+
             pInstance->pMqttConnectionStatusCallback = pCallback;
             pInstance->pMqttConnectionStatusCallbackParameter = pCallbackParameter;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -937,14 +939,14 @@ int32_t uShortRangeSetMqttConnectionStatusCallback(int32_t shortRangeHandle,
     return errorCode;
 }
 
-uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
+uShortRangeModuleType_t uShortRangeDetectModule(uDeviceHandle_t devHandle)
 {
     uShortRangePrivateInstance_t *pInstance;
     uShortRangeModuleType_t module = U_SHORT_RANGE_MODULE_TYPE_INVALID;
     int32_t errorCode;
 
     if (gUShortRangePrivateMutex != NULL) {
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         if (pInstance != NULL) {
             errorCode = enterEDM(pInstance);
             if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
@@ -956,13 +958,13 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
     return module;
 }
 
-int32_t uShortRangeAttention(int32_t shortRangeHandle)
+int32_t uShortRangeAttention(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
     if (gUShortRangePrivateMutex != NULL) {
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
@@ -982,7 +984,7 @@ int32_t uShortRangeAttention(int32_t shortRangeHandle)
 }
 
 // Get the handle of the AT client.
-int32_t uShortRangeAtClientHandleGet(int32_t shortRangeHandle,
+int32_t uShortRangeAtClientHandleGet(uDeviceHandle_t devHandle,
                                      uAtClientHandle_t *pAtHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -990,7 +992,7 @@ int32_t uShortRangeAtClientHandleGet(int32_t shortRangeHandle,
 
     if (gUShortRangePrivateMutex != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         if ((pInstance != NULL) && (pAtHandle != NULL)) {
             *pAtHandle = pInstance->atHandle;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -1010,33 +1012,7 @@ const uShortRangeModuleInfo_t *uShortRangeGetModuleInfo(int32_t moduleType)
     return NULL;
 }
 
-int32_t uShortRangeGetShoHandle(int32_t networkHandle)
-{
-    int32_t shoHandle = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-
-    if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-
-        if ((networkHandle >= (int32_t)U_NETWORK_HANDLE_WIFI_MIN) &&
-            (networkHandle <= (int32_t)U_NETWORK_HANDLE_WIFI_MAX)) {
-
-            shoHandle =  networkHandle - (int32_t)U_NETWORK_HANDLE_WIFI_MIN;
-
-        }
-
-    } else if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
-
-        if ((networkHandle >= (int32_t)U_NETWORK_HANDLE_BLE_MIN) &&
-            (networkHandle <= (int32_t)U_NETWORK_HANDLE_BLE_MAX)) {
-
-            shoHandle =  networkHandle - (int32_t)U_NETWORK_HANDLE_BLE_MIN;
-        }
-
-    }
-    return shoHandle;
-}
-
-
-int32_t uShortRangeGetSerialNumber(int32_t shortRangeHandle, char *pSerialNumber)
+int32_t uShortRangeGetSerialNumber(uDeviceHandle_t devHandle, char *pSerialNumber)
 {
     uAtClientHandle_t atHandle;
     uShortRangePrivateInstance_t *pInstance;
@@ -1048,7 +1024,7 @@ int32_t uShortRangeGetSerialNumber(int32_t shortRangeHandle, char *pSerialNumber
         return (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     }
 
-    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+    pInstance = pUShortRangePrivateGetInstance(devHandle);
 
     if ((pInstance != NULL) &&
         (pSerialNumber != NULL)) {
@@ -1075,7 +1051,7 @@ int32_t uShortRangeGetSerialNumber(int32_t shortRangeHandle, char *pSerialNumber
     return err;
 }
 
-int32_t uShortRangeGetEdmStreamHandle(int32_t shortRangeHandle)
+int32_t uShortRangeGetEdmStreamHandle(uDeviceHandle_t devHandle)
 {
     uShortRangePrivateInstance_t *pInstance;
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
@@ -1084,7 +1060,7 @@ int32_t uShortRangeGetEdmStreamHandle(int32_t shortRangeHandle)
         return (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     }
 
-    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+    pInstance = pUShortRangePrivateGetInstance(devHandle);
 
     if ((pInstance != NULL) &&
         (pInstance->streamType == U_AT_CLIENT_STREAM_TYPE_EDM)) {
@@ -1095,7 +1071,7 @@ int32_t uShortRangeGetEdmStreamHandle(int32_t shortRangeHandle)
     return errorCode;
 }
 
-int32_t uShortRangeGetUartHandle(int32_t shortRangeHandle)
+int32_t uShortRangeGetUartHandle(uDeviceHandle_t devHandle)
 {
     uShortRangePrivateInstance_t *pInstance;
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
@@ -1104,7 +1080,7 @@ int32_t uShortRangeGetUartHandle(int32_t shortRangeHandle)
         return (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     }
 
-    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+    pInstance = pUShortRangePrivateGetInstance(devHandle);
 
     if ((pInstance != NULL) &&
         (pInstance->uartHandle >= (int32_t) U_ERROR_COMMON_SUCCESS)) {
@@ -1115,11 +1091,11 @@ int32_t uShortRangeGetUartHandle(int32_t shortRangeHandle)
     return errorCode;
 }
 
-int32_t uShortRangeSetBaudrate(int32_t shortRangeHandle, const uShortRangeUartConfig_t *pUartConfig)
+int32_t uShortRangeSetBaudrate(uDeviceHandle_t *pDevHandle,
+                               const uShortRangeUartConfig_t *pUartConfig)
 {
     uShortRangePrivateInstance_t *pInstance;
     uShortRangeModuleType_t moduleType;
-    int32_t newShortRangeHandle = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
     char atBuffer[48];
 
@@ -1127,7 +1103,7 @@ int32_t uShortRangeSetBaudrate(int32_t shortRangeHandle, const uShortRangeUartCo
         return (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     }
 
-    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+    pInstance = pUShortRangePrivateGetInstance(*pDevHandle);
 
     if ((pInstance != NULL) &&
         (pInstance->atHandle != NULL)) {
@@ -1137,12 +1113,12 @@ int32_t uShortRangeSetBaudrate(int32_t shortRangeHandle, const uShortRangeUartCo
 
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
             moduleType = pInstance->pModule->moduleType;
-            uShortRangeClose(shortRangeHandle);
-            newShortRangeHandle = uShortRangeOpenUart(moduleType, pUartConfig, false);
+            uShortRangeClose(*pDevHandle);
+            errorCode = uShortRangeOpenUart(moduleType, pUartConfig, false, pDevHandle);
         }
     }
 
-    return newShortRangeHandle;
+    return errorCode;
 }
 
 // End of file

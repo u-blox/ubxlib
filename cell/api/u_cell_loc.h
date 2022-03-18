@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the API into the Cell Locate
@@ -139,7 +140,7 @@ extern "C" {
  *
  * @param cellHandle  the handle of the cellular instance.
  */
-void uCellLocCleanUp(int32_t cellHandle);
+void uCellLocCleanUp(uDeviceHandle_t cellHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: CONFIGURATION
@@ -152,7 +153,7 @@ void uCellLocCleanUp(int32_t cellHandle);
  * @param cellHandle          the handle of the cellular instance.
  * @param accuracyMillimetres the desired accuracy in millimetres.
  */
-void uCellLocSetDesiredAccuracy(int32_t cellHandle,
+void uCellLocSetDesiredAccuracy(uDeviceHandle_t cellHandle,
                                 int32_t accuracyMillimetres);
 
 /** Get the desired location accuracy.
@@ -160,7 +161,7 @@ void uCellLocSetDesiredAccuracy(int32_t cellHandle,
  * @param cellHandle  the handle of the cellular instance.
  * @return            the desired accuracy in millimetres.
  */
-int32_t uCellLocGetDesiredAccuracy(int32_t cellHandle);
+int32_t uCellLocGetDesiredAccuracy(uDeviceHandle_t cellHandle);
 
 /** Set the desired location fix time-out.  If this is not called
  * then the default U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS
@@ -169,7 +170,7 @@ int32_t uCellLocGetDesiredAccuracy(int32_t cellHandle);
  * @param cellHandle        the handle of the cellular instance.
  * @param fixTimeoutSeconds the desired fix timeout in seconds.
  */
-void uCellLocSetDesiredFixTimeout(int32_t cellHandle,
+void uCellLocSetDesiredFixTimeout(uDeviceHandle_t cellHandle,
                                   int32_t fixTimeoutSeconds);
 
 /** Get the desired location fix time-out.
@@ -177,7 +178,7 @@ void uCellLocSetDesiredFixTimeout(int32_t cellHandle,
  * @param cellHandle  the handle of the cellular instance.
  * @return            the desrired timeout in seconds.
  */
-int32_t uCellLocGetDesiredFixTimeout(int32_t cellHandle);
+int32_t uCellLocGetDesiredFixTimeout(uDeviceHandle_t cellHandle);
 
 /** Set whether a GNSS chip attached to the cellular module
  * should be used in the location fix or not.  If this is not
@@ -190,14 +191,14 @@ int32_t uCellLocGetDesiredFixTimeout(int32_t cellHandle);
  * @param cellHandle  the handle of the cellular instance.
  * @param onNotOff    true if GNSS should be used, else false.
  */
-void uCellLocSetGnssEnable(int32_t cellHandle, bool onNotOff);
+void uCellLocSetGnssEnable(uDeviceHandle_t cellHandle, bool onNotOff);
 
 /** Get whether GNSS is employed in the location fix or not.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            true if GNSS is used else false.
  */
-bool uCellLocGetGnssEnable(int32_t cellHandle);
+bool uCellLocGetGnssEnable(uDeviceHandle_t cellHandle);
 
 /** Set the cellular module pin which enables power to the
  * GNSS chip.  This is the pin number of the cellular module so,
@@ -215,7 +216,7 @@ bool uCellLocGetGnssEnable(int32_t cellHandle);
  * @param pin         the pin to use.
  * @return            zero on success or negative error code.
  */
-int32_t uCellLocSetPinGnssPwr(int32_t cellHandle, int32_t pin);
+int32_t uCellLocSetPinGnssPwr(uDeviceHandle_t cellHandle, int32_t pin);
 
 /** Set the cellular module pin which is connected to the Data
  * Ready pin of the GNSS chip.  This is the pin number of the
@@ -233,7 +234,7 @@ int32_t uCellLocSetPinGnssPwr(int32_t cellHandle, int32_t pin);
  * @param pin         the pin to use.
  * @return            zero on success or negative error code.
  */
-int32_t uCellLocSetPinGnssDataReady(int32_t cellHandle, int32_t pin);
+int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin);
 
 /** Configure the Cell Locate server parameters, in particular
  * authentication token that is required to use the Cell Locate
@@ -262,7 +263,7 @@ int32_t uCellLocSetPinGnssDataReady(int32_t cellHandle, int32_t pin);
  *                                is used.
  * @return                        zero on success or negative error code.
  */
-int32_t uCellLocSetServer(int32_t cellHandle,
+int32_t uCellLocSetServer(uDeviceHandle_t cellHandle,
                           const char *pAuthenticationTokenStr,
                           const char *pPrimaryServerStr,
                           const char *pSecondaryServerStr);
@@ -275,7 +276,7 @@ int32_t uCellLocSetServer(int32_t cellHandle,
  * @param cellHandle  the handle of the cellular instance.
  * @return            true if a GNSS chip is present, else false.
  */
-bool uCellLocIsGnssPresent(int32_t cellHandle);
+bool uCellLocIsGnssPresent(uDeviceHandle_t cellHandle);
 
 /** Check whether there is a GNSS chip on-board the cellular module.
  *
@@ -283,7 +284,7 @@ bool uCellLocIsGnssPresent(int32_t cellHandle);
  * @return            true if there is a GNSS chip inside the cellular
  *                    module, else false.
  */
-bool uCellLocGnssInsideCell(int32_t cellHandle);
+bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: LOCATION ESTABLISHMENT
@@ -343,12 +344,12 @@ bool uCellLocGnssInsideCell(int32_t cellHandle);
  * @return                            zero on success or negative error code on
  *                                    failure.
  */
-int32_t uCellLocGet(int32_t cellHandle,
+int32_t uCellLocGet(uDeviceHandle_t cellHandle,
                     int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                     int32_t *pAltitudeMillimetres, int32_t *pRadiusMillimetres,
                     int32_t *pSpeedMillimetresPerSecond,
                     int32_t *pSvs, int64_t *pTimeUtc,
-                    bool (*pKeepGoingCallback) (int32_t));
+                    bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Get the current location, non-blocking version.  This will ONLY
  * work if the cellular module is currently registered on a network
@@ -367,8 +368,8 @@ int32_t uCellLocGet(int32_t cellHandle,
  * @return            zero on success or negative error code on
  *                    failure.
  */
-int32_t uCellLocGetStart(int32_t cellHandle,
-                         void (*pCallback) (int32_t cellHandle,
+int32_t uCellLocGetStart(uDeviceHandle_t cellHandle,
+                         void (*pCallback) (uDeviceHandle_t cellHandle,
                                             int32_t errorCode,
                                             int32_t latitudeX1e7,
                                             int32_t longitudeX1e7,
@@ -385,7 +386,7 @@ int32_t uCellLocGetStart(int32_t cellHandle,
  *                    from uLocationStatus_t (see common
  *                    location API), else negative error code.
  */
-int32_t uCellLocGetStatus(int32_t cellHandle);
+int32_t uCellLocGetStatus(uDeviceHandle_t cellHandle);
 
 /** Cancel a uCellLocGetStart(); after calling this function the
  * callback passed to uCellLocGetStart() will not be called until
@@ -398,7 +399,7 @@ int32_t uCellLocGetStatus(int32_t cellHandle);
  *
  * @param cellHandle  the handle of the cellular instance.
  */
-void uCellLocGetStop(int32_t cellHandle);
+void uCellLocGetStop(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }

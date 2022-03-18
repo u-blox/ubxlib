@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines functions that read general
@@ -63,7 +64,7 @@ extern "C" {
  *                    one] null terminator, depending on what the
  *                    GNSS device chooses to return.
  */
-int32_t uGnssInfoGetFirmwareVersionStr(int32_t gnssHandle,
+int32_t uGnssInfoGetFirmwareVersionStr(uDeviceHandle_t gnssHandle,
                                        char *pStr, size_t size);
 
 /** Get the chip ID from the GNSS chip.
@@ -84,7 +85,7 @@ int32_t uGnssInfoGetFirmwareVersionStr(int32_t gnssHandle,
  *                    contain nulls, depending on what the GNSS
  *                    device chooses to return
  */
-int32_t uGnssInfoGetIdStr(int32_t gnssHandle,
+int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
                           char *pStr, size_t size);
 
 /** Get the UTC time according to GNSS.
@@ -93,7 +94,7 @@ int32_t uGnssInfoGetIdStr(int32_t gnssHandle,
  * @return            on success the Unix UTC time, else negative
  *                    error code.
  */
-int64_t uGnssInfoGetTimeUtc(int32_t gnssHandle);
+int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle);
 
 #ifdef __cplusplus
 }

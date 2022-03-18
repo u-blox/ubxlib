@@ -71,7 +71,7 @@
  * -------------------------------------------------------------- */
 
 //lint -esym(551, gHandles) Suppress symbols not accessed
-static uShortRangeTestPrivate_t gHandles = {-1, -1, NULL, -1};
+static uShortRangeTestPrivate_t gHandles = {-1, -1, NULL, NULL};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -81,7 +81,7 @@ static void resetGlobals()
     gHandles.uartHandle = -1;
     gHandles.edmStreamHandle = -1;
     gHandles.atClientHandle = NULL;
-    gHandles.shortRangeHandle = -1;
+    gHandles.devHandle = NULL;
 }
 
 /* ----------------------------------------------------------------
@@ -131,16 +131,18 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
                                                       &uart,
                                                       &gHandles) == 0);
 
-    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.shortRangeHandle) == gHandles.uartHandle);
-    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(gHandles.shortRangeHandle) ==
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(gHandles.devHandle) ==
                        gHandles.edmStreamHandle);
-    uShortRangeAtClientHandleGet(gHandles.shortRangeHandle, &atClient);
+    uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
-    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.shortRangeHandle) == 0);
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 
     uPortLog("U_SHORT_RANGE: calling uShortRangeOpenUart with same arg twice,"
              " should fail...\n");
-    U_PORT_TEST_ASSERT(uShortRangeOpenUart(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE, &uart, true) < 0);
+    uDeviceHandle_t devHandle;
+    U_PORT_TEST_ASSERT(uShortRangeOpenUart(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE, &uart,
+                                           true, &devHandle) < 0);
 
     uShortRangeTestPrivatePostamble(&gHandles);
 
@@ -204,19 +206,19 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
     U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
     U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                    &uart,
-                                                    &gHandles) == 0);
+                                                      &uart,
+                                                      &gHandles) == 0);
 
-    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.shortRangeHandle) == gHandles.uartHandle);
-    uShortRangeAtClientHandleGet(gHandles.shortRangeHandle, &atClient);
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+    uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
     /* port is now opened at default speed */
 
     for (int32_t count = 0; count < (sizeof(testBaudrates) / sizeof(int32_t)); count++) {
         uPortLog("U_SHORT_RANGE_TEST: setting baudrate %d\n", testBaudrates[count]);
         uart.baudRate = testBaudrates[count];
-        gHandles.shortRangeHandle = uShortRangeSetBaudrate(gHandles.shortRangeHandle, &uart);
-        U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.shortRangeHandle) == 0);
+        U_PORT_TEST_ASSERT(uShortRangeSetBaudrate(&gHandles.devHandle, &uart) == 0);
+        U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
     }
 
     uShortRangeTestPrivateCleanup(&gHandles);

@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the general cellular-wide APIs,
@@ -225,13 +226,14 @@ void uCellDeinit();
  *                         is low to disable power to the module and pinPwrOn
  *                         is high so that it can be pulled low to logically
  *                         power the module on.
- * @return                 on success the handle of the cellular instance,
- *                         else negative error code.
+ * @param[out] pCellHandle  a pointer to the output handle. Will only be set on success.
+ * @return                 zero on success or negative error code on failure.
  */
 int32_t uCellAdd(uCellModuleType_t moduleType,
                  uAtClientHandle_t atHandle,
                  int32_t pinEnablePower, int32_t pinPwrOn,
-                 int32_t pinVInt, bool leavePowerAlone);
+                 int32_t pinVInt, bool leavePowerAlone,
+                 uDeviceHandle_t *pCellHandle);
 
 /** Remove a cellular instance.  It is up to the caller to ensure
  * that the cellular module for the given instance has been disconnected
@@ -240,7 +242,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
  *
  * @param cellHandle  the handle of the cellular instance to remove.
  */
-void uCellRemove(int32_t cellHandle);
+void uCellRemove(uDeviceHandle_t cellHandle);
 
 /** Get the handle of the AT client used by the given
  * cellular instance.
@@ -249,7 +251,7 @@ void uCellRemove(int32_t cellHandle);
  * @param pAtHandle   a place to put the AT client handle.
  * @return            zero on success else negative error code.
  */
-int32_t uCellAtClientHandleGet(int32_t cellHandle,
+int32_t uCellAtClientHandleGet(uDeviceHandle_t cellHandle,
                                uAtClientHandle_t *pAtHandle);
 
 #ifdef __cplusplus

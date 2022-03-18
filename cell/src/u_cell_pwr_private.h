@@ -74,7 +74,7 @@ extern "C" {
  *                           code on failure.
  */
 int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
-                          bool (*pKeepGoingCallback) (int32_t),
+                          bool (*pKeepGoingCallback) (uDeviceHandle_t),
                           bool allowPrinting);
 
 /** Decode a string representing the binary value of a 3GPP power

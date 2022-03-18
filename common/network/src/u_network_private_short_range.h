@@ -86,11 +86,14 @@ void uNetworkDeinitShortRange(void);
  * Note: uNetworkInitShortRange() must have been called before using
  * this function.
  *
+ * @param netType          the network type.
  * @param pConfiguration   a pointer to the configuration.
- * @return                 on success the handle of the
- *                         instance, else negative error code.
+ * @param[out] pDevHandle  a pointer to the output handle. Will only be set on success.
+ * @return                 zero on success or negative error code on failure.
  */
-int32_t uNetworkAddShortRange(const uShortRangeConfig_t *pConfiguration);
+int32_t uNetworkAddShortRange(uNetworkType_t netType,
+                              const uShortRangeConfig_t *pConfiguration,
+                              uDeviceHandle_t *pDevHandle);
 
 /** Remove a short range network instance.
  * Please note that when uNetworkAddShortRange() has been called
@@ -101,17 +104,17 @@ int32_t uNetworkAddShortRange(const uShortRangeConfig_t *pConfiguration);
  * remove the logical instance. uNetworkInitShortRange() must have been
  * called before using this function.
  *
- * @param handle  the handle of the short range instance to remove.
- * @return        zero on success else negative error code.
+ * @param devHandle  the handle of the short range instance to remove.
+ * @return           zero on success else negative error code.
  */
-int32_t uNetworkRemoveShortRange(int32_t handle);
+int32_t uNetworkRemoveShortRange(uDeviceHandle_t devHandle);
 
 /** Get the AT client.
  *
- * @param handle  the handle of the short range instance.
- * @return        AT client handle on success else NULL.
+ * @param devHandle  the handle of the short range instance.
+ * @return           AT client handle on success else NULL.
  */
-uAtClientHandle_t uNetworkGetAtClientShortRange(int32_t handle);
+uAtClientHandle_t uNetworkGetAtClientShortRange(uDeviceHandle_t devHandle);
 
 #ifdef __cplusplus
 }

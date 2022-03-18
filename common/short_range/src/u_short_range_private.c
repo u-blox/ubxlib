@@ -37,6 +37,7 @@
 
 #include "u_at_client.h"
 
+#include "u_device_internal.h"
 #include "u_error_common.h"
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
@@ -117,26 +118,23 @@ const size_t gUShortRangePrivateModuleListSize = sizeof(gUShortRangePrivateModul
  * -------------------------------------------------------------- */
 
 // Find a short range instance in the list by instance handle.
-uShortRangePrivateInstance_t *pUShortRangePrivateGetInstance(int32_t handle)
+uShortRangePrivateInstance_t *pUShortRangePrivateGetInstance(uDeviceHandle_t devHandle)
 {
-    uShortRangePrivateInstance_t *pInstance = gpUShortRangePrivateInstanceList;
-
-    while ((pInstance != NULL) && (pInstance->handle != handle)) {
-        pInstance = pInstance->pNext;
+    uShortRangePrivateInstance_t *pInstance = NULL;
+    uDeviceInstance_t *pDevInstance = U_DEVICE_INSTANCE(devHandle);
+    // Check that the handle is valid
+    if (uDeviceIsValidInstance(pDevInstance)) {
+        pInstance = (uShortRangePrivateInstance_t *)pDevInstance->pContext;
     }
 
     return pInstance;
 }
 
 // Get the module characteristics for a given instance.
-const uShortRangePrivateModule_t *pUShortRangePrivateGetModule(int32_t handle)
+const uShortRangePrivateModule_t *pUShortRangePrivateGetModule(uDeviceHandle_t devHandle)
 {
-    uShortRangePrivateInstance_t *pInstance = gpUShortRangePrivateInstanceList;
+    uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(devHandle);
     const uShortRangePrivateModule_t *pModule = NULL;
-
-    while ((pInstance != NULL) && (pInstance->handle != handle)) {
-        pInstance = pInstance->pNext;
-    }
 
     if (pInstance != NULL) {
         pModule = pInstance->pModule;

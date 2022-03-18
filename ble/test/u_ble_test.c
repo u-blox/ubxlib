@@ -80,7 +80,7 @@
 
 /** UART handle for one AT client.
  */
-static uBleTestPrivate_t gHandles = {-1, -1, NULL, -1};
+static uBleTestPrivate_t gHandles = {-1, -1, NULL, NULL };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -120,7 +120,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenUart")
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
                                      .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
                                    };
-    int32_t shortRangeHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uDeviceHandle_t devHandle;
     uPortDeinit();
 
     heapUsed = uPortGetHeapFree();
@@ -130,17 +130,16 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenUart")
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                &uart,
                                                &gHandles) == 0);
-    shortRangeHandle = uBleToShoHandle(gHandles.bleHandle);
-    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(shortRangeHandle) == gHandles.uartHandle);
-    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(shortRangeHandle) == gHandles.edmStreamHandle);
-    uShortRangeAtClientHandleGet(shortRangeHandle, &atClient);
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(gHandles.devHandle) == gHandles.edmStreamHandle);
+    uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
-    U_PORT_TEST_ASSERT(uShortRangeAttention(shortRangeHandle) == 0);
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 
     uPortLog("U_BLE: calling uShortRangeOpenUart with same arg twice,"
              " should fail...\n");
     U_PORT_TEST_ASSERT(uShortRangeOpenUart((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                           &uart, true) < 0);
+                                           &uart, true, &devHandle) < 0);
 
     uBleTestPrivatePostamble(&gHandles);
 

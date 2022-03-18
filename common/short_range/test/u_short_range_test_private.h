@@ -45,7 +45,7 @@ typedef struct {
     int32_t uartHandle; /**< The handle returned by uShortRangeGetUartHandle(). */
     int32_t edmStreamHandle; /**< The handle returned by uShortRangeGetEdmStreamHandle(). */
     uAtClientHandle_t atClientHandle; /**< The handle returned by uShortRangeAtClientHandleGet(). */
-    int32_t shortRangeHandle;  /**< The handle returned by uShortRangeOpenUart(). */
+    uDeviceHandle_t devHandle;  /**< The handle returned by uShortRangeOpenUart(). */
 } uShortRangeTestPrivate_t;
 
 /* ----------------------------------------------------------------

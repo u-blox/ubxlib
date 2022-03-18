@@ -712,7 +712,7 @@ int32_t setAndStoreBaudRate(const uCellPrivateInstance_t *pInstance,
  * -------------------------------------------------------------- */
 
 // Set the bands to be used by the cellular module.
-int32_t uCellCfgSetBandMask(int32_t cellHandle,
+int32_t uCellCfgSetBandMask(uDeviceHandle_t cellHandle,
                             uCellNetRat_t rat,
                             uint64_t bandMask1,
                             uint64_t bandMask2)
@@ -766,7 +766,7 @@ int32_t uCellCfgSetBandMask(int32_t cellHandle,
 }
 
 // Get the bands being used by the cellular module.
-int32_t uCellCfgGetBandMask(int32_t cellHandle,
+int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
                             uCellNetRat_t rat,
                             uint64_t *pBandMask1,
                             uint64_t *pBandMask2)
@@ -911,7 +911,7 @@ int32_t uCellCfgGetBandMask(int32_t cellHandle,
 
 // Set the sole radio access technology to be used by the
 // cellular module.
-int32_t uCellCfgSetRat(int32_t cellHandle,
+int32_t uCellCfgSetRat(uDeviceHandle_t cellHandle,
                        uCellNetRat_t rat)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -955,7 +955,7 @@ int32_t uCellCfgSetRat(int32_t cellHandle,
 
 // Set the radio access technology to be used at the
 // given rank.
-int32_t uCellCfgSetRatRank(int32_t cellHandle,
+int32_t uCellCfgSetRatRank(uDeviceHandle_t cellHandle,
                            uCellNetRat_t rat, int32_t rank)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1001,7 +1001,7 @@ int32_t uCellCfgSetRatRank(int32_t cellHandle,
 
 // Get the radio access technology that is being used by
 // the cellular module at the given rank.
-uCellNetRat_t uCellCfgGetRat(int32_t cellHandle,
+uCellNetRat_t uCellCfgGetRat(uDeviceHandle_t cellHandle,
                              int32_t rank)
 {
     int32_t errorCodeOrRat = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1034,7 +1034,7 @@ uCellNetRat_t uCellCfgGetRat(int32_t cellHandle,
 
 // Get the rank at which the given radio access technology
 // is being used by the cellular module.
-int32_t uCellCfgGetRatRank(int32_t cellHandle,
+int32_t uCellCfgGetRatRank(uDeviceHandle_t cellHandle,
                            uCellNetRat_t rat)
 {
     int32_t errorCodeOrRank = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1076,7 +1076,7 @@ int32_t uCellCfgGetRatRank(int32_t cellHandle,
 }
 
 // Set the MNO profile use by the cellular module.
-int32_t uCellCfgSetMnoProfile(int32_t cellHandle,
+int32_t uCellCfgSetMnoProfile(uDeviceHandle_t cellHandle,
                               int32_t mnoProfile)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1119,7 +1119,7 @@ int32_t uCellCfgSetMnoProfile(int32_t cellHandle,
 }
 
 // Get the MNO profile used by the cellular module.
-int32_t uCellCfgGetMnoProfile(int32_t cellHandle)
+int32_t uCellCfgGetMnoProfile(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrMnoProfile = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1156,7 +1156,7 @@ int32_t uCellCfgGetMnoProfile(int32_t cellHandle)
 }
 
 // Configure serial interface
-int32_t uCellCfgSetSerialInterface(int32_t cellHandle, int32_t requestedVariant)
+int32_t uCellCfgSetSerialInterface(uDeviceHandle_t cellHandle, int32_t requestedVariant)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uCellPrivateInstance_t *pInstance;
@@ -1191,7 +1191,7 @@ int32_t uCellCfgSetSerialInterface(int32_t cellHandle, int32_t requestedVariant)
 }
 
 // Get the serial interface active configuration
-int32_t uCellCfgGetActiveSerialInterface(int32_t cellHandle)
+int32_t uCellCfgGetActiveSerialInterface(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrActiveVariant = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1231,7 +1231,7 @@ int32_t uCellCfgGetActiveSerialInterface(int32_t cellHandle)
 }
 
 // Set "AT+UDCONF".
-int32_t uCellCfgSetUdconf(int32_t cellHandle, int32_t param1,
+int32_t uCellCfgSetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
                           int32_t param2,  int32_t param3)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1267,7 +1267,7 @@ int32_t uCellCfgSetUdconf(int32_t cellHandle, int32_t param1,
 }
 
 // Get "AT+UDCONF".
-int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
+int32_t uCellCfgGetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
                           int32_t param2)
 {
     int32_t errorCodeOrUdconf = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1316,7 +1316,8 @@ int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
 // Perform a factory reset: note that this function is not
 // tested, so if you make changes please be sure to get them
 // right!
-int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType, int32_t nvmRestoreType)
+int32_t uCellCfgFactoryReset(uDeviceHandle_t cellHandle, int32_t fsRestoreType,
+                             int32_t nvmRestoreType)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uCellPrivateInstance_t *pInstance;
@@ -1354,7 +1355,7 @@ int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType, int32_t 
 }
 
 // Set a greeting message.
-int32_t uCellCfgSetGreeting(int32_t cellHandle, const char *pStr)
+int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uCellPrivateInstance_t *pInstance;
@@ -1389,7 +1390,7 @@ int32_t uCellCfgSetGreeting(int32_t cellHandle, const char *pStr)
 }
 
 // Get the current greeting message.
-int32_t uCellCfgGetGreeting(int32_t cellHandle, char *pStr, size_t size)
+int32_t uCellCfgGetGreeting(uDeviceHandle_t cellHandle, char *pStr, size_t size)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uCellPrivateInstance_t *pInstance;
@@ -1434,7 +1435,7 @@ int32_t uCellCfgGetGreeting(int32_t cellHandle, char *pStr, size_t size)
 }
 
 // Switch off auto-bauding in the cellular module.
-int32_t uCellCfgSetAutoBaudOff(int32_t cellHandle)
+int32_t uCellCfgSetAutoBaudOff(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1474,7 +1475,7 @@ int32_t uCellCfgSetAutoBaudOff(int32_t cellHandle)
 }
 
 // Switch auto-bauding on in the cellular module.
-int32_t uCellCfgSetAutoBaudOn(int32_t cellHandle)
+int32_t uCellCfgSetAutoBaudOn(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1501,7 +1502,7 @@ int32_t uCellCfgSetAutoBaudOn(int32_t cellHandle)
 }
 
 // Check if auto-bauding is on in the cellular module.
-bool uCellCfgAutoBaudIsOn(int32_t cellHandle)
+bool uCellCfgAutoBaudIsOn(uDeviceHandle_t cellHandle)
 {
     bool autoBaudOn = false;
     uCellPrivateInstance_t *pInstance;

@@ -44,8 +44,8 @@ extern "C" {
 /** FIFO entry to keep track of asynchronous location requests.
  */
 typedef struct uLocationSharedFifoEntry_t {
-    int32_t networkHandle;
-    void (*pCallback) (int32_t networkHandle,
+    uDeviceHandle_t devHandle;
+    void (*pCallback) (uDeviceHandle_t devHandle,
                        int32_t errorCode,
                        const uLocation_t *pLocation);
     struct uLocationSharedFifoEntry_t *pNext;
@@ -83,14 +83,14 @@ void uLocationSharedDeinit();
  * IMPORTANT: gULocationMutex should be locked before this
  * is called.
  *
- * @param networkHandle the handle of the network making the request.
+ * @param devHandle     the handle of the device making the request.
  * @param type          the request type.
  * @param pCallback     the callback associated with the request.
  * @return              zero on success or negative error code.
  */
-int32_t uLocationSharedRequestPush(int32_t networkHandle,
+int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
                                    uLocationType_t type,
-                                   void (*pCallback) (int32_t networkHandle,
+                                   void (*pCallback) (uDeviceHandle_t devHandle,
                                                       int32_t errorCode,
                                                       const uLocation_t *pLocation));
 

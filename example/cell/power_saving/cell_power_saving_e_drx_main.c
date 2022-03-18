@@ -157,7 +157,7 @@ static volatile bool gEDrxSet = false;
  * -------------------------------------------------------------- */
 
 // Callback that will be called when the network sends E-DRX settings.
-static void callback(int32_t cellHandle, uCellNetRat_t rat,
+static void callback(uDeviceHandle_t cellHandle, uCellNetRat_t rat,
                      bool onNotOff, int32_t eDrxSecondsRequested,
                      int32_t eDrxSecondsAssigned,
                      int32_t pagingWindowSecondsAssigned,
@@ -189,26 +189,28 @@ static void callback(int32_t cellHandle, uCellNetRat_t rat,
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSavingEDrx")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     bool onMyRat = true;
     int32_t x = -1;
+    int32_t returnCode;
 
     // Initialise the APIs we will need
     uPortInit();
     uNetworkInit();
 
     // Add a cellular network instance.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("### Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                             (void *) &gConfigCell,
+                             &devHandle);
+    uPortLog("### Added network with return code %d.\n", returnCode);
 
     // Set a callback for when the E-DRX parameters are sent
     // by the network
-    uCellPwrSetEDrxCallback(networkHandle, callback, NULL);
+    uCellPwrSetEDrxCallback(devHandle, callback, NULL);
 
     // Set the primary RAT to MY_RAT
-    if (uCellCfgGetRat(networkHandle, 0) != MY_RAT) {
-        if (uCellCfgSetRatRank(networkHandle, MY_RAT, 0) != 0) {
+    if (uCellCfgGetRat(devHandle, 0) != MY_RAT) {
+        if (uCellCfgSetRatRank(devHandle, MY_RAT, 0) != 0) {
             onMyRat = false;
         }
     }
@@ -218,17 +220,17 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSavingEDrx")
         // ask for a specific paging window value as not all
         // modules support that
         uPortLog("## Requesting E-DRX of %d seconds...\n");
-        x = uCellPwrSetRequestedEDrx(networkHandle, MY_RAT,
+        x = uCellPwrSetRequestedEDrx(devHandle, MY_RAT,
                                      true, EDRX_SECONDS, -1);
         if (x == 0) {
             // Reboot the module, if required, to apply the settings
-            if (uCellPwrRebootIsRequired(networkHandle)) {
-                uCellPwrReboot(networkHandle, NULL);
+            if (uCellPwrRebootIsRequired(devHandle)) {
+                uCellPwrReboot(devHandle, NULL);
             }
 
             // Bring up the network
             uPortLog("### Bringing up the network...\n");
-            if (uNetworkUp(networkHandle) == 0) {
+            if (uNetworkUp(devHandle) == 0) {
 
                 // Here you would normally do useful stuff; for the
                 // purposes of this simple E-DRX example,
@@ -247,7 +249,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSavingEDrx")
 
                 // When finished with the network layer
                 uPortLog("### Taking down network...\n");
-                uNetworkDown(networkHandle);
+                uNetworkDown(devHandle);
             } else {
                 uPortLog("### Unable to bring up the network!\n");
             }
@@ -273,12 +275,13 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSavingEDrx")
     if (gEDrxSet) {
         uPortInit();
         uNetworkInit();
-        networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                    (void *) &gConfigCell);
-        uCellPwrSetRequestedEDrx(networkHandle, MY_RAT, false, -1, -1);
+        returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                                 (void *) &gConfigCell,
+                                 &devHandle);
+        uCellPwrSetRequestedEDrx(devHandle, MY_RAT, false, -1, -1);
         // Reboot the module, if required, to apply the settings
-        if (uCellPwrRebootIsRequired(networkHandle)) {
-            uCellPwrReboot(networkHandle, NULL);
+        if (uCellPwrRebootIsRequired(devHandle)) {
+            uCellPwrReboot(devHandle, NULL);
         }
         uNetworkDeinit();
         uPortDeinit();

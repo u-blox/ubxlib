@@ -180,10 +180,10 @@ static uNetworkConfigurationGnss_t gConfigurationGnss = {U_NETWORK_TYPE_NONE};
  * GNSS so that the cellular handle can be passed on to GNSS.
  */
 uNetworkTestCfg_t gUNetworkTestCfg[] = {
-    {-1, U_NETWORK_TYPE_BLE, (void *) &gConfigurationBle},
-    {-1, U_NETWORK_TYPE_CELL, (void *) &gConfigurationCell},
-    {-1, U_NETWORK_TYPE_WIFI, (void *) &gConfigurationWifi},
-    {-1, U_NETWORK_TYPE_GNSS, (void *) &gConfigurationGnss}
+    {NULL, U_NETWORK_TYPE_BLE, (void *) &gConfigurationBle},
+    {NULL, U_NETWORK_TYPE_CELL, (void *) &gConfigurationCell},
+    {NULL, U_NETWORK_TYPE_WIFI, (void *) &gConfigurationWifi},
+    {NULL, U_NETWORK_TYPE_GNSS, (void *) &gConfigurationGnss}
 };
 
 /** Number of items in the gNetwork array, has to be
@@ -216,17 +216,17 @@ const char *gpUNetworkTestTypeName[] = {"none",     // U_NETWORK_TYPE_NONE
  * -------------------------------------------------------------- */
 
 // Update a GNSS network configuration for use with the AT interface.
-void uNetworkTestGnssAtConfiguration(int32_t networkHandleAt,
+void uNetworkTestGnssAtConfiguration(uDeviceHandle_t devHandleAt,
                                      void *pGnssConfiguration)
 {
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-    if ((networkHandleAt >= 0) &&
+    if ((devHandleAt != NULL) &&
         (*((uNetworkType_t *) (pGnssConfiguration)) == U_NETWORK_TYPE_GNSS)) {
         ((uNetworkConfigurationGnss_t *) pGnssConfiguration)->transportType = U_GNSS_TRANSPORT_UBX_AT;
-        ((uNetworkConfigurationGnss_t *) pGnssConfiguration)->networkHandleAt = networkHandleAt;
+        ((uNetworkConfigurationGnss_t *) pGnssConfiguration)->devHandleAt = devHandleAt;
     }
 #else
-    (void) networkHandleAt;
+    (void) devHandleAt;
     (void) pGnssConfiguration;
 #endif
 }

@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the location API, which is designed
@@ -79,7 +80,7 @@ extern "C" {
 #ifndef U_LOCATION_ASSIST_DEFAULTS
 /** Default values for uLocationAssist_t.
  */
-# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false, -1,                                         \
+# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false, NULL,                                       \
                                      U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD,                     \
                                      U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD,                    \
                                      U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,             \
@@ -139,7 +140,7 @@ typedef struct {
 
     /* The following fields are [currently] ONLY used by U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE. */
 
-    int32_t networkHandleAssist; /**< the network handle to use for
+    uDeviceHandle_t devHandleAssist; /**< the network handle to use for
                                       assistance information, currently only used
                                       by the Cloud Locate service,
                                       U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE.  For this
@@ -266,8 +267,7 @@ typedef enum {
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
- * @param networkHandle           the handle of the network instance
- *                                to use.
+ * @param devHandle               the device handle to use.
  * @param type                    the type of location fix to perform;
  *                                how this can be used depends upon the
  *                                type of networkHandle:
@@ -342,11 +342,11 @@ typedef enum {
  * @return                        zero on success or negative error code
  *                                on failure.
  */
-int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
+int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                      const uLocationAssist_t *pLocationAssist,
                      const char *pAuthenticationTokenStr,
                      uLocation_t *pLocation,
-                     bool (*pKeepGoingCallback) (int32_t));
+                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Get the current location, non-blocking version.  uNetworkUp() (see
  * the network API) must have been called on the given networkHandle for
@@ -364,7 +364,7 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
- * @param networkHandle           the handle of the network instance to use.
+ * @param devHandle               the device handle to use.
  * @param type                    the type of location fix to perform; the
  *                                comments concerning which types can be
  *                                used for the uLocationGet() API apply.
@@ -391,27 +391,27 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
  * @return                        zero on success or negative error code on
  *                                failure.
  */
-int32_t uLocationGetStart(int32_t networkHandle, uLocationType_t type,
+int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
                           const uLocationAssist_t *pLocationAssist,
                           const char *pAuthenticationTokenStr,
-                          void (*pCallback) (int32_t networkHandle,
+                          void (*pCallback) (uDeviceHandle_t devHandle,
                                              int32_t errorCode,
                                              const uLocation_t *pLocation));
 
 /** Get the current status of a location establishment attempt.
  *
- * @param networkHandle  the handle of the network instance.
+ * @param devHandle      the device handle to use.
  * @return               the status or negative error code.
  */
-int32_t uLocationGetStatus(int32_t networkHandle);
+int32_t uLocationGetStatus(uDeviceHandle_t devHandle);
 
 /** Cancel a uLocationGetStart(); after calling this function the
  * callback passed to uLocationGetStart() will not be called until
  * another uLocationGetStart() is begun.
  *
- * @param networkHandle  the handle of the network instance.
+ * @param devHandle  the device handle to use.
  */
-void uLocationGetStop(int32_t networkHandle);
+void uLocationGetStop(uDeviceHandle_t devHandle);
 
 #ifdef __cplusplus
 }

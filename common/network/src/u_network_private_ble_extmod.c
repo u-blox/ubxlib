@@ -46,7 +46,6 @@
 
 #include "u_ble_module_type.h"
 #include "u_ble.h"
-#include "u_ble_private.h"
 #include "u_ble_cfg.h"
 
 #include "u_network.h"
@@ -58,67 +57,17 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_NETWORK_PRIVATE_BLE_MAX_NUM
-# define U_NETWORK_PRIVATE_BLE_MAX_NUM 1
-#endif
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-
-typedef struct {
-    int32_t netShoHandle;  /**< The handle returned by uNetworkAddShortRange(). */
-    int32_t bleHandle;  /**< The handle returned by uBleAdd(). */
-} uNetworkPrivateBleInstance_t;
-
-
 
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Array to keep track of the instances.
- */
-static uNetworkPrivateBleInstance_t gInstance[U_NETWORK_PRIVATE_BLE_MAX_NUM];
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-
-static uNetworkPrivateBleInstance_t *pGetFree()
-{
-    uNetworkPrivateBleInstance_t *pFree = NULL;
-
-    for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
-         (pFree == NULL); x++) {
-        if (gInstance[x].netShoHandle < 0) {
-            pFree = &(gInstance[x]);
-        }
-    }
-
-    return pFree;
-}
-
-// Find the given instance in the list.
-static uNetworkPrivateBleInstance_t *pGetInstance(int32_t bleHandle)
-{
-    uNetworkPrivateBleInstance_t *pInstance = NULL;
-
-    // Find the handle in the list
-    for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
-         (pInstance == NULL); x++) {
-        if (gInstance[x].bleHandle == bleHandle) {
-            pInstance = &(gInstance[x]);
-        }
-    }
-
-    return pInstance;
-}
-
-static void clearInstance(uNetworkPrivateBleInstance_t *pInstance)
-{
-    pInstance->bleHandle = -1;
-    pInstance->netShoHandle = -1;
-}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -132,10 +81,6 @@ int32_t uNetworkInitBle(void)
         errorCode = uBleInit();
     }
 
-    for (size_t x = 0; x < sizeof(gInstance) / sizeof(gInstance[0]); x++) {
-        clearInstance(&gInstance[x]);
-    }
-
     return errorCode;
 }
 
@@ -147,10 +92,10 @@ void uNetworkDeinitBle(void)
 }
 
 // Add a BLE network instance.
-int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
+int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
+                       uDeviceHandle_t *pDevHandle)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-    uNetworkPrivateBleInstance_t *pInstance;
+    int32_t errorCode;
     const uShortRangeConfig_t shoConfig = {
         .module = pConfiguration->module,
         .uart = pConfiguration->uart,
@@ -170,77 +115,41 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
         return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
     }
 
-    pInstance = pGetFree();
-    if (pInstance != NULL) {
-        errorCode = uNetworkAddShortRange(&shoConfig);
-        pInstance->netShoHandle = errorCode;
-
-        if (errorCode >= 0) {
-            errorCode = uShoToBleHandle(errorCode);
-            pInstance->bleHandle = errorCode;
-        }
-
-        if (errorCode >= 0) {
-            errorCode = pInstance->bleHandle;
-        } else {
-            // Something went wrong - cleanup...
-            if ((pInstance->bleHandle >= 0) || (pInstance->netShoHandle >= 0)) {
-                uNetworkRemoveShortRange(pInstance->netShoHandle);
-            }
-            clearInstance(pInstance);
-        }
-    }
+    errorCode = uNetworkAddShortRange(U_NETWORK_TYPE_BLE, &shoConfig, pDevHandle);
 
     return errorCode;
 }
 
 // Remove a BLE network instance.
-int32_t uNetworkRemoveBle(int32_t handle)
+int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uNetworkPrivateBleInstance_t *pInstance;
+    return uNetworkRemoveShortRange(devHandle);
+}
 
-    // Find the instance in the list
-    pInstance = pGetInstance(handle);
-    if (pInstance != NULL) {
-        uNetworkRemoveShortRange(pInstance->netShoHandle);
-        clearInstance(pInstance);
+// Bring up the given BLE network instance.
+int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
+                      const uNetworkConfigurationBle_t *pConfiguration)
+{
+    int32_t errorCode;
+    uBleCfg_t cfg;
+    cfg.role = (uBleCfgRole_t) pConfiguration->role;
+    cfg.spsServer = pConfiguration->spsServer;
+    errorCode = uBleCfgConfigure(devHandle, &cfg);
+    if (errorCode >= 0) {
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     }
 
     return errorCode;
 }
 
-// Bring up the given BLE network instance.
-int32_t uNetworkUpBle(int32_t handle,
-                      const uNetworkConfigurationBle_t *pConfiguration)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uNetworkPrivateBleInstance_t *pInstance;
-
-    // Find the instance in the list
-    pInstance = pGetInstance(handle);
-    if (pInstance != NULL && pInstance->bleHandle >= 0) {
-        uBleCfg_t cfg;
-        cfg.role = (uBleCfgRole_t) pConfiguration->role;
-        cfg.spsServer = pConfiguration->spsServer;
-        errorCode = uBleCfgConfigure(pInstance->bleHandle, &cfg);
-        if (errorCode >= 0) {
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        }
-    }
-
-    return errorCode;
-}
-
 // Take down the given BLE network instance.
-int32_t uNetworkDownBle(int32_t handle,
+int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
                         const uNetworkConfigurationBle_t *pConfiguration)
 {
     // Up and down is the same function as the pConfiguration variable determines
     // if ble and/or sps is enabled or disabled. So we trust the user to set the
     // correct values here.
-    return uNetworkUpBle(handle, pConfiguration);
+    return uNetworkUpBle(devHandle, pConfiguration);
 }
 
 #endif

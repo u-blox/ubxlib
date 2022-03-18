@@ -51,14 +51,12 @@
 
 #include "u_at_client.h"
 
-#include "u_network_handle.h"
+#include "u_device_internal.h"
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"
 #include "u_ble_module_type.h"
-#include "u_ble_private.h"
 #include "u_wifi_module_type.h"
-#include "u_wifi_private.h"
 
 #include "u_short_range.h"
 
@@ -127,17 +125,18 @@ static const uSecuritCredentialTypeStr_t gTypeStr[] = {
  * -------------------------------------------------------------- */
 
 // Get the AT handle used by the given network.
-static int32_t getAtClient(int32_t networkHandle,
+static int32_t getAtClient(uDeviceHandle_t devHandle,
                            uAtClientHandle_t *pAtHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
-    if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
-        errorCode = uShortRangeAtClientHandleGet(uBleToShoHandle(networkHandle), pAtHandle);
-    } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-        errorCode = uShortRangeAtClientHandleGet(uWifiToShoHandle(networkHandle), pAtHandle);
-    } else if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        errorCode = uCellAtClientHandleGet(networkHandle, pAtHandle);
+    int32_t devType = uDeviceGetDeviceType(devHandle);
+    if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
+        errorCode = uShortRangeAtClientHandleGet(devHandle, pAtHandle);
+    } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
+        errorCode = uCellAtClientHandleGet(devHandle, pAtHandle);
+    } else if (devType < 0) {
+        errorCode = devType;
     }
 
     return errorCode;
@@ -322,7 +321,7 @@ static size_t stripWhitespace(char *pString, size_t stringLength)
  * -------------------------------------------------------------- */
 
 // Store the given X.509 certificate or security key.
-int32_t uSecurityCredentialStore(int32_t networkHandle,
+int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
                                  uSecurityCredentialType_t type,
                                  const char *pName,
                                  const char *pContents,
@@ -331,7 +330,7 @@ int32_t uSecurityCredentialStore(int32_t networkHandle,
                                  char *pMd5)
 {
     uAtClientHandle_t atHandle;
-    int32_t errorCode = getAtClient(networkHandle, &atHandle);
+    int32_t errorCode = getAtClient(devHandle, &atHandle);
     char hashHexRead[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES * 2 + 1]; // +1 for terminator
     int32_t hashHexReadSize;
 
@@ -413,13 +412,13 @@ int32_t uSecurityCredentialStore(int32_t networkHandle,
 
 // Read the MD5 hash of a stored X.509 certificate
 // or security key.
-int32_t uSecurityCredentialGetHash(int32_t networkHandle,
+int32_t uSecurityCredentialGetHash(uDeviceHandle_t devHandle,
                                    uSecurityCredentialType_t type,
                                    const char *pName,
                                    char *pMd5)
 {
     uAtClientHandle_t atHandle;
-    int32_t errorCode = getAtClient(networkHandle, &atHandle);
+    int32_t errorCode = getAtClient(devHandle, &atHandle);
     char hashHexRead[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES * 2 + 1]; // +1 for terminator
     int32_t hashHexReadSize;
 
@@ -462,12 +461,12 @@ int32_t uSecurityCredentialGetHash(int32_t networkHandle,
 }
 
 // Get the description of the first X.509 certificate or security key.
-int32_t uSecurityCredentialListFirst(int32_t networkHandle,
+int32_t uSecurityCredentialListFirst(uDeviceHandle_t devHandle,
                                      uSecurityCredential_t *pCredential)
 {
     bool keepGoing = true;
     uAtClientHandle_t atHandle;
-    int32_t errorCodeOrSize = getAtClient(networkHandle, &atHandle);
+    int32_t errorCodeOrSize = getAtClient(devHandle, &atHandle);
     uSecurityCredentialContainer_t *pContainer;
     char buffer[U_SECURITY_CREDENTIAL_EXPIRATION_DATE_LENGTH_BYTES + 1];
     int32_t bytesRead;
@@ -591,11 +590,11 @@ int32_t uSecurityCredentialListFirst(int32_t networkHandle,
 }
 
 // Return subsequent descriptions of credentials in the list.
-int32_t uSecurityCredentialListNext(int32_t networkHandle,
+int32_t uSecurityCredentialListNext(uDeviceHandle_t devHandle,
                                     uSecurityCredential_t *pCredential)
 {
     uAtClientHandle_t atHandle;
-    int32_t errorCodeOrSize = getAtClient(networkHandle, &atHandle);
+    int32_t errorCodeOrSize = getAtClient(devHandle, &atHandle);
 
     if (errorCodeOrSize == 0) {
         errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -613,11 +612,11 @@ int32_t uSecurityCredentialListNext(int32_t networkHandle,
 }
 
 // Free memory from credential listing.
-void uSecurityCredentialListLast(int32_t networkHandle)
+void uSecurityCredentialListLast(uDeviceHandle_t devHandle)
 {
     uAtClientHandle_t atHandle;
 
-    if (getAtClient(networkHandle, &atHandle) == 0) {
+    if (getAtClient(devHandle, &atHandle) == 0) {
         uAtClientLock(atHandle);
         // While this doesn't use the AT interface we can use
         // the mutex to protect the linked list.
@@ -627,12 +626,12 @@ void uSecurityCredentialListLast(int32_t networkHandle)
 }
 
 // Remove the given X.509 certificate or security key from storage.
-int32_t uSecurityCredentialRemove(int32_t networkHandle,
+int32_t uSecurityCredentialRemove(uDeviceHandle_t devHandle,
                                   uSecurityCredentialType_t type,
                                   const char *pName)
 {
     uAtClientHandle_t atHandle;
-    int32_t errorCode = getAtClient(networkHandle, &atHandle);
+    int32_t errorCode = getAtClient(devHandle, &atHandle);
 
     if (errorCode == 0) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;

@@ -48,30 +48,32 @@ void uNetworkDeinitWifi()
 {
 }
 
-int32_t uNetworkAddWifi(const uNetworkConfigurationWifi_t *pConfiguration)
+int32_t uNetworkAddWifi(const uNetworkConfigurationWifi_t *pConfiguration,
+                        uDeviceHandle_t *pDevHandle)
 {
     (void) pConfiguration;
+    (void) pDevHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkRemoveWifi(int32_t handle)
+int32_t uNetworkRemoveWifi(uDeviceHandle_t devHandle)
 {
-    (void) handle;
+    (void) devHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkUpWifi(int32_t handle,
+int32_t uNetworkUpWifi(uDeviceHandle_t devHandle,
                        const uNetworkConfigurationWifi_t *pConfiguration)
 {
-    (void) handle;
+    (void) devHandle;
     (void) pConfiguration;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkDownWifi(int32_t handle,
+int32_t uNetworkDownWifi(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationWifi_t *pConfiguration)
 {
-    (void) handle;
+    (void) devHandle;
     (void) pConfiguration;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }

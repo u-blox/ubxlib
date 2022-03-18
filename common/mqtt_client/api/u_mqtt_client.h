@@ -22,6 +22,7 @@
  * be included here.
  */
 #include "u_security_tls.h"
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the u-blox MQTT client API.  This
@@ -157,7 +158,7 @@ typedef struct {
  * by the caller.
  */
 typedef struct {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle;
     void *mutexHandle; /* No 'p' prefix as this should be treated as a handle,
                           not using actual type to avoid customer having to drag
                           more headers in for what is an internal structure. */
@@ -178,7 +179,7 @@ typedef struct {
  * and must call uMqttClientClose() followed by pUMqttClientOpen()
  * to put them back again.
  *
- * @param networkHandle        the handle of the instance to be used,
+ * @param devHandle            the device handle to be used,
  *                             e.g. as returned by uNetworkAdd().
  * @param pSecurityTlsSettings a pointer to the security settings to
  *                             be applied, NULL for no security.
@@ -197,7 +198,7 @@ typedef struct {
  *                             uMqttClientOpenResetLastError() can
  *                             be called to obtain an error code).
  */
-uMqttClientContext_t *pUMqttClientOpen(int32_t networkHandle,
+uMqttClientContext_t *pUMqttClientOpen(uDeviceHandle_t devHandle,
                                        const uSecurityTlsSettings_t *pSecurityTlsSettings);
 
 /** If pUMqttClientOpen() returned NULL this function can be

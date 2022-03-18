@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the APIs for u-blox security on a
@@ -61,7 +62,7 @@ extern "C" {
  * @return           true if the cellular module supports u-blox
  *                   security services else false.
  */
-bool uCellSecIsSupported(int32_t cellHandle);
+bool uCellSecIsSupported(uDeviceHandle_t cellHandle);
 
 /** Get the security bootstrap status of a cellular module.  A
  * cellular module that supports u-blox security should bootstrap
@@ -74,7 +75,7 @@ bool uCellSecIsSupported(int32_t cellHandle);
  *                   boot-strapped with u-blox security services,
  *                   else false.
  */
-bool uCellSecIsBootstrapped(int32_t cellHandle);
+bool uCellSecIsBootstrapped(uDeviceHandle_t cellHandle);
 
 /** Get the cellular module's serial number string, which is
  * the 16 digit IMEI, as a null-terminated string.
@@ -89,7 +90,7 @@ bool uCellSecIsBootstrapped(int32_t cellHandle);
  *                        pSerialNumber (i.e. as strlen() would
  *                        return) or negative error code.
  */
-int32_t uCellSecGetSerialNumber(int32_t cellHandle,
+int32_t uCellSecGetSerialNumber(uDeviceHandle_t cellHandle,
                                 char *pSerialNumber);
 
 /** Get the root of trust UID from the cellular module.  This may
@@ -107,7 +108,7 @@ int32_t uCellSecGetSerialNumber(int32_t cellHandle,
  * @return                the number of bytes copied into
  *                        pRootOfTrustUid or negative error code.
  */
-int32_t uCellSecGetRootOfTrustUid(int32_t cellHandle,
+int32_t uCellSecGetRootOfTrustUid(uDeviceHandle_t cellHandle,
                                   char *pRootOfTrustUid);
 
 /* ----------------------------------------------------------------
@@ -150,7 +151,7 @@ int32_t uCellSecGetRootOfTrustUid(int32_t cellHandle,
  *                       Cannot be NULL.
  * @return               zero on success else negative error code.
  */
-int32_t uCellSecC2cPair(int32_t cellHandle,
+int32_t uCellSecC2cPair(uDeviceHandle_t cellHandle,
                         const char *pTESecret,
                         char *pKey, char *pHMacKey);
 
@@ -185,7 +186,7 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
  *                       cannot be NULL.
  * @return               zero on success else negative error code.
  */
-int32_t uCellSecC2cOpen(int32_t cellHandle,
+int32_t uCellSecC2cOpen(uDeviceHandle_t cellHandle,
                         const char *pTESecret,
                         const char *pKey,
                         const char *pHMacKey);
@@ -198,7 +199,7 @@ int32_t uCellSecC2cOpen(int32_t cellHandle,
  * @param cellHandle     the handle of the instance to be used.
  * @return               zero on success else negative error code.
  */
-int32_t uCellSecC2cClose(int32_t cellHandle);
+int32_t uCellSecC2cClose(uDeviceHandle_t cellHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: SEAL
@@ -246,7 +247,7 @@ int32_t uCellSecC2cClose(int32_t cellHandle);
  * @return                       zero on success, else negative
  *                               error code.
  */
-int32_t uCellSecSealSet(int32_t cellHandle,
+int32_t uCellSecSealSet(uDeviceHandle_t cellHandle,
                         const char *pDeviceProfileUid,
                         const char *pDeviceSerialNumberStr,
                         bool (*pKeepGoingCallback) (void));
@@ -259,7 +260,7 @@ int32_t uCellSecSealSet(int32_t cellHandle,
  * @return              true if the module has been successfully
  *                      security sealed, else false.
  */
-bool uCellSecIsSealed(int32_t cellHandle);
+bool uCellSecIsSealed(uDeviceHandle_t cellHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: ZERO TOUCH PROVISIONING
@@ -300,7 +301,7 @@ bool uCellSecIsSealed(int32_t cellHandle);
  *                        the null terminator (i.e. strlen() + 1),
  *                        else negative error code on failure.
  */
-int32_t uCellSecZtpGetDeviceCertificate(int32_t cellHandle,
+int32_t uCellSecZtpGetDeviceCertificate(uDeviceHandle_t cellHandle,
                                         char *pData,
                                         size_t dataSizeBytes);
 
@@ -339,7 +340,7 @@ int32_t uCellSecZtpGetDeviceCertificate(int32_t cellHandle,
  *                        the null terminator (i.e. strlen() + 1),
  *                        else negative error code on failure.
  */
-int32_t uCellSecZtpGetPrivateKey(int32_t cellHandle,
+int32_t uCellSecZtpGetPrivateKey(uDeviceHandle_t cellHandle,
                                  char *pData,
                                  size_t dataSizeBytes);
 
@@ -378,7 +379,7 @@ int32_t uCellSecZtpGetPrivateKey(int32_t cellHandle,
  *                        the null terminator (i.e. strlen() + 1),
  *                        else negative error code on failure.
  */
-int32_t uCellSecZtpGetCertificateAuthorities(int32_t cellHandle,
+int32_t uCellSecZtpGetCertificateAuthorities(uDeviceHandle_t cellHandle,
                                              char *pData,
                                              size_t dataSizeBytes);
 
@@ -397,7 +398,7 @@ int32_t uCellSecZtpGetCertificateAuthorities(int32_t cellHandle,
  *                       etc. (i.e. there is no version 0).
  * @return               zero on success else negative error code.
  */
-int32_t uCellSecE2eSetVersion(int32_t cellHandle, int32_t version);
+int32_t uCellSecE2eSetVersion(uDeviceHandle_t cellHandle, int32_t version);
 
 /** Get the E2E encryption version.  If a cellular module only supports
  * a single E2E encryption type then it may not support getting the
@@ -409,7 +410,7 @@ int32_t uCellSecE2eSetVersion(int32_t cellHandle, int32_t version);
  * @return            on success the E2E encryption version,
  *                    else negative error code.
  */
-int32_t uCellSecE2eGetVersion(int32_t cellHandle);
+int32_t uCellSecE2eGetVersion(uDeviceHandle_t cellHandle);
 
 /** Ask a cellular module to encrypt a block of data.  For this to
  * work the module must have previously been security sealed but no
@@ -438,7 +439,7 @@ int32_t uCellSecE2eGetVersion(int32_t cellHandle);
  *                       encrypted data block else negative error
  *                       code.
  */
-int32_t uCellSecE2eEncrypt(int32_t cellHandle,
+int32_t uCellSecE2eEncrypt(uDeviceHandle_t cellHandle,
                            const void *pDataIn,
                            void *pDataOut, size_t dataSizeBytes);
 
@@ -464,7 +465,7 @@ int32_t uCellSecE2eEncrypt(int32_t cellHandle,
  *                       be the number of bytes requested), or negative
  *                       error code.
  */
-int32_t uCellSecPskGenerate(int32_t cellHandle,
+int32_t uCellSecPskGenerate(uDeviceHandle_t cellHandle,
                             size_t pskSizeBytes, char *pPsk,
                             char *pPskId);
 
@@ -484,7 +485,7 @@ int32_t uCellSecPskGenerate(int32_t cellHandle,
  *                   as returned by uNetworkAdd().
  * @return           zero on success else negative error code.
  */
-int32_t uCellSecHeartbeatTrigger(int32_t cellHandle);
+int32_t uCellSecHeartbeatTrigger(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }

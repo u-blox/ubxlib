@@ -1482,7 +1482,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattServerConf")
         U_PORT_TEST_ASSERT_EQUAL(evt.conn.connHandle, connHandle);
 
         spsWriteEvt_t *spsWrite = &evt.spsWrite;
-        uint16_t cccValue;
+        uint16_t cccValue = 0;
         uPortLog("U_PORT_TEST: wait for Credit CCC write\n");
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_SPS_WRITE_CREDIT_CCC, &evt, CONNECTION_SETUP_TIMEOUT));
         U_PORT_TEST_ASSERT(parseSpsCccWriteData(spsWrite, &cccValue));

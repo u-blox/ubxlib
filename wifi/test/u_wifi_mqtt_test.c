@@ -150,7 +150,7 @@ const char *testPublishMsg[MQTT_PUBLISH_TOTAL_MSG_COUNT] =  {"Hello test",
                                                              "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                                                              "ccccccccccccccccccccccccccccccccccccccccccc"
                                                             };
-static uWifiTestPrivate_t gHandles = { -1, -1, NULL, -1 };
+static uWifiTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
 static const uint32_t gNetStatusMaskAllUp = U_WIFI_NET_STATUS_MASK_IPV4_UP |
                                             U_WIFI_NET_STATUS_MASK_IPV6_UP;
@@ -172,7 +172,7 @@ static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-static void wifiConnectionCallback(int32_t wifiHandle,
+static void wifiConnectionCallback(uDeviceHandle_t devHandle,
                                    int32_t connId,
                                    int32_t status,
                                    int32_t channel,
@@ -180,7 +180,7 @@ static void wifiConnectionCallback(int32_t wifiHandle,
                                    int32_t disconnectReason,
                                    void *pCallbackParameter)
 {
-    (void)wifiHandle;
+    (void)devHandle;
     (void)connId;
     (void)channel;
     (void)pBssid;
@@ -212,12 +212,12 @@ static void wifiConnectionCallback(int32_t wifiHandle,
         gWifiConnected = 0;
     }
 }
-static void wifiNetworkStatusCallback(int32_t wifiHandle,
+static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
                                       int32_t interfaceType,
                                       uint32_t statusMask,
                                       void *pCallbackParameter)
 {
-    (void)wifiHandle;
+    (void)devHandle;
     (void)interfaceType;
     (void)statusMask;
     (void)pCallbackParameter;
@@ -321,14 +321,14 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
 
     if (isSecuredConnection == false) {
 
-        mqttClientCtx = pUMqttClientOpen(gHandles.wifiHandle, NULL);
+        mqttClientCtx = pUMqttClientOpen(gHandles.devHandle, NULL);
         U_PORT_TEST_ASSERT(mqttClientCtx != NULL);
 
         err = uMqttClientConnect(mqttClientCtx, &mqttUnsecuredConnection);
         U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     } else {
 
-        mqttClientCtx = pUMqttClientOpen(gHandles.wifiHandle, &mqttTlsSettings);
+        mqttClientCtx = pUMqttClientOpen(gHandles.devHandle, &mqttTlsSettings);
         U_PORT_TEST_ASSERT(mqttClientCtx != NULL);
 
         err = uMqttClientConnect(mqttClientCtx, &mqttSecuredConnection);
@@ -472,7 +472,7 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
 
     if (isSecuredConnection == false) {
 
-        mqttClientCtx = pUMqttClientOpen(gHandles.wifiHandle, NULL);
+        mqttClientCtx = pUMqttClientOpen(gHandles.devHandle, NULL);
         U_PORT_TEST_ASSERT(mqttClientCtx != NULL);
 
         err = uMqttClientConnect(mqttClientCtx, &mqttUnsecuredConnection);
@@ -480,7 +480,7 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
 
     } else {
 
-        mqttClientCtx = pUMqttClientOpen(gHandles.wifiHandle, &mqttTlsSettings);
+        mqttClientCtx = pUMqttClientOpen(gHandles.devHandle, &mqttTlsSettings);
         U_PORT_TEST_ASSERT(mqttClientCtx != NULL);
 
         err = uMqttClientConnect(mqttClientCtx, &mqttSecuredConnection);
@@ -598,14 +598,14 @@ static void startWifi(void)
     }
     if (testError == U_WIFI_TEST_ERROR_NONE) {
         // Add unsolicited response cb for connection status
-        uWifiNetSetConnectionStatusCallback(gHandles.wifiHandle,
+        uWifiNetSetConnectionStatusCallback(gHandles.devHandle,
                                             wifiConnectionCallback, NULL);
         // Add unsolicited response cb for IP status
-        uWifiNetSetNetworkStatusCallback(gHandles.wifiHandle,
+        uWifiNetSetNetworkStatusCallback(gHandles.devHandle,
                                          wifiNetworkStatusCallback, NULL);
 
         // Connect to wifi network
-        if (0 != uWifiNetStationConnect(gHandles.wifiHandle,
+        if (0 != uWifiNetStationConnect(gHandles.devHandle,
                                         U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
                                         U_WIFI_NET_AUTH_WPA_PSK,
                                         U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE))) {
@@ -630,7 +630,7 @@ static void startWifi(void)
         uPortTaskBlock(1000);
         waitCtr++;
     }
-    uPortLog(LOG_TAG "wifi handle = %d\n", gHandles.wifiHandle);
+    uPortLog(LOG_TAG "wifi handle = %d\n", gHandles.devHandle);
 
 }
 
@@ -660,7 +660,7 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredPublishSubscribeTest")
 {
     int32_t err;
     startWifi();
-    err = uSecurityCredentialStore(gHandles.wifiHandle,
+    err = uSecurityCredentialStore(gHandles.devHandle,
                                    U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                    mqttTlsSettings.pRootCaCertificateName,
                                    gpRootCaCert,
@@ -669,7 +669,7 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredPublishSubscribeTest")
                                    NULL);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     wifiMqttPublishSubscribeTest(true);
-    err = uSecurityCredentialRemove(gHandles.wifiHandle,
+    err = uSecurityCredentialRemove(gHandles.devHandle,
                                     U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                     mqttTlsSettings.pRootCaCertificateName);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
@@ -680,7 +680,7 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredUnsubscribeTest")
 {
     int32_t err;
     startWifi();
-    err = uSecurityCredentialStore(gHandles.wifiHandle,
+    err = uSecurityCredentialStore(gHandles.devHandle,
                                    U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                    mqttTlsSettings.pRootCaCertificateName,
                                    gpRootCaCert,
@@ -689,7 +689,7 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredUnsubscribeTest")
                                    NULL);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
     wifiMqttUnsubscribeTest(true);
-    err = uSecurityCredentialRemove(gHandles.wifiHandle,
+    err = uSecurityCredentialRemove(gHandles.devHandle,
                                     U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                     mqttTlsSettings.pRootCaCertificateName);
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);

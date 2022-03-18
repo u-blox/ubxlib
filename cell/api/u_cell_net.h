@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the APIs that control the network
@@ -267,11 +268,11 @@ typedef enum {
  * @return                   zero on success or negative error code on
  *                           failure.
  */
-int32_t uCellNetConnect(int32_t cellHandle,
+int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                         const char *pMccMnc,
                         const char *pApn, const char *pUsername,
                         const char *pPassword,
-                        bool (*pKeepGoingCallback) (int32_t));
+                        bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Register with the cellular network.  Note that on EUTRAN (LTE)
  * networks, registration and context activation are done at the same
@@ -302,9 +303,9 @@ int32_t uCellNetConnect(int32_t cellHandle,
  * @return                   zero on success or negative error code on
  *                           failure.
  */
-int32_t uCellNetRegister(int32_t cellHandle,
+int32_t uCellNetRegister(uDeviceHandle_t cellHandle,
                          const char *pMccMnc,
-                         bool (*pKeepGoingCallback) (int32_t));
+                         bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Activate the PDP context.  If a PDP context is already active
  * this function will simply return unless the requested APN
@@ -348,10 +349,10 @@ int32_t uCellNetRegister(int32_t cellHandle,
  * @return                   zero on success or negative error code on
  *                           failure.
  */
-int32_t uCellNetActivate(int32_t cellHandle,
+int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                          const char *pApn, const char *pUsername,
                          const char *pPassword,
-                         bool (*pKeepGoingCallback) (int32_t));
+                         bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Deactivate the PDP context.  On EUTRAN (LTE) networks and on
  * SARA-R4 modules irrespective of the radio access technology, it is
@@ -372,8 +373,8 @@ int32_t uCellNetActivate(int32_t cellHandle,
  * @return                   zero on success or negative error code
  *                           on failure.
  */
-int32_t uCellNetDeactivate(int32_t cellHandle,
-                           bool (*pKeepGoingCallback) (int32_t));
+int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
+                           bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Disconnect from the network. If there is an active PDP Context it
  * will be deactivated. The state of the module will be that the
@@ -393,8 +394,8 @@ int32_t uCellNetDeactivate(int32_t cellHandle,
  * @return                   zero on success or negative error code on
  *                           failure.
  */
-int32_t uCellNetDisconnect(int32_t cellHandle,
-                           bool (*pKeepGoingCallback) (int32_t));
+int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
+                           bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Initiate a network scan and return the first result after
  * it has completed; uCellNetScanGetNext() should be called
@@ -449,10 +450,10 @@ int32_t uCellNetDisconnect(int32_t cellHandle,
  *                           is worth waiting a little while (e.g. 10
  *                           seconds) and trying again.
  */
-int32_t uCellNetScanGetFirst(int32_t cellHandle,
+int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                              char *pName, size_t nameSize,
                              char *pMccMnc, uCellNetRat_t *pRat,
-                             bool (*pKeepGoingCallback) (int32_t));
+                             bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Return subsequent results from a network scan.  Use
  * uCellNetScanGetFirst() to get the number of results and
@@ -485,7 +486,7 @@ int32_t uCellNetScanGetFirst(int32_t cellHandle,
  *                    this one has been read or negative error
  *                    code.
  */
-int32_t uCellNetScanGetNext(int32_t cellHandle,
+int32_t uCellNetScanGetNext(uDeviceHandle_t cellHandle,
                             char *pName, size_t nameSize,
                             char *pMccMnc, uCellNetRat_t *pRat);
 
@@ -495,7 +496,7 @@ int32_t uCellNetScanGetNext(int32_t cellHandle,
  *
  * @param cellHandle  the handle of the cellular instance.
  */
-void uCellNetScanGetLast(int32_t cellHandle);
+void uCellNetScanGetLast(uDeviceHandle_t cellHandle);
 
 /** Enable or disable the registration status call-back. This
  * call-back allows the application to know the various
@@ -516,7 +517,7 @@ void uCellNetScanGetLast(int32_t cellHandle);
  * @return                            zero on success or negative
 *                                     error code on failure.
  */
-int32_t uCellNetSetRegistrationStatusCallback(int32_t cellHandle,
+int32_t uCellNetSetRegistrationStatusCallback(uDeviceHandle_t cellHandle,
                                               void (*pCallback) (uCellNetRegDomain_t,
                                                                  uCellNetStatus_t,
                                                                  void *),
@@ -554,7 +555,7 @@ int32_t uCellNetSetRegistrationStatusCallback(int32_t cellHandle,
  * @return                          zero on success or negative
  *                                  error code on failure.
  */
-int32_t uCellNetSetBaseStationConnectionStatusCallback(int32_t cellHandle,
+int32_t uCellNetSetBaseStationConnectionStatusCallback(uDeviceHandle_t cellHandle,
                                                        void (*pCallback) (bool,
                                                                           void *),
                                                        void *pCallbackParameter);
@@ -578,7 +579,7 @@ int32_t uCellNetSetBaseStationConnectionStatusCallback(int32_t cellHandle,
  *                    circuit switched service only.
  * @return            the current status.
  */
-uCellNetStatus_t uCellNetGetNetworkStatus(int32_t cellHandle,
+uCellNetStatus_t uCellNetGetNetworkStatus(uDeviceHandle_t cellHandle,
                                           uCellNetRegDomain_t domain);
 
 /** Get a value indicating whether the module is registered on
@@ -588,7 +589,7 @@ uCellNetStatus_t uCellNetGetNetworkStatus(int32_t cellHandle,
  * @return            true if registered either on roaming or home
  *                    networks, false otherwise.
  */
-bool uCellNetIsRegistered(int32_t cellHandle);
+bool uCellNetIsRegistered(uDeviceHandle_t cellHandle);
 
 /** Return the RAT that is currently in use.
  *
@@ -596,7 +597,7 @@ bool uCellNetIsRegistered(int32_t cellHandle);
  * @return            the current RAT or -1 on failure (which means
  *                    that the module is not registered on any RAT).
  */
-uCellNetRat_t uCellNetGetActiveRat(int32_t cellHandle);
+uCellNetRat_t uCellNetGetActiveRat(uDeviceHandle_t cellHandle);
 
 /** Get the name of the operator on which the cellular module is
  * registered.  An error will be returned if the module is not
@@ -616,7 +617,7 @@ uCellNetRat_t uCellNetGetActiveRat(int32_t cellHandle);
  *                    strlen() would return), on failure negative
  *                    error code.
  */
-int32_t uCellNetGetOperatorStr(int32_t cellHandle,
+int32_t uCellNetGetOperatorStr(uDeviceHandle_t cellHandle,
                                char *pStr, size_t size);
 
 /** Get the MCC/MNC of the network on which the cellular module is
@@ -634,7 +635,7 @@ int32_t uCellNetGetOperatorStr(int32_t cellHandle,
  *                    be NULL.
  * @return            zero on success else negative error code.
  */
-int32_t uCellNetGetMccMnc(int32_t cellHandle,
+int32_t uCellNetGetMccMnc(uDeviceHandle_t cellHandle,
                           int32_t *pMcc, int32_t *pMnc);
 
 /** Return the IP address of the currently active connection.
@@ -652,7 +653,7 @@ int32_t uCellNetGetMccMnc(int32_t cellHandle,
  *                    NOT including the terminator (i.e. as strlen()
  *                    would return), on failure negative error code.
  */
-int32_t uCellNetGetIpAddressStr(int32_t cellHandle, char *pStr);
+int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle, char *pStr);
 
 /** Return the IP addresses of the first and second DNS assigned
  * by the network.  Without a DNS the module is unable to
@@ -686,7 +687,7 @@ int32_t uCellNetGetIpAddressStr(int32_t cellHandle, char *pStr);
  *                    of the setting of the v6 parameter) else
  *                    negative error code.
  */
-int32_t uCellNetGetDnsStr(int32_t cellHandle, bool v6,
+int32_t uCellNetGetDnsStr(uDeviceHandle_t cellHandle, bool v6,
                           char *pStrDns1, char *pStrDns2);
 
 /** Get the APN currently in use.
@@ -708,7 +709,7 @@ int32_t uCellNetGetDnsStr(int32_t cellHandle, bool v6,
  *                    strlen() would return), on failure negative
  *                    error code.
  */
-int32_t uCellNetGetApnStr(int32_t cellHandle, char *pStr, size_t size);
+int32_t uCellNetGetApnStr(uDeviceHandle_t cellHandle, char *pStr, size_t size);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: DATA COUNTERS
@@ -723,7 +724,7 @@ int32_t uCellNetGetApnStr(int32_t cellHandle, char *pStr, size_t size);
  *                       error code.  The count resets to zero when
  *                       the connection is dropped.
  */
-int32_t uCellNetGetDataCounterTx(int32_t cellHandle);
+int32_t uCellNetGetDataCounterTx(uDeviceHandle_t cellHandle);
 
 /** Get the current value of the receive data counter.  Only
  * available when a connection is active.
@@ -734,7 +735,7 @@ int32_t uCellNetGetDataCounterTx(int32_t cellHandle);
  *                       error code.  The count resets to zero when
  *                       the connection is dropped.
  */
-int32_t uCellNetGetDataCounterRx(int32_t cellHandle);
+int32_t uCellNetGetDataCounterRx(uDeviceHandle_t cellHandle);
 
 /** Reset the transmit and receive data counters.  Only
  * available when a connection is active.
@@ -742,7 +743,7 @@ int32_t uCellNetGetDataCounterRx(int32_t cellHandle);
  * @param cellHandle     the handle of the cellular instance.
  * @return               zero on success, else negative error code.
  */
-int32_t uCellNetResetDataCounters(int32_t cellHandle);
+int32_t uCellNetResetDataCounters(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }

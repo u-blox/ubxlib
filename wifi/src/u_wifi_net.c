@@ -50,7 +50,6 @@
 #include "u_wifi_module_type.h"
 #include "u_wifi.h"
 #include "u_wifi_net.h"
-#include "u_wifi_private.h"
 
 #include "u_hex_bin_convert.h"
 
@@ -84,7 +83,7 @@
  * ------------------------------------------------------------- */
 
 typedef struct {
-    int32_t shoHandle;
+    uDeviceHandle_t devHandle;
     int32_t status;
     int32_t connId;
     int32_t channel;
@@ -94,7 +93,7 @@ typedef struct {
 
 
 typedef struct {
-    int32_t shoHandle;
+    uDeviceHandle_t devHandle;
     int32_t interfaceId;
 } uWifiNetNetworkEvent_t;
 
@@ -118,10 +117,10 @@ typedef enum {
  * ------------------------------------------------------------- */
 
 /** Helper function for getting the short range instance */
-static inline int32_t getInstance(int32_t shoHandle,
+static inline int32_t getInstance(uDeviceHandle_t devHandle,
                                   uShortRangePrivateInstance_t **ppInstance)
 {
-    *ppInstance = pUShortRangePrivateGetInstance(shoHandle);
+    *ppInstance = pUShortRangePrivateGetInstance(devHandle);
     if (*ppInstance == NULL) {
         return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     }
@@ -286,7 +285,7 @@ static void wifiConnectCallback(uAtClientHandle_t atHandle,
     }
 
     const uShortRangePrivateInstance_t *pInstance;
-    pInstance = pUShortRangePrivateGetInstance(pStatus->shoHandle);
+    pInstance = pUShortRangePrivateGetInstance(pStatus->devHandle);
     if (pInstance && pInstance->pWifiConnectionStatusCallback) {
         pCallback = pInstance->pWifiConnectionStatusCallback;
         pCallbackParam = pInstance->pWifiConnectionStatusCallbackParameter;
@@ -295,9 +294,8 @@ static void wifiConnectCallback(uAtClientHandle_t atHandle,
     uShortRangeUnlock();
 
     if (pCallback) {
-        int32_t wifiHandle = uShoToWifiHandle(pStatus->shoHandle);
         //lint -e(1773) Suppress attempt to cast away volatile
-        pCallback(wifiHandle,
+        pCallback(pStatus->devHandle,
                   pStatus->connId,
                   pStatus->status,
                   pStatus->channel,
@@ -313,8 +311,7 @@ static void wifiConnectCallback(uAtClientHandle_t atHandle,
 static void UUWLE_urc(uAtClientHandle_t atHandle,
                       void *pParameter)
 {
-    //lint -e(507) Suppress size incompatibility
-    int32_t shoHandle = (int32_t)pParameter;
+    uDeviceHandle_t devHandle = (uDeviceHandle_t)pParameter;
     char bssid[U_WIFI_WIFI_BSSID_SIZE];
     int32_t connId;
     int32_t channel;
@@ -326,7 +323,7 @@ static void UUWLE_urc(uAtClientHandle_t atHandle,
     //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
     pStatus = (uWifiNetConnection_t *) malloc(sizeof(*pStatus));
     if (pStatus != NULL) {
-        pStatus->shoHandle = shoHandle;
+        pStatus->devHandle = devHandle;
         pStatus->connId = connId;
         pStatus->status = U_WIFI_NET_CON_STATUS_CONNECTED;
         pStatus->channel = channel;
@@ -344,8 +341,7 @@ static void UUWLE_urc(uAtClientHandle_t atHandle,
 static void UUWLD_urc(uAtClientHandle_t atHandle,
                       void *pParameter)
 {
-    //lint -e(507) Suppress size incompatibility
-    int32_t shoHandle = (int32_t)pParameter;
+    uDeviceHandle_t devHandle = (uDeviceHandle_t)pParameter;
     int32_t connId;
     int32_t reason;
     uWifiNetConnection_t *pStatus;
@@ -355,7 +351,7 @@ static void UUWLD_urc(uAtClientHandle_t atHandle,
     //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
     pStatus = (uWifiNetConnection_t *) malloc(sizeof(*pStatus));
     if (pStatus != NULL) {
-        pStatus->shoHandle = shoHandle;
+        pStatus->devHandle = devHandle;
         pStatus->connId = connId;
         pStatus->status = U_WIFI_NET_CON_STATUS_DISCONNECTED;
         pStatus->channel = 0;
@@ -388,7 +384,7 @@ static void networkStatusCallback(uAtClientHandle_t atHandle,
     }
 
     const uShortRangePrivateInstance_t *pInstance;
-    pInstance = pUShortRangePrivateGetInstance(pEvt->shoHandle);
+    pInstance = pUShortRangePrivateGetInstance(pEvt->devHandle);
     if (pInstance && pInstance->pNetworkStatusCallback) {
         pCallback = pInstance->pNetworkStatusCallback;
         pCallbackParam = pInstance->pNetworkStatusCallbackParameter;
@@ -426,9 +422,8 @@ static void networkStatusCallback(uAtClientHandle_t atHandle,
     uShortRangeUnlock();
 
     if (errorCode >= 0 && pCallback) {
-        int32_t wifiHandle = uShoToWifiHandle(pEvt->shoHandle);
         //lint -e(1773) Suppress attempt to cast away volatile
-        pCallback(wifiHandle, ifaceType, statusMask, (void *)pCallbackParam);
+        pCallback(pEvt->devHandle, ifaceType, statusMask, (void *)pCallbackParam);
     }
 
     free(pParameter);
@@ -444,8 +439,7 @@ static void UUNU_urc(uAtClientHandle_t atHandle,
         //lint -esym(593, pEvt) Suppress pEvt not being free()ed here
         pEvt = (uWifiNetNetworkEvent_t *) malloc(sizeof(uWifiNetNetworkEvent_t));
         if (pEvt != NULL) {
-            /*lint -e{507} suppress size incompatibility warnings*/
-            pEvt->shoHandle = (int32_t)pParameter;
+            pEvt->devHandle = (uDeviceHandle_t)pParameter;
             pEvt->interfaceId = interfaceId;
             if (uAtClientCallback(atHandle, networkStatusCallback, pEvt) < 0) {
                 free(pEvt);
@@ -464,8 +458,7 @@ static void UUND_urc(uAtClientHandle_t atHandle,
         //lint -esym(593, pEvt) Suppress pEvt not being free()ed here
         pEvt = (uWifiNetNetworkEvent_t *) malloc(sizeof(uWifiNetNetworkEvent_t));
         if (pEvt != NULL) {
-            /*lint -e{507} suppress size incompatibility warnings*/
-            pEvt->shoHandle = (int32_t)pParameter;
+            pEvt->devHandle = (uDeviceHandle_t)pParameter;
             pEvt->interfaceId = interfaceId;
             if (uAtClientCallback(atHandle, networkStatusCallback, pEvt) < 0) {
                 free(pEvt);
@@ -478,28 +471,27 @@ static void UUND_urc(uAtClientHandle_t atHandle,
  * PUBLIC FUNCTIONS
  * ------------------------------------------------------------- */
 
-int32_t uWifiNetSetConnectionStatusCallback(int32_t wifiHandle,
+int32_t uWifiNetSetConnectionStatusCallback(uDeviceHandle_t devHandle,
                                             uWifiNetConnectionStatusCallback_t pCallback,
                                             void *pCallbackParameter)
 {
     int32_t errorCode;
     uShortRangePrivateInstance_t *pInstance;
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     errorCode = uShortRangeLock();
     if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return errorCode;
     }
 
-    errorCode = getInstance(shoHandle, &pInstance);
+    errorCode = getInstance(devHandle, &pInstance);
     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
         if (pCallback != NULL) {
             pInstance->pWifiConnectionStatusCallback = pCallback;
             pInstance->pWifiConnectionStatusCallbackParameter = pCallbackParameter;
             uAtClientSetUrcHandler(pInstance->atHandle, "+UUWLE:",
-                                   UUWLE_urc, (void *)shoHandle);
+                                   UUWLE_urc, (void *)devHandle);
             uAtClientSetUrcHandler(pInstance->atHandle, "+UUWLD:",
-                                   UUWLD_urc, (void *)shoHandle);
+                                   UUWLD_urc, (void *)devHandle);
         } else {
             uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUWLE:");
             uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUWLD:");
@@ -512,28 +504,27 @@ int32_t uWifiNetSetConnectionStatusCallback(int32_t wifiHandle,
     return errorCode;
 }
 
-int32_t uWifiNetSetNetworkStatusCallback(int32_t  wifiHandle,
+int32_t uWifiNetSetNetworkStatusCallback(uDeviceHandle_t devHandle,
                                          uWifiNetNetworkStatusCallback_t pCallback,
                                          void *pCallbackParameter)
 {
     int32_t errorCode;
     uShortRangePrivateInstance_t *pInstance;
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     errorCode = uShortRangeLock();
     if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return errorCode;
     }
 
-    errorCode = getInstance(shoHandle, &pInstance);
+    errorCode = getInstance(devHandle, &pInstance);
     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
         if (pCallback != NULL) {
             pInstance->pNetworkStatusCallback = pCallback;
             pInstance->pNetworkStatusCallbackParameter = pCallbackParameter;
             uAtClientSetUrcHandler(pInstance->atHandle, "+UUNU:",
-                                   UUNU_urc, (void *)shoHandle);
+                                   UUNU_urc, (void *)devHandle);
             uAtClientSetUrcHandler(pInstance->atHandle, "+UUND:",
-                                   UUND_urc, (void *)shoHandle);
+                                   UUND_urc, (void *)devHandle);
         } else {
             uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUNU:");
             uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUND:");
@@ -546,20 +537,19 @@ int32_t uWifiNetSetNetworkStatusCallback(int32_t  wifiHandle,
     return errorCode;
 }
 
-int32_t uWifiNetStationConnect(int32_t wifiHandle, const char *pSsid,
+int32_t uWifiNetStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
                                uWifiNetAuth_t authentication,
                                const char *pPassPhrase)
 {
     int32_t errorCode;
     uShortRangePrivateInstance_t *pInstance;
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     errorCode = uShortRangeLock();
     if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return errorCode;
     }
 
-    errorCode = getInstance(shoHandle, &pInstance);
+    errorCode = getInstance(devHandle, &pInstance);
     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
         uAtClientHandle_t atHandle = pInstance->atHandle;
 
@@ -610,18 +600,17 @@ int32_t uWifiNetStationConnect(int32_t wifiHandle, const char *pSsid,
     return errorCode;
 }
 
-int32_t uWifiNetStationDisconnect(int32_t wifiHandle)
+int32_t uWifiNetStationDisconnect(uDeviceHandle_t devHandle)
 {
     int32_t errorCode;
     uShortRangePrivateInstance_t *pInstance;
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     errorCode = uShortRangeLock();
     if (errorCode != (int32_t)U_ERROR_COMMON_SUCCESS) {
         return errorCode;
     }
 
-    errorCode = getInstance(shoHandle, &pInstance);
+    errorCode = getInstance(devHandle, &pInstance);
     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
         uAtClientHandle_t atHandle = pInstance->atHandle;
         // Read connection status
@@ -641,19 +630,18 @@ int32_t uWifiNetStationDisconnect(int32_t wifiHandle)
 }
 
 
-int32_t uWifiNetStationScan(int32_t wifiHandle, const char *pSsid,
+int32_t uWifiNetStationScan(uDeviceHandle_t devHandle, const char *pSsid,
                             uWifiNetScanResultCallback_t pCallback)
 {
     int32_t errorCode;
     uShortRangePrivateInstance_t *pInstance;
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     errorCode = uShortRangeLock();
     if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return errorCode;
     }
 
-    errorCode = getInstance(shoHandle, &pInstance);
+    errorCode = getInstance(devHandle, &pInstance);
     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
         uAtClientHandle_t atHandle = pInstance->atHandle;
 
@@ -698,7 +686,7 @@ int32_t uWifiNetStationScan(int32_t wifiHandle, const char *pSsid,
             scanResult.uniCipherBitmask = (uint8_t)uAtClientReadInt(atHandle);
             scanResult.grpCipherBitmask = (uint8_t)uAtClientReadInt(atHandle);
 
-            pCallback(wifiHandle, &scanResult);
+            pCallback(devHandle, &scanResult);
         }
 
         errorCode = uAtClientUnlock(atHandle);

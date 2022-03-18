@@ -137,9 +137,10 @@
 
 #include "u_error_common.h"
 
+#include "u_device_internal.h"
+
 #include "u_cell_sec.h"
 
-#include "u_network_handle.h"
 #include "u_security.h"
 #include "u_at_client.h"
 #include "u_short_range_module_type.h"
@@ -166,13 +167,13 @@
  * -------------------------------------------------------------- */
 
 // Get whether a module supports u-blox security services or not.
-bool uSecurityIsSupported(int32_t networkHandle)
+bool uSecurityIsSupported(uDeviceHandle_t devHandle)
 {
     bool isSupported = false;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        isSupported = uCellSecIsSupported(networkHandle);
-    } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        isSupported = uCellSecIsSupported(devHandle);
+    } else if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
         // Not implemented yet
         isSupported = false;
     }
@@ -181,36 +182,30 @@ bool uSecurityIsSupported(int32_t networkHandle)
 }
 
 // Get the security bootstrap status of a module.
-bool uSecurityIsBootstrapped(int32_t networkHandle)
+bool uSecurityIsBootstrapped(uDeviceHandle_t devHandle)
 {
     bool isBootstrapped = false;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        isBootstrapped = uCellSecIsBootstrapped(networkHandle);
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        isBootstrapped = uCellSecIsBootstrapped(devHandle);
     }
 
     return isBootstrapped;
 }
 
 // Get the module serial number string.
-int32_t uSecurityGetSerialNumber(int32_t networkHandle,
+int32_t uSecurityGetSerialNumber(uDeviceHandle_t devHandle,
                                  char *pSerialNumber)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (pSerialNumber != NULL) {
         errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            errorCodeOrSize = uCellSecGetSerialNumber(networkHandle,
+        if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCodeOrSize = uCellSecGetSerialNumber(devHandle,
                                                       pSerialNumber);
         } else {
-
-            int32_t shoHandle;
-            errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-            shoHandle = uShortRangeGetShoHandle(networkHandle);
-            if (shoHandle >= 0) {
-                errorCodeOrSize = uShortRangeGetSerialNumber(shoHandle, pSerialNumber);
-            }
+            errorCodeOrSize = uShortRangeGetSerialNumber(devHandle, pSerialNumber);
         }
     }
 
@@ -218,14 +213,14 @@ int32_t uSecurityGetSerialNumber(int32_t networkHandle,
 }
 
 // Get the root of trust UID from the module.
-int32_t uSecurityGetRootOfTrustUid(int32_t networkHandle,
+int32_t uSecurityGetRootOfTrustUid(uDeviceHandle_t devHandle,
                                    char *pRootOfTrustUid)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
     char buffer[U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES];
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        errorCodeOrSize = uCellSecGetRootOfTrustUid(networkHandle,
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        errorCodeOrSize = uCellSecGetRootOfTrustUid(devHandle,
                                                     buffer);
         if ((errorCodeOrSize > 0) && (pRootOfTrustUid != NULL)) {
             memcpy(pRootOfTrustUid, buffer, sizeof(buffer));
@@ -240,7 +235,7 @@ int32_t uSecurityGetRootOfTrustUid(int32_t networkHandle,
  * -------------------------------------------------------------- */
 
 // Pair a module's AT interface for chip to chip security.
-int32_t uSecurityC2cPair(int32_t networkHandle,
+int32_t uSecurityC2cPair(uDeviceHandle_t devHandle,
                          const char *pTESecret,
                          char *pKey, char *pHMac)
 {
@@ -248,8 +243,8 @@ int32_t uSecurityC2cPair(int32_t networkHandle,
 
     if ((pTESecret != NULL) && (pKey != NULL) && (pHMac != NULL)) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            errorCode = uCellSecC2cPair(networkHandle,
+        if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellSecC2cPair(devHandle,
                                         pTESecret, pKey, pHMac);
         }
     }
@@ -258,7 +253,7 @@ int32_t uSecurityC2cPair(int32_t networkHandle,
 }
 
 // Open a secure AT session.
-int32_t uSecurityC2cOpen(int32_t networkHandle,
+int32_t uSecurityC2cOpen(uDeviceHandle_t devHandle,
                          const char *pTESecret,
                          const char *pKey,
                          const char *pHMac)
@@ -267,8 +262,8 @@ int32_t uSecurityC2cOpen(int32_t networkHandle,
 
     if ((pTESecret != NULL) && (pKey != NULL) && (pHMac != NULL)) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            errorCode = uCellSecC2cOpen(networkHandle,
+        if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellSecC2cOpen(devHandle,
                                         pTESecret, pKey, pHMac);
         }
     }
@@ -277,12 +272,12 @@ int32_t uSecurityC2cOpen(int32_t networkHandle,
 }
 
 // Close a secure AT session.
-int32_t uSecurityC2cClose(int32_t networkHandle)
+int32_t uSecurityC2cClose(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        errorCode = uCellSecC2cClose(networkHandle);
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        errorCode = uCellSecC2cClose(devHandle);
     }
 
     return errorCode;
@@ -293,7 +288,7 @@ int32_t uSecurityC2cClose(int32_t networkHandle)
  * -------------------------------------------------------------- */
 
 // Request security sealing of a module.
-int32_t uSecuritySealSet(int32_t networkHandle,
+int32_t uSecuritySealSet(uDeviceHandle_t devHandle,
                          const char *pDeviceProfileUid,
                          const char *pDeviceSerialNumberStr,
                          bool (*pKeepGoingCallback) (void))
@@ -303,8 +298,8 @@ int32_t uSecuritySealSet(int32_t networkHandle,
     if ((pDeviceProfileUid != NULL) &&
         (pDeviceSerialNumberStr != NULL)) {
         errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            errorCode = uCellSecSealSet(networkHandle,
+        if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellSecSealSet(devHandle,
                                         pDeviceProfileUid,
                                         pDeviceSerialNumberStr,
                                         pKeepGoingCallback);
@@ -315,12 +310,12 @@ int32_t uSecuritySealSet(int32_t networkHandle,
 }
 
 // Get the security seal status of a module.
-bool uSecurityIsSealed(int32_t networkHandle)
+bool uSecurityIsSealed(uDeviceHandle_t devHandle)
 {
     bool isSealed = false;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        isSealed = uCellSecIsSealed(networkHandle);
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        isSealed = uCellSecIsSealed(devHandle);
     }
 
     return isSealed;
@@ -331,14 +326,14 @@ bool uSecurityIsSealed(int32_t networkHandle)
  * -------------------------------------------------------------- */
 
 // Read the device public certificate generated during sealing.
-int32_t uSecurityZtpGetDeviceCertificate(int32_t networkHandle,
+int32_t uSecurityZtpGetDeviceCertificate(uDeviceHandle_t devHandle,
                                          char *pData,
                                          size_t dataSizeBytes)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        errorCodeOrSize = uCellSecZtpGetDeviceCertificate(networkHandle,
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        errorCodeOrSize = uCellSecZtpGetDeviceCertificate(devHandle,
                                                           pData,
                                                           dataSizeBytes);
     }
@@ -347,14 +342,14 @@ int32_t uSecurityZtpGetDeviceCertificate(int32_t networkHandle,
 }
 
 // Read the device private key generated during sealing.
-int32_t uSecurityZtpGetPrivateKey(int32_t networkHandle,
+int32_t uSecurityZtpGetPrivateKey(uDeviceHandle_t devHandle,
                                   char *pData,
                                   size_t dataSizeBytes)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        errorCodeOrSize = uCellSecZtpGetPrivateKey(networkHandle,
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        errorCodeOrSize = uCellSecZtpGetPrivateKey(devHandle,
                                                    pData,
                                                    dataSizeBytes);
     }
@@ -363,14 +358,14 @@ int32_t uSecurityZtpGetPrivateKey(int32_t networkHandle,
 }
 
 // Read the certificate authorities used during sealing.
-int32_t uSecurityZtpGetCertificateAuthorities(int32_t networkHandle,
+int32_t uSecurityZtpGetCertificateAuthorities(uDeviceHandle_t devHandle,
                                               char *pData,
                                               size_t dataSizeBytes)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        errorCodeOrSize = uCellSecZtpGetCertificateAuthorities(networkHandle,
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        errorCodeOrSize = uCellSecZtpGetCertificateAuthorities(devHandle,
                                                                pData,
                                                                dataSizeBytes);
     }
@@ -383,12 +378,12 @@ int32_t uSecurityZtpGetCertificateAuthorities(int32_t networkHandle,
  * -------------------------------------------------------------- */
 
 // Set the E2E encryption version to be used.
-int32_t uSecurityE2eSetVersion(int32_t networkHandle, int32_t version)
+int32_t uSecurityE2eSetVersion(uDeviceHandle_t devHandle, int32_t version)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        errorCode = uCellSecE2eSetVersion(networkHandle,
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        errorCode = uCellSecE2eSetVersion(devHandle,
                                           version);
     }
 
@@ -396,19 +391,19 @@ int32_t uSecurityE2eSetVersion(int32_t networkHandle, int32_t version)
 }
 
 // Get the E2E encryption version.
-int32_t uSecurityE2eGetVersion(int32_t networkHandle)
+int32_t uSecurityE2eGetVersion(uDeviceHandle_t devHandle)
 {
     int32_t errorCodeOrVersion = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        errorCodeOrVersion = uCellSecE2eGetVersion(networkHandle);
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        errorCodeOrVersion = uCellSecE2eGetVersion(devHandle);
     }
 
     return errorCodeOrVersion;
 }
 
 // Ask a module to encrypt a block of data.
-int32_t uSecurityE2eEncrypt(int32_t networkHandle,
+int32_t uSecurityE2eEncrypt(uDeviceHandle_t devHandle,
                             const void *pDataIn,
                             void *pDataOut, size_t dataSizeBytes)
 {
@@ -418,8 +413,8 @@ int32_t uSecurityE2eEncrypt(int32_t networkHandle,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pDataOut != NULL) && (dataSizeBytes > 0)) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-            if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-                errorCode = uCellSecE2eEncrypt(networkHandle,
+            if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+                errorCode = uCellSecE2eEncrypt(devHandle,
                                                pDataIn, pDataOut,
                                                dataSizeBytes);
             }
@@ -434,7 +429,7 @@ int32_t uSecurityE2eEncrypt(int32_t networkHandle,
  * -------------------------------------------------------------- */
 
 // Generate a PSK and accompanying PSK ID.
-int32_t uSecurityPskGenerate(int32_t networkHandle,
+int32_t uSecurityPskGenerate(uDeviceHandle_t devHandle,
                              size_t pskSizeBytes, char *pPsk,
                              char *pPskId)
 {
@@ -443,8 +438,8 @@ int32_t uSecurityPskGenerate(int32_t networkHandle,
     if ((pPsk != NULL) && (pPskId != NULL) &&
         ((pskSizeBytes == 16) || (pskSizeBytes == 32))) {
         errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            errorCodeOrSize = uCellSecPskGenerate(networkHandle,
+        if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCodeOrSize = uCellSecPskGenerate(devHandle,
                                                   pskSizeBytes, pPsk,
                                                   pPskId);
         }
@@ -458,12 +453,12 @@ int32_t uSecurityPskGenerate(int32_t networkHandle,
  * -------------------------------------------------------------- */
 
 // Trigger a security heartbeat.
-int32_t uSecurityHeartbeatTrigger(int32_t networkHandle)
+int32_t uSecurityHeartbeatTrigger(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-        errorCode = uCellSecHeartbeatTrigger(networkHandle);
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
+        errorCode = uCellSecHeartbeatTrigger(devHandle);
     }
 
     return errorCode;

@@ -168,7 +168,7 @@ static bool moduleIsSealed(const uCellPrivateInstance_t *pInstance)
 }
 
 // Read a certificate/key/authority generated/used during sealing.
-static int32_t ztpGet(int32_t cellHandle, int32_t type,
+static int32_t ztpGet(uDeviceHandle_t cellHandle, int32_t type,
                       char *pData, size_t dataSizeBytes)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -318,7 +318,7 @@ static size_t encryptC2cConfirmationTag(const char *pC2cConfirmationTagHex,
  * -------------------------------------------------------------- */
 
 // Get whether a cellular module supports u-blox security services.
-bool uCellSecIsSupported(int32_t cellHandle)
+bool uCellSecIsSupported(uDeviceHandle_t cellHandle)
 {
     bool isSupported = false;
     uCellPrivateInstance_t *pInstance;
@@ -342,7 +342,7 @@ bool uCellSecIsSupported(int32_t cellHandle)
 }
 
 // Get the security bootstrap status of a cellular module.
-bool uCellSecIsBootstrapped(int32_t cellHandle)
+bool uCellSecIsBootstrapped(uDeviceHandle_t cellHandle)
 {
     bool isBootstrapped = false;
     uCellPrivateInstance_t *pInstance;
@@ -394,7 +394,7 @@ bool uCellSecIsBootstrapped(int32_t cellHandle)
 }
 
 // Get the cellular module's serial number (IMEI) as a string.
-int32_t uCellSecGetSerialNumber(int32_t cellHandle,
+int32_t uCellSecGetSerialNumber(uDeviceHandle_t cellHandle,
                                 char *pSerialNumber)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -414,7 +414,7 @@ int32_t uCellSecGetSerialNumber(int32_t cellHandle,
 }
 
 // Get the root of trust UID from the cellular module.
-int32_t uCellSecGetRootOfTrustUid(int32_t cellHandle,
+int32_t uCellSecGetRootOfTrustUid(uDeviceHandle_t cellHandle,
                                   char *pRootOfTrustUid)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -473,7 +473,7 @@ int32_t uCellSecGetRootOfTrustUid(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Pair a cellular module's AT interface for chip to chip security.
-int32_t uCellSecC2cPair(int32_t cellHandle,
+int32_t uCellSecC2cPair(uDeviceHandle_t cellHandle,
                         const char *pTESecret,
                         char *pKey, char *pHMac)
 {
@@ -628,7 +628,7 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
 }
 
 // Open a secure AT session.
-int32_t uCellSecC2cOpen(int32_t cellHandle,
+int32_t uCellSecC2cOpen(uDeviceHandle_t cellHandle,
                         const char *pTESecret,
                         const char *pKey,
                         const char *pHMacKey)
@@ -719,7 +719,7 @@ int32_t uCellSecC2cOpen(int32_t cellHandle,
 }
 
 // Close a secure AT session.
-int32_t uCellSecC2cClose(int32_t cellHandle)
+int32_t uCellSecC2cClose(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -768,7 +768,7 @@ int32_t uCellSecC2cClose(int32_t cellHandle)
  * -------------------------------------------------------------- */
 
 // Request security sealing of a cellular module.
-int32_t uCellSecSealSet(int32_t cellHandle,
+int32_t uCellSecSealSet(uDeviceHandle_t cellHandle,
                         const char *pDeviceProfileUid,
                         const char *pDeviceSerialNumberStr,
                         bool (*pKeepGoingCallback) (void))
@@ -819,7 +819,7 @@ int32_t uCellSecSealSet(int32_t cellHandle,
 }
 
 // Get the security seal status of a celluar module.
-bool uCellSecIsSealed(int32_t cellHandle)
+bool uCellSecIsSealed(uDeviceHandle_t cellHandle)
 {
     bool isSealed = false;
     uCellPrivateInstance_t *pInstance;
@@ -847,7 +847,7 @@ bool uCellSecIsSealed(int32_t cellHandle)
  * -------------------------------------------------------------- */
 
 // Read the device public certificate generated during seaing.
-int32_t uCellSecZtpGetDeviceCertificate(int32_t cellHandle,
+int32_t uCellSecZtpGetDeviceCertificate(uDeviceHandle_t cellHandle,
                                         char *pData,
                                         size_t dataSizeBytes)
 {
@@ -855,7 +855,7 @@ int32_t uCellSecZtpGetDeviceCertificate(int32_t cellHandle,
 }
 
 // Read the device private key generated during sealing.
-int32_t uCellSecZtpGetPrivateKey(int32_t cellHandle,
+int32_t uCellSecZtpGetPrivateKey(uDeviceHandle_t cellHandle,
                                  char *pData,
                                  size_t dataSizeBytes)
 {
@@ -863,7 +863,7 @@ int32_t uCellSecZtpGetPrivateKey(int32_t cellHandle,
 }
 
 // Read the certificate authorities used during sealing.
-int32_t uCellSecZtpGetCertificateAuthorities(int32_t cellHandle,
+int32_t uCellSecZtpGetCertificateAuthorities(uDeviceHandle_t cellHandle,
                                              char *pData,
                                              size_t dataSizeBytes)
 {
@@ -875,7 +875,7 @@ int32_t uCellSecZtpGetCertificateAuthorities(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Set the E2E encryption version to be used.
-int32_t uCellSecE2eSetVersion(int32_t cellHandle, int32_t version)
+int32_t uCellSecE2eSetVersion(uDeviceHandle_t cellHandle, int32_t version)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -910,7 +910,7 @@ int32_t uCellSecE2eSetVersion(int32_t cellHandle, int32_t version)
 }
 
 // Get the E2E encryption version.
-int32_t uCellSecE2eGetVersion(int32_t cellHandle)
+int32_t uCellSecE2eGetVersion(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrVersion = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -954,7 +954,7 @@ int32_t uCellSecE2eGetVersion(int32_t cellHandle)
 }
 
 // Ask a cellular module to encrypt a block of data.
-int32_t uCellSecE2eEncrypt(int32_t cellHandle,
+int32_t uCellSecE2eEncrypt(uDeviceHandle_t cellHandle,
                            const void *pDataIn,
                            void *pDataOut,
                            size_t dataSizeBytes)
@@ -1034,7 +1034,7 @@ int32_t uCellSecE2eEncrypt(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Generate a PSK and accompanying PSK ID.
-int32_t uCellSecPskGenerate(int32_t cellHandle,
+int32_t uCellSecPskGenerate(uDeviceHandle_t cellHandle,
                             size_t pskSizeBytes, char *pPsk,
                             char *pPskId)
 {
@@ -1103,7 +1103,7 @@ int32_t uCellSecPskGenerate(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Trigger a security heartbeat.
-int32_t uCellSecHeartbeatTrigger(int32_t cellHandle)
+int32_t uCellSecHeartbeatTrigger(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;

@@ -49,7 +49,6 @@
 
 #include "u_wifi_module_type.h"
 #include "u_wifi.h"
-#include "u_wifi_private.h"
 
 #include "u_wifi_test_private.h"
 
@@ -79,48 +78,46 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
                                  uWifiTestPrivate_t *pParameters)
 {
     int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    int32_t shortRangeHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     const uShortRangeModuleInfo_t *pModule;
 
     // Set some defaults
     pParameters->uartHandle = -1;
     pParameters->edmStreamHandle = -1;
     pParameters->atClientHandle = NULL;
-    pParameters->wifiHandle = -1;
+    pParameters->devHandle = NULL;
 
     // Initialise the porting layer and wifi
     if ((uPortInit() == 0) && (uWifiInit() == 0) && (uAtClientInit() == 0)) {
+        uDeviceHandle_t devHandle = NULL;
         uPortLog("U_WIFI_TEST_PRIVATE: opening UART %d...\n",
                  U_CFG_APP_SHORT_RANGE_UART);
 
-        shortRangeHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType, pUartConfig, true);
-
-        if (shortRangeHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
-            pParameters->wifiHandle = uShoToWifiHandle(shortRangeHandle);
-        }
-
-        errorCodeOrHandle = uShortRangeGetUartHandle(shortRangeHandle);
+        errorCodeOrHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType, pUartConfig,
+                                                true, &devHandle);
 
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            errorCodeOrHandle = uShortRangeGetUartHandle(devHandle);
             pParameters->uartHandle = errorCodeOrHandle;
         }
 
-        errorCodeOrHandle = uShortRangeGetEdmStreamHandle(shortRangeHandle);
 
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            errorCodeOrHandle = uShortRangeGetEdmStreamHandle(devHandle);
             pParameters->edmStreamHandle = errorCodeOrHandle;
         }
 
-        errorCodeOrHandle = uShortRangeAtClientHandleGet(shortRangeHandle, &pParameters->atClientHandle);
-
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
-            // So that we can see what we're doing
-            uAtClientTimeoutSet(pParameters->atClientHandle, 2000);
-            uAtClientPrintAtSet(pParameters->atClientHandle, true);
-            uAtClientDebugSet(pParameters->atClientHandle, true);
+            errorCodeOrHandle = uShortRangeAtClientHandleGet(devHandle, &pParameters->atClientHandle);
+
+            if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+                // So that we can see what we're doing
+                uAtClientTimeoutSet(pParameters->atClientHandle, 2000);
+                uAtClientPrintAtSet(pParameters->atClientHandle, true);
+                uAtClientDebugSet(pParameters->atClientHandle, true);
+            }
         }
 
-        if (shortRangeHandle >= 0) {
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             if ((uShortRangeModuleType_t) moduleType != U_SHORT_RANGE_MODULE_TYPE_INVALID) {
                 errorCodeOrHandle = (int32_t) U_ERROR_COMMON_UNKNOWN;
                 pModule = uShortRangeGetModuleInfo((uShortRangeModuleType_t)moduleType);
@@ -130,13 +127,12 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
                 }
 
                 if (errorCodeOrHandle == 0) {
+                    pParameters->devHandle = devHandle;
                     uPortLog("U_WIFI_TEST_PRIVATE: module is powered-up and configured for testing.\n");
                 }
             }
         }
     }
-
-    errorCodeOrHandle = shortRangeHandle;
 
     return errorCodeOrHandle;
 }
@@ -144,11 +140,11 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
 // The standard postamble for a wifi test.
 void uWifiTestPrivatePostamble(uWifiTestPrivate_t *pParameters)
 {
-    uShortRangeClose(uWifiToShoHandle(pParameters->wifiHandle));
+    uShortRangeClose(pParameters->devHandle);
     pParameters->uartHandle = -1;
     pParameters->edmStreamHandle = -1;
     pParameters->atClientHandle = NULL;
-    pParameters->wifiHandle = -1;
+    pParameters->devHandle = NULL;
 
     uWifiDeinit();
     uAtClientDeinit();
@@ -158,11 +154,11 @@ void uWifiTestPrivatePostamble(uWifiTestPrivate_t *pParameters)
 // The standard clean-up for a wifi test.
 void uWifiTestPrivateCleanup(uWifiTestPrivate_t *pParameters)
 {
-    uShortRangeClose(uWifiToShoHandle(pParameters->wifiHandle));
+    uShortRangeClose(pParameters->devHandle);
     pParameters->uartHandle = -1;
     pParameters->edmStreamHandle = -1;
     pParameters->atClientHandle = NULL;
-    pParameters->wifiHandle = -1;
+    pParameters->devHandle = NULL;
 
     uWifiDeinit();
     uAtClientDeinit();

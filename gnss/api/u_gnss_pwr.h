@@ -95,19 +95,19 @@ extern "C" {
  *
  * @param gnssHandle  the handle of the GNSS instance to power on.
  */
-int32_t uGnssPwrOn(int32_t gnssHandle);
+int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle);
 
 /** Check that a GNSS chip is responsive.
  *
  * @param gnssHandle  the handle of the GNSS instance.
  */
-bool uGnssPwrIsAlive(int32_t gnssHandle);
+bool uGnssPwrIsAlive(uDeviceHandle_t gnssHandle);
 
 /** Power a GNSS chip off
  *
  * @param gnssHandle  the handle of the GNSS instance to power off.
  */
-int32_t uGnssPwrOff(int32_t gnssHandle);
+int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle);
 
 #ifdef __cplusplus
 }

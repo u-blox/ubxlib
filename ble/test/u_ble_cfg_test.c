@@ -78,7 +78,7 @@
 
 //lint -esym(843, gHandles) Suppress could be const, which will be the case if
 // U_CFG_TEST_SHORT_RANGE_MODULE_TYPE is not defined
-static uBleTestPrivate_t gHandles = { -1, -1, NULL, -1 };
+static uBleTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -109,15 +109,15 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
 
     cfg.role = U_BLE_CFG_ROLE_PERIPHERAL;
     cfg.spsServer = true;
-    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.bleHandle, &cfg) == 0);
+    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
     cfg.role = U_BLE_CFG_ROLE_CENTRAL;
     cfg.spsServer = true;
-    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.bleHandle, &cfg) == 0);
+    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
     cfg.role = U_BLE_CFG_ROLE_PERIPHERAL;
     cfg.spsServer = true;
-    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.bleHandle, &cfg) == 0);
+    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
     uBleTestPrivatePostamble(&gHandles);
 

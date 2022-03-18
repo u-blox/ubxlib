@@ -354,11 +354,11 @@ bool uCellPrivateIsNumeric(const char *pBuffer, size_t bufferSize)
 }
 
 // Find a cellular instance in the list by instance handle.
-uCellPrivateInstance_t *pUCellPrivateGetInstance(int32_t handle)
+uCellPrivateInstance_t *pUCellPrivateGetInstance(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance = gpUCellPrivateInstanceList;
 
-    while ((pInstance != NULL) && (pInstance->handle != handle)) {
+    while ((pInstance != NULL) && (pInstance->cellHandle != cellHandle)) {
         pInstance = pInstance->pNext;
     }
 
@@ -627,12 +627,12 @@ void uCellPrivateScanFree(uCellPrivateNet_t **ppScanResults)
 }
 
 // Get the module characteristics for a given instance.
-const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle)
+const uCellPrivateModule_t *pUCellPrivateGetModule(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance = gpUCellPrivateInstanceList;
     const uCellPrivateModule_t *pModule = NULL;
 
-    while ((pInstance != NULL) && (pInstance->handle != handle)) {
+    while ((pInstance != NULL) && (pInstance->cellHandle != cellHandle)) {
         pInstance = pInstance->pNext;
     }
 

@@ -79,7 +79,7 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-static uWifiTestPrivate_t gHandles = { -1, -1, NULL, -1 };
+static uWifiTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
 static const uint32_t gNetStatusMaskAllUp = U_WIFI_NET_STATUS_MASK_IPV4_UP |
                                             U_WIFI_NET_STATUS_MASK_IPV6_UP;
@@ -102,7 +102,7 @@ static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-static void wifiConnectionCallback(int32_t wifiHandle,
+static void wifiConnectionCallback(uDeviceHandle_t devHandle,
                                    int32_t connId,
                                    int32_t status,
                                    int32_t channel,
@@ -110,7 +110,7 @@ static void wifiConnectionCallback(int32_t wifiHandle,
                                    int32_t disconnectReason,
                                    void *pCallbackParameter)
 {
-    (void)wifiHandle;
+    (void)devHandle;
     (void)pBssid;
     (void)pCallbackParameter;
     (void)channel;
@@ -147,12 +147,12 @@ static void wifiConnectionCallback(int32_t wifiHandle,
     }
 }
 
-static void wifiNetworkStatusCallback(int32_t wifiHandle,
+static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
                                       int32_t interfaceType,
                                       uint32_t statusMask,
                                       void *pCallbackParameter)
 {
-    (void)wifiHandle;
+    (void)devHandle;
     (void)interfaceType;
     (void)statusMask;
     (void)pCallbackParameter;
@@ -185,13 +185,13 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
 
     if (testError == U_WIFI_TEST_ERROR_NONE) {
         // Add unsolicited response cb for connection status
-        uWifiNetSetConnectionStatusCallback(gHandles.wifiHandle,
+        uWifiNetSetConnectionStatusCallback(gHandles.devHandle,
                                             wifiConnectionCallback, NULL);
         // Add unsolicited response cb for IP status
-        uWifiNetSetNetworkStatusCallback(gHandles.wifiHandle,
+        uWifiNetSetNetworkStatusCallback(gHandles.devHandle,
                                          wifiNetworkStatusCallback, NULL);
         // Connect to wifi network
-        int32_t res = uWifiNetStationConnect(gHandles.wifiHandle,
+        int32_t res = uWifiNetStationConnect(gHandles.devHandle,
                                              pSsid,
                                              U_WIFI_NET_AUTH_WPA_PSK,
                                              pPassPhrase);
@@ -220,7 +220,7 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
 
     if (testError == U_WIFI_TEST_ERROR_NONE) {
         // Disconnect from wifi network (regardless of previous connectError)
-        if (uWifiNetStationDisconnect(gHandles.wifiHandle) == 0) {
+        if (uWifiNetStationDisconnect(gHandles.devHandle) == 0) {
             waitCtr = 0;
             while (!disconnectError && (!gWifiDisconnected || (gNetStatusMask > 0))) {
                 if (waitCtr >= 5) {
@@ -250,15 +250,15 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
     }
 
     // Cleanup
-    uWifiNetSetConnectionStatusCallback(gHandles.wifiHandle,
+    uWifiNetSetConnectionStatusCallback(gHandles.devHandle,
                                         NULL, NULL);
-    uWifiNetSetNetworkStatusCallback(gHandles.wifiHandle,
+    uWifiNetSetNetworkStatusCallback(gHandles.devHandle,
                                      NULL, NULL);
     uWifiTestPrivatePostamble(&gHandles);
     return testError;
 }
 
-static void uWifiScanResultCallback(int32_t wifiHandle, uWifiNetScanResult_t *pResult)
+static void uWifiScanResultCallback(uDeviceHandle_t devHandle, uWifiNetScanResult_t *pResult)
 {
     if (strcmp(pResult->ssid, U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID)) == 0) {
         gScanResult = *pResult;
@@ -309,16 +309,16 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetInitialisation")
 
     if (!testError) {
         // Add unsolicited response cb for connection status
-        uWifiNetSetConnectionStatusCallback(gHandles.wifiHandle,
+        uWifiNetSetConnectionStatusCallback(gHandles.devHandle,
                                             wifiConnectionCallback, NULL);
         // Add unsolicited response cb for IP status
-        uWifiNetSetNetworkStatusCallback(gHandles.wifiHandle,
+        uWifiNetSetNetworkStatusCallback(gHandles.devHandle,
                                          wifiNetworkStatusCallback, NULL);
     }
 
     if (!testError) {
-        errorCode = uWifiNetStationDisconnect(gHandles.wifiHandle);
-        if (errorCode == U_ERROR_COMMON_SUCCESS) {
+        errorCode = uWifiNetStationDisconnect(gHandles.devHandle);
+        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
             waitCtr = 0;
             while (!testError && (!gWifiDisconnected || (gNetStatusMask > 0))) {
                 if (waitCtr >= 5) {
@@ -333,9 +333,9 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetInitialisation")
     }
 
     // Cleanup
-    uWifiNetSetConnectionStatusCallback(gHandles.wifiHandle,
+    uWifiNetSetConnectionStatusCallback(gHandles.devHandle,
                                         NULL, NULL);
-    uWifiNetSetNetworkStatusCallback(gHandles.wifiHandle,
+    uWifiNetSetNetworkStatusCallback(gHandles.devHandle,
                                      NULL, NULL);
     uWifiTestPrivatePostamble(&gHandles);
 
@@ -397,7 +397,7 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetScan")
     // There is a risk that the AP is not included in the scan results even if it's present
     // For this reason we use a retry loop
     for (int32_t i = 0; i < 3; i++) {
-        result = uWifiNetStationScan(gHandles.wifiHandle,
+        result = uWifiNetStationScan(gHandles.devHandle,
                                      NULL,
                                      uWifiScanResultCallback);
         U_PORT_TEST_ASSERT(result == 0);
@@ -416,7 +416,7 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetScan")
     //----------------------------------------------------------
     memset(&gScanResult, 0, sizeof(gScanResult));
     for (int32_t i = 0; i < 3; i++) {
-        result = uWifiNetStationScan(gHandles.wifiHandle,
+        result = uWifiNetStationScan(gHandles.devHandle,
                                      U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
                                      uWifiScanResultCallback);
         U_PORT_TEST_ASSERT(result == 0);
@@ -435,7 +435,7 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetScan")
     //----------------------------------------------------------
     memset(&gScanResult, 0, sizeof(gScanResult));
     for (int32_t i = 0; i < 3; i++) {
-        result = uWifiNetStationScan(gHandles.wifiHandle,
+        result = uWifiNetStationScan(gHandles.devHandle,
                                      "DUMMYSSID",
                                      uWifiScanResultCallback);
         U_PORT_TEST_ASSERT(result == 0);

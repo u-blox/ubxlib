@@ -75,7 +75,7 @@ extern "C" {
  *                               into pResponse (zero if pResponse is
  *                               NULL), else negative error code.
  */
-int32_t uGnssUtilUbxTransparentSendReceive(int32_t gnssHandle,
+int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                                            const char *pCommand,
                                            size_t commandLengthBytes,
                                            char *pResponse,

@@ -166,7 +166,7 @@ static volatile bool g3gppPowerSavingSet = false;
 
 // Callback that will be called when the network indicates what 3GPP
 // power saving settings have been applied
-static void callback(int32_t networkHandle, bool onNotOff,
+static void callback(uDeviceHandle_t devHandle, bool onNotOff,
                      int32_t activeTimeSeconds, int32_t periodicWakeupSeconds,
                      void *pParameter)
 {
@@ -192,26 +192,28 @@ static void callback(int32_t networkHandle, bool onNotOff,
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     bool onMyRat = true;
     int32_t x = -1;
+    int32_t returnCode;
 
     // Initialise the APIs we will need
     uPortInit();
     uNetworkInit();
 
     // Add a cellular network instance.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("### Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                             (void *) &gConfigCell,
+                             &devHandle);
+    uPortLog("### Added network with return code %d.\n", returnCode);
 
     // Set a callback for when the 3GPP power saving parameters are
     // agreed by the network
-    uCellPwrSet3gppPowerSavingCallback(networkHandle, callback, NULL);
+    uCellPwrSet3gppPowerSavingCallback(devHandle, callback, NULL);
 
     // Set the primary RAT to MY_RAT
-    if (uCellCfgGetRat(networkHandle, 0) != MY_RAT) {
-        if (uCellCfgSetRatRank(networkHandle, MY_RAT, 0) != 0) {
+    if (uCellCfgGetRat(devHandle, 0) != MY_RAT) {
+        if (uCellCfgSetRatRank(devHandle, MY_RAT, 0) != 0) {
             onMyRat = false;
         }
     }
@@ -221,18 +223,18 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
         uPortLog("## Requesting 3GPP power saving with active time"
                  " %d seconds, periodic wake-up %d seconds...\n",
                  ACTIVE_TIME_SECONDS, PERIODIC_WAKEUP_SECONDS);
-        x = uCellPwrSetRequested3gppPowerSaving(networkHandle, MY_RAT, true,
+        x = uCellPwrSetRequested3gppPowerSaving(devHandle, MY_RAT, true,
                                                 ACTIVE_TIME_SECONDS,
                                                 PERIODIC_WAKEUP_SECONDS);
         if (x == 0) {
             // Reboot the module, if required, to apply the settings
-            if (uCellPwrRebootIsRequired(networkHandle)) {
-                uCellPwrReboot(networkHandle, NULL);
+            if (uCellPwrRebootIsRequired(devHandle)) {
+                uCellPwrReboot(devHandle, NULL);
             }
 
             // Bring up the network
             uPortLog("### Bringing up the network...\n");
-            if (uNetworkUp(networkHandle) == 0) {
+            if (uNetworkUp(devHandle) == 0) {
 
                 // Here you would normally do useful stuff; for the
                 // purposes of this simple power-saving example,
@@ -251,7 +253,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
 
                 // When finished with the network layer
                 uPortLog("### Taking down network...\n");
-                uNetworkDown(networkHandle);
+                uNetworkDown(devHandle);
             } else {
                 uPortLog("### Unable to bring up the network!\n");
             }
@@ -277,12 +279,13 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
     if (g3gppPowerSavingSet) {
         uPortInit();
         uNetworkInit();
-        networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                    (void *) &gConfigCell);
-        uCellPwrSetRequested3gppPowerSaving(networkHandle, MY_RAT, false, -1, -1);
+        returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                                 (void *) &gConfigCell,
+                                 &devHandle);
+        uCellPwrSetRequested3gppPowerSaving(devHandle, MY_RAT, false, -1, -1);
         // Reboot the module, if required, to apply the settings
-        if (uCellPwrRebootIsRequired(networkHandle)) {
-            uCellPwrReboot(networkHandle, NULL);
+        if (uCellPwrRebootIsRequired(devHandle)) {
+            uCellPwrReboot(devHandle, NULL);
         }
         uNetworkDeinit();
         uPortDeinit();

@@ -95,7 +95,7 @@ static int32_t gFixMode = -1;
  */
 U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
 {
-    int32_t gnssHandle;
+    uDeviceHandle_t gnssHandle;
     int32_t heapUsed;
     size_t iterations;
     int32_t y;
@@ -189,12 +189,12 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgCleanUp")
 {
     int32_t x;
 
-    if ((gDynamic >= 0) && (gHandles.gnssHandle >= 0)) {
+    if ((gDynamic >= 0) && (gHandles.gnssHandle != NULL)) {
         // Put the initial dynamic setting back
         uGnssCfgSetDynamic(gHandles.gnssHandle, (uGnssDynamic_t) gDynamic);
     }
 
-    if ((gFixMode >= 0) && (gHandles.gnssHandle >= 0)) {
+    if ((gFixMode >= 0) && (gHandles.gnssHandle != NULL)) {
         // Put the initial fix mode back
         uGnssCfgSetFixMode(gHandles.gnssHandle, (uGnssFixMode_t) gFixMode);
     }

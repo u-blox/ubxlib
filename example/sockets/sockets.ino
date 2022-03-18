@@ -69,7 +69,7 @@ static const uNetworkConfigurationCell_t configCell = {U_NETWORK_TYPE_NONE};
 #endif
 
 // The network handle
-static int32_t networkHandle;
+static uDeviceHandle_t devHandle = NULL;
 
 // A global error code
 static int32_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
@@ -130,6 +130,7 @@ static void printAddress(const uSockAddress_t *pAddress, bool hasPort)
  * -------------------------------------------------------------- */
 
 void setup() {
+    int32_t returnCode;
     // Initialise the APIs we will need
     uPortInit();
     uNetworkInit();
@@ -139,16 +140,17 @@ void setup() {
     // for above.  Once this function has returned a
     // non-negative value then the transport is powered-up,
     // can be configured etc. but is not yet connected.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &configCell);
-    if (networkHandle >= 0) {
-        printf("Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                             (void *) &configCell,
+                             &devHandle);
+    if (returnCode >= 0) {
+        printf("Added network with handle %d.\n", devHandle);
         // Bring up the network layer, i.e. connect it so that
         // after this point it may be used to transfer data.
         printf("Bringing up the network...\n");
-        errorCode = uNetworkUp(networkHandle);
+        errorCode = uNetworkUp(devHandle);
     } else {
-        printf("Unable to add network, error %d!\n", networkHandle);
+        printf("Unable to add network, error %d!\n", devHandle);
     }
 
     // An errorCode of zero indicates success
@@ -172,7 +174,7 @@ void loop() {
         // Get the IP address of the echo server using
         // the network's DNS resolution facility
         printf("Looking up server address...\n");
-        uSockGetHostByName(networkHandle, "ubxlib.it-sgn.u-blox.com",
+        uSockGetHostByName(devHandle, "ubxlib.it-sgn.u-blox.com",
                            &(address.ipAddress));
         printf("Address is: ");
         printAddress(&address, false);
@@ -183,7 +185,7 @@ void loop() {
 
         // Create the socket on the network
         printf("Creating socket...\n");
-        sock = uSockCreate(networkHandle,
+        sock = uSockCreate(devHandle,
                            U_SOCK_TYPE_STREAM,
                            U_SOCK_PROTOCOL_TCP);
 
@@ -215,7 +217,7 @@ void loop() {
             printf("Unable to connect to server!\n");
         }
 
-        // Note: since networkHandle is a cellular
+        // Note: since devHandle is a cellular
         // handle any of the `cell` API calls
         // could be made here using it.
         // If the configuration used were Wifi

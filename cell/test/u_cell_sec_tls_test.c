@@ -123,7 +123,7 @@ static uCellSecTlsCertficateCheck_t gChecks[] = {U_CELL_SEC_TLS_CERTIFICATE_CHEC
  */
 U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     int32_t heapUsed;
     const uCellPrivateModule_t *pModule;
     uCellSecTlsContext_t *pContext;

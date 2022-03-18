@@ -51,6 +51,8 @@
 
 #include "u_error_common.h"
 
+#include "u_device_internal.h"
+
 #include "u_port_os.h"
 
 #include "u_mqtt_common.h"
@@ -59,7 +61,6 @@
 #include "u_cell_sec_tls.h"
 #include "u_cell_mqtt.h"
 #include "u_wifi_mqtt.h"
-#include "u_network_handle.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -84,14 +85,14 @@ static uErrorCode_t gLastOpenError = U_ERROR_COMMON_SUCCESS;
 /** Start an MQTT connection using cellular.
  * The mutex for this session must be locked before this is called.
  */
-int32_t cellConnect(int32_t networkHandle,
+int32_t cellConnect(uDeviceHandle_t devHandle,
                     const uMqttClientConnection_t *pConnection,
                     const uSecurityTlsContext_t *pSecurityContext)
 {
     int32_t errorCode;
     const uMqttWill_t *pWill = pConnection->pWill;
 
-    errorCode = uCellMqttInit(networkHandle,
+    errorCode = uCellMqttInit(devHandle,
                               pConnection->pBrokerNameStr,
                               pConnection->pClientIdStr,
                               pConnection->pUserNameStr,
@@ -101,31 +102,31 @@ int32_t cellConnect(int32_t networkHandle,
 
     if ((errorCode == 0) && (pConnection->localPort >= 0)) {
         // A local port has been specified, set it
-        errorCode = uCellMqttSetLocalPort(networkHandle,
+        errorCode = uCellMqttSetLocalPort(devHandle,
                                           (uint16_t) (pConnection->localPort));
     }
 
     if ((errorCode == 0) && (pConnection->inactivityTimeoutSeconds >= 0)) {
         // An inactivity timeout has been specified, set it
-        errorCode = uCellMqttSetInactivityTimeout(networkHandle,
+        errorCode = uCellMqttSetInactivityTimeout(devHandle,
                                                   // Cast twice to keep Lint happy
                                                   (size_t) (int32_t) (pConnection->inactivityTimeoutSeconds));
     }
 
     if ((errorCode == 0) && pConnection->retain) {
         // Retention has been specified, set it
-        errorCode = uCellMqttSetRetainOn(networkHandle);
+        errorCode = uCellMqttSetRetainOn(devHandle);
     }
 
     if (errorCode == 0 && (pSecurityContext != NULL)) {
         // Switch on security
-        errorCode = uCellMqttSetSecurityOn(networkHandle,
+        errorCode = uCellMqttSetSecurityOn(devHandle,
                                            ((uCellSecTlsContext_t *) (pSecurityContext->pNetworkSpecific))->profileId);
     }
 
     if ((errorCode == 0) && (pWill != NULL)) {
         // A "will" has been requested, set it
-        errorCode = uCellMqttSetWill(networkHandle,
+        errorCode = uCellMqttSetWill(devHandle,
                                      pWill->pTopicNameStr,
                                      pWill->pMessage,
                                      pWill->messageSizeBytes,
@@ -135,10 +136,10 @@ int32_t cellConnect(int32_t networkHandle,
 
     if (errorCode == 0) {
         // If everything went well, do the actual connection
-        errorCode = uCellMqttConnect(networkHandle);
+        errorCode = uCellMqttConnect(devHandle);
         if ((errorCode == 0) && pConnection->keepAlive) {
             // "keep alive" or ping can only be set after connecting
-            uCellMqttSetKeepAliveOn(networkHandle);
+            uCellMqttSetKeepAliveOn(devHandle);
         }
     }
 
@@ -150,22 +151,22 @@ int32_t cellConnect(int32_t networkHandle,
  * -------------------------------------------------------------- */
 
 // Initialise an MQTT client.
-uMqttClientContext_t *pUMqttClientOpen(int32_t networkHandle,
+uMqttClientContext_t *pUMqttClientOpen(uDeviceHandle_t devHandle,
                                        const uSecurityTlsSettings_t *pSecurityTlsSettings)
 {
     uMqttClientContext_t *pContext = NULL;
     void *pPriv = NULL;
 
     gLastOpenError = U_ERROR_COMMON_NOT_SUPPORTED;
-    if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+    if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
         // For cellular, check that MQTT is supported by the
         // given module at this point.
-        if (uCellMqttIsSupported(networkHandle)) {
+        if (uCellMqttIsSupported(devHandle)) {
             gLastOpenError = U_ERROR_COMMON_SUCCESS;
         }
-    } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
+    } else if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
         // For WiFi
-        if (uWifiMqttInit(networkHandle, &pPriv) == 0) {
+        if (uWifiMqttInit(devHandle, &pPriv) == 0) {
             gLastOpenError = U_ERROR_COMMON_SUCCESS;
         }
     } else {
@@ -180,7 +181,7 @@ uMqttClientContext_t *pUMqttClientOpen(int32_t networkHandle,
         gLastOpenError = U_ERROR_COMMON_NO_MEMORY;
         pContext = (uMqttClientContext_t *) malloc(sizeof(*pContext));
         if (pContext != NULL) {
-            pContext->networkHandle = networkHandle;
+            pContext->devHandle = devHandle;
             pContext->mutexHandle = NULL;
             pContext->pSecurityContext = NULL;
             pContext->totalMessagesSent = 0;
@@ -191,7 +192,7 @@ uMqttClientContext_t *pUMqttClientOpen(int32_t networkHandle,
                 if (pSecurityTlsSettings != NULL) {
                     // Call the common security layer
                     gLastOpenError = U_ERROR_COMMON_NO_MEMORY;
-                    pContext->pSecurityContext = pUSecurityTlsAdd(networkHandle,
+                    pContext->pSecurityContext = pUSecurityTlsAdd(devHandle,
                                                                   pSecurityTlsSettings);
                     if (pContext->pSecurityContext != NULL) {
                         gLastOpenError = (uErrorCode_t) pContext->pSecurityContext->errorCode;
@@ -238,9 +239,9 @@ void uMqttClientClose(uMqttClientContext_t *pContext)
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            uCellMqttDeinit(pContext->networkHandle);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            uCellMqttDeinit(pContext->devHandle);
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             uWifiMqttClose(pContext);
         }
 
@@ -267,11 +268,11 @@ int32_t uMqttClientConnect(const uMqttClientContext_t *pContext,
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCode = cellConnect(pContext->networkHandle,
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = cellConnect(pContext->devHandle,
                                     pConnection,
                                     pContext->pSecurityContext);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
 
             errorCode = uWifiMqttConnect(pContext, pConnection);
         }
@@ -292,9 +293,9 @@ int32_t uMqttClientDisconnect(const uMqttClientContext_t *pContext)
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCode = uCellMqttDisconnect(pContext->networkHandle);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellMqttDisconnect(pContext->devHandle);
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             errorCode = uWifiMqttDisconnect(pContext);
         }
 
@@ -313,9 +314,9 @@ bool uMqttClientIsConnected(const uMqttClientContext_t *pContext)
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            isConnected = uCellMqttIsConnected(pContext->networkHandle);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            isConnected = uCellMqttIsConnected(pContext->devHandle);
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             isConnected = uWifiMqttIsConnected(pContext);
         }
 
@@ -340,12 +341,12 @@ int32_t uMqttClientPublish(uMqttClientContext_t *pContext,
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCode = uCellMqttPublish(pContext->networkHandle,
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellMqttPublish(pContext->devHandle,
                                          pTopicNameStr,
                                          pMessage, messageSizeBytes,
                                          (uCellMqttQos_t) qos, retain);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             errorCode = uWifiMqttPublish(pContext,
                                          pTopicNameStr,
                                          pMessage, messageSizeBytes,
@@ -373,11 +374,11 @@ int32_t uMqttClientSubscribe(const uMqttClientContext_t *pContext,
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCode = uCellMqttSubscribe(pContext->networkHandle,
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellMqttSubscribe(pContext->devHandle,
                                            pTopicFilterStr,
                                            (uCellMqttQos_t) maxQos);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             errorCode = uWifiMqttSubscribe(pContext,
                                            pTopicFilterStr,
                                            (uMqttQos_t)maxQos);
@@ -400,10 +401,10 @@ int32_t uMqttClientUnsubscribe(const uMqttClientContext_t *pContext,
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCode = uCellMqttUnsubscribe(pContext->networkHandle,
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellMqttUnsubscribe(pContext->devHandle,
                                              pTopicFilterStr);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             errorCode = uWifiMqttUnsubscribe(pContext, pTopicFilterStr);
         }
 
@@ -425,11 +426,11 @@ int32_t uMqttClientSetMessageCallback(const uMqttClientContext_t *pContext,
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCode = uCellMqttSetMessageCallback(pContext->networkHandle,
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellMqttSetMessageCallback(pContext->devHandle,
                                                     pCallback,
                                                     pCallbackParam);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             errorCode = uWifiMqttSetMessageCallback(pContext,
                                                     pCallback,
                                                     pCallbackParam);
@@ -451,9 +452,9 @@ int32_t uMqttClientGetUnread(const uMqttClientContext_t *pContext)
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCodeOrUnread = uCellMqttGetUnread(pContext->networkHandle);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCodeOrUnread = uCellMqttGetUnread(pContext->devHandle);
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             errorCodeOrUnread = uWifiMqttGetUnread(pContext);
         }
 
@@ -480,14 +481,14 @@ int32_t uMqttClientMessageRead(uMqttClientContext_t *pContext,
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCode = uCellMqttMessageRead(pContext->networkHandle,
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellMqttMessageRead(pContext->devHandle,
                                              pTopicNameStr,
                                              topicNameSizeBytes,
                                              pMessage,
                                              pMessageSizeBytes,
                                              (uCellMqttQos_t *) pQos);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             errorCode = uWifiMqttMessageRead(pContext,
                                              pTopicNameStr,
                                              topicNameSizeBytes,
@@ -515,8 +516,8 @@ int32_t uMqttClientGetLastErrorCode(const uMqttClientContext_t *pContext)
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCode = uCellMqttGetLastErrorCode(pContext->networkHandle);
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellMqttGetLastErrorCode(pContext->devHandle);
         }
 
         U_PORT_MUTEX_UNLOCK((uPortMutexHandle_t) (pContext->mutexHandle));
@@ -561,11 +562,11 @@ int32_t uMqttClientSetDisconnectCallback(const uMqttClientContext_t *pContext,
 
         U_PORT_MUTEX_LOCK((uPortMutexHandle_t) (pContext->mutexHandle));
 
-        if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
-            errorCode = uCellMqttSetDisconnectCallback(pContext->networkHandle,
+        if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_CELL)) {
+            errorCode = uCellMqttSetDisconnectCallback(pContext->devHandle,
                                                        pCallback,
                                                        pCallbackParam);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        } else if (U_DEVICE_IS_TYPE(pContext->devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             errorCode = uWifiMqttSetDisconnectCallback(pContext,
                                                        pCallback,
                                                        pCallbackParam);

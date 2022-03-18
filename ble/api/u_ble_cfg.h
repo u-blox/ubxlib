@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the APIs that configure ble.
@@ -57,12 +58,12 @@ typedef struct {
 /** Configure ble for a short range module, may require module restarts
  *  so can take up to 500 ms before it returns.
  *
- * @param bleHandle   the handle of the ble instance.
+ * @param devHandle   the handle of the ble instance.
  * @param pCfg        pointer to the configuration data, must not be NULL.
  * @return            zero on success or negative error code
  *                    on failure.
  */
-int32_t uBleCfgConfigure(int32_t bleHandle,
+int32_t uBleCfgConfigure(uDeviceHandle_t devHandle,
                          const uBleCfg_t *pCfg);
 #ifdef __cplusplus
 }

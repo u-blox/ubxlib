@@ -105,7 +105,7 @@
 typedef struct {
     int32_t sockHandle; /**< The handle of the socket instance.
                              -1 if this socket is not in use. */
-    int32_t cellHandle; /**< The handle of the cellular instance.
+    uDeviceHandle_t cellHandle; /**< The handle of the cellular instance.
                              -1 if this socket is not in use. */
     uAtClientHandle_t atHandle; /**< The AT client handle for this instance.
                                      NULL if this socket is not in use. */
@@ -113,13 +113,13 @@ typedef struct {
                                    uses for the socket instance.
                                    -1 if this socket is not in use. */
     volatile int32_t pendingBytes;
-    void (*pAsyncClosedCallback) (int32_t, int32_t); /**< Set to NULL
+    void (*pAsyncClosedCallback) (uDeviceHandle_t, int32_t); /**< Set to NULL
                                                           if socket is
                                                           not in use. */
-    void (*pDataCallback) (int32_t, int32_t); /**< Set to NULL if
+    void (*pDataCallback) (uDeviceHandle_t, int32_t); /**< Set to NULL if
                                                    socket is not
                                                    in use. */
-    void (*pClosedCallback) (int32_t, int32_t); /**< Set to NULL
+    void (*pClosedCallback) (uDeviceHandle_t, int32_t); /**< Set to NULL
                                                      if socket is
                                                      not in use. */
 } uCellSockSocket_t;
@@ -197,7 +197,7 @@ static void doUsoer(uAtClientHandle_t atHandle)
 
 // Create a socket entry in the list.
 static uCellSockSocket_t *pSockCreate(int32_t sockHandle,
-                                      int32_t cellHandle,
+                                      uDeviceHandle_t cellHandle,
                                       uAtClientHandle_t atHandle)
 {
     uCellSockSocket_t *pSock = NULL;
@@ -235,7 +235,7 @@ static void sockFree(int32_t sockHandle)
         if (gSockets[x].sockHandle == sockHandle) {
             pSock = &(gSockets[x]);
             pSock->sockHandle = -1;
-            pSock->cellHandle = -1;
+            pSock->cellHandle = NULL;
             pSock->atHandle = NULL;
             pSock->sockHandleModule = -1;
             pSock->pendingBytes = 0;
@@ -570,7 +570,7 @@ static int32_t getOptionLinger(const uCellSockSocket_t *pSocket,
 }
 
 // Set hex mode on the underlying AT interface on or off.
-int32_t setHexMode(int32_t cellHandle, bool hexModeOnNotOff)
+int32_t setHexMode(uDeviceHandle_t cellHandle, bool hexModeOnNotOff)
 {
     int32_t errnoLocal = U_SOCK_EINVAL;
     uCellPrivateInstance_t *pInstance;
@@ -606,7 +606,7 @@ int32_t setHexMode(int32_t cellHandle, bool hexModeOnNotOff)
  * -------------------------------------------------------------- */
 
 // Do AT+USOCTL for an operation with an integer return value.
-static int32_t doUsoctl(int32_t cellHandle, int32_t sockHandle,
+static int32_t doUsoctl(uDeviceHandle_t cellHandle, int32_t sockHandle,
                         int32_t operation)
 {
     int32_t negErrnoLocallOrValue = -U_SOCK_EINVAL;
@@ -662,7 +662,7 @@ int32_t uCellSockInit()
         // Clear the list
         for (size_t x = 0; (x < sizeof(gSockets) / sizeof(gSockets[0])); x++) {
             pSock = &(gSockets[x]);
-            pSock->cellHandle = -1;
+            pSock->cellHandle = NULL;
             pSock->sockHandle = -1;
             pSock->sockHandleModule = -1;
             pSock->pendingBytes = 0;
@@ -677,7 +677,7 @@ int32_t uCellSockInit()
 }
 
 // Initialise the cellular sockets instance.
-int32_t uCellSockInitInstance(int32_t cellHandle)
+int32_t uCellSockInitInstance(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance;
     int32_t errnoLocal = U_SOCK_EINVAL;
@@ -718,7 +718,7 @@ void uCellSockDeinit()
  * -------------------------------------------------------------- */
 
 // Create a socket.
-int32_t uCellSockCreate(int32_t cellHandle,
+int32_t uCellSockCreate(uDeviceHandle_t cellHandle,
                         uSockType_t type,
                         uSockProtocol_t protocol)
 {
@@ -767,7 +767,7 @@ int32_t uCellSockCreate(int32_t cellHandle,
 }
 
 // Connect to a server.
-int32_t uCellSockConnect(int32_t cellHandle,
+int32_t uCellSockConnect(uDeviceHandle_t cellHandle,
                          int32_t sockHandle,
                          const uSockAddress_t *pRemoteAddress)
 {
@@ -831,9 +831,9 @@ int32_t uCellSockConnect(int32_t cellHandle,
 }
 
 // Close a socket.
-int32_t uCellSockClose(int32_t cellHandle,
+int32_t uCellSockClose(uDeviceHandle_t cellHandle,
                        int32_t sockHandle,
-                       void (*pCallback) (int32_t,
+                       void (*pCallback) (uDeviceHandle_t,
                                           int32_t))
 {
     int32_t errnoLocal = U_SOCK_EINVAL;
@@ -910,7 +910,7 @@ int32_t uCellSockClose(int32_t cellHandle,
 }
 
 // Clean-up.
-void uCellSockCleanup(int32_t cellHandle)
+void uCellSockCleanup(uDeviceHandle_t cellHandle)
 {
     // Nothing to do
     (void) cellHandle;
@@ -921,7 +921,7 @@ void uCellSockCleanup(int32_t cellHandle)
  * -------------------------------------------------------------- */
 
 // Set a socket to be blocking or non-blocking.
-void uCellSockBlockingSet(int32_t cellHandle,
+void uCellSockBlockingSet(uDeviceHandle_t cellHandle,
                           int32_t sockHandle,
                           bool isBlocking)
 {
@@ -932,7 +932,7 @@ void uCellSockBlockingSet(int32_t cellHandle,
 }
 
 // Get whether a socket is blocking or not.
-bool uCellSockBlockingGet(int32_t cellHandle,
+bool uCellSockBlockingGet(uDeviceHandle_t cellHandle,
                           int32_t sockHandle)
 {
     (void) cellHandle;
@@ -942,7 +942,7 @@ bool uCellSockBlockingGet(int32_t cellHandle,
 }
 
 // Set socket option.
-int32_t uCellSockOptionSet(int32_t cellHandle,
+int32_t uCellSockOptionSet(uDeviceHandle_t cellHandle,
                            int32_t sockHandle,
                            int32_t level,
                            uint32_t option,
@@ -1027,7 +1027,7 @@ int32_t uCellSockOptionSet(int32_t cellHandle,
 }
 
 // Get socket option.
-int32_t uCellSockOptionGet(int32_t cellHandle,
+int32_t uCellSockOptionGet(uDeviceHandle_t cellHandle,
                            int32_t sockHandle,
                            int32_t level,
                            uint32_t option,
@@ -1113,7 +1113,7 @@ int32_t uCellSockOptionGet(int32_t cellHandle,
 }
 
 // Apply a security profile to a socket.
-int32_t uCellSockSecure(int32_t cellHandle,
+int32_t uCellSockSecure(uDeviceHandle_t cellHandle,
                         int32_t sockHandle,
                         int32_t profileId)
 {
@@ -1157,19 +1157,19 @@ int32_t uCellSockSecure(int32_t cellHandle,
 }
 
 // Switch on hex mode.
-int32_t uCellSockHexModeOn(int32_t cellHandle)
+int32_t uCellSockHexModeOn(uDeviceHandle_t cellHandle)
 {
     return setHexMode(cellHandle, true);
 }
 
 // Switch off hex mode.
-int32_t uCellSockHexModeOff(int32_t cellHandle)
+int32_t uCellSockHexModeOff(uDeviceHandle_t cellHandle)
 {
     return setHexMode(cellHandle, false);
 }
 
 // Determine whether hex mode is on or off.
-bool uCellSockHexModeIsOn(int32_t cellHandle)
+bool uCellSockHexModeIsOn(uDeviceHandle_t cellHandle)
 {
     bool hexModeIsOn = false;
     uCellPrivateInstance_t *pInstance;
@@ -1188,7 +1188,7 @@ bool uCellSockHexModeIsOn(int32_t cellHandle)
  * -------------------------------------------------------------- */
 
 // Send a datagram.
-int32_t uCellSockSendTo(int32_t cellHandle,
+int32_t uCellSockSendTo(uDeviceHandle_t cellHandle,
                         int32_t sockHandle,
                         const uSockAddress_t *pRemoteAddress,
                         const void *pData, size_t dataSizeBytes)
@@ -1291,7 +1291,7 @@ int32_t uCellSockSendTo(int32_t cellHandle,
 }
 
 // Receive a datagram.
-int32_t uCellSockReceiveFrom(int32_t cellHandle,
+int32_t uCellSockReceiveFrom(uDeviceHandle_t cellHandle,
                              int32_t sockHandle,
                              uSockAddress_t *pRemoteAddress,
                              void *pData, size_t dataSizeBytes)
@@ -1484,7 +1484,7 @@ int32_t uCellSockReceiveFrom(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Send bytes over a connected socket.
-int32_t uCellSockWrite(int32_t cellHandle,
+int32_t uCellSockWrite(uDeviceHandle_t cellHandle,
                        int32_t sockHandle,
                        const void *pData, size_t dataSizeBytes)
 {
@@ -1602,7 +1602,7 @@ int32_t uCellSockWrite(int32_t cellHandle,
 }
 
 // Receive bytes on a connected socket.
-int32_t uCellSockRead(int32_t cellHandle,
+int32_t uCellSockRead(uDeviceHandle_t cellHandle,
                       int32_t sockHandle,
                       void *pData, size_t dataSizeBytes)
 {
@@ -1775,9 +1775,9 @@ int32_t uCellSockRead(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Register a callback on data being received.
-void uCellSockRegisterCallbackData(int32_t cellHandle,
+void uCellSockRegisterCallbackData(uDeviceHandle_t cellHandle,
                                    int32_t sockHandle,
-                                   void (*pCallback) (int32_t,
+                                   void (*pCallback) (uDeviceHandle_t,
                                                       int32_t))
 {
     uCellPrivateInstance_t *pInstance;
@@ -1798,9 +1798,9 @@ void uCellSockRegisterCallbackData(int32_t cellHandle,
 }
 
 // Register a callback on a socket being closed.
-void uCellSockRegisterCallbackClosed(int32_t cellHandle,
+void uCellSockRegisterCallbackClosed(uDeviceHandle_t cellHandle,
                                      int32_t sockHandle,
-                                     void (*pCallback) (int32_t,
+                                     void (*pCallback) (uDeviceHandle_t,
                                                         int32_t))
 {
     uCellPrivateInstance_t *pInstance;
@@ -1825,7 +1825,7 @@ void uCellSockRegisterCallbackClosed(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Bind a socket to a local address.
-int32_t uCellSockBind(int32_t cellHandle,
+int32_t uCellSockBind(uDeviceHandle_t cellHandle,
                       int32_t sockHandle,
                       const uSockAddress_t *pLocalAddress)
 {
@@ -1841,7 +1841,7 @@ int32_t uCellSockBind(int32_t cellHandle,
 }
 
 // Set listening mode.
-int32_t uCellSockListen(int32_t cellHandle,
+int32_t uCellSockListen(uDeviceHandle_t cellHandle,
                         int32_t sockHandle,
                         size_t backlog)
 {
@@ -1857,7 +1857,7 @@ int32_t uCellSockListen(int32_t cellHandle,
 }
 
 // Accept an incoming TCP connection.
-int32_t uCellSockAccept(int32_t cellHandle,
+int32_t uCellSockAccept(uDeviceHandle_t cellHandle,
                         int32_t sockHandle,
                         uSockAddress_t *pRemoteAddress)
 {
@@ -1877,7 +1877,7 @@ int32_t uCellSockAccept(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Perform a DNS look-up.
-int32_t uCellSockGetHostByName(int32_t cellHandle,
+int32_t uCellSockGetHostByName(uDeviceHandle_t cellHandle,
                                const char *pHostName,
                                uSockIpAddress_t *pHostIpAddress)
 {
@@ -1968,7 +1968,7 @@ int32_t uCellSockGetHostByName(int32_t cellHandle,
 }
 
 // Get the local address of a socket.
-int32_t uCellSockGetLocalAddress(int32_t cellHandle,
+int32_t uCellSockGetLocalAddress(uDeviceHandle_t cellHandle,
                                  int32_t sockHandle,
                                  uSockAddress_t *pLocalAddress)
 {
@@ -1984,7 +1984,7 @@ int32_t uCellSockGetLocalAddress(int32_t cellHandle,
         // uCellNetGetIpAddressStr() returns a positive size
         // on success
         errnoLocal = U_SOCK_ENETDOWN;
-        if ((uCellNetGetIpAddressStr(pInstance->handle, buffer) > 0) &&
+        if ((uCellNetGetIpAddressStr(pInstance->cellHandle, buffer) > 0) &&
             (uSockStringToAddress(buffer,
                                   pLocalAddress) == 0)) {
             // TODO: set port number to zero for now but
@@ -2004,7 +2004,7 @@ int32_t uCellSockGetLocalAddress(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Get the last error code for the given socket.
-int32_t uCellSockGetLastError(int32_t cellHandle,
+int32_t uCellSockGetLastError(uDeviceHandle_t cellHandle,
                               int32_t sockHandle)
 {
     // Do USOCTL 1 to return the last error code
@@ -2012,7 +2012,7 @@ int32_t uCellSockGetLastError(int32_t cellHandle,
 }
 
 // Get the number of bytes sent on the given socket
-int32_t uCellSockGetBytesSent(int32_t cellHandle,
+int32_t uCellSockGetBytesSent(uDeviceHandle_t cellHandle,
                               int32_t sockHandle)
 {
     // Do USOCTL 2 to return the number of bytes sent
@@ -2020,7 +2020,7 @@ int32_t uCellSockGetBytesSent(int32_t cellHandle,
 }
 
 // Get the number of bytes received on the given socket
-int32_t uCellSockGetBytesReceived(int32_t cellHandle,
+int32_t uCellSockGetBytesReceived(uDeviceHandle_t cellHandle,
                                   int32_t sockHandle)
 {
     // Do USOCTL 3 to return the number of bytes received

@@ -39,7 +39,7 @@ extern "C" {
  */
 //lint -esym(755, U_CELL_TEST_PRIVATE_DEFAULTS) Suppress not referenced,
 // which it might not be if U_CFG_TEST_CELL_MODULE_TYPE is not defined.
-#define U_CELL_TEST_PRIVATE_DEFAULTS {-1, NULL, -1}
+#define U_CELL_TEST_PRIVATE_DEFAULTS {-1, NULL, NULL}
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -50,7 +50,7 @@ extern "C" {
 typedef struct {
     int32_t uartHandle; /**< The handle returned by uPortUartOpen(). */
     uAtClientHandle_t atClientHandle; /**< The handle returned by uAtClientAdd(). */
-    int32_t cellHandle;  /**< The handle returned by uCellAdd(). */
+    uDeviceHandle_t cellHandle;  /**< The device handle returned by uCellAdd(). */
 } uCellTestPrivate_t;
 
 /* ----------------------------------------------------------------
@@ -143,7 +143,7 @@ uCellNetRat_t uCellTestPrivateInitRatGet(uint32_t supportedRatsBitmap);
  * @param cellHandle  the handle of the cellular module.
  * @return            true on success else negative error code.
  */
-int32_t uCellTestPrivateLwm2mDisable(int32_t cellHandle);
+int32_t uCellTestPrivateLwm2mDisable(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }

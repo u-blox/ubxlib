@@ -36,8 +36,6 @@
 #include "stdbool.h"
 #include "string.h"    // memset()
 
-#include "u_compiler.h" // for U_DEPRECATED
-
 #include "u_error_common.h"
 
 #include "u_cfg_sw.h"
@@ -115,7 +113,7 @@ static void btEdmConnectionCallback(int32_t edmStreamHandle,
                                     uShortRangeConnectionEventType_t eventType,
                                     const uShortRangeConnectDataBt_t *pConnectData,
                                     void *pCallbackParameter);
-static void atConnectionEvent(int32_t shortRangeHandle,
+static void atConnectionEvent(uDeviceHandle_t devHandle,
                               int32_t connHandle,
                               uShortRangeConnectionEventType_t eventType,
                               uShortRangeConnectDataBt_t *pConnectData,
@@ -350,13 +348,13 @@ static void btEdmConnectionCallback(int32_t edmStreamHandle,
     }
 }
 
-static void atConnectionEvent(int32_t shortRangeHandle,
+static void atConnectionEvent(uDeviceHandle_t devHandle,
                               int32_t connHandle,
                               uShortRangeConnectionEventType_t eventType,
                               uShortRangeConnectDataBt_t *pConnectData,
                               void *pCallbackParameter)
 {
-    (void)shortRangeHandle;
+    (void)devHandle;
     (void)pConnectData;
     (void)eventType;
     uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pCallbackParameter;
@@ -435,17 +433,16 @@ static void onBleSpsEvent(void *pParam, size_t eventSize)
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
+int32_t uBleSpsSetCallbackConnectionStatus(uDeviceHandle_t devHandle,
                                            uBleSpsConnectionStatusCallback_t pCallback,
                                            void *pCallbackParameter)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(shoHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             bool cleanUp = false;
@@ -462,7 +459,7 @@ int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
                 }
 
                 if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                    errorCode = uShortRangeSetBtConnectionStatusCallback(shoHandle, atConnectionEvent,
+                    errorCode = uShortRangeSetBtConnectionStatusCallback(devHandle, atConnectionEvent,
                                                                          (void *) pInstance);
                 }
 
@@ -483,7 +480,7 @@ int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
             if (cleanUp) {
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLC:");
                 uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLD:");
-                uShortRangeSetBtConnectionStatusCallback(shoHandle, NULL, NULL);
+                uShortRangeSetBtConnectionStatusCallback(devHandle, NULL, NULL);
                 uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, NULL, NULL);
                 pInstance->pSpsConnectionCallback = NULL;
                 pInstance->pSpsConnectionCallbackParameter = NULL;
@@ -513,18 +510,17 @@ static int32_t setBleConfig(const uAtClientHandle_t atHandle, int32_t parameter,
     return error;
 }
 
-int32_t uBleSpsConnectSps(int32_t bleHandle,
+int32_t uBleSpsConnectSps(uDeviceHandle_t devHandle,
                           const char *pAddress,
                           const uBleSpsConnParams_t *pConnParams)
 {
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(shoHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
@@ -586,15 +582,14 @@ int32_t uBleSpsConnectSps(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleSpsDisconnect(int32_t bleHandle, int32_t connHandle)
+int32_t uBleSpsDisconnect(uDeviceHandle_t devHandle, int32_t connHandle)
 {
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(shoHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -613,10 +608,9 @@ int32_t uBleSpsDisconnect(int32_t bleHandle, int32_t connHandle)
     return errorCode;
 }
 
-int32_t uBleSpsReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t length)
+int32_t uBleSpsReceive(uDeviceHandle_t devHandle, int32_t channel, char *pData, int32_t length)
 {
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
-    uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(shoHandle);
+    uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(devHandle);
     uShortRangePbufList_t *pList;
     int32_t sizeOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -639,15 +633,14 @@ int32_t uBleSpsReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t 
     return sizeOrErrorCode;
 }
 
-int32_t uBleSpsSend(int32_t bleHandle, int32_t channel, const char *pData, int32_t length)
+int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pData, int32_t length)
 {
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(shoHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             uBleSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
@@ -661,15 +654,14 @@ int32_t uBleSpsSend(int32_t bleHandle, int32_t channel, const char *pData, int32
     return errorCode;
 }
 
-int32_t uBleSpsSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeout)
+int32_t uBleSpsSetSendTimeout(uDeviceHandle_t devHandle, int32_t channel, uint32_t timeout)
 {
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t returnValue = (int32_t)U_ERROR_COMMON_UNKNOWN;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
         uShortRangePrivateInstance_t *pInstance;
 
-        pInstance = pUShortRangePrivateGetInstance(shoHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         if (pInstance != NULL) {
             uBleSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
 
@@ -685,17 +677,16 @@ int32_t uBleSpsSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeo
     return returnValue;
 }
 
-int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
+int32_t uBleSpsSetDataAvailableCallback(uDeviceHandle_t devHandle,
                                         uBleSpsAvailableCallback_t pCallback,
                                         void *pCallbackParameter)
 {
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
 
-        pInstance = pUShortRangePrivateGetInstance(shoHandle);
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             if (pInstance->pBtDataAvailableCallback == NULL && pCallback != NULL) {
@@ -760,25 +751,25 @@ void uBleSpsPrivateDeinit(void)
 
 //lint -esym(818, pHandles) Suppress pHandles could be const, need to
 // follow prototype
-int32_t uBleSpsGetSpsServerHandles(int32_t bleHandle, int32_t channel,
+int32_t uBleSpsGetSpsServerHandles(uDeviceHandle_t devHandle, int32_t channel,
                                    uBleSpsHandles_t *pHandles)
 {
     (void)channel;
-    (void)bleHandle;
+    (void)devHandle;
     (void)pHandles;
     return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uBleSpsPresetSpsServerHandles(int32_t bleHandle, const uBleSpsHandles_t *pHandles)
+int32_t uBleSpsPresetSpsServerHandles(uDeviceHandle_t devHandle, const uBleSpsHandles_t *pHandles)
 {
-    (void)bleHandle;
+    (void)devHandle;
     (void)pHandles;
     return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uBleSpsDisableFlowCtrlOnNext(int32_t bleHandle)
+int32_t uBleSpsDisableFlowCtrlOnNext(uDeviceHandle_t devHandle)
 {
-    (void)bleHandle;
+    (void)devHandle;
     return (int32_t)U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

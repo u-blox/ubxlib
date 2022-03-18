@@ -228,7 +228,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
 {
     int32_t errorCode;
     uNetworkTestCfg_t *pNetworkCfg = NULL;
-    int32_t networkHandle = -1;
+    uDeviceHandle_t devHandle = NULL;
     uSockDescriptor_t descriptor = -1;
     uSockAddress_t remoteAddress;
     char *pDataReceived;
@@ -253,7 +253,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
 
     // Add each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].handle = -1;
+        gUNetworkTestCfg[x].devHandle = NULL;
         if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
             (U_NETWORK_TEST_TYPE_HAS_SECURE_SOCK(gUNetworkTestCfg[x].type))) {
             uPortLog("U_SECURITY_TLS_TEST: adding %s network...\n",
@@ -264,14 +264,15 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
             // hence we capture the cellular network handle here and
             // modify the GNSS configuration to use it before we add
             // the GNSS network
-            uNetworkTestGnssAtConfiguration(networkHandle,
+            uNetworkTestGnssAtConfiguration(devHandle,
                                             gUNetworkTestCfg[x].pConfiguration);
 #endif
-            gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                                     gUNetworkTestCfg[x].pConfiguration);
-            U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+            errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
+                                    gUNetworkTestCfg[x].pConfiguration,
+                                    &gUNetworkTestCfg[x].devHandle);
+            U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
             if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                networkHandle = gUNetworkTestCfg[x].handle;
+                devHandle = gUNetworkTestCfg[x].devHandle;
             }
         }
     }
@@ -285,16 +286,16 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     // Bring up each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         pNetworkCfg = &(gUNetworkTestCfg[x]);
-        if (pNetworkCfg->handle >= 0) {
-            networkHandle = pNetworkCfg->handle;
+        if (pNetworkCfg->devHandle != NULL) {
+            devHandle = pNetworkCfg->devHandle;
 
             uPortLog("U_SECURITY_TLS_TEST: bringing up %s...\n",
                      gpUNetworkTestTypeName[pNetworkCfg->type]);
-            U_PORT_TEST_ASSERT(uNetworkUp(networkHandle) == 0);
+            U_PORT_TEST_ASSERT(uNetworkUp(devHandle) == 0);
 
             // Check if the client certificate is already
             // stored on the module
-            if ((uSecurityCredentialGetHash(networkHandle,
+            if ((uSecurityCredentialGetHash(devHandle,
                                             U_SECURITY_CREDENTIAL_CLIENT_X509,
                                             "ubxlib_test_client_cert",
                                             hash) != 0) ||
@@ -302,7 +303,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                 // No: load the client certificate into the module
                 uPortLog("U_SECURITY_TLS_TEST: storing client certificate"
                          " for the secure echo server...\n");
-                U_PORT_TEST_ASSERT(uSecurityCredentialStore(networkHandle,
+                U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                             U_SECURITY_CREDENTIAL_CLIENT_X509,
                                                             "ubxlib_test_client_cert",
                                                             gpEchoServerClientCertPem,
@@ -312,7 +313,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
             settings.pClientCertificateName = "ubxlib_test_client_cert";
 
             // Check if the client key is already stored on the module
-            if ((uSecurityCredentialGetHash(networkHandle,
+            if ((uSecurityCredentialGetHash(devHandle,
                                             U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                             "ubxlib_test_client_key",
                                             hash) != 0) ||
@@ -320,7 +321,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                 // No: load the client key into the module
                 uPortLog("U_SECURITY_TLS_TEST: storing client private key"
                          " for the secure echo server...\n");
-                U_PORT_TEST_ASSERT(uSecurityCredentialStore(networkHandle,
+                U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                             U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                             "ubxlib_test_client_key",
                                                             gpEchoServerClientKeyPem,
@@ -332,7 +333,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
             // Check if the server certificate is already
             // stored on the module (SARA-R5, for instance, will
             // check against this by default)
-            if ((uSecurityCredentialGetHash(networkHandle,
+            if ((uSecurityCredentialGetHash(devHandle,
                                             U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                             "ubxlib_test_server_cert",
                                             hash) != 0) ||
@@ -340,7 +341,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                 // No: load the server certificate into the module
                 uPortLog("U_SECURITY_TLS_TEST: storing server certificate"
                          " for the secure echo server...\n");
-                U_PORT_TEST_ASSERT(uSecurityCredentialStore(networkHandle,
+                U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                             U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                                             "ubxlib_test_server_cert",
                                                             gpEchoServerServerCertPem,
@@ -358,7 +359,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
             // account of that initialisation heap cost here.
             heapSockInitLoss = uPortGetHeapFree();
             // Look up the remoteAddress of the server we use for secure TCP echo
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
+            U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
                                                   U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME,
                                                   &(remoteAddress.ipAddress)) == 0);
             heapSockInitLoss -= uPortGetHeapFree();
@@ -378,7 +379,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                 // to save time so need to allow for it in the heap loss
                 // calculation
                 heapXxxSockInitLoss += uPortGetHeapFree();
-                descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_STREAM,
+                descriptor = uSockCreate(devHandle, U_SOCK_TYPE_STREAM,
                                          U_SOCK_PROTOCOL_TCP);
 
                 // Secure the socket
@@ -463,10 +464,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     // that GNSS (which might be connected via a cellular
     // module) is taken down before cellular
     for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
-        if (gUNetworkTestCfg[x].handle >= 0) {
+        if (gUNetworkTestCfg[x].devHandle != NULL) {
             uPortLog("U_SECURITY_TLS_TEST: taking down %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].handle) == 0);
+            U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].devHandle) == 0);
         }
     }
 
@@ -505,7 +506,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].handle = -1;
+        gUNetworkTestCfg[x].devHandle = NULL;
     }
     uNetworkDeinit();
 

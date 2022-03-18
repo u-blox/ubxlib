@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the network API. These functions are
@@ -118,46 +119,49 @@ void uNetworkDeinit();
  *                         all of these structures is of type
  *                         uNetworkType_t to indicate the
  *                         type and allow cross-checking.
- * @return                 on success the handle of the
- *                         network instance, else negative
- *                         error code.  This handle may also
+ * @param[out] pDevHandle  a pointer to the output handle.
+ *                         Will only be set on success.
+ *                         This handle may also
  *                         be used with the underlying sho/cell
  *                         API to perform operations that
  *                         cannot be carried out through
  *                         this network API.
+ * @return                 zero on success or negative error
+ *                         code on failure.
  */
 int32_t uNetworkAdd(uNetworkType_t type,
-                    const void *pConfiguration);
+                    const void *pConfiguration,
+                    uDeviceHandle_t *pDevHandle);
 
 /** Remove a network instance.  It is up to the caller to ensure
  * that the network in question is disconnected and/or powered
  * down etc.; all this function does is remove the logical
  * instance, clearing up resources.
  *
- * @param handle  the handle of the network instance to remove.
- * @return        zero on success else negative error code.
+ * @param devHandle  the handle of the device to remove.
+ * @return           zero on success else negative error code.
  */
-int32_t uNetworkRemove(int32_t handle);
+int32_t uNetworkRemove(uDeviceHandle_t devHandle);
 
 /** Bring up the given network instance, connecting it as defined
  * in the configuration passed to uNetworkAdd().  If the network
  * is already up the implementation should return success without
  * doing anything.
  *
- * @param handle the handle of the instance to bring up.
- * @return       zero on success else negative error code.
+ * @param devHandle the handle of the device to bring up.
+ * @return          zero on success else negative error code.
  */
-int32_t uNetworkUp(int32_t handle);
+int32_t uNetworkUp(uDeviceHandle_t devHandle);
 
 /** Take down the given network instance, disconnecting
  * it from any peer entity.  After this function returns
  * uNetworkUp() must be called once more to ensure that the
  * module is brought back to a responsive state.
  *
- * @param handle the handle of the instance to take down.
- * @return       zero on success else negative error code.
+ * @param devHandle the handle of the device to take down.
+ * @return          zero on success else negative error code.
  */
-int32_t uNetworkDown(int32_t handle);
+int32_t uNetworkDown(uDeviceHandle_t devHandle);
 
 #ifdef __cplusplus
 }

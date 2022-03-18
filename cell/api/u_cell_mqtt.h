@@ -159,7 +159,7 @@ typedef enum {
  * @return                   zero on success or negative error code on
  *                           failure.
  */
-int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
+int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                       const char *pClientIdStr, const char *pUserNameStr,
                       const char *pPasswordStr,
                       bool (*pKeepGoingCallback)(void),
@@ -169,7 +169,7 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
  *
  * @param cellHandle  the handle of the cellular instance to be used.
  */
-void uCellMqttDeinit(int32_t cellHandle);
+void uCellMqttDeinit(uDeviceHandle_t cellHandle);
 
 /** Get the current cellular MQTT client ID.
  *
@@ -183,7 +183,7 @@ void uCellMqttDeinit(int32_t cellHandle);
  *                         not including the terminator (i.e. what
  *                         strlen() would return), or negative error code.
  */
-int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
+int32_t uCellMqttGetClientId(uDeviceHandle_t cellHandle, char *pClientIdStr,
                              size_t sizeBytes);
 
 /** Set the local port to use for the MQTT client.
@@ -194,7 +194,7 @@ int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
  * @param port       the port number.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetLocalPort(int32_t cellHandle, uint16_t port);
+int32_t uCellMqttSetLocalPort(uDeviceHandle_t cellHandle, uint16_t port);
 
 /** Get the local port used by the MQTT client.
  * Note that only SARA-R412M-02B supports setting the local port and,
@@ -204,7 +204,7 @@ int32_t uCellMqttSetLocalPort(int32_t cellHandle, uint16_t port);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           the port number on success or negative error code.
  */
-int32_t uCellMqttGetLocalPort(int32_t cellHandle);
+int32_t uCellMqttGetLocalPort(uDeviceHandle_t cellHandle);
 
 /** Set the inactivity timeout used by the MQTT client.  If this
  * is not called then no inactivity timeout is used.  An inactivity
@@ -221,7 +221,7 @@ int32_t uCellMqttGetLocalPort(int32_t cellHandle);
  * @param seconds     the inactivity timeout in seconds.
  * @return            zero on success or negative error code.
  */
-int32_t uCellMqttSetInactivityTimeout(int32_t cellHandle,
+int32_t uCellMqttSetInactivityTimeout(uDeviceHandle_t cellHandle,
                                       size_t seconds);
 
 /** Get the inactivity timeout used by the MQTT client.  Note that
@@ -231,7 +231,7 @@ int32_t uCellMqttSetInactivityTimeout(int32_t cellHandle,
  * @return           the inactivity timeout in seconds on success
  *                   or negative error code.
  */
-int32_t uCellMqttGetInactivityTimeout(int32_t cellHandle);
+int32_t uCellMqttGetInactivityTimeout(uDeviceHandle_t cellHandle);
 
 /** Switch MQTT ping or "keep alive" on.  This will send an
  * MQTT ping message to the broker near the end of the
@@ -247,7 +247,7 @@ int32_t uCellMqttGetInactivityTimeout(int32_t cellHandle);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetKeepAliveOn(int32_t cellHandle);
+int32_t uCellMqttSetKeepAliveOn(uDeviceHandle_t cellHandle);
 
 /** Switch MQTT ping or "keep alive" off. See
  * uMqttSetKeepAliveOn() for more details.
@@ -255,7 +255,7 @@ int32_t uCellMqttSetKeepAliveOn(int32_t cellHandle);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetKeepAliveOff(int32_t cellHandle);
+int32_t uCellMqttSetKeepAliveOff(uDeviceHandle_t cellHandle);
 
 /** Determine whether MQTT ping or "keep alive" is on or off.
  *
@@ -263,7 +263,7 @@ int32_t uCellMqttSetKeepAliveOff(int32_t cellHandle);
  * @return           true if MQTT ping or "keep alive" is on, else
  *                   false.
  */
-bool uCellMqttIsKeptAlive(int32_t cellHandle);
+bool uCellMqttIsKeptAlive(uDeviceHandle_t cellHandle);
 
 /** If this function returns successfully then
  * the topic subscriptions and message queue status
@@ -274,7 +274,7 @@ bool uCellMqttIsKeptAlive(int32_t cellHandle);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetRetainOn(int32_t cellHandle);
+int32_t uCellMqttSetRetainOn(uDeviceHandle_t cellHandle);
 
 /** Switch MQTT session retention off. See
  * uMqttSetSessionRetainOn() for more details.
@@ -285,14 +285,14 @@ int32_t uCellMqttSetRetainOn(int32_t cellHandle);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetRetainOff(int32_t cellHandle);
+int32_t uCellMqttSetRetainOff(uDeviceHandle_t cellHandle);
 
 /** Determine whether MQTT session retention is on or off.
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           true if MQTT session retention is on else false.
  */
-bool uCellMqttIsRetained(int32_t cellHandle);
+bool uCellMqttIsRetained(uDeviceHandle_t cellHandle);
 
 /** Switch MQTT TLS security on.  By default MQTT TLS
  * security is off.  If you intend to switch security on don't
@@ -315,7 +315,7 @@ bool uCellMqttIsRetained(int32_t cellHandle);
  * @return                  zero on success or negative
  *                          error code.
  */
-int32_t uCellMqttSetSecurityOn(int32_t cellHandle,
+int32_t uCellMqttSetSecurityOn(uDeviceHandle_t cellHandle,
                                int32_t securityProfileId);
 
 /** Switch MQTT TLS security off.
@@ -327,7 +327,7 @@ int32_t uCellMqttSetSecurityOn(int32_t cellHandle,
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetSecurityOff(int32_t cellHandle);
+int32_t uCellMqttSetSecurityOff(uDeviceHandle_t cellHandle);
 
 /** Determine whether MQTT TLS security is on or off.
  *
@@ -340,7 +340,7 @@ int32_t uCellMqttSetSecurityOff(int32_t cellHandle);
  * @return                   true if MQTT TLS security is
  *                           on else false.
  */
-bool uCellMqttIsSecured(int32_t cellHandle,
+bool uCellMqttIsSecured(uDeviceHandle_t cellHandle,
                         int32_t *pSecurityProfileId);
 
 /** Set the MQTT "will" message that will be sent
@@ -376,7 +376,7 @@ bool uCellMqttIsSecured(int32_t cellHandle,
  * @return                 zero on success else negative error
  *                         code.
  */
-int32_t uCellMqttSetWill(int32_t cellHandle,
+int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                          const char *pTopicNameStr,
                          const char *pMessage,
                          size_t messageSizeBytes,
@@ -411,7 +411,7 @@ int32_t uCellMqttSetWill(int32_t cellHandle,
  * @return                    zero on success else negative error
  *                            code.
  */
-int32_t uCellMqttGetWill(int32_t cellHandle, char *pTopicNameStr,
+int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                          size_t topicNameSizeBytes,
                          char *pMessage,
                          size_t *pMessageSizeBytes,
@@ -425,21 +425,21 @@ int32_t uCellMqttGetWill(int32_t cellHandle, char *pTopicNameStr,
  *                      be used.
  * @return              zero on success or negative error code.
  */
-int32_t uCellMqttConnect(int32_t cellHandle);
+int32_t uCellMqttConnect(uDeviceHandle_t cellHandle);
 
 /** Stop an MQTT session.
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttDisconnect(int32_t cellHandle);
+int32_t uCellMqttDisconnect(uDeviceHandle_t cellHandle);
 
 /** Determine whether an MQTT session is active or not.
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           true if an MQTT session is active else false.
  */
-bool uCellMqttIsConnected(int32_t cellHandle);
+bool uCellMqttIsConnected(uDeviceHandle_t cellHandle);
 
 /** Publish an MQTT message. The pKeepGoingCallback()
  * function set during initialisation will be called while
@@ -474,7 +474,7 @@ bool uCellMqttIsConnected(int32_t cellHandle);
  * @return                 zero on success else negative error
  *                         code.
  */
-int32_t uCellMqttPublish(int32_t cellHandle, const char *pTopicNameStr,
+int32_t uCellMqttPublish(uDeviceHandle_t cellHandle, const char *pTopicNameStr,
                          const char *pMessage,
                          size_t messageSizeBytes,
                          uCellMqttQos_t qos, bool retain);
@@ -497,7 +497,7 @@ int32_t uCellMqttPublish(int32_t cellHandle, const char *pTopicNameStr,
  * @return                 the QoS of the subscription else
  *                         negative error code.
  */
-int32_t uCellMqttSubscribe(int32_t cellHandle,
+int32_t uCellMqttSubscribe(uDeviceHandle_t cellHandle,
                            const char *pTopicFilterStr,
                            uCellMqttQos_t maxQos);
 
@@ -515,7 +515,7 @@ int32_t uCellMqttSubscribe(int32_t cellHandle,
  * @return                 zero on success else negative error
  *                         code.
  */
-int32_t uCellMqttUnsubscribe(int32_t cellHandle,
+int32_t uCellMqttUnsubscribe(uDeviceHandle_t cellHandle,
                              const char *pTopicFilterStr);
 
 /** Set a callback to be called when new messages are
@@ -534,7 +534,7 @@ int32_t uCellMqttUnsubscribe(int32_t cellHandle,
  * @return                zero on success else negative error
  *                        code.
  */
-int32_t uCellMqttSetMessageCallback(int32_t cellHandle,
+int32_t uCellMqttSetMessageCallback(uDeviceHandle_t cellHandle,
                                     void (*pCallback) (int32_t, void *),
                                     void *pCallbackParam);
 
@@ -544,7 +544,7 @@ int32_t uCellMqttSetMessageCallback(int32_t cellHandle,
  * @return           the number of unread messages or negative
  *                   error code.
  */
-int32_t uCellMqttGetUnread(int32_t cellHandle);
+int32_t uCellMqttGetUnread(uDeviceHandle_t cellHandle);
 
 /** Read an MQTT message.
  *
@@ -567,7 +567,7 @@ int32_t uCellMqttGetUnread(int32_t cellHandle);
  * @return                    zero on success else negative error
  *                            code.
  */
-int32_t uCellMqttMessageRead(int32_t cellHandle, char *pTopicNameStr,
+int32_t uCellMqttMessageRead(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                              size_t topicNameSizeBytes,
                              char *pMessage, size_t *pMessageSizeBytes,
                              uCellMqttQos_t *pQos);
@@ -578,13 +578,13 @@ int32_t uCellMqttMessageRead(int32_t cellHandle, char *pTopicNameStr,
  * @return           an error code, the meaning of which is
  *                   utterly module specific.
  */
-int32_t uCellMqttGetLastErrorCode(int32_t cellHandle);
+int32_t uCellMqttGetLastErrorCode(uDeviceHandle_t cellHandle);
 
 /** Determine if MQTT is supported by the given cellHandle.
  *
  * @param cellHandle  the handle of the cellular instance to be used.
  */
-bool uCellMqttIsSupported(int32_t cellHandle);
+bool uCellMqttIsSupported(uDeviceHandle_t cellHandle);
 
 /** Set a callback to be called if the MQTT connection
  * is disconnected, either locally or by the broker.
@@ -601,7 +601,7 @@ bool uCellMqttIsSupported(int32_t cellHandle);
  * @return               zero on success else negative error
  *                       code.
  */
-int32_t uCellMqttSetDisconnectCallback(int32_t cellHandle,
+int32_t uCellMqttSetDisconnectCallback(uDeviceHandle_t cellHandle,
                                        void (*pCallback) (int32_t, void *),
                                        void *pCallbackParam);
 

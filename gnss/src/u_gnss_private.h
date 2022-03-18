@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -104,7 +105,7 @@ typedef struct {
  * before an instance is removed.
  */
 typedef struct uGnssPrivateInstance_t {
-    int32_t handle; /**< the handle for this instance. */
+    uDeviceHandle_t gnssHandle; /**< the handle for this instance. */
     const uGnssPrivateModule_t *pModule; /**< pointer to the module type. */
     uGnssTransportType_t transportType; /**< the type of transport to use. */
     uGnssTransportHandle_t transportHandle; /**< the handle of the transport to use. */
@@ -153,21 +154,21 @@ extern uPortMutexHandle_t gUGnssPrivateMutex;
 /** Find a GNSS instance in the list by instance handle.
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
- * @param handle  the instance handle.
- * @return        a pointer to the instance.
+ * @param gnssHandle  the instance handle.
+ * @return            a pointer to the instance.
  */
-uGnssPrivateInstance_t *pUGnssPrivateGetInstance(int32_t handle);
+uGnssPrivateInstance_t *pUGnssPrivateGetInstance(uDeviceHandle_t gnssHandle);
 
 /** Get the module characteristics for a given instance.
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
- * @param handle  the instance handle.
- * @return        a pointer to the module characteristics.
+ * @param gnssHandle  the instance handle.
+ * @return            a pointer to the module characteristics.
  */
 //lint -esym(714, pUGnssPrivateGetModule) Suppress lack of a reference
 //lint -esym(759, pUGnssPrivateGetModule) etc. since use of this function
 //lint -esym(765, pUGnssPrivateGetModule) may be compiled-out in various ways
-const uGnssPrivateModule_t *pUGnssPrivateGetModule(int32_t handle);
+const uGnssPrivateModule_t *pUGnssPrivateGetModule(uDeviceHandle_t gnssHandle);
 
 /** Send a buffer as hex.
  *

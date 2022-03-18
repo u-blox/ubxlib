@@ -75,8 +75,8 @@ static uLocationAssist_t gLocationAssistCellLocate = {500000, // desiredAccuracy
                                                       60,     // desiredTimeoutSeconds
                                                       true,   // disable GNSS for Cell Locate so that
                                                       // a GNSS network can use it
-                                                      -1, -1, -1, -1, -1, NULL, NULL
-                                                      };
+                                                      NULL, -1, -1, -1, -1, NULL, NULL
+                                                     };
 
 /** Location configuration for Cell Locate.
  */
@@ -298,7 +298,7 @@ void uLocationTestCfgDeepCopyFree(uLocationTestCfg_t *pCfg)
 }
 
 // Log into an MQTT broker.
-void *pULocationTestMqttLogin(int32_t networkHandle,
+void *pULocationTestMqttLogin(uDeviceHandle_t devHandle,
                               const char *pBrokerNameStr,
                               const char *pUserNameStr,
                               const char *pPasswordStr,
@@ -307,7 +307,7 @@ void *pULocationTestMqttLogin(int32_t networkHandle,
     uMqttClientContext_t *pContext;
     uMqttClientConnection_t connection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
 
-    pContext = pUMqttClientOpen(networkHandle, NULL);
+    pContext = pUMqttClientOpen(devHandle, NULL);
     if (pContext != NULL) {
         connection.pBrokerNameStr = pBrokerNameStr;
         connection.pUserNameStr = pUserNameStr;

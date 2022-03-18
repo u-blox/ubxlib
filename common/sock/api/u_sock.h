@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_device.h" // uDeviceHandle_t
 
 /** @file
  * @brief This header file defines the sockets API. These functions are
@@ -360,7 +361,7 @@ typedef struct {
 
 /** Create a socket.
  *
- * @param networkHandle  the handle of the underlying network
+ * @param devHandle      the handle of the underlying network
  *                       layer to use, usually established by
  *                       a call to uNetworkAdd().
  * @param type           the type of socket to create.
@@ -370,7 +371,7 @@ typedef struct {
  *                       error code (and errno will also be set to
  *                       a value from u_sock_errno.h).
  */
-int32_t uSockCreate(int32_t networkHandle, uSockType_t type,
+int32_t uSockCreate(uDeviceHandle_t devHandle, uSockType_t type,
                     uSockProtocol_t protocol);
 
 /** Make an outgoing connection on the given socket.
@@ -736,7 +737,7 @@ int32_t uSockGetLocalAddress(uSockDescriptor_t descriptor,
  * straight away without any external action, hence this also
  * implements "get host by address".
  *
- * @param networkHandle  the handle of the underlying network to
+ * @param devHandle      the handle of the underlying network to
  *                       use for host name look-up.
  * @param pHostName      a string representing the host to search
  *                       for, e.g. "google.com" or "192.168.1.0".
@@ -748,7 +749,7 @@ int32_t uSockGetLocalAddress(uSockDescriptor_t descriptor,
  *                       (and errno will also be set to a value from
  *                       u_sock_errno.h).
  */
-int32_t uSockGetHostByName(int32_t networkHandle, const char *pHostName,
+int32_t uSockGetHostByName(uDeviceHandle_t devHandle, const char *pHostName,
                            uSockIpAddress_t *pHostIpAddress);
 
 

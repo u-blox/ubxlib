@@ -41,6 +41,8 @@
 
 #include "u_port_uart.h"
 
+#include "u_device_internal.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"
@@ -55,7 +57,6 @@
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
 
-#include "u_network_handle.h"
 #include "u_network.h"
 #include "u_network_config_gnss.h"
 #include "u_network_private_gnss.h"
@@ -80,7 +81,7 @@
 typedef struct {
     uGnssTransportType_t transportType;
     uGnssTransportHandle_t transportHandle;
-    int32_t gnss;
+    uDeviceHandle_t devHandle;
 } uNetworkPrivateGnssInstance_t;
 
 /* ----------------------------------------------------------------
@@ -102,7 +103,7 @@ static uNetworkPrivateGnssInstance_t *pGetFree()
 
     for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
          (pFree == NULL); x++) {
-        if ((gInstance[x].gnss < 0) &&
+        if ((gInstance[x].devHandle == NULL) &&
             (gInstance[x].transportType == U_GNSS_TRANSPORT_NONE)) {
             pFree = &(gInstance[x]);
         }
@@ -112,14 +113,14 @@ static uNetworkPrivateGnssInstance_t *pGetFree()
 }
 
 // Find the given instance in the list.
-static uNetworkPrivateGnssInstance_t *pGetInstance(int32_t gnssHandle)
+static uNetworkPrivateGnssInstance_t *pGetInstance(uDeviceHandle_t devHandle)
 {
     uNetworkPrivateGnssInstance_t *pInstance = NULL;
 
-    // Find the handle in the list
+    // Find the devHandle in the list
     for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
          (pInstance == NULL); x++) {
-        if (gInstance[x].gnss == gnssHandle) {
+        if (gInstance[x].devHandle == devHandle) {
             pInstance = &(gInstance[x]);
         }
     }
@@ -138,7 +139,7 @@ int32_t uNetworkInitGnss(void)
 
     for (size_t x = 0; x < sizeof(gInstance) / sizeof(gInstance[0]); x++) {
         gInstance[x].transportType = U_GNSS_TRANSPORT_NONE;
-        gInstance[x].gnss = -1;
+        gInstance[x].devHandle = NULL;
     }
 
     return (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -151,11 +152,13 @@ void uNetworkDeinitGnss(void)
 }
 
 // Add a GNSS network instance.
-int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
+int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration,
+                        uDeviceHandle_t *pDevHandle)
 {
     int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     uNetworkPrivateGnssInstance_t *pInstance;
     int32_t x;
+    int32_t atDevType = uDeviceGetDeviceType(pConfiguration->devHandleAt);
 
     pInstance = pGetFree();
     if (pInstance != NULL) {
@@ -179,15 +182,14 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
                 }
                 break;
             case U_GNSS_TRANSPORT_UBX_AT:
-                // Get the AT handle from the network instance we are
+                // Get the AT devHandle from the network instance we are
                 // attached through
-                if (U_NETWORK_HANDLE_IS_BLE(pConfiguration->networkHandleAt) ||
-                    U_NETWORK_HANDLE_IS_WIFI(pConfiguration->networkHandleAt)) {
-                    errorCodeOrHandle = uShortRangeAtClientHandleGet(pConfiguration->networkHandleAt,
+                if (atDevType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
+                    errorCodeOrHandle = uShortRangeAtClientHandleGet(pConfiguration->devHandleAt,
                                                                      //lint -e(181) Suppress unusual pointer cast
                                                                      (uAtClientHandle_t *) & (pInstance->transportHandle.pAt));
-                } else if (U_NETWORK_HANDLE_IS_CELL(pConfiguration->networkHandleAt)) {
-                    errorCodeOrHandle = uCellAtClientHandleGet(pConfiguration->networkHandleAt,
+                } else if (atDevType == (int32_t) U_DEVICE_TYPE_CELL) {
+                    errorCodeOrHandle = uCellAtClientHandleGet(pConfiguration->devHandleAt,
                                                                //lint -e(181) Suppress unusual pointer cast
                                                                (uAtClientHandle_t *) & (pInstance->transportHandle.pAt));
                 }
@@ -202,31 +204,32 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
             errorCodeOrHandle = uGnssAdd((uGnssModuleType_t) pConfiguration->moduleType,
                                          (uGnssTransportType_t) pInstance->transportType,
                                          pInstance->transportHandle,
-                                         pConfiguration->pinGnssEnablePower, false);
+                                         pConfiguration->pinGnssEnablePower, false,
+                                         pDevHandle);
             if (errorCodeOrHandle >= 0) {
-                pInstance->gnss = errorCodeOrHandle;
+                pInstance->devHandle = *pDevHandle;
                 if (pConfiguration->transportType == (int32_t) U_GNSS_TRANSPORT_UBX_AT) {
                     // If specified, and if the GNSS chip is not inside the
                     // intervening module, set the pins of the AT module that
                     // control power to and see Data Ready from the GNSS chip
                     // Note: if we put GNSS chips inside non-cellular modules
                     // then this will need to be extended
-                    if (U_NETWORK_HANDLE_IS_CELL(pConfiguration->networkHandleAt) &&
-                        !uCellLocGnssInsideCell(pConfiguration->networkHandleAt)) {
+                    if ((atDevType == (int32_t) U_DEVICE_TYPE_CELL) &&
+                        !uCellLocGnssInsideCell(pConfiguration->devHandleAt)) {
                         if (pConfiguration->gnssAtPinPwr >= 0) {
-                            uGnssSetAtPinPwr(pInstance->gnss,
+                            uGnssSetAtPinPwr(pInstance->devHandle,
                                              pConfiguration->gnssAtPinPwr);
                             // Do it for the Cell Locate API as well in case the
                             // user wants to use that
-                            uCellLocSetPinGnssPwr(pConfiguration->networkHandleAt,
+                            uCellLocSetPinGnssPwr(pConfiguration->devHandleAt,
                                                   pConfiguration->gnssAtPinPwr);
                         }
                         if (pConfiguration->gnssAtPinDataReady >= 0) {
-                            uGnssSetAtPinDataReady(pInstance->gnss,
+                            uGnssSetAtPinDataReady(pInstance->devHandle,
                                                    pConfiguration->gnssAtPinDataReady);
                             // Do it for the Cell Locate API as well in case the
                             // user wants to use that
-                            uCellLocSetPinGnssDataReady(pConfiguration->networkHandleAt,
+                            uCellLocSetPinGnssDataReady(pConfiguration->devHandleAt,
                                                         pConfiguration->gnssAtPinDataReady);
                         }
                     }
@@ -236,7 +239,7 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
                 // Set printing of commands sent to the GNSS chip,
                 // which can be useful while debugging, but
                 // only if the C library doesn't leak.
-                uGnssSetUbxMessagePrint(pInstance->gnss, true);
+                uGnssSetUbxMessagePrint(pInstance->devHandle, true);
 #endif
                 if (pConfiguration->transportType != (int32_t) U_GNSS_TRANSPORT_UBX_AT) {
                     // Power on the GNSS chip but only if it's not used
@@ -244,10 +247,10 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
                     // then we leave the GNSS chip powered off so that Cell Locate
                     // can use it.  If the GNSS chip is to be used directly then
                     // uNetworkUpGnss() will power it up and "claim" it.
-                    x = uGnssPwrOn(errorCodeOrHandle);
+                    x = uGnssPwrOn(pInstance->devHandle);
                     if (x != 0) {
                         // If we failed to power on, clean up
-                        uNetworkRemoveGnss(errorCodeOrHandle);
+                        uNetworkRemoveGnss(pInstance->devHandle);
                         errorCodeOrHandle = x;
                     }
                 }
@@ -264,16 +267,16 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
 }
 
 // Remove a GNSS network instance.
-int32_t uNetworkRemoveGnss(int32_t handle)
+int32_t uNetworkRemoveGnss(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uNetworkPrivateGnssInstance_t *pInstance;
 
     // Find the instance in the list
-    pInstance = pGetInstance(handle);
+    pInstance = pGetInstance(devHandle);
     if (pInstance != NULL) {
-        uGnssRemove(pInstance->gnss);
-        pInstance->gnss = -1;
+        uGnssRemove(pInstance->devHandle);
+        pInstance->devHandle = NULL;
         switch (pInstance->transportType) {
             case U_GNSS_TRANSPORT_UBX_UART:
             //lint -fallthrough
@@ -296,7 +299,7 @@ int32_t uNetworkRemoveGnss(int32_t handle)
 }
 
 // Bring up the given GNSS network instance.
-int32_t uNetworkUpGnss(int32_t handle,
+int32_t uNetworkUpGnss(uDeviceHandle_t devHandle,
                        const uNetworkConfigurationGnss_t *pConfiguration)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -305,22 +308,22 @@ int32_t uNetworkUpGnss(int32_t handle,
     (void) pConfiguration;
 
     // Find the instance in the list
-    pInstance = pGetInstance(handle);
+    pInstance = pGetInstance(devHandle);
     if (pInstance != NULL) {
         // Power on, in case we weren't on before
-        errorCode = uGnssPwrOn(handle);
+        errorCode = uGnssPwrOn(devHandle);
     }
 
     return errorCode;
 }
 
 // Take down the given GNSS network instance.
-int32_t uNetworkDownGnss(int32_t handle,
+int32_t uNetworkDownGnss(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationGnss_t *pConfiguration)
 {
     (void) pConfiguration;
     // Power off
-    return uGnssPwrOff(handle);
+    return uGnssPwrOff(devHandle);
 }
 
 // End of file

@@ -77,7 +77,7 @@ typedef struct {
                          data; use -1 if there is no such connection,
                          ignored if transportType does not indicate a
                          UART connection. */
-    int32_t networkHandleAt;  /**< If transportType is set to
+    uDeviceHandle_t devHandleAt;  /**< If transportType is set to
                                    U_GNSS_TRANSPORT_UBX_AT, set
                                    this to the handle of the
                                    network which provides the

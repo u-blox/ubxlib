@@ -100,14 +100,16 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssInitialisation")
  */
 U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
 {
-    int32_t gnssHandleA;
+    uDeviceHandle_t gnssHandleA;
+    uDeviceHandle_t dummyHandle;
     uGnssTransportHandle_t transportHandleA;
 # if (U_CFG_TEST_UART_B >= 0)
-    int32_t gnssHandleB;
+    uDeviceHandle_t gnssHandleB;
     uGnssTransportHandle_t transportHandleB;
 # endif
     uGnssTransportType_t transportType = U_GNSS_TRANSPORT_NONE;
     uGnssTransportHandle_t transportHandle;
+    int32_t errorCode;
     int32_t heapUsed;
     bool printUbxMessagesDefault;
 
@@ -133,11 +135,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
     U_PORT_TEST_ASSERT(uGnssInit() == 0);
 
     uPortLog("U_GNSS_TEST: adding a GNSS instance on UART %d...\n", U_CFG_TEST_UART_A);
-    gnssHandleA = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                           U_GNSS_TRANSPORT_UBX_UART,
-                           transportHandleA,
-                           -1, false);
-    U_PORT_TEST_ASSERT(gnssHandleA >= 0);
+    errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
+                         U_GNSS_TRANSPORT_UBX_UART,
+                         transportHandleA,
+                         -1, false, &gnssHandleA);
+    U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
     transportHandle.uart = -1;
     U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleA,
                                                &transportType,
@@ -158,7 +160,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                                 U_GNSS_TRANSPORT_UBX_UART,
                                 transportHandleA,
-                                -1, false) < 0);
+                                -1, false, &dummyHandle) < 0);
 
 # if (U_CFG_TEST_UART_B >= 0)
     // If we have a second UART port, add a second GNSS API on it
@@ -174,11 +176,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
     transportHandleB.uart = gUartBHandle;
 
     uPortLog("U_GNSS_TEST: adding a GNSS instance on UART %d...\n", U_CFG_TEST_UART_B);
-    gnssHandleB = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                           U_GNSS_TRANSPORT_UBX_UART,
-                           transportHandleB,
-                           -1, false);
-    U_PORT_TEST_ASSERT(gnssHandleB >= 0);
+    errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
+                         U_GNSS_TRANSPORT_UBX_UART,
+                         transportHandleB,
+                         -1, false, &gnssHandleB);
+    U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
     transportType = U_GNSS_TRANSPORT_NONE;
     transportHandle.uart = -1;
     U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleB,
@@ -196,7 +198,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
              " should fail...\n");
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                                 U_GNSS_TRANSPORT_UBX_UART,
-                                transportHandleB, -1, false) < 0);
+                                transportHandleB, -1, false,
+                                &dummyHandle) < 0);
 
     // Don't remove this one, let uGnssDeinit() do it
 # endif
@@ -206,11 +209,11 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
 
     uPortLog("U_GNSS_TEST: adding it again...\n");
     // Use NMEA this time for the sake of variety
-    gnssHandleA = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                           U_GNSS_TRANSPORT_NMEA_UART,
-                           transportHandleA,
-                           -1, false);
-    U_PORT_TEST_ASSERT(gnssHandleA >= 0);
+    errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
+                         U_GNSS_TRANSPORT_NMEA_UART,
+                         transportHandleA,
+                         -1, false, &gnssHandleA);
+    U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
     transportType = U_GNSS_TRANSPORT_NONE;
     transportHandle.uart = -1;
     U_PORT_TEST_ASSERT(uGnssGetTransportHandle(gnssHandleA,

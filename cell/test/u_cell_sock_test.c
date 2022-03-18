@@ -296,7 +296,7 @@ static uCellSockTestOption_t gSupportedOptions[] = {
  * -------------------------------------------------------------- */
 
 // Check getting an option.
-static void checkOptionGet(int32_t cellHandle, int32_t sockHandle,
+static void checkOptionGet(uDeviceHandle_t cellHandle, int32_t sockHandle,
                            int32_t level, uint32_t option,
                            void *pValue, size_t valueLength,
                            bool (*pComparer) (const void *,
@@ -350,7 +350,7 @@ static void checkOptionGet(int32_t cellHandle, int32_t sockHandle,
 }
 
 // Check setting an option.
-static void checkOptionSet(int32_t cellHandle, int32_t sockHandle,
+static void checkOptionSet(uDeviceHandle_t cellHandle, int32_t sockHandle,
                            int32_t level, int32_t option,
                            const void *pValue, size_t valueLength,
                            bool (*pComparer) (const void *,
@@ -404,7 +404,7 @@ static void checkOptionSet(int32_t cellHandle, int32_t sockHandle,
  * -------------------------------------------------------------- */
 
 // Callback function for the cellular connection process
-static bool keepGoingCallback(int32_t unused)
+static bool keepGoingCallback(uDeviceHandle_t unused)
 {
     bool keepGoing = true;
 
@@ -418,7 +418,7 @@ static bool keepGoingCallback(int32_t unused)
 }
 
 // Callback for data being available, UDP.
-static void dataCallbackUdp(int32_t cellHandle, int32_t sockHandle)
+static void dataCallbackUdp(uDeviceHandle_t cellHandle, int32_t sockHandle)
 {
     if (cellHandle != gHandles.cellHandle) {
         gCallbackErrorNum = 1;
@@ -430,7 +430,7 @@ static void dataCallbackUdp(int32_t cellHandle, int32_t sockHandle)
 }
 
 // Callback for data being available, TCP.
-static void dataCallbackTcp(int32_t cellHandle, int32_t sockHandle)
+static void dataCallbackTcp(uDeviceHandle_t cellHandle, int32_t sockHandle)
 {
     if (cellHandle != gHandles.cellHandle) {
         gCallbackErrorNum = 3;
@@ -441,7 +441,7 @@ static void dataCallbackTcp(int32_t cellHandle, int32_t sockHandle)
 }
 
 // Callback for socket closed, UDP.
-static void closedCallbackUdp(int32_t cellHandle, int32_t sockHandle)
+static void closedCallbackUdp(uDeviceHandle_t cellHandle, int32_t sockHandle)
 {
     if (cellHandle != gHandles.cellHandle) {
         gCallbackErrorNum = 5;
@@ -453,7 +453,7 @@ static void closedCallbackUdp(int32_t cellHandle, int32_t sockHandle)
 }
 
 // Callback for socket closed, TCP.
-static void closedCallbackTcp(int32_t cellHandle, int32_t sockHandle)
+static void closedCallbackTcp(uDeviceHandle_t cellHandle, int32_t sockHandle)
 {
     if (cellHandle != gHandles.cellHandle) {
         gCallbackErrorNum = 7;
@@ -465,7 +465,7 @@ static void closedCallbackTcp(int32_t cellHandle, int32_t sockHandle)
 }
 
 // Callback for async socket closed.
-static void asyncClosedCallback(int32_t cellHandle, int32_t sockHandle)
+static void asyncClosedCallback(uDeviceHandle_t cellHandle, int32_t sockHandle)
 {
     if (cellHandle != gHandles.cellHandle) {
         gCallbackErrorNum = 9;
@@ -492,7 +492,7 @@ static void asyncClosedCallback(int32_t cellHandle, int32_t sockHandle)
  */
 U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     uSockAddress_t echoServerAddressUdp;
     uSockAddress_t echoServerAddressTcp;
@@ -892,7 +892,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
  */
 U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     void *pValue;
     void *pValueSaved;
     size_t length = 0;
