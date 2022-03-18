@@ -685,42 +685,6 @@ int32_t uBleSpsSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeo
     return returnValue;
 }
 
-U_DEPRECATED
-int32_t uBleSpsSetCallbackData(int32_t bleHandle,
-                               void (*pCallback) (int32_t, size_t, char *, void *),
-                               void *pCallbackParameter)
-{
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uShortRangePrivateInstance_t *pInstance;
-
-    if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
-
-        pInstance = pUShortRangePrivateGetInstance(shoHandle);
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL) {
-            if (pInstance->pBtDataCallback == NULL && pCallback != NULL) {
-                pInstance->pBtDataCallback = pCallback;
-                pInstance->pBtDataCallbackParameter = pCallbackParameter;
-
-                errorCode = uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle,
-                                                                     U_SHORT_RANGE_CONNECTION_TYPE_BT, dataCallback,
-                                                                     pInstance);
-            } else if (pInstance->pBtDataCallback != NULL && pCallback == NULL) {
-                pInstance->pBtDataCallback = NULL;
-                pInstance->pBtDataCallbackParameter = NULL;
-
-                errorCode = uShortRangeEdmStreamDataEventCallbackSet(pInstance->streamHandle,
-                                                                     U_SHORT_RANGE_CONNECTION_TYPE_BT, NULL, NULL);
-            }
-        }
-
-        uShortRangeUnlock();
-    }
-
-    return errorCode;
-}
-
 int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
                                         uBleSpsAvailableCallback_t pCallback,
                                         void *pCallbackParameter)

@@ -183,25 +183,6 @@ int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
                                            uBleSpsConnectionStatusCallback_t pCallback,
                                            void *pCallbackParameter);
 
-/** DEPRECATED, use uBleSpsSetDataAvailableCallback and uBleSpsReceive instead
- *
- * Sets the callback for data events
- *
- * @param bleHandle   the handle of the ble instance.
- * @param pCallback   callback function. Use NULL to deregister the
- *                    callback. Parameter order:
- *                    - channel
- *                    - size
- *                    - data
- *                    - pCallbackParameter
- * @param pCallbackParameter parameter included with the callback.
- * @return            zero on success, on failure negative error code.
- */
-U_DEPRECATED
-int32_t uBleSpsSetCallbackData(int32_t bleHandle,
-                               void (*pCallback) (int32_t, size_t, char *, void *),
-                               void *pCallbackParameter);
-
 /** Sets the callback for data available
  *
  * @param bleHandle          The handle of the ble instance.
