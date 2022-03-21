@@ -660,7 +660,6 @@ void uShortRangeDeinit()
         while (gpUShortRangePrivateInstanceList != NULL) {
             pInstance = gpUShortRangePrivateInstanceList;
             removeShortRangeInstance(pInstance);
-            free(pInstance);
         }
 
         // Unlock the mutex so that we can delete it
