@@ -543,21 +543,9 @@ static void UUDPD_urc(uAtClientHandle_t atHandle,
     }
 }
 
-static void exitDataMode(const uShortRangePrivateInstance_t *pInstance)
-{
-    const char escSeq[3] = {'+', '+', '+'};
-
-    uPortTaskBlock(1100);
-    if (pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-        if (uShortRangeEdmStreamAtWrite(pInstance->streamHandle, escSeq, 3) != 3) {
-            uPortTaskBlock(1100);
-            uShortRangeEdmStreamAtWrite(pInstance->streamHandle, escSeq, 3);
-        }
-    }
-    uPortTaskBlock(1100);
-}
-
-static int32_t setEchoOff(const uAtClientHandle_t atHandle, uint8_t retries)
+// Wrapper function to execute at commands in edm mode
+static int32_t executeAtCommand(const uAtClientHandle_t atHandle, uint8_t retries,
+                                const char *command)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
 
@@ -565,13 +553,70 @@ static int32_t setEchoOff(const uAtClientHandle_t atHandle, uint8_t retries)
         uAtClientDeviceError_t deviceError;
         uAtClientLock(atHandle);
         uAtClientTimeoutSet(atHandle, 2000);
-        uAtClientCommandStart(atHandle, "ATE0");
+        uAtClientCommandStart(atHandle, command);
         uAtClientCommandStopReadResponse(atHandle);
         uAtClientDeviceErrorGet(atHandle, &deviceError);
         errorCode = uAtClientUnlock(atHandle);
 
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
             break;
+        }
+    }
+
+    return errorCode;
+}
+
+// Attempt to enter EDM mode
+static int32_t enterEDM(const uShortRangePrivateInstance_t *pInstance)
+{
+    const char atCommandEnterEDM[] = "\r\nATO2\r\n";
+    int32_t errorCode;
+    //We assume first we are in at mode, send command blindly to enter EDM mode
+    uShortRangeEdmStreamAtWrite(pInstance->streamHandle, atCommandEnterEDM, sizeof(atCommandEnterEDM));
+
+    // Echo off
+    errorCode = executeAtCommand(pInstance->atHandle, 4, "ATE0");
+
+    return errorCode;
+}
+
+static int32_t restartModuleHelper(const uShortRangePrivateInstance_t *pInstance)
+{
+    int32_t errorCode;
+
+    errorCode = enterEDM(pInstance);
+
+    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+        return errorCode;
+    }
+
+    // Reboot
+    errorCode = executeAtCommand(pInstance->atHandle, 1, "AT+CPWROFF");
+
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        // Until we have proper startup detection just block the task a bit since module
+        // module startup validation can take some time
+        uPortTaskBlock(3500);
+        errorCode = enterEDM(pInstance);
+    }
+
+    return errorCode;
+}
+
+// Reboot and enter edm
+static int32_t restartModuleAndEnterEDM(int32_t shortRangeHandle)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_UNKNOWN;
+    uShortRangePrivateInstance_t *pInstance;
+
+    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+
+    if (pInstance != NULL) {
+        errorCode = restartModuleHelper(pInstance);
+
+        // Try to restart again
+        if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+            errorCode = restartModuleHelper(pInstance);
         }
     }
 
@@ -775,9 +820,14 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
     shortRangeHandle = handleOrErrorCode;
     uShortRangeEdmStreamSetAtHandle(edmStreamHandle, atClientHandle);
 
-    if (moduleType != uShortRangeDetectModule(shortRangeHandle)) {
+    if (restartModuleAndEnterEDM(shortRangeHandle) != (int32_t) U_ERROR_COMMON_SUCCESS) {
         uShortRangeClose(shortRangeHandle);
-        handleOrErrorCode = (int32_t) U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+        return (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+    }
+
+    if (moduleType != getModule(atClientHandle)) {
+        uShortRangeClose(shortRangeHandle);
+        handleOrErrorCode = (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
     }
 
     return handleOrErrorCode;
@@ -883,34 +933,12 @@ uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle)
 {
     uShortRangePrivateInstance_t *pInstance;
     uShortRangeModuleType_t module = U_SHORT_RANGE_MODULE_TYPE_INVALID;
+    int32_t errorCode;
 
     if (gUShortRangePrivateMutex != NULL) {
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         if (pInstance != NULL) {
-            int32_t errorCode;
-
-            exitDataMode(pInstance);
-
-            // Sometimes the UART (both in and outgoing) needs to be cleaned
-            // from garbage or stray characters so test twice;
-            // Use ATE0 as we want the echo off anyway and it is a OK/ERROR only
-            // response command.
-            errorCode = setEchoOff(pInstance->atHandle, 2);
-
-            const char atCommand[] = "\r\nATO2\r\n";
-            uShortRangeEdmStreamAtWrite(pInstance->streamHandle, atCommand, sizeof(atCommand));
-            uPortTaskBlock(60);
-            //lint -e(838) Suppress previously assigned value has not been used
-            errorCode = setEchoOff(pInstance->atHandle, 2);
-
-            if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
-                exitDataMode(pInstance);
-                // This is edm handler, not uart, need that somehow
-                uShortRangeEdmStreamAtWrite(pInstance->streamHandle, atCommand, sizeof(atCommand));
-                uPortTaskBlock(60);
-                errorCode = setEchoOff(pInstance->atHandle, 2);
-            }
-
+            errorCode = enterEDM(pInstance);
             if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
                 module = getModule(pInstance->atHandle);
             }
