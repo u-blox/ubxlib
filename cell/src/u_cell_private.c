@@ -877,4 +877,58 @@ void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance)
     }
 }
 
+// Suspend "32 kHz" or UART/AT+UPSV sleep.
+int32_t uCellPrivateSuspendUartPowerSaving(const uCellPrivateInstance_t *pInstance,
+                                           int32_t *pMode, int32_t *pTimeout)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+
+    if ((pMode != NULL) && (pTimeout != NULL)) {
+        // First, read the current AT+UPSV mode
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, "AT+UPSV?");
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, "+UPSV:");
+        *pMode = uAtClientReadInt(atHandle);
+        *pTimeout = -1;
+        if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
+            ((*pMode == 1) || (*pMode == 4))) {
+            // Only non-SARA-R4 modules have a timeout value and
+            // only for AT+UPSV modes 1 and 4
+            *pTimeout = uAtClientReadInt(atHandle);
+        }
+        uAtClientResponseStop(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+        if ((errorCode == 0) && (*pMode > 0)) {
+            // If that was successful and the current mode was
+            // not already zero then we now disable AT+UPSV
+            uAtClientLock(atHandle);
+            uAtClientCommandStart(atHandle, "AT+UPSV=");
+            uAtClientWriteInt(atHandle, 0);
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = uAtClientUnlock(atHandle);
+        }
+    }
+
+    return errorCode;
+}
+
+// Resume "32 kHz" or UART/AT+UPSV sleep.
+int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstance,
+                                          int32_t mode, int32_t timeout)
+{
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+
+    uAtClientLock(atHandle);
+    uAtClientCommandStart(atHandle, "AT+UPSV=");
+    uAtClientWriteInt(atHandle, mode);
+    if (timeout >= 0) {
+        uAtClientWriteInt(atHandle, timeout);
+    }
+    uAtClientCommandStopReadResponse(atHandle);
+
+    return uAtClientUnlock(atHandle);
+}
+
 // End of file
