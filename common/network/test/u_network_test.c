@@ -562,10 +562,10 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                 U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gBleConnectionSem, 0, 1) == 0);
 
                 uBleSpsSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
-                                                    connectionCallback,
-                                                    &gUNetworkTestCfg[x].handle);
+                                                   connectionCallback,
+                                                   &gUNetworkTestCfg[x].handle);
                 uBleSpsSetDataAvailableCallback(gUNetworkTestCfg[x].handle, bleSpsCallback,
-                                                 &gUNetworkTestCfg[x].handle);
+                                                &gUNetworkTestCfg[x].handle);
                 gBleHandle = gUNetworkTestCfg[x].handle;
 
                 for (int32_t i = 0; i < 3; i++) {
@@ -588,8 +588,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                         if (a == 0) {
                             uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
                             result = uBleSpsConnectSps(gUNetworkTestCfg[x].handle,
-                                                        gRemoteSpsAddress,
-                                                        NULL);
+                                                       gRemoteSpsAddress,
+                                                       NULL);
                         } else {
                             uBleSpsConnParams_t connParams;
                             connParams.scanInterval = 64;
@@ -601,7 +601,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                             connParams.linkLossTimeout = 2000;
                             uPortLog("U_NETWORK_TEST: Connecting SPS with conn params: %s\n", gRemoteSpsAddress);
                             result = uBleSpsConnectSps(gUNetworkTestCfg[x].handle,
-                                                        gRemoteSpsAddress, &connParams);
+                                                       gRemoteSpsAddress, &connParams);
                         }
 
                         if (result == 0) {
