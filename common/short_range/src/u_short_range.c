@@ -1043,6 +1043,7 @@ int32_t uShortRangeGetSerialNumber(uDeviceHandle_t devHandle, char *pSerialNumbe
 
             if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
                 pSerialNumber[readBytes] = '\0';
+                err = readBytes;
                 break;
             }
         }
