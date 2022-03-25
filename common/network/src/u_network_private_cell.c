@@ -155,8 +155,8 @@ int32_t uNetworkInitCell(void)
 // Deinitialise the cellular network API.
 void uNetworkDeinitCell(void)
 {
-    uAtClientDeinit();
     uCellDeinit();
+    uAtClientDeinit();
 }
 
 // Add a cellular network instance.
