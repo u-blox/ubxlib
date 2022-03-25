@@ -1,7 +1,9 @@
 import os
 import shutil
 import sys
+from glob import glob
 from invoke import task
+from tasks import task_utils
 from scripts import u_utils
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
 from scripts.u_log_readers import URttReader
@@ -12,6 +14,7 @@ DEFAULT_OUTPUT_NAME = "runner_ubx_evkninab3_nrf52840"
 DEFAULT_BUILD_DIR = "_build/nrf5"
 DEFAULT_JOB_COUNT = 8
 DEFAULT_FLASH_FILE = f"nrf52840_xxaa.hex"
+DEFAULT_MCU = "NRF52840_XXAA"
 
 @task()
 def check_installation(ctx):
@@ -32,12 +35,13 @@ def check_installation(ctx):
         f"UNITY_PATH={unity_pkg.get_install_path()}",
     ]
     ctx.nrf5_dir = nrf5sdk_pkg.get_install_path()
+    ctx.arm_toolchain_path = ae_gcc_pkg.get_install_path() + "/bin"
 
 @task(
     pre=[check_installation],
     help={
         "makefile_dir": f"Makefile project directory to build (default: {DEFAULT_MAKEFILE_DIR})",
-        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
         "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
         "jobs": f"The number of Makefile jobs (default: {DEFAULT_JOB_COUNT})"
@@ -69,7 +73,7 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
 
 @task(
     help={
-        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})"
     }
 )
@@ -82,8 +86,8 @@ def clean(ctx, output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR):
 @task(
     pre=[check_installation],
     help={
-        "file": f"The file to flash (default: {DEFAULT_FLASH_FILE}",
-        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "file": f"The file to flash (default: {DEFAULT_FLASH_FILE})",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
         "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
         "debugger_serial": "The debugger serial number (optional)"
     }
@@ -99,16 +103,48 @@ def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
 
 @task(
     pre=[check_installation],
+    help={
+        "mcu": f"The MCU name (The JLink target name) (default: {DEFAULT_MCU})",
+        "debugger_serial": "The debugger serial number (optional)",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}). This is used for finding ELF file",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR}). This is used for finding ELF file",
+        "elf_file": f"The .elf file used for decoding backtrace. When this is used --build-dir and --output-name has no function.",
+        "reset": "When set the target device will reset on connection."
+    }
 )
-def log(ctx, mcu="NRF52840_XXAA", debugger_serial=""):
+def log(ctx, mcu=DEFAULT_MCU, debugger_serial="",
+        output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
+        elf_file=None, reset=True):
     """Open a log terminal"""
     if debugger_serial == "":
         debugger_serial = None
 
-    with URttReader(mcu, jlink_serial=debugger_serial, reset_on_connect=True) as rtt_reader:
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    if elf_file is None:
+        elf_file = task_utils.get_elf(build_dir, "*.out")
+
+    with URttReader(mcu, jlink_serial=debugger_serial, reset_on_connect=reset) as rtt_reader:
+        line = ""
         while True:
             data = rtt_reader.read()
             if data:
-                text = bytearray(data).decode(sys.stdout.encoding, "backslashreplace")
-                sys.stdout.write(text)
-                sys.stdout.flush()
+                line += bytearray(data).decode(sys.stdout.encoding, "backslashreplace").replace("\r", "")
+                if "\n" in line:
+                    lines = line.split("\n")
+                    for l in lines[:-1]:
+                        if "Backtrace: " in l:
+                            parse_backtrace(ctx, elf_file, l)
+                            sys.stdout.write(l + "\n")
+                        else:
+                            sys.stdout.write(l + "\n")
+                    sys.stdout.flush()
+                    line = lines[-1]
+
+@task(
+    pre=[check_installation],
+)
+def parse_backtrace(ctx, elf_file, line):
+    """Parse an nRFconnect backtrace line
+    Example usage: inv nrf5.parse-backtrace ubxlib.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
+    """
+    task_utils.parse_backtrace(ctx, elf_file, line, toolchain_prefix=f"{ctx.arm_toolchain_path}/arm-none-eabi-")

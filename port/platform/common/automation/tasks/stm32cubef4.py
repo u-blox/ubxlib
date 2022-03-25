@@ -4,6 +4,7 @@ import time
 import sys
 from telnetlib import Telnet
 from invoke import task
+from tasks import task_utils
 from scripts import u_utils
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
 from scripts.packages import u_package, u_pkg_utils
@@ -48,6 +49,7 @@ def check_installation(ctx):
         f"STM32CUBE_FW_PATH={stm32cubef4_pkg.get_install_path()}",
     ]
     ctx.stm32cubef4_dir = stm32cubef4_pkg.get_install_path()
+    ctx.arm_toolchain_path = ae_gcc_pkg.get_install_path() + "/bin"
 
 @task(
     pre=[check_installation],
@@ -121,9 +123,23 @@ def flash(ctx, file=DEFAULT_FLASH_FILE, debugger_serial="",
 
 @task(
     pre=[check_installation],
+    help={
+        "debugger_serial": "The debugger serial number (optional)",
+        "port": "The local TCP port to use for OpenOCD SWO output",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}). This is used for finding ELF file",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR}). This is used for finding ELF file",
+        "elf_file": f"The .elf file used for decoding backtrace. When this is used --build-dir and --output-name has no function."
+    }
 )
-def log(ctx, debugger_serial="", port=40404):
+def log(ctx, debugger_serial="", port=40404,
+        output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
+        elf_file=None):
     """Open a log terminal"""
+
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    if elf_file is None:
+        elf_file = task_utils.get_elf(build_dir, "*.elf")
+
     cmds = OPENOCD_DISABLE_PORTS_CMDS
     if debugger_serial != "":
         cmds.append(f'hla_serial {debugger_serial}')
@@ -139,6 +155,7 @@ def log(ctx, debugger_serial="", port=40404):
     # Let OpenOCD startup first
     time.sleep(5)
     try:
+        line = ""
         decoder = SwoDecoder(0, True)
         with Telnet('127.0.0.1', port) as tn:
             while True:
@@ -146,11 +163,29 @@ def log(ctx, debugger_serial="", port=40404):
                 if data == b'':
                     break
                 decoded_data = decoder.decode(data)
-                sys.stdout.write("".join(map(chr, decoded_data)))
-                sys.stdout.flush()
+                line += "".join(map(chr, decoded_data)).replace("\r", "")
+                if "\n" in line:
+                    lines = line.split("\n")
+                    for l in lines[:-1]:
+                        if "Backtrace: " in l:
+                            parse_backtrace(ctx, elf_file, l)
+                            sys.stdout.write(l + "\n")
+                        else:
+                            sys.stdout.write(l + "\n")
+                    sys.stdout.flush()
+                    line = lines[-1]
 
     finally:
         if u_utils.is_linux:
             promise.runner.kill()
         else:
             promise.runner.send_interrupt(KeyboardInterrupt())
+
+@task(
+    pre=[check_installation],
+)
+def parse_backtrace(ctx, elf_file, line):
+    """Parse a backtrace line
+    Example usage: inv stm32cubef4.parse-backtrace zephyr.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
+    """
+    task_utils.parse_backtrace(ctx, elf_file, line, toolchain_prefix=f"{ctx.arm_toolchain_path}/arm-none-eabi-")

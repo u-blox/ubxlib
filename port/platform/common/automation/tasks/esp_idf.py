@@ -2,7 +2,9 @@ import os
 import sys
 import shutil
 import json
+import re
 from invoke import task
+from tasks import task_utils
 from scripts import u_utils
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
 from scripts.packages import u_package
@@ -137,13 +139,52 @@ def terminal(ctx):
 
 @task(
     pre=[check_installation],
+    help={
+        "serial_port": "The serial port connected to ESP32 device",
+        "baudrate": "Serial port baud-rate (default: 115200)",
+        "rts_state": "Initial RTS state (1=on, 0=off). When not specified RTS will be left untouched",
+        "dtr_state": "Initial DTR state (1=on, 0=off). When not specified DTR will be left untouched",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}). This is used for finding ELF file",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR}). This is used for finding ELF file",
+        "elf_file": f"The .elf file used for decoding backtrace. When this is used --build-dir and --output-name has no function."
+    }
 )
-def log(ctx, serial_port, baudrate=115200, rts_state=None, dtr_state=None):
+def log(ctx, serial_port, baudrate=115200, rts_state=None, dtr_state=None,
+        output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
+        elf_file=None):
     """Open a log terminal"""
+
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    if elf_file is None:
+        elf_file = task_utils.get_elf(build_dir, file_pattern="ubxlib.elf")
+
     with UUartReader(port=serial_port, baudrate=baudrate, rts_state=rts_state, dtr_state=dtr_state) as serial:
+        line = ""
         while True:
             data = serial.read()
             if data:
-                sys.stdout.write(data.decode(sys.stdout.encoding, "backslashreplace"))
-                sys.stdout.flush()
+                line += data.decode(sys.stdout.encoding, "backslashreplace").replace("\r", "")
+                if "\n" in line:
+                    lines = line.split("\n")
+                    for l in lines[:-1]:
+                        if "Backtrace: " in l:
+                            parse_backtrace(ctx, elf_file, l)
+                            sys.stdout.write(l + "\n")
+                        else:
+                            sys.stdout.write(l + "\n")
+                    sys.stdout.flush()
+                    line = lines[-1]
 
+@task(
+    pre=[check_installation],
+)
+def parse_backtrace(ctx, elf_file, line):
+    """Parse an ESP32 backtrace line
+    Example usage: inv esp-idf.parse-backtrace ubxlib.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
+    """
+    # Copy the PATH variable after loading IDF export.sh so that we can access the toolchain
+    env = ctx.run(f'{ctx.esp_idf_pre_command} env', hide=True).stdout
+    path = re.findall(r"^PATH=(.*)", env, flags=re.MULTILINE)[0]
+    ctx.config.run.env["PATH"] = path
+
+    task_utils.parse_backtrace(ctx, elf_file, line, toolchain_prefix="xtensa-esp32-elf-")
