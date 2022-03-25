@@ -204,7 +204,7 @@ int32_t uSecurityGetSerialNumber(uDeviceHandle_t devHandle,
         if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_CELL)) {
             errorCodeOrSize = uCellSecGetSerialNumber(devHandle,
                                                       pSerialNumber);
-        } else {
+        } else if (U_DEVICE_IS_TYPE(devHandle, U_DEVICE_TYPE_SHORT_RANGE)) {
             errorCodeOrSize = uShortRangeGetSerialNumber(devHandle, pSerialNumber);
         }
     }
