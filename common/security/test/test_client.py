@@ -7,7 +7,7 @@ import ssl
 SEND_DATA = "Hello world"
 RECEIVE_DATA = ""
 HOST = "ubxlib.it-sgn.u-blox.com"
-PORT = 5060
+PORT = 5065
 WAIT = True
 
 # Create a TCP socket

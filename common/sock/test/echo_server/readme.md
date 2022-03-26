@@ -9,7 +9,9 @@ The running echo servers can be found at the following addresses:
 
 - UDP:        `ubxlib.it-sgn.u-blox.com:5050`
 - TCP:        `ubxlib.it-sgn.u-blox.com:5055`
-- Secure TCP: `ubxlib.it-sgn.u-blox.com:5060`
+- Secure TCP: `ubxlib.it-sgn.u-blox.com:5065`
+
+Note: used to use port 5060 for secure TCP but that port is commonly used by non-secure SIP and hence can be blocked by firewalls which want to exclude SIP, so port 5065 is now used instead.
 
 # Installation
 The [README.md](https://github.com/aws/amazon-freertos/tree/main/tools/echo_server#readme) at the above link was used to install TCP and secure TCP versions of the echo server.  The certificates generated for the secure TCP echo server can be found in the [certs](certs) directory.  Then [echo-server.go](echo-server.go) was copied and adapted to form [echo-server-udp.go](echo-server-udp.go).
