@@ -24,7 +24,7 @@ go build echo_server.go
 go build echo_server_udp.go
 ```
 - To just run all three echo servers manually, execute `sh ./echo_server.sh` (see note below if you get strange errors).
-- To start the echo servers as a service at boot, kill the processes that started running as a result of the above line (`ps aux` and `kill xxx` where `xxx` is the `PID`), modify the file `echo_server.service` to point to the location where you have copied this directory, copy `echo_server.service` to `/etc/systemd/system` and then:
+- To start the echo servers as a service at boot, kill the processes that started running as a result of the above line (`ps aux` and `kill xxx` where `xxx` is the `PID`), modify the paths in the file [echo_server.service](echo_server.service) appropriately, copy [echo_server.service](echo_server.service) to `/etc/systemd/system` and then:
 ```
 sudo chmod u+x echo_server.sh
 sudo systemctl daemon-reload

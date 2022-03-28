@@ -1,0 +1,1 @@
+Note that these certificates are also used by the [MQTT test broker](../../../../mqtt_client/test/mqtt_broker).
