@@ -276,17 +276,15 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
 // Delete the given task.
 int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     k_tid_t thread = (k_tid_t) taskHandle;
 
-    // Can only delete oneself in freeRTOS so we keep that behaviour
     if (taskHandle == NULL) {
         thread = k_current_get();
-        freeThreadInstance((struct k_thread *)thread);
-        k_thread_abort(thread);
-        errorCode = U_ERROR_COMMON_SUCCESS;
     }
-    return (int32_t)errorCode;
+    freeThreadInstance((struct k_thread *)thread);
+    k_thread_abort(thread);
+
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
 // Check if the current task handle is equal to the given task handle.
