@@ -37,6 +37,7 @@
 
 #include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port_os.h"
 
 #include "u_port_event_queue_private.h"
@@ -166,29 +167,46 @@ static int32_t nextEventHandleGet()
 
 // Close an event queue.
 // The mutex must be locked before this is called.
-static void eventQueueClose(uEventQueue_t *pEventQueue)
+static int32_t eventQueueClose(uEventQueue_t *pEventQueue)
 {
-    uEventQueueControlOrSize_t control = U_EVENT_CONTROL_EXIT_NOW;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    void *pControl;
 
-    // Get the task to exit, persisting until it is done
-    while (uPortQueueSend(pEventQueue->queue, (void *) &control) != 0) {
-        uPortTaskBlock(10);
+    // It would be nice to send just U_EVENT_CONTROL_EXIT_NOW
+    // on its own here but, as address sanitizer points out,
+    // the uPortQueueSend() function must copy the required
+    // length for an item on the queue so it has to be
+    // given that data size, hence we malloc() the block,
+    // put U_EVENT_CONTROL_EXIT_NOW at the start of it and
+    // then free it once it is sent
+    pControl = malloc(pEventQueue->paramMaxLengthBytes +
+                      U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
+
+    if (pControl != NULL) {
+        *((uEventQueueControlOrSize_t *) pControl) = U_EVENT_CONTROL_EXIT_NOW;
+        // Get the task to exit, persisting until it is done
+        while (uPortQueueSend(pEventQueue->queue, pControl) != 0) {
+            uPortTaskBlock(10);
+        }
+        free(pControl);
+        U_PORT_MUTEX_LOCK(pEventQueue->taskRunningMutex);
+        U_PORT_MUTEX_UNLOCK(pEventQueue->taskRunningMutex);
+
+        // Tidy up
+        uPortMutexDelete(pEventQueue->taskRunningMutex);
+        errorCode = uPortQueueDelete(pEventQueue->queue);
+
+        // Pause here to allow the deletions
+        // above to actually occur in the idle thread,
+        // required by some RTOSs (e.g. FreeRTOS)
+        uPortTaskBlock(U_CFG_OS_YIELD_MS);
+
+        // Now remove it from the list and free it
+        gpEventQueue[pEventQueue->handle] = NULL;
+        free(pEventQueue);
     }
-    U_PORT_MUTEX_LOCK(pEventQueue->taskRunningMutex);
-    U_PORT_MUTEX_UNLOCK(pEventQueue->taskRunningMutex);
 
-    // Tidy up
-    uPortMutexDelete(pEventQueue->taskRunningMutex);
-    uPortQueueDelete(pEventQueue->queue);
-
-    // Pause here to allow the deletions
-    // above to actually occur in the idle thread,
-    // required by some RTOSs (e.g. FreeRTOS)
-    uPortTaskBlock(U_CFG_OS_YIELD_MS);
-
-    // Now remove it from the list and free it
-    gpEventQueue[pEventQueue->handle] = NULL;
-    free(pEventQueue);
+    return errorCode;
 }
 
 // Find an event queue's structure in the table.
@@ -249,7 +267,7 @@ void uPortEventQueuePrivateDeinit(void)
              x < sizeof(gpEventQueue) / sizeof(gpEventQueue[0]);
              x++) {
             if (gpEventQueue[x] != NULL) {
-                eventQueueClose(gpEventQueue[x]);
+                U_ASSERT(eventQueueClose(gpEventQueue[x]) == 0);
             }
         }
 
@@ -378,9 +396,11 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
             queue = pEventQueue->queue;
             errorCode = U_ERROR_COMMON_NO_MEMORY;
             // We need to add the control word to the start, so malloc
-            // a block that is paramLengthBytes plus the control
-            // word length
-            pBlock = (char *) malloc(paramLengthBytes +
+            // a block that is paramMaxLengthBytes (i.e. paramMaxLengthBytes
+            // of the queue, not just the paramLengthBytes passed in, since
+            // uPortQueueSend() will expect to copy the full length) plus
+            // plus the control word length
+            pBlock = (char *) malloc(pEventQueue->paramMaxLengthBytes +
                                      U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES);
             if (pBlock != NULL) {
                 // Copy in the control word, which is actually just
@@ -511,24 +531,23 @@ int32_t uPortEventQueueStackMinFree(int32_t handle)
 // Close an event queue.
 int32_t uPortEventQueueClose(int32_t handle)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uEventQueue_t *pEventQueue;
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pEventQueue = pEventQueueGet(handle);
         if (pEventQueue != NULL) {
-            eventQueueClose(pEventQueue);
-            errorCode = U_ERROR_COMMON_SUCCESS;
+            errorCode = eventQueueClose(pEventQueue);
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
-    return (int32_t) errorCode;
+    return errorCode;
 }
 
 // Get the number of entries free on the given event queue.
