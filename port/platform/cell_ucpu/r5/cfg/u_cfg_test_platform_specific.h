@@ -72,125 +72,125 @@
  * COMPILE-TIME MACROS: HW RELATED
  * -------------------------------------------------------------- */
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_A
 # define U_CFG_TEST_PIN_A            -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_B
 # define U_CFG_TEST_PIN_B            -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_C
 # define U_CFG_TEST_PIN_C            -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_UART_A
 # define U_CFG_TEST_UART_A           -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_UART_B
 # define U_CFG_TEST_UART_B           -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_BAUD_RATE
 # define U_CFG_TEST_BAUD_RATE 115200
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_UART_BUFFER_LENGTH_BYTES
 # define U_CFG_TEST_UART_BUFFER_LENGTH_BYTES 512
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_UART_A_TXD
 # define U_CFG_TEST_PIN_UART_A_TXD   -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #define U_CFG_TEST_PIN_UART_A_TXD_GET U_CFG_TEST_PIN_UART_A_TXD
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_UART_A_RXD
 # define U_CFG_TEST_PIN_UART_A_RXD   -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #define U_CFG_TEST_PIN_UART_A_RXD_GET U_CFG_TEST_PIN_UART_A_RXD
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_UART_A_CTS
 # define U_CFG_TEST_PIN_UART_A_CTS   -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #define U_CFG_TEST_PIN_UART_A_CTS_GET U_CFG_TEST_PIN_UART_A_CTS
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_UART_A_RTS
 # define U_CFG_TEST_PIN_UART_A_RTS   -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #define U_CFG_TEST_PIN_UART_A_RTS_GET U_CFG_TEST_PIN_UART_A_RTS
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_UART_B_TXD
 # define U_CFG_TEST_PIN_UART_B_TXD   -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_UART_B_RXD
 # define U_CFG_TEST_PIN_UART_B_RXD   -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_UART_B_CTS
 # define U_CFG_TEST_PIN_UART_B_CTS   -1
 #endif
 
-/** Required for compilation of ubxlib tests/examples but not 
+/** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.
  */
 #ifndef U_CFG_TEST_PIN_UART_B_RTS

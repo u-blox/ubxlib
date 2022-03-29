@@ -744,7 +744,7 @@ int32_t uPortPrivateQueueDelete(const uPortQueueHandle_t queueHandle)
 }
 
 int32_t uPortPrivateQueuePeek(const uPortQueueHandle_t queueHandle,
-                       void *pEventData)
+                              void *pEventData)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
 

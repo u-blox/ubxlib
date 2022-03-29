@@ -152,7 +152,7 @@ int32_t uPortPrivateQueueDelete(const uPortQueueHandle_t queueHandle);
  * @return            zero on success else negative error code.
  */
 int32_t uPortPrivateQueuePeek(const uPortQueueHandle_t queueHandle,
-                       void *pEventData);
+                              void *pEventData);
 
 /** Add a timer entry to the list.
  *

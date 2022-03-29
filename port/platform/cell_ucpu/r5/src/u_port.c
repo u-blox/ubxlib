@@ -66,7 +66,7 @@ static ULONG heapPoolSpace[HEAP_POOL_SIZE / 4];
 
 /** Variable used to store the interrupt posture before the
  * interrupt is disabled.
- */ 
+ */
 static UINT gInterruptPosture;
 
 /* ----------------------------------------------------------------

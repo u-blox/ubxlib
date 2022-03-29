@@ -73,7 +73,7 @@ int32_t uPortGpioGet(int32_t pin)
 {
     (void) pin;
     uErrorCode_t errorCode = U_ERROR_COMMON_NOT_IMPLEMENTED;
-	
+
     return (int32_t) errorCode;
 }
 
