@@ -77,6 +77,7 @@ extern uint32_t SystemCoreClock;
 #define configUSE_APPLICATION_TASK_TAG    0
 #define configUSE_COUNTING_SEMAPHORES     1
 #define configGENERATE_RUN_TIME_STATS     0
+#define configRECORD_STACK_HIGH_ADDRESS   1
 /*  See http://www.nadler.com/embedded/newlibAndFreeRTOS.html */
 #define configUSE_NEWLIB_REENTRANT        1
 

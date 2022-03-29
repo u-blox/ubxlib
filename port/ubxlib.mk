@@ -15,7 +15,8 @@ UBXLIB_MODULE_DIRS = \
 	${UBXLIB_BASE}/common/security \
 	${UBXLIB_BASE}/common/sock \
 	${UBXLIB_BASE}/common/ubx_protocol \
-	${UBXLIB_BASE}/common/utils
+	${UBXLIB_BASE}/common/utils \
+	${UBXLIB_BASE}/port/platform/common/debug_utils
 
 # Additional source directories
 UBXLIB_SRC_DIRS += \
