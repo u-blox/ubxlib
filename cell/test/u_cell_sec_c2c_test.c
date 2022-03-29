@@ -565,7 +565,7 @@ static void printHex(const char *pStr, size_t length)
 
     for (size_t x = 0; x < length; x++) {
         c = *pStr++;
-        uPortLog("[%02x]", c);
+        uPortLog("[%02x]", (unsigned char) c);
     }
 #else
     (void) pStr;

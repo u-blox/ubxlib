@@ -536,7 +536,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     U_PORT_TEST_ASSERT(uCellNetGetMccMnc(cellHandle, &mcc, &mnc) == 0);
     U_PORT_TEST_ASSERT(mcc > 0);
     U_PORT_TEST_ASSERT(mnc > 0);
-    snprintf(mccMnc, sizeof(mccMnc), "%03d%02d", (int) mcc, (int) mnc);
+    snprintf(mccMnc, sizeof(mccMnc), "%03d%02d", (uint8_t) mcc, (uint8_t) mnc);
 
     // Register again: should come back with no error pretty much straight away
     uPortLog("U_CELL_NET_TEST: registering while already registered...\n");

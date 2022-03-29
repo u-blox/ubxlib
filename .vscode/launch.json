@@ -91,59 +91,8 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
-        },
-        {
-            "name": "Python: u_run_branch",
-            "type": "python",
-            "request": "launch",
-            "program": "u_run_branch.py",
-            "preLaunchTask": "Create workdir",
-            "args": [
-                "-d",
-                "debug.txt",
-                "-s",
-                "summary.txt",
-                "-u",
-                "${workspaceFolder}",
-                "-w",
-                "/tmp/work",
-                "A commit message"
-            ],
-            "cwd": "${workspaceFolder}/port/platform/common/automation",
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Python: u_run",
-            "type": "python",
-            "request": "launch",
-            "preLaunchTask": "Create workdir",
-            "program": "u_run.py",
-            "args": [
-                "-d",
-                "debug.txt",
-                "-s",
-                "summary.txt",
-                "-u",
-                "${workspaceFolder}",
-                "-w",
-                "/tmp/work",
-                "${input:instance}"
-            ],
-            "cwd": "${workspaceFolder}/port/platform/common/automation",
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Python: u_agent_service",
-            "request": "launch",
-            "type": "python",
-            "preLaunchTask": "Create workdir",
-            "program": "${workspaceFolder}/port/platform/common/automation/u_agent_service.py",
-            "args": ["-u", "/opt/sdks/unity/", "-n", "test-host", "/workdir", "1","2","3","4","5"],
-            "cwd": "${workspaceFolder}/port/platform/common/automation",
-            "console": "integratedTerminal"
-        },
+        }
     ],
-
     "inputs": [
         {
             "type": "pickString",

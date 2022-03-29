@@ -1,0 +1,13 @@
+sample:
+  description: Ubxlib test application
+  name: ubxlib
+common:
+    tags: introduction
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Ubxlib (.*)"
+tests:
+  sample.basic.ubxlib:
+    tags: introduction

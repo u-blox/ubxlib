@@ -490,7 +490,7 @@ def exe_run(call_list, guard_time_seconds=None,
     read_time = start_time
 
     # Print what we're gonna do
-    logger.info("in directory {} calling{}".         \
+    logger.info("in directory {} calling {}".         \
                 format(os.getcwd(), " ".join(call_list)))
 
     if returned_env is not None:
@@ -1032,3 +1032,34 @@ def merge_filter(defines, filter_string):
                                 new_filter_string)
 
     return defines_returned
+
+def device_redirect_thread(device_a, device_b, terminateQueue, logger):
+    '''Redirect thread, started by device_redirect_start()'''
+    terminated = False
+
+    call_list = ["socat", device_a + \
+                 ",echo=0,raw", device_b + \
+                 ",echo=0,raw"]
+    with ExeRun(call_list, logger):
+        while not terminated:
+            try:
+                terminateQueue.get(timeout=1)
+                terminated = True
+            except queue.Empty:
+                pass
+
+def device_redirect_start(device_a, device_b, logger: Logger=DEFAULT_LOGGER):
+    '''Start a thread that redirects device_a to device_b, Linux only'''
+    terminateQueue = None
+
+    if is_linux():
+        terminateQueue = queue.Queue()
+        handle = threading.Thread(target=device_redirect_thread,
+                                  args=(device_a, device_b, terminateQueue, logger))
+        handle.start()
+
+    return terminateQueue;
+
+def device_redirect_stop(terminateQueue):
+    '''Stop a thread that was doing redirection by sending it something on its terminate queue'''
+    terminateQueue.put("Terminate")

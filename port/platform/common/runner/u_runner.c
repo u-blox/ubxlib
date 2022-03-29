@@ -281,29 +281,41 @@ bool nameInFilter(const char *pName, const char *pFilter)
 // Add a function to the list.
 void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription)
 {
-#if defined(__XTENSA__) || (defined (_WIN32) && !defined (_MSC_VER))
-    uRunnerFunctionDescription_t *pFunction = gpFunctionList;
-
-    // For ESP-IDF (xtensa compiler) and on GCC under Windows
-    // (but not on MSVC under Windows) the constructors are found
-    // in reverse order so need to add them on the front here to
-    // get them the right way around
-    gpFunctionList = pDescription;
-    pDescription->pNext = pFunction;
-#else
     uRunnerFunctionDescription_t **ppFunction = &gpFunctionList;
 
-    while (*ppFunction != NULL) {
+    // On some platforms (e.g. Zephyr on Linux) the constructors can
+    // be called more than once, so first check if this function
+    // is already present in the list
+    while ((*ppFunction != NULL) && (*ppFunction != pDescription)) {
         ppFunction = &((*ppFunction)->pNext);
     }
-    *ppFunction = pDescription;
+
+    if (*ppFunction == NULL) {
+#if defined(__XTENSA__) || (defined (_WIN32) && !defined (_MSC_VER))
+        // For ESP-IDF (xtensa compiler) and on GCC under Windows
+        // (but not on MSVC under Windows) the constructors are found
+        // in reverse order so need to add them on the front here to
+        // get them the right way around
+        uRunnerFunctionDescription_t *pFunction = gpFunctionList;
+        gpFunctionList = pDescription;
+        pDescription->pNext = pFunction;
+#else
+        // Add to the end
+        *ppFunction = pDescription;
+        // IMPORTANT: set pNext to NULL
+        // This is done here rather than in the static initialisation
+        // of the function because, if we did it there, the value
+        // would be overwritten with NULL in the case where the
+        // constructor gets called twice
+        pDescription->pNext = NULL;
 #endif
 
-    // Re-sort the function list with U_RUNNER_PREAMBLE_STR at the top,
-    // then U_RUNNER_TOP_STR
-    sortFunctionList(&gpFunctionList,
-                     U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR),
-                     U_PORT_STRINGIFY_QUOTED(U_RUNNER_TOP_STR));
+        // Re-sort the function list with U_RUNNER_PREAMBLE_STR at the top,
+        // then U_RUNNER_TOP_STR
+        sortFunctionList(&gpFunctionList,
+                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_PREAMBLE_STR),
+                         U_PORT_STRINGIFY_QUOTED(U_RUNNER_TOP_STR));
+    }
 }
 
 // Print out the function names and groups

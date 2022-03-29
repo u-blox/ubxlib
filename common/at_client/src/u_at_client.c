@@ -1325,18 +1325,25 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
     int32_t character = -1;
 
+    // Note that we need to distinguish two cases here:
+    // returning -1, i.e. 0xFFFFFFFF, and returning the
+    // character 0xFF, i.e. 0x000000FF.  While this may
+    // seem clear, the sign-extension behaviour on various
+    // platforms makes it more interesting, hence the casting
+    // below
+
     if (pReceiveBuffer->readIndex < pReceiveBuffer->length) {
         // Read from the buffer
-        character = *(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                      pReceiveBuffer->readIndex);
+        character = (unsigned char) * (U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                       pReceiveBuffer->readIndex);
         pReceiveBuffer->readIndex++;
     } else {
         // Everything has been read, try to bring more in
         bufferReset(pClient, false);
         if (bufferFill(pClient, true)) {
             // Read something, all good
-            character = *(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                          pReceiveBuffer->readIndex);
+            character = (unsigned char) * (U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                           pReceiveBuffer->readIndex);
             pReceiveBuffer->readIndex++;
             pClient->numConsecutiveAtTimeouts = 0;
         } else {

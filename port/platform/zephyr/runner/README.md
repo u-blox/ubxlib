@@ -1,8 +1,6 @@
 # Introduction
 This directory contains build configurations for the test runner application based on nRFConnect SDK.  The methods described here are those for Segger Embedded Studio (SES) and for `west`, the Zephyr command-line build tool.  The configuration here is sufficient to run the `ubxlib` tests and examples, no attempt is made to optimise the MCU RAM/flash etc. sizes, you need to know how to do that yourself.
 
-IMPORTANT: the pin usage defined in the `../cfg` directory for GPIO testing and in the `.overlay` files here for UART testing is subject to change as we try to settle on a single configuration that will work for all of the various board types.
-
 # Segger Embedded Studio
 Please see the [Segger Embedded Studio section in zephyr port README.md](../README.md#Segger_Embedded_Studio).
 
@@ -36,7 +34,6 @@ With that done follow the instructions in [zephyr port README.md](../README.md) 
 ## Devicetree Overlay
 If you need to change the pin assignment of a peripheral you can do this using an `.overlay` file which will be picked up automatically by Zephyr when they are placed in `boards` sub-folder.
 Please see the existing overlay files in the [boards](boards) directory. You will find more details on how to use `.overlay` files in [Zephyr device tree documention](https://docs.zephyrproject.org/latest/guides/dts/howtos.html#set-devicetree-overlays).
-
 
 # Hardware Requirements
 In order to preserve valuable HW resources this code is configured to send trace output over the SWDIO (AKA RTT) port which a Segger J-Link debugger can interpret.

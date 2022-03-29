@@ -3,7 +3,7 @@ from invoke import task, Exit
 from pathlib import PurePath
 
 from scripts import u_utils, u_data, u_connection, u_select, u_report
-from scripts import u_run_log, u_run_windows, u_run_lint, u_run_doxygen, u_run_astyle
+from scripts import u_run_log, u_run_windows, u_run_linux, u_run_lint, u_run_doxygen, u_run_astyle
 from scripts import u_run_pylint, u_run_static_size, u_run_no_floating_point
 
 from scripts.packages import u_package
@@ -14,6 +14,8 @@ import sys
 import json
 
 DATABASE = PurePath(u_utils.AUTOMATION_DIR, "DATABASE.md").as_posix()
+
+DEFAULT_BUILD_LOCATION = f'_build/automation'
 
 # The environment variable that may contain some defines
 # we should use
@@ -96,25 +98,42 @@ def instance_command(ctx, instance_str, cmd):
             nrf5.log(ctx, debugger_serial=serial)
         elif cmd == Command.TEST:
             check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+        else:
+            raise Exit(f"Unsupported command for platform: '{platform}'")
 
     elif platform == "zephyr":
         nrfconnect.check_installation(ctx)
-        if cmd == Command.BUILD:
-            nrfconnect.build(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines)
-        elif cmd == Command.FLASH:
-            hex_file = None
-            if mcu.lower() == "nrf5340":
-                # The hex file to flash is specified in zephyr/runners.yml for zephyr and usually set to "zephyr.hex".
-                # For MCUs with multiple cores such as nRF5340 merged_domains.hex is used instead which includes
-                # multiple firmwares. The problem in this case that when merged_domains.hex is used it is specified
-                # as a full absoulte path. This becomes a problem in the Jenkins case where the firmware is built
-                # on one machine and flashed on another. For this reason we will pass the hex path manually here.
-                hex_file = f"{ctx.build_dir}/zephyr/merged_domains.hex"
-            nrfconnect.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, hex_file=hex_file)
-        elif cmd == Command.LOG:
-            nrfconnect.log(ctx, debugger_serial=serial)
-        elif cmd == Command.TEST:
-            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+        if mcu.lower() != "linux32":
+            # Normal embedded target stuff
+            if cmd == Command.BUILD:
+                nrfconnect.build(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines)
+            elif cmd == Command.FLASH:
+                hex_file = None
+                if mcu.lower() == "nrf5340":
+                    # The hex file to flash is specified in zephyr/runners.yml for zephyr and usually set to "zephyr.hex".
+                    # For MCUs with multiple cores such as nRF5340 merged_domains.hex is used instead which includes
+                    # multiple firmwares. The problem in this case that when merged_domains.hex is used it is specified
+                    # as a full absolute path. This becomes a problem in the Jenkins case where the firmware is built
+                    # on one machine and flashed on another. For this reason we will pass the hex path manually here.
+                    hex_file = f"{ctx.build_dir}/zephyr/merged_domains.hex"
+                nrfconnect.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, hex_file=hex_file)
+            elif cmd == Command.LOG:
+                nrfconnect.log(ctx, debugger_serial=serial)
+            elif cmd == Command.TEST:
+                check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+            else:
+                raise Exit(f"Unsupported command for MCU '{mcu}' on platform: '{platform}'")
+        else:
+            # Linux is handled differently and so gets a
+            # script of its own, similar to the Windows case
+            if cmd == Command.TEST:
+                check_return_code(u_run_linux.run(ctx, instance=instance, platform=platform,
+                                                  board_name=board,
+                                                  build_dir=f'{DEFAULT_BUILD_LOCATION}/{instance_str}',
+                                                  output_name="", defines=defines,
+                                                  connection=connection, connection_lock=None))
+            else:
+                raise Exit(f"MCU '{mcu}' on platform: '{platform}' only supports 'test' command")
 
     elif platform == "esp-idf":
         esp_idf.check_installation(ctx)
@@ -130,6 +149,8 @@ def instance_command(ctx, instance_str, cmd):
                         rts_state=monitor_dtr_rts_on)
         elif cmd == Command.TEST:
             check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+        else:
+            raise Exit(f"Unsupported command for platform: '{platform}'")
 
     elif platform == "stm32cube":
         stm32cubef4.check_installation(ctx)
@@ -142,6 +163,8 @@ def instance_command(ctx, instance_str, cmd):
             stm32cubef4.log(ctx, debugger_serial=serial, port=port)
         elif cmd == Command.TEST:
             check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+        else:
+            raise Exit(f"Unsupported command for platform: '{platform}'")
 
     elif platform == "arduino":
         arduino.check_installation(ctx)
@@ -158,6 +181,8 @@ def instance_command(ctx, instance_str, cmd):
                         rts_state=monitor_dtr_rts_on)
         elif cmd == Command.TEST:
             check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+        else:
+            raise Exit(f"Unsupported command for platform: '{platform}'")
 
     elif platform == "windows":
         if cmd == Command.TEST:
@@ -166,7 +191,7 @@ def instance_command(ctx, instance_str, cmd):
                                                 ctx.reporter, ctx.test_report,
                                                 None))
         else:
-            raise Exit(f"Unsupported command for platform: '{platform}'")
+            raise Exit(f"'{platform}' only supports 'test' command")
 
     elif instance[0] < 10:
         # Handle Lint, AStyle and so on...
@@ -213,7 +238,7 @@ def install_all(ctx):
 def build(ctx, instance, build_dir=None, filter=None):
     """Build the firmware for an automation instance"""
     if not build_dir:
-        build_dir = f'_build/automation/{instance}'
+        build_dir = f'{DEFAULT_BUILD_LOCATION}/{instance}'
     ctx.build_dir = build_dir
     ctx.filter = filter
     instance_command(ctx, instance, Command.BUILD)
@@ -222,7 +247,7 @@ def build(ctx, instance, build_dir=None, filter=None):
 def flash(ctx, instance, build_dir=None):
     """Flash the firmware for an automation instance"""
     if not build_dir:
-        build_dir = f'_build/automation/{instance}'
+        build_dir = f'{DEFAULT_BUILD_LOCATION}/{instance}'
     ctx.build_dir = build_dir
     instance_command(ctx, instance, Command.FLASH)
 
@@ -235,7 +260,7 @@ def log(ctx, instance):
 def test(ctx, instance, summary_file="summary.txt", debug_file="debug.log",
          test_report=None, filter=None):
     """Start the tests for an automation instance"""
-    # The testing phase uses the loggin facility
+    # The testing phase uses the logging facility
     ULog.setup_logging(debug_file=debug_file)
     _instance = parse_instance(instance)
 

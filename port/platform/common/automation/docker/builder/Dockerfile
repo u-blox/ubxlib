@@ -51,7 +51,7 @@ WORKDIR /workdir
 RUN pip3 install \
         pyserial pylint psutil pylink-square requests_toolbelt rpyc debugpy invoke coloredlogs verboselogs && \
     apt-get update && apt-get install -y --no-install-recommends  \
-        usbutils gawk iputils-ping openssh-client \
+        usbutils gawk iputils-ping openssh-client socat \
 # Needed for OpenOCD
         libhidapi-hidraw0 && \
 # Cleanup

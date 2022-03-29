@@ -44,13 +44,17 @@
 
 #include "zephyr.h"
 
+#ifdef CONFIG_ARCH_POSIX
+#include "posix_board_if.h"
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** When running under automation the target is reset and then
- * logging begins, hence a start-up delay is added in order not
- * to miss any output while the logging tools start up.
+/** When running under automation on real target HW the target is
+ * reset and then logging begins, hence a start-up delay is added
+ * in order not to miss any output while the logging tools start up.
  */
 #ifndef U_CFG_STARTUP_DELAY_SECONDS
 # define U_CFG_STARTUP_DELAY_SECONDS 10
@@ -81,7 +85,9 @@ static void appTask(void *pParam)
 
     uPortInit();
 
+#ifndef CONFIG_ARCH_POSIX
     uPortTaskBlock(U_CFG_STARTUP_DELAY_SECONDS * 1000);
+#endif
 
     uPortLog("\n\nU_APP: application task started.\n");
 
@@ -108,7 +114,9 @@ static void appTask(void *pParam)
     uPortLog("\n\nU_APP: application task ended.\n");
     uPortDeinit();
 
+#ifndef CONFIG_ARCH_POSIX
     while (1) {}
+#endif
 }
 
 /* ----------------------------------------------------------------
@@ -135,15 +143,24 @@ void testFail(void)
 }
 
 // Entry point
+#ifdef CONFIG_ARCH_POSIX
+// For some reason Zephyr drops the return value on their
+// Linux/Posix platform
+void main(void)
+#else
 int main(void)
+#endif
 {
     // Start the platform to run the tests
     uPortPlatformStart(appTask, NULL, 0, 0);
 
+#ifndef CONFIG_ARCH_POSIX
     // Should never get here
     U_ASSERT(false);
-
     return 0;
+#else
+    posix_exit(0);
+#endif
 }
 
 // End of file

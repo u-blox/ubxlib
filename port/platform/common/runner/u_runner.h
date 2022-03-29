@@ -136,7 +136,8 @@ void uRunnerFunctionRegister(uRunnerFunctionDescription_t *pDescription);
         U_RUNNER_NAME_UID(functionDescription).pFunction = &U_RUNNER_NAME_UID(prefix);                    \
         U_RUNNER_NAME_UID(functionDescription).pFile     =  __FILE__;                                     \
         U_RUNNER_NAME_UID(functionDescription).line      =  __LINE__;                                     \
-        U_RUNNER_NAME_UID(functionDescription).pNext     =  0;                                            \
+        /* IMPORTANT: we deliberately do NOT set pNext to 0 here. See the description under */            \
+        /* uRunnerFunctionRegister() in u_runner.c for why. */                                            \
                                                                                                           \
         /* Call the register function with the description so it can keep a list of them */               \
         uRunnerFunctionRegister(&U_RUNNER_NAME_UID(functionDescription));                                 \

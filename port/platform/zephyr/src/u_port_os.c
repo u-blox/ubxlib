@@ -84,12 +84,14 @@
 #define portMAX_DELAY K_FOREVER
 #endif
 
+#ifndef CONFIG_ARCH_POSIX
+// Not supported on Linux/Posix
 static uint8_t __aligned(U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE)
 exe_chunk_0[U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE];
 // make this ram part executable
 K_MEM_PARTITION_DEFINE(chunk0_reloc, exe_chunk_0, sizeof(exe_chunk_0),
                        K_MEM_PARTITION_P_RWX_U_RWX);
-
+#endif
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -719,6 +721,9 @@ void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
                                   uPortExeChunkFlags_t flags,
                                   uPortChunkIndex_t index)
 {
+    uint8_t *pExeChunk = NULL;
+
+#ifndef CONFIG_ARCH_POSIX
     static struct k_mem_domain dom0;
     struct k_mem_partition *app_parts[] = { &chunk0_reloc };
     (void)pChunkToMakeExecutable;
@@ -731,7 +736,10 @@ void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
     k_yield();
     *pSize = U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE;
 
-    return exe_chunk_0;
+    pExeChunk = exe_chunk_0;
+#endif
+
+    return pExeChunk;
 }
 
 // End of file

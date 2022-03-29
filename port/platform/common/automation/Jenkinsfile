@@ -10,6 +10,11 @@ automation_subdir = "port/platform/common/automation"
 scripts_subdir = "${automation_subdir}/scripts"
 pyTasks_subdir = automation_subdir // The "tasks" dir used for PyInvoke is located in automation dir
 
+default_summary_file = "summary.txt"
+default_test_report_file = "test_report.xml"
+default_debug_file = "debug.log"
+default_build_sub_dir = "build"
+
 // Helper function for converting an instance (e.g. [12,1]) to string (e.g. "12.1")
 // Can't use join() on json structs so we need to do this manually
 def instanceToStr(instance) {
@@ -23,9 +28,14 @@ def instanceToStr(instance) {
     return str
 }
 
-def isFirmware(platform) {
-    def pf = platform.toLowerCase()
-    return pf != "windows" && pf != ""
+def isFirmware(mcu) {
+    def m = mcu.toLowerCase()
+    return m != "win32" && m != "linux32" && m != ""
+}
+
+def testOnLinux(mcu) {
+    def m = mcu.toLowerCase()
+    return m == "linux32"
 }
 
 // This is helper function for executing commands inside the "ubxlib_builder" docker container.
@@ -33,15 +43,15 @@ def isFirmware(platform) {
 // using this method is very slow. So to speed up the build process we simply use "docker run"
 // in this function instead.
 def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
-	def volume_args = [
-		"${env.HOME}/ubxlib:/home/ubxlib:rw",
-		"${env.WORKSPACE}:${env.WORKSPACE}:rw"
-	].collect { "-v $it" }.join(' ')
-	def env_args = ([
-		"HOME=/home/ubxlib",
+    def volume_args = [
+        "${env.HOME}/ubxlib:/home/ubxlib:rw",
+        "${env.WORKSPACE}:${env.WORKSPACE}:rw"
+    ].collect { "-v $it" }.join(' ')
+    def env_args = ([
+        "HOME=/home/ubxlib",
         "BUILD_DIR=${env.WORKSPACE}/_build",
         "TEST_DIR=${env.WORKSPACE}/_test"
-	] + extra_env).collect { "-e $it" }.join(' ')
+    ] + extra_env).collect { "-e $it" }.join(' ')
     sh "mkdir -p ${env.HOME}/ubxlib"
     def uid = sh(script: "id -u", returnStdout: true).trim()
     def gid = sh(script: "id -g", returnStdout: true).trim()
@@ -115,30 +125,32 @@ def dockerBuildPipeline(instance_str, platform, filter) {
 
 // This function returns parallel test pipelines for all instances
 def parallelBuild(json) {
-	def parallel_pipelines = [:]
-	for (instance in json.instances) {
+    def parallel_pipelines = [:]
+    for (instance in json.instances) {
         def instance_str = instanceToStr(instance.id)
-		if (isFirmware(instance.platform)) { // Only build for embedded devices (windows is built in the test stage for now)
+        if (isFirmware(instance.mcu)) { // Only build for embedded devices (windows and Linux are built in the test stage for now)
             parallel_pipelines["$instance_str"] = dockerBuildPipeline(instance_str, instance.platform, json.filter)
-		}
-	}
+        }
+    }
 
-	parallel parallel_pipelines
+    parallel parallel_pipelines
 }
 
 // This is the test pipeline for one instance
 // It will do the unstash and flash stage for embedded targets
 // and the test stage for all instance variants
-def testPipeline(instance_str, json_entry, subst_dir, filter) {
+// NOTE: if you make any changes here, check if testPipelineOnLinux()
+// needs to change also
+def testPipelineOnWindows(instance_str, json_entry, subst_dir, filter) {
     return {
-        def summary_file = "summary.log"
-        def test_report_file = "test_report.xml"
-        def debug_file = "debug.log"
+        def summary_file = default_summary_file
+        def test_report_file = default_test_report_file
+        def debug_file = default_debug_file
 
-        def build_dir = "${working_dir}/${instance_str}/build"
+        def build_dir = "${working_dir}/${instance_str}/" + default_build_sub_dir
         def hw_label = "INSTANCE_${json_entry.id[0]}"
         lock(hw_label) {
-            if (isFirmware(json_entry.platform)) {
+            if (isFirmware(json_entry.mcu)) {
                 stage("Unstash (${env.NODE_NAME})") {
                     unstash name: "${instance_str}_fw"
                 }
@@ -185,10 +197,82 @@ def testPipeline(instance_str, json_entry, subst_dir, filter) {
     }
 }
 
+// This is the test pipeline for an instance that is run, 
+// as well as built, on a Linux host.  In the future this
+// and testPipelineOnWindows() should be merged into a
+// common testPipeline() when we have more stuff being
+// tested from a Linux host.
+// NOTE: if you make any changes here, check if testPipelineOnWindows()
+// needs to change also
+def testPipelineOnLinux(instance_str, json_entry, subst_dir, filter) {
+    return {
+        def summary_file = default_summary_file
+        def test_report_file = default_test_report_file
+        def debug_file = default_debug_file
+
+        def build_dir = "${working_dir}/${instance_str}/" + default_build_sub_dir
+        def hw_label = "INSTANCE_${json_entry.id[0]}"
+
+        // Select the only Linux test agent that is designated
+        // for testing (as well as building)
+        node('TEST-gb-cmb-dt-052')
+        {
+            lock(hw_label) {
+                // Don't currently do FW on Linux
+                if (!isFirmware(json_entry.mcu)) {
+                    stage("Checkout (${env.NODE_NAME})") {
+                        dir(ubxlib_dir) {
+                            checkout([
+                                $class: 'GitSCM',
+                                branches: scm.branches,
+                                doGenerateSubmoduleConfigurations: true,
+                                extensions: scm.extensions + [[$class: 'SubmoduleOption', parentCredentials: true]],
+                                userRemoteConfigs: scm.userRemoteConfigs
+                            ])
+                        }
+                    }
+                    stage('Test') {
+                        echo "Starting tests on ${env.NODE_NAME}"
+                        def instance_workdir = "${working_dir}/${instance_str}"
+                        def test_report_arg = "--test-report ${test_report_file}"
+                        def workspace_path = env.WORKSPACE
+                        if (json_entry.id[0] <= 9) {
+                            // Some special care is needed for instances <= 9
+                            // * Lint must use subst as the command line otherwise exceeds Windows max lengh
+                            // * Instances <= 9 doesn't write any .xml report data
+                            test_report_arg = ""
+                            workspace_path = subst_dir
+                        }
+                        try {
+                            // Start the test
+                            def abs_ubxlib_dir = "${workspace_path}/${ubxlib_dir}"
+                            def abs_instance_workdir = "${workspace_path}/${instance_workdir}"
+                            dir("${abs_instance_workdir}") {
+                                ansiColor('xterm') {
+                                    // Check if there is a test filter
+                                    def filter_arg = filter ? "--filter \"${filter}\"" : ""
+                                    dockerCommand("inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test ${test_report_arg} ${filter_arg} ${instance_str}", instance_workdir)
+                                }
+                            }
+                        } finally {
+                            // Store summary-, debug- and test report file as artifacts
+                            archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${test_report_file}, ${instance_workdir}/**/${debug_file}, ${instance_workdir}/**/*.hex, ${instance_workdir}/**/*.bin, ${instance_workdir}/**/*.elf, ${instance_workdir}/**/*.exe, ${instance_workdir}/**/*.map", allowEmptyArchive: true
+                            if (test_report_arg != "") {
+                                // Record the test results
+                                junit "${working_dir}/${instance_str}/${test_report_file}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 def parallelTest(json, subst_dir) {
     // This function returns parallel test pipelines for all instances
-	def parallel_pipelines = [:]
-	for (json_entry in json.instances) {
+    def parallel_pipelines = [:]
+    for (json_entry in json.instances) {
         def instance_str = instanceToStr(json_entry.id)
         def desc = json_entry.description.toLowerCase()
         if (desc != "reserved") { // Skipp "reserved" instances
@@ -198,13 +282,20 @@ def parallelTest(json, subst_dir) {
                 stage_name = "${json_entry.description} (${instance_str})"
             }
 
-            parallel_pipelines[stage_name] = testPipeline(instance_str, json_entry, subst_dir, json.filter)
+            if (testOnLinux(json_entry.mcu)) {
+                // At the moment only a single case is tested (i.e. run, as well as built)
+                // on a Linux host, so we have a specific test pipeline for that, currently
+                // locked to a specific test agent
+                parallel_pipelines[stage_name] = testPipelineOnLinux(instance_str, json_entry, subst_dir, json.filter)
+            } else {
+                parallel_pipelines[stage_name] = testPipelineOnWindows(instance_str, json_entry, subst_dir, json.filter)
+            }
+
         }
-	}
+    }
 
-	parallel parallel_pipelines
+    parallel parallel_pipelines
 }
-
 
 node('TEST-gb-cmb-dt-022')
 {

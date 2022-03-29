@@ -55,9 +55,13 @@ CONNECTION_LIST = [
     # Instance 22, ESP32, SARA-R422
     {"lock": None, "id": 22, **u_settings.CONNECTION_INSTANCE_22},
     # Instance 23, WINDOWS, SARA-R5
-    # Note: windows has no serial port etc. but we need the lock field to permit
-    # parallel operations.
-    {"lock": None, "id": 23}
+    # Note: windows has no serial port to download code/recive debug
+    # etc. but we need the lock field to permit parallel operations.
+    {"lock": None, "id": 23},
+    # Instance 24, Linux, SARA-R5
+    # Note: Linux has no serial port to download code/recive debug
+    # etc. but we need the lock field to permit parallel operations.
+    {"lock": None, "id": 24}
 ]
 
 def init_locks(manager):
