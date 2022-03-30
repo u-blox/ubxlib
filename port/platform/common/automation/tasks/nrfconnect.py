@@ -116,8 +116,10 @@ def log(ctx, mcu=DEFAULT_MCU, debugger_serial=None,
     build_dir = os.path.abspath(os.path.join(build_dir, output_name))
     if elf_file is None:
         elf_file = task_utils.get_elf(build_dir, "zephyr/zephyr.elf")
+    block_address = task_utils.get_rtt_block_address(ctx, elf_file,
+                                                     toolchain_prefix=f"{ctx.arm_toolchain_path}/arm-none-eabi-")
 
-    with URttReader(mcu, jlink_serial=debugger_serial, reset_on_connect=reset) as rtt_reader:
+    with URttReader(mcu, jlink_serial=debugger_serial, reset_on_connect=reset, rtt_block_address=block_address) as rtt_reader:
         line = ""
         while True:
             data = rtt_reader.read()

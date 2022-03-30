@@ -44,3 +44,16 @@ def get_elf(build_dir, file_pattern="*.elf"):
         print(f'Using ELF file: {elf_file}')
 
     return elf_file
+
+def get_rtt_block_address(ctx, elf_file, toolchain_prefix, symbol_name="_SEGGER_RTT"):
+    address = None
+    if elf_file is not None:
+        proc = ctx.run(f'{toolchain_prefix}readelf -s {elf_file}', hide=True, warn=True)
+        if proc.ok:
+            for item in proc.stdout.split("\n"):
+                if item.endswith(" " + symbol_name):
+                    address_str = re.findall(r": ([0-9a-fA-F]+) ", item)[0]
+                    address = int(address_str, 16)
+                    print(f"Found RTT segment address {hex(address)}")
+
+    return address
