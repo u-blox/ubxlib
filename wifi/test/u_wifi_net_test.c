@@ -291,6 +291,7 @@ static bool validateScanResult(uWifiNetScanResult_t *pResult)
 U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetInitialisation")
 {
     int32_t waitCtr = 0;
+    int32_t errorCode = 0;
     gNetStatusMask = 0;
     gWifiConnected = 0;
     gWifiDisconnected = 0;
@@ -316,7 +317,8 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetInitialisation")
     }
 
     if (!testError) {
-        if (uWifiNetStationDisconnect(gHandles.wifiHandle) == 0) {
+        errorCode = uWifiNetStationDisconnect(gHandles.wifiHandle);
+        if (errorCode == U_ERROR_COMMON_SUCCESS) {
             waitCtr = 0;
             while (!testError && (!gWifiDisconnected || (gNetStatusMask > 0))) {
                 if (waitCtr >= 5) {
@@ -325,7 +327,7 @@ U_PORT_TEST_FUNCTION("[wifiNet]", "wifiNetInitialisation")
                 uPortTaskBlock(1000);
                 waitCtr++;
             }
-        } else {
+        } else if (errorCode != U_WIFI_ERROR_ALREADY_DISCONNECTED) {
             testError = U_WIFI_TEST_ERROR_DISCONNECT;
         }
     }

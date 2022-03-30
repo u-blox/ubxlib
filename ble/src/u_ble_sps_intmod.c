@@ -1113,8 +1113,8 @@ void uBleSpsPrivateDeinit(void)
 }
 
 int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
-                                            uBleSpsConnectionStatusCallback_t pCallback,
-                                            void *pCallbackParameter)
+                                           uBleSpsConnectionStatusCallback_t pCallback,
+                                           void *pCallbackParameter)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -1131,8 +1131,8 @@ int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
 }
 
 int32_t uBleSpsConnectSps(int32_t bleHandle,
-                           const char *pAddress,
-                           const uBleSpsConnParams_t *pConnParams)
+                          const char *pAddress,
+                          const uBleSpsConnParams_t *pConnParams)
 {
     int32_t errorCode;
     uint8_t address[6];
@@ -1291,8 +1291,8 @@ int32_t uBleSpsSend(int32_t bleHandle, int32_t channel, const char *pData, int32
 }
 
 int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
-                                         uBleSpsAvailableCallback_t pCallback,
-                                         void *pCallbackParameter)
+                                        uBleSpsAvailableCallback_t pCallback,
+                                        void *pCallbackParameter)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -1331,7 +1331,7 @@ int32_t uBleSpsReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t 
 }
 
 int32_t uBleSpsGetSpsServerHandles(int32_t bleHandle, int32_t channel,
-                                    uBleSpsHandles_t *pHandles)
+                                   uBleSpsHandles_t *pHandles)
 {
     int32_t spsConnHandle = channel;
     int32_t returnValue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;

@@ -154,8 +154,8 @@ typedef struct {
  * @param pCallbackParameter Parameter pointer set when registering callback
  */
 typedef void (*uBleSpsConnectionStatusCallback_t)(int32_t connHandle, char *address,
-                                                   int32_t status, int32_t channel, int32_t mtu,
-                                                   void *pCallbackParameter);
+                                                  int32_t status, int32_t channel, int32_t mtu,
+                                                  void *pCallbackParameter);
 
 /** Data callback type
  *
@@ -180,8 +180,8 @@ typedef void (*uBleSpsAvailableCallback_t)(int32_t channel, void *pCallbackParam
  * @return                   zero on success, on failure negative error code.
  */
 int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
-                                            uBleSpsConnectionStatusCallback_t pCallback,
-                                            void *pCallbackParameter);
+                                           uBleSpsConnectionStatusCallback_t pCallback,
+                                           void *pCallbackParameter);
 
 /** DEPRECATED, use uBleSpsSetDataAvailableCallback and uBleSpsReceive instead
  *
@@ -199,8 +199,8 @@ int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
  */
 U_DEPRECATED
 int32_t uBleSpsSetCallbackData(int32_t bleHandle,
-                                void (*pCallback) (int32_t, size_t, char *, void *),
-                                void *pCallbackParameter);
+                               void (*pCallback) (int32_t, size_t, char *, void *),
+                               void *pCallbackParameter);
 
 /** Sets the callback for data available
  *
@@ -210,8 +210,8 @@ int32_t uBleSpsSetCallbackData(int32_t bleHandle,
  * @return                   Zero on success, on failure negative error code.
  */
 int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
-                                         uBleSpsAvailableCallback_t pCallback,
-                                         void *pCallbackParameter);
+                                        uBleSpsAvailableCallback_t pCallback,
+                                        void *pCallbackParameter);
 
 /** Create a SPS connection over BLE, this is the u-blox proprietary protocol for
  *  streaming data over ble. Flow control is used.
@@ -228,8 +228,8 @@ int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
  * @return             zero on success, on failure negative error code.
  */
 int32_t uBleSpsConnectSps(int32_t bleHandle,
-                           const char *pAddress,
-                           const uBleSpsConnParams_t *pConnParams);
+                          const char *pAddress,
+                          const uBleSpsConnParams_t *pConnParams);
 
 /** Disconnect the connection.
  * If data has been sent, it is advisable to have a 50 ms delay
@@ -299,7 +299,7 @@ int32_t uBleSpsSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeo
  * @return            zero on success, on failure negative error code.
  */
 int32_t uBleSpsGetSpsServerHandles(int32_t bleHandle, int32_t channel,
-                                    uBleSpsHandles_t *pHandles);
+                                   uBleSpsHandles_t *pHandles);
 
 /** Preset server handles before conneting
  *

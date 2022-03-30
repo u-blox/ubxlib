@@ -226,7 +226,7 @@ int32_t uShortRangeLock();
  */
 int32_t uShortRangeUnlock();
 
-/** Open UART for a short range module and configures it for EDM stream handling
+/** Open UART for a short range module, reboots the module and configures it for EDM stream handling.
  *
  * @param moduleType       the short range module type.
  * @param pUartConfig      the UART configuration to be used.

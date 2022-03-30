@@ -105,7 +105,7 @@ static void UUBTACLD_urc(uAtClientHandle_t atHandle, void *pParameter);
 static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
                              int32_t channel, uBleSpsChannel_t **ppListHead);
 static uBleSpsChannel_t *getSpsChannel(const uShortRangePrivateInstance_t *pInstance,
-                                           int32_t channel, uBleSpsChannel_t *pListHead);
+                                       int32_t channel, uBleSpsChannel_t *pListHead);
 static void deleteSpsChannel(const uShortRangePrivateInstance_t *pInstance,
                              int32_t channel, uBleSpsChannel_t **ppListHead);
 static void deleteAllSpsChannels(uBleSpsChannel_t **ppListHead) ;
@@ -214,7 +214,7 @@ static void createSpsChannel(uShortRangePrivateInstance_t *pInstance,
 
 // Get SPS channel info related to channel at instance
 static uBleSpsChannel_t *getSpsChannel(const uShortRangePrivateInstance_t *pInstance,
-                                           int32_t channel, uBleSpsChannel_t *pListHead)
+                                       int32_t channel, uBleSpsChannel_t *pListHead)
 {
     uBleSpsChannel_t *pChannel;
 
@@ -320,7 +320,7 @@ static void btEdmConnectionCallback(int32_t edmStreamHandle,
 
     if (pInstance != NULL && pInstance->atHandle != NULL) {
         uBleSpsConnection_t *pStatus = (uBleSpsConnection_t *)
-                                           pInstance->pPendingSpsConnectionEvent;
+                                       pInstance->pPendingSpsConnectionEvent;
         bool send = false;
 
         if (pStatus == NULL) {
@@ -364,7 +364,7 @@ static void atConnectionEvent(int32_t shortRangeHandle,
 
     if (pInstance->pSpsConnectionCallback != NULL) {
         uBleSpsConnection_t *pStatus = (uBleSpsConnection_t *)
-                                           pInstance->pPendingSpsConnectionEvent;
+                                       pInstance->pPendingSpsConnectionEvent;
 
         if (pStatus == NULL) {
             //lint -esym(429, pStatus) Suppress pStatus not being free()ed here
@@ -436,8 +436,8 @@ static void onBleSpsEvent(void *pParam, size_t eventSize)
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
-                                            uBleSpsConnectionStatusCallback_t pCallback,
-                                            void *pCallbackParameter)
+                                           uBleSpsConnectionStatusCallback_t pCallback,
+                                           void *pCallbackParameter)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
@@ -514,8 +514,8 @@ static int32_t setBleConfig(const uAtClientHandle_t atHandle, int32_t parameter,
 }
 
 int32_t uBleSpsConnectSps(int32_t bleHandle,
-                           const char *pAddress,
-                           const uBleSpsConnParams_t *pConnParams)
+                          const char *pAddress,
+                          const uBleSpsConnParams_t *pConnParams)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -687,8 +687,8 @@ int32_t uBleSpsSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeo
 
 U_DEPRECATED
 int32_t uBleSpsSetCallbackData(int32_t bleHandle,
-                                void (*pCallback) (int32_t, size_t, char *, void *),
-                                void *pCallbackParameter)
+                               void (*pCallback) (int32_t, size_t, char *, void *),
+                               void *pCallbackParameter)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -722,8 +722,8 @@ int32_t uBleSpsSetCallbackData(int32_t bleHandle,
 }
 
 int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
-                                         uBleSpsAvailableCallback_t pCallback,
-                                         void *pCallbackParameter)
+                                        uBleSpsAvailableCallback_t pCallback,
+                                        void *pCallbackParameter)
 {
     int32_t shoHandle = uBleToShoHandle(bleHandle);
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -740,10 +740,10 @@ int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
 
                 if (gBleSpsEventQueue == (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
                     gBleSpsEventQueue = uPortEventQueueOpen(onBleSpsEvent,
-                                                             "uBleSpsEventQueue", sizeof(bleSpsEvent_t),
-                                                             U_BLE_SPS_EVENT_STACK_SIZE,
-                                                             U_BLE_SPS_EVENT_PRIORITY,
-                                                             2 * U_BLE_SPS_MAX_CONNECTIONS);
+                                                            "uBleSpsEventQueue", sizeof(bleSpsEvent_t),
+                                                            U_BLE_SPS_EVENT_STACK_SIZE,
+                                                            U_BLE_SPS_EVENT_PRIORITY,
+                                                            2 * U_BLE_SPS_MAX_CONNECTIONS);
                     if (gBleSpsEventQueue < 0) {
                         gBleSpsEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
                     }
@@ -797,7 +797,7 @@ void uBleSpsPrivateDeinit(void)
 //lint -esym(818, pHandles) Suppress pHandles could be const, need to
 // follow prototype
 int32_t uBleSpsGetSpsServerHandles(int32_t bleHandle, int32_t channel,
-                                    uBleSpsHandles_t *pHandles)
+                                   uBleSpsHandles_t *pHandles)
 {
     (void)channel;
     (void)bleHandle;
