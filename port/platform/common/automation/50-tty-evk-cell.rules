@@ -1,0 +1,4 @@
+# Make the 0403:6010 FTDI chip used in u-blox cellular EVKs, first USB end-point on, appear as evk_cell and accessible to all
+# Two rules are required because the link needs to be to a TTY but the interface number (==USB endpoint) is only in the USB subsystem
+SUBSYSTEMS=="usb", ENV{ID_USB_INTERFACE_NUM_EVK_CELL}="$attr{bInterfaceNumber}"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", ENV{ID_USB_INTERFACE_NUM_EVK_CELL}=="00", MODE:="0666", SYMLINK+="evk_cell"
