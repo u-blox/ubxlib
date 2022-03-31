@@ -1216,8 +1216,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
                 } else {
                     uPortLog("U_SECURITY_TEST: this device supports u-blox"
                              " security but has not been security sealed,"
-                             " no testing of end to end encryption will be"
-                             " carried out.\n");
+                             " no testing of PSK generation will be carried"
+                             " out.\n");
                 }
             }
 
