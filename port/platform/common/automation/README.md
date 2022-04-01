@@ -9,7 +9,7 @@ The following steps should work for both Windows and Ubuntu:
 3. For Windows make sure that your `<python3_dir>/Scripts` is accessable through your `PATH` environment.
 4. Run either [setup_linux.sh](setup_linux.sh) or [setup_windows.bat](setup_windows.bat) depending on your platform. These scripts will install all Python modules needed for the test automation. The modules we are using are listed in [requirements.txt](requirements.txt)
 5. Verify that you can execute the command `invoke` from your terminal. If the command is not found, for Windows double check step 3. For Ubuntu just logout and login again (Python modules are placed in `~/.local/bin` and this directory is only added to PATH if it existed when user logs in).
-6. If you intend to run the Linux-under-Zephyr executable and have it drive a real module you will need to set up a `udev` rule to make it available to `docker`; an example [50-tty-evk-cell.rules](50-tty-evk-cell.rules) is provided, which is appropriate for a cellular EVK; this should be copied to the `/etc/udev/rules.d/` directory of the Linux machine and the `udev` rules reloaded.
+6. If you intend to run the Linux-under-Zephyr executable and have it drive a real module you will need to set up a `udev` rule to make the module available to `docker` as a known TTY; an example [50-tty-evk-cell.rules](50-tty-evk-cell.rules) is provided, which is appropriate for a cellular EVK; this or similar should be copied to the `/etc/udev/rules.d/` directory of the Linux machine and the `udev` rules reloaded.
 
 **NOTE** You may need to re-run `setup_windows.bat`/`setup_linux.sh` when test automation is upgraded as new Python module may be added.
 
