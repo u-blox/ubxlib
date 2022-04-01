@@ -36,6 +36,16 @@
 # include "../arch/arm/u_print_callstack_cortex.c"
 #endif
 
+// To enable dumping the threads in interrupts we use a static
+// allocation as default. This allocation need to be large enaough
+// to fit all threads or nothing will be dumped.
+// If you don't need to support dumping the threads from interrupts
+// You can set U_DEBUG_UTILS_DUMP_THREADS_MAX_TASKS=0 to instead
+// use dynamic allocation.
+#ifndef U_DEBUG_UTILS_DUMP_THREADS_MAX_TASKS
+# define U_DEBUG_UTILS_DUMP_THREADS_MAX_TASKS 8
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -43,6 +53,10 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+#if U_DEBUG_UTILS_DUMP_THREADS_MAX_TASKS > 0
+static TaskStatus_t gTaskStatus[U_DEBUG_UTILS_DUMP_THREADS_MAX_TASKS];
+#endif
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -79,7 +93,12 @@ void uDebugUtilsDumpThreads(void)
 
     uxArraySize = uxTaskGetNumberOfTasks();
 
+#if U_DEBUG_UTILS_DUMP_THREADS_MAX_TASKS > 0
+    pxTaskStatusArray = gTaskStatus;
+    uxArraySize = U_DEBUG_UTILS_DUMP_THREADS_MAX_TASKS;
+#else
     pxTaskStatusArray = pvPortMalloc(uxArraySize * sizeof(TaskStatus_t));
+#endif
     if (pxTaskStatusArray != NULL) {
         /* Generate raw status information about each task. */
         uxArraySize = uxTaskGetSystemState(pxTaskStatusArray,
