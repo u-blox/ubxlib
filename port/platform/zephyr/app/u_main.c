@@ -35,6 +35,7 @@
 #include "u_error_common.h"
 
 #include "u_assert.h"
+#include "u_debug_utils.h"
 
 #include "u_port.h"
 #include "u_port_debug.h"
@@ -165,5 +166,13 @@ int main(void)
     posix_exit(0);
 #endif
 }
+
+#ifdef U_DEBUG_UTILS_DUMP_THREADS
+void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
+{
+    uDebugUtilsDumpThreads();
+}
+#endif
+
 
 // End of file
