@@ -199,7 +199,7 @@ size_t uShortRangeMovePayloadFromPbufList(uShortRangePbufList_t *pList, char *pD
                     pList->totalLen -= len;
                     pTemp->len -= len;
                     // move the remaining data to start
-                    memcpy(pTemp->pData, &pTemp->pData[len], pTemp->len);
+                    memmove(pTemp->pData, &pTemp->pData[len], pTemp->len);
                     len = 0;
                 }
             }
