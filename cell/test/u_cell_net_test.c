@@ -478,8 +478,10 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     // for pModule from now on
 
     // Scan for networks properly
-    // Have seen this fail on some occasions so give it two goes
-    for (size_t x = 2; (x > 0) && (y <= 0); x--) {
+    // Have seen this fail on some occasions; sometimes the module
+    // can be scanning already, internally, and won't respond to a
+    // user request, so give it several goes
+    for (size_t x = 5; (x > 0) && (y <= 0); x--) {
         uPortLog("U_CELL_NET_TEST: scanning for networks...\n");
         gStopTimeMs = uPortGetTickTimeMs() +
                       (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
@@ -505,6 +507,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
         if (y == 0) {
             // Give us something to search for in the log
             uPortLog("U_CELL_NET_TEST: *** WARNING *** RETRY SCAN.\n");
+            uPortTaskBlock(5000);
         }
     }
 
