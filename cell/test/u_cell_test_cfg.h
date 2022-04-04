@@ -95,7 +95,7 @@
  * by the test code for normal operation.  When running
  * on the test system it needs to be set to 0x000010
  * (band 5) so that we find the Nutaq test box and not the
- * live network however it is the u_run.py automation
+ * live network however it is the u_data.py automation
  * script that does this implicitly; must be different from
  * U_CELL_TEST_CFG_ALT_BANDMASK1.
  */
