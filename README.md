@@ -150,5 +150,6 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 - The `go` echo servers in [common/sock/test/echo_server](/common/sock/test/echo_server) are based on those used in testing of [AWS FreeRTOS](https://github.com/aws/amazon-freertos).
 - The `setjmp()/longjmp()` implementation in [port/clib/u_port_setjmp.S](/port/clib/u_port_setjmp.S), used when testing the Zephyr platform, is copyright Nick Clifton, Cygnus Solutions and part of [newlib](https://sourceware.org/newlib/libc.html).
 - The `base64` implementation in [common/utils/src/base64.h](/common/utils/src/base64.h) is copyright [William Sherif](https://github.com/superwills/NibbleAndAHalf).
+- The ARM callstack printer in [port/platform/common/debug_utils/src/arch/arm/u_print_callstack_cortex.c](/port/platform/common/debug_utils/src/arch/arm/u_print_callstack_cortex.c) is copyright Armink part of [CmBacktrace](https://github.com/armink/CmBacktrace).
 
 In all cases copyright, and our thanks, remain with the original authors.
