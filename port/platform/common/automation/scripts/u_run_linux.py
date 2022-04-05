@@ -39,6 +39,11 @@ UART_TO_DEVICE_REGEX = r"(?:^UART_([0-9]*) connected to pseudotty: (.*?))$"
 # List of device redirections that need to be terminated when done
 DEVICE_REDIRECTS = []
 
+# The baud rate to use: this is necessary since the redirection process
+# doesn't seem to work for real TTYs unless it is given as a parameter
+# to the socat utility which does the redirection
+UART_BAUD_RATE = 115200
+
 def uart_to_device_list_create(u_flags, logger):
     '''Create a UART context by parsing u_flags'''
     uart_to_device_list = []
@@ -171,7 +176,7 @@ def callback(match, uart_to_device_list, results, reporter):
                     uart_to_device["done"] = True
                 if device_a and device_b:
                     # Actually do it
-                    DEVICE_REDIRECTS.append(u_utils.device_redirect_start(device_a, device_b))
+                    DEVICE_REDIRECTS.append(u_utils.device_redirect_start(device_a, device_b, UART_BAUD_RATE))
                 if reporter and message:
                     reporter.event(u_report.EVENT_TYPE_TEST,
                                    u_report.EVENT_INFORMATION,

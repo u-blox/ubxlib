@@ -55,7 +55,9 @@ def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
     sh "mkdir -p ${env.HOME}/ubxlib"
     def uid = sh(script: "id -u", returnStdout: true).trim()
     def gid = sh(script: "id -g", returnStdout: true).trim()
-    sh "docker run -i -u ${uid}:${gid} --rm -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
+    // Needs --privileged to access TTY devices (since there is no dialout group
+    // in the docker image) and -v /dev:/dev to map the devices into the docker image
+    sh "docker run -i -u ${uid}:${gid} --rm --privileged -v /dev:/dev -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
 }
 
 // This is the build pipeline for one instance
