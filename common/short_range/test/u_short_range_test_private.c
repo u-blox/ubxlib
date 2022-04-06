@@ -177,6 +177,7 @@ void uShortRangeTestPrivatePostamble(uShortRangeTestPrivate_t *pParameters)
 {
     uPortLog("U_SHORT_RANGE_TEST_PRIVATE: deinitialising short range API...\n");
     // Let uShortRangeDeinit() remove the short range handle
+    uAtClientIgnoreAsync(NULL);
     uShortRangeDeinit();
 
     if (pParameters->edmStreamHandle >= 0) {
