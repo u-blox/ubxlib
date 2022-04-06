@@ -643,6 +643,7 @@ static int32_t radioOff(uCellPrivateInstance_t *pInstance)
             uAtClientLock(atHandle);
             uAtClientCommandStart(atHandle, "AT+CFUN?");
             uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+CFUN:");
             if (uAtClientReadInt(atHandle) == pInstance->pModule->radioOffCfun) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
@@ -1150,7 +1151,7 @@ static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
                  ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->handle)); x++) {
                 if (gRegTypes[x].supportedRatsBitmap &
                     pInstance->pModule->supportedRatsBitmap) {
-                    // Prod the modem to see if it's done
+                    // Prod the modem to see if it is done
                     // Use each of the AT+CxREG? query types,
                     // one at a time.
                     uAtClientLock(atHandle);

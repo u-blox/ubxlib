@@ -167,6 +167,8 @@ void uCellDeinit()
         while (gpUCellPrivateInstanceList != NULL) {
             pInstance = gpUCellPrivateInstanceList;
             removeCellInstance(pInstance);
+            // Tell the AT client to ignore any asynchronous events from now on
+            uAtClientIgnoreAsync(pInstance->atHandle);
             // Free the wake-up callback
             uAtClientSetWakeUpHandler(pInstance->atHandle, NULL, NULL, 0);
             // Free any scan results
@@ -382,6 +384,8 @@ void uCellRemove(int32_t cellHandle)
         pInstance = pUCellPrivateGetInstance(cellHandle);
         if (pInstance != NULL) {
             removeCellInstance(pInstance);
+            // Tell the AT client to ignore any asynchronous events from now on
+            uAtClientIgnoreAsync(pInstance->atHandle);
             // Free the wake-up callback
             uAtClientSetWakeUpHandler(pInstance->atHandle, NULL, NULL, 0);
             // Free any scan results
