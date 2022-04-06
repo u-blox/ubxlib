@@ -36,6 +36,7 @@
 
 #include "u_assert.h"
 #include "u_debug_utils.h"
+#include "u_debug_utils_internal.h"
 
 #include "u_port.h"
 #include "u_port_debug.h"
@@ -170,6 +171,25 @@ int main(void)
 #ifdef U_DEBUG_UTILS_DUMP_THREADS
 void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
 {
+# ifdef __arm__
+    uStackFrame_t frame;
+    struct k_thread *pCurrent = (struct k_thread *)k_current_get();
+    uint32_t stackBottom = pCurrent->stack_info.start;
+    uint32_t stackTop = stackBottom + pCurrent->stack_info.size;
+    uPortLogF("### Dumping current thread (%s) ###\n", k_thread_name_get(k_current_get()));
+    uPortLogF("  Backtrace: 0x%08x ", esf->basic.pc);
+    if (uDebugUtilsInitStackFrame(esf->extra_info.callee->psp, stackTop, &frame)) {
+        for (int depth = 0; depth < 16; depth++) {
+            if (uDebugUtilsGetNextStackFrame(stackTop, &frame)) {
+                uPortLogF("0x%08x ", (unsigned int)frame.pc);
+            } else {
+                break;
+            }
+        }
+    }
+    uPortLogF("\n\n");
+# endif
+
     uDebugUtilsDumpThreads();
 }
 #endif

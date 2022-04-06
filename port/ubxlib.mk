@@ -26,11 +26,12 @@ UBXLIB_SRC_DIRS += \
 # Additional include directories
 UBXLIB_INC += \
 	${UBXLIB_BASE}/cfg \
-	${UBXLIB_BASE}/port/api
+	${UBXLIB_BASE}/port/api \
 
 UBXLIB_PRIVATE_INC += \
 	${UBXLIB_BASE}/port/platform/common/event_queue \
-	${UBXLIB_BASE}/port/platform/common/mutex_debug
+	${UBXLIB_BASE}/port/platform/common/mutex_debug \
+	${UBXLIB_BASE}/port/platform/common/debug_utils/src/freertos/additions
 
 # Network requires special care since it contains stub & optional files
 UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network.c

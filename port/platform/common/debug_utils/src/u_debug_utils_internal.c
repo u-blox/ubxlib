@@ -15,26 +15,20 @@
  */
 
 /** @file
- * @brief Thread dumper.
+ * @brief Internal functions used for the debug utils
  */
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
+#include "u_port_debug.h"
+
+#include "u_debug_utils_internal.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-#ifdef U_DEBUG_UTILS_DUMP_THREADS
-# ifdef __ZEPHYR__
-#  include "zephyr/u_dump_threads.c"
-# else
-// The thread dumper only supports FreeRTOS and Zephyr
-// Zephyr can be detected but FreeRTOS cannot so instead we just assume
-// that if it's not Zephyr it must be FreeRTOS - but to verify we include
-// FreeRTOS.h. This means that if you are running on another OS you will
-// get an error here since your OS then isn't supported.
-#  include "FreeRTOS.h"
-#  include "freertos/u_dump_threads.c"
-# endif
-#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -51,3 +45,24 @@
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+#ifdef U_DEBUG_UTILS_DUMP_THREADS
+int32_t uDebugUtilsPrintCallStack(uint32_t sp, uint32_t stackTop, size_t maxDepth)
+{
+    size_t depth;
+    uStackFrame_t frame;
+    uPortLogF("Backtrace: ");
+    if (!uDebugUtilsInitStackFrame(sp, stackTop, &frame)) {
+        return 0;
+    }
+    for (depth = 0; depth < maxDepth; depth++) {
+        if (uDebugUtilsGetNextStackFrame(stackTop, &frame)) {
+            uPortLogF("0x%08x ", (unsigned int)frame.pc);
+        } else {
+            break;
+        }
+    }
+    uPortLogF("\n");
+    return depth;
+}
+#endif

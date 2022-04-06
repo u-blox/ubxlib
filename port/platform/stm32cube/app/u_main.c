@@ -41,6 +41,8 @@
 #include "u_port_os.h"
 #include "u_port_gpio.h"
 
+#include "u_debug_utils.h"
+
 #include "u_runner.h"
 
 #include "cmsis_os.h"
