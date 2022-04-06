@@ -91,26 +91,6 @@ extern uPortTaskHandle_t gMutexDebugWatchdogTaskHandle;
 /** Mutex unlock helper macro.
  */
 #define U_PORT_MUTEX_UNLOCK_NO_MUTEX_DEBUG     U_PORT_MUTEX_UNLOCK
-
-#endif
-
-#ifdef U_CFG_MUTEX_DEBUG
-/** On Windows the functions uPortPrivateEnterCritical()/
- * uPortPrivateExitCritical() are _simulations_ of critical
- * sections rather than actual critical sections (which don't
- * exist on Windows).  As such they _do_ lock mutexes, which causes
- * a problem when U_CFG_MUTEX_DEBUG is defined since some other
- * task that the critical section simulation has suspended may
- * have locked the gMutexList mutex which U_CFG_MUTEX_DEBUG
- * itself uses.  Hence, just for the uPortPrivateEnterCritical()/
- * uPortPrivateExitCritical() code, we need to go "around" the
- * mutex debug code by using the macros below.
- */
-# define U_PORT_MUTEX_LOCK_NO_DEBUG(x)   { _uPortMutexLock(x)
-# define U_PORT_MUTEX_UNLOCK_NO_DEBUG(x) } _uPortMutexUnlock(x)
-#else
-# define U_PORT_MUTEX_LOCK_NO_DEBUG   U_PORT_MUTEX_LOCK
-# define U_PORT_MUTEX_UNLOCK_NO_DEBUG U_PORT_MUTEX_UNLOCK
 #endif
 
 /* ----------------------------------------------------------------
@@ -145,7 +125,8 @@ typedef struct uPortPrivateTimer_t {
 
 /** A structure that allows us to get at the mutex handle
  * when U_CFG_MUTEX_DEBUG is defined, letting us sneak around
- * the mutex debug operation when simulating critical sections.
+ * the mutex debug operation when simulating critical sections,
+ * but without having to export the uMutexInfo_t structure.
  */
 typedef struct {
     uPortMutexHandle_t handle;
@@ -527,7 +508,6 @@ int32_t uPortPrivateEnterCritical()
         U_ASSERT(!gInCriticalSection);
 
         // Suspend all of the tasks in the list except ourselves
-        memset(gThreadIdsSuspended, 0, sizeof(gThreadIdsSuspended));
         for (size_t x = 0; (errorCode == 0) &&
              (x < sizeof(gThreadIds) / sizeof(gThreadIds[0])); x++) {
             if ((gThreadIds[x] != 0) && (gThreadIds[x] != thisThreadId) &&

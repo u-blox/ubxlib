@@ -464,7 +464,7 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
  * things down but may have issues callbacks, either for URCs
  * directly or for callbacks via uAtClientCallback().  Such asynchronous
  * callbacks may have been given pointers to context data which will
- * become invalid yet they may still be sitting in a queue waiting
+ * become invalid, yet they may still be sitting in a queue waiting
  * to be processed and so could access out of range memory if they are
  * allowed to run; calling this function before invalidating such pointers,
  * then later calling uAtClientRemove(), avoids any surprises.

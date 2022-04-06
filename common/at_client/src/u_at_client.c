@@ -372,7 +372,7 @@ typedef struct uAtClientInstance_t {
     uPortMutexHandle_t mutex; /** Mutex for threadsafeness. */
     uPortMutexHandle_t streamMutex; /** Mutex for the data stream. */
     uPortMutexHandle_t urcPermittedMutex; /** Mutex that we can use to avoid trampling on a URC. */
-    uPortMutexHandle_t asyncRunningMutex; /** Mutex indicating that a uAtClientCallback() is executing. */
+    uPortMutexHandle_t asyncRunningMutex; /** Mutex indicating an uAtClientCallback() is executing. */
     uAtClientReceiveBuffer_t *pReceiveBuffer; /** Pointer to the receive buffer structure. */
     bool debugOn; /** Whether general debug is on or off. */
     bool printAtOn; /** Whether printing of AT commands and responses is on or off. */
@@ -456,11 +456,8 @@ static uPortMutexHandle_t gMutex = NULL;
 
 /** As well as the linked list of AT clients we keep a list of
  * the magic numbers related to each AT client as an array.  This
- * is because we need to be able to mark an AT client as not
- * reacting to asynchronous events, since the those asychronous
- * events may remain queued for processing after the code that is
- * using the AT client and hence the pointers that may have been
- * passed to those asychronous events may have become invalid.
+ * is so that we can mark an AT client as not reacting to
+ * asynchronous events (by removing it from the array).
  * Note: we can't run through the linked list for this kind of
  * thing as that would require a lock on gMutex and the asynchronous
  * event may not be able to obtain such a lock.
@@ -638,7 +635,7 @@ static void addAtClientInstance(uAtClientInstance_t *pClient)
 {
     bool done = false;
 
-    // Populate the magic number and add it to the list
+    // Populate the magic number
     pClient->magicNumber = gAtClientMagicNumberNext;
     gAtClientMagicNumberNext++;
     if (gAtClientMagicNumberNext < U_AT_CLIENT_MAGIC_NUMBER_START) {
@@ -652,6 +649,8 @@ static void addAtClientInstance(uAtClientInstance_t *pClient)
         }
     }
     U_ASSERT(done);
+
+    // Add to the list
     pClient->pNext = gpAtClientList;
     gpAtClientList = pClient;
 }
@@ -665,6 +664,7 @@ static void ignoreAsync(const uAtClientInstance_t *pClient)
     for (size_t x = 0; !done &&
          (x < sizeof(gAtClientMagicNumberProcessAsync) / sizeof(gAtClientMagicNumberProcessAsync[0])); x++) {
         if (gAtClientMagicNumberProcessAsync[x] == pClient->magicNumber) {
+            // Remove the magic number from the list
             gAtClientMagicNumberProcessAsync[x] = 0;
             done = true;
         }
@@ -679,7 +679,7 @@ static void removeAtClientInstance(const uAtClientInstance_t *pClient)
     uAtClientInstance_t *pCurrent;
     uAtClientInstance_t *pPrev = NULL;
 
-    // First remove the AT client from the linked list
+    // Remove the AT client from the linked list
     pCurrent = gpAtClientList;
     while (pCurrent != NULL) {
         if (pClient == pCurrent) {
@@ -2492,10 +2492,12 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
     if ((receiveBufferSize > U_AT_CLIENT_BUFFER_OVERHEAD_BYTES) &&
         (streamType < U_AT_CLIENT_STREAM_TYPE_MAX)) {
         // See if there's already an AT client for this stream and
-        // also that we have room for another in the magic number array
+        // also check that we have room for another entry in the
+        // magic number array
         pClient = pGetAtClientInstance(streamHandle, streamType);
         if ((pClient == NULL) &&
-            (numAtClients() < sizeof(gAtClientMagicNumberProcessAsync) / sizeof(gAtClientMagicNumberProcessAsync[0]))) {
+            (numAtClients() < sizeof(gAtClientMagicNumberProcessAsync) /
+                              sizeof(gAtClientMagicNumberProcessAsync[0]))) {
             // Nope, create one
             pClient = (uAtClientInstance_t *) malloc(sizeof(uAtClientInstance_t));
             if (pClient != NULL) {
