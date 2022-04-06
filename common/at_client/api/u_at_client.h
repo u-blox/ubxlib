@@ -192,6 +192,14 @@
  * received a `+CEREG:` response with one parameter instead of two
  * and, if so, do a second read to get the AT response it was after.
  *
+ * Also note that an entity that is expecting URCs or has launched
+ * asynchronous events using uAtClientCallback() should take care,
+ * while shutting down, that such asynchronous events haven't been
+ * left in the queue to be processed, potentially after the entity
+ * has invalidated the pointers it may have passed to those events.
+ * To prevent this happening, uAtClientIgnoreAsync() should be
+ * called before the entity begins to shut itself down.
+ *
  * Notes:
  *
  * - Spaces in AT responses after the prefix (just one), around
@@ -355,6 +363,13 @@ extern "C" {
 # define U_AT_CLIENT_CALLBACK_TASK_PRIORITY U_CFG_OS_APP_TASK_PRIORITY
 #endif
 
+#ifndef U_AT_CLIENT_MAX_NUM
+/** The maximum number of AT handlers that can be active at any
+ * one time.
+ */
+# define U_AT_CLIENT_MAX_NUM 5
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -442,6 +457,22 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                uAtClientStream_t streamType,
                                void *pReceiveBuffer,
                                size_t receiveBufferSize);
+
+/** Tell the given AT client to throw away asynchronous events; use NULL
+ * as the parameter to apply this to all AT clients.  This function
+ * is useful when the application that is using the AT client is shutting
+ * things down but may have issues callbacks, either for URCs
+ * directly or for callbacks via uAtClientCallback().  Such asynchronous
+ * callbacks may have been given pointers to context data which will
+ * become invalid yet they may still be sitting in a queue waiting
+ * to be processed and so could access out of range memory if they are
+ * allowed to run; calling this function before invalidating such pointers,
+ * then later calling uAtClientRemove(), avoids any surprises.
+ *
+ * @param atHandle the handle of the AT client the should ignore
+ *                 asynchronous events.
+ */
+void uAtClientIgnoreAsync(uAtClientHandle_t atHandle);
 
 /** Remove the given AT client.  No AT client function must
  * be called on this client once this function is called.
@@ -972,6 +1003,9 @@ int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
  * else handling incoming data and any delay may result in
  * buffer overflows.  If you need to do anything heavy then
  * have your handler call uAtClientCallback().
+ * IMPORTANT: make sure that this function is only called
+ * when you know that atHandle is not going to be pulled out
+ * from underneath it.
  *
  * @param atHandle        the handle of the AT client.
  * @param pPrefix         the prefix for the URC. A prefix might
@@ -991,6 +1025,9 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
                                void *pHandlerParam);
 
 /** Remove an unsolicited response code handler.
+ * IMPORTANT: make sure that this function is only called
+ * when you know that atHandle is not going to be pulled out
+ * from underneath it.
  *
  * @param atHandle the handle of the AT client.
  * @param pPrefix  the prefix for the URC, which would have been
