@@ -117,3 +117,9 @@ sudo systemctl start mqttsn_gateway_dtls
 sudo systemctl enable mqttsn_gateway
 sudo systemctl enable mqttsn_gateway_dtls
 ```
+
+# Reading Logs
+Both `mosquitto` and the Paho MQTT_SN Gateway log copiously.  Useful commands for viewing the logs are:
+
+- Follow live logging from the `mosquitto` service: `sudo journalctl -u mosquitto.service -f`
+- Display the last 100 lines from the `mqttsn_gateway` service and keep updating them: `sudo journalctl -u mqttsn_gateway.service -f -n 100`
