@@ -72,14 +72,14 @@
 #ifndef U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS
 /** Server to use for MQTT testing.
  */
-# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS  broker.hivemq.com
+# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS  ubxlib.it-sgn.u-blox.com
 #endif
 
 #ifndef U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED
 /** Server to use for MQTT testing on a secured connection,
  * can't be hivemq as that doesn't support security.
  */
-# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED  broker.emqx.io:8883
+# define U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS_SECURED  ubxlib.it-sgn.u-blox.com:8883
 #endif
 
 /* ----------------------------------------------------------------

@@ -76,14 +76,20 @@
 #ifndef U_MQTT_CLIENT_TEST_MQTT_BROKER_URL
 /** Server to use for MQTT client testing, non secure.
  */
-# define U_MQTT_CLIENT_TEST_MQTT_BROKER_URL  broker.emqx.io
+//lint -esym(773, U_MQTT_CLIENT_TEST_MQTT_BROKER_URL) Suppress not fully
+// bracketed, Lint is wary of the "-" in here but we can't have brackets
+// around this since it is used directly.
+# define U_MQTT_CLIENT_TEST_MQTT_BROKER_URL ubxlib.it-sgn.u-blox.com
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL
 /** Server to use for MQTT client testing: must support TLS
  * security.
  */
-# define U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL  broker.emqx.io:8883
+//lint -esym(773, U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL) Suppress not
+// fully bracketed, Lint is wary of the "-" in here but we can't have
+// brackets around this since it is used directly.
+# define U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL ubxlib.it-sgn.u-blox.com:8883
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES
@@ -252,7 +258,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
     int32_t y;
     int32_t z;
     size_t s;
-    int32_t numUnread = 0;
+    int32_t numUnread;
     int64_t startTimeMs;
     char *pTopicOut;
     char *pTopicIn;
@@ -301,7 +307,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                 // Make a unique topic name to stop different boards colliding
                 snprintf(pTopicOut, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                          "ubx_test/%s", gSerialNumber);
-
+                numUnread = 0;
                 // Open an MQTT client
                 if (run == 0) {
                     uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client...\n");
