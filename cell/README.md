@@ -132,7 +132,6 @@ int app_start() {
 
     // Calling these will also deallocate all the handles that
     // were allocated above.
-    uAtClientIgnoreAsync(NULL);
     uCellDeinit();
     uAtClientDeinit();
     uPortDeinit();

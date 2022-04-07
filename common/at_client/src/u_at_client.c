@@ -2497,7 +2497,7 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
         pClient = pGetAtClientInstance(streamHandle, streamType);
         if ((pClient == NULL) &&
             (numAtClients() < sizeof(gAtClientMagicNumberProcessAsync) /
-                              sizeof(gAtClientMagicNumberProcessAsync[0]))) {
+             sizeof(gAtClientMagicNumberProcessAsync[0]))) {
             // Nope, create one
             pClient = (uAtClientInstance_t *) malloc(sizeof(uAtClientInstance_t));
             if (pClient != NULL) {
@@ -2510,62 +2510,55 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                 }
                 if (pClient->pReceiveBuffer != NULL) {
                     pClient->pReceiveBuffer->isMalloced = (int32_t) receiveBufferIsMalloced;
-                    // Create the client's mutex
-                    if (uPortMutexCreate(&(pClient->mutex)) == 0) {
-                        // Create the client's stream mutex
-                        if (uPortMutexCreate(&(pClient->streamMutex)) == 0) {
-                            // Create the mutex that allows us to tell if the URC callback is permitted
-                            if (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0) {
-                                // Create the mutex that allows us to tell if an
-                                // uAtClientCallback() callback is actually running
-                                if (uPortMutexCreate(&(pClient->asyncRunningMutex)) == 0) {
-                                    // Set all the non-zero initial values before we set
-                                    // the event handlers which might call us
-                                    pClient->streamHandle = streamHandle;
-                                    pClient->streamType = streamType;
-                                    pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
-                                    pClient->atTimeoutSavedMs = -1;
-                                    pClient->delimiter = U_AT_CLIENT_DEFAULT_DELIMITER;
-                                    mutexStackInit(&(pClient->lockedStreamMutexStack));
-                                    pClient->delayMs = U_AT_CLIENT_DEFAULT_DELAY_MS;
-                                    clearError(pClient);
-                                    // This will also set stopTag
-                                    setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
-                                    pClient->lastTxTimeMs = -1;
-                                    pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
-                                    pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
-                                    // Set up the buffer and its protection markers
-                                    pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
-                                                                              U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
-                                    bufferReset(pClient, true);
-                                    memcpy(pClient->pReceiveBuffer->mk0, U_AT_CLIENT_MARKER,
-                                           U_AT_CLIENT_MARKER_SIZE);
-                                    memcpy(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
-                                           pClient->pReceiveBuffer->dataBufferSize,
-                                           U_AT_CLIENT_MARKER, U_AT_CLIENT_MARKER_SIZE);
-                                    // Now add an event handler for characters
-                                    // received on the stream
-                                    switch (streamType) {
-                                        case U_AT_CLIENT_STREAM_TYPE_UART:
-                                            errorCode = uPortUartEventCallbackSet(streamHandle,
-                                                                                  U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
-                                                                                  urcCallback, pClient,
-                                                                                  U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
-                                                                                  U_AT_CLIENT_URC_TASK_PRIORITY);
-                                            break;
-                                        case U_AT_CLIENT_STREAM_TYPE_EDM:
-                                            errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient);
-                                            break;
-                                        default:
-                                            // streamType is checked on entry
-                                            break;
-                                    }
-                                    if (errorCode == 0) {
-                                        // Add the instance to the list
-                                        addAtClientInstance(pClient);
-                                    }
-                                }
-                            }
+                    // Create the mutexes
+                    if ((uPortMutexCreate(&(pClient->mutex)) == 0) &&
+                        (uPortMutexCreate(&(pClient->streamMutex)) == 0) &&
+                        (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0) &&
+                        (uPortMutexCreate(&(pClient->asyncRunningMutex)) == 0)) {
+                        // Set all the non-zero initial values before we set
+                        // the event handlers which might call us
+                        pClient->streamHandle = streamHandle;
+                        pClient->streamType = streamType;
+                        pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
+                        pClient->atTimeoutSavedMs = -1;
+                        pClient->delimiter = U_AT_CLIENT_DEFAULT_DELIMITER;
+                        mutexStackInit(&(pClient->lockedStreamMutexStack));
+                        pClient->delayMs = U_AT_CLIENT_DEFAULT_DELAY_MS;
+                        clearError(pClient);
+                        // This will also set stopTag
+                        setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
+                        pClient->lastTxTimeMs = -1;
+                        pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
+                        pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
+                        // Set up the buffer and its protection markers
+                        pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
+                                                                  U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
+                        bufferReset(pClient, true);
+                        memcpy(pClient->pReceiveBuffer->mk0, U_AT_CLIENT_MARKER,
+                               U_AT_CLIENT_MARKER_SIZE);
+                        memcpy(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
+                               pClient->pReceiveBuffer->dataBufferSize,
+                               U_AT_CLIENT_MARKER, U_AT_CLIENT_MARKER_SIZE);
+                        // Now add an event handler for characters
+                        // received on the stream
+                        switch (streamType) {
+                            case U_AT_CLIENT_STREAM_TYPE_UART:
+                                errorCode = uPortUartEventCallbackSet(streamHandle,
+                                                                      U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
+                                                                      urcCallback, pClient,
+                                                                      U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
+                                                                      U_AT_CLIENT_URC_TASK_PRIORITY);
+                                break;
+                            case U_AT_CLIENT_STREAM_TYPE_EDM:
+                                errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient);
+                                break;
+                            default:
+                                // streamType is checked on entry
+                                break;
+                        }
+                        if (errorCode == 0) {
+                            // Add the instance to the list
+                            addAtClientInstance(pClient);
                         }
                     }
                 }
