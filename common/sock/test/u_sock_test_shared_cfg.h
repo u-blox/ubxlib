@@ -37,7 +37,7 @@
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS
 /** Echo server to use for UDP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS  "185.215.195.132"
+# define U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS  "185.215.195.136"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_PORT
@@ -55,7 +55,7 @@
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS
 /** Echo server to use for TCP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS  "185.215.195.132"
+# define U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS  "185.215.195.136"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_PORT
@@ -73,7 +73,7 @@
 #ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS
 /** Echo server to use for secure (TLS) TCP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS  "185.215.195.132"
+# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS  "185.215.195.136"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT
