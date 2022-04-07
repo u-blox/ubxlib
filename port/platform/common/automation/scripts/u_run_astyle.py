@@ -95,13 +95,12 @@ def run(ubxlib_dir, reporter):
                 if not formatted:
                     reporter.event(u_report.EVENT_TYPE_CHECK,
                                    u_report.EVENT_PASSED)
+                    return_value = 0
                 else:
                     reporter.event(u_report.EVENT_TYPE_CHECK,
                                    u_report.EVENT_WARNING)
                     for line in formatted:
                         reporter.event_extra_information(line)
-                # We don't return any errors about formatting
-                return_value = 0
             except subprocess.CalledProcessError as error:
                 reporter.event(u_report.EVENT_TYPE_CHECK,
                                u_report.EVENT_FAILED)
