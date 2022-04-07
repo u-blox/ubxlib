@@ -89,6 +89,10 @@ typedef struct uMutexFunctionInfo_t {
 } uMutexFunctionInfo_t;
 
 /** A structure to keep track of a mutex as part of a linked list.
+ * Note that the handle MUST be the first member of the structure.
+ * This is because, when simulating critical sections under Windows,
+ * we need to bypass the mutex debug and so we can grab just the
+ * first member of the structure without having to know about it.
  */
 typedef struct uMutexInfo_t {
     uPortMutexHandle_t handle;
@@ -102,9 +106,11 @@ typedef struct uMutexInfo_t {
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** The handle of the mutex watchdog task.
+/** The handle of the mutex watchdog task; not static and rather
+ * more name-spaced because u_port_private.c needs access to it on
+ * some platforms.
  */
-static uPortTaskHandle_t gWatchdogTaskHandle = NULL;
+uPortTaskHandle_t gMutexDebugWatchdogTaskHandle = NULL;
 
 /** Mutex so that we can tell that the mutex watchdog task is
  * running.
@@ -665,7 +671,7 @@ int32_t uMutexDebugWatchdog(void (*pCallback) (void *),
                                             U_MUTEX_DEBUG_WATCHDOG_TASK_STACK_SIZE_BYTES,
                                             NULL,
                                             U_MUTEX_DEBUG_WATCHDOG_TASK_PRIORITY,
-                                            &gWatchdogTaskHandle);
+                                            &gMutexDebugWatchdogTaskHandle);
                 if (errorCode != 0) {
                     // Couldn't create watchdog task, clean up
                     gWatchdogTaskKeepGoingFlag = false;

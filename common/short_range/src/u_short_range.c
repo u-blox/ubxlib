@@ -735,6 +735,7 @@ void uShortRangeRemove(int32_t shortRangeHandle)
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         // There may be several users of the instance so check the reference counter
         if ((pInstance != NULL) && (--pInstance->refCounter <= 0)) {
+            uAtClientIgnoreAsync(pInstance->atHandle);
             removeShortRangeInstance(pInstance);
             uAtClientRemoveUrcHandler(pInstance->atHandle, "+STARTUP");
             free(pInstance);

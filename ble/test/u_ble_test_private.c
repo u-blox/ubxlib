@@ -161,9 +161,10 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
 void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
 {
     uPortLog("U_BLE_TEST_PRIVATE: deinitialising ble API...\n");
-    uBleDeinit();
 
 #ifndef U_CFG_BLE_MODULE_INTERNAL
+    uAtClientIgnoreAsync(NULL);
+    uBleDeinit();
     uPortLog("U_BLE_TEST_PRIVATE: removing AT client...\n");
     uShortRangeEdmStreamClose(pParameters->edmStreamHandle);
     uShortRangeEdmStreamDeinit();
@@ -176,6 +177,7 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
     pParameters->uartHandle = -1;
 #else
     (void)pParameters;
+    uBleDeinit();
 #endif
 
     uPortDeinit();

@@ -29,9 +29,17 @@
 #include "windows.h"
 
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_private.h"
+
+/** Grab the handle of the mutex watchdog task; this is so
+ * that, on Windows, when we simulate a critical section, we can
+ * leave it running to catch situations where we might end up
+ * sitting in a critical section for _far_ longer than we should..
+ */
+extern uPortTaskHandle_t gMutexDebugWatchdogTaskHandle;
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -48,6 +56,42 @@
  * negative to give a relative time.
  */
 #define U_PORT_PRIVATE_MS_TO_DUE_TIME(ms) (((int64_t) ms) * -10000)
+
+#ifdef U_CFG_MUTEX_DEBUG
+/** Bypass mutex debug for lock: On Windows the functions
+ * uPortPrivateEnterCritical()/uPortPrivateExitCritical() are
+ * _simulations_ of critical sections rather than actual critical
+ * sections (which don't exist on Windows).  As such they _do_ lock
+ * mutexes, which causes a problem when U_CFG_MUTEX_DEBUG is defined
+ * since some other task that the critical section simulation has
+ * suspended may have locked the gMutexList mutex which U_CFG_MUTEX_DEBUG
+ * itself uses.  Hence, just for the uPortPrivateEnterCritical()/
+ * uPortPrivateExitCritical() code, we need to go "around" the
+ * mutex debug code by using the macro below.
+ */
+#define U_PORT_MUTEX_LOCK_NO_MUTEX_DEBUG(x)      { U_ASSERT(_uPortMutexLock(((uPortPrivatePartialMutexInfo_t *) x)->handle) == 0)
+
+/** Bypass mutex debug for unlock: On Windows the functions
+ * uPortPrivateEnterCritical()/uPortPrivateExitCritical() are
+ * _simulations_ of critical sections rather than actual critical
+ * sections (which don't exist on Windows).  As such they _do_ lock
+ * mutexes, which causes a problem when U_CFG_MUTEX_DEBUG is defined
+ * since some other task that the critical section simulation has
+ * suspended may have locked the gMutexList mutex which U_CFG_MUTEX_DEBUG
+ * itself uses.  Hence, just for the uPortPrivateEnterCritical()/
+ * uPortPrivateExitCritical() code, we need to go "around" the
+ * mutex debug code by using the macro below.
+ */
+#define U_PORT_MUTEX_UNLOCK_NO_MUTEX_DEBUG(x)    } U_ASSERT(_uPortMutexUnlock(((uPortPrivatePartialMutexInfo_t *) x)->handle) == 0)
+#else
+/** Mutex lock helper macro.
+ */
+#define U_PORT_MUTEX_LOCK_NO_MUTEX_DEBUG       U_PORT_MUTEX_LOCK
+
+/** Mutex unlock helper macro.
+ */
+#define U_PORT_MUTEX_UNLOCK_NO_MUTEX_DEBUG     U_PORT_MUTEX_UNLOCK
+#endif
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -79,6 +123,15 @@ typedef struct uPortPrivateTimer_t {
     struct uPortPrivateTimer_t *pNext;
 } uPortPrivateTimer_t;
 
+/** A structure that allows us to get at the mutex handle
+ * when U_CFG_MUTEX_DEBUG is defined, letting us sneak around
+ * the mutex debug operation when simulating critical sections,
+ * but without having to export the uMutexInfo_t structure.
+ */
+typedef struct {
+    uPortMutexHandle_t handle;
+} uPortPrivatePartialMutexInfo_t;
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -86,6 +139,10 @@ typedef struct uPortPrivateTimer_t {
 /** Mutex to protect the linked list of threads.
  */
 static uPortMutexHandle_t gMutexThread = NULL;
+
+/** For debug purposes.
+ */
+static bool gInCriticalSection = false;
 
 /** Mutex to protect the linked list of queues.
  */
@@ -137,6 +194,11 @@ static const int32_t localToWinPriority[] = {-2,  // 0
  * we use that to indicate "self".
  */
 static DWORD gThreadIds[U_PORT_MAX_NUM_TASKS] = {0};
+
+/** The list of thread IDs that have been suspended, so
+ * that the critical section code can resume them.
+ */
+static DWORD gThreadIdsSuspended[U_PORT_MAX_NUM_TASKS] = {0};
 
 /** A place to put the ID of the main thread, not static
  * because it is needed by uPortPlatformStart() over in
@@ -383,12 +445,15 @@ int32_t uPortPrivateInit(void)
         // Tidy up on error
         if (gMutexThread != NULL) {
             uPortMutexDelete(gMutexThread);
+            gMutexThread = NULL;
         }
         if (gMutexQueue != NULL) {
             uPortMutexDelete(gMutexQueue);
+            gMutexQueue = NULL;
         }
         if (gMutexTimer != NULL) {
             uPortMutexDelete(gMutexTimer);
+            gMutexTimer = NULL;
         }
     }
 
@@ -418,6 +483,9 @@ void uPortPrivateDeinit(void)
     }
 
     if (gMutexThread != NULL) {
+        // Note: cannot tidy away the tasks here,
+        // we have no idea what state they are in,
+        // that must be up to the user
         U_PORT_MUTEX_LOCK(gMutexThread);
         U_PORT_MUTEX_UNLOCK(gMutexThread);
         uPortMutexDelete(gMutexThread);
@@ -435,31 +503,38 @@ int32_t uPortPrivateEnterCritical()
     if (gMutexThread != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
 
-        U_PORT_MUTEX_LOCK(gMutexThread);
+        U_PORT_MUTEX_LOCK_NO_MUTEX_DEBUG(gMutexThread);
+
+        U_ASSERT(!gInCriticalSection);
 
         // Suspend all of the tasks in the list except ourselves
         for (size_t x = 0; (errorCode == 0) &&
              (x < sizeof(gThreadIds) / sizeof(gThreadIds[0])); x++) {
-            if ((gThreadIds[x] != 0) && (gThreadIds[x] != thisThreadId)) {
+            if ((gThreadIds[x] != 0) && (gThreadIds[x] != thisThreadId) &&
+                ((gMutexDebugWatchdogTaskHandle == NULL) ||
+                 (gThreadIds[x] != (DWORD) gMutexDebugWatchdogTaskHandle))) {
                 threadHandle = OpenThread(THREAD_SUSPEND_RESUME, false, gThreadIds[x]);
                 // Note: if we get INVALID_HANDLE_VALUE back from OpenThread then the
                 // thread must have exited already
-                if (threadHandle != INVALID_HANDLE_VALUE) {
-                    if ((SuspendThread(threadHandle) < 0) && (GetLastError() != ERROR_INVALID_HANDLE)) {
-                        // If SuspendThread returns -1 and it's NOT because
+                if (threadHandle != NULL) {
+                    if (SuspendThread(threadHandle) >= 0) {
+                        gThreadIdsSuspended[x] = gThreadIds[x];
+                    } else if (GetLastError() != ERROR_INVALID_HANDLE) {
+                        // If SuspendThread returns non-zero and it's NOT because
                         // the handle has become invalid (e.g. if the thread
                         // has been terminated or has terminated itself
                         // between us opening a handle on it and trying to
-                        // terminate it) then this one has failed, no point
-                        // in continuing
-                        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                        // terminate it) then this has failed
+                        U_ASSERT(false);
                     }
                     CloseHandle(threadHandle);
                 }
             }
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutexThread);
+        gInCriticalSection = true;
+
+        U_PORT_MUTEX_UNLOCK_NO_MUTEX_DEBUG(gMutexThread);
     }
 
     return (int32_t) errorCode;
@@ -475,30 +550,34 @@ int32_t uPortPrivateExitCritical()
     if (gMutexThread != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
 
-        U_PORT_MUTEX_LOCK(gMutexThread);
+        U_PORT_MUTEX_LOCK_NO_MUTEX_DEBUG(gMutexThread);
 
-        // Resume all of the tasks in the list except ourselves
+        U_ASSERT(gInCriticalSection);
+
+        // Resume all of the suspended tasks
         for (size_t x = 0; (errorCode == 0) &&
-             (x < sizeof(gThreadIds) / sizeof(gThreadIds[0])); x++) {
-            if ((gThreadIds[x] != 0) && (gThreadIds[x] != thisThreadId)) {
-                threadHandle = OpenThread(THREAD_SUSPEND_RESUME, false, gThreadIds[x]);
+             (x < sizeof(gThreadIdsSuspended) / sizeof(gThreadIdsSuspended[0])); x++) {
+            if (gThreadIdsSuspended[x] != 0) {
+                threadHandle = OpenThread(THREAD_SUSPEND_RESUME, false, gThreadIdsSuspended[x]);
                 // Note: if we get INVALID_HANDLE_VALUE back from OpenThread then the
                 // thread must have been terminated
-                if (threadHandle != INVALID_HANDLE_VALUE) {
+                if (threadHandle != NULL) {
                     if ((ResumeThread(threadHandle) < 0) && (GetLastError() != ERROR_INVALID_HANDLE)) {
                         // If ResumeThread returns -1 and it's NOT because
                         // the handle has become invalid (e.g. if the thread
                         // has been terminated between us opening a handle on
-                        // it and trying to terminate it) then this one
-                        // has failed, no point in continuing
-                        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                        // it and trying to terminate it) then this has failed
+                        U_ASSERT(false);
                     }
                     CloseHandle(threadHandle);
                 }
             }
         }
+        memset(gThreadIdsSuspended, 0, sizeof(gThreadIdsSuspended));
 
-        U_PORT_MUTEX_UNLOCK(gMutexThread);
+        gInCriticalSection = false;
+
+        U_PORT_MUTEX_UNLOCK_NO_MUTEX_DEBUG(gMutexThread);
     }
 
     return (int32_t) errorCode;

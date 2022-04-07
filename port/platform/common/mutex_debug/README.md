@@ -9,3 +9,5 @@ This code works by replacing the usual [port](/port/api) OS mutex functions with
 If you find that checking on the length of waiting time doesn't work for your particular problem you could modify the code in the mutex watchdog task to check other criteria.
 
 To run your code with mutex debug, simply define `U_CFG_MUTEX_DEBUG` for your build.  Read the comments at the top of [u_mutex_debug.h](u_mutex_debug.h) for more information.
+
+IMPORTANT: in order to support this debug feature, it must be possible on your platform for a task and a mutex to be created **before** `uPortInit()` is called, right at start of day, and such a task/mutex must also survive `uPortDeinit()` being called.  This is because `uMutexDebugInit()` must be able to create a mutex and `uMutexDebugWatchdog()` must be able to create a task and these must not be destroyed for the life of the application.
