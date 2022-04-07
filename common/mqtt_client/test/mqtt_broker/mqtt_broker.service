@@ -1,9 +1,0 @@
-[Unit]
-Description=MQTT broker
-
-[Service]
-# Modify this to point to wherever the hmq binary and config file have been placed
-ExecStart=/home/rmea/go/bin/hmq --config /home/rmea/go/bin/hmq.config
-
-[Install]
-WantedBy=multi-user.target
