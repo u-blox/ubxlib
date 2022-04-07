@@ -9,7 +9,8 @@ from pylink.enums import JLinkInterfaces
 class URttReader:
     """A simple JLink RTT reader"""
     def __init__(self, device, jlink_serial=None,
-                 jlink_logfile=None, reset_on_connect=False):
+                 jlink_logfile=None, reset_on_connect=False,
+                 rtt_block_address=None):
         """
         device: The JLink target device to connect
         jlink_serial: Optional JLink serial number
@@ -21,6 +22,7 @@ class URttReader:
         self.jlink = JLink()
         self.jlink_logfile = jlink_logfile
         self.reset_on_connect = reset_on_connect
+        self.block_address = rtt_block_address
 
     def __enter__(self):
         self.connect()
@@ -56,7 +58,7 @@ class URttReader:
             print("Resetting target")
             self.jlink.reset(halt=False)
         print("Enabling RTT")
-        self.jlink.rtt_start(None)
+        self.jlink.rtt_start(self.block_address)
 
     def close(self):
         """Closes the JLink connection"""

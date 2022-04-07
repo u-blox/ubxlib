@@ -77,6 +77,7 @@ extern uint32_t SystemCoreClock;
 #define configUSE_APPLICATION_TASK_TAG    0
 #define configUSE_COUNTING_SEMAPHORES     1
 #define configGENERATE_RUN_TIME_STATS     0
+#define configRECORD_STACK_HIGH_ADDRESS   1
 /*  See http://www.nadler.com/embedded/newlibAndFreeRTOS.html */
 #define configUSE_NEWLIB_REENTRANT        1
 
@@ -152,7 +153,8 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 
 /* Normal assert() semantics without relying on the provision of an assert.h
 header file. */
-#define configASSERT( x ) if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); for( ;; ); }
+void uAssertFailed(const char *pFileStr, int32_t line);
+#define configASSERT( x ) if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); uAssertFailed(__FILE__, __LINE__); }
 
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
    standard names. */

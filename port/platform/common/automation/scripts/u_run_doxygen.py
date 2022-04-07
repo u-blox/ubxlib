@@ -57,21 +57,26 @@ def run(ubxlib_dir, reporter):
             try:
                 my_env = os.environ.copy()
                 my_env['UBX_WORKDIR'] = working_dir
-                text = subprocess.check_output(["doxygen", config_path],
-                                               stderr=subprocess.STDOUT,
-                                               env=my_env,
-                                               shell=True) # Jenkins hangs without this
+                proc = subprocess.run(["doxygen", config_path],
+                                      capture_output=True,
+                                      check=True,
+                                      env=my_env, shell=True)
+
                 reporter.event(u_report.EVENT_TYPE_CHECK,
                                u_report.EVENT_PASSED)
-                for line in text.splitlines():
+                for line in proc.stdout.splitlines():
+                    U_LOG.info(line.decode())
+                for line in proc.stderr.splitlines():
                     U_LOG.info(line.decode())
                 return_value = 0
             except subprocess.CalledProcessError as error:
                 reporter.event(u_report.EVENT_TYPE_CHECK,
                                u_report.EVENT_FAILED)
-                U_LOG.error(f"Doxygen returned error {error.returncode}:")
                 for line in error.output.splitlines():
-                    line = line.strip().decode()
+                    U_LOG.info(line.decode())
+                U_LOG.error(f"Doxygen returned error {error.returncode}:")
+                for line in error.stderr.splitlines():
+                    line = line.rstrip().decode()
                     if line:
                         reporter.event_extra_information(line)
                         U_LOG.error(line)

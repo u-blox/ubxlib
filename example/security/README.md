@@ -13,7 +13,7 @@
 # u-blox IoT Security-as-a-Service Introduction
 IoT Security-as-a-Service is a managed services solution that makes it extremely simple to protect your data at rest and from silicon to cloud, ensuring that you can focus more on your business and enjoy faster time-to-market.
 
-We implement a true end-to-end concept where data are protected from the device to the end user and are not visible at the intermediate nodes/platforms nor by the service provider.  Our approach ensures minimal code development and investment and provides the highest standards of security, leveraging the root of trust in u-blox SARA-R4 and SARA-R5 module platforms to bring a unique and immutable identity for univocal identification and on-boarding in leading IoT cloud platforms.
+We implement a true end-to-end concept where data are protected from the device to the end user and are not visible at the intermediate nodes/platforms nor by the service provider.  Our approach ensures minimal code development and investment and provides the highest standards of security, leveraging the root of trust in u-blox SARA-R4, SARA-R5 and LARA-R6 module platforms to bring a unique and immutable identity for univocal identification and on-boarding in leading IoT cloud platforms.
 
 The innovative symmetric Key Management System delivers an unprecedented level of security, giving the possibility to generate an infinite number of crypto keys on-the-fly, to be used for (D)TLS or for any other purpose.
 
@@ -22,7 +22,7 @@ All u-blox security solutions are designed for LPWA constrained devices, reducin
 You can find more information about IoT Security-as-a-Service [here](https://www.u-blox.com/en/iot-security-service).
 
 # Evaluation And Starter Kits
-IoT Security-as-a-Service is available on SARA-R4 and SARA-R5 series modules, though note that `ubxlib` currently only supports security on SARA-R5.  Several evaluation kits are available:
+IoT Security-as-a-Service is available on SARA-R4, SARA-R5 and LARA-R6 series modules, though note that `ubxlib` currently only supports security on SARA-R5.  Several evaluation kits are available:
 
 * EVK-R500S - evaluation kit for SARA-R500S
 * EVK-R510S - evaluation kit for SARA-R510S
@@ -32,6 +32,7 @@ IoT Security-as-a-Service is available on SARA-R4 and SARA-R5 series modules, th
 * EVK-R410-7-00 - evaluation kit including LTE module for Korea; Cat M1 deployed bands 3, 5, 26
 * EVK-R410-6-00 - evaluation kit including LTE module for Japan; Cat M1 deployed bands 1, 8, 19
 * C030 application board that lets you easily start testing u-blox services
+* EVK-R6 - evaluation kit for LARA-R6
 
 Please [contact us](mailto:thingstream-support@u-blox.com) to discuss your needs and to request a kit. 
 

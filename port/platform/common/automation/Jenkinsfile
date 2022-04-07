@@ -55,7 +55,9 @@ def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
     sh "mkdir -p ${env.HOME}/ubxlib"
     def uid = sh(script: "id -u", returnStdout: true).trim()
     def gid = sh(script: "id -g", returnStdout: true).trim()
-    sh "docker run -i -u ${uid}:${gid} --rm -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
+    // Needs --privileged to access TTY devices (since there is no dialout group
+    // in the docker image) and -v /dev:/dev to map the devices into the docker image
+    sh "docker run -i -u ${uid}:${gid} --rm --privileged -v /dev:/dev -w ${env.WORKSPACE}/$relWorkspaceDir $volume_args $env_args ubxlib_builder /bin/bash -c \"$cmd\""
 }
 
 // This is the build pipeline for one instance
@@ -83,7 +85,7 @@ def dockerBuildPipeline(instance_str, platform, filter) {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     echo "Build dir: ${build_dir}"
                     def includes = [
-                        "**/*.hex","**/*.bin","**/*.elf","**/*.map"
+                        "**/*.hex","**/*.bin","**/*.elf","**/*.map","**/*.out"
                     ].collect { "${build_dir}/$it" }.join(', ') // Add "${build_dir}/" prefix to all entries
                     def stash_includes = [
                         // Needed for Zephyr flashing using west command:
@@ -181,7 +183,7 @@ def testPipelineOnWindows(instance_str, json_entry, subst_dir, filter) {
                         ansiColor('xterm') {
                             // Check if there is a test filter
                             def filter_arg = filter ? "--filter \"${filter}\"" : ""
-                            bat "inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test ${test_report_arg} ${filter_arg} ${instance_str}"
+                            bat "inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test --build-dir=. ${test_report_arg} ${filter_arg} ${instance_str}"
                         }
                     }
                 } finally {
@@ -251,7 +253,7 @@ def testPipelineOnLinux(instance_str, json_entry, subst_dir, filter) {
                                 ansiColor('xterm') {
                                     // Check if there is a test filter
                                     def filter_arg = filter ? "--filter \"${filter}\"" : ""
-                                    dockerCommand("inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test ${test_report_arg} ${filter_arg} ${instance_str}", instance_workdir)
+                                    dockerCommand("inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test --build-dir=. ${test_report_arg} ${filter_arg} ${instance_str}", instance_workdir)
                                 }
                             }
                         } finally {
