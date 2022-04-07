@@ -95,9 +95,9 @@ def instance_command(ctx, instance_str, cmd):
         elif cmd == Command.FLASH:
             nrf5.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
         elif cmd == Command.LOG:
-            nrf5.log(ctx, debugger_serial=serial)
+            nrf5.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
         elif cmd == Command.TEST:
-            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+            check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 
@@ -118,9 +118,9 @@ def instance_command(ctx, instance_str, cmd):
                     hex_file = f"{ctx.build_dir}/zephyr/merged_domains.hex"
                 nrfconnect.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, hex_file=hex_file)
             elif cmd == Command.LOG:
-                nrfconnect.log(ctx, debugger_serial=serial)
+                nrfconnect.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
             elif cmd == Command.TEST:
-                check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+                check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
             else:
                 raise Exit(f"Unsupported command for MCU '{mcu}' on platform: '{platform}'")
         else:
@@ -145,10 +145,11 @@ def instance_command(ctx, instance_str, cmd):
                           use_flasher_json=True)
         elif cmd == Command.LOG:
             esp_idf.log(ctx, serial_port=connection["serial_port"],
+                        output_name="", build_dir=ctx.build_dir,
                         dtr_state=monitor_dtr_rts_on,
                         rts_state=monitor_dtr_rts_on)
         elif cmd == Command.TEST:
-            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+            check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 
@@ -160,9 +161,9 @@ def instance_command(ctx, instance_str, cmd):
             stm32cubef4.flash(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
         elif cmd == Command.LOG:
             port = instance[0] + 40404
-            stm32cubef4.log(ctx, debugger_serial=serial, port=port)
+            stm32cubef4.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, port=port)
         elif cmd == Command.TEST:
-            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+            check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 
@@ -180,7 +181,7 @@ def instance_command(ctx, instance_str, cmd):
                         dtr_state=monitor_dtr_rts_on,
                         rts_state=monitor_dtr_rts_on)
         elif cmd == Command.TEST:
-            check_return_code(u_run_log.run(instance, ctx.reporter, ctx.test_report))
+            check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 
@@ -252,17 +253,24 @@ def flash(ctx, instance, build_dir=None):
     instance_command(ctx, instance, Command.FLASH)
 
 @task()
-def log(ctx, instance):
+def log(ctx, instance, build_dir=None):
     """Show a real-time log output for an automation instance"""
+    if not build_dir:
+        build_dir = f'{DEFAULT_BUILD_LOCATION}/{instance}'
+    ctx.build_dir = build_dir
     instance_command(ctx, instance, Command.LOG)
 
 @task()
-def test(ctx, instance, summary_file="summary.txt", debug_file="debug.log",
+def test(ctx, instance, build_dir=None,
+         summary_file="summary.txt", debug_file="debug.log",
          test_report=None, filter=None):
     """Start the tests for an automation instance"""
     # The testing phase uses the logging facility
     ULog.setup_logging(debug_file=debug_file)
     _instance = parse_instance(instance)
+    if not build_dir:
+        build_dir = f'{DEFAULT_BUILD_LOCATION}/{instance}'
+    ctx.build_dir = build_dir
 
     # With a reporter
     with open(summary_file, 'w') as summary_handle:
@@ -279,7 +287,7 @@ def run(ctx, instance, build_dir=None, summary_file="summary.txt",
     """This will build, flash and start test in one command"""
     build(ctx, instance, build_dir=build_dir, filter=filter)
     flash(ctx, instance, build_dir=build_dir)
-    test(ctx, instance, filter=filter,
+    test(ctx, instance, build_dir=build_dir, filter=filter,
          summary_file=summary_file, debug_file=debug_file,
          test_report=test_report)
 

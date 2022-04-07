@@ -44,6 +44,8 @@
 #include "u_runner.h"
 
 #include "cmsis_os.h"
+#include "stm32f4xx.h"
+#include "core_cm4.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -75,6 +77,9 @@ static void appTask(void *pParam)
     uMutexDebugWatchdog(uMutexDebugPrint, NULL,
                         U_MUTEX_DEBUG_WATCHDOG_TIMEOUT_SECONDS);
 #endif
+
+    // Enable usage- and bus fault exceptions
+    SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk | SCB_SHCSR_BUSFAULTENA_Msk;
 
     uPortInit();
 

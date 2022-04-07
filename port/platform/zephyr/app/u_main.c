@@ -35,6 +35,7 @@
 #include "u_error_common.h"
 
 #include "u_assert.h"
+#include "u_debug_utils.h"
 
 #include "u_port.h"
 #include "u_port_debug.h"
@@ -57,7 +58,7 @@
  * in order not to miss any output while the logging tools start up.
  */
 #ifndef U_CFG_STARTUP_DELAY_SECONDS
-# define U_CFG_STARTUP_DELAY_SECONDS 10
+# define U_CFG_STARTUP_DELAY_SECONDS 0
 #endif
 
 /* ----------------------------------------------------------------
@@ -95,6 +96,9 @@ static void appTask(void *pParam)
 
     uPortLog("U_APP: functions available:\n\n");
     uRunnerPrintAll("U_APP: ");
+    // Give some slack for RTT here so that the RTT buffer is empty when we
+    // start the tests.
+    uPortTaskBlock(100);
 #ifdef U_CFG_APP_FILTER
     uPortLog("U_APP: running functions that begin with \"%s\".\n",
              U_PORT_STRINGIFY_QUOTED(U_CFG_APP_FILTER));
@@ -162,5 +166,13 @@ int main(void)
     posix_exit(0);
 #endif
 }
+
+#ifdef U_DEBUG_UTILS_DUMP_THREADS
+void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
+{
+    uDebugUtilsDumpThreads();
+}
+#endif
+
 
 // End of file

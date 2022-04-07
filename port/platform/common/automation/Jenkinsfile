@@ -85,7 +85,7 @@ def dockerBuildPipeline(instance_str, platform, filter) {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     echo "Build dir: ${build_dir}"
                     def includes = [
-                        "**/*.hex","**/*.bin","**/*.elf","**/*.map"
+                        "**/*.hex","**/*.bin","**/*.elf","**/*.map","**/*.out"
                     ].collect { "${build_dir}/$it" }.join(', ') // Add "${build_dir}/" prefix to all entries
                     def stash_includes = [
                         // Needed for Zephyr flashing using west command:
@@ -183,7 +183,7 @@ def testPipelineOnWindows(instance_str, json_entry, subst_dir, filter) {
                         ansiColor('xterm') {
                             // Check if there is a test filter
                             def filter_arg = filter ? "--filter \"${filter}\"" : ""
-                            bat "inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test ${test_report_arg} ${filter_arg} ${instance_str}"
+                            bat "inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test --build-dir=. ${test_report_arg} ${filter_arg} ${instance_str}"
                         }
                     }
                 } finally {
@@ -253,7 +253,7 @@ def testPipelineOnLinux(instance_str, json_entry, subst_dir, filter) {
                                 ansiColor('xterm') {
                                     // Check if there is a test filter
                                     def filter_arg = filter ? "--filter \"${filter}\"" : ""
-                                    dockerCommand("inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test ${test_report_arg} ${filter_arg} ${instance_str}", instance_workdir)
+                                    dockerCommand("inv -r ${abs_ubxlib_dir}/${pyTasks_subdir} automation.test --build-dir=. ${test_report_arg} ${filter_arg} ${instance_str}", instance_workdir)
                                 }
                             }
                         } finally {

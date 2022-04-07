@@ -57,7 +57,7 @@
  * to keep it happy.
  */
 #ifndef U_CFG_STARTUP_DELAY_SECONDS
-# define U_CFG_STARTUP_DELAY_SECONDS 10
+# define U_CFG_STARTUP_DELAY_SECONDS 0
 #endif
 
 /* ----------------------------------------------------------------
@@ -87,10 +87,16 @@ static void appTask(void *pParam)
 
     uPortLog("\n\nU_APP: application task started.\n");
 
+    // Optional delay for Segger RTT autodetection
+    uPortTaskBlock(U_CFG_STARTUP_DELAY_SECONDS * 1000);
+
     UNITY_BEGIN();
 
     uPortLog("U_APP: functions available:\n\n");
     uRunnerPrintAll("U_APP: ");
+    // Give some slack for RTT here so that the RTT buffer is empty when we
+    // start the tests.
+    uPortTaskBlock(100);
 #ifdef U_CFG_APP_FILTER
     uPortLog("U_APP: running functions that begin with \"%s\".\n",
              U_PORT_STRINGIFY_QUOTED(U_CFG_APP_FILTER));

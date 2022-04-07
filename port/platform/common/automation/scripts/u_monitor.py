@@ -289,7 +289,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
                     # to offload the CPU
                     sleep(0.01)
             if eol:
-                line = line.strip()
+                line = line.rstrip()
         except UnicodeDecodeError:
             # Just ignore it.
             pass
@@ -318,7 +318,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
                 raise subprocess.CalledProcessError(return_code, cmd)
 
         if eol:
-            line = line.strip()
+            line = line.rstrip()
 
         return_value = line
 
