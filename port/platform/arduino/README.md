@@ -22,6 +22,8 @@ Follow the Espressif instructions to install Arduino and ESP32 support within it
 
 https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html
 
+This code was tested with `arduino-cli` version 0.20.2.
+
 Python 3 is also required.
 
 # Building The `ubxlib` Arduino Library
@@ -50,6 +52,7 @@ python u_arduino_test.py -o C:\Users\myusername\Documents\Arduino\libraries\ubxl
 With that done load the [app.ino](app/app.ino) sketch into the Arduino IDE and select `Sketch` -> `Upload` to build it and load it onto your board.  Once it is loaded select `Tools` -> `Serial Monitor` and you should see the standard ESP-IDF menu system of tests (you may need to send a newline to the target first).  Obviously to run your own application you do not need this test libary, just the files that the [u_arduino.py](u_arduino.py) script brought in.
 
 # Maintenance
+- When updating the version of `arduino-cli` we test with, update the version number above.
 - When a new source file or header search path is added for the ESP-IDF platform, update [source.txt](source.txt) and, if necessary, [include.txt](include.txt).
 - Otherwise, when a new non-test, non-example source file or header search path is added, update [source.txt](source.txt) and, if necessary, [include.txt](include.txt), ignoring any files related only to tests/examples or to platform code.
 - Finally, when a new test or example source file is added, update [source_test.txt](source_test.txt) and, if necessary, [include_test.txt](include_test.txt).
