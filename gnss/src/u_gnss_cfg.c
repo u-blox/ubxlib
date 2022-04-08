@@ -111,8 +111,7 @@ static int32_t uGnssCfgSetUbxCfgNav5(int32_t gnssHandle,
         pInstance = pUGnssPrivateGetInstance(gnssHandle);
         if (pInstance != NULL) {
             // Set the mask bytes at the start of the message
-            uint16_t crc = uUbxProtocolUint16Encode(mask);
-            memcpy(message, crc, sizeof(crc));
+            *((uint16_t *) message) = uUbxProtocolUint16Encode(mask);
             // Copy in the contents, which must have already
             // been correctly encoded
             memcpy(message + offset, pBuffer, size);
