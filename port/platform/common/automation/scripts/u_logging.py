@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 from logging import StreamHandler
-from threading import Lock
+from threading import RLock
 
 import verboselogs
 import coloredlogs
@@ -27,7 +27,7 @@ class ULog():
         """Console logging handler that prints to stdout via file descriptor"""
         def __init__(self, stdout):
             StreamHandler.__init__(self)
-            self._mutex = Lock()
+            self._mutex = RLock()
             self.stdout = stdout
 
         def emit(self, record):
@@ -43,13 +43,13 @@ class ULog():
         def __init__(self, level):
             self._level = level
             self._buffer = ""
-            self._mutex = Lock()
+            self._mutex = RLock()
 
         def _flush(self, only_flush_complete_lines=False):
             """Common flush function
             This will do the actual logging"""
             if "\n" in self._buffer:
-                lines = self._buffer.splitlines()
+                lines = self._buffer.split("\n")
                 for l in lines[:-1]:
                     self._level(l.rstrip())
                 self._buffer = lines[-1]
@@ -61,7 +61,7 @@ class ULog():
         def write(self, string):
             """This function will be called when writing to the wrapped stdio"""
             self._mutex.acquire()
-            self._buffer += string
+            self._buffer += string.replace("\r","")
             self._flush(only_flush_complete_lines=True)
             self._mutex.release()
 
