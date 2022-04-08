@@ -264,6 +264,13 @@ typedef struct uCellPrivateNet_t {
     struct uCellPrivateNet_t *pNext;
 } uCellPrivateNet_t;
 
+/** Storage for the UART power saving or AT+UPSV mode values.
+ */
+typedef struct {
+    int32_t mode;    /**< the mode, use -1 for "empty". */
+    int32_t timeout; /**< the timeout, where relevant, use -1 for "not present". */
+}  uCellPrivateUartPowerSaving_t;
+
 /** Context for the cell loc API.
  */
 typedef struct {
@@ -274,8 +281,10 @@ typedef struct {
                                               be used in the fix or not. */
     uPortMutexHandle_t
     fixDataStorageMutex;  /**< mutex to protect manipulation of the fix data storage. */
-    void *pFixDataStorage;                   /**< pointer to data storage used when establishing a fix. */
-    int32_t fixStatus;                       /**< status of a location fix. */
+    void *pFixDataStorage;               /**< pointer to data storage used when establishing a fix. */
+    int32_t fixStatus;                   /**< status of a location fix. */
+    uCellPrivateUartPowerSaving_t
+    savedUartPowerSaving; /**< in case we need to suspend UART power saving. */
 } uCellPrivateLocContext_t;
 
 /** Type to keep track of the deep sleep state.
@@ -598,6 +607,40 @@ int32_t uCellPrivateWakeUpCallback(uAtClientHandle_t atHandle,
  * @param pInstance a pointer to the cellular instance.
  */
 void uCellPrivateSetDeepSleepState(uCellPrivateInstance_t *pInstance);
+
+/** Suspend "32 kHz" or UART/AT+UPSV sleep.  This function reads the
+ * current AT+UPSV state, which it returns in pMode and pTimeout, then
+ * sets AT+UPSV=0. uCellPrivateResumeUartPowerSaving() should be used,
+ * with the values placed in pMode and pTimeout, to resume UART power
+ * saving.
+ *
+ * @param pInstance a pointer to the cellular instance.
+ * @param pMode     a pointer to a place to put the current AT+UPSV
+ *                  mode; cannot be NULL.
+ * @param pTimeout  a pointer to a place to put the current AT+UPSV
+ *                  timesout; cannot be NULL, if the AT+UPSV mode in
+ *                  pMode does not have a timeout then -1 will be
+ *                  returned.
+ * @return          zero on successful wake-up, else negative error.
+ */
+int32_t uCellPrivateSuspendUartPowerSaving(const uCellPrivateInstance_t *pInstance,
+                                           int32_t *pMode, int32_t *pTimeout);
+
+/** Resume "32 kHz" or UART/AT+UPSV sleep, the counterpart to
+ * uCellPrivateSuspendUartPowerSaving().
+ *
+ * @param pInstance a pointer to the cellular instance.
+ * @param mode      the AT+UPSV mode to apply.
+ * @param timeout   the timeout for the AT+UPSV mode; if the mode in
+ *                  question does not have a timeout value then
+ *                  a negative value should be used, in other words
+ *                  the value returned by
+ *                  uCellPrivateSuspendUartPowerSaving() can be used
+ *                  directly.
+ * @return          zero on successful wake-up, else negative error.
+ */
+int32_t uCellPrivateResumeUartPowerSaving(const uCellPrivateInstance_t *pInstance,
+                                          int32_t mode, int32_t timeout);
 
 #ifdef __cplusplus
 }

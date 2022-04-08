@@ -84,12 +84,14 @@
 #define portMAX_DELAY K_FOREVER
 #endif
 
+#ifndef CONFIG_ARCH_POSIX
+// Not supported on Linux/Posix
 static uint8_t __aligned(U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE)
 exe_chunk_0[U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE];
 // make this ram part executable
 K_MEM_PARTITION_DEFINE(chunk0_reloc, exe_chunk_0, sizeof(exe_chunk_0),
                        K_MEM_PARTITION_P_RWX_U_RWX);
-
+#endif
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -274,17 +276,15 @@ int32_t uPortTaskCreate(void (*pFunction)(void *),
 // Delete the given task.
 int32_t uPortTaskDelete(const uPortTaskHandle_t taskHandle)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     k_tid_t thread = (k_tid_t) taskHandle;
 
-    // Can only delete oneself in freeRTOS so we keep that behaviour
     if (taskHandle == NULL) {
         thread = k_current_get();
-        freeThreadInstance((struct k_thread *)thread);
-        k_thread_abort(thread);
-        errorCode = U_ERROR_COMMON_SUCCESS;
     }
-    return (int32_t)errorCode;
+    freeThreadInstance((struct k_thread *)thread);
+    k_thread_abort(thread);
+
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
 // Check if the current task handle is equal to the given task handle.
@@ -719,6 +719,9 @@ void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
                                   uPortExeChunkFlags_t flags,
                                   uPortChunkIndex_t index)
 {
+    uint8_t *pExeChunk = NULL;
+
+#ifndef CONFIG_ARCH_POSIX
     static struct k_mem_domain dom0;
     struct k_mem_partition *app_parts[] = { &chunk0_reloc };
     (void)pChunkToMakeExecutable;
@@ -731,7 +734,10 @@ void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
     k_yield();
     *pSize = U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE;
 
-    return exe_chunk_0;
+    pExeChunk = exe_chunk_0;
+#endif
+
+    return pExeChunk;
 }
 
 // End of file

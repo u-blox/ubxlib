@@ -368,6 +368,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
     int32_t heapUsed;
     char key[U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES];
     char hmac[U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES];
+    int32_t z;
 
     // The first time rand() is called the C library may
     // allocate memory, not something we can do anything
@@ -404,9 +405,18 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
                 U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
                 uPortLog("U_SECURITY_TEST: pairing...\n");
                 LOG_ON;
-                U_PORT_TEST_ASSERT(uSecurityC2cPair(networkHandle,
-                                                    U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
-                                                    key, hmac) == 0);
+                z = -1;
+                // Try this a few times as sometimes  +CME ERROR: SEC busy
+                // can be returned if we've just recently powered on
+                for (size_t y = 0; (z < 0) && (y < 3); y++) {
+                    z = uSecurityC2cPair(networkHandle,
+                                         U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
+                                         key, hmac);
+                    if (z < 0) {
+                        uPortTaskBlock(5000);
+                    }
+                }
+                U_PORT_TEST_ASSERT(z == 0);
                 // Make sure it's still fine
                 U_PORT_TEST_ASSERT(uSecurityC2cClose(networkHandle) == 0);
                 uPortLog("U_SECURITY_TEST: opening a secure session...\n");
@@ -1206,8 +1216,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
                 } else {
                     uPortLog("U_SECURITY_TEST: this device supports u-blox"
                              " security but has not been security sealed,"
-                             " no testing of end to end encryption will be"
-                             " carried out.\n");
+                             " no testing of PSK generation will be carried"
+                             " out.\n");
                 }
             }
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef _U_CFG_TEST_PLATFORM_SPECIFIC_NRF5340DK_NRF5340_H_
-#define _U_CFG_TEST_PLATFORM_SPECIFIC_NRF5340DK_NRF5340_H_
+#ifndef _U_CFG_TEST_PLATFORM_SPECIFIC_SPARKFUN_ASSET_TRACKER_NRF52840_H_
+#define _U_CFG_TEST_PLATFORM_SPECIFIC_SPARKFUN_ASSET_TRACKER_NRF52840_H_
 
 /** Pin A for GPIO testing: will be used as an output and
  * must be connected to pin B via a 1k resistor.
@@ -38,6 +38,6 @@
 # define U_CFG_TEST_PIN_C         40 // AKA 1.08
 #endif
 
-#endif // _U_CFG_TEST_PLATFORM_SPECIFIC_NRF5340DK_NRF5340_H_
+#endif // _U_CFG_TEST_PLATFORM_SPECIFIC_SPARKFUN_ASSET_TRACKER_NRF52840_H_
 
 // End of file

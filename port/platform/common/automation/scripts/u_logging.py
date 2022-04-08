@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 from logging import StreamHandler
+from threading import RLock
 
 import verboselogs
 import coloredlogs
@@ -26,38 +27,49 @@ class ULog():
         """Console logging handler that prints to stdout via file descriptor"""
         def __init__(self, stdout):
             StreamHandler.__init__(self)
+            self._mutex = RLock()
             self.stdout = stdout
 
         def emit(self, record):
             """This function will be called by the logging module"""
+            self._mutex.acquire()
             msg = self.format(record)
             stdout_fd = self.stdout.fileno()
             os.write(stdout_fd, str.encode(msg + "\n"))
+            self._mutex.release()
 
     class ULogWrapper:
         """Logging wrapper"""
         def __init__(self, level):
             self._level = level
             self._buffer = ""
+            self._mutex = RLock()
+
+        def _flush(self, only_flush_complete_lines=False):
+            """Common flush function
+            This will do the actual logging"""
+            if "\n" in self._buffer:
+                lines = self._buffer.split("\n")
+                for l in lines[:-1]:
+                    self._level(l.rstrip())
+                self._buffer = lines[-1]
+
+            if not only_flush_complete_lines and len(self._buffer.rstrip()) > 0:
+                self._level(self._buffer.rstrip())
+                self._buffer = ""
 
         def write(self, string):
-            """This function will be called by the logging module"""
-            self._buffer += string
-            self.flush()
+            """This function will be called when writing to the wrapped stdio"""
+            self._mutex.acquire()
+            self._buffer += string.replace("\r","")
+            self._flush(only_flush_complete_lines=True)
+            self._mutex.release()
 
         def flush(self):
-            """This function will be called by the logging module"""
-            if len(self._buffer) > 0:
-                last_is_eol = self._buffer[-1] == '\n'
-                lines = self._buffer.splitlines()
-                if last_is_eol:
-                    self._buffer = ""
-                else:
-                    self._buffer = lines[-1]
-                    lines = lines[:-1]
-
-                for line in lines:
-                    self._level(line.rstrip())
+            """This function will be called when flushing the wrapped stdio"""
+            self._mutex.acquire()
+            self._flush()
+            self._mutex.release()
 
 
     _logging_is_setup = False

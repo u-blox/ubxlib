@@ -1,0 +1,12 @@
+&uart0 {
+    status = "okay";
+    compatible = "zephyr,native-posix-uart";
+    label = "UART_0";
+    current-speed = <115200>;
+};
+&uart1 {
+    status = "okay";
+    compatible = "zephyr,native-posix-uart";
+    label = "UART_1";
+    current-speed = <115200>;
+};

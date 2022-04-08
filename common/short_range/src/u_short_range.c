@@ -845,6 +845,7 @@ void uShortRangeClose(int32_t shortRangeHandle)
     pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
 
     if (pInstance != NULL) {
+        uAtClientIgnoreAsync(pInstance->atHandle);
         uShortRangeEdmStreamClose(pInstance->streamHandle);
         uShortRangeEdmStreamDeinit();
         uAtClientRemoveUrcHandler(pInstance->atHandle, "+STARTUP");

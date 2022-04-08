@@ -92,6 +92,7 @@ u_add_module_dir(base ${UBXLIB_BASE}/common/security)
 u_add_module_dir(base ${UBXLIB_BASE}/common/sock)
 u_add_module_dir(base ${UBXLIB_BASE}/common/ubx_protocol)
 u_add_module_dir(base ${UBXLIB_BASE}/common/utils)
+u_add_module_dir(base ${UBXLIB_BASE}/port/platform/common/debug_utils)
 
 # Additional source directories
 u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/event_queue)

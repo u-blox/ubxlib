@@ -65,9 +65,13 @@ char *strtok_r(char *pStr, const char *pDelimiters, char **ppSave);
  */
 int rand();
 
-/** isBlank().
+#if defined(CONFIG_MINIMAL_LIBC)
+/** isBlank(); Zephyr doesn't have this in its minimal C library
+ * but when it is brought in by newlib it ends up as a macro and so
+ * this needs to only be brought in for the minimal C library case.
  */
 int isblank(int character);
+#endif
 
 /** mktime().
  */

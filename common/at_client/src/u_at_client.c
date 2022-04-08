@@ -211,6 +211,10 @@
  */
 #define U_AT_CLIENT_MUTEX_STACK_MAX_SIZE 2
 
+/** The starting magic number for an AT client: avoiding 0.
+ */
+#define U_AT_CLIENT_MAGIC_NUMBER_START 1
+
 // Do some cross-checking
 #if (U_AT_CLIENT_CALLBACK_TASK_PRIORITY >= U_AT_CLIENT_URC_TASK_PRIORITY)
 # error U_AT_CLIENT_CALLBACK_TASK_PRIORITY must be less than U_AT_CLIENT_URC_TASK_PRIORITY
@@ -326,6 +330,7 @@ typedef struct {
     void (*pFunction) (uAtClientHandle_t, void *);
     uAtClientHandle_t atHandle;
     void *pParam;
+    int32_t atClientMagicNumber;
 } uAtClientCallback_t;
 
 /** Struct defining a wake-up handler.
@@ -361,11 +366,13 @@ typedef struct {
 /** Definition of an AT client instance.
  */
 typedef struct uAtClientInstance_t {
+    int32_t magicNumber; /** The magic number that uniquely identifies this AT client. */
     int32_t streamHandle; /** The stream handle to use. */
     uAtClientStream_t streamType; /** The type of API that streamHandle applies to. */
     uPortMutexHandle_t mutex; /** Mutex for threadsafeness. */
     uPortMutexHandle_t streamMutex; /** Mutex for the data stream. */
     uPortMutexHandle_t urcPermittedMutex; /** Mutex that we can use to avoid trampling on a URC. */
+    uPortMutexHandle_t asyncRunningMutex; /** Mutex indicating an uAtClientCallback() is executing. */
     uAtClientReceiveBuffer_t *pReceiveBuffer; /** Pointer to the receive buffer structure. */
     bool debugOn; /** Whether general debug is on or off. */
     bool printAtOn; /** Whether printing of AT commands and responses is on or off. */
@@ -446,6 +453,20 @@ static uAtClientInstance_t *gpAtClientList = NULL;
  * other global operations.
  */
 static uPortMutexHandle_t gMutex = NULL;
+
+/** As well as the linked list of AT clients we keep a list of
+ * the magic numbers related to each AT client as an array.  This
+ * is so that we can mark an AT client as not reacting to
+ * asynchronous events (by removing it from the array).
+ * Note: we can't run through the linked list for this kind of
+ * thing as that would require a lock on gMutex and the asynchronous
+ * event may not be able to obtain such a lock.
+ */
+static int32_t gAtClientMagicNumberProcessAsync[U_AT_CLIENT_MAX_NUM] = {0};
+
+/** The next AT client magic number to use.
+ */
+static int32_t gAtClientMagicNumberNext = U_AT_CLIENT_MAGIC_NUMBER_START;
 
 /** Definition of an information stop tag.
  */
@@ -592,13 +613,62 @@ static uAtClientInstance_t *pGetAtClientInstance(int32_t streamHandle,
     return pClient;
 }
 
+// Get the number of AT clients currently active;
+// gMutex should be locked before this is called.
+static size_t numAtClients()
+{
+    size_t numClients = 0;
+    uAtClientInstance_t *pClient = gpAtClientList;
+
+    while (pClient != NULL) {
+        pClient = pClient->pNext;
+        numClients++;
+    }
+
+    return numClients;
+}
+
 // Add an AT client instance to the list.
 // gMutex should be locked before this is called.
 // Note: doesn't copy it, just adds it.
 static void addAtClientInstance(uAtClientInstance_t *pClient)
 {
+    bool done = false;
+
+    // Populate the magic number
+    pClient->magicNumber = gAtClientMagicNumberNext;
+    gAtClientMagicNumberNext++;
+    if (gAtClientMagicNumberNext < U_AT_CLIENT_MAGIC_NUMBER_START) {
+        gAtClientMagicNumberNext = U_AT_CLIENT_MAGIC_NUMBER_START;
+    }
+    for (size_t x = 0; !done &&
+         (x < sizeof(gAtClientMagicNumberProcessAsync) / sizeof(gAtClientMagicNumberProcessAsync[0])); x++) {
+        if (gAtClientMagicNumberProcessAsync[x] == 0) {
+            gAtClientMagicNumberProcessAsync[x] = pClient->magicNumber;
+            done = true;
+        }
+    }
+    U_ASSERT(done);
+
+    // Add to the list
     pClient->pNext = gpAtClientList;
     gpAtClientList = pClient;
+}
+
+// Mark an AT client as not processing asynchronous data.
+// gMutex should be locked before this is called.
+static void ignoreAsync(const uAtClientInstance_t *pClient)
+{
+    bool done = false;
+
+    for (size_t x = 0; !done &&
+         (x < sizeof(gAtClientMagicNumberProcessAsync) / sizeof(gAtClientMagicNumberProcessAsync[0])); x++) {
+        if (gAtClientMagicNumberProcessAsync[x] == pClient->magicNumber) {
+            // Remove the magic number from the list
+            gAtClientMagicNumberProcessAsync[x] = 0;
+            done = true;
+        }
+    }
 }
 
 // Remove an AT client instance from the list.
@@ -609,6 +679,7 @@ static void removeAtClientInstance(const uAtClientInstance_t *pClient)
     uAtClientInstance_t *pCurrent;
     uAtClientInstance_t *pPrev = NULL;
 
+    // Remove the AT client from the linked list
     pCurrent = gpAtClientList;
     while (pCurrent != NULL) {
         if (pClient == pCurrent) {
@@ -647,6 +718,9 @@ static void removeClient(uAtClientInstance_t *pClient)
 
     // Remove it from the list
     removeAtClientInstance(pClient);
+
+    // Mark the AT client as not processing asynchronous data
+    ignoreAsync(pClient);
 
     // Remove the URC event handler, which may be running
     // asynchronous stuff and so has to be flushed and
@@ -705,8 +779,29 @@ static void removeClient(uAtClientInstance_t *pClient)
     U_PORT_MUTEX_UNLOCK(pClient->urcPermittedMutex);
     uPortMutexDelete(pClient->urcPermittedMutex);
 
+    // Delete the async running mutex
+    U_PORT_MUTEX_LOCK(pClient->asyncRunningMutex);
+    U_PORT_MUTEX_UNLOCK(pClient->asyncRunningMutex);
+    uPortMutexDelete(pClient->asyncRunningMutex);
+
     // And finally free the client context.
     free(pClient);
+}
+
+// Check if an asynchronous event should be processed
+// for the given AT client.
+static bool processAsync(int32_t magicNumber)
+{
+    bool process = false;
+
+    for (size_t x = 0; !process &&
+         (x < sizeof(gAtClientMagicNumberProcessAsync) / sizeof(gAtClientMagicNumberProcessAsync[0])); x++) {
+        if (gAtClientMagicNumberProcessAsync[x] == magicNumber) {
+            process = true;
+        }
+    }
+
+    return process;
 }
 
 // Initialse a mutex stack.
@@ -859,7 +954,7 @@ static void printAt(const uAtClientInstance_t *pClient,
             c = *pAt++;
             if (!isprint((int32_t) c)) {
 #ifdef U_AT_CLIENT_PRINT_CONTROL_CHARACTERS
-                uPortLog("[%02x]", c);
+                uPortLog("[%02x]", (unsigned char) c);
 #else
                 if (c == '\r') {
                     // Convert \r\n into \n
@@ -868,7 +963,7 @@ static void printAt(const uAtClientInstance_t *pClient,
                     // Do nothing
                 } else {
                     // Print the hex
-                    uPortLog("[%02x]", c);
+                    uPortLog("[%02x]", (unsigned char) c);
                 }
 #endif
             } else {
@@ -919,6 +1014,7 @@ static void consecutiveTimeout(uAtClientInstance_t *pClient)
         cb.pFunction = (void (*) (uAtClientHandle_t, void *)) pClient->pConsecutiveTimeoutsCallback;
         cb.atHandle = (uAtClientHandle_t) pClient;
         cb.pParam = &(pClient->numConsecutiveAtTimeouts);
+        cb.atClientMagicNumber = pClient->magicNumber;
         uPortEventQueueSend(gEventQueueHandle, &cb, sizeof(cb));
     }
 
@@ -1325,18 +1421,25 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
     uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
     int32_t character = -1;
 
+    // Note that we need to distinguish two cases here:
+    // returning -1, i.e. 0xFFFFFFFF, and returning the
+    // character 0xFF, i.e. 0x000000FF.  While this may
+    // seem clear, the sign-extension behaviour on various
+    // platforms makes it more interesting, hence the casting
+    // below
+
     if (pReceiveBuffer->readIndex < pReceiveBuffer->length) {
         // Read from the buffer
-        character = *(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                      pReceiveBuffer->readIndex);
+        character = (unsigned char) * (U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                       pReceiveBuffer->readIndex);
         pReceiveBuffer->readIndex++;
     } else {
         // Everything has been read, try to bring more in
         bufferReset(pClient, false);
         if (bufferFill(pClient, true)) {
             // Read something, all good
-            character = *(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                          pReceiveBuffer->readIndex);
+            character = (unsigned char) * (U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                                           pReceiveBuffer->readIndex);
             pReceiveBuffer->readIndex++;
             pClient->numConsecutiveAtTimeouts = 0;
         } else {
@@ -1518,7 +1621,7 @@ static bool bufferMatchOneUrc(uAtClientInstance_t *pClient)
                 // it so that the URC doesn't suffer the error
                 savedError = pClient->error;
                 pClient->error = U_ERROR_COMMON_SUCCESS;
-                if (pUrc->pHandler) {
+                if (processAsync(pClient->magicNumber) && pUrc->pHandler) {
                     pUrc->pHandler(pClient, pUrc->pHandlerParam);
                 }
                 informationResponseStop(pClient);
@@ -2256,12 +2359,20 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
 // Callback for the event queue.
 static void eventQueueCallback(void *pParameters, size_t paramLength)
 {
+    uAtClientInstance_t *pClient;
     uAtClientCallback_t *pCb = (uAtClientCallback_t *) pParameters;
 
     (void) paramLength;
 
-    if ((pCb != NULL) && (pCb->pFunction != NULL)) {
+    if ((pCb != NULL) && (pCb->pFunction != NULL) &&
+        processAsync(pCb->atClientMagicNumber)) {
+        pClient = (uAtClientInstance_t *) pCb->atHandle;
+
+        U_PORT_MUTEX_LOCK(pClient->asyncRunningMutex);
+
         pCb->pFunction(pCb->atHandle, pCb->pParam);
+
+        U_PORT_MUTEX_UNLOCK(pClient->asyncRunningMutex);
     }
 }
 
@@ -2380,9 +2491,13 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
     // Check parameters
     if ((receiveBufferSize > U_AT_CLIENT_BUFFER_OVERHEAD_BYTES) &&
         (streamType < U_AT_CLIENT_STREAM_TYPE_MAX)) {
-        // See if there's already an AT client for this stream
+        // See if there's already an AT client for this stream and
+        // also check that we have room for another entry in the
+        // magic number array
         pClient = pGetAtClientInstance(streamHandle, streamType);
-        if (pClient == NULL) {
+        if ((pClient == NULL) &&
+            (numAtClients() < sizeof(gAtClientMagicNumberProcessAsync) /
+             sizeof(gAtClientMagicNumberProcessAsync[0]))) {
             // Nope, create one
             pClient = (uAtClientInstance_t *) malloc(sizeof(uAtClientInstance_t));
             if (pClient != NULL) {
@@ -2395,64 +2510,64 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                 }
                 if (pClient->pReceiveBuffer != NULL) {
                     pClient->pReceiveBuffer->isMalloced = (int32_t) receiveBufferIsMalloced;
-                    // Create the client's mutex
-                    if (uPortMutexCreate(&(pClient->mutex)) == 0) {
-                        // Create the client's stream mutex
-                        if (uPortMutexCreate(&(pClient->streamMutex)) == 0) {
-                            // Create the mutex that allows us to tell if the URC callback is active
-                            if (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0) {
-                                // Set all the non-zero initial values before we set
-                                // the event handlers which might call us
-                                pClient->streamHandle = streamHandle;
-                                pClient->streamType = streamType;
-                                pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
-                                pClient->atTimeoutSavedMs = -1;
-                                pClient->delimiter = U_AT_CLIENT_DEFAULT_DELIMITER;
-                                mutexStackInit(&(pClient->lockedStreamMutexStack));
-                                pClient->delayMs = U_AT_CLIENT_DEFAULT_DELAY_MS;
-                                clearError(pClient);
-                                // This will also set stopTag
-                                setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
-                                pClient->lastTxTimeMs = -1;
-                                pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
-                                pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
-                                // Set up the buffer and its protection markers
-                                pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
-                                                                          U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
-                                bufferReset(pClient, true);
-                                memcpy(pClient->pReceiveBuffer->mk0, U_AT_CLIENT_MARKER,
-                                       U_AT_CLIENT_MARKER_SIZE);
-                                memcpy(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
-                                       pClient->pReceiveBuffer->dataBufferSize,
-                                       U_AT_CLIENT_MARKER, U_AT_CLIENT_MARKER_SIZE);
-                                // Now add an event handler for characters
-                                // received on the stream
-                                switch (streamType) {
-                                    case U_AT_CLIENT_STREAM_TYPE_UART:
-                                        errorCode = uPortUartEventCallbackSet(streamHandle,
-                                                                              U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
-                                                                              urcCallback, pClient,
-                                                                              U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
-                                                                              U_AT_CLIENT_URC_TASK_PRIORITY);
-                                        break;
-                                    case U_AT_CLIENT_STREAM_TYPE_EDM:
-                                        errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient);
-                                        break;
-                                    default:
-                                        // streamType is checked on entry
-                                        break;
-                                }
-                                if (errorCode == 0) {
-                                    // Add the instance to the list
-                                    addAtClientInstance(pClient);
-                                }
-                            }
+                    // Create the mutexes
+                    if ((uPortMutexCreate(&(pClient->mutex)) == 0) &&
+                        (uPortMutexCreate(&(pClient->streamMutex)) == 0) &&
+                        (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0) &&
+                        (uPortMutexCreate(&(pClient->asyncRunningMutex)) == 0)) {
+                        // Set all the non-zero initial values before we set
+                        // the event handlers which might call us
+                        pClient->streamHandle = streamHandle;
+                        pClient->streamType = streamType;
+                        pClient->atTimeoutMs = U_AT_CLIENT_DEFAULT_TIMEOUT_MS;
+                        pClient->atTimeoutSavedMs = -1;
+                        pClient->delimiter = U_AT_CLIENT_DEFAULT_DELIMITER;
+                        mutexStackInit(&(pClient->lockedStreamMutexStack));
+                        pClient->delayMs = U_AT_CLIENT_DEFAULT_DELAY_MS;
+                        clearError(pClient);
+                        // This will also set stopTag
+                        setScope(pClient, U_AT_CLIENT_SCOPE_NONE);
+                        pClient->lastTxTimeMs = -1;
+                        pClient->urcMaxStringLength = U_AT_CLIENT_INITIAL_URC_LENGTH;
+                        pClient->maxRespLength = U_AT_CLIENT_MAX_LENGTH_INFORMATION_RESPONSE_PREFIX;
+                        // Set up the buffer and its protection markers
+                        pClient->pReceiveBuffer->dataBufferSize = receiveBufferSize -
+                                                                  U_AT_CLIENT_BUFFER_OVERHEAD_BYTES;
+                        bufferReset(pClient, true);
+                        memcpy(pClient->pReceiveBuffer->mk0, U_AT_CLIENT_MARKER,
+                               U_AT_CLIENT_MARKER_SIZE);
+                        memcpy(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
+                               pClient->pReceiveBuffer->dataBufferSize,
+                               U_AT_CLIENT_MARKER, U_AT_CLIENT_MARKER_SIZE);
+                        // Now add an event handler for characters
+                        // received on the stream
+                        switch (streamType) {
+                            case U_AT_CLIENT_STREAM_TYPE_UART:
+                                errorCode = uPortUartEventCallbackSet(streamHandle,
+                                                                      U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
+                                                                      urcCallback, pClient,
+                                                                      U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES,
+                                                                      U_AT_CLIENT_URC_TASK_PRIORITY);
+                                break;
+                            case U_AT_CLIENT_STREAM_TYPE_EDM:
+                                errorCode = uShortRangeEdmStreamAtCallbackSet(streamHandle, urcCallback, pClient);
+                                break;
+                            default:
+                                // streamType is checked on entry
+                                break;
+                        }
+                        if (errorCode == 0) {
+                            // Add the instance to the list
+                            addAtClientInstance(pClient);
                         }
                     }
                 }
 
                 if (errorCode != 0) {
                     // Clean up on failure
+                    if (pClient->asyncRunningMutex != NULL) {
+                        uPortMutexDelete(pClient->asyncRunningMutex);
+                    }
                     if (pClient->urcPermittedMutex != NULL) {
                         uPortMutexDelete(pClient->urcPermittedMutex);
                     }
@@ -2475,6 +2590,34 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
     U_PORT_MUTEX_UNLOCK(gMutex);
 
     return (uAtClientHandle_t) pClient;
+}
+
+// Tell an AT client to throw away asynchronous events.
+void uAtClientIgnoreAsync(uAtClientHandle_t atHandle)
+{
+    uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
+
+    U_PORT_MUTEX_LOCK(gMutex);
+
+    // As well as locking gMutex we also lock
+    // asyncRunningMutex so that we can guarantee
+    // that no asynchronous call will land once this
+    // function returns
+    if (pClient == NULL) {
+        pClient = gpAtClientList;
+        while (pClient != NULL) {
+            U_PORT_MUTEX_LOCK(pClient->asyncRunningMutex);
+            ignoreAsync(pClient);
+            U_PORT_MUTEX_UNLOCK(pClient->asyncRunningMutex);
+            pClient = pClient->pNext;
+        }
+    } else {
+        U_PORT_MUTEX_LOCK(pClient->asyncRunningMutex);
+        ignoreAsync(pClient);
+        U_PORT_MUTEX_UNLOCK(pClient->asyncRunningMutex);
+    }
+
+    U_PORT_MUTEX_UNLOCK(gMutex);
 }
 
 // Remove an AT client.
@@ -3235,7 +3378,7 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
                                void *pHandlerParam)
 {
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
-    uAtClientUrc_t *pUrc;
+    uAtClientUrc_t *pUrc = NULL;
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     size_t prefixLength;
 
@@ -3257,8 +3400,7 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
                 pUrc->prefixLength = prefixLength;
                 pUrc->pHandler = pHandler;
                 pUrc->pHandlerParam = pHandlerParam;
-                pUrc->pNext = pClient->pUrcList;
-                pClient->pUrcList = pUrc;
+
                 errorCode = U_ERROR_COMMON_SUCCESS;
             }
         } else {
@@ -3273,6 +3415,19 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
 
     U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 
+    if (pUrc != NULL) {
+        // Only insert the URC in the list outside the pClient mutex lock,
+        // since we need to prevent a URC happening while we do so and we
+        // can't do that within the locks as a URC callback might have
+        // locked  pClient->mutex
+        U_PORT_MUTEX_LOCK(pClient->urcPermittedMutex);
+
+        pUrc->pNext = pClient->pUrcList;
+        pClient->pUrcList = pUrc;
+
+        U_PORT_MUTEX_UNLOCK(pClient->urcPermittedMutex);
+    }
+
     return (int32_t) errorCode;
 }
 
@@ -3284,15 +3439,25 @@ void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
     uAtClientUrc_t *pCurrent = pClient->pUrcList;
     uAtClientUrc_t *pPrev = NULL;
 
-    U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
+    // IMPORTANT: this can't lock pClient->mutex as it
+    // needs to be able to acquire urcPermittedMutex
+    // under which a URC handler might have already
+    // locked pClient->mutex
 
     while (pCurrent != NULL) {
         if (strcmp(pPrefix, pCurrent->pPrefix) == 0) {
+
+            // Stop any URCs occurring while we modify the list
+            U_PORT_MUTEX_LOCK(pClient->urcPermittedMutex);
+
             if (pPrev != NULL) {
                 pPrev->pNext = pCurrent->pNext;
             } else {
                 pClient->pUrcList = pCurrent->pNext;
             }
+
+            U_PORT_MUTEX_UNLOCK(pClient->urcPermittedMutex);
+
             free(pCurrent);
             pCurrent = NULL;
         } else {
@@ -3300,8 +3465,6 @@ void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
             pCurrent = pPrev->pNext;
         }
     }
-
-    U_AT_CLIENT_UNLOCK_CLIENT_MUTEX(pClient);
 }
 
 // Get the stack high watermark for the URC task.
@@ -3341,6 +3504,7 @@ int32_t uAtClientCallback(uAtClientHandle_t atHandle,
         cb.pFunction = pCallback;
         cb.atHandle = atHandle;
         cb.pParam = pCallbackParam;
+        cb.atClientMagicNumber = ((uAtClientInstance_t *) atHandle)->magicNumber;
         errorCode = uPortEventQueueSend(gEventQueueHandle, &cb, sizeof(cb));
     }
 

@@ -13,7 +13,7 @@ echo "Update APT package cache..."
 sudo apt update
 echo ""
 echo "Install basic stuff needed for ubxlib"
-sudo apt install make python3 python3-pip doxygen graphviz astyle libncurses5
+sudo apt install make python3 python3-pip doxygen graphviz astyle libncurses5 socat libasan5
 echo ""
 echo "Install Zephyr stuff"
 sudo apt install --no-install-recommends git cmake ninja-build gperf \

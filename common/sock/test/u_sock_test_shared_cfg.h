@@ -37,7 +37,7 @@
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS
 /** Echo server to use for UDP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS  "185.215.195.132"
+# define U_SOCK_TEST_ECHO_UDP_SERVER_IP_ADDRESS  "185.215.195.136"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_UDP_SERVER_PORT
@@ -55,7 +55,7 @@
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS
 /** Echo server to use for TCP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS  "185.215.195.132"
+# define U_SOCK_TEST_ECHO_TCP_SERVER_IP_ADDRESS  "185.215.195.136"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_TCP_SERVER_PORT
@@ -73,13 +73,16 @@
 #ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS
 /** Echo server to use for secure (TLS) TCP sockets testing as an IP address.
  */
-# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS  "185.215.195.132"
+# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_IP_ADDRESS  "185.215.195.136"
 #endif
 
 #ifndef U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT
 /** Port number on the echo server to use for secure (TLS) TCP testing.
+ * Note: we used to use port 5060 here but that is commonly used for
+ * non-secure SIP and hence can be blocked by firewalls which want to
+ * exclude SIP, so 5065 is now used instead.
  */
-# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT  5060
+# define U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT  5065
 #endif
 
 #ifndef U_SOCK_TEST_LOCAL_PORT

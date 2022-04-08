@@ -96,7 +96,7 @@
 uMqttClientContext_t *mqttClientCtx;
 
 const uMqttClientConnection_t mqttUnsecuredConnection = {
-    .pBrokerNameStr = "broker.hivemq.com",
+    .pBrokerNameStr = "ubxlib.it-sgn.u-blox.com",
     .pUserNameStr = "test_user",
     .pPasswordStr = "test_passwd",
     .pClientIdStr = "test_client_id",
@@ -105,7 +105,7 @@ const uMqttClientConnection_t mqttUnsecuredConnection = {
 
 
 const uMqttClientConnection_t mqttSecuredConnection = {
-    .pBrokerNameStr = "test.mosquitto.org",
+    .pBrokerNameStr = "ubxlib.it-sgn.u-blox.com",
     .pUserNameStr = "test_user",
     .pPasswordStr = "test_passwd",
     .pClientIdStr = "test_client_id",
@@ -115,36 +115,34 @@ const uMqttClientConnection_t mqttSecuredConnection = {
 
 uSecurityTlsSettings_t mqttTlsSettings = {
 
-    .pRootCaCertificateName = "mosquitto.org.crt",
+    .pRootCaCertificateName = "ubxlib.it-sgn.u-blox.crt",
     .pClientCertificateName = NULL,
     .pClientPrivateKeyName = NULL,
     .certificateCheck = U_SECURITY_TLS_CERTIFICATE_CHECK_ROOT_CA
 };
 
 static const char *gpRootCaCert = "-----BEGIN CERTIFICATE-----\n"
-                                  "MIIEAzCCAuugAwIBAgIUBY1hlCGvdj4NhBXkZ/uLUZNILAwwDQYJKoZIhvcNAQEL\n"
-                                  "BQAwgZAxCzAJBgNVBAYTAkdCMRcwFQYDVQQIDA5Vbml0ZWQgS2luZ2RvbTEOMAwG\n"
-                                  "A1UEBwwFRGVyYnkxEjAQBgNVBAoMCU1vc3F1aXR0bzELMAkGA1UECwwCQ0ExFjAU\n"
-                                  "BgNVBAMMDW1vc3F1aXR0by5vcmcxHzAdBgkqhkiG9w0BCQEWEHJvZ2VyQGF0Y2hv\n"
-                                  "by5vcmcwHhcNMjAwNjA5MTEwNjM5WhcNMzAwNjA3MTEwNjM5WjCBkDELMAkGA1UE\n"
-                                  "BhMCR0IxFzAVBgNVBAgMDlVuaXRlZCBLaW5nZG9tMQ4wDAYDVQQHDAVEZXJieTES\n"
-                                  "MBAGA1UECgwJTW9zcXVpdHRvMQswCQYDVQQLDAJDQTEWMBQGA1UEAwwNbW9zcXVp\n"
-                                  "dHRvLm9yZzEfMB0GCSqGSIb3DQEJARYQcm9nZXJAYXRjaG9vLm9yZzCCASIwDQYJ\n"
-                                  "KoZIhvcNAQEBBQADggEPADCCAQoCggEBAME0HKmIzfTOwkKLT3THHe+ObdizamPg\n"
-                                  "UZmD64Tf3zJdNeYGYn4CEXbyP6fy3tWc8S2boW6dzrH8SdFf9uo320GJA9B7U1FW\n"
-                                  "Te3xda/Lm3JFfaHjkWw7jBwcauQZjpGINHapHRlpiCZsquAthOgxW9SgDgYlGzEA\n"
-                                  "s06pkEFiMw+qDfLo/sxFKB6vQlFekMeCymjLCbNwPJyqyhFmPWwio/PDMruBTzPH\n"
-                                  "3cioBnrJWKXc3OjXdLGFJOfj7pP0j/dr2LH72eSvv3PQQFl90CZPFhrCUcRHSSxo\n"
-                                  "E6yjGOdnz7f6PveLIB574kQORwt8ePn0yidrTC1ictikED3nHYhMUOUCAwEAAaNT\n"
-                                  "MFEwHQYDVR0OBBYEFPVV6xBUFPiGKDyo5V3+Hbh4N9YSMB8GA1UdIwQYMBaAFPVV\n"
-                                  "6xBUFPiGKDyo5V3+Hbh4N9YSMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEL\n"
-                                  "BQADggEBAGa9kS21N70ThM6/Hj9D7mbVxKLBjVWe2TPsGfbl3rEDfZ+OKRZ2j6AC\n"
-                                  "6r7jb4TZO3dzF2p6dgbrlU71Y/4K0TdzIjRj3cQ3KSm41JvUQ0hZ/c04iGDg/xWf\n"
-                                  "+pp58nfPAYwuerruPNWmlStWAXf0UTqRtg4hQDWBuUFDJTuWuuBvEXudz74eh/wK\n"
-                                  "sMwfu1HFvjy5Z0iMDU8PUDepjVolOCue9ashlS4EB5IECdSR2TItnAIiIwimx839\n"
-                                  "LdUdRudafMu5T5Xma182OC0/u/xRlEm+tvKGGmfFcN0piqVl8OrSPBgIlb+1IKJE\n"
-                                  "m/XriWr/Cq4h/JfB7NTsezVslgkBaoU=\n"
-                                  "-----END CERTIFICATE-----";
+                                  "MIIDjTCCAnWgAwIBAgIUFYyMODZUDaCq5dtGfIj259VYMqowDQYJKoZIhvcNAQEL\n"
+                                  "BQAwVjELMAkGA1UEBhMCR0IxEzARBgNVBAgMClNvbWUtU3RhdGUxDzANBgNVBAoM\n"
+                                  "BnUtYmxveDEhMB8GA1UEAwwYdWJ4bGliLml0LXNnbi11LWJsb3guY29tMB4XDTIy\n"
+                                  "MDQwNzE0MjA1NVoXDTIyMDUwNzE0MjA1NVowVjELMAkGA1UEBhMCR0IxEzARBgNV\n"
+                                  "BAgMClNvbWUtU3RhdGUxDzANBgNVBAoMBnUtYmxveDEhMB8GA1UEAwwYdWJ4bGli\n"
+                                  "Lml0LXNnbi11LWJsb3guY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC\n"
+                                  "AQEAwdYIkF0eauc35ac/LPrP59O7rtw1XC1r7uLOxzbdnv/0oHM0UpdFwCV8gAV3\n"
+                                  "Lz3TfYLpDOtDyfKJsc+7EuRSqWPoCNpQpycaF+F7yxt9K/MeyT1vDwpIXWjW79yc\n"
+                                  "x69H4FZckAvYf7PDeTxDBaxzJZPRkmdKkSI7C+JFOYqntCXCtKXpDOS3K9k+6xCq\n"
+                                  "NnnDeR/MWlqh1ju92+qMe33gm7upWuQQX8t8cdDp8qtyzCWqWE8cyyDR41ZGlVfh\n"
+                                  "c3SiGZgK4SypNS1jfgXaSWSHGKUkAiv3PEktxIvSHwRVPqobcFvNZU1hDFBj06Py\n"
+                                  "42kBYnUs/0TpGi1XnpnnbP87dwIDAQABo1MwUTAdBgNVHQ4EFgQUIVJoL4b3hF2l\n"
+                                  "TNZLNfHJUFIl1NEwHwYDVR0jBBgwFoAUIVJoL4b3hF2lTNZLNfHJUFIl1NEwDwYD\n"
+                                  "VR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAvn+4E/Hn37Ja/9S/t+I6\n"
+                                  "SdE21SF65it69sY10/HkD5aNJQHzDS78VMaZYtXNvd+Y/XR5VTrrjJxMpqeBEHN9\n"
+                                  "APl0/Fr0NVNxwlfp3DDplZHFkxiX2B/d4cQCve9YKE2m+emALNJYQ2pXD4tqv/W+\n"
+                                  "ybzRetEIm3Bhj/1O2W38yHXNjMbKFhtVpL76S4xtwtSEFfT/oJ+m3TRhth90mllw\n"
+                                  "UpIK4hHpkWEtbyZCQnyySFErVQCD+yAcCAVCeaHVl6h2CnArBaMfHDUHkRo7fbGb\n"
+                                  "53rCahisCdqQ9dgRKpypD5Ao0aa1bi9GX8UOeq7xk+DkF5Jg/8b6ZchRCPYyYqP2\n"
+                                  "MA==\n"
+                                  "-----END CERTIFICATE-----\n";
 
 //lint -e(843) Suppress warning "could be declared as const"
 const char *testPublishMsg[MQTT_PUBLISH_TOTAL_MSG_COUNT] =  {"Hello test",

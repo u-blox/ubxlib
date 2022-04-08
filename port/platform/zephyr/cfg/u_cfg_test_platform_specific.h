@@ -132,6 +132,10 @@
 #include "u_cfg_test_platform_specific_sparkfun_asset_tracker_nrf52840.h"
 #endif
 
+#ifdef CONFIG_BOARD_NATIVE_POSIX
+#include "u_cfg_test_platform_specific_native_posix.h"
+#endif
+
 /** UART HW block for UART driver loopback testing.
  */
 #ifndef U_CFG_TEST_UART_A

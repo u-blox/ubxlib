@@ -26,6 +26,14 @@
  * uMutexDebugWatchdog(), which should not be called at the same time as
  * any other of the other APIs.
  *
+ * IMPORTANT: in order to support this debug feature, it must be possible
+ * on your platform for a task and a mutex to be created BEFORE
+ * uPortInit() is called, right at start of day, and such a task/mutex
+ * must also survive uPortDeinit() being called.  This is because
+ * uMutexDebugInit() must be able to create a mutex and
+ * uMutexDebugWatchdog() must be able to create a task and these must
+ * not be destroyed for the life of the application.
+ *
  * The intermediate functions here are intended to be inserted
  * in place of the usual port OS mutex APIs if U_CFG_MUTEX_DEBUG is
  * defined.  To use them, add a call to uMutexDebugInit() at the very
@@ -63,15 +71,15 @@
  *         printf("Unable to create or lock mutex!\n");
  *     }
  *
- *     You will also need the usual #includes of course (u_port_os.h
- *     etc.) and you may wish to reduce the timer passed into
- *     uMutexDebugWatchdog() to something like 10000 to save time.
+ * You will also need the usual \#includes of course (u_port_os.h
+ * etc.) and you may wish to reduce the timer passed into
+ *  uMutexDebugWatchdog() to something like 10000 to save time.
  *
- *     When this code executes the task in which the code above is
- *     included will be blocked at the second uPortMutexLock() and,
- *     after about 10 seconds, the mutex watchdog task should call
- *     the callback which will print something like the following
- *     (where the if() line above was at line 2053 of u_port_test.c):
+ * When this code executes the task in which the code above is
+ * included will be blocked at the second uPortMutexLock() and,
+ * after about 10 seconds, the mutex watchdog task should call
+ * the callback which will print something like the following
+ * (where the if() line above was at line 2053 of u_port_test.c):
  *
  * U_MUTEX_DEBUG_0x2000e960: created by C:/projects/ubxlib/port/test/u_port_test.c:2053 approx. 12 second(s) ago is LOCKED.
  * U_MUTEX_DEBUG_0x2000e960: locker has been C:/projects/ubxlib/port/test/u_port_test.c:2053 for approx. 12 second(s).

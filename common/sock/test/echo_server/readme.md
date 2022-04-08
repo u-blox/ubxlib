@@ -9,7 +9,9 @@ The running echo servers can be found at the following addresses:
 
 - UDP:        `ubxlib.it-sgn.u-blox.com:5050`
 - TCP:        `ubxlib.it-sgn.u-blox.com:5055`
-- Secure TCP: `ubxlib.it-sgn.u-blox.com:5060`
+- Secure TCP: `ubxlib.it-sgn.u-blox.com:5065`
+
+Note: used to use port 5060 for secure TCP but that port is commonly used by non-secure SIP and hence can be blocked by firewalls which want to exclude SIP, so port 5065 is now used instead.
 
 # Installation
 The [README.md](https://github.com/aws/amazon-freertos/tree/main/tools/echo_server#readme) at the above link was used to install TCP and secure TCP versions of the echo server.  The certificates generated for the secure TCP echo server can be found in the [certs](certs) directory.  Then [echo-server.go](echo-server.go) was copied and adapted to form [echo-server-udp.go](echo-server-udp.go).
@@ -22,7 +24,7 @@ go build echo_server.go
 go build echo_server_udp.go
 ```
 - To just run all three echo servers manually, execute `sh ./echo_server.sh` (see note below if you get strange errors).
-- To start the echo servers as a service at boot, kill the processes that started running as a result of the above line (`ps aux` and `kill xxx` where `xxx` is the `PID`), modify the file `echo_server.service` to point to the location where you have copied this directory, copy `echo_server.service` to `/etc/systemd/system` and then:
+- To start the echo servers as a service at boot, kill the processes that started running as a result of the above line (`ps aux` and `kill xxx` where `xxx` is the `PID`), modify the paths in the file [echo_server.service](echo_server.service) appropriately, copy [echo_server.service](echo_server.service) to `/etc/systemd/system` and then:
 ```
 sudo chmod u+x echo_server.sh
 sudo systemctl daemon-reload

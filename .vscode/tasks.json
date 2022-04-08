@@ -125,6 +125,15 @@
             "problemMatcher": { "base": "$msCompile", "fileLocation": "absolute" }
         },
         {
+            "label": "Build Linux runner [Zephyr]",
+            "type": "shell",
+            "options": { "cwd": "${workspaceFolder}/.vscode" },
+            "command": "inv -r ${workspaceFolder}/port/platform/common/automation nrfconnect.build --board-name=native_posix --output-name=runner_linux",
+            "group": { "kind": "build", "isDefault": true },
+            "presentation": { "group": "ubxlib" },
+            "problemMatcher": { "base": "$gcc", "fileLocation": "absolute" }
+        },
+        {
             "type": "shell",
             "label": "Predebug evkninab3 runner [Zephyr]",
             "presentation": {

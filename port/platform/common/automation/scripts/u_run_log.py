@@ -18,7 +18,7 @@ RUN_GUARD_TIME_SECONDS = u_utils.RUN_GUARD_TIME_SECONDS
 # The inactivity time for running tests in seconds
 RUN_INACTIVITY_TIME_SECONDS = u_utils.RUN_INACTIVITY_TIME_SECONDS
 
-def run(instance, reporter, test_report_file_path):
+def run(instance, build_dir, reporter, test_report_file_path):
     '''Log test result of external HW'''
     return_value = -1
     instance_text = u_utils.get_instance_text(instance)
@@ -27,7 +27,10 @@ def run(instance, reporter, test_report_file_path):
     global U_LOG # pylint: disable=global-statement
     U_LOG = ULog.get_logger(PROMPT + instance_text)
 
-    cmd = ["inv", "-r", f"{u_utils.AUTOMATION_DIR}", "automation.log", instance_text]
+    cmd = [
+        "inv", "-r", f"{u_utils.AUTOMATION_DIR}",
+        "automation.log", f"--build-dir={build_dir}", instance_text
+    ]
 
     reporter.event(u_report.EVENT_TYPE_TEST,
                    u_report.EVENT_START)

@@ -35,6 +35,7 @@
 #include "u_error_common.h"
 
 #include "u_assert.h"
+#include "u_debug_utils.h"
 
 #include "u_port.h"
 #include "u_port_debug.h"
@@ -44,16 +45,20 @@
 
 #include "zephyr.h"
 
+#ifdef CONFIG_ARCH_POSIX
+#include "posix_board_if.h"
+#endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** When running under automation the target is reset and then
- * logging begins, hence a start-up delay is added in order not
- * to miss any output while the logging tools start up.
+/** When running under automation on real target HW the target is
+ * reset and then logging begins, hence a start-up delay is added
+ * in order not to miss any output while the logging tools start up.
  */
 #ifndef U_CFG_STARTUP_DELAY_SECONDS
-# define U_CFG_STARTUP_DELAY_SECONDS 10
+# define U_CFG_STARTUP_DELAY_SECONDS 0
 #endif
 
 /* ----------------------------------------------------------------
@@ -81,7 +86,9 @@ static void appTask(void *pParam)
 
     uPortInit();
 
+#ifndef CONFIG_ARCH_POSIX
     uPortTaskBlock(U_CFG_STARTUP_DELAY_SECONDS * 1000);
+#endif
 
     uPortLog("\n\nU_APP: application task started.\n");
 
@@ -89,6 +96,9 @@ static void appTask(void *pParam)
 
     uPortLog("U_APP: functions available:\n\n");
     uRunnerPrintAll("U_APP: ");
+    // Give some slack for RTT here so that the RTT buffer is empty when we
+    // start the tests.
+    uPortTaskBlock(100);
 #ifdef U_CFG_APP_FILTER
     uPortLog("U_APP: running functions that begin with \"%s\".\n",
              U_PORT_STRINGIFY_QUOTED(U_CFG_APP_FILTER));
@@ -108,7 +118,9 @@ static void appTask(void *pParam)
     uPortLog("\n\nU_APP: application task ended.\n");
     uPortDeinit();
 
+#ifndef CONFIG_ARCH_POSIX
     while (1) {}
+#endif
 }
 
 /* ----------------------------------------------------------------
@@ -135,15 +147,32 @@ void testFail(void)
 }
 
 // Entry point
+#ifdef CONFIG_ARCH_POSIX
+// For some reason Zephyr drops the return value on their
+// Linux/Posix platform
+void main(void)
+#else
 int main(void)
+#endif
 {
     // Start the platform to run the tests
     uPortPlatformStart(appTask, NULL, 0, 0);
 
+#ifndef CONFIG_ARCH_POSIX
     // Should never get here
     U_ASSERT(false);
-
     return 0;
+#else
+    posix_exit(0);
+#endif
 }
+
+#ifdef U_DEBUG_UTILS_DUMP_THREADS
+void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
+{
+    uDebugUtilsDumpThreads();
+}
+#endif
+
 
 // End of file

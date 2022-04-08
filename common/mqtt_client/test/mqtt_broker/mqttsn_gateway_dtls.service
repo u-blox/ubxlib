@@ -1,0 +1,10 @@
+[Unit]
+Description=MQTT-SN DTLS gateway
+After=mosquitto.service
+
+[Service]
+# Modify this to point to wherever the DTLS binary for the Paho MQTT-SN gateway and assocated config file have been placed
+ExecStart=/home/rmea/paho.mqtt-sn.embedded-c/MQTTSNGateway/bin.dtls/MQTT-SNGateway -f /home/rmea/mosquitto/gateway_dtls.conf
+
+[Install]
+WantedBy=multi-user.target

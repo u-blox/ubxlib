@@ -77,8 +77,8 @@
 # define U_PORT_TEST_CHECK_TIME_TAKEN
 #endif
 
-#ifdef _WIN32
-/** On _WIN32 it is possible to delete a task from another task,
+#if defined(_WIN32) || defined(__ZEPHYR__) || defined(EL_PRODUCT_THREADX)
+/** On some OSes it is possible to delete a task from another task,
  * so we can check that.
  */
 #define U_PORT_TEST_DELETE_OTHER_TASK

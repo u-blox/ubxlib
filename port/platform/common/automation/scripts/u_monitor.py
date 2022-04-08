@@ -72,9 +72,10 @@ def test_error(_results: TestResults, reporter, message):
                        u_report.EVENT_ERROR,
                        message)
 
-def reboot_callback(match, results: TestResults, reporter):
+def reboot_callback(match, user_parameter, results: TestResults, reporter):
     '''Handler for reboots occuring unexpectedly'''
     del match
+    del user_parameter
 
     msg = "target has rebooted"
     record_outcome(results, "ERROR", reporter, msg)
@@ -86,8 +87,9 @@ def reboot_callback(match, results: TestResults, reporter):
     finish_timer = threading.Timer(2, delayed_finish, args=[results])
     finish_timer.start()
 
-def run_callback(match, results: TestResults, reporter):
+def run_callback(match, user_parameter, results: TestResults, reporter):
     '''Handler for an item beginning to run'''
+    del user_parameter
 
     name = match.group(1)
     if results.current:
@@ -98,7 +100,7 @@ def run_callback(match, results: TestResults, reporter):
 
     results.current = TestCaseResult(name=name, start_time=datetime.now())
     U_LOG.info("progress update - item {}() started on {}.".     \
-                   format(match.group(1), results.current.start_time.time()))
+               format(match.group(1), results.current.start_time.time()))
 
     results.items_run += 1
 
@@ -144,17 +146,20 @@ def record_outcome(results: TestResults, status, reporter, message=None):
     return ret
 
 
-def pass_callback(_match, results: TestResults, reporter):
+def pass_callback(_match, user_parameter, results: TestResults, reporter):
     '''Handler for an item passing'''
+    del user_parameter
     record_outcome(results, "PASS", reporter)
 
-def fail_callback(match, results: TestResults, reporter):
+def fail_callback(match, user_parameter, results: TestResults, reporter):
     '''Handler for a test failing'''
+    del user_parameter
     msg = match.group(2)
     record_outcome(results, "FAIL", reporter, msg)
 
-def finish_callback(match, results: TestResults, reporter):
+def finish_callback(match, user_parameter, results: TestResults, reporter):
     '''Handler for a run finishing'''
+    del user_parameter
 
     end_time = datetime.now()
     diff_sec = int((end_time - results.overall_start_time).total_seconds())
@@ -181,26 +186,26 @@ def finish_callback(match, results: TestResults, reporter):
 # the test output and a function to call when the regex
 # is matched.  The regex result is passed to the callback.
 # Regex tested at https://regex101.com/ selecting Python as the flavour
-INTERESTING = [[r"abort()", reboot_callback],
+INTERESTING = [[r"abort()", reboot_callback, None],
                # This one for ESP32 aborts
-               [r"Guru Meditation Error", reboot_callback],
+               [r"Guru Meditation Error", reboot_callback, None],
                # This one for ESP32 asserts
-               [r"assert failed:", reboot_callback],
+               [r"assert failed:", reboot_callback, None],
                # This one for NRF52 aborts
-               [r"<error> hardfault", reboot_callback],
+               [r"<error> hardfault", reboot_callback, None],
                # This one for Zephyr aborts
-               [r">>> ZEPHYR FATAL ERROR", reboot_callback],
+               [r">>> ZEPHYR FATAL ERROR", reboot_callback, None],
                # Match, for example "BLAH: Running getSetMnoProfile..."
                # capturing the "getSetMnoProfile" part
-               [r"(?:^.*Running) +([^\.]+(?=\.))...$", run_callback],
+               [r"(?:^.*Running) +([^\.]+(?=\.))...$", run_callback, None],
                # Match, for example "C:/temp/file.c:890:connectedThings:PASS"
                # capturing the "connectThings" part
-               [r"(?:^.*?(?:\.c:))(?:[0-9]*:)(.*?):PASS$", pass_callback],
+               [r"(?:^.*?(?:\.c:))(?:[0-9]*:)(.*?):PASS$", pass_callback, None],
                # Match, for example "C:/temp/file.c:900:tcpEchoAsync:FAIL:Function sock.
                # Expression Evaluated To FALSE" capturing the "connectThings" part
-               [r"(?:^.*?(?:\.c:))(?:[0-9]*:)(.*?):FAIL:(.*)", fail_callback],
+               [r"(?:^.*?(?:\.c:))(?:[0-9]*:)(.*?):FAIL:(.*)", fail_callback, None],
                # Match, for example "22 Tests 1 Failures 0 Ignored" capturing the numbers
-               [r"(^[0-9]+) Test(?:s*) ([0-9]+) Failure(?:s*) ([0-9]+) Ignored", finish_callback]]
+               [r"(^[0-9]+) Test(?:s*) ([0-9]+) Failure(?:s*) ([0-9]+) Ignored", finish_callback, None]]
 
 def readline_and_queue(results, read_queue, in_handle, connection_type,
                        terminator, reporter):
@@ -284,7 +289,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
                     # to offload the CPU
                     sleep(0.01)
             if eol:
-                line = line.strip()
+                line = line.rstrip()
         except UnicodeDecodeError:
             # Just ignore it.
             pass
@@ -313,7 +318,7 @@ def pwar_readline(in_handle, connection_type, terminator=None):
                 raise subprocess.CalledProcessError(return_code, cmd)
 
         if eol:
-            line = line.strip()
+            line = line.rstrip()
 
         return_value = line
 
@@ -446,7 +451,7 @@ def watch_items(in_handle, connection_type, results: TestResults,
                 for entry in INTERESTING:
                     match = re.match(entry[0], line)
                     if match:
-                        entry[1](match, results, reporter)
+                        entry[1](match, entry[2], results, reporter)
             except queue.Empty:
                 pass
             # Let others in
@@ -463,6 +468,15 @@ def watch_items(in_handle, connection_type, results: TestResults,
         results.finished = True
 
     return return_value
+
+# Add a callback function, which will be called when
+# regex_string is matched and will get the outcome of
+# the regex match as a parameter, followed by the
+# user parameter and then the test results (which may
+# be empty at this point) and the reporter
+def callback(function, regex_string, user_parameter=None):
+    '''Add a callback to be called when regex_string is matched'''
+    INTERESTING.append([regex_string, function, user_parameter])
 
 def main(connection_handle, connection_type, guard_time_seconds,
          inactivity_time_seconds, terminator, instance,

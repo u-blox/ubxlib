@@ -266,7 +266,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileBlockRead")
     uPortLog("U_CELL_FILE_TEST: data read \"%.*s\".\n", length, buffer);
     U_PORT_TEST_ASSERT(result == length);
     U_PORT_TEST_ASSERT(memcmp(buffer, "FDEADBEE", length) == 0);
-    U_PORT_TEST_ASSERT(*(buffer + length) == 0xaa);
+    U_PORT_TEST_ASSERT(*(buffer + length) == (char) 0xaa);
 
     // Confirm that an error is returned if a tag is set
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_FILE_SYSTEM_TAG)) {

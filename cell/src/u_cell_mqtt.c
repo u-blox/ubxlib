@@ -1114,9 +1114,9 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
 
     if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
         if (!onNotOff &&
-            U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-            // For disconnections on SARA-R4 no need to wait,
-            // that's it
+            U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+            // For disconnections on SARA-R4 old syntax that's it
             pContext->connected = false;
             pContext->keptAlive = false;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;

@@ -9,6 +9,7 @@ The following steps should work for both Windows and Ubuntu:
 3. For Windows make sure that your `<python3_dir>/Scripts` is accessable through your `PATH` environment.
 4. Run either [setup_linux.sh](setup_linux.sh) or [setup_windows.bat](setup_windows.bat) depending on your platform. These scripts will install all Python modules needed for the test automation. The modules we are using are listed in [requirements.txt](requirements.txt)
 5. Verify that you can execute the command `invoke` from your terminal. If the command is not found, for Windows double check step 3. For Ubuntu just logout and login again (Python modules are placed in `~/.local/bin` and this directory is only added to PATH if it existed when user logs in).
+6. If you intend to run the Linux-under-Zephyr executable and have it drive a real module you will need to set up a `udev` rule to make the module available to `docker` as a known TTY; an example [50-tty-evk-cell.rules](50-tty-evk-cell.rules) is provided, which is appropriate for a cellular EVK; this or similar should be copied to the `/etc/udev/rules.d/` directory of the Linux machine and the `udev` rules reloaded.
 
 **NOTE** You may need to re-run `setup_windows.bat`/`setup_linux.sh` when test automation is upgraded as new Python module may be added.
 
@@ -83,7 +84,7 @@ Options:
 inv --help automation.build
 ```
 
-### Execute a PyInvoke Tasks
+### Execute a PyInvoke Task
 ```sh
 inv -r <ubxlibdir>/port/platform/common/automation automation.build 12.0
 === Loading u_packages ===
@@ -128,8 +129,7 @@ The Jenkins pipeline will only use the `automation` PyInvoke tasks. The flow in 
 So if you need to run the test automation locally you can invoke `automation.build`, `automation.flash` and/or `automation.test` with the instance ID as argument.
 As default all tests will be executed, but if you only want to run specific test you can use the `--filter` flag.
 
-The `automation` tasks works as an abstract layer to the platform (i.e. `arduino.<command>`, `nrf5.<command>`, ...) tasks.
-This means that when you call `automation.build 12` the task will check [DATABASE.md](DATABASE.md) to find what platform instance 12 is. In this case it will be `ESP-IDF` so then the `automation.build` task will in turn call `esp-idf.build` to build the firmware.
+The `automation` tasks works as an abstract layer to the platform (i.e. `arduino.<command>`, `nrf5.<command>`, ...) tasks. This means that when you call `automation.build 12` the task will check [DATABASE.md](DATABASE.md) to find what platform instance 12 is. In this case it will be `ESP-IDF` so then the `automation.build` task will in turn call `esp-idf.build` to build the firmware.
 
 # u_packages
 When you run the PyInvoke tasks one of the first things that will happen is to check if the required toolchains are installed. If they are not, the required toolchains will automatically downloaded and installed. This is done by our u_packages module (see [scripts/packages](scripts/packages)). The input to this module is the [u_packages.yml](u_packages.yml) described below.
@@ -207,6 +207,10 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 [scripts/u_run_no_floating_point.py](./scripts/u_run_no_floating_point.py): run a static size check without floating point support, checking that no floating point has crept in; called by [u_run.py](u_run.py).
 
 [scripts/u_run_pylint.py](./scripts/u_run_pylint.py): run Pylint on all of these Python automation scripts; called by `automation.test` PyInvoke task.
+
+[scripts/u_run_windows.py](./scripts/u_run_windows.py): build and run on Windows; called by `automation.test` PyInvoke task.
+
+[scripts/u_run_linux.py](./scripts/u_run_linux.py): build and run on Linux; called by `automation.test` PyInvoke task.  In particular, if you install the Linux `socat` utility this script will automatically handle mapping of the `/dev/pts/x` UARTs of the `ubxlib` Linux application to real Linux devices.  For instance, to make `UART_0` the `U_CFG_TEST_UART_A` loop-back UART, used by the porting tests, then simply pass the #define `U_CFG_TEST_UART_A=0` into the build. Similarly, to make `UART_1` the `U_CFG_TEST_UART_B` loop-back UART (used for the scenario in the AT command and chip-to-chip security tests where `U_CFG_TEST_UART_A` is looped back to `U_CFG_TEST_UART_B`) then you would also pass #define `U_CFG_TEST_UART_B=1` into the build.  And finally, if you have a real module connected to a real device on Linux, let's say a cellular module on `/dev/tty/5`, and you want to connect it to `ubxlib` as `UART_1`, then as well as passing the #define `U_CFG_APP_CELL_UART=1` into the build you would also pass `U_CFG_APP_CELL_UART_DEV=/dev/tty/5`.  The #defines `U_CFG_APP_GNSS_UART` and `U_CFG_APP_SHORT_RANGE_UART` can be used similarly.
 
 [scripts/u_select.py](./scripts/u_select.py): see above.
 

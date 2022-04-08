@@ -75,7 +75,7 @@
 
 // Echo server URL and port number
 #define MY_SERVER_NAME "ubxlib.it-sgn.u-blox.com"
-#define MY_SERVER_PORT 5060
+#define MY_SERVER_PORT 5065
 
 #ifndef U_CFG_ENABLE_LOGGING
 # define uPortLog(format, ...)  print(format, ##__VA_ARGS__)

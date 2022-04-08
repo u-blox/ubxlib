@@ -80,7 +80,7 @@
 // may make a secure TLS connection on broker.emqx.io instead
 // by editing this code to add TLS security (see below) and changing
 // MY_BROKER_NAME to have ":8883" on the end.
-#define MY_BROKER_NAME "broker.emqx.io"
+#define MY_BROKER_NAME "ubxlib.it-sgn.u-blox.com"
 
 #ifndef U_CFG_ENABLE_LOGGING
 # define uPortLog(format, ...)  print(format, ##__VA_ARGS__)

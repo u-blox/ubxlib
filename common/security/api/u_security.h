@@ -200,6 +200,10 @@ int32_t uSecurityGetRootOfTrustUid(int32_t networkHandle,
  * in a call to uSecurityC2cOpen() to encrypt communication over the
  * AT interface between this MCU and the module.
  *
+ * Note: if the module has very recently powered-on it may return
+ * "+CME ERROR: SEC busy" when asked to perform security pairing,
+ * hence it may be worth re-trying C2C pairing on failure.
+ *
  * @param networkHandle  the handle of the instance to be used,
  *                       e.g. as returned by uNetworkAdd().
  * @param pTESecret      a pointer to the fixed-length 16 byte

@@ -846,7 +846,7 @@ void uAtClientTestPrint(const char *pBytes, size_t length)
                     uPortLog("\\n");
                 } else {
                     // Print the hex
-                    uPortLog("[%02x]", c);
+                    uPortLog("[%02x]", (unsigned char) c);
                 }
             } else {
                 // Print the ASCII character

@@ -16,6 +16,10 @@
 
 /** @file
  * @brief Implementation of the port UART API for the Zephyr platform.
+ * Note that the UART behaviour is quite different between the embedded
+ * target and the Linux/Posix versions: this is because the Zephyr
+ * Linux/Posix platform does not support the interrupt-driven UART API;
+ * interrupts are supported, just not that UART API.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -57,12 +61,6 @@
 #define U_PORT_UART_MAX_NUM 2
 #endif
 
-#ifndef U_PORT_UART_BUFFER_SIZE
-/** The UART buffer size for receive in bytes.
- */
-#define U_PORT_UART_BUFFER_SIZE 4096
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -77,14 +75,19 @@ typedef struct {
     void (*pEventCallback)(int32_t, uint32_t, void *);
     void *pEventCallbackParam;
     char *pBuffer;
+    size_t receiveBufferSizeBytes;
     uint32_t bufferRead;
     int32_t bufferWrite;
     bool bufferFull;
     struct k_timer rxTimer;
+#ifdef CONFIG_UART_INTERRUPT_DRIVEN
     struct uartData_t *pTxData;
     struct k_fifo fifoTxData;
     uint32_t txWritten;
     struct k_sem txSem;
+#else
+    struct k_timer pollTimer;
+#endif
 } uPortUartData_t;
 
 /** Structure describing an event.
@@ -141,8 +144,12 @@ static void uartClose(int32_t handle)
 {
     k_free(gUartData[handle].pBuffer);
     gUartData[handle].pBuffer = NULL;
+#ifdef CONFIG_UART_INTERRUPT_DRIVEN
     uart_irq_rx_disable(gUartData[handle].pDevice);
     uart_irq_tx_disable(gUartData[handle].pDevice);
+#else
+    k_timer_stop(&gUartData[handle].pollTimer);
+#endif
 
     gUartData[handle].bufferRead = 0;
     gUartData[handle].bufferWrite = 0;
@@ -151,8 +158,10 @@ static void uartClose(int32_t handle)
     gUartData[handle].eventFilter = 0;
     gUartData[handle].pEventCallback = NULL;
     gUartData[handle].pEventCallbackParam = NULL;
+#ifdef CONFIG_UART_INTERRUPT_DRIVEN
     gUartData[handle].pTxData = NULL;
     gUartData[handle].txWritten = 0;
+#endif
 }
 
 static void rxTimer(struct k_timer *timer_id)
@@ -169,6 +178,8 @@ static void rxTimer(struct k_timer *timer_id)
     }
 }
 
+#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+// uartCb called by the interrupt-based UART driver.
 static void uartCb(const struct device *uart, void *user_data)
 {
     uint8_t i;
@@ -183,6 +194,8 @@ static void uartCb(const struct device *uart, void *user_data)
         return;
     }
 
+    (void) user_data;
+
     uart_irq_update(uart);
 
     if (uart_irq_rx_ready(uart)) {
@@ -190,7 +203,7 @@ static void uartCb(const struct device *uart, void *user_data)
         if (!gUartData[i].bufferFull) {
             while (uart_fifo_read(uart, (gUartData[i].pBuffer + gUartData[i].bufferWrite), 1) != 0) {
                 gUartData[i].bufferWrite++;
-                gUartData[i].bufferWrite %= U_PORT_UART_BUFFER_SIZE;
+                gUartData[i].bufferWrite %= gUartData[i].receiveBufferSizeBytes;
                 read = true;
 
                 if (gUartData[i].bufferWrite == gUartData[i].bufferRead) {
@@ -217,6 +230,7 @@ static void uartCb(const struct device *uart, void *user_data)
             }
         }
     }
+
 
     if (uart_irq_tx_ready(uart)) {
         if (gUartData[i].pTxData == NULL) {
@@ -246,6 +260,47 @@ static void uartCb(const struct device *uart, void *user_data)
         }
     }
 }
+
+#else
+
+// Polled receive for when an interrupt-driven UART driver
+// is not available (though note that pollTimer is still
+// run in interrupt context, just not that of the UART, that of
+// the timer code instead).
+// Note: this is not intended to be efficient, just as similar
+// as possible to the interrupt driven case.  It is used on the
+// Linux/Posix platform for development/test work only.
+static void pollTimer(struct k_timer *timer_id)
+{
+    uint32_t uart = (uint32_t)(timer_id->user_data);
+    bool read = false;
+
+    while (!gUartData[uart].bufferFull &&
+           (uart_poll_in(gUartData[uart].pDevice,
+                         gUartData[uart].pBuffer + gUartData[uart].bufferWrite) == 0)) {
+        gUartData[uart].bufferWrite++;
+        gUartData[uart].bufferWrite %= gUartData[uart].receiveBufferSizeBytes;
+        read = true;
+        if (gUartData[uart].bufferWrite == gUartData[uart].bufferRead) {
+            gUartData[uart].bufferFull = true;
+            k_timer_stop(&gUartData[uart].rxTimer);
+            if ((gUartData[uart].eventQueueHandle >= 0) &&
+                (gUartData[uart].eventFilter & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+                uPortUartEvent_t event;
+                event.uartHandle = uart;
+                event.eventBitMap = U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED;
+                uPortEventQueueSendIrq(gUartData[uart].eventQueueHandle,
+                                       &event, sizeof(event));
+            }
+        }
+    }
+
+    if (read) {
+        k_timer_start(&gUartData[uart].rxTimer, K_MSEC(1), K_NO_WAIT);
+    }
+}
+
+#endif // #ifdef CONFIG_UART_INTERRUPT_DRIVEN
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -331,13 +386,18 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
             (gUartData[uart].pBuffer == NULL) &&
             (pinTx < 0) && (pinRx < 0) && (pinCts < 0) && (pinRts < 0)) {
 
-            gUartData[uart].pBuffer = k_malloc(U_PORT_UART_BUFFER_SIZE);
+            gUartData[uart].pBuffer = k_malloc(receiveBufferSizeBytes);
 
             if (gUartData[uart].pBuffer == NULL) {
                 handleOrErrorCode = U_ERROR_COMMON_NO_MEMORY;
             } else {
+#ifdef CONFIG_UART_INTERRUPT_DRIVEN
                 k_sem_init(&gUartData[uart].txSem, 0, 1);
-
+                k_fifo_init(&gUartData[uart].fifoTxData);
+                gUartData[uart].pTxData = NULL;
+                gUartData[uart].txWritten = 0;
+#endif
+                gUartData[uart].receiveBufferSizeBytes = receiveBufferSizeBytes;
                 gUartData[uart].bufferRead = 0;
                 gUartData[uart].bufferWrite = 0;
                 gUartData[uart].bufferFull = false;
@@ -347,9 +407,6 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                 gUartData[uart].pEventCallbackParam = NULL;
                 k_timer_init(&gUartData[uart].rxTimer, rxTimer, NULL);
                 k_timer_user_data_set(&gUartData[uart].rxTimer, (void *)uart);
-                k_fifo_init(&gUartData[uart].fifoTxData);
-                gUartData[uart].pTxData = NULL;
-                gUartData[uart].txWritten = 0;
 
                 uart_config_get(gUartData[uart].pDevice, &gUartData[uart].config);
                 // Flow control is set in the .overlay file
@@ -361,9 +418,14 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                 // default values (8N1).
                 gUartData[uart].config.baudrate = baudRate;
                 uart_configure(gUartData[uart].pDevice, &gUartData[uart].config);
+#ifdef CONFIG_UART_INTERRUPT_DRIVEN
                 uart_irq_callback_user_data_set(gUartData[uart].pDevice, uartCb, NULL);
                 uart_irq_rx_enable(gUartData[uart].pDevice);
-
+#else
+                k_timer_init(&gUartData[uart].pollTimer, pollTimer, NULL);
+                k_timer_user_data_set(&gUartData[uart].pollTimer, (void *)uart);
+                k_timer_start(&gUartData[uart].pollTimer, K_MSEC(1), K_MSEC(1));
+#endif
                 handleOrErrorCode = uart;
             }
         }
@@ -404,12 +466,12 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
             (gUartData[handle].pDevice != NULL)) {
 
             if (gUartData[handle].bufferFull) {
-                sizeOrErrorCode = U_PORT_UART_BUFFER_SIZE;
+                sizeOrErrorCode = gUartData[handle].receiveBufferSizeBytes;
             } else {
                 sizeOrErrorCode = gUartData[handle].bufferWrite - gUartData[handle].bufferRead;
 
                 if (sizeOrErrorCode < 0) {
-                    sizeOrErrorCode = (U_PORT_UART_BUFFER_SIZE - gUartData[handle].bufferRead) +
+                    sizeOrErrorCode = (gUartData[handle].receiveBufferSizeBytes - gUartData[handle].bufferRead) +
                                       gUartData[handle].bufferWrite;
                 }
             }
@@ -441,14 +503,14 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
             } else {
                 int32_t toRead = 0;
                 if (gUartData[handle].bufferFull) {
-                    sizeOrErrorCode = U_PORT_UART_BUFFER_SIZE;
+                    sizeOrErrorCode = gUartData[handle].receiveBufferSizeBytes;
                 } else {
                     sizeOrErrorCode = gUartData[handle].bufferWrite - gUartData[handle].bufferRead;
 
                     if (sizeOrErrorCode == 0) {
-                        sizeOrErrorCode = U_PORT_UART_BUFFER_SIZE;
+                        sizeOrErrorCode = gUartData[handle].receiveBufferSizeBytes;
                     } else if (sizeOrErrorCode < 0) {
-                        sizeOrErrorCode = (U_PORT_UART_BUFFER_SIZE - gUartData[handle].bufferRead) +
+                        sizeOrErrorCode = (gUartData[handle].receiveBufferSizeBytes - gUartData[handle].bufferRead) +
                                           gUartData[handle].bufferWrite;
                     }
                 }
@@ -459,11 +521,12 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
 
                 toRead = sizeOrErrorCode;
 
-                uint32_t read = MIN(toRead, U_PORT_UART_BUFFER_SIZE - gUartData[handle].bufferRead);
+                uint32_t read = MIN(toRead, gUartData[handle].receiveBufferSizeBytes -
+                                    gUartData[handle].bufferRead);
                 memcpy(pBuffer, gUartData[handle].pBuffer + gUartData[handle].bufferRead, read);
                 toRead -= read;
                 gUartData[handle].bufferRead += read;
-                gUartData[handle].bufferRead %= U_PORT_UART_BUFFER_SIZE;
+                gUartData[handle].bufferRead %= gUartData[handle].receiveBufferSizeBytes;
 
                 if (toRead > 0) {
                     memcpy((char *)pBuffer + read, gUartData[handle].pBuffer, toRead);
@@ -471,7 +534,9 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                 }
 
                 gUartData[handle].bufferFull = false;
+#ifdef CONFIG_UART_INTERRUPT_DRIVEN
                 uart_irq_rx_enable(gUartData[handle].pDevice);
+#endif
             }
         }
 
@@ -495,10 +560,7 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
 
             U_PORT_MUTEX_LOCK(gMutex);
 
-            struct uartData_t data;
-            data.handle = handle;
-            data.pData = (void *)pBuffer;
-            data.len = sizeBytes;
+            errorCode = sizeBytes;
 
             // Hint when debugging: if your code stops dead here
             // it is because the CTS line of this MCU's UART HW
@@ -508,13 +570,26 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
             // it or the CTS pin when configuring this UART
             // was wrong and it's not connected to the right
             // thing.
+#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+            struct uartData_t data;
+            data.handle = handle;
+            data.pData = (void *)pBuffer;
+            data.len = sizeBytes;
+
             k_fifo_put(&gUartData[handle].fifoTxData, &data);
             uart_irq_tx_enable(gUartData[handle].pDevice);
-            // UART write is async to wait here to make this function syncronous
+            // UART write is async to wait here to make this function synchronous
             k_sem_take(&gUartData[handle].txSem, K_FOREVER);
+#else
+            // When we have no interrupts we can block right here
+            const unsigned char *pBufferUnsignedChar = (const unsigned char *) pBuffer;
+            while (sizeBytes > 0) {
+                uart_poll_out(gUartData[handle].pDevice, *pBufferUnsignedChar);
+                pBufferUnsignedChar++;
+                sizeBytes--;
+            }
+#endif
             U_PORT_MUTEX_UNLOCK(gMutex);
-
-            errorCode = sizeBytes;
         }
     }
 
