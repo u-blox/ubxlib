@@ -19,7 +19,7 @@ ExecStart=/usr/sbin/mosquitto -c <absolute path to your home directory>/mosquitt
 
 ```
 sudo systemctl daemon-reload
-sudo systemctl start mosquitto
+sudo systemctl restart mosquitto
 ```
 
 ## Test
