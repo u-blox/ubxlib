@@ -457,7 +457,8 @@ int32_t uPortEventQueueSendIrq(int32_t handle, const void *pParam,
             // the size in this case
             //lint -e(826) Suppress area too small; the size of pBlock is always
             // at least U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES in size
-            *((uEventQueueControlOrSize_t *) block) = (uEventQueueControlOrSize_t) paramLengthBytes;
+            uEventQueueControlOrSize_t *pControlOrSize = (uEventQueueControlOrSize_t *) block;
+            *pControlOrSize = (uEventQueueControlOrSize_t) paramLengthBytes;
             if (pParam != NULL) {
                 // Copy in param
                 memcpy(block + U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES,

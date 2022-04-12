@@ -271,10 +271,12 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
             gUartData[uart].eventFilter = 0;
 
             // Set the things that won't change
-            config.data_bits  = UART_DATA_8_BITS,
-            config.stop_bits  = UART_STOP_BITS_1,
-            config.parity     = UART_PARITY_DISABLE,
+            config.data_bits  = UART_DATA_8_BITS;
+            config.stop_bits  = UART_STOP_BITS_1;
+            config.parity     = UART_PARITY_DISABLE;
+#if SOC_UART_SUPPORT_REF_TICK
             config.source_clk = UART_SCLK_REF_TICK;
+#endif
 
             // Set the baud rate
             config.baud_rate = baudRate;

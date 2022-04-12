@@ -19,7 +19,9 @@
 
 /* Only bring in #includes specifically related to the test framework */
 
-#include "unity.h"
+#ifndef ARDUINO
+# include "unity.h"
+#endif
 
 /** @file
  * @brief Porting layer and configuration items passed in at application
