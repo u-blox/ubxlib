@@ -59,6 +59,9 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+// This is needed for OpenOCD FreeRTOS htread awareness
+const int __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES - 1;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
