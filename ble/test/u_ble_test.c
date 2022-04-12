@@ -140,7 +140,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenUart")
     uPortLog("U_BLE: calling uShortRangeOpenUart with same arg twice,"
              " should fail...\n");
     U_PORT_TEST_ASSERT(uShortRangeOpenUart((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                           &uart) < 0);
+                                           &uart, true) < 0);
 
     uBleTestPrivatePostamble(&gHandles);
 

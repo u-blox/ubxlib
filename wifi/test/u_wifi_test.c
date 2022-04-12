@@ -135,7 +135,7 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
     uPortLog("U_WIFI: calling uShortRangeOpenUart with same arg twice,"
              " should fail...\n");
     U_PORT_TEST_ASSERT(uShortRangeOpenUart((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                           &uart) < 0);
+                                           &uart, true) < 0);
 
     uWifiTestPrivatePostamble(&gHandles);
 

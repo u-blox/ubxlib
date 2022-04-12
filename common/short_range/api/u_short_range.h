@@ -232,17 +232,28 @@ int32_t uShortRangeUnlock();
  * @param pUartConfig      the UART configuration to be used.
  *                         if a short range instance has already been added
  *                         for this pUartConfig an error will be returned.
+ * @param restart          if true - module is restarted.
  * @return                 on success the handle of the short range instance,
  *                         else negative error code.
  */
 int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
-                            const uShortRangeUartConfig_t *pUartConfig);
+                            const uShortRangeUartConfig_t *pUartConfig,
+                            bool restart);
+
+
+/** Sets new UART baudrate for a short range module
+ *
+ * @param shortRangeHandle the handle of the short range instance.
+ * @param pUartConfig      the new UART configuration to be used.
+ * @return                 on success the handle of the short range instance,
+ *                         else negative error code.
+ */
+int32_t uShortRangeSetBaudrate(int32_t shortRangeHandle, const uShortRangeUartConfig_t *pUartConfig);
 
 /** Closes and disconnects all associated handles, such as UART and EDM, for the short range instance
  *
  * @param shortRangeHandle the handle of the short range instance to close.
  */
-
 void uShortRangeClose(int32_t shortRangeHandle);
 
 /** Detect the module connected to the handle. Will attempt to change the mode on

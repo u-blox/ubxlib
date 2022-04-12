@@ -94,7 +94,7 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
         uPortLog("U_BLE_TEST_PRIVATE: opening UART %d...\n",
                  U_CFG_APP_SHORT_RANGE_UART);
 
-        shortRangeHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType, pUartConfig);
+        shortRangeHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType, pUartConfig, true);
 
         if (shortRangeHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             pParameters->bleHandle = uShoToBleHandle(shortRangeHandle);

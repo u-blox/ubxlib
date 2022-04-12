@@ -93,7 +93,7 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
         uPortLog("U_SHORT_RANGE_TEST_PRIVATE: opening UART %d...\n",
                  U_CFG_APP_SHORT_RANGE_UART);
 
-        shortRangeHandle = uShortRangeOpenUart(moduleType, pUartConfig);
+        shortRangeHandle = uShortRangeOpenUart(moduleType, pUartConfig, true);
 
         if (shortRangeHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             pParameters->shortRangeHandle = shortRangeHandle;

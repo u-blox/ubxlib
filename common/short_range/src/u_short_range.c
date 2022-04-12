@@ -33,6 +33,7 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "string.h"    // memset()
+#include "stdio.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_os_platform_specific.h" // Required by u_at_client.h
@@ -737,7 +738,8 @@ int32_t uShortRangeUnlock()
 }
 
 int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
-                            const uShortRangeUartConfig_t *pUartConfig)
+                            const uShortRangeUartConfig_t *pUartConfig,
+                            bool restart)
 {
     int32_t uartHandle = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     int32_t edmStreamHandle = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
@@ -820,9 +822,14 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
     shortRangeHandle = handleOrErrorCode;
     uShortRangeEdmStreamSetAtHandle(edmStreamHandle, atClientHandle);
 
-    if (restartModuleAndEnterEDM(shortRangeHandle) != (int32_t) U_ERROR_COMMON_SUCCESS) {
-        uShortRangeClose(shortRangeHandle);
-        return (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+    if (restart) {
+        if (restartModuleAndEnterEDM(shortRangeHandle) != (int32_t) U_ERROR_COMMON_SUCCESS) {
+            uShortRangeClose(shortRangeHandle);
+            return (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+        }
+    } else if (moduleType != uShortRangeDetectModule(shortRangeHandle)) {
+            uShortRangeClose(shortRangeHandle);
+            handleOrErrorCode = (int32_t) U_SHORT_RANGE_ERROR_INIT_INTERNAL;
     }
 
     if (moduleType != getModule(atClientHandle)) {
@@ -1106,6 +1113,36 @@ int32_t uShortRangeGetUartHandle(int32_t shortRangeHandle)
     }
 
     return errorCode;
+}
+
+int32_t uShortRangeSetBaudrate(int32_t shortRangeHandle, const uShortRangeUartConfig_t *pUartConfig)
+{
+    uShortRangePrivateInstance_t *pInstance;
+    uShortRangeModuleType_t moduleType;
+    int32_t newShortRangeHandle = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+    char atBuffer[48];
+
+    if (gUShortRangePrivateMutex == NULL) {
+        return (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    }
+
+    pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
+
+    if ((pInstance != NULL) &&
+        (pInstance->atHandle != NULL)) {
+
+        snprintf(atBuffer, sizeof(atBuffer), "AT+UMRS=%d,1,8,1,1", (int)pUartConfig->baudRate);
+        errorCode = executeAtCommand(pInstance->atHandle, 1, atBuffer);
+
+        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+            moduleType = pInstance->pModule->moduleType;
+            uShortRangeClose(shortRangeHandle);
+            newShortRangeHandle = uShortRangeOpenUart(moduleType, pUartConfig, false);
+        }
+    }
+
+    return newShortRangeHandle;
 }
 
 // End of file

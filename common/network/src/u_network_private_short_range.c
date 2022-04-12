@@ -203,7 +203,7 @@ int32_t uNetworkAddShortRange(const uShortRangeConfig_t *pConfiguration)
     uNetworkConfigToShortRangeUartConfig(pConfiguration, &uartConfig);
     // Open UART, EDM stream and initialize the module
     errorCode = uShortRangeOpenUart((uShortRangeModuleType_t) pConfiguration->module,
-                                    &uartConfig);
+                                    &uartConfig, true);
 
     if (errorCode >= 0) {
         pInstance->shoHandle = errorCode;

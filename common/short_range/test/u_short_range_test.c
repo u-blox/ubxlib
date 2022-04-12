@@ -140,7 +140,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
 
     uPortLog("U_SHORT_RANGE: calling uShortRangeOpenUart with same arg twice,"
              " should fail...\n");
-    U_PORT_TEST_ASSERT(uShortRangeOpenUart(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE, &uart) < 0);
+    U_PORT_TEST_ASSERT(uShortRangeOpenUart(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE, &uart, true) < 0);
 
     uShortRangeTestPrivatePostamble(&gHandles);
 
@@ -176,6 +176,51 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
 #else
     (void) heapUsed;
 #endif
+}
+
+/** Short range set baudrate UART test.
+ */
+U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
+{
+    uAtClientHandle_t atClient = NULL;
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
+
+    int32_t testBaudrates[] = { 19200,
+                                38400,
+                                57600,
+                                230400,
+                                460800,
+                                115200
+                              };
+    uPortDeinit();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                    &uart,
+                                                    &gHandles) == 0);
+
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.shortRangeHandle) == gHandles.uartHandle);
+    uShortRangeAtClientHandleGet(gHandles.shortRangeHandle, &atClient);
+    U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+    /* port is now opened at default speed */
+
+    for (int32_t count = 0; count < (sizeof(testBaudrates) / sizeof(int32_t)); count++) {
+        uPortLog("U_SHORT_RANGE_TEST: setting baudrate %d\n", testBaudrates[count]);
+        uart.baudRate = testBaudrates[count];
+        gHandles.shortRangeHandle = uShortRangeSetBaudrate(gHandles.shortRangeHandle, &uart);
+        U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.shortRangeHandle) == 0);
+    }
+
+    uShortRangeTestPrivateCleanup(&gHandles);
+    uPortLog("U_SHORT_RANGE_TEST: shortRangeUartSetBaudrate succeded.\n");
 }
 
 /** Clean-up to be run at the end of this round of tests, just
