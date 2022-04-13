@@ -40,6 +40,8 @@
 #include "u_port_os.h"
 #include "u_port_debug.h"
 
+#include "u_debug_utils.h"
+
 #include "u_runner.h"
 
 #include "nrf_delay.h"
