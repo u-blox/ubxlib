@@ -79,6 +79,14 @@
 # define U_CELL_MQTT_LOCAL_URC_TIMEOUT_MS 5000
 #endif
 
+#ifndef U_CELL_MQTT_CONNECT_DELAY_MILLISECONDS
+/** It can take a little while for the MQTT client inside
+ * the module to become aware that a radio connection has been
+ * made so we wait at least this long to give it time to realise.
+ */
+# define U_CELL_MQTT_CONNECT_DELAY_MILLISECONDS 1000
+#endif
+
 /** Helper macro to make sure that the entry and exit functions
  * are always called.
  */
@@ -1091,6 +1099,17 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
     pUrcStatus = &(pContext->urcStatus);
     atHandle = pInstance->atHandle;
     uPortLog("U_CELL_MQTT: trying to %s...\n", onNotOff ? "connect" : "disconnect");
+    if (onNotOff) {
+        // The internal MQTT client in a cellular module can
+        // take a little while to find out that the connection
+        // has actually been made and hence we wait here for
+        // it to be ready to connect
+        while (uPortGetTickTimeMs() - pInstance->connectedAtMs <
+               U_CELL_MQTT_CONNECT_DELAY_MILLISECONDS) {
+            uPortTaskBlock(100);
+        }
+    }
+
     uAtClientLock(atHandle);
     pUrcStatus->flagsBitmap = 0;
     // Have seen this take a little while to respond
