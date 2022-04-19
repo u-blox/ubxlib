@@ -17,7 +17,10 @@
 #ifndef _U_PORT_EVENT_QUEUE_PRIVATE_H_
 #define _U_PORT_EVENT_QUEUE_PRIVATE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief private API for event queue: basically initialisation

@@ -17,7 +17,10 @@
 #ifndef _U_LOCATION_TEST_SHARED_CFG_H_
 #define _U_LOCATION_TEST_SHARED_CFG_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief Types and location test configuration information shared

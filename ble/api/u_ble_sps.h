@@ -17,7 +17,10 @@
 #ifndef _U_BLE_SPS_H_
 #define _U_BLE_SPS_H_
 
-/* No #includes allowed here except this one to
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. except this one to
  * pick up the definition of U_DEPRECATED. */
 #include "u_compiler.h"
 

@@ -17,7 +17,10 @@
 #ifndef _U_SECURITY_TLS_H_
 #define _U_SECURITY_TLS_H_
 
-/* No #includes allowed here.  Also, note that this header file
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files..  Also, note that this header file
  * is allowed to be include inside other API header files which
  * hide it (e.g. u_sock_security.h) and hence it is important
  * that this fle is self-contained, must not drag in any

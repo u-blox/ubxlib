@@ -17,7 +17,10 @@
 #ifndef _U_NETWORK_CONFIG_WIFI_H_
 #define _U_NETWORK_CONFIG_WIFI_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /* This header file defines the configuration structure for the
  * network API for Wifi.
