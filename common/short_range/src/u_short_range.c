@@ -819,17 +819,23 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
             uShortRangeClose(*pDevHandle);
             return (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
         }
-    } else if (moduleType != uShortRangeDetectModule(*pDevHandle)) {
-        uShortRangeClose(*pDevHandle);
-        handleOrErrorCode = (int32_t) U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+    } else {
+        if (moduleType != uShortRangeDetectModule(*pDevHandle)) {
+            // Failed - wait a bit and try once more
+            uPortTaskBlock(100);
+            if (moduleType != uShortRangeDetectModule(*pDevHandle)) {
+                uShortRangeClose(*pDevHandle);
+                return (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+            }
+        }
     }
 
     if (moduleType != getModule(atClientHandle)) {
         uShortRangeClose(*pDevHandle);
-        handleOrErrorCode = (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
+        return (int32_t)U_SHORT_RANGE_ERROR_INIT_INTERNAL;
     }
 
-    return handleOrErrorCode;
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
 void uShortRangeClose(uDeviceHandle_t devHandle)
@@ -1113,6 +1119,8 @@ int32_t uShortRangeSetBaudrate(uDeviceHandle_t *pDevHandle,
         errorCode = executeAtCommand(pInstance->atHandle, 1, atBuffer);
 
         if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+            // NINA-Bx requires a delay of 1 sec after changing baudrate
+            uPortTaskBlock(1000);
             moduleType = pInstance->pModule->moduleType;
             uShortRangeClose(*pDevHandle);
             errorCode = uShortRangeOpenUart(moduleType, pUartConfig, false, pDevHandle);

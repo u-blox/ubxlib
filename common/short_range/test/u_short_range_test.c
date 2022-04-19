@@ -197,7 +197,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
                                 38400,
                                 57600,
                                 230400,
-                                460800,
+                                //460800, TODO: Enable this when instance 12 uses flow control
                                 115200
                               };
     uPortDeinit();
