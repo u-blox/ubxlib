@@ -90,12 +90,9 @@ typedef struct {
     int32_t localPort;                 /**< the local port number to be
                                             used by the MQTT client. Set
                                             to -1 (the default) to let the
-                                            driver chose (in which case the
-                                            IANA assigned ports of 1883 for
-                                            non-secure  MQTT or 8883 for
-                                            TLS secured MQTT will be used).
-                                            The SARA-R5 cellular module does
-                                            not support setting localPort,
+                                            driver chose.  Note that only
+                                            SARA-R412M-02B supports setting
+                                            localPort; for all other modules
                                             this value must be left at -1. */
     int32_t inactivityTimeoutSeconds;  /**< the inactivity timeout used by
                                             the MQTT client.  Set to -1 for

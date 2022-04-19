@@ -1576,21 +1576,9 @@ int32_t uCellMqttGetLocalPort(int32_t cellHandle)
             }
             if ((errorCodeOrPort < 0) &&
                 U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-                // SARA=R4 doesn't respond with a port number if the
-                // port number is just the default one.  Determine if
-                // we are secured so that we can send back the correct
-                // default port number
-                errorCodeOrPort = U_MQTT_BROKER_PORT_UNSECURE;
-                if (isSecured(pInstance, NULL)) {
-                    errorCodeOrPort = U_MQTT_BROKER_PORT_SECURE;
-                }
-            }
-        } else {
-            // The port number will be based upon whether
-            // security is enabled or not
-            errorCodeOrPort = U_MQTT_BROKER_PORT_UNSECURE;
-            if (isSecured(pInstance, NULL)) {
-                errorCodeOrPort = U_MQTT_BROKER_PORT_SECURE;
+                // SARA-R4 doesn't respond with a port number if the
+                // port number is just the default one.
+                errorCodeOrPort = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             }
         }
     }

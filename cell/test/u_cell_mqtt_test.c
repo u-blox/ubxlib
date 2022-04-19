@@ -239,28 +239,15 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         U_PORT_TEST_ASSERT(x == strlen(buffer1));
 
         // Set/get the local port number
-        uPortLog("U_CELL_MQTT_TEST: testing getting/setting local port...\n");
         if (U_CELL_PRIVATE_HAS(pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)) {
+            uPortLog("U_CELL_MQTT_TEST: testing getting/setting local port...\n");
             x = uCellMqttGetLocalPort(cellHandle);
             U_PORT_TEST_ASSERT(x >= 0);
             U_PORT_TEST_ASSERT(x != 666);
             U_PORT_TEST_ASSERT(uCellMqttSetLocalPort(cellHandle, 666) == 0);
             x = uCellMqttGetLocalPort(cellHandle);
             U_PORT_TEST_ASSERT(x == 666);
-            // Set it back to something sensible
-            x = 1883;
-            if (uCellMqttIsSecured(cellHandle, NULL)) {
-                x = 8883;
-            }
-            U_PORT_TEST_ASSERT(uCellMqttSetLocalPort(cellHandle, x) == 0);
-        } else {
-            x = uCellMqttGetLocalPort(cellHandle);
-            if (uCellMqttIsSecured(cellHandle, NULL)) {
-                U_PORT_TEST_ASSERT(x == 8883);
-            } else {
-                U_PORT_TEST_ASSERT(x == 1883);
-            }
         }
 
         // Set/get retention
