@@ -326,38 +326,48 @@ static void mqttEventHandler(uShortRangeEdmStreamIpEvent_t *pMqttEvent)
 static void dataEventHandler(uShortRangeEdmStreamDataEvent_t *pDataEvent)
 {
     uShortRangeEdmStreamConnections_t *pConnection;
+    volatile uEdmDataEventCallback_t pDataCallback = NULL;
+    volatile void *pCallbackParam = NULL;
+    volatile int32_t edmStreamHandle = -1;
 
     U_PORT_MUTEX_LOCK(gMutex);
     pConnection = findConnection(pDataEvent->channel);
 
     if (pConnection != NULL) {
+        edmStreamHandle = gEdmStream.handle;
+
         switch (pConnection->type) {
 
             case U_SHORT_RANGE_CONNECTION_TYPE_BT:
-                if (gEdmStream.pBtDataCallback != NULL) {
-                    gEdmStream.pBtDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
-                                               pDataEvent->pData, gEdmStream.pBtDataCallbackParam);
-                }
+                pDataCallback = gEdmStream.pBtDataCallback;
+                pCallbackParam = gEdmStream.pBtDataCallbackParam;
                 break;
 
             case U_SHORT_RANGE_CONNECTION_TYPE_IP:
-                if (gEdmStream.pIpDataCallback != NULL) {
-                    gEdmStream.pIpDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
-                                               pDataEvent->pData, gEdmStream.pIpDataCallbackParam);
-                }
+                pDataCallback = gEdmStream.pIpDataCallback;
+                pCallbackParam = gEdmStream.pIpDataCallbackParam;
                 break;
 
             case U_SHORT_RANGE_CONNECTION_TYPE_MQTT:
-                if (gEdmStream.pMqttDataCallback != NULL) {
-                    gEdmStream.pMqttDataCallback(gEdmStream.handle, pDataEvent->channel, pDataEvent->length,
-                                                 pDataEvent->pData, gEdmStream.pMqttDataCallbackParam);
-                }
+                pDataCallback = gEdmStream.pMqttDataCallback;
+                pCallbackParam = gEdmStream.pMqttDataCallbackParam;
                 break;
 
             case U_SHORT_RANGE_CONNECTION_TYPE_INVALID:
             default:
                 break;
         }
+    }
+
+    if (pDataCallback != NULL) {
+        // Make sure we release the lock before calling the callback
+        // otherwise this may result in a deadlock
+        U_PORT_MUTEX_UNLOCK(gMutex);
+        //lint -e(1773) Suppress "attempt to cast away const"
+        //lint -esym(613, pDataCallback) Suppress possible use of NULL pointer - come on Lint...
+        pDataCallback(edmStreamHandle, pDataEvent->channel, pDataEvent->length,
+                      pDataEvent->pData, (void *)pCallbackParam);
+        U_PORT_MUTEX_LOCK(gMutex);
     }
 
     uEdmChLogLine(LOG_CH_DATA, "processed");
