@@ -107,7 +107,7 @@ int32_t uGnssPwrOn(int32_t gnssHandle)
             if (pInstance->pinGnssEnablePower >= 0) {
                 errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 if (uPortGpioSet(pInstance->pinGnssEnablePower,
-                                 U_GNSS_PIN_ENABLE_POWER_ON_STATE) == 0) {
+                                 pInstance->pinGnssEnablePowerOnState) == 0) {
                     // Wait a moment for the device to power up.
                     uPortTaskBlock(U_GNSS_POWER_UP_TIME_SECONDS * 1000);
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -243,7 +243,7 @@ int32_t uGnssPwrOn(int32_t gnssHandle)
                 // there is a power enable then switch it off again so that
                 // we're not left in a strange state
                 uPortGpioSet(pInstance->pinGnssEnablePower,
-                             (int32_t) !U_GNSS_PIN_ENABLE_POWER_ON_STATE);
+                             (int32_t) !pInstance->pinGnssEnablePowerOnState);
             }
         }
 
@@ -338,7 +338,7 @@ int32_t uGnssPwrOff(int32_t gnssHandle)
             if (pInstance->pinGnssEnablePower >= 0) {
                 // Let this overwrite any other errors
                 errorCode = uPortGpioSet(pInstance->pinGnssEnablePower,
-                                         (int32_t) !U_GNSS_PIN_ENABLE_POWER_ON_STATE);
+                                         (int32_t) !pInstance->pinGnssEnablePowerOnState);
             }
         }
 

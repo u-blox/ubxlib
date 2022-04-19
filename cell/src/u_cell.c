@@ -55,24 +55,6 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** The drive mode for the PWR_ON pin.
- */
-#ifndef U_CELL_PWR_ON_PIN_DRIVE_MODE
-# if U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE == 0
-/* Open drain so that we can pull PWR_ON low and then
- * let it float afterwards since it is pulled-up by the
- * cellular module.
- */
-#  define U_CELL_PWR_ON_PIN_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN
-# else
-/* Normal mode since we're only driving the inverter that
- * must have been inserted between the MCU pin and the
- * cellular module PWR_ON pin.
- */
-#  define U_CELL_PWR_ON_PIN_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_NORMAL
-# endif
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -200,6 +182,34 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
     uCellPrivateInstance_t *pInstance = NULL;
     uPortGpioConfig_t gpioConfig;
     int32_t enablePowerAtStart;
+    int32_t pinEnablePowerOnState = (pinEnablePower & U_CELL_PIN_INVERTED) ?
+                                    !U_CELL_ENABLE_POWER_PIN_ON_STATE : U_CELL_ENABLE_POWER_PIN_ON_STATE;
+    int32_t pinPwrOnPinToggleToState = (pinPwrOn & U_CELL_PIN_INVERTED) ?
+                                       !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE : U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE;
+    int32_t pinVIntOnState = (pinVInt & U_CELL_PIN_INVERTED) ? !U_CELL_VINT_PIN_ON_STATE :
+                             U_CELL_VINT_PIN_ON_STATE;
+    uPortGpioDriveMode_t pinPwrOnDriveMode;
+
+    pinEnablePower &= ~U_CELL_PIN_INVERTED;
+    pinPwrOn &= ~U_CELL_PIN_INVERTED;
+    pinVInt &= ~U_CELL_PIN_INVERTED;
+
+#ifdef U_CELL_PWR_ON_PIN_DRIVE_MODE
+    // User override
+    pinPwrOnDriveMode = U_CELL_PWR_ON_PIN_DRIVE_MODE;
+#else
+    // The drive mode is normally open drain so that we
+    // can pull PWR_ON low and then let it float
+    // afterwards since it is pulled-up by the cellular
+    // module
+    pinPwrOnDriveMode = U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN;
+    if (pinPwrOnPinToggleToState == 1) {
+        // If PWR_ON is toggling to 1 then there's an
+        // inverter between us and the MCU which only needs
+        // normal drive mode.
+        pinPwrOnDriveMode = U_PORT_GPIO_DRIVE_MODE_NORMAL;
+    }
+#endif
 
     if (gUCellPrivateMutex != NULL) {
 
@@ -217,6 +227,16 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
                 // Fill the values in
                 memset(pInstance, 0, sizeof(*pInstance));
+                // Set the pin states so that we can use them elsewhere
+                if (pinEnablePowerOnState != 0) {
+                    pInstance->pinStates |= 1 << U_CELL_PRIVATE_ENABLE_POWER_PIN_BIT_ON_STATE;
+                }
+                if (pinPwrOnPinToggleToState != 0) {
+                    pInstance->pinStates |= 1 << U_CELL_PRIVATE_PWR_ON_PIN_BIT_TOGGLE_TO_STATE;
+                }
+                if (pinVIntOnState != 0) {
+                    pInstance->pinStates |= 1 << U_CELL_PRIVATE_VINT_PIN_BIT_ON_STATE;
+                }
                 // Find a free handle
                 do {
                     pInstance->handle = gNextInstanceHandle;
@@ -250,7 +270,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 uPortLog("U_CELL: initialising with enable power pin ");
                 if (pinEnablePower >= 0) {
                     uPortLog("%d (0x%02x) (where %d is on), ", pinEnablePower,
-                             pinEnablePower, U_CELL_ENABLE_POWER_PIN_ON_STATE);
+                             pinEnablePower, pinEnablePowerOnState);
                 } else {
                     uPortLog("not connected, ");
                 }
@@ -258,8 +278,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 if (pinPwrOn >= 0) {
                     uPortLog("%d (0x%02x) (and is toggled from %d to %d)",
                              pinPwrOn, pinPwrOn,
-                             (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE,
-                             (int32_t) U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
+                             (int32_t) !pinPwrOnPinToggleToState, pinPwrOnPinToggleToState);
                 } else {
                     uPortLog("not connected");
                 }
@@ -269,7 +288,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                 uPortLog(" and VInt pin ");
                 if (pinVInt >= 0) {
                     uPortLog("%d (0x%02x) (and is %d when module is on).\n",
-                             pinVInt, pinVInt, U_CELL_VINT_PIN_ON_STATE);
+                             pinVInt, pinVInt, pinVIntOnState);
                 } else {
                     uPortLog("not connected.\n");
                 }
@@ -279,16 +298,16 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                         // Set PWR_ON to its steady state so that we can pull it
                         // the other way
                         platformError = uPortGpioSet(pinPwrOn,
-                                                     (int32_t) !U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE);
+                                                     (int32_t) !pinPwrOnPinToggleToState);
                     }
                     if (platformError == 0) {
                         U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
                         gpioConfig.pin = pinPwrOn;
-#if U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE == 0
-                        // TODO: the u-blox C030-R412M board requires a pull-up here.
-                        gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_PULL_UP;
-#endif
-                        gpioConfig.driveMode = U_CELL_PWR_ON_PIN_DRIVE_MODE;
+                        if (pinPwrOnPinToggleToState == 0) {
+                            // TODO: the u-blox C030-R412M board requires a pull-up here.
+                            gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_PULL_UP;
+                        }
+                        gpioConfig.driveMode = pinPwrOnDriveMode;
                         gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
                         platformError = uPortGpioConfig(&gpioConfig);
                         if (platformError != 0) {
@@ -314,7 +333,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                         enablePowerAtStart = uPortGpioGet(pinEnablePower);
                         if (!leavePowerAlone) {
                             // Make sure the default is off.
-                            enablePowerAtStart = (int32_t) !U_CELL_ENABLE_POWER_PIN_ON_STATE;
+                            enablePowerAtStart = !pinEnablePowerOnState;
                         }
                         platformError = uPortGpioSet(pinEnablePower, enablePowerAtStart);
                         if (platformError != 0) {

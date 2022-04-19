@@ -53,12 +53,6 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** The drive mode for the GNSS ENABLE_POWER pin.
- */
-#ifndef U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE
-# define U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE U_PORT_GPIO_DRIVE_MODE_NORMAL
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -206,6 +200,28 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
     uGnssPrivateInstance_t *pInstance = NULL;
     uPortGpioConfig_t gpioConfig;
     int32_t platformError = 0;
+    int32_t pinGnssEnablePowerOnState = (pinGnssEnablePower & U_GNSS_PIN_INVERTED) ?
+                                        !U_GNSS_PIN_ENABLE_POWER_ON_STATE : U_GNSS_PIN_ENABLE_POWER_ON_STATE;
+    uPortGpioDriveMode_t pinGnssEnablePowerDriveMode;
+
+    pinGnssEnablePower &= ~U_GNSS_PIN_INVERTED;
+
+#ifdef U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE
+    // User override
+    pinGnssEnablePowerDriveMode = U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE;
+#else
+    // The drive mode is normally open drain so that we
+    // can pull the enable power pin low and then let it float
+    // afterwards since it is pulled-up by the cellular
+    // module
+    pinGnssEnablePowerDriveMode = U_PORT_GPIO_DRIVE_MODE_OPEN_DRAIN;
+    if (pinGnssEnablePowerOnState == 1) {
+        // If enable power is toggling to 1 then there's an
+        // inverter between us and the MCU which only needs
+        // normal drive mode.
+        pinGnssEnablePowerDriveMode = U_PORT_GPIO_DRIVE_MODE_NORMAL;
+    }
+#endif
 
     if (gUGnssPrivateMutex != NULL) {
 
@@ -223,6 +239,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
             if (pInstance != NULL) {
                 // Fill the values in
                 memset(pInstance, 0, sizeof(*pInstance));
+                pInstance->pinGnssEnablePowerOnState = pinGnssEnablePowerOnState;
                 // Find a free handle
                 do {
                     pInstance->handle = gNextInstanceHandle;
@@ -253,7 +270,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                     uPortLog("U_GNSS: initialising with ENABLE_POWER pin ");
                     if (pinGnssEnablePower >= 0) {
                         uPortLog("%d (0x%02x), set to %d to power on GNSS",
-                                 pinGnssEnablePower, pinGnssEnablePower, U_GNSS_PIN_ENABLE_POWER_ON_STATE);
+                                 pinGnssEnablePower, pinGnssEnablePower, pinGnssEnablePowerOnState);
                         if (leavePowerAlone) {
                             uPortLog(", leaving the level of the pin alone");
                         }
@@ -267,13 +284,13 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
                         if (!leavePowerAlone) {
                             // Set ENABLE_POWER high so that we can pull it low
                             platformError = uPortGpioSet(pinGnssEnablePower,
-                                                         (int32_t) !U_GNSS_PIN_ENABLE_POWER_ON_STATE);
+                                                         (int32_t) !pinGnssEnablePowerOnState);
                         }
                         if (platformError == 0) {
                             U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
                             gpioConfig.pin = pinGnssEnablePower;
                             gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_NONE;
-                            gpioConfig.driveMode = U_GNSS_PIN_ENABLE_POWER_DRIVE_MODE;
+                            gpioConfig.driveMode = pinGnssEnablePowerDriveMode;
                             gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
                             platformError = uPortGpioConfig(&gpioConfig);
                             if (platformError != 0) {

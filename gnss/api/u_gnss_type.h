@@ -48,8 +48,21 @@
 # define U_GNSS_DEFAULT_TIMEOUT_MS 10000
 #endif
 
+/** There can be an inverter in-line between an MCU pin
+ * and whatever enables power to the GNSS chip; OR this value
+ * with the value of the pin passed into uGnssAdd() and the sense of
+ * that pin will be assumed to be inverted, i.e. "asserted" will be
+ * 0 and "deasserted" 1.
+ */
+#define U_GNSS_PIN_INVERTED 0x80
+
 #ifndef U_GNSS_PIN_ENABLE_POWER_ON_STATE
 /** Which way up the GNSS_ENABLE_POWER pin ON state is.
+ * If you wish to indicate that 0 is the "on" state then you
+ * should do that by ORing the value of pinGnssEnablePower with
+ * U_GNSS_PIN_INVERTED in the call to uGnssAdd() rather
+ * than changing this value.  And certainly don't do both or the
+ * sense of the pin will be inverted twice.
  */
 # define U_GNSS_PIN_ENABLE_POWER_ON_STATE 1
 #endif
