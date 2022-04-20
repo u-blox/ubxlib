@@ -230,6 +230,18 @@
 # define U_CFG_TEST_PIN_UART_B_RTS   0
 #endif
 
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: DEBUG RELATED
+ * -------------------------------------------------------------- */
+
+/** When this is set to 1 the inactivity detector will be enabled
+ * that will check if there is no call to uPortLog() within a certain
+ * time.
+ */
+#ifndef U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR
+# define U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR  1
+#endif
+
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 
 // End of file

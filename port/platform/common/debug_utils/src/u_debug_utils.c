@@ -15,8 +15,19 @@
  */
 
 /** @file
- * @brief Thread dumper.
+ * @brief Debug utilities.
  */
+
+#include "stdint.h"    // int32_t etc.
+#include "stddef.h"
+#include "stdbool.h"
+
+#include "u_cfg_os_platform_specific.h"
+#include "u_error_common.h"
+#include "u_port_os.h"
+#include "u_port_debug.h"
+
+#include "u_debug_utils.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -36,6 +47,19 @@
 # endif
 #endif
 
+#ifndef U_DEBUG_UTILS_INACTIVITY_TASK_STACK_SIZE
+/** The stack size for the inactivity task.
+ */
+# define U_DEBUG_UTILS_INACTIVITY_TASK_STACK_SIZE (1024 * 2)
+#endif
+
+#ifndef U_DEBUG_UTILS_INACTIVITY_TASK_PRIORITY
+/** Since the inactivity task is used for detecting starvation the
+ *  priority must be higher than the tasks causing the issue.
+ */
+# define U_DEBUG_UTILS_INACTIVITY_TASK_PRIORITY U_CFG_OS_PRIORITY_MAX
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -44,10 +68,51 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+/** The handle of the inactivity task.
+ */
+static uPortTaskHandle_t gInactivityTaskHandle = NULL;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+static void inactivityTask(void *pParam)
+{
+    int32_t lastActivityCounter = -1;
+    int32_t inactiveCounter = 0;
+    volatile  int32_t *pActivityCounter = (volatile  int32_t *)pParam;
+    while (1) {
+        uPortTaskBlock(1000 * U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC);
+        if (*pActivityCounter == lastActivityCounter) {
+            inactiveCounter++;
+        } else {
+            inactiveCounter = 0;
+        }
+
+        if (inactiveCounter == 1) {
+            uPortLogF("### Inactivity Detected ###\n");
+#ifdef U_DEBUG_UTILS_DUMP_THREADS
+            uDebugUtilsDumpThreads();
+#endif
+        }
+        lastActivityCounter = *pActivityCounter;
+    }
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+int32_t uDebugUtilsInitInactivityDetector(volatile int32_t *pActivityCounter)
+{
+    if (gInactivityTaskHandle != NULL) {
+        return (int32_t) U_ERROR_COMMON_SUCCESS;
+    }
+    return uPortTaskCreate(inactivityTask,
+                           "inactivity",
+                           U_DEBUG_UTILS_INACTIVITY_TASK_STACK_SIZE,
+                           (void *)pActivityCounter,
+                           U_DEBUG_UTILS_INACTIVITY_TASK_PRIORITY,
+                           &gInactivityTaskHandle);
+
+}

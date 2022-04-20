@@ -32,6 +32,14 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC
+/** The period the inactivity task will use for checking
+ * for inactivity by calling the uDebugUtilsCheckInactivity_t
+ * callback.
+ */
+# define U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC 60
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -39,6 +47,26 @@ extern "C" {
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
+
+/** Initialise the inactivity detector
+ *
+ * This is mainly intended for our test system to detect deadlocks
+ * and starvation. It will start an inactivity task that will check
+ * that the value pActivityCounter points at changes each
+ * U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC second.
+ * If this value has not changed within this period a message will
+ * be printed and if U_DEBUG_UTILS_DUMP_THREADS is enabled all task
+ * will be dumped.
+ *
+ * @param[in] pActivityCounter  a pointer to a value that should be
+ *                              checked for inactivity. The detector will
+ *                              only check that the value in the pointer
+ *                              destination changes so it doesn't matter
+ *                              if it increase, decrease, wrap etc. Any
+ *                              change is regarded as activity.
+ * @return zero on success else negative error code.
+ */
+int32_t uDebugUtilsInitInactivityDetector(volatile int32_t *pActivityCounter);
 
 #ifdef U_DEBUG_UTILS_DUMP_THREADS
 

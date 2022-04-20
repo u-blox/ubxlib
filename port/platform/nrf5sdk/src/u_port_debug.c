@@ -61,6 +61,10 @@ static bool gPortLogOn = true;
 static char gLogBuffer[NRF_LOG_BUFSIZE];
 #endif
 
+/** Only used for detecting inactivity
+ */
+volatile int32_t gStdoutCounter;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -89,6 +93,7 @@ void uPortLogF(const char *pFormat, ...)
 #endif
         va_end(args);
     }
+    gStdoutCounter++;
 }
 
 // Switch logging off.
