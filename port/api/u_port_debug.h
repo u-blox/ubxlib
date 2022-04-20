@@ -50,12 +50,30 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** printf()-style logging.
+/** printf()-style logging; this macro is not usually called directly,
+ * please call the uPortLog() macro instead so that
+ * U_CFG_ENABLE_LOGGING controls whether logging is on or off.
  *
  * @param pFormat a printf() style format string.
  * @param ...     variable argument list.
  */
 void uPortLogF(const char *pFormat, ...);
+
+/** Switch logging off, so that it has no effect; it is NOT a requirement
+ * that this API is implemented: where it is not implemented
+ * U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
+ *
+ * @return zero on success else negative error code.
+ */
+int32_t uPortLogOff(void);
+
+/** Switch logging on (the default); it is NOT a requirement
+ * that this API is implemented: where it is not implemented
+ * U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
+ *
+ * @return zero on success else negative error code.
+ */
+int32_t uPortLogOn(void);
 
 #ifdef __cplusplus
 }

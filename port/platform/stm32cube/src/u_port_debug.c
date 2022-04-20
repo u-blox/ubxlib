@@ -24,11 +24,14 @@
 
 #include "stdarg.h"
 #include "stdio.h"         // vprintf()
+#include "stdint.h"
+#include "stdbool.h"
 
 #include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
                                               before the other port files if
                                               any print or scan function is used. */
-#include "u_port_debug.h"
+
+#include "u_error_common.h"
 
 #include "stm32f437xx.h" // For ITM_SendChar()
 
@@ -43,6 +46,10 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+/** Keep track of whether logging is on or off.
+ */
+static bool gPortLogOn = true;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -71,9 +78,25 @@ void uPortLogF(const char *pFormat, ...)
 {
     va_list args;
 
-    va_start(args, pFormat);
-    vprintf(pFormat, args);
-    va_end(args);
+    if (gPortLogOn) {
+        va_start(args, pFormat);
+        vprintf(pFormat, args);
+        va_end(args);
+    }
+}
+
+// Switch logging off.
+int32_t uPortLogOff(void)
+{
+    gPortLogOn = false;
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
+}
+
+// Switch logging on.
+int32_t uPortLogOn(void)
+{
+    gPortLogOn = true;
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
 // End of file

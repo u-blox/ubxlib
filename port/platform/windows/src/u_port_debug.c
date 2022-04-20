@@ -21,10 +21,12 @@
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
-#include "u_port_debug.h"
-
 #include "stdio.h"
 #include "stdarg.h"
+#include "stdint.h"
+#include "stdbool.h"
+
+#include "u_error_common.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -37,6 +39,10 @@
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+/** Keep track of whether logging is on or off.
+ */
+static bool gPortLogOn = true;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -51,11 +57,27 @@ void uPortLogF(const char *pFormat, ...)
 {
     va_list args;
 
-    va_start(args, pFormat);
-    vprintf(pFormat, args);
-    va_end(args);
+    if (gPortLogOn) {
+        va_start(args, pFormat);
+        vprintf(pFormat, args);
+        va_end(args);
 
-    fflush(stdout);
+        fflush(stdout);
+    }
+}
+
+// Switch logging off.
+int32_t uPortLogOff(void)
+{
+    gPortLogOn = false;
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
+}
+
+// Switch logging on.
+int32_t uPortLogOn(void)
+{
+    gPortLogOn = true;
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
 // End of file
