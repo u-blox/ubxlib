@@ -34,13 +34,17 @@
 #include "u_port_os.h"
 #include "u_port_private.h"
 
+
+#ifdef U_CFG_MUTEX_DEBUG
 /** Grab the handle of the mutex watchdog task; this is so
  * that, on Windows, when we simulate a critical section, we can
  * leave it running to catch situations where we might end up
  * sitting in a critical section for _far_ longer than we should..
  */
 extern uPortTaskHandle_t gMutexDebugWatchdogTaskHandle;
-
+#else
+uPortTaskHandle_t gMutexDebugWatchdogTaskHandle = NULL;
+#endif
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
