@@ -32,6 +32,14 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+#ifndef U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC
+/** The period the inactivity task will use for checking
+ * for inactivity by calling the uDebugUtilsCheckInactivity_t
+ * callback.
+ */
+# define U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC 60
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -40,29 +48,43 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Initialise the inactivity detector
+ *
+ * This is mainly intended for our test system to detect deadlocks
+ * and starvation. It will start an inactivity task that will check
+ * that the value pActivityCounter points at changes each
+ * U_DEBUG_UTILS_INACTIVITY_TASK_CHECK_PERIOD_SEC second.
+ * If this value has not changed within this period a message will
+ * be printed and if U_DEBUG_UTILS_DUMP_THREADS is enabled all task
+ * will be dumped.
+ *
+ * @param[in] pActivityCounter  a pointer to a value that should be
+ *                              checked for inactivity. The detector will
+ *                              only check that the value in the pointer
+ *                              destination changes so it doesn't matter
+ *                              if it increase, decrease, wrap etc. Any
+ *                              change is regarded as activity.
+ * @return zero on success else negative error code.
+ */
+int32_t uDebugUtilsInitInactivityDetector(volatile int32_t *pActivityCounter);
+
 #ifdef U_DEBUG_UTILS_DUMP_THREADS
 
 /** Dump all current threads.
+ *
+ * This will print out name and state (if available) for each
+ * thread together with a PC backtrace. The PC based backtrace
+ * can be converted to a real backtrace by using addr2line.
+ *
+ * Example output:
+ *   ### Dumping threads ###
+ *     timerEvent (pending): bottom: 200064e0, top: 20006ce0, sp: 20006bd8
+ *       Backtrace: 0x00050e16 0x0004e68a 0x0005c910 0x0005a1b6 0x0005a196 0x0005a196 0x0005d724
+ *     sysworkq (pending): bottom: 200289a0, top: 200291a0, sp: 20029120
+ *       Backtrace: 0x00050e16 0x000525d4 0x0004fe8c 0x0005d724
  */
 void uDebugUtilsDumpThreads(void);
 
-/** Print the call stack for a stack pointer.
- *
- * For each call stack entry only the PC will be printed (as a hex).
- * To decode the corresponding source code file and line number you will need
- * to use <toolchain_prefix>addr2line.
- *
- * Example output for this function with a call stack depth of 2:
- * "Backtrace: 0x000ec4df 0x000df5a6"
- *
- * @param pSp          the stack pointer.
- * @param pStackTop    the top of the stack.
- * @param maxDepth     max call stack depth to print.
- * @return             the actual call stack depth on success else negative error code.
- */
-int32_t uDebugUtilsPrintCallStack(uint32_t *pSp,
-                                  uint32_t *pStackTop,
-                                  size_t maxDepth);
 
 #endif
 

@@ -25,11 +25,6 @@ ASTYLE_FILE_EXTENSIONS = u_settings.ASTYLE_FILE_EXTENSIONS
 # root need be included, AStyle will recurse below each of these
 ASTYLE_DIRS = u_settings.ASTYLE_DIRS
 
-# Directory names to exclude (exclusion is done from
-# the end of the file path backwards, so "build" excludes
-# "blah\build" as well as "build" but not "build\blah")
-EXCLUDE_DIRS = u_settings.ASTYLE_EXCLUDE_DIRS
-
 def run(ubxlib_dir, reporter):
     '''Run AStyle'''
     return_value = 1
@@ -64,9 +59,6 @@ def run(ubxlib_dir, reporter):
             call_list.append("--formatted") # Only list changed files
             call_list.append("--suffix=none") # Don't leave .orig files everywhere
             call_list.append("--verbose") # Print out stats
-            for exclude_dir in EXCLUDE_DIRS:  # Exclude these directories
-                call_list.append("--exclude=" + exclude_dir)
-            call_list.append("--ignore-exclude-errors-x") # Ignore unfound excludes
             call_list.append("--recursive") # Recurse through...
             for include_dir in ASTYLE_DIRS:  # ...these files
                 call_list.append(include_dir + os.sep + ASTYLE_FILE_EXTENSIONS)

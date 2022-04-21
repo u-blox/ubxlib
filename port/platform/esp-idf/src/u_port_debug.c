@@ -49,6 +49,10 @@
  */
 static bool gPortLogOn = true;
 
+/** Only used for detecting inactivity
+ */
+volatile int32_t gStdoutCounter;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -67,6 +71,7 @@ void uPortLogF(const char *pFormat, ...)
         vprintf(pFormat, args);
         va_end(args);
     }
+    gStdoutCounter++;
 }
 
 // Switch logging off.

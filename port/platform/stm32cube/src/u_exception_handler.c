@@ -18,13 +18,18 @@
  * @brief Cortex M4 exception handlers.
  */
 
+#include "stdbool.h"
+
 #include "stm32f4xx.h"
 #include "cmsis_os.h"
 #include "core_cm4.h"
 
+#include "task_snapshot.h"
+
 #include "u_assert.h"
 #include "u_port_debug.h"
 #include "u_debug_utils.h"
+#include "u_debug_utils_internal.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -56,6 +61,8 @@ typedef struct __attribute__((packed))
 }
 uExceptionFrame_t;
 
+extern uint32_t uDebugUtilsGetThreadStackTop(TaskHandle_t handle);
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -81,13 +88,39 @@ static void dumpData(uExceptionFrame_t *frame)
         uPortLogF("  R0:  0x%08x  R1:   0x%08x  R2:  0x%08x  R3:  0x%08x\n",
                   frame->r0, frame->r1, frame->r2, frame->r3);
         uPortLogF("  R12: 0x%08x  XPSR: 0x%08x\n", frame->r12, frame->xpsr);
-        // Our monitor will automatically call addr2line for target strings
-        // that starts with "Backtrace: ", so we print PC and LR again
-        // as a backtrace:
-        uPortLogF("  Backtrace: 0x%08x 0x%08x\n", frame->pc, frame->lr);
     }
 
-#ifdef U_DEBUG_UTILS_DUMP_THREADS
+#ifndef U_DEBUG_UTILS_DUMP_THREADS
+    // Our monitor will automatically call addr2line for target strings
+    // that starts with "Backtrace: ", so we print PC and LR again
+    // as a backtrace:
+    uPortLogF("  Backtrace: 0x%08x 0x%08x\n", frame->pc, frame->lr);
+#else
+    uStackFrame_t sFrame;
+    TaskSnapshot_t snapShot;
+    char *pName;
+    uint32_t psp = ((uint32_t)frame) + sizeof(uExceptionFrame_t);
+    uint32_t stackTop;
+
+    vTaskGetSnapshot(xTaskGetCurrentTaskHandle(), &snapShot);
+    pName = pcTaskGetName(xTaskGetCurrentTaskHandle());
+    stackTop = (uint32_t)snapShot.pxTopOfStack;
+
+    uPortLogF("### Dumping current thread (%s) ###\n", pName);
+    uPortLogF("  Backtrace: 0x%08x 0x%08x ", frame->pc, frame->lr);
+    if (uDebugUtilsInitStackFrame(psp, stackTop, &sFrame)) {
+        for (int depth = 0; depth < 16; depth++) {
+            if (uDebugUtilsGetNextStackFrame(stackTop, &sFrame)) {
+                if ((depth > 0) || (sFrame.pc != frame->lr)) {
+                    uPortLogF("0x%08x ", (unsigned int)sFrame.pc);
+                }
+            } else {
+                break;
+            }
+        }
+    }
+    uPortLogF("\n\n");
+
     // When calling uDebugUtilsDumpThreads() vPortEnterCritical
     // will be called. vPortEnterCritical is not interrupt safe
     // which we clearly don't care about during an exception.

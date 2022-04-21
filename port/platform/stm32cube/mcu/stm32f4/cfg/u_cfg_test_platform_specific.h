@@ -72,7 +72,7 @@
  * a task that is created and deleted but if _you_ do you should note
  * this problem and probably never delete the task.
  */
-#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 35)
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 33)
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED
@@ -236,6 +236,18 @@
  * platforms this is not a simple define.
  */
 #define U_CFG_TEST_PIN_UART_B_RTS_GET U_CFG_TEST_PIN_UART_B_RTS
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: DEBUG RELATED
+ * -------------------------------------------------------------- */
+
+/** When this is set to 1 the inactivity detector will be enabled
+ * that will check if there is no call to uPortLog() within a certain
+ * time.
+ */
+#ifndef U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR
+# define U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR  1
+#endif
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_
 

@@ -93,7 +93,7 @@ def flash(ctx, debugger_serial="", output_name=DEFAULT_OUTPUT_NAME,
     if debugger_serial != "":
         debugger_serial = f"--snr {debugger_serial}"
     hex_arg = "" if hex_file == None else f"--hex-file {hex_file}"
-    ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild {hex_arg} -d {build_dir} {debugger_serial} --erase')
+    ctx.run(f'{ctx.zephyr_pre_command}west flash --skip-rebuild {hex_arg} -d {build_dir} {debugger_serial} --erase --recover')
 
 @task(
     pre=[check_installation],

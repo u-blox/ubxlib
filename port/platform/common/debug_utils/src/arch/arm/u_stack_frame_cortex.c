@@ -33,8 +33,11 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"
 
 #include "u_port_debug.h"
+
+#include "u_debug_utils_internal.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -97,11 +100,17 @@ static bool disassembly_ins_is_bl_blx(uint32_t addr)
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uDebugUtilsPrintCallStack(uint32_t *pSp, uint32_t *pStackTop, size_t maxDepth)
+bool uDebugUtilsInitStackFrame(uint32_t sp, uint32_t stackTop, uStackFrame_t *pFrame)
 {
-    size_t depth = 0;
-    uPortLogF("Backtrace: ");
-    for (; (pSp < pStackTop) && (depth < maxDepth); pSp++) {
+    memset(pFrame, 0, sizeof(uStackFrame_t));
+    pFrame->sp = sp;
+    return true;
+}
+
+bool uDebugUtilsGetNextStackFrame(uint32_t stackTop, uStackFrame_t *pFrame)
+{
+    uint32_t *pSp = (uint32_t *)pFrame->sp;
+    for (; ((uint32_t)pSp < stackTop); pSp++) {
         /* the Cortex-M using thumb instruction, so the pc must be an odd number */
         if ((*pSp % 2) == 0) {
             continue;
@@ -110,10 +119,10 @@ int32_t uDebugUtilsPrintCallStack(uint32_t *pSp, uint32_t *pStackTop, size_t max
         uint32_t pc = *pSp - 1 - sizeof(void *);
         /* check the the instruction before PC address is 'BL' or 'BLX' */
         if (IS_CODE_SPACE(pc) && disassembly_ins_is_bl_blx(pc)) {
-            uPortLogF("0x%08x ", (unsigned int)pc);
-            depth++;
+            pFrame->pc = pc;
+            pFrame->sp = (uint32_t)++pSp;
+            return true;
         }
     }
-    uPortLogF("\n");
-    return depth;
+    return false;
 }

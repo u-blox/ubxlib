@@ -41,6 +41,8 @@
 #include "u_port_os.h"
 #include "u_port_gpio.h"
 
+#include "u_debug_utils.h"
+
 #include "u_runner.h"
 
 #include "cmsis_os.h"
@@ -62,6 +64,9 @@
 // This is needed for OpenOCD FreeRTOS htread awareness
 const int __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES - 1;
 
+// This is intentionally a bit hidden and comes from u_port_debug.c
+extern volatile int32_t gStdoutCounter;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -73,6 +78,10 @@ static void appTask(void *pParam)
 #if (U_CFG_APP_PIN_C030_ENABLE_3V3 >= 0) || (U_CFG_APP_PIN_CELL_RESET >= 0) || \
     (U_CFG_APP_PIN_CELL_PWR_ON >= 0)
     uPortGpioConfig_t gpioConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+#endif
+
+#if U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR
+    uDebugUtilsInitInactivityDetector(&gStdoutCounter);
 #endif
 
 #ifdef U_CFG_MUTEX_DEBUG

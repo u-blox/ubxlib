@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,25 +15,16 @@
  */
 
 /** @file
- * @brief Implementation of the port debug API for the Zephyr platform.
+ * @brief Internal functions used for the debug utils
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-#include "stdarg.h"
-#include "stdio.h"    // vprintf()
-#include "stdint.h"
-#include "stdbool.h"
+#include "u_port_debug.h"
 
-#include "u_port_clib_platform_specific.h" /* Integer stdio, must be included
-                                              before the other port files if
-                                              any print or scan function is used. */
-
-#include "u_error_common.h"
-
-#include "sys/printk.h"
+#include "u_debug_utils_internal.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -47,14 +38,6 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Keep track of whether logging is on or off.
- */
-static bool gPortLogOn = true;
-
-/** Only used for detecting inactivity
- */
-volatile int32_t gStdoutCounter;
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -63,31 +46,23 @@ volatile int32_t gStdoutCounter;
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// printf()-style logging.
-void uPortLogF(const char *pFormat, ...)
+#ifdef U_DEBUG_UTILS_DUMP_THREADS
+int32_t uDebugUtilsPrintCallStack(uint32_t sp, uint32_t stackTop, size_t maxDepth)
 {
-    va_list args;
-
-    if (gPortLogOn) {
-        va_start(args, pFormat);
-        vprintf(pFormat, args);
-        va_end(args);
+    size_t depth;
+    uStackFrame_t frame;
+    uPortLogF("Backtrace: ");
+    if (!uDebugUtilsInitStackFrame(sp, stackTop, &frame)) {
+        return 0;
     }
-    gStdoutCounter++;
+    for (depth = 0; depth < maxDepth; depth++) {
+        if (uDebugUtilsGetNextStackFrame(stackTop, &frame)) {
+            uPortLogF("0x%08x ", (unsigned int)frame.pc);
+        } else {
+            break;
+        }
+    }
+    uPortLogF("\n");
+    return depth;
 }
-
-// Switch logging off.
-int32_t uPortLogOff(void)
-{
-    gPortLogOn = false;
-    return (int32_t) U_ERROR_COMMON_SUCCESS;
-}
-
-// Switch logging on.
-int32_t uPortLogOn(void)
-{
-    gPortLogOn = true;
-    return (int32_t) U_ERROR_COMMON_SUCCESS;
-}
-
-// End of file
+#endif

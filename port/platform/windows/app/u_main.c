@@ -38,6 +38,8 @@
 #include "u_port_os.h"
 #include "u_port_debug.h"
 
+#include "u_debug_utils.h"
+
 #include "u_runner.h"
 
 /* ----------------------------------------------------------------
@@ -52,6 +54,9 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+// This is intentionally a bit hidden and comes from u_port_debug.c
+extern int32_t gStdoutCounter;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -60,6 +65,10 @@
 static void appTask(void *pParam)
 {
     (void) pParam;
+
+#if U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR
+    uDebugUtilsInitInactivityDetector(&gStdoutCounter);
+#endif
 
 #ifdef U_CFG_MUTEX_DEBUG
     uMutexDebugInit();

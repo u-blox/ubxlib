@@ -150,7 +150,7 @@ UBXLIB_INC += \
 # App
 UBXLIB_SRC += \
 	$(PLATFORM_PATH)/src/stm32f4xx_hal_msp.c \
-	$(PLATFORM_PATH)/src/u_exception_handlers.c \
+	$(PLATFORM_PATH)/src/u_exception_handler.c \
 	$(PLATFORM_PATH)/src/syscalls.c \
 	$(PLATFORM_PATH)/src/system_stm32f4xx.c \
 	$(UBXLIB_TEST_SRC) \
