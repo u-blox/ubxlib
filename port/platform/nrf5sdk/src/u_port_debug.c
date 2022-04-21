@@ -21,10 +21,13 @@
 #ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
-#include "u_port_debug.h"
 
 #include "stdio.h"
 #include "stdarg.h"
+#include "stdint.h"
+#include "stdbool.h"
+
+#include "u_error_common.h"
 
 #if NRF_LOG_ENABLED
 # include "nrfx.h"
@@ -35,8 +38,6 @@
 #  include "SEGGER_RTT.h"
 # endif
 #endif
-
-
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -50,10 +51,19 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
+/** Keep track of whether logging is on or off.
+ */
+static bool gPortLogOn = true;
+
 #if NRF_LOG_ENABLED
-// The logging buffer.
-char gLogBuffer[NRF_LOG_BUFSIZE];
+/** The logging buffer.
+ */
+static char gLogBuffer[NRF_LOG_BUFSIZE];
 #endif
+
+/** Only used for detecting inactivity
+ */
+volatile int32_t gStdoutCounter;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -68,19 +78,36 @@ void uPortLogF(const char *pFormat, ...)
 {
     va_list args;
 
-    va_start(args, pFormat);
+    if (gPortLogOn) {
+        va_start(args, pFormat);
 #if NRF_LOG_ENABLED
-    vsnprintf(gLogBuffer, sizeof(gLogBuffer), pFormat, args);
-    NRF_LOG_RAW_INFO("%s", gLogBuffer);
-    NRF_LOG_FLUSH();
+        vsnprintf(gLogBuffer, sizeof(gLogBuffer), pFormat, args);
+        NRF_LOG_RAW_INFO("%s", gLogBuffer);
+        NRF_LOG_FLUSH();
 #else
 # ifdef U_CFG_PLAIN_OLD_PRINTF
-    vprintf(pFormat, args);
+        vprintf(pFormat, args);
 # else
-    SEGGER_RTT_vprintf(0, pFormat, &args);
+        SEGGER_RTT_vprintf(0, pFormat, &args);
 # endif
 #endif
-    va_end(args);
+        va_end(args);
+    }
+    gStdoutCounter++;
+}
+
+// Switch logging off.
+int32_t uPortLogOff(void)
+{
+    gPortLogOn = false;
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
+}
+
+// Switch logging on.
+int32_t uPortLogOn(void)
+{
+    gPortLogOn = true;
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
 // End of file

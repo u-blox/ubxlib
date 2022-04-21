@@ -106,7 +106,12 @@ extern "C" {
 
 /** There can be an inverter in-line between the MCU pin
  * that is connected to the cellular module's RESET_N pin;
- * this allows the sense to be switched easily.
+ * this allows the sense to be switched at compile time.
+ * However, the method of ORing the pin with
+ * U_CELL_PIN_INVERTED (see u_cell.h) is preferred; this
+ * compile-time mechanism is retained for backwards-compatibility.
+ * DON'T USE BOTH MECHANISMS or the sense of the pin will
+ * be inverted twice.
  */
 #ifndef U_CELL_RESET_PIN_INVERTED
 # define U_CELL_RESET_PIN_TOGGLE_TO_STATE 0
@@ -135,8 +140,12 @@ extern "C" {
 /** There can be an inverter in-line between the MCU pin
  * that is connected to the cellular module's DTR pin and the
  * module's DTR pin itself; this allows the sense to be switched
- * easily.  See uCellPwrSetDtrPowerSavingPin() for how the pin
- * value is set.
+ * at compile time. However, the method of ORing the pin
+ * with U_CELL_PIN_INVERTED (see u_cell.h) is preferred; this
+ * compile-time mechanism is retained for backwards-compatibility.
+ * DON'T USE BOTH MECHANISMS or the sense of the pin will
+ * be inverted twice.
+ * See uCellPwrSetDtrPowerSavingPin() for how the pin value is set.
  */
 #ifndef U_CELL_DTR_PIN_INVERTED
 # define U_CELL_DTR_PIN_ON_STATE 0
@@ -377,7 +386,11 @@ int32_t uCellPwrReboot(int32_t cellHandle,
  *
  * @param cellHandle the handle of the cellular instance.
  * @param pinReset   the pin of the MCU that is connected to the
- *                   reset pin of the cellular module.
+ *                   reset pin of the cellular module; if there
+ *                   is an inverter between the pin of this MCU
+ *                   and the pin of the module then the value
+ *                   of pin should be ORed with U_CELL_PIN_INVERTED
+ *                   (defined in u_cell.h).
  * @return           zero on success or negative error
  *                   code on failure.
  */
@@ -412,7 +425,11 @@ int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset);
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pin         the pin of this MCU that is connected to
- *                    the DTR line of the cellular module.
+ *                    the DTR line of the cellular module; if there
+ *                    is an inverter between the pin of this MCU
+ *                    and the pin of the module then the value
+ *                    of pin should be ORed with U_CELL_PIN_INVERTED
+ *                    (defined in u_cell.h).
  * @return            zero on success or negative error
  *                    code on failure.
  */

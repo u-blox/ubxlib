@@ -28,7 +28,7 @@
 #endif
 
 #ifdef __arm__
-# include "../arch/arm/u_print_callstack_cortex.c"
+# include "../arch/arm/u_stack_frame_cortex.c"
 #endif
 
 /* ----------------------------------------------------------------
@@ -45,17 +45,17 @@
 
 static void thread_dump(const struct k_thread *thread, void *user_data)
 {
-    uint8_t *pStackBottom = (uint8_t *)thread->stack_info.start;
-    uint32_t *pStackTop = (uint32_t *)&pStackBottom[thread->stack_info.size];
-    uint32_t *pSp = (uint32_t *)thread->callee_saved.psp;
+    uint32_t stackBottom = (uint32_t)thread->stack_info.start;
+    uint32_t stackTop = stackBottom + thread->stack_info.size;
+    uint32_t sp = thread->callee_saved.psp;
     uPortLogF("  %s (%s): bottom: %08x, top: %08x, sp: %08x\n",
               thread->name,
               k_thread_state_str((k_tid_t)thread),
-              (unsigned int)pStackBottom,
-              (unsigned int)pStackTop,
-              (unsigned int)pSp);
+              (unsigned int)stackBottom,
+              (unsigned int)stackTop,
+              (unsigned int)sp);
     uPortLogF("    ");
-    uDebugUtilsPrintCallStack(pSp, pStackTop, 16);
+    uDebugUtilsPrintCallStack(sp, stackTop, 16);
 }
 
 /* ----------------------------------------------------------------

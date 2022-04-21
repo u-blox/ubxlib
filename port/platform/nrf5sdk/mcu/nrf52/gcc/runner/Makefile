@@ -98,6 +98,7 @@ SRC_FILES += \
   $(NRF5_PORT_PATH)/src/u_port_os.c \
   $(NRF5_PORT_PATH)/src/u_port_uart.c \
   $(NRF5_PORT_PATH)/src/u_port_private.c \
+  $(NRF5_PORT_PATH)/src/u_exception_handler.c \
   $(NRF5_PORT_PATH)/src/heap_useNewlib.c \
   $(NRF5_PORT_PATH)/src/mbedtls_platform_zeroize.c \
   $(NRF5_PORT_PATH)/src/segger_rtt/RTT/SEGGER_RTT.c \

@@ -19,7 +19,9 @@
 
 /* Only bring in #includes specifically related to the test framework */
 
-#include "unity.h"
+#ifndef ARDUINO
+# include "unity.h"
+#endif
 
 /** @file
  * @brief Porting layer and configuration items passed in at application
@@ -77,7 +79,7 @@
 /** The minimum free heap space permitted, i.e. what's left for
  * user code.
  */
-#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 195)
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 193)
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED
@@ -228,6 +230,18 @@
  */
 #ifndef U_CFG_TEST_PIN_UART_B_RTS
 # define U_CFG_TEST_PIN_UART_B_RTS   -1
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: DEBUG RELATED
+ * -------------------------------------------------------------- */
+
+/** When this is set to 1 the inactivity detector will be enabled
+ * that will check if there is no call to uPortLog() within a certain
+ * time.
+ */
+#ifndef U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR
+# define U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR  1
 #endif
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_

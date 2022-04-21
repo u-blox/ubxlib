@@ -162,14 +162,14 @@ int32_t uPortGetHeapFree()
 // documentation.
 U_INLINE int32_t uPortEnterCritical()
 {
-    taskENTER_CRITICAL(&gSpinlock);
+    portENTER_CRITICAL(&gSpinlock);
     return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
 // Leave a critical section.
 U_INLINE void uPortExitCritical()
 {
-    taskEXIT_CRITICAL(&gSpinlock);
+    portEXIT_CRITICAL(&gSpinlock);
 }
 
 // End of file

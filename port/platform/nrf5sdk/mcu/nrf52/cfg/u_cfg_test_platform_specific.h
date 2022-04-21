@@ -65,7 +65,7 @@
  * user code.  This is assuming a heap size of 40 kbytes (set
  * in the Makefile/FreeRTOSConfig.h file and the SES XML file).
  */
-#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 7)
+#define U_CFG_TEST_HEAP_MIN_FREE_BYTES (1024 * 5)
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS: OS RELATED
@@ -215,6 +215,18 @@
  */
 #ifndef U_CFG_TEST_PIN_UART_B_RTS
 # define U_CFG_TEST_PIN_UART_B_RTS   -1
+#endif
+
+/* ----------------------------------------------------------------
+ * COMPILE-TIME MACROS: DEBUG RELATED
+ * -------------------------------------------------------------- */
+
+/** When this is set to 1 the inactivity detector will be enabled
+ * that will check if there is no call to uPortLog() within a certain
+ * time.
+ */
+#ifndef U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR
+# define U_CFG_TEST_ENABLE_INACTIVITY_DETECTOR  1
 #endif
 
 #endif // _U_CFG_TEST_PLATFORM_SPECIFIC_H_

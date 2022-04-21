@@ -69,7 +69,8 @@ override CFLAGS += \
 override LDFLAGS += \
 	-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -static -T"$(PLATFORM_PATH)/app/STM32F437VGTX_FLASH.ld" \
 	-Wl,-Map="$(OUTPUT_DIRECTORY)/runner.map" -Wl,--gc-sections -Wl,--wrap=malloc -Wl,--wrap=_malloc_r -Wl,--wrap=calloc \
-	-Wl,--wrap=_calloc_r -Wl,--wrap=realloc -Wl,--wrap=_realloc_r --specs=nano.specs -Wl,--start-group -lc -lm -Wl,--end-group
+	-Wl,--wrap=_calloc_r -Wl,--wrap=realloc -Wl,--wrap=_realloc_r --specs=nano.specs -Wl,--start-group -lc -lm -Wl,--end-group \
+	-Wl,--undefined=uxTopUsedPriority
 
 
 # STM32 HAL
@@ -149,7 +150,7 @@ UBXLIB_INC += \
 # App
 UBXLIB_SRC += \
 	$(PLATFORM_PATH)/src/stm32f4xx_hal_msp.c \
-	$(PLATFORM_PATH)/src/u_exception_handlers.c \
+	$(PLATFORM_PATH)/src/u_exception_handler.c \
 	$(PLATFORM_PATH)/src/syscalls.c \
 	$(PLATFORM_PATH)/src/system_stm32f4xx.c \
 	$(UBXLIB_TEST_SRC) \

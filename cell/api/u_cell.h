@@ -68,9 +68,24 @@ extern "C" {
 # define U_CELL_UART_BAUD_RATE 115200
 #endif
 
+/** There can be an inverter in-line between an MCU pin
+ * and a cellular module pin; OR this value with the value
+ * of a pin passed into this API and the sense of that pin
+ * will be assumed to be inverted, i.e. "asserted" will be
+ * 0 and "deasserted" 1.  This method of indicating inversion
+ * is preferred to the compile time options given below,
+ * which are retained for backwards-compatibility.
+ */
+#define U_CELL_PIN_INVERTED 0x8000
+
 /** There can be an inverter in-line between the MCU pin
  * that is connected to the cellular module's PWR_ON pin;
- * this allows the sense to be switched easily.
+ * this allows the sense to be switched at compile time.
+ * However, the method of ORing the pin with
+ * U_CELL_PIN_INVERTED is preferred; this compile-time
+ * mechanism is retained for backwards-compatibility.
+ * DON'T USE BOTH MECHANISMS or the sense of the pin will
+ * be inverted twice.
  */
 #ifndef U_CELL_PWR_ON_PIN_INVERTED
 # define U_CELL_PWR_ON_PIN_TOGGLE_TO_STATE 0
@@ -80,8 +95,13 @@ extern "C" {
 
 /** There can be an inverter in-line between the MCU pin
  * and the thing (e.g. a transistor) that is enabling power to
- * the cellular module; this allows the sense to be switched
- * easily.
+ * the cellular module; this macro allows the sense of the power
+ * on pin to be switched at compile time.  However, the
+ * method of ORing the pin with U_CELL_PIN_INVERTED is
+ * preferred; this compile-time mechanism is retained for
+ * backwards-compatibility.
+ * DON'T USE BOTH MECHANISMS or the sense of the pin will
+ * be inverted twice.
  */
 #ifndef U_CELL_ENABLE_POWER_PIN_INVERTED
 # define U_CELL_ENABLE_POWER_PIN_ON_STATE 1
@@ -91,7 +111,12 @@ extern "C" {
 
 /** There can be an inverter in-line between the VINT pin
  * on the cellular module and the MCU pin; this allows the sense
- * to be switched easily.
+ * to be switched at compile time.  However, the
+ * method of ORing the pin with U_CELL_PIN_INVERTED is
+ * preferred; this compile-time mechanism is retained for
+ * backwards-compatibility.
+ * DON'T USE BOTH MECHANISMS or the sense of the pin will
+ * be inverted twice.
  */
 #ifndef U_CELL_VINT_PIN_INVERTED
 # define U_CELL_VINT_PIN_ON_STATE 1
@@ -168,18 +193,29 @@ void uCellDeinit();
  *                         supply to the cellular module. The
  *                         Sense of the pin should be such that
  *                         low means off and high means on.
- *                         Set to -1 if there is no such pin.
+ *                         Set to -1 if there is no such pin.  If there
+ *                         is an inverter between the pin of this MCU
+ *                         and whatever is switching the power, so that
+ *                         0 indicates "on" rather than 1, then the value
+ *                         of pinEnablePower should be ORed with
+ *                         U_CELL_PIN_INVERTED.
  * @param pinPwrOn         the pin that signals power-on to the
  *                         cellular module, i.e. the pin
  *                         that is connected to the module's PWR_ON pin.
- *                         Set to -1 if there is no such pin.
+ *                         Set to -1 if there is no such pin.  If there
+ *                         is an inverter between the pin of this MCU
+ *                         and the PWR_ON pin of the module then the value
+ *                         of pinPwrOn should be ORed with U_CELL_PIN_INVERTED.
  * @param pinVInt          the pin that can be monitored to detect
  *                         that the cellular module is powered up.
  *                         This pin should be connected to the
  *                         VInt pin of the module and is used to
  *                         make sure that the modem is truly off before
  *                         power to it is disabled.  Set to -1 if
- *                         there is no such pin.
+ *                         there is no such pin.  If there is an
+ *                         inverter between the VInt pin of the module
+ *                         and this pin of the MCU then the value
+ *                         of pinVInt should be ORed with U_CELL_PIN_INVERTED.
  * @param leavePowerAlone  set this to true if initialisation should
  *                         not modify the state of pinEnablePower or
  *                         pinPwrOn, else it will ensure that pinEnablePower

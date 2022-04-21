@@ -216,4 +216,18 @@ extern uint32_t SystemCoreClock;
      */
 #define configUSE_DISABLE_TICK_AUTO_CORRECTION_DEBUG     0
 
+#ifdef U_DEBUG_UTILS_DUMP_THREADS
+/* When ubxlib dump threads are enabled we need an FreeRTOS addition
+ * to be able to get the stack for each thread
+ */
+#define configINCLUDE_FREERTOS_TASK_C_ADDITIONS_H        1
+/* Defines for needed for the FreeRTOS addition above */
+#define CONFIG_FREERTOS_ENABLE_TASK_SNAPSHOT             1
+#define CONFIG_FREERTOS_SMP                              1
+#define portVALID_TCB_MEM(x)                             1
+
+/* This is needed in order to keep compiler happy */
+#define FREERTOS_TASKS_C_ADDITIONS_INIT()
+#endif
+
 #endif /* FREERTOS_CONFIG_H */

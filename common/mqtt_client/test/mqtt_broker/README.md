@@ -3,7 +3,7 @@ This folder contains files relevant to installing a test MQTT broker using [mosq
 
 # MQTT
 ## Installation
-Follow the installation instructions at https://mosquitto.org/ to install `mosquitto` on your server.  With that done, create a directory named something like `mosquitto` off your home directory on the server and copy into it the [mosquitto.conf](mosquitto.conf) file, editing the absolute paths to the certificate/key files as appropriate for your home directory, and the whole [cert](cert) directory.  Edit the file `/lib/systemd/system/mosquitto.service' so that the line:
+Follow the installation instructions at https://mosquitto.org/ to install `mosquitto` on your server.  With that done, create a directory named something like `mosquitto` off your home directory on the server and copy into it the [mosquitto.conf](mosquitto.conf) file, editing the absolute paths to the certificate/key files as appropriate for your home directory, and also copy the whole [cert](cert) directory.  Edit the file `/lib/systemd/system/mosquitto.service` so that the line:
 
 ```
 ExecStart=/usr/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf
@@ -19,7 +19,7 @@ ExecStart=/usr/sbin/mosquitto -c <absolute path to your home directory>/mosquitt
 
 ```
 sudo systemctl daemon-reload
-sudo systemctl start mosquitto
+sudo systemctl restart mosquitto
 ```
 
 ## Test
@@ -60,7 +60,9 @@ sudo systemctl enable mosquitto
 The Paho MQTT-SN Gateway is a separate service which behaves like an MQTT-SN broker but in fact is a relay to an MQTT broker.  With the configuration files here it listens on ports 1885/8885 for UDP/DTLS connections, uses the server certificate/key pair in the [cert](cert) sub-directory and relays MQTT traffic to the `mosquitto` MQTT broker, as installed above, on the same \[Linux\] server.
 
 ## Installation
-Follow the installation instructions at https://github.com/eclipse/paho.mqtt-sn.embedded-c/tree/master/MQTTSNGateway to install and build the Gateway part of Paho MQTT-SN on the same \[Linux\] server as above.  Build it first for `udp`, i.e.:
+Follow the installation instructions at https://github.com/eclipse/paho.mqtt-sn.embedded-c/tree/master/MQTTSNGateway to install and build the Gateway part of Paho MQTT-SN on the same \[Linux\] server as above.
+
+Build it first for `udp`, i.e.:
 
 ```
 cd paho.mqtt-sn.embedded-c/MQTTSNGateway

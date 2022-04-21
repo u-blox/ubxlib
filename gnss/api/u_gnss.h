@@ -69,7 +69,13 @@ void uGnssDeinit();
  *                           talk with the GNSS module.  This must
  *                           already have been created by the caller.
  * @param pinGnssEnablePower the pin of the MCU that enables power to the
- *                           GNSS module; use -1 if there is no such connection.
+ *                           GNSS module; use -1 if there is no such
+ *                           connection.  If there is an inverter between
+ *                           the pin of this MCU and whatever is switching
+ *                           the power, so that 0 indicates "on" rather
+ *                           than 1, then the value of pinGnssEnablePower
+ *                           should be ORed with U_GNSS_PIN_INVERTED (defined
+ *                           in u_gnss_type.h).
  * @param leavePowerAlone    set this to true if initialisation should
  *                           not modify the state of pinGnssEnablePower, else
  *                           pinGnssEnablePower will be set to its "off" state.

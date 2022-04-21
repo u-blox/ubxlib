@@ -147,6 +147,44 @@ extern "C" {
 # define U_CELL_PRIVATE_UART_WAKE_UP_RETRY_INTERVAL_MS 333
 #endif
 
+/** Bit mask to get to the bit in pinStates which indicates
+ * the "on" state of the ENABLE_POWER pin.
+ */
+#define U_CELL_PRIVATE_ENABLE_POWER_PIN_BIT_ON_STATE 0
+
+/** Macro to get the "on" state of the ENABLE_POWER pin.
+ */
+#define U_CELL_PRIVATE_ENABLE_POWER_PIN_ON_STATE(pinStates) (int32_t) (((pinStates) >> U_CELL_PRIVATE_ENABLE_POWER_PIN_BIT_ON_STATE) & 1)
+
+/** Bit mask to get to the bit in pinStates which indicates
+ * the "toggle-to" state of the PWR_ON pin.
+ */
+#define U_CELL_PRIVATE_PWR_ON_PIN_BIT_TOGGLE_TO_STATE 1
+
+/** Macro to get the "toggle-to" state of the PWR_ON pin.
+ */
+#define U_CELL_PRIVATE_PWR_ON_PIN_TOGGLE_TO_STATE(pinStates) (int32_t) (((pinStates) >> U_CELL_PRIVATE_PWR_ON_PIN_BIT_TOGGLE_TO_STATE) & 1)
+
+/** Bit mask to get to the bit in pinStates which indicates
+ * the "on" state of the VINT pin.
+ */
+#define U_CELL_PRIVATE_VINT_PIN_BIT_ON_STATE          2
+
+/** Macro to get the "on" state of the VINT pin.
+ */
+#define U_CELL_PRIVATE_VINT_PIN_ON_STATE(pinStates) (int32_t) (((pinStates) >> U_CELL_PRIVATE_VINT_PIN_BIT_ON_STATE) & 1)
+
+/** Bit mask to get to the bit in pinStates which indicates
+ * the "on" (i.e. no power saving) state of the DTR pin when
+ * it is used for power saving.
+ */
+#define U_CELL_PRIVATE_DTR_POWER_SAVING_PIN_BIT_ON_STATE 3
+
+/** Macro to get the "on" (i.e. no power saving) state of the
+ * DTR pin when it is used for power-saving.
+ */
+#define U_CELL_PRIVATE_DTR_POWER_SAVING_PIN_ON_STATE(pinStates) (int32_t) (((pinStates) >> U_CELL_PRIVATE_DTR_POWER_SAVING_PIN_BIT_ON_STATE) & 1)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -331,6 +369,9 @@ typedef struct uCellPrivateInstance_t {
     int32_t pinDtrPowerSaving; /**< The pin that is connected to the
                                     cellular module's DTR pin, ONLY used
                                     for UPSV mode 3, -1 otherwise. */
+    uint32_t pinStates; /**< This records what the "on"/"toggle to" etc. states
+                             of the above pins are, allowing them to be inverted
+                             if necessary. */
     char mccMnc[U_CELL_NET_MCC_MNC_LENGTH_BYTES]; /**< The MCC MNC if manual
                                                        network selection has
                                                        been requested (set

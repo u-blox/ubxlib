@@ -79,6 +79,14 @@
 # define U_CELL_MQTT_LOCAL_URC_TIMEOUT_MS 5000
 #endif
 
+#ifndef U_CELL_MQTT_CONNECT_DELAY_MILLISECONDS
+/** It can take a little while for the MQTT client inside
+ * the module to become aware that a radio connection has been
+ * made so we wait at least this long to give it time to realise.
+ */
+# define U_CELL_MQTT_CONNECT_DELAY_MILLISECONDS 1000
+#endif
+
 /** Helper macro to make sure that the entry and exit functions
  * are always called.
  */
@@ -1091,6 +1099,17 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
     pUrcStatus = &(pContext->urcStatus);
     atHandle = pInstance->atHandle;
     uPortLog("U_CELL_MQTT: trying to %s...\n", onNotOff ? "connect" : "disconnect");
+    if (onNotOff) {
+        // The internal MQTT client in a cellular module can
+        // take a little while to find out that the connection
+        // has actually been made and hence we wait here for
+        // it to be ready to connect
+        while (uPortGetTickTimeMs() - pInstance->connectedAtMs <
+               U_CELL_MQTT_CONNECT_DELAY_MILLISECONDS) {
+            uPortTaskBlock(100);
+        }
+    }
+
     uAtClientLock(atHandle);
     pUrcStatus->flagsBitmap = 0;
     // Have seen this take a little while to respond
@@ -1557,21 +1576,9 @@ int32_t uCellMqttGetLocalPort(int32_t cellHandle)
             }
             if ((errorCodeOrPort < 0) &&
                 U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-                // SARA=R4 doesn't respond with a port number if the
-                // port number is just the default one.  Determine if
-                // we are secured so that we can send back the correct
-                // default port number
-                errorCodeOrPort = U_MQTT_BROKER_PORT_UNSECURE;
-                if (isSecured(pInstance, NULL)) {
-                    errorCodeOrPort = U_MQTT_BROKER_PORT_SECURE;
-                }
-            }
-        } else {
-            // The port number will be based upon whether
-            // security is enabled or not
-            errorCodeOrPort = U_MQTT_BROKER_PORT_UNSECURE;
-            if (isSecured(pInstance, NULL)) {
-                errorCodeOrPort = U_MQTT_BROKER_PORT_SECURE;
+                // SARA-R4 doesn't respond with a port number if the
+                // port number is just the default one.
+                errorCodeOrPort = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             }
         }
     }

@@ -772,7 +772,8 @@ bool uCellPrivateIsDeepSleepActive(uCellPrivateInstance_t *pInstance)
 
     if (((pContext != NULL) && pContext->powerSaving3gppAgreed &&
          (pInstance->pinVInt >= 0) &&
-         (uPortGpioGet(pInstance->pinVInt) == (int32_t) !U_CELL_VINT_PIN_ON_STATE))) {
+         (uPortGpioGet(pInstance->pinVInt) ==
+          (int32_t) !U_CELL_PRIVATE_VINT_PIN_ON_STATE(pInstance->pinStates)))) {
         pInstance->deepSleepState = U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP;
         // If we've configured sleep and VInt has gone to its off state,
         // then we are asleep.

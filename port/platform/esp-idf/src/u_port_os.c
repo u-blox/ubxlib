@@ -27,17 +27,16 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS FOR MUTEX DEBUG
  * -------------------------------------------------------------- */
-
 #ifdef U_CFG_MUTEX_DEBUG
 /** If we're adding the mutex debug intermediate functions to
  * the build then the implementations of the mutex functions
  * here get an underscore before them
  */
-# define MAKE_MTX_FN(x, ...) _ ## x __VA_OPT__(,) __VA_ARGS__
+# define MAKE_MTX_FN(name) _ ## name
 #else
 /** The normal case: a mutex function is not fiddled with.
  */
-# define MAKE_MTX_FN(x, ...) x __VA_OPT__(,) __VA_ARGS__
+# define MAKE_MTX_FN(name) name
 #endif
 
 /** This macro, working in conjunction with the MAKE_MTX_FN()
@@ -49,7 +48,7 @@
  * back into the "underscore versions" of the uPortOsMutex*
  * functions here.
  */
-#define MTX_FN(x, ...) MAKE_MTX_FN(x __VA_OPT__(,) __VA_ARGS__)
+#define MTX_FN(name) MAKE_MTX_FN(name)
 
 // Now undef U_CFG_MUTEX_DEBUG so that this file is not polluted
 // by the u_mutex_debug.h stuff brought in through u_port_os.h.
@@ -341,7 +340,7 @@ int32_t uPortQueueGetFree(const uPortQueueHandle_t queueHandle)
  * -------------------------------------------------------------- */
 
 // Create a mutex.
-int32_t MTX_FN(uPortMutexCreate(uPortMutexHandle_t *pMutexHandle))
+int32_t MTX_FN(uPortMutexCreate)(uPortMutexHandle_t *pMutexHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -358,7 +357,7 @@ int32_t MTX_FN(uPortMutexCreate(uPortMutexHandle_t *pMutexHandle))
 }
 
 // Destroy a mutex.
-int32_t MTX_FN(uPortMutexDelete(const uPortMutexHandle_t mutexHandle))
+int32_t MTX_FN(uPortMutexDelete)(const uPortMutexHandle_t mutexHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -371,7 +370,7 @@ int32_t MTX_FN(uPortMutexDelete(const uPortMutexHandle_t mutexHandle))
 }
 
 // Lock the given mutex.
-int32_t MTX_FN(uPortMutexLock(const uPortMutexHandle_t mutexHandle))
+int32_t MTX_FN(uPortMutexLock)(const uPortMutexHandle_t mutexHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -387,7 +386,7 @@ int32_t MTX_FN(uPortMutexLock(const uPortMutexHandle_t mutexHandle))
 }
 
 // Try to lock the given mutex.
-int32_t MTX_FN(uPortMutexTryLock(const uPortMutexHandle_t mutexHandle, int32_t delayMs))
+int32_t MTX_FN(uPortMutexTryLock)(const uPortMutexHandle_t mutexHandle, int32_t delayMs)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -403,7 +402,7 @@ int32_t MTX_FN(uPortMutexTryLock(const uPortMutexHandle_t mutexHandle, int32_t d
 }
 
 // Unlock the given mutex.
-int32_t MTX_FN(uPortMutexUnlock(const uPortMutexHandle_t mutexHandle))
+int32_t MTX_FN(uPortMutexUnlock)(const uPortMutexHandle_t mutexHandle)
 {
     uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 

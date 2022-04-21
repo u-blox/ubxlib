@@ -183,11 +183,8 @@ void uCellMqttDeinit(int32_t cellHandle);
 int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
                              size_t sizeBytes);
 
-/** Set the local port to use for the MQTT client.  If this is not
- * called the IANA assigned ports of 1883 for non-secure MQTT or 8883
- * for TLS secured MQTT will be used.
- * Note that SARA-R5 does not support setting the local port, the port
- * numbers will be pre-set based on whether security is on or off.
+/** Set the local port to use for the MQTT client.
+ * Note that only SARA-R412M-02B supports setting the local port.
  * IMPORTANT: a re-boot of the module will lose your setting.
  *
  * @param cellHandle the handle of the cellular instance to be used.
@@ -197,6 +194,9 @@ int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
 int32_t uCellMqttSetLocalPort(int32_t cellHandle, uint16_t port);
 
 /** Get the local port used by the MQTT client.
+ * Note that only SARA-R412M-02B supports setting the local port and,
+ * that it does not support _reading_ the local port unless one has
+ * been specifically set with uCellMqttSetLocalPort().
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           the port number on success or negative error code.
