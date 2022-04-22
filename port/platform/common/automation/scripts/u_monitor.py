@@ -298,9 +298,8 @@ def pwar_readline(in_handle, connection_type, terminator=None):
         # when nothing is there to avoid reading partial
         # lines as the pipe is being filled
     elif connection_type == CONNECTION_PROCESS:
-        start_time = time()
         eol = False
-        while not eol and (time() - start_time < 5):
+        while not eol:
             return_code = in_handle.poll()
             buf = in_handle.stdout.read(1)
             if buf:
@@ -308,11 +307,9 @@ def pwar_readline(in_handle, connection_type, terminator=None):
                 eol = character == terminator
                 if not eol:
                     line = line + character
-            elif return_code is None:
-                # Since this is a busy/wait we sleep a bit if there is no data
-                # to offload the CPU
-                sleep(0.01)
-            else:
+            elif return_code is not None:
+                # We got the return code and read returned None which means
+                # that process has terminated and all characters has been read
                 cmd = " ".join(in_handle.args) if isinstance(in_handle.args, list) \
                     else in_handle.args
                 raise subprocess.CalledProcessError(return_code, cmd)
