@@ -76,7 +76,7 @@ Peripherals are u-blox modules which accept commands (e.g. AT-commands) over a s
 
 \* Through the u-blox [CellLocate](https://www.u-blox.com/en/product/celllocate) mobile network-based location service.
 
-# Strucure of `ubxlib`
+# Structure of `ubxlib`
 The APIs for each type of u-blox module can be found in the relevant directory (e.g. [cell](/cell) for cellular modules and [ble](/ble)/[wifi](/wifi) for BLE/Wi-Fi modules).  The [common](/common) directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the [network](/common/network) API and the [sockets](/common/sockets) API.  All APIs are documented in the API header files.
 
 Examples demonstrating the use of the APIs can be found in the [example](/example) directory.
