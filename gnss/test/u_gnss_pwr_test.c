@@ -91,7 +91,7 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
  */
 U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
 {
-    int32_t gnssHandle;
+    uDeviceHandle_t gnssHandle;
     int32_t heapUsed;
     size_t iterations;
     uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];

@@ -112,7 +112,7 @@ static const char gAllChars[] = "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0
  * -------------------------------------------------------------- */
 
 // Callback function for the cellular connection process.
-static bool keepGoingCallback(int32_t unused)
+static bool keepGoingCallback(uDeviceHandle_t unused)
 {
     bool keepGoing = true;
 
@@ -137,7 +137,7 @@ static bool keepGoingCallback(int32_t unused)
  */
 U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t heapUsed;
     char buffer1[32];
@@ -457,7 +457,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttCleanUp")
 {
     int32_t x;
 
-    if (gHandles.cellHandle >= 0) {
+    if (gHandles.cellHandle != NULL) {
         uCellMqttDeinit(gHandles.cellHandle);
     }
     uCellTestPrivateCleanup(&gHandles);

@@ -158,7 +158,7 @@ static uCellSecTlsContext_t *pNewContext()
             if (gpContextList[x] != NULL) {
                 // Initialise the entry
                 pContext = gpContextList[x];
-                pContext->cellHandle = -1;
+                pContext->cellHandle = NULL;
                 pContext->cipherList.pString = NULL;
                 pContext->cipherList.index = 0;
                 pContext->profileId = (uint8_t) x;
@@ -572,7 +572,7 @@ static int32_t setGeneratePsk(const uCellSecTlsContext_t *pContext,
  * -------------------------------------------------------------- */
 
 // Add a cellular TLS security context with default settings.
-uCellSecTlsContext_t *pUCellSecSecTlsAdd(int32_t cellHandle)
+uCellSecTlsContext_t *pUCellSecSecTlsAdd(uDeviceHandle_t cellHandle)
 {
     uCellSecTlsContext_t *pContext = NULL;
     uCellPrivateInstance_t *pInstance;

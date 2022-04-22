@@ -177,8 +177,9 @@ static void printLocation(int32_t latitudeX1e7, int32_t longitudeX1e7)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     uLocation_t location;
+    int32_t returnCode;
 
     // Set an out of range value so that we can test it later
     location.timeUtc = -1;
@@ -188,13 +189,14 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
     uNetworkInit();
 
     // Add the network instance
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                             (void *) &gConfigCell,
+                             &devHandle);
+    uPortLog("Added network with return code %d.\n", returnCode);
 
     // Bring up the network layer
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkUp(devHandle) == 0) {
 
         // You may use the network, as normal,
         // at any time, for example connect and
@@ -216,7 +218,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
         // (metres versus hundreds of metres).
 
         // Now get location using Cell Locate
-        if (uLocationGet(networkHandle, U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
+        if (uLocationGet(devHandle, U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
                          NULL, U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
                          &location, NULL) == 0) {
             printLocation(location.latitudeX1e7, location.longitudeX1e7);
@@ -226,7 +228,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
 
         // When finished with the network layer
         uPortLog("Taking down network...\n");
-        uNetworkDown(networkHandle);
+        uNetworkDown(devHandle);
     } else {
         uPortLog("Unable to bring up the network!\n");
     }

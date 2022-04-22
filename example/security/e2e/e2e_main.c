@@ -156,8 +156,9 @@ static void printHex(const char *pStr, size_t length)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     int32_t rxSize = 0;
+    int32_t returnCode;
     char buffer[MY_MESSAGE_LENGTH + U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES];
 
     // Initialise the APIs we will need
@@ -167,23 +168,24 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
     // Add a network instance, in this case of type cell
     // since that's what we have configuration information
     // for above.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                             (void *) &gConfigCell,
+                             &devHandle);
+    uPortLog("Added network with return code %d.\n", returnCode);
 
     // Bring up the network layer
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkUp(devHandle) == 0) {
 
         // The module must have previously been security
         // sealed for this example to work
-        if (uSecurityIsSealed(networkHandle)) {
+        if (uSecurityIsSealed(devHandle)) {
             uPortLog("Device is security sealed.\n");
 
             uPortLog("Requesting end to end encryption of %d"
                      " byte(s) of data \"%s\"...\n",
                      MY_MESSAGE_LENGTH, MY_MESSAGE);
-            rxSize = uSecurityE2eEncrypt(networkHandle, MY_MESSAGE,
+            rxSize = uSecurityE2eEncrypt(devHandle, MY_MESSAGE,
                                          buffer, MY_MESSAGE_LENGTH);
             uPortLog("%d byte(s) of data returned.\n", rxSize);
             printHex(buffer, rxSize);
@@ -222,23 +224,23 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
             // Before security sealing can be performed the device must
             // have contacted u-blox security services and "bootstrapped"
             // itself (a once-only process): check that this has happened
-            for (x = 10; (x > 0) && !uSecurityIsBootstrapped(networkHandle); x--) {
+            for (x = 10; (x > 0) && !uSecurityIsBootstrapped(devHandle); x--) {
                 uPortTaskBlock(5000);
             }
 
-            if (uSecurityIsBootstrapped(networkHandle)) {
+            if (uSecurityIsBootstrapped(devHandle)) {
                 uPortLog("Device is bootstrapped.\n");
 
                 // In this example we obtain the serial number of the
                 // device and use that in the sealing process.  You
                 // may chose your own serial number instead if you wish.
-                x = uSecurityGetSerialNumber(networkHandle, serialNumber);
+                x = uSecurityGetSerialNumber(devHandle, serialNumber);
                 if ((x > 0) && x < (int32_t) sizeof(serialNumber)) {
                     uPortLog("Performing security seal with device profile UID"
                              " string \"%s\" and serial number \"%s\"...\n",
                              U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
                              serialNumber);
-                    if (uSecuritySealSet(networkHandle,
+                    if (uSecuritySealSet(devHandle,
                                          U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
                                          serialNumber, NULL) == 0) {
                         uPortLog("Device is security sealed with device profile UID string \"%s\""
@@ -262,7 +264,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
 
         // When finished with the network layer
         uPortLog("Taking down network...\n");
-        uNetworkDown(networkHandle);
+        uNetworkDown(devHandle);
     } else {
         uPortLog("Unable to bring up the network!\n");
     }
@@ -270,7 +272,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
 #ifndef U_CFG_SECURITY_DEVICE_PROFILE_UID
     // For u-blox internal testing only
     EXAMPLE_FINAL_STATE((rxSize >= MY_MESSAGE_LENGTH + U_SECURITY_E2E_HEADER_LENGTH_MIN_BYTES) || \
-                        !uSecurityIsSupported(networkHandle));
+                        !uSecurityIsSupported(devHandle));
 #endif
 
     // Calling these will also deallocate the network handle

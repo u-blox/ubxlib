@@ -56,7 +56,7 @@ static void failed(const char *msg)
 
 int main(void)
 {
-    int32_t netHandle;
+    uDeviceHandle_t devHandle = NULL;
 
     static const uNetworkConfigurationWifi_t wifiConfig = {
         .type = U_NETWORK_TYPE_WIFI,
@@ -74,16 +74,16 @@ int main(void)
     VERIFY(uPortInit() == 0, "uPortInit failed\n");
     VERIFY(uNetworkInit() == 0, "uNetworkInit failed\n");
 
-    netHandle = uNetworkAdd(U_NETWORK_TYPE_WIFI, &wifiConfig);
+    VERIFY(uNetworkAdd(U_NETWORK_TYPE_WIFI, &wifiConfig, devHandle) == 0, "uNetworkAdd failed\n");
     uPortLog("Bring up Wi-Fi\n");
-    VERIFY(uNetworkUp(netHandle) == 0, "uNetworkUp failed\n");
+    VERIFY(uNetworkUp(devHandle) == 0, "uNetworkUp failed\n");
 
     uPortLog("Wi-Fi connected\n");
     // Just sleep for 10 sec
     uPortTaskBlock(10*1000);
 
     // Cleanup
-    uNetworkDown(netHandle);
+    uNetworkDown(devHandle);
     uNetworkDeinit();
     uPortDeinit();
 

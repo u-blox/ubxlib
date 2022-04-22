@@ -229,7 +229,7 @@ static void printAddress(const uSockAddress_t *pAddress,
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     int32_t sock;
     int32_t x = 0;
     uSockAddress_t address;
@@ -237,6 +237,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
     size_t txSize = sizeof(message);
     char buffer[64];
     size_t rxSize = 0;
+    int32_t returnCode;
 
     // Initialise the APIs we will need
     uPortInit();
@@ -245,12 +246,12 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
     // Add a network instance, in this case of type cell
     // since that's what we have configuration information
     // for above.
-    networkHandle = uNetworkAdd(gNetType, (void *) &gConfig);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(gNetType, (void *) &gConfig, &devHandle);
+    uPortLog("Added network with return code %d.\n", returnCode);
 
     // Bring up the network layer
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkUp(devHandle) == 0) {
 
         // Do things using the network, for
         // example connect and send data to
@@ -260,7 +261,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
         // Get the server's IP address using
         // the network's DNS resolution facility
         uPortLog("Looking up server address...\n");
-        uSockGetHostByName(networkHandle, MY_SERVER_NAME,
+        uSockGetHostByName(devHandle, MY_SERVER_NAME,
                            &(address.ipAddress));
         uPortLog("Address is: ");
         printAddress(&address, false);
@@ -269,7 +270,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
 
         // Create the socket on the network
         uPortLog("Creating socket...\n");
-        sock = uSockCreate(networkHandle,
+        sock = uSockCreate(devHandle,
                            U_SOCK_TYPE_STREAM,
                            U_SOCK_PROTOCOL_TCP);
 
@@ -301,7 +302,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
             uPortLog("Unable to connect to server!\n");
         }
 
-        // Note: since networkHandle is a cellular
+        // Note: since devHandle is a cellular
         // handle any of the `cell` API calls
         // could be made here using it.
         // If the configuration used were Wifi
@@ -316,7 +317,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
 
         // When finished with the network layer
         uPortLog("Taking down network...\n");
-        uNetworkDown(networkHandle);
+        uNetworkDown(devHandle);
     } else {
         uPortLog("Unable to bring up the network!\n");
     }

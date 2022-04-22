@@ -62,7 +62,7 @@ const uNetworkConfigurationCell_t gConfiguration = {U_NETWORK_TYPE_CELL,
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
 int app_start() {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle;
     int32_t sock;
     uSockAddress_t remoteAddress;
     int32_t x;
@@ -76,11 +76,12 @@ int app_start() {
 
     // Add a network instance, in this case of type cell
     // since that's what we have configuration information for
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfiguration);
+    uNetworkAdd(U_NETWORK_TYPE_CELL,
+                (void *) &gConfiguration,
+                &devHandle);
 
     // Bring up the network layer
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkUp(devHandle) == 0) {
 
         // Do things using the network, for
         // example send data over a TCP socket
@@ -88,12 +89,12 @@ int app_start() {
 
         // Get the server's IP address using
         // the network's DNS resolution facility
-        uSockGetHostByName(networkHandle, MY_SERVER_NAME,
+        uSockGetHostByName(devHandle, MY_SERVER_NAME,
                            &(remoteAddress.ipAddress));
         remoteAddress.port = MY_SERVER_PORT;
 
         // Create the socket using the network
-        sock = uSockCreate(networkHandle,
+        sock = uSockCreate(devHandle,
                            U_SOCK_TYPE_STREAM,
                            U_SOCK_PROTOCOL_TCP);
 
@@ -115,7 +116,7 @@ int app_start() {
         uSockCleanUp(sock);
 
         // When finished with the network layer
-        uNetworkDown(networkHandle);
+        uNetworkDown(devHandle);
     }
 
     // Calling these will also deallocate the network handle

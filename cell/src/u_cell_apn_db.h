@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /* ----------------------------------------------------------------
    APN stands for Access Point Name, a setting on your modem or phone

@@ -36,6 +36,8 @@
 
 #include "u_error_common.h"
 
+#include "u_device_internal.h"
+
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
@@ -43,6 +45,7 @@
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 
+#include "u_network.h"
 #include "u_network_private_short_range.h"
 
 /* ----------------------------------------------------------------
@@ -59,14 +62,14 @@
  * -------------------------------------------------------------- */
 
 typedef struct {
-    int32_t shoHandle; /**< The handle returned by uShortRangeAdd(). */
+    uDeviceHandle_t wifiHandle; /**< The handle returned by uShortRangeAdd(). */
+    uDeviceHandle_t bleHandle; /**< The handle returned by uShortRangeAdd(). */
     int32_t uart; /**< The UART HW block to use. */
     int32_t module; /**< The module type that is connected,
                          see uShortRangeModuleType_t in u_short_range.h. */
     int32_t uartHandle; /**< The handle returned by uPortUartOpen(). */
     int32_t edmStreamHandle; /**< The handle returned by uShortRangeEdmStreamOpen(). */
     uAtClientHandle_t atClientHandle; /**< The handle returned by uAtClientAdd(). */
-    int32_t refCounter;  /**< Reference counter used for Add/Remove. */
 } uNetworkPrivateShoInstance_t;
 
 
@@ -91,7 +94,8 @@ static void clearInstance(uNetworkPrivateShoInstance_t *pInstance)
     pInstance->uartHandle = -1;
     pInstance->atClientHandle = NULL;
     pInstance->edmStreamHandle = -1;
-    pInstance->shoHandle = -1;
+    pInstance->wifiHandle = NULL;
+    pInstance->bleHandle = NULL;
 }
 
 // Find instance by uart - return NULL if not found.
@@ -111,14 +115,25 @@ static uNetworkPrivateShoInstance_t *pFindUart(int32_t uart)
 
 
 // Find instance by handle - return NULL if not found.
-static uNetworkPrivateShoInstance_t *pFindHandle(int32_t shoHandle)
+static uNetworkPrivateShoInstance_t *pFindHandle(uDeviceHandle_t devHandle)
 {
     uNetworkPrivateShoInstance_t *pIter = NULL;
 
     for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
          (pIter == NULL); x++) {
-        if (gInstance[x].shoHandle == shoHandle) {
-            pIter = &gInstance[x];
+        if (devHandle == NULL) {
+            // devHandle==NULL is used to find a free handle.
+            // In this case both ble and wifi handle must be NULL.
+            if ((gInstance[x].wifiHandle == NULL) && (gInstance[x].bleHandle == NULL)) {
+                pIter = &gInstance[x];
+            }
+        } else {
+            // Check if either ble or wifi handle matches
+            if (gInstance[x].wifiHandle == devHandle) {
+                pIter = &gInstance[x];
+            } else if (gInstance[x].bleHandle == devHandle) {
+                pIter = &gInstance[x];
+            }
         }
     }
 
@@ -174,11 +189,17 @@ void uNetworkDeinitShortRange(void)
 }
 
 // Add a short range network instance.
-int32_t uNetworkAddShortRange(const uShortRangeConfig_t *pConfiguration)
+int32_t uNetworkAddShortRange(uNetworkType_t netType,
+                              const uShortRangeConfig_t *pConfiguration,
+                              uDeviceHandle_t *pDevHandle)
 {
     int32_t errorCode;
     uNetworkPrivateShoInstance_t *pInstance;
     uShortRangeUartConfig_t uartConfig;
+
+    if ((netType != U_NETWORK_TYPE_BLE) && (netType != U_NETWORK_TYPE_WIFI)) {
+        return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    }
 
     // The short range module might already be initialized
     pInstance = pFindUart(pConfiguration->uart);
@@ -187,32 +208,66 @@ int32_t uNetworkAddShortRange(const uShortRangeConfig_t *pConfiguration)
         if ((int32_t) pInstance->module != pConfiguration->module) {
             return (int32_t) U_SHORT_RANGE_ERROR_WRONG_TYPE;
         } else {
-            pInstance->refCounter++;
-            return pInstance->shoHandle;
+            // When we get here we have an existing pInstance
+            // In this instance either bleHandle or wifiHandle (or both)
+            // is already set. So we need to:
+            // 1. Check that the network type that the user want to setup is already used
+            // 2. Create a copy of the existing uDeviceHandle_t where we only change the
+            //    network type the user specified one.
+            // NOTE: This is only a temporary solution until the Network API have been
+            //       modified to allow multiple interfaces for the same uDevice.
+            uDeviceInstance_t **ppTargetHandle;
+            uDeviceInstance_t **ppExistingHandle;
+
+            if (netType == U_NETWORK_TYPE_BLE) {
+                ppTargetHandle = (uDeviceInstance_t **) &(pInstance->bleHandle);    // *NOPAD*
+                ppExistingHandle = (uDeviceInstance_t **) &(pInstance->wifiHandle); // *NOPAD*
+            } else {
+                ppTargetHandle = (uDeviceInstance_t **) &(pInstance->wifiHandle);  // *NOPAD*
+                ppExistingHandle = (uDeviceInstance_t **) &(pInstance->bleHandle); // *NOPAD*
+            }
+            if (*ppTargetHandle != NULL) {
+                // User have already initialized network layer for the specified network type
+                return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            }
+            // We now need to create a new uDeviceHandle_t with correct network type
+            *ppTargetHandle = uDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE);
+            if (*ppTargetHandle == NULL) {
+                return (int32_t) U_ERROR_COMMON_NO_MEMORY;
+            }
+            (*ppTargetHandle)->pContext = (*ppExistingHandle)->pContext;
+            (*ppTargetHandle)->netType = (int32_t) netType;
+            *pDevHandle = (uDeviceHandle_t)(*ppTargetHandle);
+            return (int32_t) U_ERROR_COMMON_SUCCESS;
         }
     }
 
     // No previous connection to this module so we need to init
 
     // First a free instance
-    pInstance = pFindHandle(-1);
+    pInstance = pFindHandle(NULL);
     if (pInstance == NULL) {
-        return (int32_t)U_ERROR_COMMON_NO_MEMORY;
+        return (int32_t) U_ERROR_COMMON_NO_MEMORY;
     }
+    clearInstance(pInstance);
 
     uNetworkConfigToShortRangeUartConfig(pConfiguration, &uartConfig);
     // Open UART, EDM stream and initialize the module
     errorCode = uShortRangeOpenUart((uShortRangeModuleType_t) pConfiguration->module,
-                                    &uartConfig, true);
+                                    &uartConfig, true, pDevHandle);
 
     if (errorCode >= 0) {
-        pInstance->shoHandle = errorCode;
-        pInstance->uartHandle = uShortRangeGetUartHandle(pInstance->shoHandle);
-        pInstance->edmStreamHandle = uShortRangeGetEdmStreamHandle(pInstance->shoHandle);
-        uShortRangeAtClientHandleGet(pInstance->shoHandle, &pInstance->atClientHandle);
+        U_DEVICE_INSTANCE(*pDevHandle)->netType = (int32_t) netType;
+        if (netType == U_NETWORK_TYPE_BLE) {
+            pInstance->bleHandle = *pDevHandle;
+        } else {
+            pInstance->wifiHandle = *pDevHandle;
+        }
+        pInstance->uartHandle = uShortRangeGetUartHandle(*pDevHandle);
+        pInstance->edmStreamHandle = uShortRangeGetEdmStreamHandle(*pDevHandle);
+        uShortRangeAtClientHandleGet(*pDevHandle, &pInstance->atClientHandle);
 
         pInstance->module = pConfiguration->module;
-        pInstance->refCounter = 1;
         pInstance->uart = pConfiguration->uart;
     } else {
         clearInstance(pInstance);
@@ -222,27 +277,38 @@ int32_t uNetworkAddShortRange(const uShortRangeConfig_t *pConfiguration)
 }
 
 // Remove a short range network instance.
-int32_t uNetworkRemoveShortRange(int32_t handle)
+int32_t uNetworkRemoveShortRange(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uNetworkPrivateShoInstance_t *pInstance;
 
     // Find the instance in the list
-    pInstance = pFindHandle(handle);
-    if ((pInstance != NULL) && (--pInstance->refCounter <= 0)) {
-        uShortRangeClose(pInstance->shoHandle);
-        clearInstance(pInstance);
+    pInstance = pFindHandle(devHandle);
+    if (pInstance != NULL) {
+        if (pInstance->bleHandle == devHandle) {
+            pInstance->bleHandle = NULL;
+        } else {
+            pInstance->wifiHandle = NULL;
+        }
+        // Only if both wifi and ble has been removed we close the short range device
+        if ((pInstance->bleHandle == NULL) && (pInstance->wifiHandle == NULL)) {
+            uShortRangeClose(devHandle);
+            clearInstance(pInstance);
+        } else {
+            // Don't forget to free the duplicated device handle
+            uDeviceDestroyInstance(U_DEVICE_INSTANCE(devHandle));
+        }
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     }
 
     return errorCode;
 }
 
-uAtClientHandle_t uNetworkGetAtClientShortRange(int32_t handle)
+uAtClientHandle_t uNetworkGetAtClientShortRange(uDeviceHandle_t devHandle)
 {
     uNetworkPrivateShoInstance_t *pInstance;
 
-    pInstance = pFindHandle(handle);
+    pInstance = pFindHandle(devHandle);
     if (pInstance) {
         return pInstance->atClientHandle;
     }

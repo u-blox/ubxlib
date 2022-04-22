@@ -158,10 +158,11 @@ static char latLongToBits(int32_t thingX1e7,
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     uLocation_t location;
     int32_t whole = 0;
     int32_t fraction = 0;
+    int32_t returnCode;
 
     // Set an out of range value so that we can test it later
     location.timeUtc = -1;
@@ -171,19 +172,20 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
     uNetworkInit();
 
     // Add a network instance of type GNSS
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_GNSS,
-                                (void *) &gConfig);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_GNSS,
+                             (void *) &gConfig,
+                             &devHandle);
+    uPortLog("Added network with return code %d.\n", returnCode);
 
     // You may configure GNSS as required here
     // here using any of the GNSS API calls.
 
     // Bring up the GNSS network layer
     uPortLog("Bringing up GNSS...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkUp(devHandle) == 0) {
 
         // Get location
-        if (uLocationGet(networkHandle, U_LOCATION_TYPE_GNSS,
+        if (uLocationGet(devHandle, U_LOCATION_TYPE_GNSS,
                          NULL, NULL, &location, NULL) == 0) {
             uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d/%c%d.%07d\n",
                      latLongToBits(location.latitudeX1e7, &whole, &fraction),
@@ -196,7 +198,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 
         // When finished with the GNSS network layer
         uPortLog("Taking down GNSS...\n");
-        uNetworkDown(networkHandle);
+        uNetworkDown(devHandle);
     } else {
         uPortLog("Unable to bring up GNSS!\n");
     }

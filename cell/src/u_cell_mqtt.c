@@ -666,7 +666,7 @@ static void UUMQTT_urc(uAtClientHandle_t atHandle,
 // is called from uCellMqttInit(), normally you want to call this
 // function with mustBeInitialised set to true.  In all cases the
 // cellular mutex will be locked.
-static void entryFunction(int32_t cellHandle,
+static void entryFunction(uDeviceHandle_t cellHandle,
                           uCellPrivateInstance_t **ppInstance,
                           int32_t *pErrorCode,
                           bool mustBeInitialised)
@@ -958,7 +958,7 @@ static bool isSecured(const uCellPrivateInstance_t *pInstance,
 }
 
 // Set MQTT ping or "keep alive" on or off.
-static int32_t setKeepAlive(int32_t cellHandle, bool onNotOff)
+static int32_t setKeepAlive(uDeviceHandle_t cellHandle, bool onNotOff)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -1019,7 +1019,7 @@ static int32_t setKeepAlive(int32_t cellHandle, bool onNotOff)
 }
 
 // Set MQTT session retention on or off.
-static int32_t setSessionRetain(int32_t cellHandle, bool onNotOff)
+static int32_t setSessionRetain(uDeviceHandle_t cellHandle, bool onNotOff)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -1048,7 +1048,7 @@ static int32_t setSessionRetain(int32_t cellHandle, bool onNotOff)
 }
 
 // Set security on or off.
-static int32_t setSecurity(int32_t cellHandle, bool onNotOff,
+static int32_t setSecurity(uDeviceHandle_t cellHandle, bool onNotOff,
                            int32_t securityProfileId)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1189,7 +1189,7 @@ static bool isPrint(const char *pBuffer, size_t bufferLength)
  * -------------------------------------------------------------- */
 
 // Initialise the cellular MQTT client.
-int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
+int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                       const char *pClientIdStr, const char *pUserNameStr,
                       const char *pPasswordStr,
                       bool (*pKeepGoingCallback)(void),
@@ -1408,7 +1408,7 @@ int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
 }
 
 // Shut-down the cellular MQTT client.
-void uCellMqttDeinit(int32_t cellHandle)
+void uCellMqttDeinit(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance;
     volatile uCellMqttContext_t *pContext;
@@ -1447,7 +1447,7 @@ void uCellMqttDeinit(int32_t cellHandle)
 }
 
 // Get the current cellular MQTT client ID.
-int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
+int32_t uCellMqttGetClientId(uDeviceHandle_t cellHandle, char *pClientIdStr,
                              size_t sizeBytes)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1504,7 +1504,7 @@ int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
 }
 
 // Set the local port to use for the MQTT client.
-int32_t uCellMqttSetLocalPort(int32_t cellHandle, uint16_t port)
+int32_t uCellMqttSetLocalPort(uDeviceHandle_t cellHandle, uint16_t port)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -1531,7 +1531,7 @@ int32_t uCellMqttSetLocalPort(int32_t cellHandle, uint16_t port)
 }
 
 // Get the local port used by the MQTT client.
-int32_t uCellMqttGetLocalPort(int32_t cellHandle)
+int32_t uCellMqttGetLocalPort(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrPort = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -1589,7 +1589,7 @@ int32_t uCellMqttGetLocalPort(int32_t cellHandle)
 }
 
 // Set the inactivity timeout used by the MQTT client.
-int32_t uCellMqttSetInactivityTimeout(int32_t cellHandle,
+int32_t uCellMqttSetInactivityTimeout(uDeviceHandle_t cellHandle,
                                       size_t seconds)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1614,7 +1614,7 @@ int32_t uCellMqttSetInactivityTimeout(int32_t cellHandle,
 }
 
 // Get the inactivity timeout used by the MQTT client.
-int32_t uCellMqttGetInactivityTimeout(int32_t cellHandle)
+int32_t uCellMqttGetInactivityTimeout(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -1662,7 +1662,7 @@ int32_t uCellMqttGetInactivityTimeout(int32_t cellHandle)
 }
 
 // Switch MQTT ping or "keep alive" on.
-int32_t uCellMqttSetKeepAliveOn(int32_t cellHandle)
+int32_t uCellMqttSetKeepAliveOn(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode;
 
@@ -1683,13 +1683,13 @@ int32_t uCellMqttSetKeepAliveOn(int32_t cellHandle)
 }
 
 // Switch MQTT ping or "keep alive" off.
-int32_t uCellMqttSetKeepAliveOff(int32_t cellHandle)
+int32_t uCellMqttSetKeepAliveOff(uDeviceHandle_t cellHandle)
 {
     return setKeepAlive(cellHandle, false);
 }
 
 // Determine whether MQTT ping or "keep alive" is on or off.
-bool uCellMqttIsKeptAlive(int32_t cellHandle)
+bool uCellMqttIsKeptAlive(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     bool keptAlive = false;
@@ -1709,19 +1709,19 @@ bool uCellMqttIsKeptAlive(int32_t cellHandle)
 }
 
 // Set session retention on.
-int32_t uCellMqttSetRetainOn(int32_t cellHandle)
+int32_t uCellMqttSetRetainOn(uDeviceHandle_t cellHandle)
 {
     return setSessionRetain(cellHandle, true);
 }
 
 // Switch MQTT session retention off.
-int32_t uCellMqttSetRetainOff(int32_t cellHandle)
+int32_t uCellMqttSetRetainOff(uDeviceHandle_t cellHandle)
 {
     return setSessionRetain(cellHandle, false);
 }
 
 // Determine whether MQTT session retention is on or off.
-bool uCellMqttIsRetained(int32_t cellHandle)
+bool uCellMqttIsRetained(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     bool isRetained = false;
@@ -1768,20 +1768,20 @@ bool uCellMqttIsRetained(int32_t cellHandle)
 }
 
 // Switch MQTT TLS security on.
-int32_t uCellMqttSetSecurityOn(int32_t cellHandle,
+int32_t uCellMqttSetSecurityOn(uDeviceHandle_t cellHandle,
                                int32_t securityProfileId)
 {
     return setSecurity(cellHandle, true, securityProfileId);
 }
 
 // Switch MQTT TLS security off.
-int32_t uCellMqttSetSecurityOff(int32_t cellHandle)
+int32_t uCellMqttSetSecurityOff(uDeviceHandle_t cellHandle)
 {
     return setSecurity(cellHandle, false, 0);
 }
 
 // Determine whether MQTT TLS security is on or off.
-bool uCellMqttIsSecured(int32_t cellHandle,
+bool uCellMqttIsSecured(uDeviceHandle_t cellHandle,
                         int32_t *pSecurityProfileId)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1800,7 +1800,7 @@ bool uCellMqttIsSecured(int32_t cellHandle,
 }
 
 // Set the MQTT "will" message.
-int32_t uCellMqttSetWill(int32_t cellHandle,
+int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                          const char *pTopicNameStr,
                          const char *pMessage,
                          size_t messageSizeBytes,
@@ -1901,7 +1901,7 @@ int32_t uCellMqttSetWill(int32_t cellHandle,
 // Note: if SARA-R4 ever supports this the SARA-R4
 // return-things-via-URC pattern will probably
 // need to be added here.
-int32_t uCellMqttGetWill(int32_t cellHandle, char *pTopicNameStr,
+int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                          size_t topicNameSizeBytes,
                          char *pMessage,
                          size_t *pMessageSizeBytes,
@@ -2056,7 +2056,7 @@ int32_t uCellMqttGetWill(int32_t cellHandle, char *pTopicNameStr,
 }
 
 // Start an MQTT session.
-int32_t uCellMqttConnect(int32_t cellHandle)
+int32_t uCellMqttConnect(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -2077,7 +2077,7 @@ int32_t uCellMqttConnect(int32_t cellHandle)
 }
 
 // Stop an MQTT session.
-int32_t uCellMqttDisconnect(int32_t cellHandle)
+int32_t uCellMqttDisconnect(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -2094,7 +2094,7 @@ int32_t uCellMqttDisconnect(int32_t cellHandle)
 }
 
 // Determine whether an MQTT session is active or not.
-bool uCellMqttIsConnected(int32_t cellHandle)
+bool uCellMqttIsConnected(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     bool connected = false;
@@ -2114,7 +2114,7 @@ bool uCellMqttIsConnected(int32_t cellHandle)
 }
 
 // Publish an MQTT message.
-int32_t uCellMqttPublish(int32_t cellHandle,
+int32_t uCellMqttPublish(uDeviceHandle_t cellHandle,
                          const char *pTopicNameStr,
                          const char *pMessage,
                          size_t messageSizeBytes,
@@ -2292,7 +2292,7 @@ int32_t uCellMqttPublish(int32_t cellHandle,
 }
 
 // Subscribe to an MQTT topic.
-int32_t uCellMqttSubscribe(int32_t cellHandle,
+int32_t uCellMqttSubscribe(uDeviceHandle_t cellHandle,
                            const char *pTopicFilterStr,
                            uCellMqttQos_t maxQos)
 {
@@ -2369,7 +2369,7 @@ int32_t uCellMqttSubscribe(int32_t cellHandle,
 }
 
 // Unsubscribe from an MQTT topic.
-int32_t uCellMqttUnsubscribe(int32_t cellHandle,
+int32_t uCellMqttUnsubscribe(uDeviceHandle_t cellHandle,
                              const char *pTopicFilterStr)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -2444,7 +2444,7 @@ int32_t uCellMqttUnsubscribe(int32_t cellHandle,
 }
 
 // Set a callback to be called when new messages arrive.
-int32_t uCellMqttSetMessageCallback(int32_t cellHandle,
+int32_t uCellMqttSetMessageCallback(uDeviceHandle_t cellHandle,
                                     void (*pCallback) (int32_t, void *),
                                     void *pCallbackParam)
 {
@@ -2465,7 +2465,7 @@ int32_t uCellMqttSetMessageCallback(int32_t cellHandle,
 }
 
 // Get the number of unread messages.
-int32_t uCellMqttGetUnread(int32_t cellHandle)
+int32_t uCellMqttGetUnread(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrUnread = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -2483,7 +2483,7 @@ int32_t uCellMqttGetUnread(int32_t cellHandle)
 }
 
 // Read an MQTT message.
-int32_t uCellMqttMessageRead(int32_t cellHandle, char *pTopicNameStr,
+int32_t uCellMqttMessageRead(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                              size_t topicNameSizeBytes,
                              char *pMessage, size_t *pMessageSizeBytes,
                              uCellMqttQos_t *pQos)
@@ -2656,7 +2656,7 @@ int32_t uCellMqttMessageRead(int32_t cellHandle, char *pTopicNameStr,
 }
 
 // Get the last MQTT error code.
-int32_t uCellMqttGetLastErrorCode(int32_t cellHandle)
+int32_t uCellMqttGetLastErrorCode(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -2673,7 +2673,7 @@ int32_t uCellMqttGetLastErrorCode(int32_t cellHandle)
 }
 
 // Determine if MQTT is supported by the given cellHandle.
-bool uCellMqttIsSupported(int32_t cellHandle)
+bool uCellMqttIsSupported(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -2685,7 +2685,7 @@ bool uCellMqttIsSupported(int32_t cellHandle)
 }
 
 // Set a callback for when the MQTT connection is dropped.
-int32_t uCellMqttSetDisconnectCallback(int32_t cellHandle,
+int32_t uCellMqttSetDisconnectCallback(uDeviceHandle_t cellHandle,
                                        void (*pCallback) (int32_t, void *),
                                        void *pCallbackParam)
 {

@@ -73,3 +73,19 @@
  * in the compiler's own C library include tree.
  */
 -esym(839, mktime)
+
+/* Suppress "Parameter could be declared as pointing to const"
+ * for u_device handles.
+ */
+-esym(818, devHandle)
+-esym(818, cellHandle)
+-esym(818, gnssHandle)
+
+/* Suppress "inline 'Symbol' not previously defined inline at (Location)"
+ * Compiler will tell us if we do something wrong - no need to let Lint wine about it
+ */
+-e1727
+
+/* Suppress "repeated include file"
+ */
+-e537

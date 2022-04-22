@@ -89,7 +89,7 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
 U_PORT_TEST_FUNCTION("[cellFile]", "cellFileWrite")
 {
     int32_t heapUsed;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t result;
     const char *pBuffer = "DEADBEEFDEADBEEF";
@@ -160,7 +160,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileWrite")
 U_PORT_TEST_FUNCTION("[cellFile]", "cellFileSize")
 {
     int32_t heapUsed;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t fileSize = 0;
     size_t y = 1;
@@ -226,7 +226,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileSize")
 U_PORT_TEST_FUNCTION("[cellFile]", "cellFileBlockRead")
 {
     int32_t heapUsed;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t result;
     int32_t offset;
@@ -294,7 +294,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileBlockRead")
 U_PORT_TEST_FUNCTION("[cellFile]", "cellFileRead")
 {
     int32_t heapUsed;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t length = 0;
     char buffer[50];
@@ -362,7 +362,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileRead")
 U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAll")
 {
     int32_t heapUsed;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     bool found;
     char *pFileName;
@@ -439,7 +439,7 @@ U_PORT_TEST_FUNCTION("[cellFile]", "cellFileListAll")
 U_PORT_TEST_FUNCTION("[cellFile]", "cellFileDelete")
 {
     int32_t heapUsed;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     size_t y = 1;
 

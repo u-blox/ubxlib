@@ -17,7 +17,11 @@
 #ifndef _U_SECURITY_CREDENTIAL_H_
 #define _U_SECURITY_CREDENTIAL_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the u-blox API for X.509 certificate
@@ -153,7 +157,7 @@ typedef struct {
  * credential it is best if the flow control lines are connected
  * on the interface to the module.
  *
- * @param networkHandle        the handle of the instance to be used,
+ * @param devHandle            the handle of the instance to be used,
  *                             e.g. as returned by uNetworkAdd().
  * @param type                 the type of credential to be stored.
  * @param pName                the null-terminated name for the
@@ -183,7 +187,7 @@ typedef struct {
  *                             unchanged; may be NULL.
  * @return                     zero on success else negative error code.
  */
-int32_t uSecurityCredentialStore(int32_t networkHandle,
+int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
                                  uSecurityCredentialType_t type,
                                  const char *pName,
                                  const char *pContents,
@@ -195,7 +199,7 @@ int32_t uSecurityCredentialStore(int32_t networkHandle,
  * to compare with that originally returned by uSecurityCredentialStore().
  * The hash is that of the DER-format key as stored in the module.
  *
- * @param networkHandle        the handle of the instance to be used,
+ * @param devHandle            the handle of the instance to be used,
  *                             e.g. as returned by uNetworkAdd().
  * @param type                 the type of credential, as was passed to
  *                             uSecurityCredentialStore() when storing it.
@@ -208,7 +212,7 @@ int32_t uSecurityCredentialStore(int32_t networkHandle,
  *                             of storage for the result.
  * @return                     zero on success else negative error code.
  */
-int32_t uSecurityCredentialGetHash(int32_t networkHandle,
+int32_t uSecurityCredentialGetHash(uDeviceHandle_t devHandle,
                                    uSecurityCredentialType_t type,
                                    const char *pName,
                                    char *pMd5);
@@ -217,7 +221,7 @@ int32_t uSecurityCredentialGetHash(int32_t networkHandle,
  * from storage; uSecurityCredentialListNext() should be called repeatedly
  * to iterate through subsequent entries in the list.  This function
  * is not thread-safe in that there is a single list of names for any
- * given networkHandle.
+ * given devHandle    .
  *
  * For instance, to print out the names of all stored credentials:
  *
@@ -237,13 +241,13 @@ int32_t uSecurityCredentialGetHash(int32_t networkHandle,
  * u-blox security are NOT listed here, please see instead the
  * uSecurityZtp*() APIs in u_security.h.
  *
- * @param networkHandle        the handle of the instance to be used,
+ * @param devHandle            the handle of the instance to be used,
  *                             e.g. as returned by uNetworkAdd().
  * @param pCredential          pointer to somewhere to store the result.
  * @return                     the number of credentials in the list
  *                             or negative error code.
  */
-int32_t uSecurityCredentialListFirst(int32_t networkHandle,
+int32_t uSecurityCredentialListFirst(uDeviceHandle_t devHandle,
                                      uSecurityCredential_t *pCredential);
 
 /** Return subsequent descriptions of credentials in the list.  Use
@@ -263,28 +267,28 @@ int32_t uSecurityCredentialListFirst(int32_t networkHandle,
  * u-blox security are NOT listed here, please see instead the
  * uSecurityZtp*() APIs in u_security.h.
  *
- * @param networkHandle        the handle of the instance to be used,
+ * @param devHandle            the handle of the instance to be used,
  *                             e.g. as returned by uNetworkAdd().
  * @param pCredential          pointer to somewhere to store the result.
  * @return                     the number of entries remaining *after*
  *                             this one has been read or negative error
  *                             code.
  */
-int32_t uSecurityCredentialListNext(int32_t networkHandle,
+int32_t uSecurityCredentialListNext(uDeviceHandle_t devHandle,
                                     uSecurityCredential_t *pCredential);
 
 /** It is good practice to call this to clear up memory from
  * uSecurityCredentialListFirst() if you are not going to
  * iterate through the whole list with uSecurityCredentialListNext().
  *
- * @param networkHandle the handle of the instance to be used,
+ * @param devHandle     the handle of the instance to be used,
  *                      e.g. as returned by uNetworkAdd().
  */
-void uSecurityCredentialListLast(int32_t networkHandle);
+void uSecurityCredentialListLast(uDeviceHandle_t devHandle);
 
 /** Remove the given X.509 certificate or security key from storage.
  *
- * @param networkHandle  the handle of the instance to be used,
+ * @param devHandle      the handle of the instance to be used,
  *                       e.g. as returned by uNetworkAdd().
  * @param type           the type of credential to be removed, as
  *                       was passed to uSecurityCredentialStore()
@@ -296,7 +300,7 @@ void uSecurityCredentialListLast(int32_t networkHandle);
  *                       U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES.
  * @return               zero on success else negative error code.
  */
-int32_t uSecurityCredentialRemove(int32_t networkHandle,
+int32_t uSecurityCredentialRemove(uDeviceHandle_t devHandle,
                                   uSecurityCredentialType_t type,
                                   const char *pName);
 

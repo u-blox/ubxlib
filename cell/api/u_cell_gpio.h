@@ -17,6 +17,8 @@
 #ifndef U_CELL_GPIO_H_
 #define U_CELL_GPIO_H_
 
+#include "u_device.h"
+
 /** @file
  * @brief This header file defines the u-blox API for controlling
  * the GPIO lines of a cellular module that is attached to this MCU.
@@ -88,7 +90,7 @@ typedef enum {
  *                      is true; 0 for low or non-zero for high.
  * @return              zero on success else negative error code.
  */
-int32_t uCellGpioConfig(int32_t cellHandle, uCellGpioName_t gpioId,
+int32_t uCellGpioConfig(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
                         bool isOutput, int32_t level);
 
 /** Set the state of a GPIO of a cellular module.
@@ -111,7 +113,7 @@ int32_t uCellGpioConfig(int32_t cellHandle, uCellGpioName_t gpioId,
  * @param level         the level to set, 0 for low or non-zero for high.
  * @return              zero on success else negative error code.
  */
-int32_t uCellGpioSet(int32_t cellHandle, uCellGpioName_t gpioId,
+int32_t uCellGpioSet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
                      int32_t level);
 
 /** Get the state of a GPIO of a cellular module.
@@ -134,7 +136,7 @@ int32_t uCellGpioSet(int32_t cellHandle, uCellGpioName_t gpioId,
  * @return              on success the level 0 (low) or 1 (high)
  *                      else negative error code.
  */
-int32_t uCellGpioGet(int32_t cellHandle, uCellGpioName_t gpioId);
+int32_t uCellGpioGet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId);
 
 /** Set the state of the CTS line: this may be used if the
  * serial handshaking lines are NOT being used (i.e. they are both
@@ -148,7 +150,7 @@ int32_t uCellGpioGet(int32_t cellHandle, uCellGpioName_t gpioId);
  * @param level         the level to set, 0 for low or non-zero for high.
  * @return              zero on success else negative error code.
  */
-int32_t uCellGpioSetCts(int32_t cellHandle, int32_t level);
+int32_t uCellGpioSetCts(uDeviceHandle_t cellHandle, int32_t level);
 
 /** Get the state of the CTS line: this may be used if the
  * serial handshaking lines are NOT being used (i.e. they are both
@@ -162,7 +164,7 @@ int32_t uCellGpioSetCts(int32_t cellHandle, int32_t level);
  * @return              on success the level 0 (low) or 1 (high)
  *                      else negative error code.
  */
-int32_t uCellGpioGetCts(int32_t cellHandle);
+int32_t uCellGpioGetCts(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }

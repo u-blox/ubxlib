@@ -75,7 +75,7 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-static uWifiTestPrivate_t gHandles = { -1, -1, NULL, -1 };
+static uWifiTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -103,7 +103,7 @@ U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgConfigureModule")
                                                 &uart,
                                                 &gHandles) == 0);
     cfg.notUsed = false;
-    U_PORT_TEST_ASSERT(uWifiCfgConfigure(gHandles.wifiHandle, &cfg) == 0);
+    U_PORT_TEST_ASSERT(uWifiCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
 
     uWifiTestPrivatePostamble(&gHandles);

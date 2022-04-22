@@ -17,7 +17,11 @@
 #ifndef _U_GNSS_POS_H_
 #define _U_GNSS_POS_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the GNSS APIs to read position.
@@ -126,13 +130,13 @@ extern "C" {
  * @return                            zero on success or negative error
  *                                    code on failure.
  */
-int32_t uGnssPosGet(int32_t gnssHandle,
+int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
                     int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                     int32_t *pAltitudeMillimetres,
                     int32_t *pRadiusMillimetres,
                     int32_t *pSpeedMillimetresPerSecond,
                     int32_t *pSvs, int64_t *pTimeUtc,
-                    bool (*pKeepGoingCallback) (int32_t));
+                    bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** A non-blocking version of uGnssPosGet(), i.e. this is still a
  * one-shot operation but the answer arrives via a callback.  Should
@@ -158,8 +162,8 @@ int32_t uGnssPosGet(int32_t gnssHandle,
  * @return           zero on success or negative error code on
  *                   failure.
  */
-int32_t uGnssPosGetStart(int32_t gnssHandle,
-                         void (*pCallback) (int32_t gnssHandle,
+int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
+                         void (*pCallback) (uDeviceHandle_t gnssHandle,
                                             int32_t errorCode,
                                             int32_t latitudeX1e7,
                                             int32_t longitudeX1e7,
@@ -177,7 +181,7 @@ int32_t uGnssPosGetStart(int32_t gnssHandle,
  *
  * @param gnssHandle  the handle of the GNSS instance.
  */
-void uGnssPosGetStop(int32_t gnssHandle);
+void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
 
 /** Get the binary RRLP information directly from the GNSS chip i.e.
  * as returned by the UBX-RXM-MEASX command of the UBX protocol.  This
@@ -238,11 +242,11 @@ void uGnssPosGetStop(int32_t gnssHandle);
  * @return                              on success the number of bytes returned, else
  *                                      negative error code.
  */
-int32_t uGnssPosGetRrlp(int32_t gnssHandle, char *pBuffer, size_t sizeBytes,
+int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer, size_t sizeBytes,
                         int32_t svsThreshold, int32_t cNoThreshold,
                         int32_t multipathIndexLimit,
                         int32_t pseudorangeRmsErrorIndexLimit,
-                        bool (*pKeepGoingCallback) (int32_t));
+                        bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 #ifdef __cplusplus
 }

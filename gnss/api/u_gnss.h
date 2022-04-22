@@ -17,7 +17,11 @@
 #ifndef _U_GNSS_H_
 #define _U_GNSS_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the general GNSS APIs.
@@ -79,14 +83,15 @@ void uGnssDeinit();
  * @param leavePowerAlone    set this to true if initialisation should
  *                           not modify the state of pinGnssEnablePower, else
  *                           pinGnssEnablePower will be set to its "off" state.
- * @return                   on success the handle of the GNSS instance,
- *                           else negative error code.
+ * @param[out] pGnssHandle   a pointer to the output handle. Will only be set on success.
+ * @return                   zero on success or negative error code on failure.
  */
 int32_t uGnssAdd(uGnssModuleType_t moduleType,
                  uGnssTransportType_t transportType,
                  const uGnssTransportHandle_t transportHandle,
                  int32_t pinGnssEnablePower,
-                 bool leavePowerAlone);
+                 bool leavePowerAlone,
+                 uDeviceHandle_t *pGnssHandle);
 
 /** Remove a GNSS instance.  It is up to the caller to ensure
  * that the GNSS module for the given instance has been powered down etc.;
@@ -94,7 +99,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
  *
  * @param gnssHandle  the handle of the GNSS instance to remove.
  */
-void uGnssRemove(int32_t gnssHandle);
+void uGnssRemove(uDeviceHandle_t gnssHandle);
 
 /** Get the type and handle of the transport used by the given
  * GNSS instance.
@@ -106,7 +111,7 @@ void uGnssRemove(int32_t gnssHandle);
  *                          may be NULL.
  * @return                  zero on success, else negative error code.
  */
-int32_t uGnssGetTransportHandle(int32_t gnssHandle,
+int32_t uGnssGetTransportHandle(uDeviceHandle_t gnssHandle,
                                 uGnssTransportType_t *pTransportType,
                                 uGnssTransportHandle_t *pTransportHandle);
 
@@ -126,7 +131,7 @@ int32_t uGnssGetTransportHandle(int32_t gnssHandle,
  * @param gnssHandle  the handle of the GNSS instance.
  * @param pin         the cellular module pin to use.
  */
-void uGnssSetAtPinPwr(int32_t gnssHandle, int32_t pin);
+void uGnssSetAtPinPwr(uDeviceHandle_t gnssHandle, int32_t pin);
 
 /** If the transport type is AT, i.e. the GNSS chip is being
  * accessed through an intermediate (e.g. cellular) module, then
@@ -143,7 +148,7 @@ void uGnssSetAtPinPwr(int32_t gnssHandle, int32_t pin);
  * @param gnssHandle  the handle of the GNSS instance.
  * @param pin         the cellular module pin to use.
  */
-void uGnssSetAtPinDataReady(int32_t gnssHandle, int32_t pin);
+void uGnssSetAtPinDataReady(uDeviceHandle_t gnssHandle, int32_t pin);
 
 /** Get the maximum time to wait for a response from the
  * GNSS chip for general API calls; does not apply to the
@@ -153,7 +158,7 @@ void uGnssSetAtPinDataReady(int32_t gnssHandle, int32_t pin);
  * @param gnssHandle  the handle of the GNSS instance.
  * @return            the timeout in milliseconds.
  */
-int32_t uGnssGetTimeout(int32_t gnssHandle);
+int32_t uGnssGetTimeout(uDeviceHandle_t gnssHandle);
 
 /** Set the timeout for getting a response from the GNSS chip.
  * If this is not called the timeout will be
@@ -164,7 +169,7 @@ int32_t uGnssGetTimeout(int32_t gnssHandle);
  * @param gnssHandle  the handle of the GNSS instance.
  * @param timeoutMs   the timeout in milliseconds.
  */
-void uGnssSetTimeout(int32_t gnssHandle, int32_t timeoutMs);
+void uGnssSetTimeout(uDeviceHandle_t gnssHandle, int32_t timeoutMs);
 
 /** Get whether printing of ubx commands and responses
  * is on or off.
@@ -173,7 +178,7 @@ void uGnssSetTimeout(int32_t gnssHandle, int32_t timeoutMs);
  * @return             true if printing ubx commands and
  *                     responses is on, else false.
  */
-bool uGnssGetUbxMessagePrint(int32_t gnssHandle);
+bool uGnssGetUbxMessagePrint(uDeviceHandle_t gnssHandle);
 
 /** Switch printing of ubx commands and response on or off.
  *
@@ -182,7 +187,7 @@ bool uGnssGetUbxMessagePrint(int32_t gnssHandle);
  *                     and responses to be printed, false to
  *                     switch printing off.
  */
-void uGnssSetUbxMessagePrint(int32_t gnssHandle, bool onNotOff);
+void uGnssSetUbxMessagePrint(uDeviceHandle_t gnssHandle, bool onNotOff);
 
 #ifdef __cplusplus
 }

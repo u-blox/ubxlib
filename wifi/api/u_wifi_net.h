@@ -91,16 +91,17 @@ typedef struct {
  *
  * This callback will be called once for each entry found.
  *
- * @param wifiHandle         the handle of the wifi instance.
+ * @param devHandle          the handle of the wifi instance.
  * @param pResult            the scan result.
  * @param pCallbackParameter parameter pointer set when registering callback.
  */
-typedef void (*uWifiNetScanResultCallback_t) (int32_t wifiHandle, uWifiNetScanResult_t *pResult);
+typedef void (*uWifiNetScanResultCallback_t) (uDeviceHandle_t devHandle,
+                                              uWifiNetScanResult_t *pResult);
 
 
 /** Connection status callback type
  *
- * @param wifiHandle         the handle of the wifi instance.
+ * @param devHandle          the handle of the wifi instance.
  * @param connId             connection ID.
  * @param status             new status of connection. Please see U_WIFI_NET_CON_STATUS_xx.
  * @param channel            wifi channel.
@@ -111,7 +112,7 @@ typedef void (*uWifiNetScanResultCallback_t) (int32_t wifiHandle, uWifiNetScanRe
  *                           Note: Only valid for U_WIFI_NET_STATUS_DISCONNECTED otherwise set to 0.
  * @param pCallbackParameter parameter pointer set when registering callback.
  */
-typedef void (*uWifiNetConnectionStatusCallback_t) (int32_t wifiHandle,
+typedef void (*uWifiNetConnectionStatusCallback_t) (uDeviceHandle_t devHandle,
                                                     int32_t connId,
                                                     int32_t status,
                                                     int32_t channel,
@@ -122,13 +123,13 @@ typedef void (*uWifiNetConnectionStatusCallback_t) (int32_t wifiHandle,
 
 /** Network status callback type
  *
- * @param wifiHandle         the handle of the wifi instance.
+ * @param devHandle          the handle of the wifi instance.
  * @param interfaceType      interface type. Only 1: Wifi Station supported at the moment.
  * @param statusMask         bitmask indicating the new status. Please see defined bits
  *                           U_WIFI_NET_STATUS_MASK_xx.
  * @param pCallbackParameter Parameter pointer set when registering callback.
  */
-typedef void (*uWifiNetNetworkStatusCallback_t) (int32_t wifiHandle,
+typedef void (*uWifiNetNetworkStatusCallback_t) (uDeviceHandle_t devHandle,
                                                  int32_t interfaceType,
                                                  uint32_t statusMask,
                                                  void *pCallbackParameter);
@@ -139,7 +140,7 @@ typedef void (*uWifiNetNetworkStatusCallback_t) (int32_t wifiHandle,
 
 /** Connect to a Wifi access point
  *
- * @param wifiHandle       the handle of the wifi instance.
+ * @param devHandle        the handle of the wifi instance.
  * @param pSsid            the Service Set Identifier
  * @param authentication   the authentication type
  * @param[in] pPassPhrase  the Passphrase (8-63ASCII characters as a string) for WPA/WPA2/WPA3
@@ -147,38 +148,38 @@ typedef void (*uWifiNetNetworkStatusCallback_t) (int32_t wifiHandle,
  *                         Note: There is no actual connection until the Wifi callback reports
  *                         connected.
  */
-int32_t uWifiNetStationConnect(int32_t wifiHandle, const char *pSsid, uWifiNetAuth_t authentication,
-                               const char *pPassPhrase);
+int32_t uWifiNetStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
+                               uWifiNetAuth_t authentication, const char *pPassPhrase);
 
 /** Disconnect from Wifi access point
  *
- * @param wifiHandle  the handle of the wifi instance.
+ * @param devHandle   the handle of the wifi instance.
  * @return            zero on successful, else negative error code.
  *                    Note: The disconnection is not completed until the Wifi callback
  *                    reports disconnected.
  */
-int32_t uWifiNetStationDisconnect(int32_t wifiHandle);
+int32_t uWifiNetStationDisconnect(uDeviceHandle_t devHandle);
 
 /** Set a callback for Wifi connection status.
   *
- * @param wifiHandle             the handle of the short range instance.
+ * @param devHandle              the handle of the short range instance.
  * @param[in] pCallback          callback function.
  * @param[in] pCallbackParameter parameter included with the callback.
  * @return                       zero on success or negative error code
  *                               on failure.
  */
-int32_t uWifiNetSetConnectionStatusCallback(int32_t wifiHandle,
+int32_t uWifiNetSetConnectionStatusCallback(uDeviceHandle_t devHandle,
                                             uWifiNetConnectionStatusCallback_t pCallback,
                                             void *pCallbackParameter);
 /** Set a callback for network status.
  *
- * @param wifiHandle             the handle of the short range instance.
+ * @param devHandle              the handle of the short range instance.
  * @param[in] pCallback          callback function.
  * @param[in] pCallbackParameter parameter included with the callback.
  * @return                       zero on success or negative error code
  *                               on failure.
  */
-int32_t uWifiNetSetNetworkStatusCallback(int32_t wifiHandle,
+int32_t uWifiNetSetNetworkStatusCallback(uDeviceHandle_t devHandle,
                                          uWifiNetNetworkStatusCallback_t pCallback,
                                          void *pCallbackParameter);
 
@@ -188,7 +189,7 @@ int32_t uWifiNetSetNetworkStatusCallback(int32_t wifiHandle,
  * Please note that this function will block until the scan process is completed.
  * During this time pCallback will be called for each scan result entry found.
  *
- * @param wifiHandle       the handle of the wifi instance.
+ * @param devHandle        the handle of the wifi instance.
  * @param[in] pSsid        optional SSID to search for. Set to NULL to search for any SSID.
  * @param[in] pCallback    callback for handling a scan result entry.
  *                         IMPORTANT: The callback will be called while the AT lock is held.
@@ -196,7 +197,7 @@ int32_t uWifiNetSetNetworkStatusCallback(int32_t wifiHandle,
  *                                    module APIs directly from this callback.
  * @return                 zero on successful, else negative error code.
  */
-int32_t uWifiNetStationScan(int32_t wifiHandle, const char *pSsid,
+int32_t uWifiNetStationScan(uDeviceHandle_t devHandle, const char *pSsid,
                             uWifiNetScanResultCallback_t pCallback);
 
 #ifdef __cplusplus

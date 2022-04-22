@@ -17,7 +17,10 @@
 #ifndef _U_WIFI_SOCK_H_
 #define _U_WIFI_SOCK_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines the sockets APIs for wifi.
@@ -90,7 +93,7 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-typedef void (*uWifiSockCallback_t)(int32_t wifiHandle, int32_t sockHandle);
+typedef void (*uWifiSockCallback_t)(uDeviceHandle_t devHandle, int32_t sockHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: INIT/DEINIT
@@ -119,12 +122,12 @@ void uWifiSockDeinit();
  * @return  zero on success else negated value of U_SOCK_Exxx
  *          from u_sock_errno.h.
  */
-int32_t uWifiSockInitInstance(int32_t wifiHandle);
+int32_t uWifiSockInitInstance(uDeviceHandle_t devHandle);
 
 /** Deinitialise the wifi instance.  Must be called before
  * uWifiSockDeinit().
  */
-int32_t uWifiSockDeinitInstance(int32_t wifiHandle);
+int32_t uWifiSockDeinitInstance(uDeviceHandle_t devHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: CREATE/OPEN/CLOSE/CLEAN-UP
@@ -132,7 +135,7 @@ int32_t uWifiSockDeinitInstance(int32_t wifiHandle);
 
 /** Create a socket.
  *
- * @param wifiHandle  the handle of the wifi instance.
+ * @param devHandle   the handle of the wifi instance.
  * @param type        the type of socket to create.
  * @param protocol    the protocol that will run over the given
  *                    socket.
@@ -140,13 +143,13 @@ int32_t uWifiSockDeinitInstance(int32_t wifiHandle);
  *                    negated value of U_SOCK_Exxx from
  *                    u_sock_errno.h.
  */
-int32_t uWifiSockCreate(int32_t wifiHandle,
+int32_t uWifiSockCreate(uDeviceHandle_t devHandle,
                         uSockType_t type,
                         uSockProtocol_t protocol);
 
 /** Connect to a server by IP address
  *
- * @param wifiHandle         the handle of the wifi instance.
+ * @param devHandle          the handle of the wifi instance.
  * @param sockHandle         the handle of the socket.
  * @param[in] pRemoteAddress the address of the server to
  *                           connect to, possibly established
@@ -156,13 +159,13 @@ int32_t uWifiSockCreate(int32_t wifiHandle,
  *                           value of U_SOCK_Exxx from
  *                           u_sock_errno.h.
  */
-int32_t uWifiSockConnect(int32_t wifiHandle,
+int32_t uWifiSockConnect(uDeviceHandle_t devHandle,
                          int32_t sockHandle,
                          const uSockAddress_t *pRemoteAddress);
 
 /** Close a socket.
  *
- * @param wifiHandle    the handle of the wifi instance.
+ * @param devHandle     the handle of the wifi instance.
  * @param sockHandle    the handle of the socket.
  * @param[in] pCallback sometimes closure of a TCP socket
  *                      can take many seconds due to the
@@ -179,7 +182,7 @@ int32_t uWifiSockConnect(int32_t wifiHandle,
  *                      value of U_SOCK_Exxx from
  *                      u_sock_errno.h.
  */
-int32_t uWifiSockClose(int32_t wifiHandle,
+int32_t uWifiSockClose(uDeviceHandle_t devHandle,
                        int32_t sockHandle,
                        uWifiSockCallback_t pCallback);
 
@@ -188,9 +191,9 @@ int32_t uWifiSockClose(int32_t wifiHandle,
  * the remote host, in order to free memory occupied
  * by closed sockets.
  *
- * @param wifiHandle  the handle of the wifi instance.
+ * @param devHandle   the handle of the wifi instance.
  */
-void uWifiSockCleanup(int32_t wifiHandle);
+void uWifiSockCleanup(uDeviceHandle_t devHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: CONFIGURE
@@ -200,23 +203,23 @@ void uWifiSockCleanup(int32_t wifiHandle);
  * is provided for compatibility purposes only: this socket
  * implementation is always non-blocking.
  *
- * @param wifiHandle  the handle of the wifi instance.
+ * @param devHandle   the handle of the wifi instance.
  * @param sockHandle  the handle of the socket.
  * @param isBlocking  true to set the socket to be
  *                    blocking, else false.
  */
-void uWifiSockBlockingSet(int32_t wifiHandle,
+void uWifiSockBlockingSet(uDeviceHandle_t devHandle,
                           int32_t sockHandle,
                           bool isBlocking);
 
 /** Get whether a socket is blocking or not.
  *
- * @param wifiHandle  the handle of the wifi instance.
+ * @param devHandle   the handle of the wifi instance.
  * @param sockHandle  the handle of the socket.
  * @return            true if the socket is blocking,
  *                    else false.
  */
-bool uWifiSockBlockingGet(int32_t wifiHandle,
+bool uWifiSockBlockingGet(uDeviceHandle_t devHandle,
                           int32_t sockHandle);
 
 /** Set socket option.  This function obeys
@@ -226,7 +229,7 @@ bool uWifiSockBlockingGet(int32_t wifiHandle,
  * U_SOCK_OPT_RCVTIMEO and then the option value would be
  * a pointer to a structure of type timeval.
  *
- * @param wifiHandle        the handle of the wifi instance.
+ * @param devHandle         the handle of the wifi instance.
  * @param sockHandle        the handle of the socket.
  * @param level             the option level
  *                          (see U_SOCK_OPT_LEVEL_xxx in u_sock.h).
@@ -237,7 +240,7 @@ bool uWifiSockBlockingGet(int32_t wifiHandle,
  *                          value of U_SOCK_Exxx from
  *                          u_sock_errno.h.
  */
-int32_t uWifiSockOptionSet(int32_t wifiHandle,
+int32_t uWifiSockOptionSet(uDeviceHandle_t devHandle,
                            int32_t sockHandle,
                            int32_t level,
                            uint32_t option,
@@ -246,7 +249,7 @@ int32_t uWifiSockOptionSet(int32_t wifiHandle,
 
 /** Get socket option.
  *
- * @param wifiHandle         the handle of the wifi instance.
+ * @param devHandle          the handle of the wifi instance.
  * @param sockHandle         the handle of the socket.
  * @param level              the option level (see
  *                           U_SOCK_OPT_LEVEL_xxx in u_sock.h).
@@ -264,7 +267,7 @@ int32_t uWifiSockOptionSet(int32_t wifiHandle,
  *                           value of U_SOCK_Exxx from
  *                           u_sock_errno.h.
  */
-int32_t uWifiSockOptionGet(int32_t wifiHandle,
+int32_t uWifiSockOptionGet(uDeviceHandle_t devHandle,
                            int32_t sockHandle,
                            int32_t level,
                            uint32_t option,
@@ -282,7 +285,7 @@ int32_t uWifiSockOptionGet(int32_t wifiHandle,
  * longer than this nothing will be transmitted and an error
  * will be returned.
  *
- * @param wifiHandle         the handle of the wifi instance.
+ * @param devHandle          the handle of the wifi instance.
  * @param sockHandle         the handle of the socket.
  * @param[in] pRemoteAddress the address of the server to
  *                           send the datagram to, possibly
@@ -297,7 +300,7 @@ int32_t uWifiSockOptionGet(int32_t wifiHandle,
  *                           success else negated value
  *                           of U_SOCK_Exxx from u_sock_errno.h.
  */
-int32_t uWifiSockSendTo(int32_t wifiHandle,
+int32_t uWifiSockSendTo(uDeviceHandle_t devHandle,
                         int32_t sockHandle,
                         const uSockAddress_t *pRemoteAddress,
                         const void *pData,
@@ -311,7 +314,7 @@ int32_t uWifiSockSendTo(int32_t wifiHandle,
  *        or uWifiSockConnect() must have been called before using
  *        this function.
  *
- * @param wifiHandle          the handle of the wifi instance.
+ * @param devHandle           the handle of the wifi instance.
  * @param sockHandle          the handle of the socket.
  * @param[out] pRemoteAddress a place to put the address of the remote
  *                            host from which the datagram was received;
@@ -329,7 +332,7 @@ int32_t uWifiSockSendTo(int32_t wifiHandle,
  * @return                    the number of bytes received else negated
  *                            value of U_SOCK_Exxx from u_sock_errno.h.
  */
-int32_t uWifiSockReceiveFrom(int32_t wifiHandle,
+int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
                              int32_t sockHandle,
                              uSockAddress_t *pRemoteAddress,
                              void *pData, size_t dataSizeBytes);
@@ -340,7 +343,7 @@ int32_t uWifiSockReceiveFrom(int32_t wifiHandle,
 
 /** Send bytes over a connected socket.
  *
- * @param wifiHandle     the handle of the wifi instance.
+ * @param devHandle      the handle of the wifi instance.
  * @param sockHandle     the handle of the socket.
  * @param[in] pData      the data to send, may be NULL, in which
  *                       case this function does nothing.
@@ -350,13 +353,13 @@ int32_t uWifiSockReceiveFrom(int32_t wifiHandle,
  *                       success else negated value
  *                       of U_SOCK_Exxx from u_sock_errno.h.
  */
-int32_t uWifiSockWrite(int32_t wifiHandle,
+int32_t uWifiSockWrite(uDeviceHandle_t devHandle,
                        int32_t sockHandle,
                        const void *pData, size_t dataSizeBytes);
 
 /** Receive bytes on a connected socket.
  *
- * @param wifiHandle     the handle of the wifi instance.
+ * @param devHandle      the handle of the wifi instance.
  * @param sockHandle     the handle of the socket.
  * @param[out] pData     a buffer in which to store the received
  *                       bytes.
@@ -365,7 +368,7 @@ int32_t uWifiSockWrite(int32_t wifiHandle,
  * @return               the number of bytes received else negated
  *                       value of U_SOCK_Exxx from u_sock_errno.h.
  */
-int32_t uWifiSockRead(int32_t wifiHandle,
+int32_t uWifiSockRead(uDeviceHandle_t devHandle,
                       int32_t sockHandle,
                       void *pData, size_t dataSizeBytes);
 
@@ -375,7 +378,7 @@ int32_t uWifiSockRead(int32_t wifiHandle,
 
 /** Register a callback on data being received.
  *
- * @param wifiHandle     the handle of the wifi instance.
+ * @param devHandle      the handle of the wifi instance.
  * @param sockHandle     the handle of the socket.
  * @param[in] pCallback  the callback to be called, or
  *                       NULL to cancel a previous callback.
@@ -386,13 +389,13 @@ int32_t uWifiSockRead(int32_t wifiHandle,
  *                       value of U_SOCK_Exxx from
  *                       u_sock_errno.h.
  */
-int32_t uWifiSockRegisterCallbackData(int32_t wifiHandle,
+int32_t uWifiSockRegisterCallbackData(uDeviceHandle_t devHandle,
                                       int32_t sockHandle,
                                       uWifiSockCallback_t pCallback);
 
 /** Register a callback on a socket being closed.
  *
- * @param wifiHandle     the handle of the wifi instance.
+ * @param devHandle      the handle of the wifi instance.
  * @param sockHandle     the handle of the socket.
  * @param[in] pCallback  the callback to be called, or
  *                       NULL to cancel a previous callback.
@@ -403,7 +406,7 @@ int32_t uWifiSockRegisterCallbackData(int32_t wifiHandle,
  *                       value of U_SOCK_Exxx from
  *                       u_sock_errno.h.
  */
-int32_t uWifiSockRegisterCallbackClosed(int32_t wifiHandle,
+int32_t uWifiSockRegisterCallbackClosed(uDeviceHandle_t devHandle,
                                         int32_t sockHandle,
                                         uWifiSockCallback_t pCallback);
 
@@ -416,14 +419,14 @@ int32_t uWifiSockRegisterCallbackClosed(int32_t wifiHandle,
  *
  * NOTE: Not implemented
  *
- * @param wifiHandle        the handle of the wifi instance.
+ * @param devHandle         the handle of the wifi instance.
  * @param sockHandle        the handle of the socket.
  * @param[in] pLocalAddress the local address to bind to.
  * @return                  zero on success else negated
  *                          value of U_SOCK_Exxx from
  *                          u_sock_errno.h.
  */
-int32_t uWifiSockBind(int32_t wifiHandle,
+int32_t uWifiSockBind(uDeviceHandle_t devHandle,
                       int32_t sockHandle,
                       const uSockAddress_t *pLocalAddress);
 
@@ -431,14 +434,14 @@ int32_t uWifiSockBind(int32_t wifiHandle,
  *
  * NOTE: Not implemented
  *
- * @param wifiHandle  the handle of the wifi instance.
+ * @param devHandle   the handle of the wifi instance.
  * @param sockHandle  the handle of the socket.
  * @param backlog     the number of pending connections that
  *                    can be queued.
  * @return            zero on success else negated value of
  *                    U_SOCK_Exxx from u_sock_errno.h.
  */
-int32_t uWifiSockListen(int32_t wifiHandle,
+int32_t uWifiSockListen(uDeviceHandle_t devHandle,
                         int32_t sockHandle,
                         size_t backlog);
 
@@ -447,7 +450,7 @@ int32_t uWifiSockListen(int32_t wifiHandle,
  *
  * NOTE: Not implemented
  *
- * @param wifiHandle      the handle of the wifi instance.
+ * @param devHandle       the handle of the wifi instance.
  * @param sockHandle      the handle of the socket.
  * @param pRemoteAddress  a pointer to a place to put the
  *                        address of the thing from which the
@@ -457,7 +460,7 @@ int32_t uWifiSockListen(int32_t wifiHandle,
  *                        value of U_SOCK_Exxx from
  *                        u_sock_errno.h.
  */
-int32_t uWifiSockAccept(int32_t wifiHandle,
+int32_t uWifiSockAccept(uDeviceHandle_t devHandle,
                         int32_t sockHandle,
                         uSockAddress_t *pRemoteAddress);
 
@@ -467,7 +470,7 @@ int32_t uWifiSockAccept(int32_t wifiHandle,
 
 /** Perform a DNS look-up.
  *
- * @param wifiHandle          the handle of the wifi instance.
+ * @param devHandle           the handle of the wifi instance.
  * @param pHostName           the host name to look up, e.g.
  *                            "google.com".
  * @param[out] pHostIpAddress a place to put the IP address
@@ -476,13 +479,13 @@ int32_t uWifiSockAccept(int32_t wifiHandle,
  *                            value of U_SOCK_Exxx from
  *                            u_sock_errno.h.
  */
-int32_t uWifiSockGetHostByName(int32_t wifiHandle,
+int32_t uWifiSockGetHostByName(uDeviceHandle_t devHandle,
                                const char *pHostName,
                                uSockIpAddress_t *pHostIpAddress);
 
 /** Get the local address of a socket.
  *
- * @param wifiHandle         the handle of the wifi instance.
+ * @param devHandle          the handle of the wifi instance.
  * @param sockHandle         the handle of the socket.
  * @param[out] pLocalAddress a place to put the local IP address
  *                           of the socket.
@@ -490,7 +493,7 @@ int32_t uWifiSockGetHostByName(int32_t wifiHandle,
  *                           value of U_SOCK_Exxx from
  *                           u_sock_errno.h.
  */
-int32_t uWifiSockGetLocalAddress(int32_t wifiHandle,
+int32_t uWifiSockGetLocalAddress(uDeviceHandle_t devHandle,
                                  int32_t sockHandle,
                                  uSockAddress_t *pLocalAddress);
 

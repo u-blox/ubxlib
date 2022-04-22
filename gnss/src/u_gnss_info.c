@@ -73,7 +73,7 @@
  * -------------------------------------------------------------- */
 
 // Get the version string from the GNSS chip.
-int32_t uGnssInfoGetFirmwareVersionStr(int32_t gnssHandle,
+int32_t uGnssInfoGetFirmwareVersionStr(uDeviceHandle_t gnssHandle,
                                        char *pStr, size_t size)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -107,7 +107,7 @@ int32_t uGnssInfoGetFirmwareVersionStr(int32_t gnssHandle,
 }
 
 // Get the chip ID from the GNSS chip.
-int32_t uGnssInfoGetIdStr(int32_t gnssHandle,
+int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
                           char *pStr, size_t size)
 {
     int32_t errorCodeOrLength = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -157,7 +157,7 @@ int32_t uGnssInfoGetIdStr(int32_t gnssHandle,
 }
 
 // Get the UTC time according to GNSS.
-int64_t uGnssInfoGetTimeUtc(int32_t gnssHandle)
+int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle)
 {
     int64_t errorCodeOrTime = (int64_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;

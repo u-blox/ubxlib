@@ -48,30 +48,32 @@ void uNetworkDeinitBle(void)
 {
 }
 
-int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
+int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
+                       uDeviceHandle_t *pDevHandle)
 {
     (void) pConfiguration;
+    (void) pDevHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkRemoveBle(int32_t handle)
+int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle)
 {
-    (void) handle;
+    (void) devHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkUpBle(int32_t handle,
+int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
                       const uNetworkConfigurationBle_t *pConfiguration)
 {
-    (void) handle;
+    (void) devHandle;
     (void) pConfiguration;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkDownBle(int32_t handle,
+int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
                         const uNetworkConfigurationBle_t *pConfiguration)
 {
-    (void) handle;
+    (void) devHandle;
     (void) pConfiguration;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }

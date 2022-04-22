@@ -97,7 +97,7 @@
 U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
 {
     uNetworkTestCfg_t *pNetworkCfg = NULL;
-    int32_t networkHandle = -1;
+    uDeviceHandle_t devHandle = NULL;
 
     uPortInit();
     uNetworkInit();
@@ -107,8 +107,9 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
 
     // Add each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].handle = -1;
+        gUNetworkTestCfg[x].devHandle = -1;
         if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
+            int32_t returnCode;
             uPortLog("U_SECURITY_CREDENTIAL_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)
@@ -117,14 +118,15 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
             // hence we capture the cellular network handle here and
             // modify the GNSS configuration to use it before we add
             // the GNSS network
-            uNetworkTestGnssAtConfiguration(networkHandle,
+            uNetworkTestGnssAtConfiguration(devHandle,
                                             gUNetworkTestCfg[x].pConfiguration);
 #endif
-            gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                                     gUNetworkTestCfg[x].pConfiguration);
-            U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+            returnCode = uNetworkAdd(gUNetworkTestCfg[x].type,
+                                     gUNetworkTestCfg[x].pConfiguration,
+                                     &gUNetworkTestCfg[x].devHandle);
+            U_PORT_TEST_ASSERT(returnCode >= 0);
             if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                networkHandle = gUNetworkTestCfg[x].handle;
+                devHandle = gUNetworkTestCfg[x].devHandle;
             }
         }
     }
@@ -132,15 +134,15 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
     // Power up each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
 
-        if (gUNetworkTestCfg[x].handle >= 0) {
+        if (gUNetworkTestCfg[x].devHandle != NULL) {
             pNetworkCfg = &(gUNetworkTestCfg[x]);
-            networkHandle = pNetworkCfg->handle;
+            devHandle = pNetworkCfg->devHandle;
 
             for (size_t y = 0; y < gUSecurityCredentialTestFormatSize; y++) {
                 // Store the security credential
                 uPortLog("U_SECURITY_CREDENTIAL_TEST: storing credential %s...\n",
                          gUSecurityCredentialTestFormat[y].pDescription);
-                if (uSecurityCredentialStore(networkHandle,
+                if (uSecurityCredentialStore(devHandle,
                                              gUSecurityCredentialTestFormat[y].type,
                                              "ubxlib_test",
                                              (const char *) gUSecurityCredentialTestFormat[y].contents,
@@ -151,7 +153,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
                              gUSecurityCredentialTestFormat[y].pDescription);
                     // Delete the credential
                     uPortLog("U_SECURITY_CREDENTIAL_TEST: deleting credential...\n");
-                    uSecurityCredentialRemove(networkHandle,
+                    uSecurityCredentialRemove(devHandle,
                                               gUSecurityCredentialTestFormat[y].type,
                                               "ubxlib_test");
                 } else {
@@ -169,10 +171,10 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
     // Remove each network type, in reverse order so
     // that GNSS is taken down before cellular
     for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
-        if (gUNetworkTestCfg[x].handle >= 0) {
+        if (gUNetworkTestCfg[x].devHandle != NULL) {
             uPortLog("U_SECURITY_CREDENTIAL_TEST: taking down %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].handle) == 0);
+            U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].devHandle) == 0);
         }
     }
 
@@ -186,11 +188,12 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
 U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
 {
     uNetworkTestCfg_t *pNetworkCfg = NULL;
-    int32_t networkHandle = -1;
+    uDeviceHandle_t devHandle = NULL;
     int32_t heapUsed;
     uSecurityCredential_t credential;
     int32_t otherCredentialCount;
     int32_t z;
+    int32_t errorCode;
     char hash[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES];
     char buffer[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES];
 
@@ -205,7 +208,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
 
     // Add each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].handle = -1;
+        gUNetworkTestCfg[x].devHandle = NULL;
         if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
             U_NETWORK_TEST_TYPE_HAS_CREDENTIAL_STORAGE(gUNetworkTestCfg[x].type,
                                                        ((const uNetworkConfigurationBle_t *) gUNetworkTestCfg[x].pConfiguration)->module)) {
@@ -217,14 +220,15 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             // hence we capture the cellular network handle here and
             // modify the GNSS configuration to use it before we add
             // the GNSS network
-            uNetworkTestGnssAtConfiguration(networkHandle,
+            uNetworkTestGnssAtConfiguration(devHandle,
                                             gUNetworkTestCfg[x].pConfiguration);
 #endif
-            gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                                     gUNetworkTestCfg[x].pConfiguration);
-            U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+            errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
+                                    gUNetworkTestCfg[x].pConfiguration,
+                                    &gUNetworkTestCfg[x].devHandle);
+            U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
             if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                networkHandle = gUNetworkTestCfg[x].handle;
+                devHandle = gUNetworkTestCfg[x].devHandle;
             }
         }
     }
@@ -232,9 +236,9 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     // Test each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
 
-        if (gUNetworkTestCfg[x].handle >= 0) {
+        if (gUNetworkTestCfg[x].devHandle != NULL) {
             pNetworkCfg = &(gUNetworkTestCfg[x]);
-            networkHandle = pNetworkCfg->handle;
+            devHandle = pNetworkCfg->devHandle;
 
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: testing %s.\n", x,
                      gpUNetworkTestTypeName[pNetworkCfg->type]);
@@ -243,9 +247,9 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials...\n", x);
             z = 0;
             otherCredentialCount = 0;
-            for (int32_t y = uSecurityCredentialListFirst(networkHandle, &credential);
+            for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
                  y >= 0;
-                 y = uSecurityCredentialListNext(networkHandle, &credential)) {
+                 y = uSecurityCredentialListNext(devHandle, &credential)) {
                 z++;
                 uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: credential name \"%s\".\n", x, z,
                          credential.name);
@@ -265,7 +269,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
 
             // Store the test certificate
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: storing certificate...\n", x);
-            U_PORT_TEST_ASSERT(uSecurityCredentialStore(networkHandle,
+            U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                         U_SECURITY_CREDENTIAL_CLIENT_X509,
                                                         "ubxlib_test_cert",
                                                         (const char *) gUSecurityCredentialTestClientX509Pem,
@@ -274,7 +278,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
 
             // Read MD5 hash and compare with expected
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: reading MD5 hash of certificate...\n", x);
-            U_PORT_TEST_ASSERT(uSecurityCredentialGetHash(networkHandle,
+            U_PORT_TEST_ASSERT(uSecurityCredentialGetHash(devHandle,
                                                           U_SECURITY_CREDENTIAL_CLIENT_X509,
                                                           "ubxlib_test_cert",
                                                           buffer) == 0);
@@ -287,9 +291,9 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             // Check that the certificate is listed
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials...\n", x, z);
             z = 0;
-            for (int32_t y = uSecurityCredentialListFirst(networkHandle, &credential);
+            for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
                  y >= 0;
-                 y = uSecurityCredentialListNext(networkHandle, &credential)) {
+                 y = uSecurityCredentialListNext(devHandle, &credential)) {
                 if (strcmp(credential.name, "ubxlib_test_key") != 0) {
                     // Do the check above in case there's a ubxlib_test_key
                     // left in the system from a previous test
@@ -322,7 +326,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
                 if (U_SECURITY_CREDENTIAL_TEST_CELL_PASSWORD_SUPPORTED) {
                     // Store the security key
                     uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: storing private key...\n", x);
-                    U_PORT_TEST_ASSERT(uSecurityCredentialStore(networkHandle,
+                    U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                                 U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                                 "ubxlib_test_key",
                                                                 (const char *) gUSecurityCredentialTestKey1024Pkcs8Pem,
@@ -333,7 +337,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
                     // Have to store the unprotected security key,
                     // so that SARA-U201 can cope
                     uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: storing unprotected private key...\n", x);
-                    U_PORT_TEST_ASSERT(uSecurityCredentialStore(networkHandle,
+                    U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                                 U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                                 "ubxlib_test_key",
                                                                 (const char *) gUSecurityCredentialTestKey1024Pkcs1PemNoPass,
@@ -344,7 +348,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             } else {
                 // Store the security key
                 uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: storing private key...\n", x);
-                U_PORT_TEST_ASSERT(uSecurityCredentialStore(networkHandle,
+                U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                             U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                             "ubxlib_test_key",
                                                             (const char *) gUSecurityCredentialTestKey1024Pkcs1Pem,
@@ -356,9 +360,9 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             // Check that both credentials are listed
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials...\n", x);
             z = 0;
-            for (int32_t y = uSecurityCredentialListFirst(networkHandle, &credential);
+            for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
                  y >= 0;
-                 y = uSecurityCredentialListNext(networkHandle, &credential)) {
+                 y = uSecurityCredentialListNext(devHandle, &credential)) {
                 z++;
                 uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: credential name \"%s\".\n", x, z,
                          credential.name);
@@ -387,7 +391,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
 
             // Read MD5 hash and compare with expected
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: reading MD5 hash of key...\n", x);
-            U_PORT_TEST_ASSERT(uSecurityCredentialGetHash(networkHandle,
+            U_PORT_TEST_ASSERT(uSecurityCredentialGetHash(devHandle,
                                                           U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                           "ubxlib_test_key",
                                                           buffer) == 0);
@@ -399,16 +403,16 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
 
             // Delete the certificate
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: deleting certificate...\n", x);
-            U_PORT_TEST_ASSERT(uSecurityCredentialRemove(networkHandle,
+            U_PORT_TEST_ASSERT(uSecurityCredentialRemove(devHandle,
                                                          U_SECURITY_CREDENTIAL_CLIENT_X509,
                                                          "ubxlib_test_cert") == 0);
 
             // Check that it is no longer listed
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials...\n", x);
             z = 0;
-            for (int32_t y = uSecurityCredentialListFirst(networkHandle, &credential);
+            for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
                  y >= 0;
-                 y = uSecurityCredentialListNext(networkHandle, &credential)) {
+                 y = uSecurityCredentialListNext(devHandle, &credential)) {
                 z++;
                 uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: credential name \"%s\".\n", x, z,
                          credential.name);
@@ -426,12 +430,12 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
 
             // Delete the security key with a bad name
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: deleting private key with bad name...\n", x);
-            U_PORT_TEST_ASSERT(uSecurityCredentialRemove(networkHandle,
+            U_PORT_TEST_ASSERT(uSecurityCredentialRemove(devHandle,
                                                          U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                          "xubxlib_test_key") < 0);
             // Delete the security key properly
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: deleting private key...\n", x);
-            U_PORT_TEST_ASSERT(uSecurityCredentialRemove(networkHandle,
+            U_PORT_TEST_ASSERT(uSecurityCredentialRemove(devHandle,
                                                          U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                          "ubxlib_test_key") == 0);
 
@@ -439,9 +443,9 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials (should be"
                      " none of ours)...\n", x);
             z = 0;
-            for (int32_t y = uSecurityCredentialListFirst(networkHandle, &credential);
+            for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
                  y >= 0;
-                 y = uSecurityCredentialListNext(networkHandle, &credential)) {
+                 y = uSecurityCredentialListNext(devHandle, &credential)) {
                 z++;
                 uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: name \"%s\".\n", x, credential.name);
                 U_PORT_TEST_ASSERT(strcmp(credential.name, "ubxlib_test_key") != 0);
@@ -455,10 +459,10 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     // that GNSS (which might be connected via a cellular
     // module) is taken down before cellular
     for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
-        if (gUNetworkTestCfg[x].handle >= 0) {
+        if (gUNetworkTestCfg[x].devHandle != NULL) {
             uPortLog("U_SECURITY_CREDENTIAL_TEST: taking down %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].handle) == 0);
+            U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].devHandle) == 0);
         }
     }
 
@@ -495,7 +499,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialCleanUp")
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].handle = -1;
+        gUNetworkTestCfg[x].devHandle = NULL;
     }
     uNetworkDeinit();
 

@@ -17,7 +17,10 @@
 #ifndef _U_CELL_SEC_TLS_H_
 #define _U_CELL_SEC_TLS_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines the TLS security APIs for a u-blox
@@ -79,7 +82,7 @@ typedef struct {
 /** A cellular TLS security context.
  */
 typedef struct {
-    int32_t cellHandle; /**< the associated cellular handle. */
+    uDeviceHandle_t cellHandle; /**< the associated cellular handle. */
     uCellSecTlsCipherList_t cipherList; /**< temporary storage for a cipher list. */
     uint8_t profileId;  /**< the associated security profile ID,
                              at the end to improve structure packing. */
@@ -101,7 +104,7 @@ typedef struct {
  *                    uCellSecTlsResetLastError() should be called to
  *                    determine the cause of the failure).
  */
-uCellSecTlsContext_t *pUCellSecSecTlsAdd(int32_t cellHandle);
+uCellSecTlsContext_t *pUCellSecSecTlsAdd(uDeviceHandle_t cellHandle);
 
 /** Remove a cellular TLS security context.  This function is called
  * internally within ubxlib by the common TLS security API

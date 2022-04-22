@@ -187,21 +187,21 @@ static void printAddress(const uSockAddress_t *pAddress,
 }
 
 // Check that the credentials have been loaded.
-static void checkCredentials(int32_t networkHandle,
+static void checkCredentials(uDeviceHandle_t devHandle,
                              uSecurityTlsSettings_t *pSettings)
 {
     char hash[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES];
 
     // Check if the client certificate is already
     // stored on the module
-    if ((uSecurityCredentialGetHash(networkHandle,
+    if ((uSecurityCredentialGetHash(devHandle,
                                     U_SECURITY_CREDENTIAL_CLIENT_X509,
                                     "ubxlib_test_client_cert",
                                     hash) != 0) ||
         (memcmp(hash, gUEchoServerClientCertHash, sizeof(hash)) != 0)) {
         // Either it is not there or the wrong hash has been
         // reported, load the client certificate into the module
-        uSecurityCredentialStore(networkHandle,
+        uSecurityCredentialStore(devHandle,
                                  U_SECURITY_CREDENTIAL_CLIENT_X509,
                                  "ubxlib_test_client_cert",
                                  gpUEchoServerClientCertPem,
@@ -211,14 +211,14 @@ static void checkCredentials(int32_t networkHandle,
     pSettings->pClientCertificateName = "ubxlib_test_client_cert";
 
     // Check if the client key is already stored on the module
-    if ((uSecurityCredentialGetHash(networkHandle,
+    if ((uSecurityCredentialGetHash(devHandle,
                                     U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                     "ubxlib_test_client_key",
                                     hash) != 0) ||
         (memcmp(hash, gUEchoServerClientKeyHash, sizeof(hash)) != 0)) {
         // Either it is not there or the wrong hash has been
         // reported, load the client key into the module
-        uSecurityCredentialStore(networkHandle,
+        uSecurityCredentialStore(devHandle,
                                  U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                  "ubxlib_test_client_key",
                                  gpUEchoServerClientKeyPem,
@@ -229,7 +229,7 @@ static void checkCredentials(int32_t networkHandle,
 
     // Check if the server certificate is already
     // stored on the module
-    if ((uSecurityCredentialGetHash(networkHandle,
+    if ((uSecurityCredentialGetHash(devHandle,
                                     U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                     "ubxlib_test_server_cert",
                                     hash) != 0) ||
@@ -244,7 +244,7 @@ static void checkCredentials(int32_t networkHandle,
         // any chain of trust
         uPortLog("U_SECURITY_TLS_TEST: storing server certificate"
                  " for the secure echo server...\n");
-        uSecurityCredentialStore(networkHandle,
+        uSecurityCredentialStore(devHandle,
                                  U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                  "ubxlib_test_server_cert",
                                  gpUEchoServerServerCertPem,
@@ -263,7 +263,7 @@ static void checkCredentials(int32_t networkHandle,
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     int32_t sock;
     int32_t x = 0;
     uSockAddress_t address;
@@ -271,6 +271,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
     size_t txSize = sizeof(message);
     char buffer[64];
     size_t rxSize = 0;
+    int32_t returnCode;
     uSecurityTlsSettings_t settings = U_SECURITY_TLS_SETTINGS_DEFAULT;
 
     // Add certificate checking to the security settings
@@ -283,13 +284,14 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
     // Add a network instance, in this case of type cell
     // since that's what we have configuration information
     // for above.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                             (void *) &gConfigCell,
+                             &devHandle);
+    uPortLog("Added network with return code %d.\n", returnCode);
 
     // Bring up the network layer
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkUp(devHandle) == 0) {
 
         // Do things using the network, for
         // example connect and send data to
@@ -299,7 +301,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
         // Get the server's IP address using
         // the network's DNS resolution facility
         uPortLog("Looking up server address...\n");
-        uSockGetHostByName(networkHandle, MY_SERVER_NAME,
+        uSockGetHostByName(devHandle, MY_SERVER_NAME,
                            &(address.ipAddress));
         uPortLog("Address is: ");
         printAddress(&address, false);
@@ -308,11 +310,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
 
         // Check that the relevant credentials
         // have been loaded
-        checkCredentials(networkHandle, &settings);
+        checkCredentials(devHandle, &settings);
 
         // Create the socket on the network
         uPortLog("Creating socket...\n");
-        sock = uSockCreate(networkHandle,
+        sock = uSockCreate(devHandle,
                            U_SOCK_TYPE_STREAM,
                            U_SOCK_PROTOCOL_TCP);
 
@@ -354,7 +356,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
                 uPortLog("Unable to connect to server!\n");
             }
 
-            // Note: since networkHandle is a cellular
+            // Note: since devHandle is a cellular
             // handle any of the `cell` API calls
             // could be made here using it.
             // If the configuration used were Wifi
@@ -369,7 +371,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
 
             // When finished with the network layer
             uPortLog("Taking down network...\n");
-            uNetworkDown(networkHandle);
+            uNetworkDown(devHandle);
         } else {
             uPortLog("Unable to secure socket!\n");
         }

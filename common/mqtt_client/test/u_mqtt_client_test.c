@@ -162,8 +162,9 @@ static bool keepGoingCallback(void)
 // Do this before every test to ensure there is a usable network.
 static void stdPreamble()
 {
+    int32_t errorCode;
 #if (U_CFG_APP_GNSS_UART < 0)
-    int32_t networkHandle = -1;
+    uDeviceHandle_t devHandle = NULL;
 #endif
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
@@ -171,7 +172,7 @@ static void stdPreamble()
 
     // Add each network type if its not already been added
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if ((gUNetworkTestCfg[x].handle < 0) &&
+        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
             U_NETWORK_TEST_TYPE_HAS_MQTT(gUNetworkTestCfg[x].type)) {
             if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
                 uPortLog("U_MQTT_CLIENT_TEST: adding %s network...\n",
@@ -182,15 +183,17 @@ static void stdPreamble()
                 // hence we capture the cellular network handle here and
                 // modify the GNSS configuration to use it before we add
                 // the GNSS network
-                uNetworkTestGnssAtConfiguration(networkHandle,
+                uNetworkTestGnssAtConfiguration(devHandle,
                                                 gUNetworkTestCfg[x].pConfiguration);
 #endif
-                gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                                         gUNetworkTestCfg[x].pConfiguration);
-                U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
+                errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
+                                        gUNetworkTestCfg[x].pConfiguration,
+                                        &gUNetworkTestCfg[x].devHandle);
+                U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
+
 #if (U_CFG_APP_GNSS_UART < 0)
                 if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                    networkHandle = gUNetworkTestCfg[x].handle;
+                    devHandle = gUNetworkTestCfg[x].devHandle;
                 }
 #endif
             }
@@ -250,7 +253,7 @@ static void disconnectCallback(int32_t errorCode, void *pParam)
  */
 U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle;
     int32_t heapUsed;
     int32_t heapXxxSecurityInitLoss = 0;
     uMqttClientConnection_t connection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
@@ -274,14 +277,14 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
 
     // Repeat for all bearers
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
+        devHandle = gUNetworkTestCfg[x].devHandle;
+        if (devHandle != NULL) {
             // Get the initial-ish heap
             heapUsed = uPortGetHeapFree();
 
             // Get a unique number we can use to stop parallel
             // tests colliding at the MQTT broker
-            U_PORT_TEST_ASSERT(uSecurityGetSerialNumber(networkHandle,
+            U_PORT_TEST_ASSERT(uSecurityGetSerialNumber(devHandle,
                                                         gSerialNumber) > 0);
 
             // Malloc space to read messages and topics into
@@ -302,7 +305,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
             for (size_t run = 0; run < 2; run++) {
                 uPortLog("U_MQTT_CLIENT_TEST: bringing up %s...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkUp(gUNetworkTestCfg[x].handle) == 0);
+                U_PORT_TEST_ASSERT(uNetworkUp(gUNetworkTestCfg[x].devHandle) == 0);
 
                 // Make a unique topic name to stop different boards colliding
                 snprintf(pTopicOut, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
@@ -311,7 +314,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                 // Open an MQTT client
                 if (run == 0) {
                     uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client...\n");
-                    gpMqttContextA = pUMqttClientOpen(networkHandle, NULL);
+                    gpMqttContextA = pUMqttClientOpen(devHandle, NULL);
                 } else {
                     uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client, now with a"
                              " TLS connection...\n");
@@ -321,7 +324,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                     // to save time so need to allow for it in the heap loss
                     // calculation
                     heapXxxSecurityInitLoss += uPortGetHeapFree();
-                    gpMqttContextA = pUMqttClientOpen(networkHandle, &tlsSettings);
+                    gpMqttContextA = pUMqttClientOpen(devHandle, &tlsSettings);
                     heapXxxSecurityInitLoss -= uPortGetHeapFree();
                 }
 
@@ -529,7 +532,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                 }
                 uPortLog("U_MQTT_CLIENT_TEST: taking down %s...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkDown(networkHandle) == 0);
+                U_PORT_TEST_ASSERT(uNetworkDown(devHandle) == 0);
             }
 
             // Free memory
@@ -570,7 +573,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientCleanUp")
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].handle = -1;
+        gUNetworkTestCfg[x].devHandle = NULL;
     }
     uNetworkDeinit();
 

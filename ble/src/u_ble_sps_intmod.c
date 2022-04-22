@@ -40,6 +40,8 @@
 
 #include "u_error_common.h"
 
+#include "u_device_internal.h"
+
 #include "u_cfg_sw.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -1112,14 +1114,16 @@ void uBleSpsPrivateDeinit(void)
     }
 }
 
-int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
+int32_t uBleSpsSetCallbackConnectionStatus(uDeviceHandle_t devHandle,
                                            uBleSpsConnectionStatusCallback_t pCallback,
                                            void *pCallbackParameter)
 {
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
 
-    if (bleHandle == 0 &&
-        (((gpSpsConnStatusCallback == NULL) && (pCallback != NULL)) ||
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    if ((((gpSpsConnStatusCallback == NULL) && (pCallback != NULL)) ||
          ((gpSpsConnStatusCallback != NULL) && (pCallback == NULL)))) {
 
         gpSpsConnStatusCallback = pCallback;
@@ -1130,21 +1134,20 @@ int32_t uBleSpsSetCallbackConnectionStatus(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleSpsConnectSps(int32_t bleHandle,
+int32_t uBleSpsConnectSps(uDeviceHandle_t devHandle,
                           const char *pAddress,
                           const uBleSpsConnParams_t *pConnParams)
 {
-    int32_t errorCode;
     uint8_t address[6];
     uPortBtLeAddressType_t addrType;
     int32_t gapConnHandle = U_PORT_GATT_GAP_INVALID_CONNHANDLE;
     int32_t spsConnHandle = U_BLE_SPS_INVALID_HANDLE;
 
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    errorCode = addrStringToArray(pAddress, address, &addrType);
+    int32_t errorCode = addrStringToArray(pAddress, address, &addrType);
 
     U_PORT_MUTEX_LOCK(gBleSpsMutex);
 
@@ -1184,103 +1187,101 @@ int32_t uBleSpsConnectSps(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleSpsDisconnect(int32_t bleHandle, int32_t spsConnHandle)
+int32_t uBleSpsDisconnect(uDeviceHandle_t devHandle, int32_t spsConnHandle)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+    if (!validSpsConnHandle(spsConnHandle)) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    if (validSpsConnHandle(spsConnHandle)) {
-        uPortGattDisconnectGap(pGetSpsConn(spsConnHandle)->gapConnHandle);
-        errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
-    }
-
-    return errorCode;
+    return uPortGattDisconnectGap(pGetSpsConn(spsConnHandle)->gapConnHandle);
 }
 
-int32_t uBleSpsSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeout)
+int32_t uBleSpsSetSendTimeout(uDeviceHandle_t devHandle, int32_t channel, uint32_t timeout)
 {
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t spsConnHandle = channel;
 
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    if (validSpsConnHandle(spsConnHandle)) {
-        pGetSpsConn(spsConnHandle)->dataSendTimeoutMs = timeout;
-        errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+    if (!validSpsConnHandle(spsConnHandle)) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    return errorCode;
+    pGetSpsConn(spsConnHandle)->dataSendTimeoutMs = timeout;
+
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
 }
 
-int32_t uBleSpsSend(int32_t bleHandle, int32_t channel, const char *pData, int32_t length)
+int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pData, int32_t length)
 {
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     int32_t spsConnHandle = channel;
     int32_t bytesLeftToSend = length;
-    int64_t startTime;
 
-    if ((bleHandle != 0) || (pData == NULL) || (length < 0)) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    startTime = uPortGetTickTimeMs();
+    if ((pData == NULL) || (length < 0)) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
 
-    if (validSpsConnHandle(spsConnHandle)) {
-        spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
-        if (pSpsConn->spsState == SPS_STATE_CONNECTED) {
-            uint32_t timeout = pSpsConn->dataSendTimeoutMs;
-            int64_t time = startTime;
+    if (!validSpsConnHandle(spsConnHandle)) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
 
-            while ((bytesLeftToSend > 0) && (time - startTime < timeout)) {
-                int32_t bytesToSendNow = bytesLeftToSend;
-                int32_t maxDataLength = pSpsConn->mtu - U_BLE_PDU_HEADER_SIZE;
+    int64_t startTime = uPortGetTickTimeMs();
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+    spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
+    if (pSpsConn->spsState == SPS_STATE_CONNECTED) {
+        uint32_t timeout = pSpsConn->dataSendTimeoutMs;
+        int64_t time = startTime;
 
-                if (bytesToSendNow > maxDataLength) {
-                    bytesToSendNow = maxDataLength;
-                }
-                if (pSpsConn->flowCtrlEnabled) {
-                    // If flow control is enabled we first have to make sure we have TX credits
-                    // before sending
-                    // If the semaphore is already given we first have to take it, so it can be given
-                    // again later if we are out of credits.
-                    (void)uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, 0);
-                    if (pSpsConn->txCredits == 0) {
-                        int32_t timeoutLeft = (int32_t)timeout - (int32_t)(time - startTime);
-                        if (timeoutLeft < 0) {
-                            timeoutLeft = 0;
-                        }
-                        // We are out of credits, wait for more
-                        if (uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, timeoutLeft) != 0) {
-                            uPortLog("U_BLE_SPS: SPS Timed out waiting for new TX credits!\n");
-                            break;
-                        }
+        while ((bytesLeftToSend > 0) && (time - startTime < timeout)) {
+            int32_t bytesToSendNow = bytesLeftToSend;
+            int32_t maxDataLength = pSpsConn->mtu - U_BLE_PDU_HEADER_SIZE;
+
+            if (bytesToSendNow > maxDataLength) {
+                bytesToSendNow = maxDataLength;
+            }
+            if (pSpsConn->flowCtrlEnabled) {
+                // If flow control is enabled we first have to make sure we have TX credits
+                // before sending
+                // If the semaphore is already given we first have to take it, so it can be given
+                // again later if we are out of credits.
+                (void)uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, 0);
+                if (pSpsConn->txCredits == 0) {
+                    int32_t timeoutLeft = (int32_t)timeout - (int32_t)(time - startTime);
+                    if (timeoutLeft < 0) {
+                        timeoutLeft = 0;
                     }
-                }
-                if (!pSpsConn->flowCtrlEnabled || (pSpsConn->txCredits > 0)) {
-                    if (sendDataToRemoteFifo(pSpsConn, pData, (uint16_t)bytesToSendNow)) {
-                        pData += bytesToSendNow;
-                        bytesLeftToSend -= bytesToSendNow;
-                        pSpsConn->txCredits--;
+                    // We are out of credits, wait for more
+                    if (uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, timeoutLeft) != 0) {
+                        uPortLog("U_BLE_SPS: SPS Timed out waiting for new TX credits!\n");
+                        break;
                     }
-                } else {
-                    // We have flow control enabled, we didn't time out waiting
-                    // for TX credits above, but we anyway don't have any TX credits.
-                    // Something is very wrong.
-                    errorCode = (int32_t)U_ERROR_COMMON_UNKNOWN;
-                    break;
-                }
-                if (bytesLeftToSend > 0) {
-                    time = uPortGetTickTimeMs();
                 }
             }
+            if (!pSpsConn->flowCtrlEnabled || (pSpsConn->txCredits > 0)) {
+                if (sendDataToRemoteFifo(pSpsConn, pData, (uint16_t)bytesToSendNow)) {
+                    pData += bytesToSendNow;
+                    bytesLeftToSend -= bytesToSendNow;
+                    pSpsConn->txCredits--;
+                }
+            } else {
+                // We have flow control enabled, we didn't time out waiting
+                // for TX credits above, but we anyway don't have any TX credits.
+                // Something is very wrong.
+                errorCode = (int32_t)U_ERROR_COMMON_UNKNOWN;
+                break;
+            }
+            if (bytesLeftToSend > 0) {
+                time = uPortGetTickTimeMs();
+            }
         }
-    } else {
-        errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     }
 
     if (errorCode < 0) {
@@ -1290,14 +1291,16 @@ int32_t uBleSpsSend(int32_t bleHandle, int32_t channel, const char *pData, int32
     }
 }
 
-int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
+int32_t uBleSpsSetDataAvailableCallback(uDeviceHandle_t devHandle,
                                         uBleSpsAvailableCallback_t pCallback,
                                         void *pCallbackParameter)
 {
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
 
-    if (bleHandle == 0 &&
-        (((gpSpsDataAvailableCallback == NULL) && (pCallback != NULL)) ||
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    if ((((gpSpsDataAvailableCallback == NULL) && (pCallback != NULL)) ||
          ((gpSpsDataAvailableCallback != NULL) && (pCallback == NULL)))) {
 
         gpSpsDataAvailableCallback = pCallback;
@@ -1308,12 +1311,12 @@ int32_t uBleSpsSetDataAvailableCallback(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleSpsReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t length)
+int32_t uBleSpsReceive(uDeviceHandle_t devHandle, int32_t channel, char *pData, int32_t length)
 {
     int32_t spsConnHandle = channel;
     int32_t sizeOrErrorCode;
 
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
@@ -1330,16 +1333,16 @@ int32_t uBleSpsReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t 
     return sizeOrErrorCode;
 }
 
-int32_t uBleSpsGetSpsServerHandles(int32_t bleHandle, int32_t channel,
+int32_t uBleSpsGetSpsServerHandles(uDeviceHandle_t devHandle, int32_t channel,
                                    uBleSpsHandles_t *pHandles)
 {
     int32_t spsConnHandle = channel;
-    int32_t returnValue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
 
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
+    int32_t returnValue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     if (validSpsConnHandle(spsConnHandle)) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
         if  ((pSpsConn->localSpsRole == SPS_CLIENT) &&
@@ -1353,9 +1356,9 @@ int32_t uBleSpsGetSpsServerHandles(int32_t bleHandle, int32_t channel,
     return returnValue;
 }
 
-int32_t uBleSpsPresetSpsServerHandles(int32_t bleHandle, const uBleSpsHandles_t *pHandles)
+int32_t uBleSpsPresetSpsServerHandles(uDeviceHandle_t devHandle, const uBleSpsHandles_t *pHandles)
 {
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
@@ -1364,9 +1367,9 @@ int32_t uBleSpsPresetSpsServerHandles(int32_t bleHandle, const uBleSpsHandles_t 
     return (int32_t)U_ERROR_COMMON_SUCCESS;
 }
 
-int32_t uBleSpsDisableFlowCtrlOnNext(int32_t bleHandle)
+int32_t uBleSpsDisableFlowCtrlOnNext(uDeviceHandle_t devHandle)
 {
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 

@@ -58,7 +58,6 @@
 
 #include "u_wifi_module_type.h"
 #include "u_wifi_sock.h"
-#include "u_wifi_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -84,7 +83,7 @@ typedef enum {
 typedef struct {
     int32_t sockHandle; /**< The handle of the socket instance
                              -1 if this socket is not in use. */
-    int32_t wifiHandle; /**< The handle of the wifi instance.
+    uDeviceHandle_t devHandle; /**< The u-blox device handle.
                              -1 if this socket is not in use. */
     int32_t connHandle; /**< The connection handle that the wifi module
                                    uses for the socket instance.
@@ -124,12 +123,12 @@ typedef struct {
 // Keep track of whether we're initialised or not.
 static bool gInitialised = false;
 
-/** A list of wifi handles for the instances
+/** A list of uDevice handles for the instances
  *  Each time uWifiSockInitInstance() is called the corresponding
- *  wifi handle will be added to this list. We need this in order
+ *  device handle will be added to this list. We need this in order
  *  to de-initialize each instance when user calls uWifiSockDeinit()
  */
-static int32_t gInstanceWifiHandleList[U_WIFI_MAX_INSTANCE_COUNT];
+static uDeviceHandle_t gInstanceDeviceHandleList[U_WIFI_MAX_INSTANCE_COUNT];
 
 /** The sockets: a nice simple array, nothing fancy.
  */
@@ -156,7 +155,7 @@ static void freeSocket(uWifiSockSocket_t *pSock)
     }
 }
 
-static uWifiSockSocket_t *pAllocateSocket(int32_t wifiHandle)
+static uWifiSockSocket_t *pAllocateSocket(uDeviceHandle_t devHandle)
 {
     bool outOfMemory = false;
     uWifiSockSocket_t *pSock = NULL;
@@ -166,7 +165,7 @@ static uWifiSockSocket_t *pAllocateSocket(int32_t wifiHandle)
             int32_t tmp;
             pSock = &(gSockets[index]);
             pSock->sockHandle = index;
-            pSock->wifiHandle = wifiHandle;
+            pSock->devHandle = devHandle;
             pSock->semaphore = NULL;
             tmp = uPortSemaphoreCreate(&(pSock->semaphore), 0, 1);
             if (tmp != (int32_t) U_ERROR_COMMON_SUCCESS) {
@@ -273,7 +272,7 @@ static int32_t validateSockAddress(const uSockAddress_t *pRemoteAddress)
     return U_SOCK_ENONE;
 }
 
-static uWifiSockSocket_t *pFindConnectingSocketByRemoteAddress(int32_t wifiHandle,
+static uWifiSockSocket_t *pFindConnectingSocketByRemoteAddress(uDeviceHandle_t devHandle,
                                                                const uSockAddress_t *pRemoteAddr)
 {
     uWifiSockSocket_t *pSock = NULL;
@@ -281,7 +280,7 @@ static uWifiSockSocket_t *pFindConnectingSocketByRemoteAddress(int32_t wifiHandl
     for (int32_t index = 0; index < U_WIFI_SOCK_MAX_NUM_SOCKETS; index++) {
         if ((gSockets[index].sockHandle == index) &&      // is active socket
             (gSockets[index].connecting) &&               // is connecting
-            (gSockets[index].wifiHandle == wifiHandle) && // correct instance
+            (gSockets[index].devHandle == devHandle) && // correct instance
             (compareSockAddr(pRemoteAddr,
                              &gSockets[index].remoteAddress) == 0)) { // correct remote socket address
             pSock = &(gSockets[index]);
@@ -292,13 +291,13 @@ static uWifiSockSocket_t *pFindConnectingSocketByRemoteAddress(int32_t wifiHandl
     return pSock;
 }
 
-static uWifiSockSocket_t *pFindSocketByEdmChannel(int32_t wifiHandle, int32_t edmChannel)
+static uWifiSockSocket_t *pFindSocketByEdmChannel(uDeviceHandle_t devHandle, int32_t edmChannel)
 {
     uWifiSockSocket_t *pSock = NULL;
 
     for (int32_t index = 0; index < U_WIFI_SOCK_MAX_NUM_SOCKETS; index++) {
         if (gSockets[index].sockHandle == index &&      // is active socket
-            gSockets[index].wifiHandle == wifiHandle && // correct instance
+            gSockets[index].devHandle == devHandle && // correct instance
             gSockets[index].edmChannel == edmChannel) { // correct edm channel
             pSock = &(gSockets[index]);
             break;
@@ -308,14 +307,14 @@ static uWifiSockSocket_t *pFindSocketByEdmChannel(int32_t wifiHandle, int32_t ed
     return pSock;
 }
 
-static inline int32_t getInstance(int32_t wifiHandle, uShortRangePrivateInstance_t **ppInstance)
+static inline int32_t getInstance(uDeviceHandle_t devHandle,
+                                  uShortRangePrivateInstance_t **ppInstance)
 {
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
     if (!gInitialised) {
         return -U_SOCK_EFAULT;
     }
 
-    *ppInstance = pUShortRangePrivateGetInstance(shoHandle);
+    *ppInstance = pUShortRangePrivateGetInstance(devHandle);
     if (*ppInstance == NULL) {
         return -U_SOCK_EINVAL;
     }
@@ -327,14 +326,14 @@ static inline int32_t getInstance(int32_t wifiHandle, uShortRangePrivateInstance
     return U_SOCK_ENONE;
 }
 
-static inline int32_t getInstanceAndSocket(int32_t wifiHandle, int32_t sockHandle,
+static inline int32_t getInstanceAndSocket(uDeviceHandle_t devHandle, int32_t sockHandle,
                                            uShortRangePrivateInstance_t **ppInstance,
                                            uWifiSockSocket_t **ppSock)
 {
     int32_t errnoLocal;
 
     *ppSock = NULL;
-    errnoLocal = getInstance(wifiHandle, ppInstance);
+    errnoLocal = getInstance(devHandle, ppInstance);
     if (errnoLocal != U_SOCK_ENONE) {
         return errnoLocal;
     }
@@ -343,7 +342,7 @@ static inline int32_t getInstanceAndSocket(int32_t wifiHandle, int32_t sockHandl
     if ((sockHandle >= 0) &&
         (sockHandle < U_WIFI_SOCK_MAX_NUM_SOCKETS) &&
         (gSockets[sockHandle].sockHandle == sockHandle) &&
-        (gSockets[sockHandle].wifiHandle == wifiHandle)) {
+        (gSockets[sockHandle].devHandle == devHandle)) {
 
         *ppSock = &(gSockets[sockHandle]);
         errnoLocal = U_SOCK_ENONE;
@@ -428,7 +427,7 @@ static void edmIpConnectionCallback(int32_t edmHandle,
                                     void *pCallbackParameter)
 {
     (void)edmHandle;
-    volatile int32_t wifiHandle;
+    volatile uDeviceHandle_t devHandle;
     volatile int32_t sockHandle = -1;
     volatile uWifiSockCallback_t pUserClosedCb = NULL;
     volatile uWifiSockCallback_t pUserAsyncClosedCb = NULL;
@@ -443,7 +442,7 @@ static void edmIpConnectionCallback(int32_t edmHandle,
         uPortLog("U_WIFI_SOCK: ERROR failed to take lock\n");
     }
 
-    wifiHandle = uShoToWifiHandle(pInstance->handle);
+    devHandle = pInstance->wifiHandle;
 
     switch (eventType) {
         case U_SHORT_RANGE_EVENT_CONNECTED: {
@@ -452,7 +451,7 @@ static void edmIpConnectionCallback(int32_t edmHandle,
             convertToSockAddress(pConnectData,
                                  &localPort,
                                  &remoteAddr);
-            pSock = pFindConnectingSocketByRemoteAddress(wifiHandle, &remoteAddr);
+            pSock = pFindConnectingSocketByRemoteAddress(devHandle, &remoteAddr);
             if (pSock) {
                 pSock->edmChannel = edmChannel;
                 pSock->connected = true;
@@ -462,7 +461,7 @@ static void edmIpConnectionCallback(int32_t edmHandle,
         }
 
         case U_SHORT_RANGE_EVENT_DISCONNECTED: {
-            pSock = pFindSocketByEdmChannel(wifiHandle, edmChannel);
+            pSock = pFindSocketByEdmChannel(devHandle, edmChannel);
             if (pSock && pSock->connected) {
                 sockHandle = pSock->sockHandle;
                 pSock->connected = false;
@@ -488,10 +487,10 @@ static void edmIpConnectionCallback(int32_t edmHandle,
 
     // Call the user callbacka after the mutex has been unlocked
     if (pUserClosedCb) {
-        pUserClosedCb(wifiHandle, sockHandle);
+        pUserClosedCb(devHandle, sockHandle);
     }
     if (pUserAsyncClosedCb) {
-        pUserAsyncClosedCb(wifiHandle, sockHandle);
+        pUserAsyncClosedCb(devHandle, sockHandle);
     }
 }
 
@@ -500,7 +499,7 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel,
                               void *pCallbackParameter)
 {
     (void)edmHandle;
-    volatile int32_t wifiHandle;
+    volatile uDeviceHandle_t devHandle;
     volatile int32_t sockHandle = -1;
     volatile uWifiSockCallback_t pUserDataCb = NULL;
     uShortRangePrivateInstance_t *pInstance = (uShortRangePrivateInstance_t *) pCallbackParameter;
@@ -511,8 +510,8 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel,
 
     U_ASSERT( uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS );
 
-    wifiHandle = uShoToWifiHandle(pInstance->handle);
-    uWifiSockSocket_t *pSock = pFindSocketByEdmChannel(wifiHandle, edmChannel);
+    devHandle = pInstance->wifiHandle;
+    uWifiSockSocket_t *pSock = pFindSocketByEdmChannel(devHandle, edmChannel);
     if (pSock) {
         sockHandle = pSock->sockHandle;
         if (pSock->protocol == U_SOCK_PROTOCOL_UDP) {
@@ -539,7 +538,7 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel,
 
     // Call the user callback after the mutex has been unlocked
     if (pUserDataCb) {
-        pUserDataCb(wifiHandle, sockHandle);
+        pUserDataCb(devHandle, sockHandle);
     }
 }
 
@@ -656,7 +655,7 @@ static int32_t closePeer(uAtClientHandle_t atHandle,
     return errnoLocal;
 }
 
-int32_t deinitInstance(int32_t wifiHandle)
+int32_t deinitInstance(uDeviceHandle_t devHandle)
 {
     int32_t errnoLocal;
     uShortRangePrivateInstance_t *pInstance = NULL;
@@ -665,15 +664,15 @@ int32_t deinitInstance(int32_t wifiHandle)
     // and that the instance is not already de-initialized
     errnoLocal = -U_SOCK_EINVAL;
     for (int i = 0; i < U_WIFI_MAX_INSTANCE_COUNT; i++) {
-        if (gInstanceWifiHandleList[i] == wifiHandle) {
-            gInstanceWifiHandleList[i] = -1;
+        if (gInstanceDeviceHandleList[i] == devHandle) {
+            gInstanceDeviceHandleList[i] = NULL;
             errnoLocal = U_SOCK_ENONE;
             break;
         }
     }
 
     if (errnoLocal == U_SOCK_ENONE) {
-        errnoLocal = getInstance(wifiHandle, &pInstance);
+        errnoLocal = getInstance(devHandle, &pInstance);
     }
 
     if ((errnoLocal == U_SOCK_ENONE) && pInstance) {
@@ -716,7 +715,7 @@ int32_t uWifiSockInit(void)
             errnoLocal = -U_SOCK_ENOMEM;
         }
         for (int i = 0; i < U_WIFI_MAX_INSTANCE_COUNT; i++) {
-            gInstanceWifiHandleList[i] = -1;
+            gInstanceDeviceHandleList[i] = NULL;
         }
         if (errnoLocal == U_SOCK_ENONE) {
             freeAllSockets();
@@ -729,7 +728,7 @@ int32_t uWifiSockInit(void)
     return errnoLocal;
 }
 
-int32_t uWifiSockInitInstance(int32_t wifiHandle)
+int32_t uWifiSockInitInstance(uDeviceHandle_t devHandle)
 {
     int32_t errnoLocal;
     bool alreadyInit = false;
@@ -742,7 +741,7 @@ int32_t uWifiSockInitInstance(int32_t wifiHandle)
     // Check that the instance isn't already initilized
     errnoLocal = U_SOCK_ENONE;
     for (int i = 0; i < U_WIFI_MAX_INSTANCE_COUNT; i++) {
-        if (gInstanceWifiHandleList[i] == wifiHandle) {
+        if (gInstanceDeviceHandleList[i] == devHandle) {
             alreadyInit = true;
             break;
         }
@@ -751,15 +750,22 @@ int32_t uWifiSockInitInstance(int32_t wifiHandle)
         // Try to add the wifi handle to the instance list
         errnoLocal = -U_SOCK_ENOMEM;
         for (int i = 0; i < U_WIFI_MAX_INSTANCE_COUNT; i++) {
-            if (gInstanceWifiHandleList[i] == -1) {
+            if (gInstanceDeviceHandleList[i] == NULL) {
                 errnoLocal = U_SOCK_ENONE;
-                gInstanceWifiHandleList[i] = wifiHandle;
+                gInstanceDeviceHandleList[i] = devHandle;
                 break;
             }
         }
 
         if (errnoLocal == U_SOCK_ENONE) {
-            errnoLocal = getInstance(wifiHandle, &pInstance);
+            errnoLocal = getInstance(devHandle, &pInstance);
+        }
+        if ((errnoLocal == U_SOCK_ENONE) && pInstance) {
+            // TODO: Remove this when Network API has been adjusted so that
+            //       we can use the same device handle for both BLE and WiFi
+            if (pInstance->wifiHandle == NULL) {
+                pInstance->wifiHandle = devHandle;
+            }
         }
         if ((errnoLocal == U_SOCK_ENONE) && pInstance) {
             int32_t shortRangeEC;
@@ -785,14 +791,14 @@ int32_t uWifiSockInitInstance(int32_t wifiHandle)
     return errnoLocal;
 }
 
-int32_t uWifiSockDeinitInstance(int32_t wifiHandle)
+int32_t uWifiSockDeinitInstance(uDeviceHandle_t devHandle)
 {
     int32_t errnoLocal;
 
     if (uShortRangeLock() != (int32_t) U_ERROR_COMMON_SUCCESS) {
         return -U_SOCK_EIO;
     }
-    errnoLocal = deinitInstance(wifiHandle);
+    errnoLocal = deinitInstance(devHandle);
 
     uShortRangeUnlock();
 
@@ -809,8 +815,8 @@ void uWifiSockDeinit()
 
     if (gInitialised) {
         for (int i = 0; i < U_WIFI_MAX_INSTANCE_COUNT; i++) {
-            if (gInstanceWifiHandleList[i] != -1) {
-                deinitInstance(gInstanceWifiHandleList[i]);
+            if (gInstanceDeviceHandleList[i] != NULL) {
+                deinitInstance(gInstanceDeviceHandleList[i]);
             }
         }
 
@@ -824,7 +830,7 @@ void uWifiSockDeinit()
     uShortRangeUnlock();
 }
 
-int32_t uWifiSockCreate(int32_t wifiHandle,
+int32_t uWifiSockCreate(uDeviceHandle_t devHandle,
                         uSockType_t type,
                         uSockProtocol_t protocol)
 {
@@ -835,7 +841,7 @@ int32_t uWifiSockCreate(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    pSock = pAllocateSocket(wifiHandle);
+    pSock = pAllocateSocket(devHandle);
 
     if (pSock != NULL) {
         pSock->type = type;
@@ -855,7 +861,7 @@ int32_t uWifiSockCreate(int32_t wifiHandle,
     return sockHandle;
 }
 
-int32_t uWifiSockConnect(int32_t wifiHandle,
+int32_t uWifiSockConnect(uDeviceHandle_t devHandle,
                          int32_t sockHandle,
                          const uSockAddress_t *pRemoteAddress)
 {
@@ -873,7 +879,7 @@ int32_t uWifiSockConnect(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
     if (errnoLocal == U_SOCK_ENONE) {
         pSock->remoteAddress = *pRemoteAddress;
         pSock->connecting = true;
@@ -943,7 +949,7 @@ int32_t uWifiSockConnect(int32_t wifiHandle,
     return errnoLocal;
 }
 
-int32_t uWifiSockClose(int32_t wifiHandle,
+int32_t uWifiSockClose(uDeviceHandle_t devHandle,
                        int32_t sockHandle,
                        uWifiSockCallback_t pCallback)
 {
@@ -955,7 +961,7 @@ int32_t uWifiSockClose(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
     if (errnoLocal == U_SOCK_ENONE) {
         pSock->pAsyncClosedCallback = pCallback;
         if (!pSock->closing) {
@@ -985,32 +991,32 @@ int32_t uWifiSockClose(int32_t wifiHandle,
     return errnoLocal;
 }
 
-void uWifiSockCleanup(int32_t wifiHandle)
+void uWifiSockCleanup(uDeviceHandle_t devHandle)
 {
     // Not supported - do nothing
-    (void)wifiHandle;
+    (void)devHandle;
 }
 
-void uWifiSockBlockingSet(int32_t wifiHandle,
+void uWifiSockBlockingSet(uDeviceHandle_t devHandle,
                           int32_t sockHandle,
                           bool isBlocking)
 {
     // Not supported - do nothing
-    (void)wifiHandle;
+    (void)devHandle;
     (void)sockHandle;
     (void)isBlocking;
 }
 
-bool uWifiSockBlockingGet(int32_t wifiHandle,
+bool uWifiSockBlockingGet(uDeviceHandle_t devHandle,
                           int32_t sockHandle)
 {
     // Not supported
-    (void)wifiHandle;
+    (void)devHandle;
     (void)sockHandle;
     return false;
 }
 
-int32_t uWifiSockOptionSet(int32_t wifiHandle,
+int32_t uWifiSockOptionSet(uDeviceHandle_t devHandle,
                            int32_t sockHandle,
                            int32_t level,
                            uint32_t option,
@@ -1025,7 +1031,7 @@ int32_t uWifiSockOptionSet(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
     if (errnoLocal == U_SOCK_ENONE) {
         WifiIntOptId_t wifiOpt = getIntOptionId(level, option);
 
@@ -1040,7 +1046,7 @@ int32_t uWifiSockOptionSet(int32_t wifiHandle,
     return errnoLocal;
 }
 
-int32_t uWifiSockOptionGet(int32_t wifiHandle,
+int32_t uWifiSockOptionGet(uDeviceHandle_t devHandle,
                            int32_t sockHandle,
                            int32_t level,
                            uint32_t option,
@@ -1055,7 +1061,7 @@ int32_t uWifiSockOptionGet(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
     if (errnoLocal == U_SOCK_ENONE) {
         WifiIntOptId_t wifiOpt = getIntOptionId(level, option);
 
@@ -1070,7 +1076,7 @@ int32_t uWifiSockOptionGet(int32_t wifiHandle,
     return errnoLocal;
 }
 
-int32_t uWifiSockWrite(int32_t wifiHandle,
+int32_t uWifiSockWrite(uDeviceHandle_t devHandle,
                        int32_t sockHandle,
                        const void *pData, size_t dataSizeBytes)
 {
@@ -1086,7 +1092,7 @@ int32_t uWifiSockWrite(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
 
     // We only support Write for TCP sockets
     if ((errnoLocal == U_SOCK_ENONE) && (pSock->protocol != U_SOCK_PROTOCOL_TCP)) {
@@ -1116,7 +1122,7 @@ int32_t uWifiSockWrite(int32_t wifiHandle,
     return errnoLocal;
 }
 
-int32_t uWifiSockRead(int32_t wifiHandle,
+int32_t uWifiSockRead(uDeviceHandle_t devHandle,
                       int32_t sockHandle,
                       void *pData, size_t dataSizeBytes)
 {
@@ -1129,7 +1135,7 @@ int32_t uWifiSockRead(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
 
     // We only support Read for TCP sockets
     if ((errnoLocal == U_SOCK_ENONE) && (pSock->protocol != U_SOCK_PROTOCOL_TCP)) {
@@ -1155,7 +1161,7 @@ int32_t uWifiSockRead(int32_t wifiHandle,
     return errnoLocal;
 }
 
-int32_t uWifiSockSendTo(int32_t wifiHandle,
+int32_t uWifiSockSendTo(uDeviceHandle_t devHandle,
                         int32_t sockHandle,
                         const uSockAddress_t *pRemoteAddress,
                         const void *pData,
@@ -1174,7 +1180,7 @@ int32_t uWifiSockSendTo(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
 
     // We only support SendTo for UDP sockets
     if ((errnoLocal == U_SOCK_ENONE) && (pSock->protocol != U_SOCK_PROTOCOL_UDP)) {
@@ -1250,7 +1256,7 @@ int32_t uWifiSockSendTo(int32_t wifiHandle,
     return errnoLocal;
 }
 
-int32_t uWifiSockReceiveFrom(int32_t wifiHandle,
+int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
                              int32_t sockHandle,
                              uSockAddress_t *pRemoteAddress,
                              void *pData, size_t dataSizeBytes)
@@ -1263,7 +1269,7 @@ int32_t uWifiSockReceiveFrom(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
 
     if ((errnoLocal == U_SOCK_ENONE) && (pSock->connHandle < 0)) {
         // uWifiSockSendTo must have been called first in order to setup the peer
@@ -1302,10 +1308,9 @@ int32_t uWifiSockReceiveFrom(int32_t wifiHandle,
 }
 
 
-int32_t uWifiSockRegisterCallbackData(int32_t wifiHandle,
+int32_t uWifiSockRegisterCallbackData(uDeviceHandle_t devHandle,
                                       int32_t sockHandle,
-                                      void (*pCallback) (int32_t,
-                                                         int32_t))
+                                      uWifiSockCallback_t pCallback)
 {
     int32_t errnoLocal;
     uWifiSockSocket_t *pSock = NULL;
@@ -1315,7 +1320,7 @@ int32_t uWifiSockRegisterCallbackData(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
     if (errnoLocal == U_SOCK_ENONE) {
         pSock->pDataCallback = pCallback;
     }
@@ -1325,10 +1330,9 @@ int32_t uWifiSockRegisterCallbackData(int32_t wifiHandle,
     return errnoLocal;
 }
 
-int32_t uWifiSockRegisterCallbackClosed(int32_t wifiHandle,
+int32_t uWifiSockRegisterCallbackClosed(uDeviceHandle_t devHandle,
                                         int32_t sockHandle,
-                                        void (*pCallback) (int32_t,
-                                                           int32_t))
+                                        uWifiSockCallback_t pCallback)
 {
     int32_t errnoLocal;
     uWifiSockSocket_t *pSock = NULL;
@@ -1338,7 +1342,7 @@ int32_t uWifiSockRegisterCallbackClosed(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
     if (errnoLocal == U_SOCK_ENONE) {
         pSock->pClosedCallback = pCallback;
     }
@@ -1348,7 +1352,7 @@ int32_t uWifiSockRegisterCallbackClosed(int32_t wifiHandle,
     return errnoLocal;
 }
 
-int32_t uWifiSockGetHostByName(int32_t wifiHandle,
+int32_t uWifiSockGetHostByName(uDeviceHandle_t devHandle,
                                const char *pHostName,
                                uSockIpAddress_t *pHostIpAddress)
 {
@@ -1361,7 +1365,7 @@ int32_t uWifiSockGetHostByName(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstance(wifiHandle, &pInstance);
+    errnoLocal = getInstance(devHandle, &pInstance);
     if (errnoLocal == U_SOCK_ENONE) {
         atHandle = pInstance->atHandle;
     }
@@ -1431,7 +1435,7 @@ int32_t uWifiSockGetHostByName(int32_t wifiHandle,
 }
 
 
-int32_t uWifiSockGetLocalAddress(int32_t wifiHandle,
+int32_t uWifiSockGetLocalAddress(uDeviceHandle_t devHandle,
                                  int32_t sockHandle,
                                  uSockAddress_t *pLocalAddress)
 {
@@ -1443,7 +1447,7 @@ int32_t uWifiSockGetLocalAddress(int32_t wifiHandle,
         return -U_SOCK_EIO;
     }
 
-    errnoLocal = getInstanceAndSocket(wifiHandle, sockHandle, &pInstance, &pSock);
+    errnoLocal = getInstanceAndSocket(devHandle, sockHandle, &pInstance, &pSock);
     if (errnoLocal == U_SOCK_ENONE) {
         char ipStr[64];
         int32_t tmp;

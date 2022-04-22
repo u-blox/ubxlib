@@ -69,7 +69,7 @@
  * -------------------------------------------------------------- */
 
 // Configure a GPIO.
-int32_t uCellGpioConfig(int32_t cellHandle, uCellGpioName_t gpioId,
+int32_t uCellGpioConfig(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
                         bool isOutput, int32_t level)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -105,7 +105,7 @@ int32_t uCellGpioConfig(int32_t cellHandle, uCellGpioName_t gpioId,
 }
 
 // Set the state of a GPIO.
-int32_t uCellGpioSet(int32_t cellHandle, uCellGpioName_t gpioId,
+int32_t uCellGpioSet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
                      int32_t level)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -137,7 +137,7 @@ int32_t uCellGpioSet(int32_t cellHandle, uCellGpioName_t gpioId,
 }
 
 // Get the state of a GPIO.
-int32_t uCellGpioGet(int32_t cellHandle, uCellGpioName_t gpioId)
+int32_t uCellGpioGet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t level;
@@ -180,7 +180,7 @@ int32_t uCellGpioGet(int32_t cellHandle, uCellGpioName_t gpioId)
 }
 
 // Set the state of the CTS line.
-int32_t uCellGpioSetCts(int32_t cellHandle, int32_t level)
+int32_t uCellGpioSetCts(uDeviceHandle_t cellHandle, int32_t level)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uCellPrivateInstance_t *pInstance;
@@ -212,7 +212,7 @@ int32_t uCellGpioSetCts(int32_t cellHandle, int32_t level)
 }
 
 // Get the state of the CTS line.
-int32_t uCellGpioGetCts(int32_t cellHandle)
+int32_t uCellGpioGetCts(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t level;

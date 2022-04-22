@@ -17,7 +17,11 @@
 #ifndef _U_NETWORK_TEST_CFG_H_
 #define _U_NETWORK_TEST_CFG_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief Types and network test configuration information shared
@@ -69,7 +73,7 @@ extern "C" {
  * Note: order is important, this is statically initialsed.
  */
 typedef struct {
-    int32_t handle;
+    uDeviceHandle_t devHandle;
     uNetworkType_t type;
     void *pConfiguration;
 } uNetworkTestCfg_t;
@@ -109,14 +113,14 @@ extern const char *gpUNetworkTestTypeName[];
 /** Update a GNSS network configuration for use with the AT
  * interface.
  *
- * @param networkHandleAt    the handle of the network providing the
+ * @param devHandleAt        the device handle providing the
  *                           AT interface (e.g. cellular).  NOT the
  *                           AT client handle, the handle of the network.
  * @param pGnssConfiguration a pointer to a structure of type
  *                           uNetworkConfigurationGnss_t where the first
  *                           element is set to U_NETWORK_TYPE_GNSS.
  */
-void uNetworkTestGnssAtConfiguration(int32_t networkHandleAt,
+void uNetworkTestGnssAtConfiguration(uDeviceHandle_t devHandleAt,
                                      void *pGnssConfiguration);
 
 #endif // _U_NETWORK_TEST_CFG_H_

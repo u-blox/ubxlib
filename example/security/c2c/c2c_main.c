@@ -173,7 +173,7 @@ static void printHex(const char *pStr, size_t length)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     char rotUid[U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES];
     char key[U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES];
     char hmac[U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES];
@@ -190,28 +190,29 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
     // Add a network instance, in this case of type cell
     // since that's what we have configuration information
     // for above.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    x = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                    (void *) &gConfigCell,
+                    &devHandle);
+    uPortLog("Added network with handle %d.\n", x);
 
     // Remember: at this point the module must NEVER have
     // been able to contact the u-blox security servers,
     // must never have been connected to cellular, hence
     // no "uNetworkUp()" here.
 
-    if (uSecurityIsSupported(networkHandle)) {
+    if (uSecurityIsSupported(devHandle)) {
 
         // This simply a mechanism to ensure
         // that the module has had time to
         // wake-up the u-blox security features
         // completely, since there's no point in
         // wasting time checking for device status
-        uSecurityGetRootOfTrustUid(networkHandle, rotUid);
+        uSecurityGetRootOfTrustUid(devHandle, rotUid);
 
         // Your MCU or factory test system would have
         // generated the 16-byte U_CFG_TEST_SECURITY_C2C_TE_SECRET
         uPortLog("Performing C2c pairing...\n");
-        if (uSecurityC2cPair(networkHandle,
+        if (uSecurityC2cPair(devHandle,
                              U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                              key, hmac) == 0) {
             uPortLog("Pairing completed, the values:");
@@ -234,13 +235,13 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
 
             uPortLog("A C2C session is not yet open, the following"
                      " AT transaction will be in plain text.\n");
-            x = uSecurityGetSerialNumber(networkHandle, serialNumber1);
+            x = uSecurityGetSerialNumber(devHandle, serialNumber1);
             uPortLog("Module returned serial number %.*s.\n",
                      x, serialNumber1);
 
             uPortLog("Opening a secure session using the stored"
                      " keys...\n");
-            if (uSecurityC2cOpen(networkHandle,
+            if (uSecurityC2cOpen(devHandle,
                                  U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                  key, hmac) == 0) {
                 uPortLog("With a C2C session open AT comms are"
@@ -248,7 +249,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
                          " probe to the serial lines between"
                          " the MCU and the module to see the"
                          " effect.\n");
-                y = uSecurityGetSerialNumber(networkHandle, serialNumber2);
+                y = uSecurityGetSerialNumber(devHandle, serialNumber2);
                 uPortLog("Module returned serial number %.*s.\n",
                          y, serialNumber2);
                 same = memcmp(serialNumber1, serialNumber2, x) == 0;
@@ -261,11 +262,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
                 // C2C enabled.
 
                 uPortLog("Closing the C2C session...\n");
-                if (uSecurityC2cClose(networkHandle) == 0) {
+                if (uSecurityC2cClose(devHandle) == 0) {
                     uPortLog("With the C2C session closed AT"
                              " communications are in plain text"
                              " once more.\n");
-                    y = uSecurityGetSerialNumber(networkHandle, serialNumber2);
+                    y = uSecurityGetSerialNumber(devHandle, serialNumber2);
                     uPortLog("Module returned serial number %.*s.\n",
                              y, serialNumber2);
                 } else {
@@ -282,7 +283,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
     }
 
     // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE((same) || !uSecurityIsSupported(networkHandle));
+    EXAMPLE_FINAL_STATE((same) || !uSecurityIsSupported(devHandle));
 
     // Calling these will also deallocate the network handle
     uNetworkDeinit();

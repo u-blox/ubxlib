@@ -17,7 +17,10 @@
 #ifndef _U_WIFI_CFG_H_
 #define _U_WIFI_CFG_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines the APIs that configure Wifi.
@@ -46,12 +49,12 @@ typedef struct {
 /** Configure wifi for a short range module, may requirer module restarts
  *  so can take up to 500 ms before it returns.
  *
- * @param wifiHandle  the handle of the wifi instance.
+ * @param devHandle   the handle of the wifi instance.
  * @param[in] pCfg    pointer to the configuration data, must not be NULL.
  * @return            zero on success or negative error code
  *                    on failure.
  */
-int32_t uWifiCfgConfigure(int32_t wifiHandle,
+int32_t uWifiCfgConfigure(uDeviceHandle_t devHandle,
                           const uWifiCfg_t *pCfg);
 
 #ifdef __cplusplus

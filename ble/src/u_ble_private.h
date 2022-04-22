@@ -44,22 +44,6 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Convert a BLE handle to a short range handle
- *
- * @param bleHandle  the BLE handle to convert
- * @return           a short range handle on success,
- *                   on failure negative value.
- */
-int32_t uBleToShoHandle(int32_t bleHandle);
-
-/** Convert a short range handle to a BLE handle
- *
- * @param shortRangeHandle  the short range handle to convert
- * @return                  a BLE handle on success,
- *                          on failure negative value.
- */
-int32_t uShoToBleHandle(int32_t shortRangeHandle);
-
 /** Initialize data part of BLE
  */
 void uBleSpsPrivateInit(void);

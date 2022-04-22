@@ -17,7 +17,10 @@
 #ifndef _U_LOCATION_TEST_SHARED_CFG_H_
 #define _U_LOCATION_TEST_SHARED_CFG_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief Types and location test configuration information shared
@@ -177,7 +180,7 @@ void uLocationTestCfgDeepCopyFree(uLocationTestCfg_t *pCfg);
 
 /** Log into an MQTT broker with the given client ID.
  *
- * @param networkHandle    the network handle to use for
+ * @param devHandle        the device handle to use for
  *                         the MQTT transport.
  * @param pBrokerNameStr   the URL of the MQTT broker.
  * @param pUserNameStr     the username to log in with.
@@ -186,7 +189,7 @@ void uLocationTestCfgDeepCopyFree(uLocationTestCfg_t *pCfg);
  * @return                 a pointer to the MQTT context,
  *                         or NULL on failure.
  */
-void *pULocationTestMqttLogin(int32_t networkHandle,
+void *pULocationTestMqttLogin(uDeviceHandle_t devHandle,
                               const char *pBrokerNameStr,
                               const char *pUserNameStr,
                               const char *pPasswordStr,

@@ -17,7 +17,10 @@
 #ifndef _U_CELL_PRIVATE_H_
 #define _U_CELL_PRIVATE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -345,11 +348,11 @@ typedef struct {
     bool powerSaving3gppOnNotOffCereg; /**< Whether 3GPP power saving is on or off according to the +CEREG URC. */
     int32_t activeTimeSecondsCereg; /**< The assigned active time according to the +CEREG URC. */
     int32_t periodicWakeupSecondsCereg; /**< The assigned periodic wake-up time according to the +CEREG URC. */
-    void (*p3gppPowerSavingCallback) (int32_t, bool, int32_t, int32_t, void *); /**< User callback called when +CEREG is seen. */
+    void (*p3gppPowerSavingCallback) (uDeviceHandle_t, bool, int32_t, int32_t, void *); /**< User callback called when +CEREG is seen. */
     void *p3gppPowerSavingCallbackParam; /**< User parameter to p3gppPowerSavingCallback. */
-    void (*pEDrxCallback) (int32_t, uCellNetRat_t, bool, int32_t, int32_t, int32_t, void *); /**< User callback called when E-DRX parameters changes. */
+    void (*pEDrxCallback) (uDeviceHandle_t, uCellNetRat_t, bool, int32_t, int32_t, int32_t, void *); /**< User callback called when E-DRX parameters changes. */
     void *pEDrxCallbackParam; /**< User parameter to pEDrxCallback. */
-    void (*pWakeUpCallback) (int32_t, void *); /**< A callback that can be called when a module is awoken from deep sleep. */
+    void (*pWakeUpCallback) (uDeviceHandle_t, void *); /**< A callback that can be called when a module is awoken from deep sleep. */
     void *pWakeUpCallbackParam; /**< Parameter provided by the user and passed to pWakeUpCallback when called. */
     // *INDENT-ON*
 } uCellPrivateSleep_t;
@@ -357,7 +360,7 @@ typedef struct {
 /** Definition of a cellular instance.
  */
 typedef struct uCellPrivateInstance_t {
-    int32_t handle; /**< The handle for this instance. */
+    uDeviceHandle_t cellHandle; /**< The handle for this instance. */
     const uCellPrivateModule_t *pModule; /**< Pointer to the module type. */
     uAtClientHandle_t atHandle; /**< The AT client handle to use. */
     int32_t pinEnablePower; /**< The pin that switches on the
@@ -391,7 +394,7 @@ typedef struct uCellPrivateInstance_t {
     bool rebootIsRequired;   /**< Set to true if a reboot of the module is
                                   required, e.g. as a result of a configuration
                                   change. */
-    bool (*pKeepGoingCallback) (int32_t);  /**< Used while connecting. */
+    bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle);  /**< Used while connecting. */
     void (*pRegistrationStatusCallback) (uCellNetRegDomain_t, uCellNetStatus_t, void *);
     void *pRegistrationStatusCallbackParameter;
     void (*pConnectionStatusCallback) (bool, void *);
@@ -447,10 +450,10 @@ bool uCellPrivateIsNumeric(const char *pBuffer, size_t bufferSize);
 /** Find a cellular instance in the list by instance handle.
  * Note: gUCellPrivateMutex should be locked before this is called.
  *
- * @param handle  the instance handle.
- * @return        a pointer to the instance.
+ * @param cellHandle  the instance handle.
+ * @return            a pointer to the instance.
  */
-uCellPrivateInstance_t *pUCellPrivateGetInstance(int32_t handle);
+uCellPrivateInstance_t *pUCellPrivateGetInstance(uDeviceHandle_t cellHandle);
 
 /** Set the radio parameters back to defaults.
  *
@@ -566,13 +569,13 @@ void uCellPrivateScanFree(uCellPrivateNet_t **ppScanResults);
 
 /** Get the module characteristics for a given instance.
  *
- * @param handle  the instance handle.
- * @return        a pointer to the module characteristics.
+ * @param cellHandle  the instance handle.
+ * @return            a pointer to the module characteristics.
  */
 //lint -esym(714, pUCellPrivateGetModule) Suppress lack of a reference
 //lint -esym(759, pUCellPrivateGetModule) etc. since use of this function
 //lint -esym(765, pUCellPrivateGetModule) may be compiled-out in various ways
-const uCellPrivateModule_t *pUCellPrivateGetModule(int32_t handle);
+const uCellPrivateModule_t *pUCellPrivateGetModule(uDeviceHandle_t cellHandle);
 
 /** Remove the chip to chip security context for the given instance.
  * Note: gUCellPrivateMutex should be locked before this is called.

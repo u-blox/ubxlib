@@ -54,7 +54,6 @@
 
 #include "u_mqtt_common.h"
 #include "u_mqtt_client.h"
-#include "u_wifi_private.h"
 #include "u_wifi_mqtt.h"
 #include "u_short_range_module_type.h"
 #include "u_short_range_pbuf.h"
@@ -564,7 +563,7 @@ static void edmIpConnectionCallback(int32_t edmHandle,
 
 }
 
-static void atMqttConnectionCallback(int32_t shortRangeHandle,
+static void atMqttConnectionCallback(uDeviceHandle_t devHandle,
                                      int32_t connHandle,
                                      uShortRangeConnectionEventType_t eventType,
                                      uShortRangeConnectDataIp_t *pConnectData,
@@ -574,7 +573,7 @@ static void atMqttConnectionCallback(int32_t shortRangeHandle,
     uWifiMqttTopic_t *pTopic;
     int32_t i;
     bool topicFound = false;
-    (void)shortRangeHandle;
+    (void)devHandle;
     (void)pConnectData;
     (void)pCallbackParameter;
 
@@ -632,14 +631,12 @@ static void atMqttConnectionCallback(int32_t shortRangeHandle,
     uPortSemaphoreGive(pMqttSession->semaphore);
 }
 
-static int32_t getInstance(int32_t wifiHandle, uShortRangePrivateInstance_t **ppInstance)
+static int32_t getInstance(uDeviceHandle_t devHandle, uShortRangePrivateInstance_t **ppInstance)
 {
-    int32_t shoHandle;
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
-    shoHandle = uWifiToShoHandle(wifiHandle);
     if (ppInstance != NULL) {
-        *ppInstance = pUShortRangePrivateGetInstance(shoHandle);
+        *ppInstance = pUShortRangePrivateGetInstance(devHandle);
         if (*ppInstance != NULL) {
             if ((*ppInstance)->mode == U_SHORT_RANGE_MODE_EDM) {
                 err = (int32_t)U_ERROR_COMMON_SUCCESS;
@@ -657,7 +654,7 @@ static int32_t getMqttInstance(const uMqttClientContext_t *pContext,
 {
     int32_t err;
 
-    err = getInstance(pContext->networkHandle, ppInstance);
+    err = getInstance(pContext->devHandle, ppInstance);
 
     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
@@ -727,7 +724,6 @@ static void freeMqtt(uMqttClientContext_t *pContext)
 {
     int32_t count = 0;
     uShortRangePrivateInstance_t *pInstance;
-    int32_t shoHandle;
 
     for (int32_t i = 0; i < U_WIFI_MQTT_MAX_NUM_CONNECTIONS; i++) {
         if (gMqttSessions[i].sessionHandle == -1) {
@@ -738,11 +734,9 @@ static void freeMqtt(uMqttClientContext_t *pContext)
     if (count == U_WIFI_MQTT_MAX_NUM_CONNECTIONS) {
         uPortMutexDelete(gMqttSessionMutex);
         gMqttSessionMutex = NULL;
-        if (getInstance(pContext->networkHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        if (getInstance(pContext->devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
-            shoHandle = uWifiToShoHandle(pContext->networkHandle);
-
-            uShortRangeSetMqttConnectionStatusCallback(shoHandle, NULL, NULL);
+            uShortRangeSetMqttConnectionStatusCallback(pContext->devHandle, NULL, NULL);
 
             uShortRangeEdmStreamMqttEventCallbackSet(pInstance->streamHandle, NULL, NULL);
 
@@ -825,9 +819,8 @@ static int32_t configureMqttSessionConnection(uWifiMqttSession_t *pMqttSession,
     return err;
 }
 
-int32_t uWifiMqttInit(int32_t wifiHandle, void **ppMqttSession)
+int32_t uWifiMqttInit(uDeviceHandle_t devHandle, void **ppMqttSession)
 {
-    int32_t shoHandle;
     uShortRangePrivateInstance_t *pInstance;
     int32_t err = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
 
@@ -837,11 +830,14 @@ int32_t uWifiMqttInit(int32_t wifiHandle, void **ppMqttSession)
 
             if (initMqttSessions() == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
-                if (getInstance(wifiHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                if (getInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                    // TODO: Remove this when Network API has been adjusted so that
+                    //       we can use the same device handle for both BLE and WiFi
+                    if (pInstance->wifiHandle == NULL) {
+                        pInstance->wifiHandle = devHandle;
+                    }
 
-                    shoHandle = uWifiToShoHandle(wifiHandle);
-
-                    err = uShortRangeSetMqttConnectionStatusCallback(shoHandle,
+                    err = uShortRangeSetMqttConnectionStatusCallback(devHandle,
                                                                      atMqttConnectionCallback,
                                                                      pInstance);
                     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
@@ -898,7 +894,7 @@ int32_t uWifiMqttConnect(const uMqttClientContext_t *pContext,
     uWifiMqttSession_t *pMqttSession = (uWifiMqttSession_t *)pContext->pPriv;
 
     if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
-        if (getInstance(pContext->networkHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        if (getInstance(pContext->devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
             U_PORT_MUTEX_LOCK(gMqttSessionMutex);
             err = configureMqttSessionConnection(pMqttSession, pConnection);
 

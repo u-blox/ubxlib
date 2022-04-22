@@ -44,7 +44,7 @@ A simple usage example is given below.  Note that, before calling `app_start()` 
 // we are in task space.
 int app_start() {
     int32_t uartHandle;
-    int32_t gnssHandle;
+    uDeviceHandle_t gnssHandle = NULL;
     int32_t latitudeX1e7;
     int32_t longitudeX1e7;
 
@@ -70,9 +70,10 @@ int app_start() {
     // Add a GNSS instance, giving it the UART handle and
     // the pin that enables power to the GNSS module; use
     // -1 if there is no such pin.
-    gnssHandle = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-                          U_GNSS_TRANSPORT_NMEA_UART, uartHandle,
-                          U_CFG_APP_PIN_GNSS_ENABLE_POWER, false);
+    uGnssAdd(U_GNSS_MODULE_TYPE_M8,
+             U_GNSS_TRANSPORT_NMEA_UART, uartHandle,
+             U_CFG_APP_PIN_GNSS_ENABLE_POWER, false,
+             &gnssHandle);
 
     // To get prints of the message exchange with the GNSS module
     uGnssSetUbxMessagePrint(gnssHandle, true);

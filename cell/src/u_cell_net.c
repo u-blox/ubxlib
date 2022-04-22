@@ -123,8 +123,8 @@ typedef struct {
 /** All the parameters for 3GPP power saving parameters callback.
  */
 typedef struct {
-    int32_t handle;
-    void (*pCallback) (int32_t, bool, int32_t, int32_t, void *);
+    uDeviceHandle_t cellHandle;
+    void (*pCallback) (uDeviceHandle_t, bool, int32_t, int32_t, void *);
     bool onNotOff;
     int32_t activeTimeSeconds;
     int32_t periodicWakeupSeconds;
@@ -216,7 +216,7 @@ static void powerSaving3gppCallback(uAtClientHandle_t atHandle,
 
     if (pCallback != NULL) {
         if (pCallback->pCallback != NULL) {
-            pCallback->pCallback(pCallback->handle, pCallback->onNotOff,
+            pCallback->pCallback(pCallback->cellHandle, pCallback->onNotOff,
                                  pCallback->activeTimeSeconds,
                                  pCallback->periodicWakeupSeconds,
                                  pCallback->pCallbackParam);
@@ -521,7 +521,7 @@ static void CEREG_urc(uAtClientHandle_t atHandle,
             //lint -esym(593, pCallback) Suppress pCallback not being free()ed here
             pCallback = (uCellNet3gppPowerSavingCallback_t *) malloc(sizeof(*pCallback));
             if (pCallback != NULL) {
-                pCallback->handle = pInstance->handle;
+                pCallback->cellHandle = pInstance->cellHandle;
                 pCallback->pCallback = pSleepContext->p3gppPowerSavingCallback;
                 pCallback->onNotOff = onNotOff;
                 pCallback->activeTimeSeconds = activeTimeSeconds;
@@ -600,7 +600,7 @@ static bool keepGoingLocalCb(const uCellPrivateInstance_t *pInstance)
     bool keepGoing = true;
 
     if (pInstance->pKeepGoingCallback != NULL) {
-        keepGoing = pInstance->pKeepGoingCallback(pInstance->handle);
+        keepGoing = pInstance->pKeepGoingCallback(pInstance->cellHandle);
     } else {
         if ((pInstance->startTimeMs > 0) &&
             (uPortGetTickTimeMs() > pInstance->startTimeMs +
@@ -1135,7 +1135,7 @@ static int32_t attachNetwork(const uCellPrivateInstance_t *pInstance)
 
 // Disconnect from the network.
 static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
-                                 bool (pKeepGoingCallback) (int32_t))
+                                 bool (pKeepGoingCallback) (uDeviceHandle_t cellHandle))
 {
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -1145,10 +1145,10 @@ static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
     if (errorCode == 0) {
         for (int32_t count = 10;
              (count > 0) && uCellPrivateIsRegistered(pInstance) &&
-             ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->handle));
+             ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->cellHandle));
              count--) {
             for (size_t x = 0; (x < sizeof(gRegTypes) / sizeof(gRegTypes[0])) &&
-                 ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->handle)); x++) {
+                 ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->cellHandle)); x++) {
                 if (gRegTypes[x].supportedRatsBitmap &
                     pInstance->pModule->supportedRatsBitmap) {
                     // Prod the modem to see if it is done
@@ -1579,7 +1579,7 @@ static  int32_t deactivateUpsd(const uCellPrivateInstance_t *pInstance,
 // NOTE: returns 0 (success) if the current context is adequate, else error.
 static int32_t handleExistingContext(uCellPrivateInstance_t *pInstance,
                                      const char *pApn,
-                                     bool (pKeepGoingCallback) (int32_t))
+                                     bool (pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_CELL_ERROR_NOT_CONNECTED;
     bool hasContext = false;
@@ -1873,11 +1873,11 @@ static int32_t getDnsStrUpsd(const uCellPrivateInstance_t *pInstance,
  * -------------------------------------------------------------- */
 
 // Register with the cellular network and activate a PDP context.
-int32_t uCellNetConnect(int32_t cellHandle,
+int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                         const char *pMccMnc,
                         const char *pApn, const char *pUsername,
                         const char *pPassword,
-                        bool (*pKeepGoingCallback) (int32_t))
+                        bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2058,9 +2058,9 @@ int32_t uCellNetConnect(int32_t cellHandle,
 }
 
 // Register with the cellular network.
-int32_t uCellNetRegister(int32_t cellHandle,
+int32_t uCellNetRegister(uDeviceHandle_t cellHandle,
                          const char *pMccMnc,
-                         bool (*pKeepGoingCallback) (int32_t))
+                         bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2138,10 +2138,10 @@ int32_t uCellNetRegister(int32_t cellHandle,
 }
 
 // Activate the PDP context.
-int32_t uCellNetActivate(int32_t cellHandle,
+int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                          const char *pApn, const char *pUsername,
                          const char *pPassword,
-                         bool (*pKeepGoingCallback) (int32_t))
+                         bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2272,8 +2272,8 @@ int32_t uCellNetActivate(int32_t cellHandle,
 }
 
 // Deactivate the PDP context.
-int32_t uCellNetDeactivate(int32_t cellHandle,
-                           bool (*pKeepGoingCallback) (int32_t))
+int32_t uCellNetDeactivate(uDeviceHandle_t cellHandle,
+                           bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2316,8 +2316,8 @@ int32_t uCellNetDeactivate(int32_t cellHandle,
 }
 
 // Disconnect from the network.
-int32_t uCellNetDisconnect(int32_t cellHandle,
-                           bool (*pKeepGoingCallback) (int32_t))
+int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
+                           bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2362,10 +2362,10 @@ int32_t uCellNetDisconnect(int32_t cellHandle,
 }
 
 // Initiate a network scan and return the first result.
-int32_t uCellNetScanGetFirst(int32_t cellHandle,
+int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
                              char *pName, size_t nameSize,
                              char *pMccMnc, uCellNetRat_t *pRat,
-                             bool (*pKeepGoingCallback) (int32_t))
+                             bool (*pKeepGoingCallback) (uDeviceHandle_t cellHandle))
 {
     int32_t errorCodeOrNumber = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2514,7 +2514,7 @@ int32_t uCellNetScanGetFirst(int32_t cellHandle,
 }
 
 // Return subsequent results from a network scan.
-int32_t uCellNetScanGetNext(int32_t cellHandle,
+int32_t uCellNetScanGetNext(uDeviceHandle_t cellHandle,
                             char *pName, size_t nameSize,
                             char *pMccMnc, uCellNetRat_t *pRat)
 {
@@ -2543,7 +2543,7 @@ int32_t uCellNetScanGetNext(int32_t cellHandle,
 }
 
 // Clear up memory from a network scan.
-void uCellNetScanGetLast(int32_t cellHandle)
+void uCellNetScanGetLast(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance;
 
@@ -2562,7 +2562,7 @@ void uCellNetScanGetLast(int32_t cellHandle)
 }
 
 // Enable or disable the registration status call-back.
-int32_t uCellNetSetRegistrationStatusCallback(int32_t cellHandle,
+int32_t uCellNetSetRegistrationStatusCallback(uDeviceHandle_t cellHandle,
                                               void (*pCallback) (uCellNetRegDomain_t,
                                                                  uCellNetStatus_t,
                                                                  void *),
@@ -2590,7 +2590,7 @@ int32_t uCellNetSetRegistrationStatusCallback(int32_t cellHandle,
 }
 
 // Enable or disable the basestation connection call-back.
-int32_t uCellNetSetBaseStationConnectionStatusCallback(int32_t cellHandle,
+int32_t uCellNetSetBaseStationConnectionStatusCallback(uDeviceHandle_t cellHandle,
                                                        void (*pCallback) (bool,
                                                                           void *),
                                                        void *pCallbackParameter)
@@ -2637,7 +2637,7 @@ int32_t uCellNetSetBaseStationConnectionStatusCallback(int32_t cellHandle,
 }
 
 // Get the current network registration status.
-uCellNetStatus_t uCellNetGetNetworkStatus(int32_t cellHandle,
+uCellNetStatus_t uCellNetGetNetworkStatus(uDeviceHandle_t cellHandle,
                                           uCellNetRegDomain_t domain)
 {
     int32_t errorCodeOrStatus = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -2660,7 +2660,7 @@ uCellNetStatus_t uCellNetGetNetworkStatus(int32_t cellHandle,
 }
 
 // Get a value whether the module is registered on the network.
-bool uCellNetIsRegistered(int32_t cellHandle)
+bool uCellNetIsRegistered(uDeviceHandle_t cellHandle)
 {
     bool isRegistered = false;
     uCellPrivateInstance_t *pInstance;
@@ -2681,7 +2681,7 @@ bool uCellNetIsRegistered(int32_t cellHandle)
 }
 
 // Return the RAT that is currently in use.
-uCellNetRat_t uCellNetGetActiveRat(int32_t cellHandle)
+uCellNetRat_t uCellNetGetActiveRat(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrRat = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2703,7 +2703,7 @@ uCellNetRat_t uCellNetGetActiveRat(int32_t cellHandle)
 }
 
 // Get the operator name.
-int32_t uCellNetGetOperatorStr(int32_t cellHandle,
+int32_t uCellNetGetOperatorStr(uDeviceHandle_t cellHandle,
                                char *pStr, size_t size)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -2738,7 +2738,7 @@ int32_t uCellNetGetOperatorStr(int32_t cellHandle,
 }
 
 // Get the MCC/MNC of the network.
-int32_t uCellNetGetMccMnc(int32_t cellHandle,
+int32_t uCellNetGetMccMnc(uDeviceHandle_t cellHandle,
                           int32_t *pMcc, int32_t *pMnc)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -2799,7 +2799,7 @@ int32_t uCellNetGetMccMnc(int32_t cellHandle,
 }
 
 // Return the IP address of the currently active connection.
-int32_t uCellNetGetIpAddressStr(int32_t cellHandle,
+int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle,
                                 char *pStr)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -2892,7 +2892,7 @@ int32_t uCellNetGetIpAddressStr(int32_t cellHandle,
 }
 
 // Return the DNS addresses.
-int32_t uCellNetGetDnsStr(int32_t cellHandle,
+int32_t uCellNetGetDnsStr(uDeviceHandle_t cellHandle,
                           bool v6, char *pStrDns1, char *pStrDns2)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -2924,7 +2924,7 @@ int32_t uCellNetGetDnsStr(int32_t cellHandle,
 }
 
 // Get the APN currently in use.
-int32_t uCellNetGetApnStr(int32_t cellHandle,
+int32_t uCellNetGetApnStr(uDeviceHandle_t cellHandle,
                           char *pStr, size_t size)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -2963,7 +2963,7 @@ int32_t uCellNetGetApnStr(int32_t cellHandle,
  * -------------------------------------------------------------- */
 
 // Get the current value of the transmit data counter.
-int32_t uCellNetGetDataCounterTx(int32_t cellHandle)
+int32_t uCellNetGetDataCounterTx(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -3014,7 +3014,7 @@ int32_t uCellNetGetDataCounterTx(int32_t cellHandle)
 }
 
 // Get the current value of the receive data counter.
-int32_t uCellNetGetDataCounterRx(int32_t cellHandle)
+int32_t uCellNetGetDataCounterRx(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrCount = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -3066,7 +3066,7 @@ int32_t uCellNetGetDataCounterRx(int32_t cellHandle)
 }
 
 // Reset the transmit and receive data counters.
-int32_t uCellNetResetDataCounters(int32_t cellHandle)
+int32_t uCellNetResetDataCounters(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;

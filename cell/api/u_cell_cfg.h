@@ -17,7 +17,11 @@
 #ifndef _U_CELL_CFG_H_
 #define _U_CELL_CFG_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the APIs that configure a cellular
@@ -76,7 +80,7 @@ extern "C" {
  * @return            zero on success or negative error code
  *                    on failure.
  */
-int32_t uCellCfgSetBandMask(int32_t cellHandle,
+int32_t uCellCfgSetBandMask(uDeviceHandle_t cellHandle,
                             uCellNetRat_t rat,
                             uint64_t bandMask1,
                             uint64_t bandMask2);
@@ -96,7 +100,7 @@ int32_t uCellCfgSetBandMask(int32_t cellHandle,
  *                    band 128, cannot be NULL.
  * @return            zero on succese else negative error code.
  */
-int32_t uCellCfgGetBandMask(int32_t cellHandle,
+int32_t uCellCfgGetBandMask(uDeviceHandle_t cellHandle,
                             uCellNetRat_t rat,
                             uint64_t *pBandMask1,
                             uint64_t *pBandMask2);
@@ -117,7 +121,7 @@ int32_t uCellCfgGetBandMask(int32_t cellHandle,
  * @return            zero on success or negative error code
  *                    on failure.
  */
-int32_t uCellCfgSetRat(int32_t cellHandle,
+int32_t uCellCfgSetRat(uDeviceHandle_t cellHandle,
                        uCellNetRat_t rat);
 
 /** Set the radio access technology to be used at the
@@ -150,7 +154,7 @@ int32_t uCellCfgSetRat(int32_t cellHandle,
  * @return            zero on success or negative error code on
  *                    failure.
  */
-int32_t uCellCfgSetRatRank(int32_t cellHandle,
+int32_t uCellCfgSetRatRank(uDeviceHandle_t cellHandle,
                            uCellNetRat_t rat,
                            int32_t rank);
 
@@ -169,7 +173,7 @@ int32_t uCellCfgSetRatRank(int32_t cellHandle,
  * @return            the radio access technology being used at
  *                    that rank.
  */
-uCellNetRat_t uCellCfgGetRat(int32_t cellHandle,
+uCellNetRat_t uCellCfgGetRat(uDeviceHandle_t cellHandle,
                              int32_t rank);
 
 /** Get the rank at which the given radio access technology
@@ -181,7 +185,7 @@ uCellNetRat_t uCellCfgGetRat(int32_t cellHandle,
  *                    radio access technology is not found in
  *                    the ranked radio access technologies.
  */
-int32_t uCellCfgGetRatRank(int32_t cellHandle,
+int32_t uCellCfgGetRatRank(uDeviceHandle_t cellHandle,
                            uCellNetRat_t rat);
 
 /** Set the MNO profile use by the cellular module.  The module must
@@ -201,7 +205,7 @@ int32_t uCellCfgGetRatRank(int32_t cellHandle,
  * @return            zero on success or negative error code on
  *                    failure.
  */
-int32_t uCellCfgSetMnoProfile(int32_t cellHandle,
+int32_t uCellCfgSetMnoProfile(uDeviceHandle_t cellHandle,
                               int32_t mnoProfile);
 
 /** Get the MNO profile used by the cellular module.
@@ -212,7 +216,7 @@ int32_t uCellCfgSetMnoProfile(int32_t cellHandle,
  * @return            the MNO profile used by the module or negative
  *                    error code on failure.
  */
-int32_t uCellCfgGetMnoProfile(int32_t cellHandle);
+int32_t uCellCfgGetMnoProfile(uDeviceHandle_t cellHandle);
 
 /** Configures serial interface. The configuration affects how an available
  * (physical or logical) serial interface is used, e.g the meaning of data
@@ -229,14 +233,14 @@ int32_t uCellCfgGetMnoProfile(int32_t cellHandle);
  * @param requestedVariant  the serial interface variant to set, e.g 0 - 255
  * @return                  zero on success or negative error code on failure.
  */
-int32_t uCellCfgSetSerialInterface(int32_t cellHandle, int32_t requestedVariant);
+int32_t uCellCfgSetSerialInterface(uDeviceHandle_t cellHandle, int32_t requestedVariant);
 
 /** Get the serial interface active configure.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            active variant of serial interface or negative code on failure.
  */
-int32_t uCellCfgGetActiveSerialInterface(int32_t cellHandle);
+int32_t uCellCfgGetActiveSerialInterface(uDeviceHandle_t cellHandle);
 
 /** Some cellular modules support an "AT+UDCONF" command which
  * allows details of specific features to be configured inside the
@@ -253,7 +257,7 @@ int32_t uCellCfgGetActiveSerialInterface(int32_t cellHandle);
  * @return            zero on success or negative error code on
  *                    failure.
  */
-int32_t uCellCfgSetUdconf(int32_t cellHandle, int32_t param1,
+int32_t uCellCfgSetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
                           int32_t param2,  int32_t param3);
 
 /** Get the given "AT+UDCONF" setting.
@@ -265,7 +269,7 @@ int32_t uCellCfgSetUdconf(int32_t cellHandle, int32_t param1,
  * @return            the positive integer setting value or negative
  *                    error code on failure.
  */
-int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
+int32_t uCellCfgGetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
                           int32_t param2);
 
 /** Restores factory configurations for FS and/or NVM. The module must be
@@ -291,7 +295,7 @@ int32_t uCellCfgGetUdconf(int32_t cellHandle, int32_t param1,
  * @return               zero on success or negative error code on
  *                       failure.
  */
-int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType,
+int32_t uCellCfgFactoryReset(uDeviceHandle_t cellHandle, int32_t fsRestoreType,
                              int32_t nvmRestoreType);
 
 /** Set a greeting message, which will be emitted by the module
@@ -311,7 +315,7 @@ int32_t uCellCfgFactoryReset(int32_t cellHandle, int32_t fsRestoreType,
  * @return             zero on success or negative error code on
  *                     failure.
  */
-int32_t uCellCfgSetGreeting(int32_t cellHandle, const char *pStr);
+int32_t uCellCfgSetGreeting(uDeviceHandle_t cellHandle, const char *pStr);
 
 /** Get the current greeting message.
  *
@@ -328,7 +332,7 @@ int32_t uCellCfgSetGreeting(int32_t cellHandle, const char *pStr);
  *                    error code.  If there is no greeting message
  *                    zero will be returned.
  */
-int32_t uCellCfgGetGreeting(int32_t cellHandle, char *pStr, size_t size);
+int32_t uCellCfgGetGreeting(uDeviceHandle_t cellHandle, char *pStr, size_t size);
 
 /** Switch off auto-bauding in the cellular module.  This will fix
  * the baud rate of the cellular module to the current baud rate,
@@ -350,7 +354,7 @@ int32_t uCellCfgGetGreeting(int32_t cellHandle, char *pStr, size_t size);
  * @return             zero on success or negative error code on
  *                     failure.
  */
-int32_t uCellCfgSetAutoBaudOff(int32_t cellHandle);
+int32_t uCellCfgSetAutoBaudOff(uDeviceHandle_t cellHandle);
 
 /** Switch auto-bauding on in the cellular module.  Auto-bauding
  * is not supported by all modules (e.g. the SARA-R4 series do not
@@ -364,14 +368,14 @@ int32_t uCellCfgSetAutoBaudOff(int32_t cellHandle);
  * @return             zero on success or negative error code on
  *                     failure.
  */
-int32_t uCellCfgSetAutoBaudOn(int32_t cellHandle);
+int32_t uCellCfgSetAutoBaudOn(uDeviceHandle_t cellHandle);
 
 /** Determine whether auto-bauding is on in the cellular module.
  *
  * @param cellHandle   the handle of the cellular instance.
  * @return             true if auto-bauding is on, else false.
  */
-bool uCellCfgAutoBaudIsOn(int32_t cellHandle);
+bool uCellCfgAutoBaudIsOn(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }

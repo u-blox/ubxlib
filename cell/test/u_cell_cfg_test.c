@@ -96,7 +96,7 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
  * -------------------------------------------------------------- */
 
 // Callback function for the cellular connection process
-static bool keepGoingCallback(int32_t unused)
+static bool keepGoingCallback(uDeviceHandle_t unused)
 {
     bool keepGoing = true;
 
@@ -110,7 +110,7 @@ static bool keepGoingCallback(int32_t unused)
 }
 
 // Read, change and check band mask for the given RAT
-static void testBandMask(int32_t cellHandle,
+static void testBandMask(uDeviceHandle_t cellHandle,
                          uCellNetRat_t rat,
                          const char *pRatString,
                          uint32_t supportedRatsBitmap)
@@ -236,7 +236,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     size_t numSupportedRats = 0;
     uCellNetRat_t supportedRats[U_CELL_NET_RAT_MAX_NUM];
@@ -316,7 +316,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     size_t numSupportedRats = 0;
     uCellNetRat_t setRats[U_CELL_PRIVATE_MAX_NUM_SIMULTANEOUS_RATS];
@@ -558,7 +558,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t readMnoProfile;
     int32_t mnoProfile;
@@ -654,7 +654,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgUdconf")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     int32_t udconfOriginal;
     int32_t x;
     int32_t setUdconf = 0;
@@ -717,7 +717,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgUdconf")
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgAutoBaud")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t x;
     int32_t heapUsed;
@@ -778,7 +778,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgAutoBaud")
  */
 U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     char bufferOriginal[64];
     char buffer[64];
     int32_t x;

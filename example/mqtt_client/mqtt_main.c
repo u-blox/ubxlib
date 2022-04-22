@@ -193,7 +193,7 @@ static void messageIndicationCallback(int32_t numUnread, void *pParam)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     uMqttClientContext_t *pContext = NULL;
     uMqttClientConnection_t connection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
     uSecurityTlsSettings_t tlsSettings = U_SECURITY_TLS_SETTINGS_DEFAULT;
@@ -203,6 +203,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
     size_t bufferSize;
     volatile bool messagesAvailable = false;
     int64_t startTimeMs;
+    int32_t returnCode;
 
     // Initialise the APIs we will need
     uPortInit();
@@ -211,12 +212,14 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
     // Add a network instance, in this case of type cell
     // since that's what we have configuration information
     // for above.
-    networkHandle = uNetworkAdd(gNetType, (void *) &gConfig);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(gNetType,
+                             (void *) &gConfig,
+                             &devHandle);
+    uPortLog("Added network with return code %d.\n", returnCode);
 
     // Bring up the network layer
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkUp(devHandle) == 0) {
 
         // Do things using the network, for
         // example connect to an MQTT broker
@@ -235,7 +238,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
         // structure to, for instance, add certificate
         // checking: see the sockets TLS example for
         // how to do that.
-        pContext = pUMqttClientOpen(networkHandle, NULL);
+        pContext = pUMqttClientOpen(devHandle, NULL);
         if (pContext != NULL) {
             // Set the URL for the connection; everything
             // else can be left at defaults for the
@@ -267,7 +270,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                 // public server that we can publish and subscribe
                 // to in this example code, we make the topic name
                 // the serial number of the module
-                uSecurityGetSerialNumber(networkHandle, topic);
+                uSecurityGetSerialNumber(devHandle, topic);
 
                 // Subscribe to our topic on the broker
                 uPortLog("Subscribing to topic \"%s\"...\n", topic);
@@ -321,7 +324,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
             uPortLog("Unable to create MQTT instance!\n");
         }
 
-        // Note: since networkHandle is a cellular
+        // Note: since devHandle is a cellular
         // handle any of the `cell` API calls
         // could be made here using it.
         // If the configuration used were Wifi
@@ -333,7 +336,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
 
         // When finished with the network layer
         uPortLog("Taking down network...\n");
-        uNetworkDown(networkHandle);
+        uNetworkDown(devHandle);
     } else {
         uPortLog("Unable to bring up the network!\n");
     }

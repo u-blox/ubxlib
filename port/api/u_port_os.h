@@ -17,7 +17,10 @@
 #ifndef _U_PORT_OS_H_
 #define _U_PORT_OS_H_
 
-/* No #includes allowed here _except_, under special circumstances,
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. _except_, under special circumstances,
  * if we want to sneak mutex debug in under-cover, see the section
  * under U_CFG_MUTEX_DEBUG that is snuck in at the very end of this
  * file.

@@ -45,30 +45,32 @@ void uNetworkDeinitGnss()
 
 }
 
-int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration)
+int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration,
+                        uDeviceHandle_t *pDevHandle)
 {
     (void) pConfiguration;
+    (void) pDevHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkRemoveGnss(int32_t handle)
+int32_t uNetworkRemoveGnss(uDeviceHandle_t devHandle)
 {
-    (void) handle;
+    (void) devHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkUpGnss(int32_t handle,
+int32_t uNetworkUpGnss(uDeviceHandle_t devHandle,
                        const uNetworkConfigurationGnss_t *pConfiguration)
 {
-    (void) handle;
+    (void) devHandle;
     (void) pConfiguration;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uNetworkDownGnss(int32_t handle,
+int32_t uNetworkDownGnss(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationGnss_t *pConfiguration)
 {
-    (void) handle;
+    (void) devHandle;
     (void) pConfiguration;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }

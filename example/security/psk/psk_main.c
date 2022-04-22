@@ -145,8 +145,9 @@ static void printHex(const char *pStr, size_t length)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleSecPsk")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     int32_t size = 0;
+    int32_t returnCode;
     char psk[U_SECURITY_PSK_MAX_LENGTH_BYTES];
     char pskId[U_SECURITY_PSK_ID_MAX_LENGTH_BYTES];
 
@@ -157,22 +158,23 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecPsk")
     // Add a network instance, in this case of type cell
     // since that's what we have configuration information
     // for above.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                             (void *) &gConfigCell,
+                             &devHandle);
+    uPortLog("Added network with return code %d.\n", returnCode);
 
     // Bring up the network layer
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkUp(devHandle) == 0) {
 
         // The module must have previously been security
         // sealed for this example to work
-        if (uSecurityIsSealed(networkHandle)) {
+        if (uSecurityIsSealed(devHandle)) {
             uPortLog("Device is security sealed.\n");
 
             uPortLog("Requesting generation of a 32-byte PSK"
                      " and associated PSK ID...\n");
-            size = uSecurityPskGenerate(networkHandle, 32,
+            size = uSecurityPskGenerate(devHandle, 32,
                                         psk, pskId);
             uPortLog("32 bytes of PSK returned:       ");
             printHex(psk, 32);
@@ -213,23 +215,23 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecPsk")
             // Before security sealing can be performed the device must
             // have contacted u-blox security services and "bootstrapped"
             // itself (a once-only process): check that this has happened
-            for (x = 10; (x > 0) && !uSecurityIsBootstrapped(networkHandle); x--) {
+            for (x = 10; (x > 0) && !uSecurityIsBootstrapped(devHandle); x--) {
                 uPortTaskBlock(5000);
             }
 
-            if (uSecurityIsBootstrapped(networkHandle)) {
+            if (uSecurityIsBootstrapped(devHandle)) {
                 uPortLog("Device is bootstrapped.\n");
 
                 // In this example we obtain the serial number of the
                 // device and use that in the sealing process.  You
                 // may chose your own serial number instead if you wish.
-                x = uSecurityGetSerialNumber(networkHandle, serialNumber);
+                x = uSecurityGetSerialNumber(devHandle, serialNumber);
                 if ((x > 0) && x < (int32_t) sizeof(serialNumber)) {
                     uPortLog("Performing security seal with device profile UID"
                              " string \"%s\" and serial number \"%s\"...\n",
                              U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
                              serialNumber);
-                    if (uSecuritySealSet(networkHandle,
+                    if (uSecuritySealSet(devHandle,
                                          U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
                                          serialNumber, NULL) == 0) {
                         uPortLog("Device is security sealed with device profile UID string \"%s\""
@@ -253,13 +255,13 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecPsk")
 
         // When finished with the network layer
         uPortLog("Taking down network...\n");
-        uNetworkDown(networkHandle);
+        uNetworkDown(devHandle);
     } else {
         uPortLog("Unable to bring up the network!\n");
     }
 
     // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE(((size > 0) && (size < sizeof(pskId))) || !uSecurityIsSupported(networkHandle));
+    EXAMPLE_FINAL_STATE(((size > 0) && (size < sizeof(pskId))) || !uSecurityIsSupported(devHandle));
 
     // Calling these will also deallocate the network handle
     uNetworkDeinit();

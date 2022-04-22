@@ -17,7 +17,10 @@
 #ifndef _U_NETWORK_PRIVATE_BLE_H_
 #define _U_NETWORK_PRIVATE_BLE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /* This header file defines the BLE specific part of the
  * network API. These functions perform NO error checking
@@ -59,10 +62,11 @@ void uNetworkDeinitBle(void);
  * been called before this is called.
  *
  * @param pConfiguration   a pointer to the configuration.
- * @return                 on success the handle of the
- *                         instance, else negative error code.
+ * @param[out] pDevHandle  a pointer to the output handle. Will only be set on success.
+ * @return                 zero on success or negative error code on failure.
  */
-int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration);
+int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
+                       uDeviceHandle_t *pDevHandle);
 
 /** Remove a BLE network instance.  It is up to the caller
  * to ensure that the network is disconnected and/or powered
@@ -70,31 +74,31 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration);
  * instance.  uNetworkInitBle() must have been called before
  * this is called.
  *
- * @param handle  the handle of the BLE instance to remove.
- * @return        zero on success else negative error code.
+ * @param devHandle the handle of the BLE instance to remove.
+ * @return          zero on success else negative error code.
  */
-int32_t uNetworkRemoveBle(int32_t handle);
+int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle);
 
 /** Bring up the given BLE network instance. uNetworkAddBle()
  * must have been called first to create this instance.
  *
- * @param handle           the handle of the instance to bring up.
+ * @param devHandle        the handle of the instance to bring up.
  * @param pConfiguration   a pointer to the configuration for this
  *                         instance.
  * @return                 zero on success else negative error code.
  */
-int32_t uNetworkUpBle(int32_t handle,
+int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
                       const uNetworkConfigurationBle_t *pConfiguration);
 
 /** Take down the given BLE network instance. uNetworkAddBle()
  * must have been called first to create this instance.
  *
- * @param handle           the handle of the instance to take down.
+ * @param devHandle        the handle of the instance to take down.
  * @param pConfiguration   a pointer to the configuration for this
  *                         instance.
  * @return                 zero on success else negative error code.
  */
-int32_t uNetworkDownBle(int32_t handle,
+int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
                         const uNetworkConfigurationBle_t *pConfiguration);
 
 #ifdef __cplusplus

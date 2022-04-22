@@ -60,7 +60,6 @@
 #include "u_short_range_edm_stream.h"
 
 #include "u_wifi.h"
-#include "u_wifi_private.h"
 
 #include "u_wifi_test_private.h"
 
@@ -78,7 +77,7 @@
 
 /** UART handle for one AT client.
  */
-static uWifiTestPrivate_t gHandles = {-1, -1, NULL, -1};
+static uWifiTestPrivate_t gHandles = {-1, -1, NULL, NULL};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -115,7 +114,6 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
                                      .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
                                    };
-    int32_t shortRangeHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uPortDeinit();
 
     heapUsed = uPortGetHeapFree();
@@ -125,17 +123,17 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
     U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                 &uart,
                                                 &gHandles) == 0);
-    shortRangeHandle = uWifiToShoHandle(gHandles.wifiHandle);
-    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(shortRangeHandle) == gHandles.uartHandle);
-    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(shortRangeHandle) == gHandles.edmStreamHandle);
-    uShortRangeAtClientHandleGet(shortRangeHandle, &atClient);
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(gHandles.devHandle) == gHandles.edmStreamHandle);
+    uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
     U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
-    U_PORT_TEST_ASSERT(uShortRangeAttention(shortRangeHandle) == 0);
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 
     uPortLog("U_WIFI: calling uShortRangeOpenUart with same arg twice,"
              " should fail...\n");
+    uDeviceHandle_t dummyHandle;
     U_PORT_TEST_ASSERT(uShortRangeOpenUart((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                           &uart, true) < 0);
+                                           &uart, true, &dummyHandle) < 0);
 
     uWifiTestPrivatePostamble(&gHandles);
 

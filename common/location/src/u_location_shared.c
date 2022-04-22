@@ -113,9 +113,9 @@ void uLocationSharedDeinit()
 }
 
 // Add a new location request to the FIFO.
-int32_t uLocationSharedRequestPush(int32_t networkHandle,
+int32_t uLocationSharedRequestPush(uDeviceHandle_t devHandle,
                                    uLocationType_t type,
-                                   void (*pCallback) (int32_t networkHandle,
+                                   void (*pCallback) (uDeviceHandle_t devHandle,
                                                       int32_t errorCode,
                                                       const uLocation_t *pLocation))
 {
@@ -149,7 +149,7 @@ int32_t uLocationSharedRequestPush(int32_t networkHandle,
         // Add the new entry at the start of the list
         *ppThis = (uLocationSharedFifoEntry_t *) malloc(sizeof(**ppThis));
         if (*ppThis != NULL) {
-            (*ppThis)->networkHandle = networkHandle;
+            (*ppThis)->devHandle = devHandle;
             (*ppThis)->pCallback = pCallback;
             (*ppThis)->pNext = pSaved;
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;

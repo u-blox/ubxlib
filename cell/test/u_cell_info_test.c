@@ -95,7 +95,7 @@ static uCellTestPrivate_t gHandles = U_CELL_TEST_PRIVATE_DEFAULTS;
  * -------------------------------------------------------------- */
 
 // Callback function for the cellular connection process
-static bool keepGoingCallback(int32_t unused)
+static bool keepGoingCallback(uDeviceHandle_t unused)
 {
     bool keepGoing = true;
 
@@ -120,7 +120,7 @@ static bool keepGoingCallback(int32_t unused)
  */
 U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     char buffer[64];
     int32_t bytesRead;
     int32_t heapUsed;
@@ -245,7 +245,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
  */
 U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     int32_t x;
     int32_t snrDb;
     size_t count;
@@ -338,7 +338,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
  */
 U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoTime")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     int64_t x;
     int32_t heapUsed;
     char buffer[32] = {0};

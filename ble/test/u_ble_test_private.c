@@ -38,6 +38,8 @@
 
 #include "u_error_common.h"
 
+#include "u_device_internal.h"
+
 #include "u_port.h"
 #include "u_port_debug.h"
 
@@ -48,7 +50,6 @@
 
 #include "u_ble_module_type.h"
 #include "u_ble.h"
-#include "u_ble_private.h"
 
 #include "u_ble_test_private.h"
 
@@ -83,10 +84,10 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
     pParameters->uartHandle = -1;
     pParameters->edmStreamHandle = -1;
     pParameters->atClientHandle = NULL;
-    pParameters->bleHandle = -1;
+    pParameters->devHandle = NULL;
 
 #ifndef U_CFG_BLE_MODULE_INTERNAL
-    int32_t shortRangeHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uDeviceHandle_t devHandle;
     const uShortRangeModuleInfo_t *pModule;
 
     // Initialise the porting layer and ble
@@ -94,34 +95,30 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
         uPortLog("U_BLE_TEST_PRIVATE: opening UART %d...\n",
                  U_CFG_APP_SHORT_RANGE_UART);
 
-        shortRangeHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType, pUartConfig, true);
-
-        if (shortRangeHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
-            pParameters->bleHandle = uShoToBleHandle(shortRangeHandle);
-        }
-
-        errorCodeOrHandle = uShortRangeGetUartHandle(shortRangeHandle);
+        errorCodeOrHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType, pUartConfig,
+                                                true, &devHandle);
 
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            errorCodeOrHandle = uShortRangeGetUartHandle(devHandle);
             pParameters->uartHandle = errorCodeOrHandle;
         }
 
-        errorCodeOrHandle = uShortRangeGetEdmStreamHandle(shortRangeHandle);
-
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+            errorCodeOrHandle = uShortRangeGetEdmStreamHandle(devHandle);
             pParameters->edmStreamHandle = errorCodeOrHandle;
         }
 
-        errorCodeOrHandle = uShortRangeAtClientHandleGet(shortRangeHandle, &pParameters->atClientHandle);
-
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
-            // So that we can see what we're doing
-            uAtClientTimeoutSet(pParameters->atClientHandle, 2000);
-            uAtClientPrintAtSet(pParameters->atClientHandle, true);
-            uAtClientDebugSet(pParameters->atClientHandle, true);
+            errorCodeOrHandle = uShortRangeAtClientHandleGet(devHandle, &pParameters->atClientHandle);
+            if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
+                // So that we can see what we're doing
+                uAtClientTimeoutSet(pParameters->atClientHandle, 2000);
+                uAtClientPrintAtSet(pParameters->atClientHandle, true);
+                uAtClientDebugSet(pParameters->atClientHandle, true);
+            }
         }
 
-        if (shortRangeHandle >= 0) {
+        if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             if ((uShortRangeModuleType_t) moduleType != (int32_t) U_SHORT_RANGE_MODULE_TYPE_INVALID) {
                 errorCodeOrHandle = (int32_t) U_ERROR_COMMON_UNKNOWN;
                 pModule = uShortRangeGetModuleInfo((uShortRangeModuleType_t)moduleType);
@@ -132,18 +129,20 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
 
                 if (errorCodeOrHandle == 0) {
                     uPortLog("U_BLE_TEST_PRIVATE: module is powered-up and configured for testing.\n");
+                    pParameters->devHandle = devHandle;
                 }
             }
         }
     }
 
-    errorCodeOrHandle = shortRangeHandle;
 #else
     if (uPortInit() == 0) {
         errorCodeOrHandle = uBleInit();
 
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
-            pParameters->bleHandle = errorCodeOrHandle;
+            // TODO: Use uDeviceOpen() here
+            pParameters->devHandle =
+                (uDeviceHandle_t)uDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU);
         }
     }
     (void)moduleType;
@@ -159,11 +158,13 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
     uPortLog("U_BLE_TEST_PRIVATE: deinitialising ble API...\n");
 
 #ifndef U_CFG_BLE_MODULE_INTERNAL
-    uShortRangeClose(uBleToShoHandle(pParameters->bleHandle));
+    uShortRangeClose(pParameters->devHandle);
     uBleDeinit();
     uAtClientDeinit();
 
 #else
+    // TODO: Use uDeviceClose() here
+    uDeviceDestroyInstance((uDeviceInstance_t *)pParameters->devHandle);
     uBleDeinit();
     (void)pParameters;
 #endif
@@ -171,7 +172,7 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
     pParameters->uartHandle = -1;
     pParameters->edmStreamHandle = -1;
     pParameters->atClientHandle = NULL;
-    pParameters->bleHandle = -1;
+    pParameters->devHandle = NULL;
 
     uPortDeinit();
 }
@@ -180,7 +181,7 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
 void uBleTestPrivateCleanup(uBleTestPrivate_t *pParameters)
 {
 #ifndef U_CFG_BLE_MODULE_INTERNAL
-    uShortRangeClose(uBleToShoHandle(pParameters->bleHandle));
+    uShortRangeClose(pParameters->devHandle);
     uBleDeinit();
     uAtClientDeinit();
 #else
@@ -189,7 +190,7 @@ void uBleTestPrivateCleanup(uBleTestPrivate_t *pParameters)
     pParameters->uartHandle = -1;
     pParameters->edmStreamHandle = -1;
     pParameters->atClientHandle = NULL;
-    pParameters->bleHandle = -1;
+    pParameters->devHandle = NULL;
     uPortDeinit();
 }
 

@@ -224,9 +224,10 @@ static void printLocation(int32_t latitudeX1e7, int32_t longitudeX1e7)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
 {
-    int32_t networkHandleCell;
-    int32_t networkHandleGnss;
+    uDeviceHandle_t devHandleCell = NULL;
+    uDeviceHandle_t devHandleGnss = NULL;
     uLocation_t location;
+    int32_t returnCode;
 
     // Set an out of range value so that we can test it later
     location.timeUtc = -1;
@@ -236,24 +237,26 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
     uNetworkInit();
 
     // Add a cellular network instance
-    networkHandleCell = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                    (void *) &gConfigCell);
-    uPortLog("Added cellular network with handle %d.\n", networkHandleCell);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
+                             (void *) &gConfigCell,
+                             &devHandleCell);
+    uPortLog("Added cellular network with return code %d.\n", returnCode);
 
     // Copy the cellular handle into the GNSS configuration
-    gConfigGnss.networkHandleAt = networkHandleCell;
+    gConfigGnss.devHandleAt = devHandleCell;
 
     // Add a GNSS network instance
-    networkHandleGnss = uNetworkAdd(U_NETWORK_TYPE_GNSS,
-                                    (void *) &gConfigGnss);
-    uPortLog("Added GNSS network with handle %d.\n", networkHandleGnss);
+    returnCode = uNetworkAdd(U_NETWORK_TYPE_GNSS,
+                             (void *) &gConfigGnss,
+                             &devHandleGnss);
+    uPortLog("Added GNSS network with return code %d.\n", returnCode);
 
     // You may configure the networks as required
     // here using any of the GNSS or cell API calls.
 
     // Bring up the cellular network layer
     uPortLog("Bringing up cellular...\n");
-    if (uNetworkUp(networkHandleCell) == 0) {
+    if (uNetworkUp(devHandleCell) == 0) {
 
         // You may use the cellular network, as normal,
         // at any time, for example connect and
@@ -261,13 +264,13 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
 
         // Bring up the GNSS network layer
         uPortLog("Bringing up GNSS...\n");
-        if (uNetworkUp(networkHandleGnss) == 0) {
+        if (uNetworkUp(devHandleGnss) == 0) {
 
             // Here you may use the GNSS API with the network handle
             // if you wish to configure the GNSS chip etc.
 
             // Now get location
-            if (uLocationGet(networkHandleGnss, U_LOCATION_TYPE_GNSS,
+            if (uLocationGet(devHandleGnss, U_LOCATION_TYPE_GNSS,
                              NULL, NULL, &location, NULL) == 0) {
                 printLocation(location.latitudeX1e7, location.longitudeX1e7);
             } else {
@@ -276,14 +279,14 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
 
             // When finished with the GNSS network layer
             uPortLog("Taking down GNSS...\n");
-            uNetworkDown(networkHandleGnss);
+            uNetworkDown(devHandleGnss);
         } else {
             uPortLog("Unable to bring up GNSS!\n");
         }
 
         // When finished with the cellular network layer
         uPortLog("Taking down cellular network...\n");
-        uNetworkDown(networkHandleCell);
+        uNetworkDown(devHandleCell);
 
     } else {
         uPortLog("Unable to bring up the cellular network!\n");

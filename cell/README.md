@@ -57,7 +57,7 @@ Throughout the `cell` API, in functions which can take more than a few seconds t
 int app_start() {
     int32_t uartHandle;
     uAtClientHandle_t atHandle;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle = NULL;
     char buffer[U_CELL_NET_IP_ADDRESS_SIZE];
     int32_t mcc;
     int32_t mnc;
@@ -98,11 +98,12 @@ int app_start() {
     // the cellular module's control interface is 
     // connected to your MCU: you need to know these for
     // your hardware; again use -1 for "not connected".
-    cellHandle = uCellAdd(U_CELL_MODULE_TYPE_SARA_R5,
-                          atClientHandle,
-                          U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                          U_CFG_APP_PIN_CELL_PWR_ON,
-                          U_CFG_APP_PIN_CELL_VINT, false);
+    uCellAdd(U_CELL_MODULE_TYPE_SARA_R5,
+             atClientHandle,
+             U_CFG_APP_PIN_CELL_ENABLE_POWER,
+             U_CFG_APP_PIN_CELL_PWR_ON,
+             U_CFG_APP_PIN_CELL_VINT, false,
+             &cellHandle);
 
     // Power up the cellular module
     if (uCellPwrOn(cellHandle, NULL, NULL) == 0) {

@@ -17,7 +17,11 @@
 #ifndef _U_MQTT_COMMON_H_
 #define _U_MQTT_COMMON_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file contains definitions common across

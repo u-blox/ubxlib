@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef _U_WIFI_PRIVATE_H_
-#define _U_WIFI_PRIVATE_H_
+#ifndef _U_DEVICE_H_
+#define _U_DEVICE_H_
+
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
- * @brief This header file defines types, functions and inclusions that
- * are common and private to the wifi API.
+ * @brief This is a high-level API for initializing an u-blox device (chip or module)
  */
 
 #ifdef __cplusplus
@@ -34,35 +38,20 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-/* ----------------------------------------------------------------
- * VARIABLES
- * -------------------------------------------------------------- */
+/** The u-blox device handle.
+ */
+typedef void *uDeviceHandle_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Convert a wifi handle to a short range handle
- *
- * @param wifiHandle  the wifi handle to convert
- * @return           a short range handle on success,
- *                   on failure negative value.
- */
-int32_t uWifiToShoHandle(int32_t wifiHandle);
-
-/** Convert a short range handle to a wifi handle
- *
- * @param shortRangeHandle  the short range handle to convert
- * @return                  a wifi handle on success,
- *                          on failure negative value.
- */
-int32_t uShoToWifiHandle(int32_t shortRangeHandle);
-
+//TODO: Add uDeviceOpen()/uDeviceClose()
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _U_WIFI_PRIVATE_H_
+#endif // _U_DEVICE_H_
 
 // End of file

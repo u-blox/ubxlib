@@ -31,7 +31,7 @@ A simple usage example, obtaining position via a GNSS chip, is shown below.  Not
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
 int app_start() {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     uLocation_t location;
     const uNetworkConfigurationGnss_t config = {U_NETWORK_TYPE_GNSS,
                                                 U_GNSS_MODULE_TYPE_M8,
@@ -60,12 +60,12 @@ int app_start() {
 
     // Add a network instance of type GNSS using
     // the configuration
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_GNSS, (void *) &config);
+    uNetworkAdd(U_NETWORK_TYPE_GNSS, (void *) &config, &devHandle);
 
     // Bring up the GNSS network layer
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkUp(devHandle) == 0) {
         // Get location
-        if (uLocationGet(networkHandle, U_LOCATION_TYPE_GNSS,
+        if (uLocationGet(devHandle, U_LOCATION_TYPE_GNSS,
                          NULL, NULL, &location, NULL) == 0) {
 
             printf("I am here: https://maps.google.com/?q=%3.7f,%3.7f\n",
@@ -74,7 +74,7 @@ int app_start() {
 
         }
         // When finished with the GNSS network layer
-        uNetworkDown(networkHandle);
+        uNetworkDown(devHandle);
     }
 
     // Calling these will also deallocate all the handles that

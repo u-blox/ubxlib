@@ -453,11 +453,11 @@ static int32_t sendReceiveUbxMessage(const uGnssPrivateInstance_t *pInstance,
  * -------------------------------------------------------------- */
 
 // Find a GNSS instance in the list by instance handle.
-uGnssPrivateInstance_t *pUGnssPrivateGetInstance(int32_t handle)
+uGnssPrivateInstance_t *pUGnssPrivateGetInstance(uDeviceHandle_t gnssHandle)
 {
     uGnssPrivateInstance_t *pInstance = gpUGnssPrivateInstanceList;
 
-    while ((pInstance != NULL) && (pInstance->handle != handle)) {
+    while ((pInstance != NULL) && (pInstance->gnssHandle != gnssHandle)) {
         pInstance = pInstance->pNext;
     }
 
@@ -465,12 +465,12 @@ uGnssPrivateInstance_t *pUGnssPrivateGetInstance(int32_t handle)
 }
 
 // Get the module characteristics for a given instance.
-const uGnssPrivateModule_t *pUGnssPrivateGetModule(int32_t handle)
+const uGnssPrivateModule_t *pUGnssPrivateGetModule(uDeviceHandle_t gnssHandle)
 {
     uGnssPrivateInstance_t *pInstance = gpUGnssPrivateInstanceList;
     const uGnssPrivateModule_t *pModule = NULL;
 
-    while ((pInstance != NULL) && (pInstance->handle != handle)) {
+    while ((pInstance != NULL) && (pInstance->gnssHandle != gnssHandle)) {
         pInstance = pInstance->pNext;
     }
 

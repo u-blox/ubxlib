@@ -13,6 +13,8 @@
 cfg
 common/error/api
 common/assert/api
+common/device/api
+common/device/src
 port/platform/common/mutex_debug
 port/api
 port/clib

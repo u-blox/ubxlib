@@ -36,6 +36,8 @@
 
 #include "u_error_common.h"
 
+#include "u_device_internal.h"
+
 #include "u_port_os.h"
 
 #include "u_cell_loc.h"
@@ -44,8 +46,6 @@
 
 #include "u_mqtt_common.h"  // Needed by
 #include "u_mqtt_client.h"  // u_location_private_cloud_locate.h
-
-#include "u_network_handle.h"
 
 #include "u_location.h"
 #include "u_location_shared.h"
@@ -69,7 +69,7 @@
  * -------------------------------------------------------------- */
 
 // Configure Cell Locate.
-static int32_t cellLocConfigure(int32_t cellHandle,
+static int32_t cellLocConfigure(uDeviceHandle_t cellHandle,
                                 const uLocationAssist_t *pLocationAssist,
                                 const char *pAuthenticationTokenStr)
 {
@@ -97,7 +97,7 @@ static int32_t cellLocConfigure(int32_t cellHandle,
 }
 
 // Callback for a non-blocking GNSS position request.
-static void gnssPosCallback(int32_t networkHandle,
+static void gnssPosCallback(uDeviceHandle_t devHandle,
                             int32_t errorCode,
                             int32_t latitudeX1e7,
                             int32_t longitudeX1e7,
@@ -129,7 +129,7 @@ static void gnssPosCallback(int32_t networkHandle,
                 // Time may be valid even if the error code is non-zero
                 location.timeUtc = timeUtc;
             }
-            pEntry->pCallback(networkHandle, errorCode, &location);
+            pEntry->pCallback(devHandle, errorCode, &location);
         }
         // It is legal C to free a NULL pointer
         free(pEntry);
@@ -139,7 +139,7 @@ static void gnssPosCallback(int32_t networkHandle,
 }
 
 // Callback for a non-blocking cell locate request.
-static void cellLocCallback(int32_t networkHandle,
+static void cellLocCallback(uDeviceHandle_t devHandle,
                             int32_t errorCode,
                             int32_t latitudeX1e7,
                             int32_t longitudeX1e7,
@@ -167,12 +167,12 @@ static void cellLocCallback(int32_t networkHandle,
                 location.speedMillimetresPerSecond = speedMillimetresPerSecond;
                 location.svs = svs;
                 location.timeUtc = timeUtc;
-                pEntry->pCallback(networkHandle, errorCode, &location);
+                pEntry->pCallback(devHandle, errorCode, &location);
             } else {
                 // No point in populating the location for
                 // Cell Locate if the error code is zero as there's
                 // nothing valid to give
-                pEntry->pCallback(networkHandle, errorCode, NULL);
+                pEntry->pCallback(devHandle, errorCode, NULL);
             }
         }
         // It is legal C to free a NULL pointer
@@ -187,11 +187,11 @@ static void cellLocCallback(int32_t networkHandle,
  * -------------------------------------------------------------- */
 
 // Get the current location, blocking version.
-int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
+int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                      const uLocationAssist_t *pLocationAssist,
                      const char *pAuthenticationTokenStr,
                      uLocation_t *pLocation,
-                     bool (*pKeepGoingCallback) (int32_t))
+                     bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uLocation_t location;
@@ -201,17 +201,18 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
 
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
-        if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
+        int32_t devType = uDeviceGetDeviceType(devHandle);
+        if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-        } else if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+        } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             location.type = type;
             if (location.type == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
-                errorCode = cellLocConfigure(networkHandle,
+                errorCode = cellLocConfigure(devHandle,
                                              pLocationAssist,
                                              pAuthenticationTokenStr);
                 if (errorCode == 0) {
-                    errorCode = uCellLocGet(networkHandle,
+                    errorCode = uCellLocGet(devHandle,
                                             &(location.latitudeX1e7),
                                             &(location.longitudeX1e7),
                                             &(location.altitudeMillimetres),
@@ -229,8 +230,8 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
                 // For Cloud Locate the GNSS network handle must be passed
                 // in via pLocationAssist, as must the MQTT client handle
                 if (pLocationAssist != NULL) {
-                    errorCode = uLocationPrivateCloudLocate(networkHandle,
-                                                            pLocationAssist->networkHandleAssist,
+                    errorCode = uLocationPrivateCloudLocate(devHandle,
+                                                            pLocationAssist->devHandleAssist,
                                                             (uMqttClientContext_t *) pLocationAssist->pMqttClientContext,
                                                             pLocationAssist->svsThreshold,
                                                             pLocationAssist->cNoThreshold,
@@ -243,13 +244,11 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
                     }
                 }
             }
-        } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        } else if (U_NETWORK_HANDLE_IS_GNSS(networkHandle)) {
+        } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
             // type, pLocationAssist and pAuthenticationTokenStr are
             // irrelevant in this case, we just ask GNSS
             pLocation->type = U_LOCATION_TYPE_GNSS;
-            errorCode = uGnssPosGet(networkHandle,
+            errorCode = uGnssPosGet(devHandle,
                                     &(location.latitudeX1e7),
                                     &(location.longitudeX1e7),
                                     &(location.altitudeMillimetres),
@@ -270,10 +269,10 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
 }
 
 // Get the current location, non-blocking version.
-int32_t uLocationGetStart(int32_t networkHandle, uLocationType_t type,
+int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
                           const uLocationAssist_t *pLocationAssist,
                           const char *pAuthenticationTokenStr,
-                          void (*pCallback) (int32_t networkHandle,
+                          void (*pCallback) (uDeviceHandle_t devHandle,
                                              int32_t errorCode,
                                              const uLocation_t *pLocation))
 {
@@ -284,19 +283,20 @@ int32_t uLocationGetStart(int32_t networkHandle, uLocationType_t type,
 
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
-        if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
+        int32_t devType = uDeviceGetDeviceType(devHandle);
+        if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-        } else if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+        } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
             if (type == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
-                errorCode = cellLocConfigure(networkHandle,
+                errorCode = cellLocConfigure(devHandle,
                                              pLocationAssist,
                                              pAuthenticationTokenStr);
                 if (errorCode == 0) {
-                    errorCode = uLocationSharedRequestPush(networkHandle,
+                    errorCode = uLocationSharedRequestPush(devHandle,
                                                            type,
                                                            pCallback);
                     if (errorCode == 0) {
-                        errorCode = uCellLocGetStart(networkHandle, cellLocCallback);
+                        errorCode = uCellLocGetStart(devHandle, cellLocCallback);
                         if (errorCode != 0) {
                             free(pULocationSharedRequestPop(U_LOCATION_TYPE_CLOUD_CELL_LOCATE));
                         }
@@ -308,16 +308,14 @@ int32_t uLocationGetStart(int32_t networkHandle, uLocationType_t type,
                 // TODO
 
             }
-        } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-            errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        } else if (U_NETWORK_HANDLE_IS_GNSS(networkHandle)) {
+        } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
             // type, pLocationAssist and pAuthenticationTokenStr are
             // irrelevant in this case, we just ask GNSS
-            errorCode = uLocationSharedRequestPush(networkHandle,
+            errorCode = uLocationSharedRequestPush(devHandle,
                                                    U_LOCATION_TYPE_GNSS,
                                                    pCallback);
             if (errorCode == 0) {
-                errorCode = uGnssPosGetStart(networkHandle, gnssPosCallback);
+                errorCode = uGnssPosGetStart(devHandle, gnssPosCallback);
                 if (errorCode != 0) {
                     free(pULocationSharedRequestPop(U_LOCATION_TYPE_GNSS));
                 }
@@ -331,7 +329,7 @@ int32_t uLocationGetStart(int32_t networkHandle, uLocationType_t type,
 }
 
 // Get the current status of a location establishment attempt.
-int32_t uLocationGetStatus(int32_t networkHandle)
+int32_t uLocationGetStatus(uDeviceHandle_t devHandle)
 {
     int32_t errorCodeOrStatus = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
@@ -340,13 +338,12 @@ int32_t uLocationGetStatus(int32_t networkHandle)
 
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
-        if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
+        int32_t devType = uDeviceGetDeviceType(devHandle);
+        if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
             // Leave as not supported
-        } else if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            errorCodeOrStatus = uCellLocGetStatus(networkHandle);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-            errorCodeOrStatus = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-        } else if (U_NETWORK_HANDLE_IS_GNSS(networkHandle)) {
+        } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
+            errorCodeOrStatus = uCellLocGetStatus(devHandle);
+        } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
             // No way to get it, so return unknown
             errorCodeOrStatus = (int32_t) U_LOCATION_STATUS_UNKNOWN;
         }
@@ -358,20 +355,19 @@ int32_t uLocationGetStatus(int32_t networkHandle)
 }
 
 // Cancel a uLocationGetStart().
-void uLocationGetStop(int32_t networkHandle)
+void uLocationGetStop(uDeviceHandle_t devHandle)
 {
     if (gULocationMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gULocationMutex);
 
-        if (U_NETWORK_HANDLE_IS_BLE(networkHandle)) {
+        int32_t devType = uDeviceGetDeviceType(devHandle);
+        if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
             // Irrelevant
-        } else if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
-            uCellLocGetStop(networkHandle);
-        } else if (U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
-            // Irrelevant
-        } else if (U_NETWORK_HANDLE_IS_GNSS(networkHandle)) {
-            uGnssPosGetStop(networkHandle);
+        } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
+            uCellLocGetStop(devHandle);
+        } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
+            uGnssPosGetStop(devHandle);
         }
 
         U_PORT_MUTEX_UNLOCK(gULocationMutex);

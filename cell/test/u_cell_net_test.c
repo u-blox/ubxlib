@@ -109,7 +109,7 @@ static int32_t gCallbackErrorCode = 0;
  * -------------------------------------------------------------- */
 
 // Callback function for certain cellular network processes.
-static bool keepGoingCallback(int32_t cellHandle)
+static bool keepGoingCallback(uDeviceHandle_t cellHandle)
 {
     bool keepGoing = true;
 
@@ -185,7 +185,7 @@ static void connectCallback(bool isConnected, void *pParameter)
  */
 U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     uCellNetStatus_t status;
     uCellNetRat_t rat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
@@ -449,7 +449,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
  */
 U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     const uCellPrivateModule_t *pModule;
     uCellNetStatus_t status;
     char buffer[U_CELL_NET_IP_ADDRESS_SIZE];

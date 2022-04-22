@@ -17,7 +17,10 @@
 #ifndef _U_GNSS_TEST_PRIVATE_H_
 #define _U_GNSS_TEST_PRIVATE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -36,7 +39,7 @@ extern "C" {
  */
 //lint -esym(755, U_GNSS_TEST_PRIVATE_DEFAULTS) Suppress not referenced,
 // which it might not be if U_CFG_TEST_GNSS_MODULE_TYPE is not defined.
-#define U_GNSS_TEST_PRIVATE_DEFAULTS {-1, NULL, -1, -1}
+#define U_GNSS_TEST_PRIVATE_DEFAULTS {-1, NULL, NULL, NULL}
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -47,8 +50,8 @@ extern "C" {
 typedef struct {
     int32_t uartHandle; /**< The handle returned by uPortUartOpen(). */
     void *pAtClientHandle; /**< The handle returned by uAtClientAdd(). */
-    int32_t cellHandle;  /**< The handle returned by uCellAdd(). */
-    int32_t gnssHandle;  /**< The handle returned by uGnssAdd(). */
+    uDeviceHandle_t cellHandle;  /**< The handle returned by uCellAdd(). */
+    uDeviceHandle_t gnssHandle;  /**< The handle returned by uGnssAdd(). */
 } uGnssTestPrivate_t;
 
 /* ----------------------------------------------------------------

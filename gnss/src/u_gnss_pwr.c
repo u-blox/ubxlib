@@ -88,7 +88,7 @@
  * -------------------------------------------------------------- */
 
 // Power a GNSS chip on.
-int32_t uGnssPwrOn(int32_t gnssHandle)
+int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;
@@ -254,7 +254,7 @@ int32_t uGnssPwrOn(int32_t gnssHandle)
 }
 
 // Check that a GNSS chip is powered on.
-bool uGnssPwrIsAlive(int32_t gnssHandle)
+bool uGnssPwrIsAlive(uDeviceHandle_t gnssHandle)
 {
     bool isAlive = false;
     uGnssPrivateInstance_t *pInstance;
@@ -292,7 +292,7 @@ bool uGnssPwrIsAlive(int32_t gnssHandle)
 }
 
 // Power a GNSS chip off.
-int32_t uGnssPwrOff(int32_t gnssHandle)
+int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uGnssPrivateInstance_t *pInstance;

@@ -17,7 +17,10 @@
 #ifndef _U_BLE_TEST_PRIVATE_H_
 #define _U_BLE_TEST_PRIVATE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -42,7 +45,7 @@ typedef struct {
     int32_t uartHandle; /**< The handle returned by uShortRangeGetUartHandle(). */
     int32_t edmStreamHandle; /**< The handle returned by uShortRangeGetEdmStreamHandle(). */
     uAtClientHandle_t atClientHandle; /**< The handle returned by uShortRangeAtClientHandleGet(). */
-    int32_t wifiHandle;  /**< The converted wifi handle returned by uShortRangeOpenUart(). */
+    uDeviceHandle_t devHandle;  /**< The u-blox device handle returned by uShortRangeOpenUart(). */
 } uWifiTestPrivate_t;
 
 
