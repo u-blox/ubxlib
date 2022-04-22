@@ -113,6 +113,11 @@ AUTOMATION_DIR = UBXLIB_DIR + "/port/platform/common/automation"
 SCRIPTS_DIR = AUTOMATION_DIR + "/scripts"
 # OpenOCD config dir used for automation
 OPENOCD_CFG_DIR = AUTOMATION_DIR + "/cfg"
+# CodeChecker config dir used for automation
+CODECHECKER_CFG_DIR = AUTOMATION_DIR + "/cfg/codechecker"
+# CodeChecker config files
+CODECHECKER_IGNORE_FILE = f"{CODECHECKER_CFG_DIR}/ignore_file.cfg"
+CODECHECKER_CFG_FILE = f"{CODECHECKER_CFG_DIR}/codechecker.yml"
 
 
 def safe_print(string):

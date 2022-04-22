@@ -164,6 +164,8 @@ def instance_command(ctx, instance_str, cmd):
             stm32cubef4.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, port=port)
         elif cmd == Command.TEST:
             check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
+        elif cmd == Command.STATIC_ANALYZE:
+            stm32cubef4.analyze(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines)
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 
