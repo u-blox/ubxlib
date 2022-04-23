@@ -42,7 +42,11 @@
 // that if it's not Zephyr it must be FreeRTOS - but to verify we include
 // FreeRTOS.h. This means that if you are running on another OS you will
 // get an error here since your OS then isn't supported.
-#  include "FreeRTOS.h"
+#  ifdef ESP_PLATFORM
+#   include "freertos/FreeRTOS.h"
+#  else
+#   include "FreeRTOS.h"
+#  endif
 #  include "freertos/u_dump_threads.c"
 # endif
 #endif
