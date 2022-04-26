@@ -145,33 +145,33 @@ function(add_ubxlib_tests src_dir)
 endfunction()
 
 # Add test source files to UBXLIB_TEST_SRC_FOR_R5
-# according to the U_CFG_APP_FILTER provided.
+# according to the U_CFG_TEST_FILTER provided.
 
-if ((U_CFG_APP_FILTER STREQUAL port) OR
-    (U_CFG_APP_FILTER STREQUAL cell)
+if ((U_CFG_TEST_FILTER STREQUAL port) OR
+    (U_CFG_TEST_FILTER STREQUAL cell)
     )
-    add_ubxlib_tests(${UBXLIB_BASE}/${U_CFG_APP_FILTER}/test)
-elseif ((U_CFG_APP_FILTER STREQUAL mqttClient) OR
-        (U_CFG_APP_FILTER STREQUAL network) OR
-        (U_CFG_APP_FILTER STREQUAL security)
+    add_ubxlib_tests(${UBXLIB_BASE}/${U_CFG_TEST_FILTER}/test)
+elseif ((U_CFG_TEST_FILTER STREQUAL mqttClient) OR
+        (U_CFG_TEST_FILTER STREQUAL network) OR
+        (U_CFG_TEST_FILTER STREQUAL security) OR
+        (U_CFG_TEST_FILTER STREQUAL sock)
         )
     add_ubxlib_tests(${UBXLIB_BASE}/common/mqtt_client/test)
     add_ubxlib_tests(${UBXLIB_BASE}/common/network/test)
     add_ubxlib_tests(${UBXLIB_BASE}/common/location/test)
     add_ubxlib_tests(${UBXLIB_BASE}/common/security/test)
-elseif (U_CFG_APP_FILTER STREQUAL sock)
-    add_ubxlib_tests(${UBXLIB_BASE}/common/${U_CFG_APP_FILTER}/test)
-elseif (U_CFG_APP_FILTER STREQUAL ubx_protocol)
-    add_ubxlib_tests(${UBXLIB_BASE}/common/${U_CFG_APP_FILTER}/test)
-elseif (U_CFG_APP_FILTER STREQUAL exampleCell)
+    add_ubxlib_tests(${UBXLIB_BASE}/common/sock/test)
+elseif (U_CFG_TEST_FILTER STREQUAL ubxProtocol)
+    add_ubxlib_tests(${UBXLIB_BASE}/common/ubx_protocol/test)
+elseif (U_CFG_TEST_FILTER STREQUAL exampleCell)
     add_ubxlib_tests(${UBXLIB_BASE}/example/cell/lte_cfg)
-elseif (U_CFG_APP_FILTER STREQUAL exampleMqtt)
+elseif (U_CFG_TEST_FILTER STREQUAL exampleMqtt)
     add_ubxlib_tests(${UBXLIB_BASE}/example/mqtt_client)
-elseif (U_CFG_APP_FILTER STREQUAL exampleSec)
+elseif (U_CFG_TEST_FILTER STREQUAL exampleSec)
     add_ubxlib_tests(${UBXLIB_BASE}/example/security/c2c)
     add_ubxlib_tests(${UBXLIB_BASE}/example/security/e2e)
     add_ubxlib_tests(${UBXLIB_BASE}/example/security/psk)
-elseif (U_CFG_APP_FILTER STREQUAL exampleSockets)
+elseif (U_CFG_TEST_FILTER STREQUAL exampleSockets)
     add_ubxlib_tests(${UBXLIB_BASE}/example/sockets)
 else ()
     message("No test or example provided.")

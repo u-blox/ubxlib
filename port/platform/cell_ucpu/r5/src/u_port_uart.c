@@ -18,12 +18,8 @@
  * @brief Implementation of the port UART API for the sarar5ucpu platform.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
-#include "txm_module.h"
-#include "stddef.h"    // NULL, size_t etc.
-#include "stdint.h"    // int32_t etc.
+#include "stddef.h"
+#include "stdint.h"
 #include "stdbool.h"
 
 #include "u_cfg_sw.h"
@@ -32,165 +28,173 @@
 #include "u_port.h"
 #include "u_port_os.h"
 #include "u_port_uart.h"
-#include "ucpu_modem_api.h"
 #include "u_port_event_queue.h"
 #include "u_port_clib_platform_specific.h"
+
+#include "ucpu_sdk_modem_uart.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** The maximum number of UARTs supported, which is the range of the
- * "uart" parameter on this platform.
+/** A macro to check that the respective event has arrived or not.
  */
-#define U_PORT_UART_MAX_NUM 1
+#define U_PORT_UART_EVENT_CHECK(evenBitmap, event) ((evenBitmap) & (1 << event -1))
 
-/** The maximum data size for AT command to write on uart in single
- * iteration.
+/** Size of UART read buffer. Data more than this size will not be
+ * dropped or trimmed instead it will be available on next read call,
+ * when next read buffer is placed to read data. Change to this value
+ * will not impact any functionality it will work seamlessly.
  */
-#define U_PORT_AT_MAX_DATA_SIZE (UCPU_MAX_AT_CMD_LENGTH - 64)
+#define U_PORT_UART_READ_BUFFER_SIZE 2048
 
-/** The maximum size of AT response buffer.
+/** Timeout in milliseconds for UART operations. This timeout is with
+ * in the range of u_at_client default timeout which is 8000 ms,
+ * U_AT_CLIENT_DEFAULT_TIMEOUT_MS. The UART timeout will always be less
+ * than the u_at_client timeouts.
  */
-#define UCPU_RESP_BUFFER_SIZE (UCPU_MAX_AT_RESP_LENGTH * 4)
+#define U_PORT_UART_TIMEOUT_MS 3000
 
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
-/** Structure of the things we need to keep track of per UART.
+/** Structure of UART context.
  */
 typedef struct {
-    int32_t uart;
-    int32_t uartHandle;
-    uPortMutexHandle_t queue; /**< Also used as a marker that this UART is in use. */
-    bool markedForDeletion; /**< If true this UART should NOT be used. */
-    uPortTaskHandle_t eventTaskHandle;
-    uPortMutexHandle_t eventTaskRunningMutex;
-    uint32_t eventFilter;
-    void (*pEventCallback)(int32_t, uint32_t, void *);
-    void *pEventCallbackParam;
-} uPortUartData_t;
+    int32_t uartHandle;              /**< Handle to modem UART interface. */
+    bool markedForDeletion;          /**< If true this UART should NOT be used. UART
+                                          is marked for delete when UART interface is
+                                          closed or received detached event. */
+    int32_t eventQueueHandle;        /**< Handle to event queue. */
+    uint32_t eventFilter;            /**< A bit-mask to filter the events on which
+                                          pEventCallback will be called. In our case
+                                          only U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED
+                                          bit-mask is supported, means call event callback
+                                          with this bit-mask when data on UART is available
+                                          to read. */
+    void (*pEventCallback)(int32_t,
+                           uint32_t,
+                           void *);  /**< Event callback, the function to call
+                                          when any data received on UART interface. */
+    void *pEventCallbackParam;       /**< A parameter which will be passed to pEventCallback
+                                          when it is called. */
+} uPortUartContext_t;
 
 /** Structure describing an event.
  */
 typedef struct {
-    int32_t uartHandle;
-    uint32_t eventBitMap;
+    int32_t uartHandle; /**< Handle to UART interface. */
+    uint32_t eventBitMap; /**< The events bit-map, only eventBitMap type we support
+                               at the moment is U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED. */
 } uPortUartEvent_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Mutex to protect UART data.
+/** Mutex to make UART operations thread safe.
  */
-static uPortMutexHandle_t gMutex = NULL;
+static uPortMutexHandle_t gModemUartMutex = NULL;
 
-/** The UART data. Note that either uart or handle can be
- * used as an index into the array, they are synonymous on
- * this platform.
+/** Buffer to read AT response. It is not a circular buffer.
+ * Buffer is flushed when all data is read from it and than it is
+ * placed for next read call. Data greater than this buffer size
+ * will be available on next read call, when next read buffer is
+ * placed to read data. This buffer is mutex protected.
  */
-static uPortUartData_t gUartData[U_PORT_UART_MAX_NUM];
+static uint8_t gModemUartReadBuffer[U_PORT_UART_READ_BUFFER_SIZE];
 
-/** Buffer to store AT response.
+/** Pointer to the gModemUartReadBuffer.
  */
-static uint8_t respBuff[UCPU_RESP_BUFFER_SIZE] = {0};
+static uint8_t *gpModemUartReadBuffer = gModemUartReadBuffer;
 
-/** Read pointer to response buffer.
+/** Length of data received from UART interface.
  */
-static uint8_t *pRespRead = respBuff;
+static uint32_t gModemUartReceiveBytes = 0;
 
-/** Write pointer to response buffer.
+/** Number of bytes written to UART interface.
  */
-static uint8_t *pRespWrite = respBuff;
+static int32_t gModemUartWriteBytes = 0;
 
-/** Uart event information.
+/** Handle to timer. Modem UART interface is asynchronous and
+ * we wait for event in while loop. The purpose of Timer is to
+ * avoid the halt condition or exit the loop, when modem is stucked,
+ * or modem takes time more than usual. The default timeout defined
+ * is U_PORT_UART_TIMEOUT_MS.
  */
-static uPortUartEvent_t uartEvent;
+static uPortTimerHandle_t gModemUartTimerHandle = NULL;
+
+/** Flag of timer expiration.
+ */
+static bool gModemUartTimerTimeout = false;
+
+/** Handle to UART context.
+ */
+static uPortUartContext_t gModemUartContext;
+
+/** UART event information.
+ */
+static uPortUartEvent_t gModemUartEvent;
+
+/** UART event bitmap. Event bitmap is mapped to
+ * ucpu_sdk_modem_uart_event_type_t, each bit
+ * represents corresponding event i.e
+ * bit 1 represends UCPU_MODEM_UART_EVENT_ATTACH_CNF event,
+ * bit 2 represends UCPU_MODEM_UART_EVENT_DETACH_CNF event,
+ * and so on.
+ */
+static uint32_t gModemUartEventBitmap = 0;
+
+/** Flag to ensure that next read buffer is in place for
+ * next data. When all data is read from gModemUartReadBuffer
+ * then next read buffer is placed for next available data.
+ */
+static bool gModemUartReadBufferPlaced = false;
 
 /** Flag to indicate event callback is in process.
  */
-static bool inEventCallback = false;
-
-/** Flag to handle buffer full condition.
- */
-static bool aboutToFull = false;
-
-/** The event queue for URCs.
- */
-static int32_t gURCEventQueueHandle;
+static bool gModemUartInEventCallback = false;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// AT command callback.
-// pCallbackData:  Pointer to received AT response string.
-// unUsed: Additional parameter which is not used in modem AT case.
-static void atCommandCallback(uint32_t pCallbackData, uint32_t unUsed)
+// UART event callback.
+static void modemUartEventCallback(uint32_t eventType, uint32_t eventData,
+                                   void *pParam)
 {
-    uint32_t len = 0;
-    st_ucpu_at_resp_t *pAtResp;
-    uint32_t urcFlag;
+    // Set event bitmap
+    gModemUartEventBitmap |= (1 << eventType - 1);
 
-    U_PORT_MUTEX_LOCK(gMutex);
-
-    pAtResp = (st_ucpu_at_resp_t *) pCallbackData;
-    urcFlag = pAtResp->urc_flag;
-    len = pAtResp->resp_len;
-    uPortLog("atCommandCallback() Port Layer type: %d len: %d data: %s.", urcFlag, pAtResp->resp_len,
-             (char *) pAtResp->at_resp_buffer);
-    if (pRespWrite >= pRespRead) {
-        if (len <= (UCPU_RESP_BUFFER_SIZE - (pRespWrite - respBuff))) {
-            memcpy(pRespWrite, pAtResp->at_resp_buffer, pAtResp->resp_len);
-            pRespWrite = (uint8_t *)pRespWrite + len;
-        } else {
-            uint32_t tempLen = len - (UCPU_RESP_BUFFER_SIZE - (pRespWrite - respBuff));
-            if ((pRespRead - respBuff) > tempLen) {
-                uint32_t offset = 0;
-                tempLen = UCPU_RESP_BUFFER_SIZE - (pRespWrite - respBuff);
-                memcpy(pRespWrite, pAtResp->at_resp_buffer, tempLen); // Copy data at the end of buffer.
-                offset = tempLen;
-                pRespWrite = respBuff;
-
-                tempLen = len - tempLen;
-                memcpy(pRespWrite, (uint8_t *)pAtResp->at_resp_buffer + offset,
-                       tempLen); // Copy remaining data at the start of buffer.
-                pRespWrite = (uint8_t *)pRespWrite + tempLen;
-                aboutToFull = true;
-            } else {
-                uPortLog("Overflow 1.");
-                // Overflow.
-                (void) pCallbackData;
+    switch (eventType) {
+        case UCPU_MODEM_UART_EVENT_READ_IND: {
+            gModemUartReadBufferPlaced = false;
+            gModemUartReceiveBytes = eventData;
+            // Enqueue event callback
+            uPortUartEventSend(gModemUartContext.uartHandle, U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+            break;
+        }
+        case UCPU_MODEM_UART_EVENT_WRITE_IND: {
+            gModemUartWriteBytes = eventData;
+            break;
+        }
+        case UCPU_MODEM_UART_EVENT_DETACH_CNF: {
+            if (!gModemUartContext.markedForDeletion) {
+                uPortUartDeinit();
             }
+            break;
         }
-    } else {
-        if (len < (pRespRead - pRespWrite)) {
-            memcpy(pRespWrite, pAtResp->at_resp_buffer, pAtResp->resp_len);
-            pRespWrite = (uint8_t *)pRespWrite + len;
-        } else {
-            uPortLog("Overflow 2.");
-            // Overflow.
-            (void) pCallbackData;
+        default: {
+            break;
         }
     }
-    U_PORT_MUTEX_UNLOCK(gMutex);
+}
 
-    // Enqueue event callback
-    if (urcFlag &&
-        !gUartData[uartEvent.uartHandle].markedForDeletion &&
-        (gUartData[uartEvent.uartHandle].pEventCallback != NULL) &&
-        (gUartData[uartEvent.uartHandle].pEventCallbackParam != NULL) &&
-        (gUartData[uartEvent.uartHandle].eventFilter & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
-
-        int32_t errorCode = U_ERROR_COMMON_SUCCESS;
-
-        errorCode = uPortEventQueueSend(gURCEventQueueHandle, NULL, 0);
-        uPortLog("atCommandCallback() Enqueue in URC Event Queue: %d.", errorCode);
-    }
-
-    uPortLog("atCommandCallback() Data copy completed.");
+// UART timer callback.
+static void modemUartTimerCallback(uPortTimerHandle_t timerHandle, void *pParameter)
+{
+    gModemUartTimerTimeout = true;
 }
 
 /* ----------------------------------------------------------------
@@ -200,13 +204,32 @@ static void atCommandCallback(uint32_t pCallbackData, uint32_t unUsed)
 // Initialise the UART driver.
 int32_t uPortUartInit()
 {
-    int32_t errorCode = U_ERROR_COMMON_SUCCESS;
+    int32_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
-    if (gMutex == NULL) {
-        errorCode = uPortMutexCreate(&gMutex);
-        for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
-            gUartData[x].queue = NULL;
-            gUartData[x].markedForDeletion = false;
+    if (gModemUartMutex == NULL) {
+        // Reset the UART read buffer
+        memset(gModemUartReadBuffer, 0, U_PORT_UART_READ_BUFFER_SIZE);
+        gModemUartContext.markedForDeletion = false;
+        gModemUartContext.eventQueueHandle = -1;
+        gModemUartContext.uartHandle = -1;
+        gModemUartContext.eventFilter = 0;
+        gModemUartContext.pEventCallback = NULL;
+        gModemUartContext.pEventCallbackParam = NULL;
+
+        // Create mutex to protect UART interface
+        errorCode = uPortMutexCreate(&gModemUartMutex);
+        if (errorCode == U_ERROR_COMMON_SUCCESS) {
+            // Create timer
+            errorCode = uPortTimerCreate(&gModemUartTimerHandle,
+                                         "Uart Timer", modemUartTimerCallback,
+                                         NULL, U_PORT_UART_TIMEOUT_MS, false);
+            if (errorCode < 0) {
+                uPortLog("uPortUartInit() Error creating timer.\n");
+                (void)uPortMutexDelete(gModemUartMutex);
+            }
+        } else {
+            // Error creating mutex
+            uPortLog("uPortUartInit() Error creating mutex.\n");
         }
     }
 
@@ -216,20 +239,22 @@ int32_t uPortUartInit()
 // Deinitialise the UART driver.
 void uPortUartDeinit()
 {
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
-        // First, mark all instances for deletion
-        for (size_t x = 0; x < sizeof(gUartData) / sizeof(gUartData[0]); x++) {
-            gUartData[x].markedForDeletion = true;
-        }
+    if (gModemUartMutex != NULL) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
+        // First, mark UART instances for deletion
+        gModemUartContext.markedForDeletion = true;
+        gModemUartContext.pEventCallback = NULL;
+        gModemUartContext.pEventCallbackParam = NULL;
+        uPortTimerDelete(gModemUartTimerHandle);
         // Release the mutex so that deletion can occur
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
 
         // Delete the mutex
-        U_PORT_MUTEX_LOCK(gMutex);
-        U_PORT_MUTEX_UNLOCK(gMutex);
-        uPortMutexDelete(gMutex);
-        gMutex = NULL;
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
+        uPortMutexDelete(gModemUartMutex);
+        gModemUartMutex = NULL;
+        gModemUartTimerHandle = NULL;
     }
 }
 
@@ -241,27 +266,134 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                       int32_t pinCts, int32_t pinRts)
 {
     int32_t handleOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    int32_t errorCode;
+
+    if (gModemUartMutex != NULL) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
 
         handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((uart >= 0) &&
-            (uart < sizeof(gUartData) / sizeof(gUartData[0]))) {
+            (pReceiveBuffer == NULL)) {
+            
+            // Reset all parameters
+            memset(gModemUartReadBuffer, 0, U_PORT_UART_READ_BUFFER_SIZE);
+            gModemUartContext.markedForDeletion = false;
+            gModemUartContext.eventQueueHandle = -1;
+            gModemUartContext.uartHandle = -1;
+            gModemUartContext.eventFilter = 0;
+            gModemUartContext.pEventCallback = NULL;
+            gModemUartContext.pEventCallbackParam = NULL;
+
             handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
+            // Open UART interface
+            gModemUartContext.uartHandle = ucpu_sdk_modem_uart_open();
+            if (gModemUartContext.uartHandle > 0) {
+                // Reset event bitmap
+                gModemUartEventBitmap = 0;
+                gModemUartTimerTimeout = false;
 
-            gUartData[uart].markedForDeletion = false;
-            gUartData[uart].eventTaskHandle = NULL;
-            gUartData[uart].eventTaskRunningMutex = NULL;
-            gUartData[uart].pEventCallback = NULL;
-            gUartData[uart].pEventCallbackParam = NULL;
-            gUartData[uart].eventFilter = 0;
+                // Set event callback
+                errorCode = ucpu_sdk_modem_uart_set_callback(gModemUartContext.uartHandle,
+                                                             modemUartEventCallback,
+                                                             NULL);
+                if (errorCode == U_ERROR_COMMON_SUCCESS) {
+                    // Start timer
+                    errorCode = uPortTimerStart(gModemUartTimerHandle);
+                    if (errorCode == U_ERROR_COMMON_SUCCESS) {
+                        // Wait for UCPU_MODEM_UART_EVENT_ATTACH_CNF/UCPU_MODEM_UART_EVENT_OPEN_FAILURE or timeout
+                        while (1) {
+                            if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_ATTACH_CNF) ||
+                                U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_OPEN_FAILURE) ||
+                                gModemUartTimerTimeout) {
+                                break;
+                            }
+                            uPortTaskBlock(100);
+                        }
+                        // Stop timer
+                        errorCode == uPortTimerStop(gModemUartTimerHandle);
+                        if (errorCode == U_ERROR_COMMON_SUCCESS) {
+                            if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_ATTACH_CNF)) {
+                                // Reset event bitmap
+                                gModemUartEventBitmap = 0;
+                                gModemUartTimerTimeout = false;
 
-            // Initialize AT layer
-            handleOrErrorCode = ucpu_at_init((void *)atCommandCallback);
-            uPortLog("AT Initialization - result = %u\r\n", handleOrErrorCode);
+                                // Place read call to UART interface
+                                errorCode = ucpu_sdk_modem_uart_read(gModemUartContext.uartHandle,
+                                                                     gModemUartReadBuffer,
+                                                                     U_PORT_UART_READ_BUFFER_SIZE);
+                                if (errorCode == U_ERROR_COMMON_SUCCESS) {
+                                    // Start timer
+                                    errorCode = uPortTimerStart(gModemUartTimerHandle);
+                                    if (errorCode == U_ERROR_COMMON_SUCCESS) {
+                                        // Wait for UCPU_MODEM_UART_EVENT_EWOULD_BLOCK/UCPU_MODEM_UART_EVENT_READ_FAILURE/UCPU_MODEM_UART_EVENT_FAILURE or timeout
+                                        while (1) {
+                                            if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_EWOULD_BLOCK) ||
+                                                U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_READ_FAILURE) ||
+                                                U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_FAILURE) ||
+                                                gModemUartTimerTimeout) {
+                                                break;
+                                            }
+                                            uPortTaskBlock(100);
+                                        }
+                                        // Stop timer
+                                        errorCode == uPortTimerStop(gModemUartTimerHandle);
+                                        if (errorCode == U_ERROR_COMMON_SUCCESS) {
+                                            if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_EWOULD_BLOCK)) {
+                                                gModemUartReadBufferPlaced = true;
+                                                handleOrErrorCode = gModemUartContext.uartHandle;
+                                            } else if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_READ_FAILURE) ||
+                                                       U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_FAILURE)) {
+                                                // Error reading from UART interface
+                                                handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
+                                                uPortLog("uPortUartOpen() Faild to read from UART interface.\n");
+                                            } else {
+                                                // Timeout reading from UART interface
+                                                handleOrErrorCode = U_ERROR_COMMON_TIMEOUT;
+                                                uPortLog("uPortUartOpen() Timeout reading from UART interface.\n");
+                                            }
+                                        } else {
+                                            // Error stoping timer
+                                            uPortLog("uPortUartOpen() Failed to stop timer.\n");
+                                        }
+                                    } else {
+                                        // Error starting timer
+                                        uPortLog("uPortUartOpen() Failed to start timer.\n");
+                                    }
+                                } else {
+                                    // Error reading from UART interface
+                                    uPortLog("uPortUartOpen() Error reading from UART interface.\n");
+                                }
+                            } else if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_OPEN_FAILURE)) {
+                                // Failed to open UART interface
+                                handleOrErrorCode = U_ERROR_COMMON_PLATFORM;
+                                uPortLog("uPortUartOpen() Failed to open UART interface.\n");
+                            } else {
+                                // Timeout opening UART interface
+                                handleOrErrorCode = U_ERROR_COMMON_TIMEOUT;
+                                uPortLog("uPortUartOpen() Timeout opening UART interface.\n");
+                            }
+                        } else {
+                            // Error stoping timer
+                            uPortLog("uPortUartOpen() Failed to stop timer.\n");
+                        }
+                    } else {
+                        // Error starting timer
+                        uPortLog("uPortUartOpen() Failed to start timer.\n");
+                    }
+                } else {
+                    // Error setting platform callback
+                    uPortLog("uPortUartOpen() Error setting platform callback.\n");
+                }
+            } else {
+                // Error opening UART interface
+                uPortLog("uPortUartOpen() Error opening UART interface.\n");
+            }
+        } else {
+            // Invalid parameter
+            uPortLog("uPortUartOpen() Error invalid parameter.\n");
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
     }
 
     return handleOrErrorCode;
@@ -270,115 +402,163 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
 // Close a UART instance.
 void uPortUartClose(int32_t handle)
 {
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    int32_t errorCode;
 
-        if ((handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            !gUartData[handle].markedForDeletion) {
-            // Mark the UART for deletion within the mutex
-            gUartData[handle].markedForDeletion = true;
-            gUartData[handle].pEventCallback = NULL;
-            gUartData[handle].pEventCallbackParam = NULL;
+    if ((handle > 0) &&
+        (gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
+
+        // Mark the UART for deletion within the mutex
+        gModemUartContext.markedForDeletion = true;
+        gModemUartContext.pEventCallback = NULL;
+        gModemUartContext.pEventCallbackParam = NULL;
+        // Reset event bitmap
+        gModemUartEventBitmap = 0;
+        gModemUartTimerTimeout = false;
+
+        ucpu_sdk_modem_uart_close(handle);
+
+        // Start timer
+        errorCode = uPortTimerStart(gModemUartTimerHandle);
+        if (errorCode == U_ERROR_COMMON_SUCCESS) {
+            // Wait for UCPU_MODEM_UART_EVENT_DETACH_CNF/UCPU_MODEM_UART_EVENT_FAILURE or timeout
+            while (1) {
+                if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_DETACH_CNF) ||
+                    U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_FAILURE) ||
+                    gModemUartTimerTimeout) {
+                    break;
+                }
+                uPortTaskBlock(100);
+            }
+            // Stop timer
+            errorCode == uPortTimerStop(gModemUartTimerHandle);
+            if (errorCode == U_ERROR_COMMON_SUCCESS) {
+                if (!U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_DETACH_CNF)) {
+                    // Error closing modem UART interface
+                    uPortLog("uPortUartClose() Error closing UART interface.\n");
+                }
+            } else {
+                // Error stoping timer
+                uPortLog("uPortUartClose() Failed to stop timer.\n");
+            }
+        } else {
+            // Error starting timer
+            uPortLog("uPortUartClose() Failed to start timer.\n");
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
     }
 }
 
 // Get the number of bytes waiting in the receive buffer.
 int32_t uPortUartGetReceiveSize(int32_t handle)
 {
-    int32_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCodeOrSize = U_ERROR_COMMON_NOT_INITIALISED;
 
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
 
-        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            !gUartData[handle].markedForDeletion) {
-            if (pRespWrite > pRespRead) {
-                sizeOrErrorCode = pRespWrite - pRespRead;
-            } else if (pRespWrite == pRespRead) {
-                if (aboutToFull == true) {
-                    sizeOrErrorCode = UCPU_RESP_BUFFER_SIZE;
-                } else {
-                    sizeOrErrorCode = 0;
-                }
-            } else {
-                sizeOrErrorCode = UCPU_RESP_BUFFER_SIZE - (pRespRead - pRespWrite);
-            }
+        errorCodeOrSize = gModemUartReceiveBytes;
 
-            if (sizeOrErrorCode < 0) {
-                sizeOrErrorCode = U_ERROR_COMMON_PLATFORM;
-            }
-        }
-
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
     }
 
-    return sizeOrErrorCode;
+    return errorCodeOrSize;
 }
 
 // Read from the given UART interface.
 int32_t uPortUartRead(int32_t handle, void *pBuffer,
                       size_t sizeBytes)
 {
-    int32_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
-    size_t thisSize;
+    int32_t errorCodeOrSize = U_ERROR_COMMON_NOT_INITIALISED;
+    size_t thisSize = 0;
 
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
 
-        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((pBuffer != NULL) && (sizeBytes > 0)  &&
-            !gUartData[handle].markedForDeletion) {
-            sizeOrErrorCode = U_ERROR_COMMON_SUCCESS;
-            if ((pRespRead == pRespWrite) && (aboutToFull == false)) {
-                // No data.
-            } else if (pRespWrite > pRespRead) {
-                thisSize = pRespWrite - pRespRead;
-                if (sizeBytes < thisSize) {
-                    thisSize = sizeBytes;
-                }
-                memcpy(pBuffer, pRespRead, thisSize);
-                pBuffer = (uint8_t *)pBuffer + thisSize;
-                pRespRead = (uint8_t *)pRespRead + thisSize;
-                sizeOrErrorCode = thisSize;
+        errorCodeOrSize = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle > 0) &&
+            (pBuffer != NULL) && (sizeBytes > 0)) {
+
+            errorCodeOrSize = U_ERROR_COMMON_SUCCESS;
+            if (gModemUartReceiveBytes > sizeBytes) {
+                thisSize = sizeBytes;
             } else {
-                thisSize = UCPU_RESP_BUFFER_SIZE - (pRespRead - pRespWrite);
-                if (sizeBytes < thisSize) {
-                    thisSize = sizeBytes;
-                }
+                thisSize = gModemUartReceiveBytes;
+            }
 
-                if (thisSize < (UCPU_RESP_BUFFER_SIZE - (pRespRead - respBuff))) {
-                    memcpy(pBuffer, pRespRead, thisSize);
-                    pBuffer = (uint8_t *)pBuffer + thisSize;
-                    pRespRead = (uint8_t *)pRespRead + thisSize;
-                    sizeOrErrorCode = thisSize;
-                } else {
-                    size_t tempSize;
+            if (thisSize > 0) {
+                // Copy data to buffer
+                memcpy(pBuffer, gpModemUartReadBuffer, thisSize);
+                gpModemUartReadBuffer += thisSize;
+                gModemUartReceiveBytes -= thisSize;
+                errorCodeOrSize = thisSize;
+            }
 
-                    tempSize = (UCPU_RESP_BUFFER_SIZE - (pRespRead - respBuff));
-                    memcpy(pBuffer, pRespRead, tempSize); // Copy data from the end of buffer.
-                    pBuffer = (uint8_t *)pBuffer + tempSize;
-                    pRespRead = respBuff;
+            if ((gModemUartReceiveBytes == 0) && (gModemUartReadBufferPlaced == false)) {
+                // Reset the UART read buffer
+                memset(gModemUartReadBuffer, 0, U_PORT_UART_READ_BUFFER_SIZE);
+                gpModemUartReadBuffer = gModemUartReadBuffer;
+                // Reset event bitmap
+                gModemUartEventBitmap = 0;
+                gModemUartTimerTimeout = false;
+                gModemUartReadBufferPlaced = true;
 
-                    tempSize = thisSize - tempSize;
-                    memcpy(pBuffer, pRespRead, tempSize); // Copy remaining data from the start of buffer.
-                    pBuffer = (uint8_t *)pBuffer + tempSize;
-                    pRespRead = (uint8_t *)pRespRead + tempSize;
-                    sizeOrErrorCode = thisSize;
-                    aboutToFull = false;
+                // Read from modem UART interface. It is non-blocking call.
+                // When data is available it will be notified via event and
+                // data is copied to gModemUartReadBuffer
+                errorCodeOrSize = ucpu_sdk_modem_uart_read(handle,
+                                                           gModemUartReadBuffer,
+                                                           U_PORT_UART_READ_BUFFER_SIZE);
+                if (errorCodeOrSize == U_ERROR_COMMON_SUCCESS) {
+                    // Start timer
+                    errorCodeOrSize = uPortTimerStart(gModemUartTimerHandle);
+                    if (errorCodeOrSize == U_ERROR_COMMON_SUCCESS) {
+                        // Wait for UCPU_MODEM_UART_EVENT_EWOULD_BLOCK/UCPU_MODEM_UART_EVENT_READ_IND/UCPU_MODEM_UART_EVENT_FAILURE or timeout
+                        while (1) {
+                            if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_EWOULD_BLOCK) ||
+                                U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_READ_FAILURE) ||
+                                U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_FAILURE) ||
+                                gModemUartTimerTimeout) {
+                                break;
+                            }
+                            uPortTaskBlock(100);
+                        }
+                        // Stop timer
+                        errorCodeOrSize == uPortTimerStop(gModemUartTimerHandle);
+                        if (errorCodeOrSize == U_ERROR_COMMON_SUCCESS) {
+                            if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_EWOULD_BLOCK)) {
+                                // Number of bytes read from UART interface
+                                errorCodeOrSize = thisSize;
+                            } else if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_READ_FAILURE) ||
+                                       U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_FAILURE)) {
+                                // Error reading from UART interface
+                                errorCodeOrSize = U_ERROR_COMMON_PLATFORM;
+                                uPortLog("uPortUartRead() Faild to read from UART interface.\n");
+                            } else {
+                                // Timeout reading from UART interface
+                                errorCodeOrSize = U_ERROR_COMMON_TIMEOUT;
+                                uPortLog("uPortUartRead() Timeout reading from UART interface.\n");
+                            }
+                        } else {
+                            // Error stoping timer
+                            uPortLog("uPortUartRead() Failed to stop timer.\n");
+                        }
+                    } else {
+                        // Error starting timer
+                        uPortLog("uPortUartRead() Failed to start timer.\n");
+                    }
                 }
             }
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
     }
 
-    return sizeOrErrorCode;
+    return errorCodeOrSize;
 }
 
 // Write to the given UART interface.
@@ -386,63 +566,96 @@ int32_t uPortUartWrite(int32_t handle,
                        const void *pBuffer,
                        size_t sizeBytes)
 {
-    int32_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCodeOrSize = U_ERROR_COMMON_NOT_INITIALISED;
     size_t writeLen = 0;
     size_t offset = 0;
-    static uint8_t atCommandStr[UCPU_MAX_AT_CMD_LENGTH];
 
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
 
-        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((pBuffer != NULL) && (handle >= 0) &&
-            (!gUartData[handle].markedForDeletion)) {
-            // Run around the loop until all packets of data send.
-            do {
-                if (sizeBytes >= U_PORT_AT_MAX_DATA_SIZE) {
-                    writeLen = U_PORT_AT_MAX_DATA_SIZE;
+        gModemUartWriteBytes = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle > 0) &&
+            (pBuffer != NULL)) {
+
+            gModemUartWriteBytes = 0;
+            // Reset event bitmap
+            gModemUartEventBitmap = 0;
+            gModemUartTimerTimeout = false;
+
+            // Write to the modem UART interface. It is non-blocking call.
+            // When data is written to UART interface it will be notified
+            // via event in event callback
+            errorCodeOrSize = ucpu_sdk_modem_uart_write(handle,
+                                                        (void *) pBuffer,
+                                                        sizeBytes);
+            if (errorCodeOrSize == U_ERROR_COMMON_SUCCESS) {
+                // Start timer
+                errorCodeOrSize = uPortTimerStart(gModemUartTimerHandle);
+                if (errorCodeOrSize == U_ERROR_COMMON_SUCCESS) {
+                    // Wait for UCPU_MODEM_UART_EVENT_WRITE_IND/UCPU_MODEM_UART_EVENT_FAILURE or timeout
+                    while (1) {
+                        if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_WRITE_IND) ||
+                            U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_FAILURE) ||
+                            gModemUartTimerTimeout) {
+                            break;
+                        }
+                        uPortTaskBlock(100);
+                    }
+                    // Stop timer
+                    errorCodeOrSize == uPortTimerStop(gModemUartTimerHandle);
+                    if (errorCodeOrSize == U_ERROR_COMMON_SUCCESS) {
+                        if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_WRITE_IND)) {
+                            // Number of bytes written to UART interface
+                            errorCodeOrSize = gModemUartWriteBytes;
+                        } else if (U_PORT_UART_EVENT_CHECK(gModemUartEventBitmap, UCPU_MODEM_UART_EVENT_FAILURE)) {
+                            // Error reading from UART interface
+                            errorCodeOrSize = U_ERROR_COMMON_PLATFORM;
+                            uPortLog("uPortUartWrite() Faild to write to UART interface.\n");
+                        } else {
+                            // Timeout reading from UART interface
+                            errorCodeOrSize = U_ERROR_COMMON_TIMEOUT;
+                            uPortLog("uPortUartWrite() Timeout writing to UART interface.\n");
+                        }
+                    } else {
+                        // Error stoping timer
+                        uPortLog("uPortUartWrite() Failed to stop timer.\n");
+                    }
                 } else {
-                    writeLen = sizeBytes;
+                    // Error starting timer
+                    uPortLog("uPortUartWrite() Failed to start timer.\n");
                 }
-
-                memset((uint8_t *) atCommandStr, 0, UCPU_MAX_AT_CMD_LENGTH);
-                memcpy(atCommandStr, (uint8_t *) pBuffer + offset, writeLen);
-                ucpu_at_send_cmd((uint8_t *) atCommandStr, writeLen);
-                sizeBytes -= writeLen;
-                offset += writeLen;
-            } while (sizeBytes > 0);
-
-            sizeOrErrorCode = offset;
+            } else {
+                // Error writing to UART interface
+                uPortLog("uPortUartWrite() Failed to write to UART interface.\n");
+            }
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
     }
 
-    uPortTaskBlock(25); // Little delay required to process data
-    return sizeOrErrorCode;
+    return errorCodeOrSize;
 }
 
-// Callback for the urc event queue.
-static void urcEventQueueCallback(void *pParameters, size_t paramLength)
+// Event handler, calls the user's event callback.
+static void eventHandler(void *pParam, size_t paramLength)
 {
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion) &&
+        (gModemUartContext.pEventCallback != NULL) &&
+        (gModemUartContext.pEventCallbackParam != NULL) &&
+        (gModemUartContext.eventFilter & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
 
+        // Don't need to worry about locking the mutex here,
+        // the user callback will be able to access functions in this
+        // API which will lock the mutex before doing any action.
+
+        gModemUartInEventCallback = true;
         // Call event callback
-        if (!gUartData[uartEvent.uartHandle].markedForDeletion &&
-            (gUartData[uartEvent.uartHandle].pEventCallback != NULL) &&
-            (gUartData[uartEvent.uartHandle].pEventCallbackParam != NULL) &&
-            (gUartData[uartEvent.uartHandle].eventFilter & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
-            inEventCallback = true;
-            uPortLog("urcEventQueueCallback() Invoking the URC Callback.");
-            gUartData[uartEvent.uartHandle].pEventCallback(uartEvent.uartHandle,
-                                                           uartEvent.eventBitMap,
-                                                           gUartData[uartEvent.uartHandle].pEventCallbackParam);
-            inEventCallback = false;
-        }
-        uPortLog("urcEventQueueCallback() Data copy completed.");
-
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        gModemUartContext.pEventCallback(gModemUartEvent.uartHandle,
+                                         gModemUartEvent.eventBitMap,
+                                         gModemUartContext.pEventCallbackParam);
+        gModemUartInEventCallback = false;
     }
 }
 
@@ -456,57 +669,73 @@ int32_t uPortUartEventCallbackSet(int32_t handle,
                                   size_t stackSizeBytes,
                                   int32_t priority)
 {
-    int32_t errorCodeOrHandle = U_ERROR_COMMON_NOT_INITIALISED;
+    int32_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
 
-    if ((handle >= 0) &&
-        (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-        !gUartData[handle].markedForDeletion &&
-        (gUartData[handle].eventTaskRunningMutex == NULL) &&
-        (filter != 0) && (pFunction != NULL)) {
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
 
-        if (gMutex != NULL) {
-            U_PORT_MUTEX_LOCK(gMutex);
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((handle > 0) &&
+            (filter != 0) && (pFunction != NULL)) {
 
-            // Create URC Thread
-            gURCEventQueueHandle = uPortEventQueueOpen(urcEventQueueCallback,
-                                                       "urcCallbacks",
-                                                       sizeof(uint32_t),
-                                                       stackSizeBytes,
-                                                       priority,
-                                                       10);
-            if (gURCEventQueueHandle < 0) {
-                uPortLog("uPortEventQueueOpen() failed for URC Event Queue %d\n", gURCEventQueueHandle);
-                //assert(false);
+            errorCode = U_ERROR_COMMON_PLATFORM;
+            // Open event queue
+            errorCode = uPortEventQueueOpen(eventHandler,
+                                            "eventUart",
+                                            sizeof(uint32_t),
+                                            stackSizeBytes,
+                                            priority,
+                                            U_PORT_UART_EVENT_QUEUE_SIZE);
+            if (errorCode >= 0) {
+                gModemUartContext.pEventCallback = pFunction;
+                gModemUartContext.pEventCallbackParam = pParam;
+                gModemUartContext.eventQueueHandle = (int32_t) errorCode;
+                gModemUartContext.eventFilter = filter;
+                gModemUartEvent.uartHandle = handle;
+                gModemUartEvent.eventBitMap = filter;
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else {
+                uPortLog("uPortUartEventCallbackSet() Failed to open event queue = %d.\n", errorCode);
             }
 
-            gUartData[handle].pEventCallback = pFunction;
-            gUartData[handle].pEventCallbackParam = pParam;
-            gUartData[handle].eventFilter = filter;
-            uartEvent.uartHandle = handle;
-            uartEvent.eventBitMap = filter;
-            errorCodeOrHandle = U_ERROR_COMMON_SUCCESS;
-
-            U_PORT_MUTEX_UNLOCK(gMutex);
+            U_PORT_MUTEX_UNLOCK(gModemUartMutex);
         }
     }
-    return errorCodeOrHandle;
+
+    return errorCode;
 }
 
 // Remove an event callback.
 void uPortUartEventCallbackRemove(int32_t handle)
 {
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    int32_t eventQueueHandle = -1;
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
 
-        if ((handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            !gUartData[handle].markedForDeletion) {
-            gUartData[handle].pEventCallback = NULL;
-            gUartData[handle].pEventCallbackParam = NULL;
-            gUartData[handle].eventFilter = 0;
+        if ((handle > 0) &&
+            (gModemUartContext.eventQueueHandle >= 0)) {
+            // Save the eventQueueHandle and set all
+            // the parameters to indicate that the
+            // queue is closed
+            eventQueueHandle = gModemUartContext.eventQueueHandle;
+            // Remove user event callback
+            gModemUartContext.eventQueueHandle = -1;
+            gModemUartContext.pEventCallback = NULL;
+            gModemUartContext.pEventCallbackParam = NULL;
+            gModemUartContext.eventFilter = 0;
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
+    }
+    // Now close the event queue
+    // outside the gMutex lock.  Reason for this
+    // is that the event task could be calling
+    // back into here and we don't want it
+    // blocked by us we'll get stuck.
+    if (eventQueueHandle >= 0) {
+        uPortEventQueueClose(eventQueueHandle);
     }
 }
 
@@ -515,40 +744,39 @@ uint32_t uPortUartEventCallbackFilterGet(int32_t handle)
 {
     uint32_t filter = 0;
 
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
 
-        if ((handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            !gUartData[handle].markedForDeletion) {
-            filter = gUartData[handle].eventFilter;
+        if ((handle > 0) &&
+            (gModemUartContext.eventQueueHandle >= 0)) {
+            filter = gModemUartContext.eventFilter;
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
     }
 
     return filter;
 }
 
 // Change the callback filter bit-mask.
-int32_t uPortUartEventCallbackFilterSet(int32_t handle,
-                                        uint32_t filter)
+int32_t uPortUartEventCallbackFilterSet(int32_t handle, uint32_t filter)
 {
     int32_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
 
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
 
         errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            !gUartData[handle].markedForDeletion &&
-            (filter != 0)) {
+        if ((handle > 0) &&
+            (filter != 0) &&
+            (gModemUartContext.eventQueueHandle >= 0)) {
             errorCode = U_ERROR_COMMON_SUCCESS;
-            gUartData[handle].eventFilter = filter;
+            gModemUartContext.eventFilter = filter;
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
     }
 
     return errorCode;
@@ -558,47 +786,41 @@ int32_t uPortUartEventCallbackFilterSet(int32_t handle,
 int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
 {
     int32_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
-    uPortUartEvent_t event;
 
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
-
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
         errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            !gUartData[handle].markedForDeletion &&
-            (gUartData[handle].pEventCallback != NULL) &&
-            (gUartData[handle].pEventCallbackParam != NULL) &&
+
+        if ((handle > 0) &&
+            (gModemUartContext.eventQueueHandle >= 0) &&
+            (gModemUartContext.pEventCallback != NULL) &&
+            (gModemUartContext.pEventCallbackParam != NULL) &&
             (eventBitMap & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
             errorCode = U_ERROR_COMMON_SUCCESS;
-            event.uartHandle = handle;
-            event.eventBitMap = eventBitMap;
-            gUartData[handle].pEventCallback(event.uartHandle,
-                                             event.eventBitMap,
-                                             gUartData[handle].pEventCallbackParam);
-        }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+            // Push an event to event queue
+            errorCode = uPortEventQueueSend(gModemUartContext.eventQueueHandle, NULL, 0);
+        }
     }
 
     return errorCode;
 }
 
-// Return true if we're in an event callback.
+// Return true, if we're in an event callback.
 bool uPortUartEventIsCallback(int32_t handle)
 {
     bool isEventCallback = false;
 
-    if (gMutex != NULL) {
-        U_PORT_MUTEX_LOCK(gMutex);
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        U_PORT_MUTEX_LOCK(gModemUartMutex);
 
-        if ((handle >= 0) &&
-            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
-            !gUartData[handle].markedForDeletion) {
-            isEventCallback = inEventCallback;
+        if ((handle > 0) &&
+            (gModemUartContext.eventQueueHandle >= 0)) {
+            isEventCallback = gModemUartInEventCallback;
         }
 
-        U_PORT_MUTEX_UNLOCK(gMutex);
+        U_PORT_MUTEX_UNLOCK(gModemUartMutex);
     }
 
     return isEventCallback;
@@ -609,7 +831,7 @@ int32_t uPortUartEventStackMinFree(int32_t handle)
 {
     int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 
-    // yet to implement
+    // Yet to implement
     return sizeOrErrorCode;
 }
 
@@ -631,13 +853,19 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle)
     return ctsFlowControlIsEnabled;
 }
 
+// Suspend CTS flow control.
 int32_t uPortUartCtsSuspend(int32_t handle)
 {
-    return U_ERROR_COMMON_NOT_SUPPORTED;
+    int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+
+    // Not valid in our case
+    return sizeOrErrorCode;
 }
 
+// Resume CTS flow control.
 void uPortUartCtsResume(int32_t handle)
 {
-    (void) handle;
+    // Not valid in our case
 }
+
 // End of file
