@@ -17,7 +17,7 @@
 /** @brief This basic example demonstrates how to bring up a network
  * connection and then perform mqtt and socket operations in their respectively threads.
  *
- * The purpose of this test app to verify the UART implementation. 
+ * The purpose of this test app to verify the UART implementation.
  */
 
 #include "stdio.h"
@@ -106,7 +106,7 @@ static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
                                                         -1, // U_CFG_APP_PIN_CELL_ENABLE_POWER
                                                         -1, // U_CFG_APP_PIN_CELL_PWR_ON
                                                         -1  // U_CFG_APP_PIN_CELL_VINT
-                                                       };
+                                                        };
 
 // MQTT thread handle
 static uPortTaskHandle_t mqttThreadHandle;
@@ -184,11 +184,11 @@ static void messageIndicationCallback(int32_t numUnread, void *pParam)
     *pMessagesAvailable = true;
 }
 
-// MQTT operations thread. This thread create 
+// MQTT operations thread. This thread create
 // MQTT client instence and connect with MQTT broker.
-// Subsribe to topic and send/receive data in 
+// Subsribe to topic and send/receive data in
 // infinit loop on subsribed topic.
-static void mqttThread(void * thread_input)
+static void mqttThread(void *thread_input)
 {
     uMqttClientContext_t *pContext = NULL;
     uMqttClientConnection_t connection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
@@ -279,7 +279,7 @@ static void mqttThread(void * thread_input)
                                                sizeof(topic),
                                                readBuffer, &readBufferSize,
                                                NULL) == 0) {
-                            
+
                         uPortLog("New MQTT message in topic \"%s\" is %d"
                                  " character(s): \"%.*s\".\n", topic,
                                  readBufferSize, readBufferSize, readBuffer);
@@ -298,7 +298,7 @@ static void mqttThread(void * thread_input)
 // Socket operations thread. This thread creates
 // a TCP socket and connects with TCP echo server.
 // Send and receive data in infinit loop.
-static void socketThread(void * thread_input)
+static void socketThread(void *thread_input)
 {
     int32_t sock;
     int32_t x = 0;

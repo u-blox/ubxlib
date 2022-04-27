@@ -274,7 +274,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
         handleOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
         if ((uart >= 0) &&
             (pReceiveBuffer == NULL)) {
-            
+
             // Reset all parameters
             memset(gModemUartReadBuffer, 0, U_PORT_UART_READ_BUFFER_SIZE);
             gModemUartContext.markedForDeletion = false;
