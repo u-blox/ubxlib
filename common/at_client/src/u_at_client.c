@@ -372,7 +372,6 @@ typedef struct uAtClientInstance_t {
     uPortMutexHandle_t mutex; /** Mutex for threadsafeness. */
     uPortMutexHandle_t streamMutex; /** Mutex for the data stream. */
     uPortMutexHandle_t urcPermittedMutex; /** Mutex that we can use to avoid trampling on a URC. */
-    uPortMutexHandle_t asyncRunningMutex; /** Mutex indicating an uAtClientCallback() is executing. */
     uAtClientReceiveBuffer_t *pReceiveBuffer; /** Pointer to the receive buffer structure. */
     bool debugOn; /** Whether general debug is on or off. */
     bool printAtOn; /** Whether printing of AT commands and responses is on or off. */
@@ -778,11 +777,6 @@ static void removeClient(uAtClientInstance_t *pClient)
     // Delete the URC active mutex
     U_PORT_MUTEX_UNLOCK(pClient->urcPermittedMutex);
     uPortMutexDelete(pClient->urcPermittedMutex);
-
-    // Delete the async running mutex
-    U_PORT_MUTEX_LOCK(pClient->asyncRunningMutex);
-    U_PORT_MUTEX_UNLOCK(pClient->asyncRunningMutex);
-    uPortMutexDelete(pClient->asyncRunningMutex);
 
     // And finally free the client context.
     free(pClient);
@@ -2359,20 +2353,13 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
 // Callback for the event queue.
 static void eventQueueCallback(void *pParameters, size_t paramLength)
 {
-    uAtClientInstance_t *pClient;
     uAtClientCallback_t *pCb = (uAtClientCallback_t *) pParameters;
 
     (void) paramLength;
 
     if ((pCb != NULL) && (pCb->pFunction != NULL) &&
         processAsync(pCb->atClientMagicNumber)) {
-        pClient = (uAtClientInstance_t *) pCb->atHandle;
-
-        U_PORT_MUTEX_LOCK(pClient->asyncRunningMutex);
-
         pCb->pFunction(pCb->atHandle, pCb->pParam);
-
-        U_PORT_MUTEX_UNLOCK(pClient->asyncRunningMutex);
     }
 }
 
@@ -2513,8 +2500,7 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                     // Create the mutexes
                     if ((uPortMutexCreate(&(pClient->mutex)) == 0) &&
                         (uPortMutexCreate(&(pClient->streamMutex)) == 0) &&
-                        (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0) &&
-                        (uPortMutexCreate(&(pClient->asyncRunningMutex)) == 0)) {
+                        (uPortMutexCreate(&(pClient->urcPermittedMutex)) == 0)) {
                         // Set all the non-zero initial values before we set
                         // the event handlers which might call us
                         pClient->streamHandle = streamHandle;
@@ -2565,9 +2551,6 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
 
                 if (errorCode != 0) {
                     // Clean up on failure
-                    if (pClient->asyncRunningMutex != NULL) {
-                        uPortMutexDelete(pClient->asyncRunningMutex);
-                    }
                     if (pClient->urcPermittedMutex != NULL) {
                         uPortMutexDelete(pClient->urcPermittedMutex);
                     }
@@ -2599,22 +2582,14 @@ void uAtClientIgnoreAsync(uAtClientHandle_t atHandle)
 
     U_PORT_MUTEX_LOCK(gMutex);
 
-    // As well as locking gMutex we also lock
-    // asyncRunningMutex so that we can guarantee
-    // that no asynchronous call will land once this
-    // function returns
     if (pClient == NULL) {
         pClient = gpAtClientList;
         while (pClient != NULL) {
-            U_PORT_MUTEX_LOCK(pClient->asyncRunningMutex);
             ignoreAsync(pClient);
-            U_PORT_MUTEX_UNLOCK(pClient->asyncRunningMutex);
             pClient = pClient->pNext;
         }
     } else {
-        U_PORT_MUTEX_LOCK(pClient->asyncRunningMutex);
         ignoreAsync(pClient);
-        U_PORT_MUTEX_UNLOCK(pClient->asyncRunningMutex);
     }
 
     U_PORT_MUTEX_UNLOCK(gMutex);
