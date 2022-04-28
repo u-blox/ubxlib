@@ -573,7 +573,7 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
     return err;
 }
 
-static void startWifi(void)
+static uWifiTestError_t startWifi(void)
 {
     int32_t waitCtr = 0;
     //lint -e(438) suppress testError warning
@@ -596,11 +596,15 @@ static void startWifi(void)
                                          wifiNetworkStatusCallback, NULL);
 
         // Connect to wifi network
-        if (0 != uWifiNetStationConnect(gHandles.wifiHandle,
+        int32_t status;
+        status = uWifiNetStationConnect(gHandles.wifiHandle,
                                         U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
                                         U_WIFI_NET_AUTH_WPA_PSK,
-                                        U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE))) {
-
+                                        U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
+        if (status == (int32_t) U_WIFI_ERROR_ALREADY_CONNECTED_TO_SSID) {
+            gWifiConnected = true;
+            gNetStatusMask = gNetStatusMaskAllUp;
+        } else if (status != 0) {
             testError = U_WIFI_TEST_ERROR_CONNECT;
         }
     }
@@ -623,6 +627,7 @@ static void startWifi(void)
     }
     uPortLog(LOG_TAG "wifi handle = %d\n", gHandles.wifiHandle);
 
+    return testError;
 }
 
 static void stopWifi(void)
@@ -635,14 +640,14 @@ static void stopWifi(void)
  * -------------------------------------------------------------- */
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttPublishSubscribeTest")
 {
-    startWifi();
+    U_PORT_TEST_ASSERT_EQUAL(U_WIFI_TEST_ERROR_NONE, startWifi());
     wifiMqttPublishSubscribeTest(false);
     stopWifi();
 }
 
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttUnsubscribeTest")
 {
-    startWifi();
+    U_PORT_TEST_ASSERT_EQUAL(U_WIFI_TEST_ERROR_NONE, startWifi());
     wifiMqttUnsubscribeTest(false);
     stopWifi();
 }
@@ -650,7 +655,7 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttUnsubscribeTest")
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredPublishSubscribeTest")
 {
     int32_t err;
-    startWifi();
+    U_PORT_TEST_ASSERT_EQUAL(U_WIFI_TEST_ERROR_NONE, startWifi());
     err = uSecurityCredentialStore(gHandles.wifiHandle,
                                    U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                    mqttTlsSettings.pRootCaCertificateName,
@@ -670,7 +675,7 @@ U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredPublishSubscribeTest")
 U_PORT_TEST_FUNCTION("[wifiMqtt]", "wifiMqttSecuredUnsubscribeTest")
 {
     int32_t err;
-    startWifi();
+    U_PORT_TEST_ASSERT_EQUAL(U_WIFI_TEST_ERROR_NONE, startWifi());
     err = uSecurityCredentialStore(gHandles.wifiHandle,
                                    U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                    mqttTlsSettings.pRootCaCertificateName,
