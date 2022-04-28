@@ -163,6 +163,8 @@ static void callback(int32_t cellHandle, uCellNetRat_t rat,
                      int32_t pagingWindowSecondsAssigned,
                      void *pParameter)
 {
+    (void)pParameter;
+    (void)cellHandle;
     uPortLog("## Requested E-DRX is %s, %d seconds; assigned E-DRX is"
              " %d seconds, assigned paging window %d seconds.\n",
              onNotOff ? "on" : "off", eDrxSecondsRequested,

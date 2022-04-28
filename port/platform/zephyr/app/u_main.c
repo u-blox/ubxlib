@@ -178,6 +178,7 @@ int main(void)
 #ifdef U_DEBUG_UTILS_DUMP_THREADS
 void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
 {
+    (void)reason;
 # ifdef __arm__
     uStackFrame_t frame;
     struct k_thread *pCurrent = (struct k_thread *)k_current_get();
@@ -195,6 +196,8 @@ void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
         }
     }
     uPortLogF("\n\n");
+# else
+    (void)esf;
 # endif
 
     uDebugUtilsDumpThreads();

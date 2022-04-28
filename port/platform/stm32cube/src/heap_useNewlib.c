@@ -162,6 +162,7 @@ void *_sbrk_r(struct _reent *pReent, int incr)
     UBaseType_t usis; // saved interrupt status
 #endif
     static char *currentHeapEnd = &__HeapBase;
+    (void)pReent;
 #ifdef STM_VERSION // Use STM CubeMX LD symbols for heap
     if (TotalHeapSize == 0) {
         TotalHeapSize = heapBytesRemaining = (int)((&__HeapLimit) - (&__HeapBase)) - ISR_STACK_LENGTH_BYTES;
@@ -224,12 +225,14 @@ void __malloc_lock(struct _reent *r)
     DRN_ENTER_CRITICAL_SECTION(malLock_uxSavedInterruptStatus);
 #else
     bool insideAnISR = xPortIsInsideInterrupt();
+    (void)r;
     configASSERT( !insideAnISR ); // Make damn sure no more mallocs inside ISRs!!
     vTaskSuspendAll();
 #endif
 };
 void __malloc_unlock(struct _reent *r)
 {
+    (void)r;
 #if defined(MALLOCS_INSIDE_ISRs)
     DRN_EXIT_CRITICAL_SECTION(malLock_uxSavedInterruptStatus);
 #else

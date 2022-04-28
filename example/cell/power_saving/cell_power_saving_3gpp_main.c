@@ -170,6 +170,8 @@ static void callback(int32_t networkHandle, bool onNotOff,
                      int32_t activeTimeSeconds, int32_t periodicWakeupSeconds,
                      void *pParameter)
 {
+    (void)networkHandle;
+    (void)pParameter;
     uPortLog("## 3GPP power saving is %s, active time %d seconds,"
              " periodic wake-up %d seconds.\n", onNotOff ? "on" : "off",
              activeTimeSeconds, periodicWakeupSeconds);

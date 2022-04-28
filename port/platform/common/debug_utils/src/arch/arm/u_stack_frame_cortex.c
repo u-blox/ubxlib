@@ -102,6 +102,7 @@ static bool disassembly_ins_is_bl_blx(uint32_t addr)
 
 bool uDebugUtilsInitStackFrame(uint32_t sp, uint32_t stackTop, uStackFrame_t *pFrame)
 {
+    (void)stackTop;
     memset(pFrame, 0, sizeof(uStackFrame_t));
     pFrame->sp = sp;
     return true;
