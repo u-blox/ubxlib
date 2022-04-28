@@ -151,7 +151,7 @@ Configuration information for the examples and the tests can be found in the `cf
 | Cellular     | The [PSK generation](/example/security/psk "PSK example") example using the [security](/common/security "security API") API. |
 | Cellular     | The [chip-to-chip security](/example/security/c2c "C2C example") example using the [security](/common/security "security API") API. |
 | Cellular     | A [TLS-secured version](/example/sockets "TLS sockets example") of the sockets example. |
-| Cellular     | An [MQTT client](/example/mqtt_client "MQTT example") using the [MQTT client](/common/mqtt_client "MQTT client API") API.|
+| Cellular     | An [MQTT/MQTT-SN client](/example/mqtt_client "MQTT/MQTT-SN example") using the [MQTT/MQTT-SN client](/common/mqtt_client "MQTT/MQTT-SN client API") API.|
 | Cellular     | [CellLocate](/example/location "CellLocate example") example. | Q2 2021|
 | Bluetooth    | SPS (serial port service). |
 | Wi-Fi         | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |

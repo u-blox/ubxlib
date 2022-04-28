@@ -59,7 +59,6 @@
 #include "u_security.h"
 
 // For the MQTT client API
-#include "u_mqtt_common.h"
 #include "u_mqtt_client.h"
 
 // For U_SHORT_RANGE_TEST_WIFI()
@@ -77,9 +76,9 @@
 
 // MQTT broker URL: there is no port number on the end of this URL,
 // and hence, conventionally, it does not include TLS security.  You
-// may make a secure TLS connection on broker.emqx.io instead
-// by editing this code to add TLS security (see below) and changing
-// MY_BROKER_NAME to have ":8883" on the end.
+// may make a secure [D]TLS connection on broker.emqx.io instead
+// by editing this code to add [D]TLS security (see below) and
+// changing MY_BROKER_NAME to have ":8883" on the end.
 #define MY_BROKER_NAME "ubxlib.it-sgn.u-blox.com"
 
 #ifndef U_CFG_ENABLE_LOGGING
@@ -114,13 +113,13 @@ static uNetworkConfigurationWifi_t gConfig = {
     .module = U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
     .uart = U_CFG_APP_SHORT_RANGE_UART,
     /* Note that the pin numbers
-        that follow are those of the MCU:
-        if you are using an MCU inside
-        a u-blox module the IO pin numbering
-        for the module is likely different
-        to that from the MCU: check the data
-        sheet for the module to determine
-        the mapping. */
+       that follow are those of the MCU:
+       if you are using an MCU inside
+       a u-blox module the IO pin numbering
+       for the module is likely different
+       to that from the MCU: check the data
+       sheet for the module to determine
+       the mapping. */
     .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
     .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
@@ -162,9 +161,6 @@ static const uNetworkType_t gNetType = U_NETWORK_TYPE_CELL;
 static const uNetworkConfigurationCell_t gConfig = {U_NETWORK_TYPE_NONE};
 static const uNetworkType_t gNetType = U_NETWORK_TYPE_CELL;
 #endif
-
-// TODO: Wifi network configuration.
-// static const uNetworkConfigurationWifi_t gConfigWifi = {U_NETWORK_TYPE_NONE};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -228,13 +224,13 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
 
         // Create an MQTT instance.  Here we
         // are using a non-secure MQTT connection
-        // and hence the TLS parameter is NULL.
+        // and hence the [D]TLS parameter is NULL.
         // If you have edited MY_BROKER_NAME above
         // to connect on the ":8883" secure port
-        // then you must change the TLS parameter
+        // then you must change the [D]TLS parameter
         // to be &tlsSettings, which will apply the
-        // default TLS security settings. You may
-        // change the TLS security settings
+        // default [D]TLS security settings. You may
+        // change the [D]TLS security settings
         // structure to, for instance, add certificate
         // checking: see the sockets TLS example for
         // how to do that.
@@ -242,12 +238,16 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
         if (pContext != NULL) {
             // Set the URL for the connection; everything
             // else can be left at defaults for the
-            // public broker.emqx.io broker
+            // public ubxlib.it-sgn.u-blox.com broker
             connection.pBrokerNameStr = MY_BROKER_NAME;
 
+            // If you wish to use MQTT-SN instead of MQTT,
+            // and your broker supports it, you would set:
+            // connection.mqttSn = true;
+
             // If you wish to use the Thingstream
-            // MQTT Now service, you would set the
-            // following values in the uMqttClientConnection_t
+            // MQTT service, you would set the following
+            // values in the uMqttClientConnection_t
             // structure instead:
             //
             // pBrokerNameStr to "mqtt.thingstream.io"
@@ -265,7 +265,6 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                                               messageIndicationCallback,
                                               (void *) &messagesAvailable);
 
-
                 // In order to create a unique topic name on the
                 // public server that we can publish and subscribe
                 // to in this example code, we make the topic name
@@ -274,6 +273,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
 
                 // Subscribe to our topic on the broker
                 uPortLog("Subscribing to topic \"%s\"...\n", topic);
+                // If you were using MQTT-SN, you would call
+                // uMqttClientSnSubscribeNormalTopic() instead and
+                // capture the returned MQTT-SN topic name for use with
+                // uMqttClientSnPublish() a few lines below
                 if (uMqttClientSubscribe(pContext, topic,
                                          U_MQTT_QOS_EXACTLY_ONCE)) {
 
@@ -282,6 +285,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                     uPortLog("Publishing \"%s\" to topic \"%s\"...\n",
                              message, topic);
                     startTimeMs = uPortGetTickTimeMs();
+                    // If you were using MQTT-SN, you would call
+                    // uMqttClientSnPublish() instead and pass it
+                    // the MQTT-SN topic name returned by
+                    // uMqttClientSnSubscribeNormalTopic()
                     if (uMqttClientPublish(pContext, topic, message,
                                            sizeof(message) - 1,
                                            U_MQTT_QOS_EXACTLY_ONCE,
@@ -297,6 +304,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleMqttClient")
                         // Read the new message from the broker
                         while (uMqttClientGetUnread(pContext) > 0) {
                             bufferSize = sizeof(buffer);
+                            // If you were using MQTT-SN, you would call
+                            // uMqttClientSnMessageRead() instead and, rather
+                            // than passing it the buffer "topic", you
+                            // would pass it a pointer to a variable of
+                            // type uMqttSnTopicName_t
                             if (uMqttClientMessageRead(pContext, topic,
                                                        sizeof(topic),
                                                        buffer, &bufferSize,

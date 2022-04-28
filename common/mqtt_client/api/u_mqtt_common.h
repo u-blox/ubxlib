@@ -50,8 +50,46 @@ typedef enum {
     U_MQTT_QOS_AT_MOST_ONCE = 0,
     U_MQTT_QOS_AT_LEAST_ONCE = 1,
     U_MQTT_QOS_EXACTLY_ONCE = 2,
-    U_MQTT_QOS_MAX_NUM
+    U_MQTT_QOS_MAX_NUM,
+    U_MQTT_QOS_SEND_AND_FORGET = 3, /**< valid for MQTT-SN publish messages only. */
+    U_MQTT_QOS_SN_PUBLISH_MAX_NUM
 } uMqttQos_t;
+
+/** The type of MQTT-SN topic name.  The values here
+ * should match those in uCellMqttSnTopicNameType_t.
+ */
+typedef enum {
+    U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL = 0, /**< a two-byte ID, e.g. 0x0001, referring to a normal MQTT topic, e.g. "thing/this". */
+    U_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED = 1, /**< a pre-agreed two byte ID, e.g. 0x0100. */
+    U_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT = 2,  /**< two-characters, e.g. "ab". */
+    U_MQTT_SN_TOPIC_NAME_TYPE_MAX_NUM
+} uMqttSnTopicNameType_t;
+
+/** This type holds the two sorts of MQTT-SN topic name; a uint16_t
+ * ID (i.e. 0 to 65535) or a two-character name (e.g. "ab"). The
+ * structure here MUST match uCellMqttSnTopicName_t.
+ */
+typedef struct {
+// *INDENT-OFF* (otherwise AStyle makes a mess of this)
+    union {
+        uint16_t id; /**< Populate this for the types U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL
+                          or U_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED. */
+        // nameShort MUST be of length 2, as defined by the MQTT-SN specifications; the
+        // code is written such that no terminating 0 is required in the storage here.
+        char nameShort[2]; /**< Populate this for U_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT;
+                                nameShort must contain two ASCII characters, no
+                                terminator is required. */
+    } name;
+    uMqttSnTopicNameType_t type; /**< If the id field is populated and was obtained
+                                      through uMqttClientSnRegisterNormalTopic()
+                                      or uMqttClientSnSubscribeNormalTopic() then set this to
+                                      U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL.  If the id field
+                                      is populated and is a predefined topic ID then set
+                                      this to U_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED.  If the
+                                      nameShort field is populated, set this to
+                                      U_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT. */
+// *INDENT-ON*
+} uMqttSnTopicName_t;
 
 /** Definition of an MQTT "will" message that the broker can be
  * asked to send on an uncommanded disconnect of the MQTT client.
@@ -60,14 +98,20 @@ typedef struct {
     const char *pTopicNameStr; /**< the null-terminated topic string
                                     for the "will" message; may be NULL. */
     const char *pMessage;      /**< a pointer to the "will" message;
-                                    the "will" message is not restricted
-                                    to ASCII values.  Cannot be NULL. */
-    size_t messageSizeBytes;    /**< since pMessage may include binary
+                                    for MQTT the "will" message is not
+                                    restricted to ASCII values, however,
+                                    for MQTT-SN the underlying AT interface
+                                    ONLY works if pMessge is a null-terminated
+                                    ASCII string containing only printable
+                                    characters (i.e. isprint() returns true)
+                                    and no double quotation marks (").
+                                    Cannot be NULL. */
+    size_t messageSizeBytes;   /**< since pMessage may include binary
                                     content, including nulls, this
                                     parameter specifies the length of
-                                    pMessage. If pMessage happens to
-                                    be an ASCII string this parameter
-                                    should be set to strlen(pMessage). */
+                                    pMessage. If pMessage is an ASCII
+                                    string this parameter should be set
+                                    to strlen(pMessage). */
     uMqttQos_t qos;            /**< the MQTT QoS to use for the "will"
                                     message. */
     bool retain;               /**< if true the "will" message will

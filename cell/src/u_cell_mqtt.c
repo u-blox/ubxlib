@@ -91,10 +91,10 @@
  * are always called.
  */
 #define U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, ppInstance, pErrorCode, mustBeInitialised) \
-                                    { entryFunction(cellHandle, \
-                                                    ppInstance, \
-                                                    pErrorCode, \
-                                                    mustBeInitialised)
+                                   { entryFunction(cellHandle, \
+                                                   ppInstance, \
+                                                   pErrorCode, \
+                                                   mustBeInitialised)
 
 /** Helper macro to make sure that the entry and exit functions
  * are always called.
@@ -103,18 +103,113 @@
 
 /** Flag bits for the flags field in uCellMqttUrcStatus_t.
  */
-#define U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED         0
-#define U_CELL_MQTT_URC_FLAG_PUBLISH_UPDATED         1
-#define U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS         2
-#define U_CELL_MQTT_URC_FLAG_SUBSCRIBE_UPDATED       3
-#define U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS       4
-#define U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED     5
-#define U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS     6
-#define U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED 7
-#define U_CELL_MQTT_URC_FLAG_SECURED                 8  // Only required for SARA-R4
-#define U_CELL_MQTT_URC_FLAG_RETAINED                9  // Only required for SARA-R4
-#define U_CELL_MQTT_URC_FLAG_SECURED_FILLED_IN       10 // Only required for SARA-R4
-#define U_CELL_MQTT_URC_FLAG_RETAINED_FILLED_IN      11 // Only required for SARA-R4
+#define U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED          0
+#define U_CELL_MQTT_URC_FLAG_PUBLISH_UPDATED          1
+#define U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS          2
+#define U_CELL_MQTT_URC_FLAG_SUBSCRIBE_UPDATED        3
+#define U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS        4
+#define U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED      5
+#define U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS      6
+#define U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED  7
+#define U_CELL_MQTT_URC_FLAG_SECURED                  8  // Only required for SARA-R4
+#define U_CELL_MQTT_URC_FLAG_RETAINED                 9  // Only required for SARA-R4
+#define U_CELL_MQTT_URC_FLAG_SECURED_FILLED_IN        10 // Only required for SARA-R4
+#define U_CELL_MQTT_URC_FLAG_RETAINED_FILLED_IN       11 // Only required for SARA-R4
+#define U_CELL_MQTT_URC_FLAG_REGISTER_UPDATED         12 // MQTT-SN only
+#define U_CELL_MQTT_URC_FLAG_REGISTER_SUCCESS         13 // MQTT-SN only
+#define U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_UPDATED  14 // MQTT-SN only
+#define U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_SUCCESS  15 // MQTT-SN only
+#define U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_UPDATED     16 // MQTT-SN only
+#define U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_SUCCESS     17 // MQTT-SN only
+
+/** Macro to get the right AT command string for AT+UMQTTC,
+ * AKA the "MQTT command" AT command, in its SN and non-SN version. */
+#define MQTT_COMMAND_AT_COMMAND_STRING(mqttSn) (mqttSn ? "AT+UMQTTSNC=" : "AT+UMQTTC=")
+
+/** Macro to get the right AT response string for AT+UMQTTC in
+ * its SN and non-SN version. */
+#define MQTT_COMMAND_AT_RESPONSE_STRING(mqttSn) (mqttSn ? "+UMQTTSNC:" : "+UMQTTC:")
+
+/** Macro to get the right AT command string for AT+UMQTT,
+ * AKA the "MQTT profile" AT command, in its SN and non-SN version. */
+#define MQTT_PROFILE_AT_COMMAND_STRING(mqttSn) (mqttSn ? "AT+UMQTTSN=" : "AT+UMQTT=")
+
+/** Macro to get the right AT response string for AT+UMQTT in
+ * its SN and non-SN version. */
+#define MQTT_PROFILE_AT_RESPONSE_STRING(mqttSn) (mqttSn ? "+UMQTTSN:" : "+UMQTT:")
+
+/** Macro to get the right AT command string for AT+UMQTTER in
+ * its SN and non-SN version. */
+#define MQTT_ERROR_AT_COMMAND_STRING(mqttSn) (mqttSn ? "AT+UMQTTSNER" : "AT+UMQTTER")
+
+/** Macro to get the right AT response string for AT+UMQTTER in
+ * its SN and non-SN version. */
+#define MQTT_ERROR_AT_RESPONSE_STRING(mqttSn) (mqttSn ? "+UMQTTSNER:" : "+UMQTTER:")
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "client ID".
+ */
+#define MQTT_PROFILE_OPCODE_CLIENT_ID(mqttSn) (0)
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "broker name".
+ */
+#define MQTT_PROFILE_OPCODE_BROKER_URL(mqttSn) (mqttSn ? 1 : 2)
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "broker IP address".
+ */
+#define MQTT_PROFILE_OPCODE_BROKER_IP_ADDRESS(mqttSn) (mqttSn ? 2 : 3)
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "will QoS".
+ */
+#define MQTT_PROFILE_OPCODE_WILL_QOS(mqttSn) (mqttSn ? 4 : 6)
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "will retention".
+ */
+#define MQTT_PROFILE_OPCODE_WILL_RETAIN(mqttSn) (mqttSn ? 5 : 7)
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "will topic".
+ */
+#define MQTT_PROFILE_OPCODE_WILL_TOPIC(mqttSn) (mqttSn ? 6 : 8)
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "will message".
+ */
+#define MQTT_PROFILE_OPCODE_WILL_MESSAGE(mqttSn) (mqttSn ? 7 : 9)
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "inactivity timeout".
+ */
+#define MQTT_PROFILE_OPCODE_INACTIVITY_TIMEOUT(mqttSn) (mqttSn ? 8 : 10)
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "secure".
+ */
+#define MQTT_PROFILE_OPCODE_SECURE(mqttSn) (mqttSn ? 9 : 11)
+
+/** Macro to get the AT+UMQTT/AT+UMQTTSN opcode for "clean session".
+ */
+#define MQTT_PROFILE_OPCODE_CLEAN_SESSION(mqttSn) (mqttSn ? 10 : 12)
+
+/** Macro to get the AT+UMQTTC/AT+UMQTTSNC opcode for "publish string".
+ */
+#define MQTT_COMMAND_OPCODE_PUBLISH_STRING(mqttSn) (mqttSn ? 4 : 2)
+
+/** Macro to get the AT+UMQTTC/AT+UMQTTSNC opcode for "subscribe".
+ */
+#define MQTT_COMMAND_OPCODE_SUBSCRIBE(mqttSn) (mqttSn ? 5 : 4)
+
+/** Macro to get the AT+UMQTTC/AT+UMQTTSNC opcode for "unsubscribe".
+ */
+#define MQTT_COMMAND_OPCODE_UNSUBSCRIBE(mqttSn) (mqttSn ? 6 : 5)
+
+/** Macro to get the AT+UMQTTC/AT+UMQTTSNC opcode for "read".
+ */
+#define MQTT_COMMAND_OPCODE_READ(mqttSn) (mqttSn ? 9 : 6)
+
+/** Macro to get the AT+UMQTTC/AT+UMQTTSNC opcode for "ping".
+ */
+#define MQTT_COMMAND_OPCODE_PING(mqttSn) (mqttSn ? 10 : 8)
+
+/** The amount of storage required for an MQTT-SN 16-bit topic name;
+ * as a string, i.e. including a null terminator.
+ */
+#define U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES 6
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -134,6 +229,8 @@ typedef struct {
 typedef struct {
     uint32_t flagsBitmap;
     uCellMqttQos_t subscribeQoS;
+    int32_t topicId;
+    char topicNameShort[U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES];
     // The remaining parameters are only
     // required for SARA-R4 which sends
     // the status back in a URC
@@ -186,6 +283,7 @@ typedef struct {
     volatile uCellMqttUrcMessage_t *pUrcMessage; /**< storage for an MQTT message
                                                       received in a URC, only
                                                       required for SARA-R4. */
+    bool mqttSn; /**< true if this is an MQTT-SN session, else false. */
 } uCellMqttContext_t;
 
 /* ----------------------------------------------------------------
@@ -197,22 +295,30 @@ typedef struct {
  * -------------------------------------------------------------- */
 
 // Get the last MQTT error code.
-static int32_t getLastMqttErrorCode(uAtClientHandle_t atHandle)
+static int32_t getLastMqttErrorCode(const uCellPrivateInstance_t *pInstance)
 {
-    int32_t errorCode;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
+    uAtClientHandle_t atHandle;
     int32_t x;
 
-    uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+UMQTTER");
-    uAtClientCommandStop(atHandle);
-    uAtClientResponseStart(atHandle, "+UMQTTER:");
-    // Skip the first error code, which is a generic thing
-    uAtClientSkipParameters(atHandle, 1);
-    x = uAtClientReadInt(atHandle);
-    uAtClientResponseStop(atHandle);
-    errorCode = uAtClientUnlock(atHandle);
-    if (errorCode == 0) {
-        errorCode = x;
+    if ((pInstance != NULL) && (pInstance->pMqttContext != NULL)) {
+        atHandle = pInstance->atHandle;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        mqttSn = pContext->mqttSn;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, MQTT_ERROR_AT_COMMAND_STRING(mqttSn));
+        uAtClientCommandStop(atHandle);
+        uAtClientResponseStart(atHandle, MQTT_ERROR_AT_RESPONSE_STRING(mqttSn));
+        // Skip the first error code, which is a generic thing
+        uAtClientSkipParameters(atHandle, 1);
+        x = uAtClientReadInt(atHandle);
+        uAtClientResponseStop(atHandle);
+        errorCode = uAtClientUnlock(atHandle);
+        if (errorCode == 0) {
+            errorCode = x;
+        }
     }
 
     return errorCode;
@@ -224,9 +330,9 @@ static int32_t getLastMqttErrorCode(uAtClientHandle_t atHandle)
 static void messageIndicationCallback(uAtClientHandle_t atHandle,
                                       void *pParam)
 {
-//lint -e(507) Suppress size incompatibility due to the compiler
-// we use for Linting being a 64 bit one where the pointer
-// is 64 bit.
+    //lint -e(507) Suppress size incompatibility due to the compiler
+    // we use for Linting being a 64 bit one where the pointer
+    // is 64 bit.
     volatile uCellMqttContext_t *pContext = (volatile uCellMqttContext_t *) pParam;
 
     (void) atHandle;
@@ -249,147 +355,186 @@ static void messageIndicationCallback(uAtClientHandle_t atHandle,
 static void disconnectCallback(uAtClientHandle_t atHandle,
                                void *pParam)
 {
-//lint -e(507) Suppress size incompatibility due to the compiler
-// we use for Linting being a 64 bit one where the pointer
-// is 64 bit.
-    volatile uCellMqttContext_t *pContext = (volatile uCellMqttContext_t *) pParam;
+    //lint -e(507) Suppress size incompatibility due to the compiler
+    // we use for Linting being a 64 bit one where the pointer
+    // is 64 bit.
+    const uCellPrivateInstance_t *pInstance = (const uCellPrivateInstance_t *) pParam;
+    volatile uCellMqttContext_t *pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+
+    (void) atHandle;
 
     // This task can lock the mutex to ensure we are thread-safe
     // for the call below
     U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
 
     if ((pContext != NULL) && (pContext->pDisconnectCallback != NULL)) {
-        pContext->pDisconnectCallback(getLastMqttErrorCode(atHandle),
+        pContext->pDisconnectCallback(getLastMqttErrorCode(pInstance),
                                       pContext->pDisconnectCallbackParam);
     }
 
     U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
 }
 
-// "+UUMQTTC:" URC handler, called by the UUMQTT_urc()
+// "+UUMQTTC:"/"+UUMQTTSNC" URC handler, called by the UUMQTT_urc()
 // URC handler..
-static void UUMQTTC_urc(uAtClientHandle_t atHandle,
-                        volatile uCellMqttContext_t *pContext,
-                        const uCellPrivateInstance_t *pInstance)
+static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
+                                  volatile uCellMqttContext_t *pContext,
+                                  const uCellPrivateInstance_t *pInstance)
 {
     volatile uCellMqttUrcStatus_t *pUrcStatus = &(pContext->urcStatus);
+    bool mqttSn = pContext->mqttSn;
     int32_t urcType;
     int32_t urcParam1;
     int32_t urcParam2;
 
     urcType = uAtClientReadInt(atHandle);
-    // All of the MQTTC URC types have at least one parameter
+    // All of the MQTTC/MQTTSNC URC types have at least one parameter
     urcParam1 = uAtClientReadInt(atHandle);
-    switch (urcType) {
-        case 0: // Logout, 1 means success
-            if ((urcParam1 == 1) ||
-                (urcParam1 == 100) || // SARA-R5/R422, inactivity
-                (urcParam1 == 101) || // SARA-R5/R422, connection lost
-                (urcParam1 == 102)) { // SARA-R5/R422, connection lost due to procotol violation
-                // Disconnected
-                if (pContext->connected &&
-                    (pContext->pDisconnectCallback != NULL)) {
-                    // Launch the local callback via the AT
-                    // parser's callback facility.
+    // Can't use a switch() statement here as some of the values we get
+    // back are different depending on whether this is UUMQTTC (MQTT)
+    // or UUMQTTSNC (MQTT-SN)
+    if (urcType == 0) {
+        // Logout/disonnect, where 1 means success
+        if ((urcParam1 == 1) ||
+            (urcParam1 == 100) || // SARA-R5/R422, inactivity
+            (urcParam1 == 101) || // SARA-R5/R422, connection lost
+            (urcParam1 == 102)) { // SARA-R5/R422, connection lost due to protocol violation
+            // Disconnected
+            if (pContext->connected &&
+                (pContext->pDisconnectCallback != NULL)) {
+                // Launch the local callback via the AT
+                // parser's callback facility.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-                    //lint -e(1773) Suppress complaints about
-                    // passing the pointer as non-volatile
-                    uAtClientCallback(atHandle, disconnectCallback,
-                                      (void *) pContext);
+                //lint -e(1773) Suppress complaints about
+                // passing the pointer as non-volatile
+                uAtClientCallback(atHandle, disconnectCallback,
+                                  (void *) pInstance);
 #pragma GCC diagnostic pop
-                }
-                pContext->connected = false;
-                // Keep alive returns to "off" when the session ends,
-                // it must be set afresh each time
-                pContext->keptAlive = false;
             }
-            pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED;
-            break;
-        case 1: // Login
-            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                // In the old SARA-R4 syntax, 0 means success,
-                // non-zero values are errors
-                if (urcParam1 == 0) {
-                    // Connected
-                    pContext->connected = true;
-                }
-            } else {
-                if (urcParam1 == 1) {
-                    // Connected
-                    pContext->connected = true;
-                }
+            pContext->connected = false;
+            // Keep alive returns to "off" when the session ends,
+            // it must be set afresh each time
+            pContext->keptAlive = false;
+        }
+        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED;
+    } else if (urcType == 1) {
+        // Login
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+            // In the old SARA-R4 syntax, 0 means success,
+            // non-zero values are errors
+            if (urcParam1 == 0) {
+                // Connected
+                pContext->connected = true;
             }
-            pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED;
-            break;
-        case 2: // Publish hex, 1 means success
-        case 9: // Publish binary, 1 means success
+        } else {
             if (urcParam1 == 1) {
-                // Published
-                pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS;
+                // Connected
+                pContext->connected = true;
             }
-            pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_PUBLISH_UPDATED;
-            break;
-        // 3 (publish file) is not used by this driver
-        case 4: // Subscribe
-            // Get the QoS
-            urcParam2 = uAtClientReadInt(atHandle);
-            // Skip the topic string
+        }
+        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED;
+    } else if ((urcType == MQTT_COMMAND_OPCODE_PUBLISH_STRING(mqttSn)) ||
+               (!mqttSn && (urcType == 9))) {
+        // Publish hex or binary, 1 means success
+        if (urcParam1 == 1) {
+            // Published
+            pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS;
+        }
+        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_PUBLISH_UPDATED;
+    } else if (urcType == MQTT_COMMAND_OPCODE_SUBSCRIBE(mqttSn)) {
+        // Subscribe
+        // Get the QoS
+        urcParam2 = uAtClientReadInt(atHandle);
+        if (!mqttSn) {
+            // For normal MQTT, skip the topic string
             uAtClientSkipParameters(atHandle, 1);
-            if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
-                // On SARA-R4, 0 to 2 mean success
-                if ((urcParam1 >= 0) && (urcParam1 <= 2) &&
-                    (urcParam2 >= 0)) {
-                    // Subscribed
-                    pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS;
-                    pUrcStatus->subscribeQoS = (uCellMqttQos_t) urcParam2;
-                }
-            } else {
-                // Elsewhere 1 means success
-                if ((urcParam1 == 1) && (urcParam2 >= 0)) {
-                    // Subscribed
-                    pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS;
-                    pUrcStatus->subscribeQoS = (uCellMqttQos_t) urcParam2;
-                }
+        } else {
+            // For MQTT-SN the topic ID or short topic name to use when
+            // publishing to this topic may come next
+            //lint -e{1773} Suppress attempt to cast away volatile
+            uAtClientReadString(atHandle, (char *) pUrcStatus->topicNameShort,
+                                sizeof(pUrcStatus->topicNameShort), false);
+        }
+        if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+            // On SARA-R4, 0 to 2 mean success
+            if ((urcParam1 >= 0) && (urcParam1 <= 2) &&
+                (urcParam2 >= 0)) {
+                // Subscribed
+                pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS;
+                pUrcStatus->subscribeQoS = (uCellMqttQos_t) urcParam2;
             }
-            pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_UPDATED;
-            break;
-        case 5: // Unsubscribe, 1 means success
-            if (urcParam1 == 1) {
-                // Unsubscribed
-                pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS;
+        } else {
+            // Elsewhere 1 means success
+            if ((urcParam1 == 1) && (urcParam2 >= 0)) {
+                // Subscribed
+                pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS;
+                pUrcStatus->subscribeQoS = (uCellMqttQos_t) urcParam2;
             }
-            pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED;
-            break;
-        case 6: // Num unread messages
-            if (urcParam1 >= 0) {
-                pContext->numUnreadMessages = urcParam1;
-                if (pContext->pMessageIndicationCallback != NULL) {
-                    // Launch our local callback via the AT
-                    // parser's callback facility.
-                    // GCC can complain here that
-                    // we're discarding volatile
-                    // from the pointer: just need to follow
-                    // the function signature guys...
+        }
+        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_UPDATED;
+    } else if (urcType == MQTT_COMMAND_OPCODE_UNSUBSCRIBE(mqttSn)) {
+        // Unsubscribe, 1 means success
+        if (urcParam1 == 1) {
+            // Unsubscribed
+            pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS;
+        }
+        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED;
+    } else if (urcType == MQTT_COMMAND_OPCODE_READ(mqttSn)) {
+        // Read: urcParam1 contains the number of unread messages
+        if (urcParam1 >= 0) {
+            pContext->numUnreadMessages = urcParam1;
+            if (pContext->pMessageIndicationCallback != NULL) {
+                // Launch our local callback via the AT
+                // parser's callback facility.
+                // GCC can complain here that
+                // we're discarding volatile
+                // from the pointer: just need to follow
+                // the function signature guys...
 #ifndef __cplusplus
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
 #endif
-                    //lint -e(1773) Suppress complaints about
-                    // passing the pointer as non-volatile
-                    uAtClientCallback(atHandle, messageIndicationCallback,
-                                      (void *) pContext);
+                //lint -e(1773) Suppress complaints about
+                // passing the pointer as non-volatile
+                uAtClientCallback(atHandle, messageIndicationCallback,
+                                  (void *) pContext);
 #ifndef __cplusplus
 #pragma GCC diagnostic pop
 #endif
-                }
             }
-            pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED;
-            break;
-        default:
-            // Do nothing
-            break;
+        }
+        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED;
+    } else {
+        if (mqttSn) {
+            // For MQTT-SN there are some additional possibilities
+            switch (urcType) {
+                case 2: // Register, 1 means success
+                    // Read the topic ID, which is an integer at this point
+                    urcParam2 = uAtClientReadInt(atHandle);
+                    if ((urcParam1 == 1) && (urcParam2 >= 0)) {
+                        pUrcStatus->topicId = urcParam2;
+                        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_REGISTER_SUCCESS;
+                    }
+                    pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_REGISTER_UPDATED;
+                    break;
+                case 7: // Will parameters update, 1 means success
+                    if (urcParam1 == 1) {
+                        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_SUCCESS;
+                    }
+                    pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_UPDATED;
+                    break;
+                case 8: // Will message update, 1 means success
+                    if (urcParam1 == 1) {
+                        pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_SUCCESS;
+                    }
+                    pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_UPDATED;
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 }
 
@@ -410,6 +555,9 @@ static void UUMQTTx_urc(uAtClientHandle_t atHandle,
     // a carriage return
     uAtClientDelimiterSet(atHandle, '\r');
 
+    // Note: no need to macroise half the world and use
+    // if/else instead of switch() here because the old-style
+    // AT command SARA-R4's do not support MQTT-SN
     switch (x) {
         case 0: // Client name
             if (!pUrcStatus->clientId.filledIn) {
@@ -601,10 +749,10 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
 }
 
 // MQTT URC handler, which hands
-// off to the three MQTT URC types,
+// off to the four MQTT URC types,
 // "+UUMQTTx:" (where x can be a two
-// digit number), "+UUMQTTC:" and
-// "+UUMQTTCM:".
+// digit number), "+UUMQTTC:", "+UUMQTTSNC:"
+// and "+UUMQTTCM:".
 static void UUMQTT_urc(uAtClientHandle_t atHandle,
                        void *pParameter)
 {
@@ -613,7 +761,7 @@ static void UUMQTT_urc(uAtClientHandle_t atHandle,
     char bytes[3];
 
     if (pContext != NULL) {
-        // Sort out if this is "+UUMQTTC:"
+        // Sort out if this is "+UUMQTTC:"/"+UUMQTTSNC:"
         // or "+UUMQTTx:" or [SARA-R4 only] "+UUMQTTCM:"
         if (uAtClientReadBytes(atHandle, bytes, sizeof(bytes), true) == sizeof(bytes)) {
             if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
@@ -624,8 +772,13 @@ static void UUMQTT_urc(uAtClientHandle_t atHandle,
                             UUMQTTCM_urc(atHandle, pContext);
                         }
                     } else {
-                        UUMQTTC_urc(atHandle, pContext, pInstance);
+                        UUMQTTC_UUMQTTSNC_urc(atHandle, pContext, pInstance);
                     }
+                } else if ((bytes[0] == 'S') && (bytes[1] == 'N') && (bytes[2] == 'C')) {
+                    // "+UUMQTTSNC"
+                    // Clear the ": " out and then call the handler
+                    uAtClientSkipBytes(atHandle, 2);
+                    UUMQTTC_UUMQTTSNC_urc(atHandle, pContext, pInstance);
                 } else {
                     // Probably "+UUMQTTx:"
                     // Derive x as a string, noting
@@ -642,7 +795,12 @@ static void UUMQTT_urc(uAtClientHandle_t atHandle,
                 }
             } else {
                 if (bytes[0] == 'C') {
-                    UUMQTTC_urc(atHandle, pContext, pInstance);
+                    // Just call the handler, bytes 1 and 2 will have read-out the ": "
+                    UUMQTTC_UUMQTTSNC_urc(atHandle, pContext, pInstance);
+                } else if ((bytes[0] == 'S') && (bytes[1] == 'N') && (bytes[2] == 'C')) {
+                    // Clear the ": " out and then call the handler
+                    uAtClientSkipBytes(atHandle, 2);
+                    UUMQTTC_UUMQTTSNC_urc(atHandle, pContext, pInstance);
                 }
             }
         }
@@ -650,13 +808,13 @@ static void UUMQTT_urc(uAtClientHandle_t atHandle,
 }
 
 /* ----------------------------------------------------------------
- * STATIC FUNCTIONS: EVERYTHING ELSE
+ * STATIC FUNCTIONS: MISC
  * -------------------------------------------------------------- */
 
-// Check all the basics and lock the mutex, MUST be called
-// at the start of every API function; use the helper macro
-// U_CELL_MQTT_ENTRY_FUNCTION to be sure of this, rather than
-// calling this function directly.
+// Check all the basics and lock the mutex, MUST be called at the
+// start of every API function; use the helper macro
+// U_CELL_MQTT_ENTRY_FUNCTION to be sure of this, rather than calling
+// this function directly.
 // IMPORTANT: if mustBeInitialised is true then the returned value
 // in pErrorCode will be zero if there is a valid cellular instance
 // with an already initialised MQTT context.  If mustBeInitialised
@@ -683,7 +841,9 @@ static void entryFunction(uDeviceHandle_t cellHandle,
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT)) {
+                                   U_CELL_PRIVATE_FEATURE_MQTT) ||
+                U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_MQTTSN)) {
                 errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
                 if (!mustBeInitialised || (pInstance->pMqttContext != NULL)) {
                     *ppInstance = pInstance;
@@ -711,8 +871,8 @@ static void entryFunction(uDeviceHandle_t cellHandle,
 
 // MUST be called at the end of every API function to unlock
 // the cellular mutex; use the helper macro
-// U_CELL_MQTT_EXIT_FUNCTION to be sure of this, rather than
-// calling this function directly.
+// U_CELL_MQTT_EXIT_FUNCTION to be sure of this, rather than calling
+// this function directly.
 static void exitFunction()
 {
     if (gUCellPrivateMutex != NULL) {
@@ -723,27 +883,30 @@ static void exitFunction()
 // Print the error state of MQTT.
 //lint -esym(522, printErrorCodes) Suppress "lacks side effects"
 // when compiled out.
-static void printErrorCodes(uAtClientHandle_t atHandle)
+static void printErrorCodes(const uCellPrivateInstance_t *pInstance)
 {
 #if U_CFG_ENABLE_LOGGING
+    uAtClientHandle_t atHandle = pInstance->atHandle;
+    volatile uCellMqttContext_t *pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+    bool mqttSn = pContext->mqttSn;
     int32_t err1;
     int32_t err2;
 
     uAtClientLock(atHandle);
-    uAtClientCommandStart(atHandle, "AT+UMQTTER");
+    uAtClientCommandStart(atHandle, MQTT_ERROR_AT_COMMAND_STRING(mqttSn));
     uAtClientCommandStop(atHandle);
-    uAtClientResponseStart(atHandle, "+UMQTTER:");
+    uAtClientResponseStart(atHandle, MQTT_ERROR_AT_RESPONSE_STRING(mqttSn));
     err1 = uAtClientReadInt(atHandle);
     err2 = uAtClientReadInt(atHandle);
     uAtClientResponseStop(atHandle);
     uAtClientUnlock(atHandle);
     uPortLog("U_CELL_MQTT: error codes %d, %d.\n", err1, err2);
 #else
-    (void) atHandle;
+    (void) pInstance;
 #endif
 }
 
-// Process the response to an AT+MQTT command.
+// Process the response to an AT+UMQTT command.
 static int32_t atMqttStopCmdGetRespAndUnlock(const uCellPrivateInstance_t *pInstance)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
@@ -753,6 +916,9 @@ static int32_t atMqttStopCmdGetRespAndUnlock(const uCellPrivateInstance_t *pInst
     if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                            U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
         uAtClientCommandStop(atHandle);
+        // Don't need to worry about the MQTT-SN form of the AT
+        // command here since the old syntax SARA-R4's do not
+        // support MQTT-SN
         uAtClientResponseStart(atHandle, "+UMQTT:");
         // Skip the first parameter, which is just
         // our UMQTT command number again
@@ -765,17 +931,21 @@ static int32_t atMqttStopCmdGetRespAndUnlock(const uCellPrivateInstance_t *pInst
     if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     } else {
-        printErrorCodes(atHandle);
+        printErrorCodes(pInstance);
     }
 
     return errorCode;
 }
 
 // Set the given pInstance->pMqttContext->urcStatus item to "not filled in".
-// The switch statement here should match that in UUMQTTx_urc()
+// The switch statement here should match that in UUMQTTx_urc().
+// Used by old SARA-R4-style.only.
 static void resetUrcStatusField(volatile uCellMqttUrcStatus_t *pUrcStatus,
                                 int32_t number)
 {
+    // Note: no need to macroise half the world and use
+    // if/else instead of switch() here because the old-style
+    // AT command SARA-R4's do not support MQTT-SN
     switch (number) {
         case 0: // Client name
             pUrcStatus->clientId.filledIn = false;
@@ -817,12 +987,16 @@ static void resetUrcStatusField(volatile uCellMqttUrcStatus_t *pUrcStatus,
 
 // Check if the given pUrcStatus item has been filled in.
 // The switch statement here should match that in UUMQTTx_urc()
+// Used by old SARA-R4-style.only.
 //lint -esym(818, pUrcStatus) Suppress could be declared as const
 static bool checkUrcStatusField(volatile uCellMqttUrcStatus_t *pUrcStatus,
                                 int32_t number)
 {
     volatile bool filledIn = false;
 
+    // Note: no need to macroise half the world and use
+    // if/else instead of switch() here because the old-style
+    // AT command SARA-R4's do not support MQTT-SN
     switch (number) {
         case 0: // Client name
             filledIn = pUrcStatus->clientId.filledIn;
@@ -883,6 +1057,9 @@ static int32_t doSaraR4OldSyntaxUmqttQuery(const uCellPrivateInstance_t *pInstan
     resetUrcStatusField(pUrcStatus, number);
 
     // Now send the AT command
+    // Don't need to worry about the MQTT-SN form of the AT
+    // command here since the old syntax SARA-R4's do not
+    // support MQTT-SN
     snprintf(buffer, sizeof(buffer), "AT+UMQTT=%d?", (int) number);
     uAtClientLock(atHandle);
     uAtClientCommandStart(atHandle, buffer);
@@ -916,6 +1093,7 @@ static bool isSecured(const uCellPrivateInstance_t *pInstance,
 {
     bool secured = false;
     volatile uCellMqttContext_t *pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+    bool mqttSn = pContext->mqttSn;
     volatile uCellMqttUrcStatus_t *pUrcStatus = &(pContext->urcStatus);
     uAtClientHandle_t atHandle;
 
@@ -924,7 +1102,7 @@ static bool isSecured(const uCellPrivateInstance_t *pInstance,
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
             // Run the query, answers come back in pUrcStatus
-            if (doSaraR4OldSyntaxUmqttQuery(pInstance, 11) == 0) {
+            if (doSaraR4OldSyntaxUmqttQuery(pInstance, MQTT_PROFILE_OPCODE_SECURE(mqttSn)) == 0) {
                 // SARA-R4 doesn't report the security status
                 // if it is the default of unsecured,
                 // so if we got nothing back we are unsecured.
@@ -938,10 +1116,10 @@ static bool isSecured(const uCellPrivateInstance_t *pInstance,
         } else {
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UMQTT=");
-            uAtClientWriteInt(atHandle, 11);
+            uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
+            uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_SECURE(mqttSn));
             uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+UMQTT:");
+            uAtClientResponseStart(atHandle, MQTT_PROFILE_AT_RESPONSE_STRING(mqttSn));
             // Skip the first parameter, which is just
             // our UMQTT command number again
             uAtClientSkipParameters(atHandle, 1);
@@ -963,6 +1141,7 @@ static int32_t setKeepAlive(uDeviceHandle_t cellHandle, bool onNotOff)
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
     volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     uAtClientHandle_t atHandle;
     int32_t status = 1;
 
@@ -973,12 +1152,12 @@ static int32_t setKeepAlive(uDeviceHandle_t cellHandle, bool onNotOff)
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)) {
             pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+            mqttSn = pContext->mqttSn;
             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UMQTTC=");
-            // Set ping
-            uAtClientWriteInt(atHandle, 8);
+            uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+            uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_PING(mqttSn));
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                 // Somewhat bizzarely, for the SARA-R4 old
@@ -987,6 +1166,9 @@ static int32_t setKeepAlive(uDeviceHandle_t cellHandle, bool onNotOff)
                 // server?)
                 uAtClientWriteString(atHandle, pContext->pBrokerNameStr, true);
                 uAtClientCommandStop(atHandle);
+                // Don't need to worry about the MQTT-SN form of the AT
+                // command here since the old syntax SARA-R4's do not
+                // support MQTT-SN
                 uAtClientResponseStart(atHandle, "+UMQTTC:");
                 // Skip the first parameter, which is just
                 // our UMQTT command number again
@@ -1004,7 +1186,7 @@ static int32_t setKeepAlive(uDeviceHandle_t cellHandle, bool onNotOff)
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 pContext->keptAlive = onNotOff;
             } else {
-                printErrorCodes(atHandle);
+                printErrorCodes(pInstance);
             }
         } else {
             if (!onNotOff) {
@@ -1023,6 +1205,8 @@ static int32_t setSessionRetain(uDeviceHandle_t cellHandle, bool onNotOff)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     uAtClientHandle_t atHandle;
 
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
@@ -1031,12 +1215,14 @@ static int32_t setSessionRetain(uDeviceHandle_t cellHandle, bool onNotOff)
         errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)) {
+            pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+            mqttSn = pContext->mqttSn;
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UMQTT=");
-            // Set retention (actually it's "session cleaned",
+            uAtClientCommandStart(atHandle,  MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
+            // Set retention (actually it is "session cleaned",
             // hence the inversion)
-            uAtClientWriteInt(atHandle, 12);
+            uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_CLEAN_SESSION(mqttSn));
             uAtClientWriteInt(atHandle, (int32_t) !onNotOff);
             errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
         }
@@ -1053,6 +1239,8 @@ static int32_t setSecurity(uDeviceHandle_t cellHandle, bool onNotOff,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     uAtClientHandle_t atHandle;
 
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
@@ -1061,11 +1249,13 @@ static int32_t setSecurity(uDeviceHandle_t cellHandle, bool onNotOff,
         errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_SECURITY)) {
+            pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+            mqttSn = pContext->mqttSn;
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UMQTT=");
+            uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
             // Set security
-            uAtClientWriteInt(atHandle, 11);
+            uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_SECURE(mqttSn));
             uAtClientWriteInt(atHandle, (int32_t) onNotOff);
             if (onNotOff && (securityProfileId >= 0)) {
                 uAtClientWriteInt(atHandle, securityProfileId);
@@ -1089,6 +1279,7 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
     volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     volatile uCellMqttUrcStatus_t *pUrcStatus;
     uAtClientHandle_t atHandle;
     int64_t startTimeMs;
@@ -1096,6 +1287,7 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
     int32_t status = 1;
 
     pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+    mqttSn = pContext->mqttSn;
     pUrcStatus = &(pContext->urcStatus);
     atHandle = pInstance->atHandle;
     uPortLog("U_CELL_MQTT: trying to %s...\n", onNotOff ? "connect" : "disconnect");
@@ -1114,13 +1306,16 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
     pUrcStatus->flagsBitmap = 0;
     // Have seen this take a little while to respond
     uAtClientTimeoutSet(atHandle, 15000);
-    uAtClientCommandStart(atHandle, "AT+UMQTTC=");
-    // Conveniently log-in is command 0 and
-    // log out is command 1
+    uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+    // Conveniently log-in/connect is always command 0 and
+    // log out/disconnect is always command 1
     uAtClientWriteInt(atHandle, (int32_t) onNotOff);
     if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                            U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
         uAtClientCommandStop(atHandle);
+        // Don't need to worry about the MQTT-SN form of the AT
+        // command here since the old syntax SARA-R4's do not
+        // support MQTT-SN
         uAtClientResponseStart(atHandle, "+UMQTTC:");
         // Skip the first parameter, which is just
         // our UMQTTC command number again
@@ -1159,33 +1354,599 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
                          (uPortGetTickTimeMs() - startTimeMs) / 1000);
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             } else {
-                printErrorCodes(atHandle);
+                printErrorCodes(pInstance);
             }
         }
     } else {
-        printErrorCodes(atHandle);
+        printErrorCodes(pInstance);
     }
 
     return errorCode;
 }
 
-// Return true if all of pBuffer is printable.
-static bool isPrint(const char *pBuffer, size_t bufferLength)
+// Return true if all of pBuffer is printable and contains no
+// quotation marks.
+static bool isPrintNoQuotes(const char *pBuffer, size_t bufferLength)
 {
-    bool printable = true;
+    bool printableNoQuotes = false;
 
-    for (size_t x = 0; (x < bufferLength) && printable; x++) {
-        if (!isprint((int32_t) *pBuffer)) {
-            printable = false;
+    if (pBuffer != NULL) {
+        printableNoQuotes = true;
+        for (size_t x = 0; (x < bufferLength) && printableNoQuotes; x++) {
+            if (!isprint((int32_t) *pBuffer) || (*pBuffer == '"')) {
+                printableNoQuotes = false;
+            }
+            pBuffer++;
         }
-        pBuffer++;
     }
 
-    return printable;
+    return printableNoQuotes;
+}
+
+// For the given MQTT-SN topic name, fill in the right
+// format of string for the AT interface into pTopicNameStr and
+// return the correct integer to pass to the AT interface to
+// specify its type.  pTopicNameStr must point to a buffer of
+// length at least U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES.
+static int32_t mqttSnTopicNameToStr(const uCellMqttSnTopicName_t *pTopicName,
+                                    char *pTopicNameStr)
+{
+    int32_t topicNameType = -1;
+
+    switch (pTopicName->type) {
+        case U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL:
+        case U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED:
+            snprintf(pTopicNameStr,
+                     U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES,
+                     "%d", pTopicName->name.id);
+            topicNameType = (int32_t) pTopicName->type;
+            break;
+        case U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT:
+            // Must use memcpy() as nameShort does not include a terminator
+            memcpy(pTopicNameStr, pTopicName->name.nameShort,
+                   sizeof(pTopicName->name.nameShort));
+            // Ensure a terminator
+            *(pTopicNameStr + sizeof(pTopicName->name.nameShort)) = 0;
+            topicNameType = (int32_t) pTopicName->type;
+            break;
+        default:
+            break;
+    }
+
+    return topicNameType;
 }
 
 /* ----------------------------------------------------------------
- * PUBLIC FUNCTIONS
+ * STATIC FUNCTIONS: PUBLISH/SUBSCRIBE/UNSUBSCRIBE/READ
+ * -------------------------------------------------------------- */
+
+// Publish a message, MQTT or MQTT-SN style.
+static int32_t publish(const uCellPrivateInstance_t *pInstance,
+                       const char *pTopicNameStr,
+                       int32_t topicNameType,
+                       const char *pMessage,
+                       size_t messageSizeBytes,
+                       uCellMqttQos_t qos, bool retain)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
+    volatile uCellMqttUrcStatus_t *pUrcStatus;
+    uAtClientHandle_t atHandle;
+    char *pTextMessage = NULL;
+    int32_t status = 1;
+    bool isAscii;
+    bool messageWritten = false;
+    int64_t stopTimeMs;
+
+    pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+    mqttSn = pContext->mqttSn;
+    pUrcStatus = &(pContext->urcStatus);
+    isAscii = isPrintNoQuotes(pMessage, messageSizeBytes);
+    //lint -e(568) Suppress value never being negative, who knows
+    // what warnings levels a customer might compile with
+    if (((int32_t) qos >= 0) &&
+        ((mqttSn && (qos < U_CELL_MQTT_QOS_SN_PUBLISH_MAX_NUM)) || (qos <  U_CELL_MQTT_QOS_MAX_NUM)) &&
+        (pTopicNameStr != NULL) &&
+        (strlen(pTopicNameStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES) &&
+        (pMessage != NULL) &&
+        ((U_CELL_PRIVATE_HAS(pInstance->pModule,
+                             U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH) &&
+          (messageSizeBytes <= U_CELL_MQTT_PUBLISH_BIN_MAX_LENGTH_BYTES)) ||
+         (!U_CELL_PRIVATE_HAS(pInstance->pModule,
+                              U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH) &&
+          ((isAscii && (messageSizeBytes <= U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES * 2)) ||
+           (messageSizeBytes <= U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES))))) {
+        errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH) ||
+            mqttSn) {
+            // Note: the MQTT-SN AT interface never supports binary
+            // publishing (even where the MQTT one does)
+            // If we aren't able to publish a message as a binary
+            // blob then allocate space to publish it as a string,
+            // either as hex or as ASCII with a terminator added
+            if (isAscii) {
+                pTextMessage = (char *) malloc(messageSizeBytes + 1);
+                if (pTextMessage != NULL) {
+                    // Just copy in the text and add a terminator
+                    memcpy(pTextMessage, pMessage, messageSizeBytes);
+                    *(pTextMessage + messageSizeBytes) = '\0';
+                }
+            } else {
+                pTextMessage = (char *) malloc((messageSizeBytes * 2) + 1);
+                if (pTextMessage != NULL) {
+                    // Convert to hex
+                    uBinToHex(pMessage, messageSizeBytes, pTextMessage);
+                    // Add a terminator to make it a string
+                    *(pTextMessage + (messageSizeBytes * 2)) = '\0';
+                }
+            }
+        }
+        if ((pTextMessage != NULL) ||
+            U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)) {
+            errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            pUrcStatus->flagsBitmap = 0;
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                // In the old SARA-R4 syntax there's no URC
+                // for a publish, so the timeout is that
+                // of the AT command
+                uAtClientTimeoutSet(atHandle,
+                                    U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+            }
+            uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+            // Publish the message
+            if (pTextMessage != NULL) {
+                // ASCII or hex mode
+                uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_PUBLISH_STRING(mqttSn));
+            } else {
+                // Binary mode (not supported by MQTT-SN, hence we don't need a macro)
+                uAtClientWriteInt(atHandle, 9);
+            }
+            // QoS
+            uAtClientWriteInt(atHandle, (int32_t) qos);
+            // Retention
+            uAtClientWriteInt(atHandle, (int32_t) retain);
+            if (pTextMessage != NULL) {
+                // If we aren't doing binary mode...
+                if (isAscii) {
+                    // ASCII mode
+                    uAtClientWriteInt(atHandle, 0);
+                } else {
+                    // Hex mode
+                    uAtClientWriteInt(atHandle, 1);
+                }
+            }
+            if (mqttSn) {
+                // Specify the topic type for MQTT-SN
+                uAtClientWriteInt(atHandle, topicNameType);
+            }
+            // Topic
+            uAtClientWriteString(atHandle, pTopicNameStr, true);
+            if (pTextMessage == NULL) {
+                // The length of the binary message
+                uAtClientWriteInt(atHandle, (int32_t) messageSizeBytes);
+                uAtClientCommandStop(atHandle);
+                // Wait for the prompt
+                if (uAtClientWaitCharacter(atHandle, '>') == 0) {
+                    // Allow plenty of time for this to complete
+                    uAtClientTimeoutSet(atHandle, 10000);
+                    // Wait for it...
+                    uPortTaskBlock(50);
+                    // Write the binary message
+                    messageWritten = (uAtClientWriteBytes(atHandle,
+                                                          pMessage,
+                                                          messageSizeBytes,
+                                                          true) == messageSizeBytes);
+                }
+            } else {
+                // ASCII or hex message
+                uAtClientWriteString(atHandle, pTextMessage, true);
+                messageWritten = true;
+                uAtClientCommandStop(atHandle);
+            }
+
+            // Free memory (it is legal C to free a NULL pointer)
+            free(pTextMessage);
+
+            if (messageWritten) {
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                    uAtClientResponseStart(atHandle, MQTT_COMMAND_AT_RESPONSE_STRING(mqttSn));
+                    // Skip the first parameter, which is just
+                    // our UMQTTC command number again
+                    uAtClientSkipParameters(atHandle, 1);
+                    status = uAtClientReadInt(atHandle);
+                } else {
+                    uAtClientResponseStart(atHandle, NULL);
+                }
+            }
+            // If the message wasn't written this will tidy
+            // up any rubbish lying around in the AT buffer
+            uAtClientResponseStop(atHandle);
+
+            if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                    // For the old SARA-R4 syntax, that's it
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else {
+                    // Wait for a URC to say that the publish
+                    // has succeeded
+                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    stopTimeMs = uPortGetTickTimeMs() +
+                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_UPDATED)) == 0) &&
+                           (uPortGetTickTimeMs() < stopTimeMs) &&
+                           ((pContext->pKeepGoingCallback == NULL) ||
+                            pContext->pKeepGoingCallback())) {
+                        uPortTaskBlock(1000);
+                    }
+                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS)) != 0) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    } else {
+                        printErrorCodes(pInstance);
+                    }
+                }
+            } else {
+                printErrorCodes(pInstance);
+            }
+        }
+    }
+
+    return errorCode;
+}
+
+// Subscribe to an MQTT topic, MQTT or MQTT-SN style.
+static int32_t subscribe(const uCellPrivateInstance_t *pInstance,
+                         const char *pTopicFilterStr,
+                         int32_t topicNameType,
+                         uCellMqttQos_t maxQos,
+                         uint16_t *pTopicId)
+{
+    int32_t errorCodeOrQos = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
+    volatile uCellMqttUrcStatus_t *pUrcStatus;
+    uAtClientHandle_t atHandle;
+    int32_t status = 1;
+    int64_t stopTimeMs;
+
+    pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+    mqttSn = pContext->mqttSn;
+    pUrcStatus = &(pContext->urcStatus);
+    //lint -e(568) Suppress value never being negative, who knows
+    // what warnings levels a customer might compile with
+    if (((int32_t) maxQos >= 0) && (maxQos < U_CELL_MQTT_QOS_MAX_NUM) &&
+        (pTopicFilterStr != NULL) &&
+        (strlen(pTopicFilterStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) {
+        errorCodeOrQos = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+        atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        pUrcStatus->flagsBitmap = 0;
+        pUrcStatus->topicNameShort[0] = 0;
+        uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+        uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_SUBSCRIBE(mqttSn));
+        // Max QoS
+        uAtClientWriteInt(atHandle, (int32_t) maxQos);
+        if (mqttSn) {
+            if (pTopicId != NULL) {
+                // If we're retrieving a topic ID then this must be a normal
+                // MQTT topic
+                uAtClientWriteInt(atHandle, 0);
+            } else {
+                // Specify the topic type given to us
+                uAtClientWriteInt(atHandle, topicNameType);
+            }
+        }
+        // Topic
+        uAtClientWriteString(atHandle, pTopicFilterStr, true);
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+            uAtClientCommandStop(atHandle);
+            // Don't need to worry about the MQTT-SN form of the AT
+            // command here since the old syntax SARA-R4's do not
+            // support MQTT-SN
+            uAtClientResponseStart(atHandle, "+UMQTTC:");
+            // Skip the first parameter, which is just
+            // our UMQTTC command number again
+            uAtClientSkipParameters(atHandle, 1);
+            status = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
+        } else {
+            uAtClientCommandStopReadResponse(atHandle);
+        }
+
+        if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
+            // On all platforms need to wait for a URC to
+            // say that the subscribe has succeeded
+            errorCodeOrQos = (int32_t) U_ERROR_COMMON_TIMEOUT;
+            stopTimeMs = uPortGetTickTimeMs() +
+                         (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+            while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_UPDATED)) == 0) &&
+                   (uPortGetTickTimeMs() < stopTimeMs) &&
+                   ((pContext->pKeepGoingCallback == NULL) ||
+                    pContext->pKeepGoingCallback())) {
+                uPortTaskBlock(1000);
+            }
+            if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS)) != 0) {
+                errorCodeOrQos = (int32_t) pUrcStatus->subscribeQoS;
+                if (pTopicId != NULL) {
+                    //lint -e{1773} Suppress attempt to cast away volatile
+                    *pTopicId = (uint16_t) strtol((char *) pUrcStatus->topicNameShort, NULL, 10);
+                }
+            } else {
+                printErrorCodes(pInstance);
+            }
+        } else {
+            printErrorCodes(pInstance);
+        }
+    }
+
+    return errorCodeOrQos;
+}
+
+// Unsubscribe from an MQTT topic, MQTT or MQTT-SN style.
+static int32_t unsubscribe(const uCellPrivateInstance_t *pInstance,
+                           const char *pTopicFilterStr,
+                           int32_t topicNameType)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
+    volatile uCellMqttUrcStatus_t *pUrcStatus;
+    uAtClientHandle_t atHandle;
+    int32_t status = 1;
+    int64_t stopTimeMs;
+
+    pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+    mqttSn = pContext->mqttSn;
+    pUrcStatus = &(pContext->urcStatus);
+    if ((pTopicFilterStr != NULL) &&
+        (strlen(pTopicFilterStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) {
+        errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+        atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        pUrcStatus->flagsBitmap = 0;
+        uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+        uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_UNSUBSCRIBE(mqttSn));
+        if (mqttSn) {
+            // Specify the topic type for MQTT-SN
+            uAtClientWriteInt(atHandle, topicNameType);
+        }
+        // Topic
+        uAtClientWriteString(atHandle, pTopicFilterStr, true);
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+            uAtClientCommandStop(atHandle);
+            // Don't need to worry about the MQTT-SN form of the AT
+            // command here since the old syntax SARA-R4's do not
+            // support MQTT-SN
+            uAtClientResponseStart(atHandle, "+UMQTTC:");
+            // Skip the first parameter, which is just
+            // our UMQTTC command number again
+            uAtClientSkipParameters(atHandle, 1);
+            status = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
+        } else {
+            uAtClientCommandStopReadResponse(atHandle);
+        }
+
+        if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            } else {
+                // If this is the new syntax we need to wait
+                // for a URC to say that the unsubscribe has succeeded
+                errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                stopTimeMs = uPortGetTickTimeMs() +
+                             (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED)) == 0) &&
+                       (uPortGetTickTimeMs() < stopTimeMs) &&
+                       ((pContext->pKeepGoingCallback == NULL) ||
+                        pContext->pKeepGoingCallback())) {
+                    uPortTaskBlock(1000);
+                }
+                if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS)) != 0) {
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else {
+                    printErrorCodes(pInstance);
+                }
+            }
+        } else {
+            printErrorCodes(pInstance);
+        }
+    }
+
+    return errorCode;
+}
+
+// Read a message, MQTT or MQTT-SN style.
+static int32_t readMessage(const uCellPrivateInstance_t *pInstance,
+                           char *pTopicNameStr,
+                           size_t topicNameSizeBytes,
+                           int32_t *pTopicNameType,
+                           char *pMessage, size_t *pMessageSizeBytes,
+                           uCellMqttQos_t *pQos)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
+    volatile uCellMqttUrcMessage_t *pUrcMessage = NULL;
+    uAtClientHandle_t atHandle;
+    size_t messageSizeBytes = 0;
+    int32_t status;
+    int64_t stopTimeMs;
+    uCellMqttQos_t qos;
+    int32_t topicNameType = -1;
+    int32_t topicNameBytesRead;
+    int32_t messageBytesAvailable;
+    int32_t messageBytesRead = 0;
+    int32_t topicBytesAvailable;
+
+    pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+    mqttSn = pContext->mqttSn;
+    if ((pTopicNameStr != NULL) && (!mqttSn || (pTopicNameType != NULL)) &&
+        ((pMessageSizeBytes != NULL) || (pMessage == NULL))) {
+        pUrcMessage = pContext->pUrcMessage;
+        if (pMessageSizeBytes != NULL) {
+            messageSizeBytes = *pMessageSizeBytes;
+        }
+        errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+            U_ASSERT(pUrcMessage != NULL);
+            // For the old-style SARA-R4 interface we need a URC capture
+            U_ASSERT(U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType));
+            pUrcMessage->messageRead = false;
+            pUrcMessage->pTopicNameStr = pTopicNameStr;
+            pUrcMessage->topicNameSizeBytes = (int32_t) topicNameSizeBytes;
+            pUrcMessage->pMessage = pMessage;
+            pUrcMessage->messageSizeBytes = (int32_t) messageSizeBytes;
+        }
+        atHandle = pInstance->atHandle;
+        uAtClientLock(atHandle);
+        uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+        uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_READ(mqttSn));
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+            // We get a standard indication of success here then we need
+            // to wait for a URC to get the message
+            uAtClientCommandStop(atHandle);
+            // Don't need to worry about the MQTT-SN form of the AT
+            // command here since the old syntax SARA-R4's do not
+            // support MQTT-SN
+            uAtClientResponseStart(atHandle, "+UMQTTC:");
+            // Skip the first parameter, which is just
+            // our UMQTTC command number again
+            uAtClientSkipParameters(atHandle, 1);
+            status = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
+            if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
+                // Wait for a URC containing the message
+                errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                stopTimeMs = uPortGetTickTimeMs() +
+                             (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                while (!pUrcMessage->messageRead &&
+                       (uPortGetTickTimeMs() < stopTimeMs) &&
+                       ((pContext->pKeepGoingCallback == NULL) ||
+                        pContext->pKeepGoingCallback())) {
+                    uPortTaskBlock(1000);
+                }
+                if (pUrcMessage->messageRead) {
+                    if (pContext->numUnreadMessages > 0) {
+                        pContext->numUnreadMessages--;
+                    }
+                    if (pMessageSizeBytes != NULL) {
+                        *pMessageSizeBytes = pUrcMessage->messageSizeBytes;
+                    }
+                    if (pQos != NULL) {
+                        *pQos = pUrcMessage->qos;
+                    }
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else {
+                    printErrorCodes(pInstance);
+                }
+            }
+        } else {
+            // We want just the one message
+            uAtClientWriteInt(atHandle, 1);
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, MQTT_COMMAND_AT_RESPONSE_STRING(mqttSn));
+            // The message now arrives directly
+            // Skip the first parameter, which is just
+            // our UMQTTC command number again
+            uAtClientSkipParameters(atHandle, 1);
+            // Next comes the QoS
+            qos = (uCellMqttQos_t) uAtClientReadInt(atHandle);
+            if (mqttSn) {
+                // For MQTT-SN retrieve the topic name type
+                topicNameType = uAtClientReadInt(atHandle);
+            }
+            // Then we can skip the length of
+            // the topic and message added together
+            uAtClientSkipParameters(atHandle, 1);
+            // Read the topic name length
+            topicBytesAvailable = uAtClientReadInt(atHandle);
+            // Now read the part of the topic name string
+            // we can absorb
+            if ((int32_t) topicNameSizeBytes > topicBytesAvailable) {
+                topicNameSizeBytes = topicBytesAvailable;
+            }
+            topicNameBytesRead = uAtClientReadString(atHandle,
+                                                     pTopicNameStr,
+                                                     topicNameSizeBytes + 1, // +1 for terminator
+                                                     false);
+            // Read the number of message bytes to follow
+            messageBytesAvailable = uAtClientReadInt(atHandle);
+            if (messageBytesAvailable > 0) {
+                if ((int32_t) messageSizeBytes > messageBytesAvailable) {
+                    messageSizeBytes = messageBytesAvailable;
+                }
+                // Now read the message bytes, being careful
+                // to not look for stop tags as this can be
+                // a binary message
+                uAtClientIgnoreStopTag(atHandle);
+                // Get the leading quote mark out of the way
+                uAtClientReadBytes(atHandle, NULL, 1, true);
+                // Now read out all the actual data,
+                // first the bit we want
+                messageBytesRead = uAtClientReadBytes(atHandle, pMessage,
+                                                      messageSizeBytes, true);
+                if (messageBytesAvailable > messageBytesRead) {
+                    //...and then the rest poured away to NULL
+                    uAtClientReadBytes(atHandle, NULL,
+                                       // Cast in two stages to keep Lint happy
+                                       (size_t) (unsigned) (messageBytesAvailable -
+                                                            messageBytesRead), false);
+                }
+            }
+            // Make sure to wait for the stop tag before
+            // we finish
+            uAtClientRestoreStopTag(atHandle);
+            uAtClientResponseStop(atHandle);
+            if (uAtClientUnlock(atHandle) == 0) {
+                // Now have all the bits, check them
+                if ((topicNameBytesRead >= 0) &&
+                    //lint -e(568) Suppress value never being negative
+                    ((int32_t) qos >= 0) &&
+                    (qos < U_CELL_MQTT_QOS_MAX_NUM) &&
+                    //lint -e(568) Suppress value never being negative
+                    (!mqttSn || ((topicNameType >= 0) &&
+                                 (topicNameType < (int32_t) U_CELL_MQTT_SN_TOPIC_NAME_TYPE_MAX_NUM)))) {
+                    // Good.  Topic and message have
+                    // already been done above,
+                    // now fill in the other bits
+                    if (pMessageSizeBytes != NULL) {
+                        *pMessageSizeBytes = messageBytesRead;
+                    }
+                    if (pQos != NULL) {
+                        *pQos = qos;
+                    }
+                    if (pTopicNameType != NULL) {
+                        *pTopicNameType = topicNameType;
+                    }
+                    if (pContext->numUnreadMessages > 0) {
+                        pContext->numUnreadMessages--;
+                    }
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                }
+            } else {
+                printErrorCodes(pInstance);
+            }
+        }
+    }
+
+    return errorCode;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: MQTT AND MQTT-SN
  * -------------------------------------------------------------- */
 
 // Initialise the cellular MQTT client.
@@ -1193,7 +1954,7 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                       const char *pClientIdStr, const char *pUserNameStr,
                       const char *pPasswordStr,
                       bool (*pKeepGoingCallback)(void),
-                      bool futureExpansion)
+                      bool mqttSn)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -1213,7 +1974,11 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
         if (pInstance->pMqttContext == NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
             // Check parameters, only pBrokerNameStr has to be present
-            if (!futureExpansion && (pBrokerNameStr != NULL) &&
+            if (((!mqttSn && U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                                U_CELL_PRIVATE_FEATURE_MQTT)) ||
+                 (mqttSn && U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                               U_CELL_PRIVATE_FEATURE_MQTTSN))) &&
+                (pBrokerNameStr != NULL) &&
                 (strlen(pBrokerNameStr) <=
                  U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES)) {
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
@@ -1230,6 +1995,7 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                     pContext->numUnreadMessages = 0;
                     pContext->pBrokerNameStr = NULL;
                     pContext->pUrcMessage = NULL;
+                    pContext->mqttSn = mqttSn;
                     pInstance->pMqttContext = pContext;
                     if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
                         // SARA-R4 requires a pUrcMessage as well
@@ -1257,9 +2023,9 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                                                            pContext->pBrokerNameStr,
                                                            U_CELL_MQTT_BROKER_ADDRESS_STRING_MAX_LENGTH_BYTES) > 0) {
                                     uAtClientLock(atHandle);
-                                    uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                                    uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                                     // Set the broker IP address
-                                    uAtClientWriteInt(atHandle, 3);
+                                    uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_BROKER_IP_ADDRESS(mqttSn));
                                     uAtClientWriteString(atHandle, pContext->pBrokerNameStr, true);
                                     // If there was a port number, write
                                     // that also
@@ -1279,12 +2045,11 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                                 port = uSockDomainGetPort(pContext->pBrokerNameStr);
                                 pTmp = pUSockDomainRemovePort(pContext->pBrokerNameStr);
                                 uAtClientLock(atHandle);
-                                uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                                uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                                 // Set the broker URL
-                                uAtClientWriteInt(atHandle, 2);
+                                uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_BROKER_URL(mqttSn));
                                 uAtClientWriteString(atHandle, pTmp, true);
-                                // If there was a port number, write
-                                // that also
+                                // If there was a port number, write that also
                                 if (port > 0) {
                                     uAtClientWriteInt(atHandle, port);
                                 }
@@ -1301,10 +2066,10 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                             }
 
                             // Now deal with the credentials
-                            if (keepGoing && (pUserNameStr != NULL)) {
+                            if (!mqttSn && keepGoing && (pUserNameStr != NULL)) {
                                 uAtClientLock(atHandle);
                                 uAtClientCommandStart(atHandle, "AT+UMQTT=");
-                                // Set credentials
+                                // Set credentials; not supported by MQTT-SN, hence no need for a macro
                                 uAtClientWriteInt(atHandle, 4);
                                 // The user name
                                 uAtClientWriteString(atHandle, pUserNameStr, true);
@@ -1329,9 +2094,9 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                                 }
                                 if (pClientIdStr != NULL) {
                                     uAtClientLock(atHandle);
-                                    uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                                    uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                                     // Set client ID
-                                    uAtClientWriteInt(atHandle, 0);
+                                    uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_CLIENT_ID(mqttSn));
                                     // The ID
                                     uAtClientWriteString(atHandle, pClientIdStr, true);
                                     keepGoing = (atMqttStopCmdGetRespAndUnlock(pInstance) == 0);
@@ -1344,6 +2109,9 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                                 // If we're dealing with old SARA-R4 syntax,
                                 // select verbose message reads
                                 uAtClientLock(atHandle);
+                                // Don't need to worry about the MQTT-SN form of the AT
+                                // command here since the old syntax SARA-R4's do not
+                                // support MQTT-SN
                                 uAtClientCommandStart(atHandle, "AT+UMQTTC=");
                                 // Message read format
                                 uAtClientWriteInt(atHandle, 7);
@@ -1368,7 +2136,7 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                                                                    UUMQTT_urc,
                                                                    pInstance);
                             } else {
-                                printErrorCodes(atHandle);
+                                printErrorCodes(pInstance);
                             }
                         }
                     }
@@ -1453,6 +2221,7 @@ int32_t uCellMqttGetClientId(uDeviceHandle_t cellHandle, char *pClientIdStr,
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
     volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     volatile uCellMqttUrcStatus_t *pUrcStatus;
     uAtClientHandle_t atHandle;
     int32_t bytesRead;
@@ -1462,6 +2231,7 @@ int32_t uCellMqttGetClientId(uDeviceHandle_t cellHandle, char *pClientIdStr,
     if ((errorCode == 0) && (pInstance != NULL)) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        mqttSn = pContext->mqttSn;
         pUrcStatus = &(pContext->urcStatus);
         if (pClientIdStr != NULL) {
             atHandle = pInstance->atHandle;
@@ -1471,17 +2241,17 @@ int32_t uCellMqttGetClientId(uDeviceHandle_t cellHandle, char *pClientIdStr,
                 pUrcStatus->clientId.sizeBytes = sizeBytes;
                 // This will fill in the string and populate
                 // clientId.sizeBytes with the number of bytes read
-                errorCode = doSaraR4OldSyntaxUmqttQuery(pInstance, 0);
+                errorCode = doSaraR4OldSyntaxUmqttQuery(pInstance, MQTT_PROFILE_OPCODE_CLIENT_ID(mqttSn));
                 if (errorCode == 0) {
                     errorCode = (int32_t) pUrcStatus->clientId.sizeBytes;
                 }
             } else {
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UMQTT=");
-                uAtClientWriteInt(atHandle, 0);
+                uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
+                uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_CLIENT_ID(mqttSn));
                 uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UMQTT:");
+                uAtClientResponseStart(atHandle,  MQTT_PROFILE_AT_RESPONSE_STRING(mqttSn));
                 // Skip the first parameter, which is just
                 // our UMQTT command number again
                 uAtClientSkipParameters(atHandle, 1);
@@ -1495,33 +2265,6 @@ int32_t uCellMqttGetClientId(uDeviceHandle_t cellHandle, char *pClientIdStr,
                     errorCode = bytesRead;
                 }
             }
-        }
-    }
-
-    U_CELL_MQTT_EXIT_FUNCTION();
-
-    return errorCode;
-}
-
-// Set the local port to use for the MQTT client.
-int32_t uCellMqttSetLocalPort(uDeviceHandle_t cellHandle, uint16_t port)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance = NULL;
-    uAtClientHandle_t atHandle;
-
-    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
-
-    if ((errorCode == 0) && (pInstance != NULL)) {
-        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)) {
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UMQTT=");
-            // Set the local port
-            uAtClientWriteInt(atHandle, 1);
-            uAtClientWriteInt(atHandle, port);
-            errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
         }
     }
 
@@ -1547,7 +2290,8 @@ int32_t uCellMqttGetLocalPort(uDeviceHandle_t cellHandle)
         pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
         pUrcStatus = &(pContext->urcStatus);
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)) {
+                               U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT) &&
+            !pContext->mqttSn) {
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                 errorCodeOrPort = doSaraR4OldSyntaxUmqttQuery(pInstance, 1);
@@ -1559,6 +2303,9 @@ int32_t uCellMqttGetLocalPort(uDeviceHandle_t cellHandle)
                 errorCodeOrPort = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
+                // Don't need to worry about the MQTT-SN form of the AT
+                // command here since setting the local port is not
+                // supported for MQTT-SN
                 uAtClientCommandStart(atHandle, "AT+UMQTT=");
                 // Get the local port
                 uAtClientWriteInt(atHandle, 1);
@@ -1594,16 +2341,20 @@ int32_t uCellMqttSetInactivityTimeout(uDeviceHandle_t cellHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     uAtClientHandle_t atHandle;
 
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
     if ((errorCode == 0) && (pInstance != NULL)) {
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        mqttSn = pContext->mqttSn;
         atHandle = pInstance->atHandle;
         uAtClientLock(atHandle);
-        uAtClientCommandStart(atHandle, "AT+UMQTT=");
+        uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
         // Set the inactivity timeout
-        uAtClientWriteInt(atHandle, 10);
+        uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_INACTIVITY_TIMEOUT(mqttSn));
         uAtClientWriteInt(atHandle, (int32_t) seconds);
         errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
     }
@@ -1619,6 +2370,7 @@ int32_t uCellMqttGetInactivityTimeout(uDeviceHandle_t cellHandle)
     int32_t errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
     volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     volatile uCellMqttUrcStatus_t *pUrcStatus;
     uAtClientHandle_t atHandle;
     int32_t x;
@@ -1627,10 +2379,12 @@ int32_t uCellMqttGetInactivityTimeout(uDeviceHandle_t cellHandle)
 
     if ((errorCodeOrTimeout == 0) && (pInstance != NULL)) {
         pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        mqttSn = pContext->mqttSn;
         pUrcStatus = &(pContext->urcStatus);
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-            errorCodeOrTimeout = doSaraR4OldSyntaxUmqttQuery(pInstance, 10);
+            errorCodeOrTimeout = doSaraR4OldSyntaxUmqttQuery(pInstance,
+                                                             MQTT_PROFILE_OPCODE_INACTIVITY_TIMEOUT(mqttSn));
             if ((errorCodeOrTimeout == 0) &&
                 (pUrcStatus->inactivityTimeoutSeconds >= 0)) {
                 errorCodeOrTimeout = pUrcStatus->inactivityTimeoutSeconds;
@@ -1639,11 +2393,11 @@ int32_t uCellMqttGetInactivityTimeout(uDeviceHandle_t cellHandle)
             errorCodeOrTimeout = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
             atHandle = pInstance->atHandle;
             uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UMQTT=");
+            uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
             // Get the inactivity timeout
-            uAtClientWriteInt(atHandle, 10);
+            uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_INACTIVITY_TIMEOUT(mqttSn));
             uAtClientCommandStop(atHandle);
-            uAtClientResponseStart(atHandle, "+UMQTT:");
+            uAtClientResponseStart(atHandle, MQTT_PROFILE_AT_RESPONSE_STRING(mqttSn));
             // Skip the first parameter, which is just
             // our UMQTT command number again
             uAtClientSkipParameters(atHandle, 1);
@@ -1727,6 +2481,7 @@ bool uCellMqttIsRetained(uDeviceHandle_t cellHandle)
     bool isRetained = false;
     uCellPrivateInstance_t *pInstance = NULL;
     volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     volatile uCellMqttUrcStatus_t *pUrcStatus;
     uAtClientHandle_t atHandle;
 
@@ -1736,22 +2491,24 @@ bool uCellMqttIsRetained(uDeviceHandle_t cellHandle)
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)) {
             pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+            mqttSn = pContext->mqttSn;
             pUrcStatus = &(pContext->urcStatus);
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                 // Run the query, answers come back in pUrcStatus
-                if ((doSaraR4OldSyntaxUmqttQuery(pInstance, 12) == 0) &&
+                if ((doSaraR4OldSyntaxUmqttQuery(pInstance,
+                                                 MQTT_PROFILE_OPCODE_CLEAN_SESSION(mqttSn)) == 0) &&
                     ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_RETAINED)) != 0)) {
                     isRetained = true;
                 }
             } else {
                 atHandle = pInstance->atHandle;
                 uAtClientLock(atHandle);
-                uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                 // Get the session retention status
-                uAtClientWriteInt(atHandle, 12);
+                uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_CLEAN_SESSION(mqttSn));
                 uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UMQTT:");
+                uAtClientResponseStart(atHandle, MQTT_PROFILE_AT_RESPONSE_STRING(mqttSn));
                 // Skip the first parameter, which is just
                 // our UMQTT command number again
                 uAtClientSkipParameters(atHandle, 1);
@@ -1808,6 +2565,8 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     uAtClientHandle_t atHandle;
     char *pHexMessage = NULL;
 
@@ -1818,6 +2577,8 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_WILL)) {
             errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+            mqttSn = pContext->mqttSn;
             //lint -e(568) Suppress value never being negative, who knows
             // what warnings levels a customer might compile with
             if (((int32_t) qos >= 0) &&
@@ -1825,11 +2586,14 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                 ((pTopicNameStr == NULL) ||
                  (strlen(pTopicNameStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) &&
                 ((pMessage == NULL) ||
-                 (messageSizeBytes <= U_CELL_MQTT_WILL_MESSAGE_MAX_LENGTH_BYTES))) {
+                 ((mqttSn && (strlen(pMessage) == messageSizeBytes) &&
+                   isPrintNoQuotes(pMessage, messageSizeBytes)) ||
+                  (messageSizeBytes <= U_CELL_MQTT_WILL_MESSAGE_MAX_LENGTH_BYTES)))) {
                 atHandle = pInstance->atHandle;
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                if (pMessage != NULL) {
-                    // Allocate space to encode the hex version of the message
+                if ((pMessage != NULL) && !mqttSn) {
+                    // For MQTT we can do it in hex, so allocate space
+                    // to encode the hex version of the message
                     errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                     pHexMessage = (char *) malloc((messageSizeBytes * 2) + 1);
                     if (pHexMessage != NULL) {
@@ -1846,19 +2610,19 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                 if (errorCode == 0) {
                     // Write the "will" QOS
                     uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                    uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                     // Set "will" QOS
-                    uAtClientWriteInt(atHandle, 6);
+                    uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_WILL_QOS(mqttSn));
                     // The "will" QOS
                     uAtClientWriteInt(atHandle, (int32_t) qos);
                     errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
                 }
                 if (errorCode == 0) {
-                    // Finally, write the "will" retention flag
+                    // Write the "will" retention flag
                     uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                    uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                     // Set "will" retention
-                    uAtClientWriteInt(atHandle, 7);
+                    uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_WILL_RETAIN(mqttSn));
                     // The "will" retention flag
                     uAtClientWriteInt(atHandle, (int32_t) retain);
                     errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
@@ -1866,24 +2630,28 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                 if ((errorCode == 0) && (pTopicNameStr != NULL)) {
                     // Write the "will" topic name string
                     uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                    uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                     // Set "will" topic name
-                    uAtClientWriteInt(atHandle, 8);
+                    uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_WILL_TOPIC(mqttSn));
                     // The "will" topic name
                     uAtClientWriteString(atHandle, pTopicNameStr, true);
                     errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
                 }
-                if ((errorCode == 0) && (pHexMessage != NULL)) {
+                if ((errorCode == 0) && (pMessage != NULL)) {
                     // Finally, and it must be finally,
                     // write the "will" message
                     uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                    uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                     // Set "will" message
-                    uAtClientWriteInt(atHandle, 9);
+                    uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_WILL_MESSAGE(mqttSn));
                     // Write the "will" message
-                    uAtClientWriteString(atHandle, pHexMessage, true);
-                    // Hex mode
-                    uAtClientWriteInt(atHandle, 1);
+                    if (pHexMessage != NULL) {
+                        uAtClientWriteString(atHandle, pHexMessage, true);
+                        // Hex mode
+                        uAtClientWriteInt(atHandle, 1);
+                    } else {
+                        uAtClientWriteString(atHandle, pMessage, true);
+                    }
                     errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
                 }
                 // Free memory
@@ -1909,6 +2677,8 @@ int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    bool mqttSn;
     uAtClientHandle_t atHandle;
     char *pBuffer;
     int32_t bytesRead = 0;
@@ -1922,6 +2692,8 @@ int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
         if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_WILL)) {
             errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+            mqttSn = pContext->mqttSn;
             if ((pMessage == NULL) || (pMessageSizeBytes != NULL)) {
                 atHandle = pInstance->atHandle;
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -1934,11 +2706,11 @@ int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                     if (pBuffer != NULL) {
                         // Get the "will" topic name string
                         uAtClientLock(atHandle);
-                        uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                        uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                         // "will" topic name
-                        uAtClientWriteInt(atHandle, 8);
+                        uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_WILL_TOPIC(mqttSn));
                         uAtClientCommandStop(atHandle);
-                        uAtClientResponseStart(atHandle, "+UMQTT:");
+                        uAtClientResponseStart(atHandle, MQTT_PROFILE_AT_RESPONSE_STRING(mqttSn));
                         // Skip the first parameter, which is just
                         // our UMQTT command number again
                         uAtClientSkipParameters(atHandle, 1);
@@ -1965,11 +2737,11 @@ int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                     errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                     // Get the "will" message string
                     uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                    uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                     // "will" message
-                    uAtClientWriteInt(atHandle, 9);
+                    uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_WILL_MESSAGE(mqttSn));
                     uAtClientCommandStop(atHandle);
-                    uAtClientResponseStart(atHandle, "+UMQTT:");
+                    uAtClientResponseStart(atHandle, MQTT_PROFILE_AT_RESPONSE_STRING(mqttSn));
                     // Skip the first parameter, which is just
                     // our UMQTT command number again
                     uAtClientSkipParameters(atHandle, 1);
@@ -2010,11 +2782,11 @@ int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                     errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                     // Get the "will" QoS
                     uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                    uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                     // "will" QoS
-                    uAtClientWriteInt(atHandle, 6);
+                    uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_WILL_QOS(mqttSn));
                     uAtClientCommandStop(atHandle);
-                    uAtClientResponseStart(atHandle, "+UMQTT:");
+                    uAtClientResponseStart(atHandle, MQTT_PROFILE_AT_RESPONSE_STRING(mqttSn));
                     // Skip the first parameter, which is just
                     // our UMQTT command number again
                     uAtClientSkipParameters(atHandle, 1);
@@ -2030,11 +2802,11 @@ int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                     errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                     // Get the "will" retention flag
                     uAtClientLock(atHandle);
-                    uAtClientCommandStart(atHandle, "AT+UMQTT=");
+                    uAtClientCommandStart(atHandle, MQTT_PROFILE_AT_COMMAND_STRING(mqttSn));
                     // "will" retention
-                    uAtClientWriteInt(atHandle, 7);
+                    uAtClientWriteInt(atHandle, MQTT_PROFILE_OPCODE_WILL_RETAIN(mqttSn));
                     uAtClientCommandStop(atHandle);
-                    uAtClientResponseStart(atHandle, "+UMQTT:");
+                    uAtClientResponseStart(atHandle, MQTT_PROFILE_AT_RESPONSE_STRING(mqttSn));
                     // Skip the first parameter, which is just
                     // our UMQTT command number again
                     uAtClientSkipParameters(atHandle, 1);
@@ -2113,336 +2885,6 @@ bool uCellMqttIsConnected(uDeviceHandle_t cellHandle)
     return connected;
 }
 
-// Publish an MQTT message.
-int32_t uCellMqttPublish(uDeviceHandle_t cellHandle,
-                         const char *pTopicNameStr,
-                         const char *pMessage,
-                         size_t messageSizeBytes,
-                         uCellMqttQos_t qos, bool retain)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance = NULL;
-    volatile uCellMqttContext_t *pContext;
-    volatile uCellMqttUrcStatus_t *pUrcStatus;
-    uAtClientHandle_t atHandle;
-    char *pTextMessage = NULL;
-    int32_t status = 1;
-    bool isAscii = false;
-    bool messageWritten = false;
-    int64_t stopTimeMs;
-
-    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
-
-    if ((errorCode == 0) && (pInstance != NULL)) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
-        pUrcStatus = &(pContext->urcStatus);
-        isAscii = isPrint(pMessage, messageSizeBytes);
-        //lint -e(568) Suppress value never being negative, who knows
-        // what warnings levels a customer might compile with
-        if (((int32_t) qos >= 0) && (qos < U_CELL_MQTT_QOS_MAX_NUM) &&
-            (pTopicNameStr != NULL) &&
-            (strlen(pTopicNameStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES) &&
-            (pMessage != NULL) &&
-            ((U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                 U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH) &&
-              (messageSizeBytes <= U_CELL_MQTT_PUBLISH_BIN_MAX_LENGTH_BYTES)) ||
-             (!U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                  U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH) &&
-              ((isAscii && (messageSizeBytes <= U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES * 2)) ||
-               (messageSizeBytes <= U_CELL_MQTT_PUBLISH_HEX_MAX_LENGTH_BYTES))))) {
-            errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                    U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)) {
-                // If we aren't able to publish a message as a binary
-                // blob then allocate space to publish it as a string,
-                // either as hex or as ASCII with a terminator added
-                if (isAscii) {
-                    pTextMessage = (char *) malloc(messageSizeBytes + 1);
-                    if (pTextMessage != NULL) {
-                        // Just copy in the text and add a terminator
-                        memcpy(pTextMessage, pMessage, messageSizeBytes);
-                        *(pTextMessage + messageSizeBytes) = '\0';
-                    }
-                } else {
-                    pTextMessage = (char *) malloc((messageSizeBytes * 2) + 1);
-                    if (pTextMessage != NULL) {
-                        // Convert to hex
-                        uBinToHex(pMessage, messageSizeBytes, pTextMessage);
-                        // Add a terminator to make it a string
-                        *(pTextMessage + (messageSizeBytes * 2)) = '\0';
-                    }
-                }
-            }
-            if ((pTextMessage != NULL) ||
-                U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)) {
-                errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-                atHandle = pInstance->atHandle;
-                uAtClientLock(atHandle);
-                pUrcStatus->flagsBitmap = 0;
-                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                    // In the old SARA-R4 syntax there's no URC
-                    // for a publish, so the timeout is that
-                    // of the AT command
-                    uAtClientTimeoutSet(atHandle,
-                                        U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                }
-                uAtClientCommandStart(atHandle, "AT+UMQTTC=");
-                // Publish the message
-                if (pTextMessage != NULL) {
-                    // ASCII or hex mode
-                    uAtClientWriteInt(atHandle, 2);
-                } else {
-                    // Binary mode
-                    uAtClientWriteInt(atHandle, 9);
-                }
-                // QoS
-                uAtClientWriteInt(atHandle, (int32_t) qos);
-                // Retention
-                uAtClientWriteInt(atHandle, (int32_t) retain);
-                if (pTextMessage != NULL) {
-                    // If we aren't doing binary mode...
-                    if (isAscii) {
-                        // ASCII mode
-                        uAtClientWriteInt(atHandle, 0);
-                    } else {
-                        // Hex mode
-                        uAtClientWriteInt(atHandle, 1);
-                    }
-                }
-                // Topic
-                uAtClientWriteString(atHandle, pTopicNameStr, true);
-                if (pTextMessage == NULL) {
-                    // The length of the binary message
-                    uAtClientWriteInt(atHandle, (int32_t) messageSizeBytes);
-                    uAtClientCommandStop(atHandle);
-                    // Wait for the prompt
-                    if (uAtClientWaitCharacter(atHandle, '>') == 0) {
-                        // Allow plenty of time for this to complete
-                        uAtClientTimeoutSet(atHandle, 10000);
-                        // Wait for it...
-                        uPortTaskBlock(50);
-                        // Write the binary message
-                        messageWritten = (uAtClientWriteBytes(atHandle,
-                                                              pMessage,
-                                                              messageSizeBytes,
-                                                              true) == messageSizeBytes);
-                    }
-                } else {
-                    // ASCII or hex message
-                    uAtClientWriteString(atHandle, pTextMessage, true);
-                    messageWritten = true;
-                    uAtClientCommandStop(atHandle);
-                }
-
-                // Free memory (it is legal C to free a NULL pointer)
-                free(pTextMessage);
-
-                if (messageWritten) {
-                    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                        uAtClientResponseStart(atHandle, "+UMQTTC:");
-                        // Skip the first parameter, which is just
-                        // our UMQTTC command number again
-                        uAtClientSkipParameters(atHandle, 1);
-                        status = uAtClientReadInt(atHandle);
-                    } else {
-                        uAtClientResponseStart(atHandle, NULL);
-                    }
-                }
-                // If the message wasn't written this will tidy
-                // up any rubbish lying around in the AT buffer
-                uAtClientResponseStop(atHandle);
-
-                if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
-                    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                        // For the old SARA-R4 syntax, that's it
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    } else {
-                        // Wait for a URC to say that the publish
-                        // has succeeded
-                        errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                        stopTimeMs = uPortGetTickTimeMs() +
-                                     (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                        while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_UPDATED)) == 0) &&
-                               (uPortGetTickTimeMs() < stopTimeMs) &&
-                               ((pContext->pKeepGoingCallback == NULL) ||
-                                pContext->pKeepGoingCallback())) {
-                            uPortTaskBlock(1000);
-                        }
-                        if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS)) != 0) {
-                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                        } else {
-                            printErrorCodes(atHandle);
-                        }
-                    }
-                } else {
-                    printErrorCodes(atHandle);
-                }
-            }
-        }
-    }
-
-    U_CELL_MQTT_EXIT_FUNCTION();
-
-    return errorCode;
-}
-
-// Subscribe to an MQTT topic.
-int32_t uCellMqttSubscribe(uDeviceHandle_t cellHandle,
-                           const char *pTopicFilterStr,
-                           uCellMqttQos_t maxQos)
-{
-    int32_t errorCodeOrQos = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance = NULL;
-    volatile uCellMqttContext_t *pContext;
-    volatile uCellMqttUrcStatus_t *pUrcStatus;
-    uAtClientHandle_t atHandle;
-    int32_t status = 1;
-    int64_t stopTimeMs;
-
-    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCodeOrQos, true);
-
-    if ((errorCodeOrQos == 0) && (pInstance != NULL)) {
-        errorCodeOrQos = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
-        pUrcStatus = &(pContext->urcStatus);
-        //lint -e(568) Suppress value never being negative, who knows
-        // what warnings levels a customer might compile with
-        if (((int32_t) maxQos >= 0) &&
-            (maxQos < U_CELL_MQTT_QOS_MAX_NUM) &&
-            (pTopicFilterStr != NULL) &&
-            (strlen(pTopicFilterStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) {
-            errorCodeOrQos = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            pUrcStatus->flagsBitmap = 0;
-            uAtClientCommandStart(atHandle, "AT+UMQTTC=");
-            // Subscribe to a topic
-            uAtClientWriteInt(atHandle, 4);
-            // Max QoS
-            uAtClientWriteInt(atHandle, (int32_t) maxQos);
-            // Topic
-            uAtClientWriteString(atHandle, pTopicFilterStr, true);
-            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UMQTTC:");
-                // Skip the first parameter, which is just
-                // our UMQTTC command number again
-                uAtClientSkipParameters(atHandle, 1);
-                status = uAtClientReadInt(atHandle);
-                uAtClientResponseStop(atHandle);
-            } else {
-                uAtClientCommandStopReadResponse(atHandle);
-            }
-
-            if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
-                // On all platforms need to wait for a URC to
-                // say that the subscribe has succeeded
-                errorCodeOrQos = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                stopTimeMs = uPortGetTickTimeMs() +
-                             (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_UPDATED)) == 0) &&
-                       (uPortGetTickTimeMs() < stopTimeMs) &&
-                       ((pContext->pKeepGoingCallback == NULL) ||
-                        pContext->pKeepGoingCallback())) {
-                    uPortTaskBlock(1000);
-                }
-                if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS)) != 0) {
-                    errorCodeOrQos = (int32_t) pUrcStatus->subscribeQoS;
-                } else {
-                    printErrorCodes(atHandle);
-                }
-            } else {
-                printErrorCodes(atHandle);
-            }
-        }
-    }
-
-    U_CELL_MQTT_EXIT_FUNCTION();
-
-    return errorCodeOrQos;
-}
-
-// Unsubscribe from an MQTT topic.
-int32_t uCellMqttUnsubscribe(uDeviceHandle_t cellHandle,
-                             const char *pTopicFilterStr)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance = NULL;
-    volatile uCellMqttContext_t *pContext;
-    volatile uCellMqttUrcStatus_t *pUrcStatus;
-    uAtClientHandle_t atHandle;
-    int32_t status = 1;
-    int64_t stopTimeMs;
-
-    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
-
-    if ((errorCode == 0) && (pInstance != NULL)) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
-        pUrcStatus = &(pContext->urcStatus);
-        if ((pTopicFilterStr != NULL) &&
-            (strlen(pTopicFilterStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) {
-            errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            pUrcStatus->flagsBitmap = 0;
-            uAtClientCommandStart(atHandle, "AT+UMQTTC=");
-            // Unsubscribe from a topic
-            uAtClientWriteInt(atHandle, 5);
-            // Topic
-            uAtClientWriteString(atHandle, pTopicFilterStr, true);
-            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UMQTTC:");
-                // Skip the first parameter, which is just
-                // our UMQTTC command number again
-                uAtClientSkipParameters(atHandle, 1);
-                status = uAtClientReadInt(atHandle);
-                uAtClientResponseStop(atHandle);
-            } else {
-                uAtClientCommandStopReadResponse(atHandle);
-            }
-
-            if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
-                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                } else {
-                    // If this is the new syntax we need to wait
-                    // for a URC to say that the unsubscribe has succeeded
-                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                    stopTimeMs = uPortGetTickTimeMs() +
-                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED)) == 0) &&
-                           (uPortGetTickTimeMs() < stopTimeMs) &&
-                           ((pContext->pKeepGoingCallback == NULL) ||
-                            pContext->pKeepGoingCallback())) {
-                        uPortTaskBlock(1000);
-                    }
-                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS)) != 0) {
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    } else {
-                        printErrorCodes(atHandle);
-                    }
-                }
-            } else {
-                printErrorCodes(atHandle);
-            }
-        }
-    }
-
-    U_CELL_MQTT_EXIT_FUNCTION();
-
-    return errorCode;
-}
-
 // Set a callback to be called when new messages arrive.
 int32_t uCellMqttSetMessageCallback(uDeviceHandle_t cellHandle,
                                     void (*pCallback) (int32_t, void *),
@@ -2482,179 +2924,6 @@ int32_t uCellMqttGetUnread(uDeviceHandle_t cellHandle)
     return errorCodeOrUnread;
 }
 
-// Read an MQTT message.
-int32_t uCellMqttMessageRead(uDeviceHandle_t cellHandle, char *pTopicNameStr,
-                             size_t topicNameSizeBytes,
-                             char *pMessage, size_t *pMessageSizeBytes,
-                             uCellMqttQos_t *pQos)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance = NULL;
-    volatile uCellMqttContext_t *pContext;
-    volatile uCellMqttUrcMessage_t *pUrcMessage = NULL;
-    uAtClientHandle_t atHandle;
-    size_t messageSizeBytes = 0;
-    int32_t status;
-    int64_t stopTimeMs;
-    uCellMqttQos_t qos;
-    int32_t topicNameBytesRead;
-    int32_t messageBytesAvailable;
-    int32_t messageBytesRead = 0;
-    int32_t topicBytesAvailable;
-
-    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
-
-    if ((errorCode == 0) && (pInstance != NULL)) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if ((pTopicNameStr != NULL) &&
-            ((pMessageSizeBytes != NULL) || (pMessage == NULL))) {
-            pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
-            pUrcMessage = pContext->pUrcMessage;
-            if (pMessageSizeBytes != NULL) {
-                messageSizeBytes = *pMessageSizeBytes;
-            }
-            errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
-            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                U_ASSERT(pUrcMessage != NULL);
-                // For the old-style SARA-R4 interface we need a URC capture
-                U_ASSERT(U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType));
-                pUrcMessage->messageRead = false;
-                pUrcMessage->pTopicNameStr = pTopicNameStr;
-                pUrcMessage->topicNameSizeBytes = (int32_t) topicNameSizeBytes;
-                pUrcMessage->pMessage = pMessage;
-                pUrcMessage->messageSizeBytes = (int32_t) messageSizeBytes;
-            }
-            atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            uAtClientCommandStart(atHandle, "AT+UMQTTC=");
-            // Read a message
-            uAtClientWriteInt(atHandle, 6);
-            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                // We get a standard indication
-                // of success here then we need
-                // to wait for a URC to get the
-                // message
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UMQTTC:");
-                // Skip the first parameter, which is just
-                // our UMQTTC command number again
-                uAtClientSkipParameters(atHandle, 1);
-                status = uAtClientReadInt(atHandle);
-                uAtClientResponseStop(atHandle);
-                if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
-                    // Wait for a URC containing the message
-                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                    stopTimeMs = uPortGetTickTimeMs() +
-                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                    while (!pUrcMessage->messageRead &&
-                           (uPortGetTickTimeMs() < stopTimeMs) &&
-                           ((pContext->pKeepGoingCallback == NULL) ||
-                            pContext->pKeepGoingCallback())) {
-                        uPortTaskBlock(1000);
-                    }
-                    if (pUrcMessage->messageRead) {
-                        if (pContext->numUnreadMessages > 0) {
-                            pContext->numUnreadMessages--;
-                        }
-                        if (pMessageSizeBytes != NULL) {
-                            *pMessageSizeBytes = pUrcMessage->messageSizeBytes;
-                        }
-                        if (pQos != NULL) {
-                            *pQos = pUrcMessage->qos;
-                        }
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    } else {
-                        printErrorCodes(atHandle);
-                    }
-                }
-            } else {
-                // We want just the one message
-                uAtClientWriteInt(atHandle, 1);
-                uAtClientCommandStop(atHandle);
-                uAtClientResponseStart(atHandle, "+UMQTTC:");
-                // The message now arrives directly
-                // Skip the first parameter, which is just
-                // our UMQTTC command number again
-                uAtClientSkipParameters(atHandle, 1);
-                // Next comes the QoS
-                qos = (uCellMqttQos_t) uAtClientReadInt(atHandle);
-                // Then we can skip the length of
-                // the topic and message added together
-                uAtClientSkipParameters(atHandle, 1);
-                // Read the topic name length
-                topicBytesAvailable = uAtClientReadInt(atHandle);
-                // Now read the part of the topic name string
-                // we can absorb
-                if ((int32_t) topicNameSizeBytes > topicBytesAvailable) {
-                    topicNameSizeBytes = topicBytesAvailable;
-                }
-                topicNameBytesRead = uAtClientReadString(atHandle,
-                                                         pTopicNameStr,
-                                                         topicNameSizeBytes + 1, // +1 for terminator
-                                                         false);
-                // Read the number of message bytes to follow
-                messageBytesAvailable = uAtClientReadInt(atHandle);
-                if (messageBytesAvailable > 0) {
-                    if ((int32_t) messageSizeBytes > messageBytesAvailable) {
-                        messageSizeBytes = messageBytesAvailable;
-                    }
-                    // Now read the message bytes, being careful
-                    // to not look for stop tags as this can be
-                    // a binary message
-                    uAtClientIgnoreStopTag(atHandle);
-                    // Get the leading quote mark out of the way
-                    uAtClientReadBytes(atHandle, NULL, 1, true);
-                    // Now read out all the actual data,
-                    // first the bit we want
-                    messageBytesRead = uAtClientReadBytes(atHandle, pMessage,
-                                                          messageSizeBytes, true);
-                    if (messageBytesAvailable > messageBytesRead) {
-                        //...and then the rest poured away to NULL
-                        uAtClientReadBytes(atHandle, NULL,
-                                           // Cast in two stages to keep Lint happy
-                                           (size_t) (unsigned) (messageBytesAvailable -
-                                                                messageBytesRead), false);
-                    }
-                }
-                // Make sure to wait for the stop tag before
-                // we finish
-                uAtClientRestoreStopTag(atHandle);
-                uAtClientResponseStop(atHandle);
-                if (uAtClientUnlock(atHandle) == 0) {
-                    // Now have all the bits, check them
-                    if ((topicNameBytesRead >= 0) &&
-                        //lint -e(568) Suppress value never being negative,
-                        // I feel safer checking
-                        ((int32_t) qos >= 0) &&
-                        (qos < U_CELL_MQTT_QOS_MAX_NUM)) {
-                        // Good.  Topic and message have
-                        // already been done above,
-                        // now fill in the other bits
-                        if (pMessageSizeBytes != NULL) {
-                            *pMessageSizeBytes = messageBytesRead;
-                        }
-                        if (pQos != NULL) {
-                            *pQos = qos;
-                        }
-                        if (pContext->numUnreadMessages > 0) {
-                            pContext->numUnreadMessages--;
-                        }
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    }
-                } else {
-                    printErrorCodes(atHandle);
-                }
-            }
-        }
-    }
-
-    U_CELL_MQTT_EXIT_FUNCTION();
-
-    return errorCode;
-}
-
 // Get the last MQTT error code.
 int32_t uCellMqttGetLastErrorCode(uDeviceHandle_t cellHandle)
 {
@@ -2664,24 +2933,12 @@ int32_t uCellMqttGetLastErrorCode(uDeviceHandle_t cellHandle)
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
     if ((errorCode == 0) && (pInstance != NULL)) {
-        errorCode = getLastMqttErrorCode(pInstance->atHandle);
+        errorCode = getLastMqttErrorCode(pInstance);
     }
 
     U_CELL_MQTT_EXIT_FUNCTION();
 
     return errorCode;
-}
-
-// Determine if MQTT is supported by the given cellHandle.
-bool uCellMqttIsSupported(uDeviceHandle_t cellHandle)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    uCellPrivateInstance_t *pInstance = NULL;
-
-    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, false);
-    U_CELL_MQTT_EXIT_FUNCTION();
-
-    return (errorCode == 0);
 }
 
 // Set a callback for when the MQTT connection is dropped.
@@ -2698,6 +2955,572 @@ int32_t uCellMqttSetDisconnectCallback(uDeviceHandle_t cellHandle,
         ((volatile uCellMqttContext_t *) pInstance->pMqttContext)->pDisconnectCallback = pCallback;
         ((volatile uCellMqttContext_t *) pInstance->pMqttContext)->pDisconnectCallbackParam =
             pCallbackParam;
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: MQTT ONLY
+ * -------------------------------------------------------------- */
+
+// Determine if MQTT is supported by the given cellHandle.
+bool uCellMqttIsSupported(uDeviceHandle_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, false);
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return (pInstance != NULL ? U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                                   U_CELL_PRIVATE_FEATURE_MQTT) : false);
+}
+
+// Set the local port to use for the MQTT client.
+int32_t uCellMqttSetLocalPort(uDeviceHandle_t cellHandle, uint16_t port)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    uAtClientHandle_t atHandle;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (!pContext->mqttSn &&
+            U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)) {
+            atHandle = pInstance->atHandle;
+            uAtClientLock(atHandle);
+            // Don't need to worry about the MQTT-SN form of the AT
+            // command here since the setting the local port is not
+            // supported for MQTT-SN
+            uAtClientCommandStart(atHandle, "AT+UMQTT=");
+            // Set the local port
+            uAtClientWriteInt(atHandle, 1);
+            uAtClientWriteInt(atHandle, port);
+            errorCode = atMqttStopCmdGetRespAndUnlock(pInstance);
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Publish an MQTT message.
+int32_t uCellMqttPublish(uDeviceHandle_t cellHandle,
+                         const char *pTopicNameStr,
+                         const char *pMessage,
+                         size_t messageSizeBytes,
+                         uCellMqttQos_t qos, bool retain)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT) &&
+            !pContext->mqttSn) {
+            errorCode = publish(pInstance, pTopicNameStr, -1,
+                                pMessage, messageSizeBytes, qos, retain);
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Subscribe to an MQTT topic.
+int32_t uCellMqttSubscribe(uDeviceHandle_t cellHandle,
+                           const char *pTopicFilterStr,
+                           uCellMqttQos_t maxQos)
+{
+    int32_t errorCodeOrQos = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCodeOrQos, true);
+
+    if ((errorCodeOrQos == 0) && (pInstance != NULL)) {
+        errorCodeOrQos = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT) &&
+            !pContext->mqttSn) {
+            errorCodeOrQos = subscribe(pInstance, pTopicFilterStr, -1,
+                                       maxQos, NULL);
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCodeOrQos;
+}
+
+// Unsubscribe from an MQTT topic.
+int32_t uCellMqttUnsubscribe(uDeviceHandle_t cellHandle,
+                             const char *pTopicFilterStr)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT) &&
+            !pContext->mqttSn) {
+            errorCode = unsubscribe(pInstance, pTopicFilterStr, -1);
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Read an MQTT message.
+int32_t uCellMqttMessageRead(uDeviceHandle_t cellHandle,
+                             char *pTopicNameStr,
+                             size_t topicNameSizeBytes,
+                             char *pMessage, size_t *pMessageSizeBytes,
+                             uCellMqttQos_t *pQos)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTT) &&
+            !pContext->mqttSn) {
+            errorCode = readMessage(pInstance, pTopicNameStr,
+                                    topicNameSizeBytes, NULL,
+                                    pMessage, pMessageSizeBytes, pQos);
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS: MQTT-SN ONLY
+ * -------------------------------------------------------------- */
+
+// Determine if MQTT-SN is supported by the given cellHandle.
+bool uCellMqttSnIsSupported(uDeviceHandle_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, false);
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return (pInstance != NULL ? U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                                   U_CELL_PRIVATE_FEATURE_MQTTSN) : false);
+}
+
+// Ask the MQTT-SN broker for a topic ID for a normal MQTT topic.
+int32_t uCellMqttSnRegisterNormalTopic(uDeviceHandle_t cellHandle,
+                                       const char *pTopicNameStr,
+                                       uCellMqttSnTopicName_t *pTopicName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    volatile uCellMqttUrcStatus_t *pUrcStatus;
+    uAtClientHandle_t atHandle;
+    int64_t stopTimeMs;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTTSN) &&
+            pContext->mqttSn) {
+            errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            pUrcStatus = &(pContext->urcStatus);
+            if ((pTopicNameStr != NULL) && (pTopicName != NULL)) {
+                errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                pUrcStatus->flagsBitmap = 0;
+                // Don't need to worry about the MQTT form of the AT
+                // command here since this is MQTT-SN only
+                uAtClientCommandStart(atHandle, "AT+UMQTTSNC=");
+                // Register a topic
+                uAtClientWriteInt(atHandle, 2);
+                // The topic
+                uAtClientWriteString(atHandle, pTopicNameStr, true);
+                uAtClientCommandStopReadResponse(atHandle);
+                if (uAtClientUnlock(atHandle) == 0) {
+                    // Wait for a URC to get the ID
+                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    stopTimeMs = uPortGetTickTimeMs() +
+                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_REGISTER_UPDATED)) == 0) &&
+                           (uPortGetTickTimeMs() < stopTimeMs) &&
+                           ((pContext->pKeepGoingCallback == NULL) ||
+                            pContext->pKeepGoingCallback())) {
+                        uPortTaskBlock(1000);
+                    }
+                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_REGISTER_SUCCESS)) != 0) {
+                        pTopicName->name.id = (uint16_t) pUrcStatus->topicId;
+                        pTopicName->type = U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL;
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    } else {
+                        printErrorCodes(pInstance);
+                    }
+                }
+            }
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Publish a message.
+int32_t uCellMqttSnPublish(uDeviceHandle_t cellHandle,
+                           const uCellMqttSnTopicName_t *pTopicName,
+                           const char *pMessage,
+                           size_t messageSizeBytes,
+                           uCellMqttQos_t qos, bool retain)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    char topicNameStr[U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES];
+    int32_t topicNameType;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTTSN) &&
+            pContext->mqttSn) {
+            errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            topicNameType = mqttSnTopicNameToStr(pTopicName, topicNameStr);
+            if (topicNameType >= 0) {
+                errorCode = publish(pInstance, topicNameStr,
+                                    topicNameType, pMessage,
+                                    messageSizeBytes, qos, retain);
+            }
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Subscribe to an MQTT-SN topic.
+int32_t uCellMqttSnSubscribe(uDeviceHandle_t cellHandle,
+                             const uCellMqttSnTopicName_t *pTopicName,
+                             uCellMqttQos_t maxQos)
+{
+    int32_t errorCodeOrQos = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    char topicNameStr[U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES];
+    int32_t topicNameType;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCodeOrQos, true);
+
+    if ((errorCodeOrQos == 0) && (pInstance != NULL)) {
+        errorCodeOrQos = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTTSN) &&
+            pContext->mqttSn) {
+            errorCodeOrQos = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            topicNameType = mqttSnTopicNameToStr(pTopicName, topicNameStr);
+            if (topicNameType >= 0) {
+                errorCodeOrQos = subscribe(pInstance, topicNameStr,
+                                           topicNameType, maxQos, NULL);
+            }
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCodeOrQos;
+}
+
+// Subscribe to a normal MQTT topic.
+int32_t uCellMqttSnSubscribeNormalTopic(uDeviceHandle_t cellHandle,
+                                        const char *pTopicFilterStr,
+                                        uCellMqttQos_t maxQos,
+                                        uCellMqttSnTopicName_t *pTopicName)
+{
+    int32_t errorCodeOrQos = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCodeOrQos, true);
+
+    if ((errorCodeOrQos == 0) && (pInstance != NULL)) {
+        errorCodeOrQos = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTTSN) &&
+            pContext->mqttSn) {
+            errorCodeOrQos = subscribe(pInstance, pTopicFilterStr, -1,
+                                       maxQos, &(pTopicName->name.id));
+            if (errorCodeOrQos >= 0) {
+                pTopicName->type = U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL;
+            }
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCodeOrQos;
+}
+
+// Unsubscribe from an MQTT-SN topic.
+int32_t uCellMqttSnUnsubscribe(uDeviceHandle_t cellHandle,
+                               const uCellMqttSnTopicName_t *pTopicName)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    char topicNameStr[U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES];
+    int32_t topicNameType;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTTSN) &&
+            pContext->mqttSn) {
+            errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            topicNameType = mqttSnTopicNameToStr(pTopicName, topicNameStr);
+            if (topicNameType >= 0) {
+                errorCode = unsubscribe(pInstance, topicNameStr, topicNameType);
+            }
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Unsubscribe from a normal MQTT topic.
+int32_t uCellMqttSnUnsubscribeNormalTopic(uDeviceHandle_t cellHandle,
+                                          const char *pTopicFilterStr)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTTSN) &&
+            pContext->mqttSn) {
+            // Note: even though it's not an ID, the MQTT SN topic type
+            // is still "normal" for this case
+            errorCode = unsubscribe(pInstance, pTopicFilterStr,
+                                    (int32_t) U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL);
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Read a message.
+int32_t uCellMqttSnMessageRead(uDeviceHandle_t cellHandle,
+                               uCellMqttSnTopicName_t *pTopicName,
+                               char *pMessage, size_t *pMessageSizeBytes,
+                               uCellMqttQos_t *pQos)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    char topicNameStr[U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES];
+    int32_t topicNameType;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTTSN) &&
+            pContext->mqttSn) {
+            errorCode = readMessage(pInstance, topicNameStr, sizeof(topicNameStr),
+                                    &topicNameType, pMessage, pMessageSizeBytes,
+                                    pQos);
+            if (errorCode == 0) {
+                pTopicName->name.id = (uint16_t) strtol(topicNameStr, NULL, 10);
+                pTopicName->type = (uCellMqttSnTopicNameType_t) topicNameType;
+            }
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Update an existing MQTT "will" message.
+int32_t uCellMqttSnSetWillMessaage(uDeviceHandle_t cellHandle,
+                                   const char *pMessage,
+                                   size_t messageSizeBytes)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    volatile uCellMqttUrcStatus_t *pUrcStatus;
+    uAtClientHandle_t atHandle;
+    int64_t stopTimeMs;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTTSN) &&
+            pContext->mqttSn) {
+            errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            if (messageSizeBytes == strlen(pMessage) && isPrintNoQuotes(pMessage, messageSizeBytes)) {
+                errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                pUrcStatus = &(pContext->urcStatus);
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                pUrcStatus->flagsBitmap = 0;
+                // Don't need to worry about the MQTT form of the AT
+                // command here since this is MQTT-SN only
+                uAtClientCommandStart(atHandle, "AT+UMQTTSNC=");
+                // "will" message update
+                uAtClientWriteInt(atHandle, 8);
+                // The new "will" message
+                uAtClientWriteString(atHandle, pMessage, true);
+                uAtClientCommandStopReadResponse(atHandle);
+                if (uAtClientUnlock(atHandle) == 0) {
+                    // Wait for a URC to indicate success
+                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    stopTimeMs = uPortGetTickTimeMs() +
+                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_UPDATED)) == 0) &&
+                           (uPortGetTickTimeMs() < stopTimeMs) &&
+                           ((pContext->pKeepGoingCallback == NULL) ||
+                            pContext->pKeepGoingCallback())) {
+                        uPortTaskBlock(1000);
+                    }
+                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_SUCCESS)) != 0) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    } else {
+                        printErrorCodes(pInstance);
+                    }
+                }
+            }
+        }
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCode;
+}
+
+// Update the parameters for an existing MQTT "will".
+int32_t uCellMqttSnSetWillParameters(uDeviceHandle_t cellHandle,
+                                     const char *pTopicNameStr,
+                                     uCellMqttQos_t qos, bool retain)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+    volatile uCellMqttUrcStatus_t *pUrcStatus;
+    uAtClientHandle_t atHandle;
+    int64_t stopTimeMs;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
+
+    if ((errorCode == 0) && (pInstance != NULL)) {
+        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                               U_CELL_PRIVATE_FEATURE_MQTTSN) &&
+            pContext->mqttSn) {
+            errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            //lint -e(568) Suppress value never being negative, who knows
+            // what warnings levels a customer might compile with
+            if (((int32_t) qos >= 0) && (qos < U_CELL_MQTT_QOS_MAX_NUM) &&
+                (pTopicNameStr != NULL) &&
+                (strlen(pTopicNameStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) {
+                errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
+                pUrcStatus = &(pContext->urcStatus);
+                atHandle = pInstance->atHandle;
+                uAtClientLock(atHandle);
+                pUrcStatus->flagsBitmap = 0;
+                // Don't need to worry about the MQTT form of the AT
+                // command here since this is MQTT-SN only
+                uAtClientCommandStart(atHandle, "AT+UMQTTSNC=");
+                // "will" parameters update
+                uAtClientWriteInt(atHandle, 7);
+                // The QoS
+                uAtClientWriteInt(atHandle, (int32_t) qos);
+                // Retention
+                uAtClientWriteInt(atHandle, (int32_t) retain);
+                // The topic string
+                uAtClientWriteString(atHandle, pTopicNameStr, true);
+                uAtClientCommandStopReadResponse(atHandle);
+                if (uAtClientUnlock(atHandle) == 0) {
+                    // Wait for a URC to indicate success
+                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    stopTimeMs = uPortGetTickTimeMs() +
+                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_UPDATED)) == 0) &&
+                           (uPortGetTickTimeMs() < stopTimeMs) &&
+                           ((pContext->pKeepGoingCallback == NULL) ||
+                            pContext->pKeepGoingCallback())) {
+                        uPortTaskBlock(1000);
+                    }
+                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_SUCCESS)) != 0) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    } else {
+                        printErrorCodes(pInstance);
+                    }
+                }
+            }
+        }
     }
 
     U_CELL_MQTT_EXIT_FUNCTION();
