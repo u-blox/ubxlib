@@ -194,7 +194,7 @@ static int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
         (atHandle == NULL) || (pModule == NULL)) {
         return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     }
-    pDevInstance = uDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE);
+    pDevInstance = pUDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE);
     if (pDevInstance == NULL) {
         return (int32_t) U_ERROR_COMMON_NO_MEMORY;
     }

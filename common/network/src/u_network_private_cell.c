@@ -62,6 +62,12 @@
 # define U_NETWORK_PRIVATE_CELL_MAX_NUM 3
 #endif
 
+#ifndef U_NETWORK_PRIVATE_CELL_POWER_ON_GUARD_TIME_SECONDS
+/** How long the cellular module is allowed to power-on.
+ */
+# define U_NETWORK_PRIVATE_CELL_POWER_ON_GUARD_TIME_SECONDS 60
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -204,7 +210,7 @@ int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
                     pInstance->devHandle = *pDevHandle;
                     // Set the timeout
                     pInstance->stopTimeMs = uPortGetTickTimeMs() +
-                                            (((int64_t) pConfiguration->timeoutSeconds) * 1000);
+                                            (U_NETWORK_PRIVATE_CELL_POWER_ON_GUARD_TIME_SECONDS * 1000);
 #if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
                     // For the special case of DTR power saving the DTR pin,
                     // which is not in the configuration structure, is set

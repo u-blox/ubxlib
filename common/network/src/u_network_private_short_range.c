@@ -231,7 +231,7 @@ int32_t uNetworkAddShortRange(uNetworkType_t netType,
                 return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
             }
             // We now need to create a new uDeviceHandle_t with correct network type
-            *ppTargetHandle = uDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE);
+            *ppTargetHandle = pUDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE);
             if (*ppTargetHandle == NULL) {
                 return (int32_t) U_ERROR_COMMON_NO_MEMORY;
             }

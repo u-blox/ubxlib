@@ -21,6 +21,8 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
+#include "u_network.h"
 #include "u_device.h"
 
 /** @file
@@ -45,21 +47,11 @@ extern "C" {
 /** Convenience macro to check if a uDeviceHandle_t is of a specific uDeviceType_t.
  */
 #define U_DEVICE_IS_TYPE(devHandle, devType) \
-    (devHandle == NULL ? false : U_DEVICE_INSTANCE(devHandle)->type == devType)
+    (devHandle == NULL ? false : U_DEVICE_INSTANCE(devHandle)->deviceType == devType)
 
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-
-
-/** The type u-blox device type.
- */
-typedef enum {
-    U_DEVICE_TYPE_CELL,
-    U_DEVICE_TYPE_GNSS,
-    U_DEVICE_TYPE_SHORT_RANGE,
-    U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU
-} uDeviceType_t;
 
 /** Internal data structure that uDeviceHandle_t points at.
  *  This structure may be "inherited" by each device type to provide
@@ -67,7 +59,11 @@ typedef enum {
  */
 typedef struct {
     uint32_t magic;             /**< Magic number for detecting a stale uDeviceInstance_t.*/
-    uDeviceType_t type;         /**< u-blox device type.*/
+    uDeviceType_t deviceType;   /**< Type of device.*/
+    int32_t module;             /**< Module identification (when applicable).*/
+    const void
+    *pNetworkCfg[U_NETWORK_TYPE_MAX_NUM]; /**< Network configuration for the device interfaces.*/
+
     // TODO: Add structs of function pointers here for socket-, MQTT-implementation etc.
     int32_t netType;            /**< This is only temporarily used for migration for the new uDevice API.
                                      It should be removed when uNetwork have been adjusted.*/
@@ -87,16 +83,16 @@ typedef struct {
  *
  * @return      an allocated uDeviceInstance_t struct or NULL if out of memory.
  */
-uDeviceInstance_t *uDeviceCreateInstance(uDeviceType_t type);
+uDeviceInstance_t *pUDeviceCreateInstance(uDeviceType_t type);
 
-/** Destroy/deallocate a device instance created by uDeviceCreateInstance.
+/** Destroy/deallocate a device instance created by pUDeviceCreateInstance.
  *
  * @param pInstance  the instance to destroy.
  */
 void uDeviceDestroyInstance(uDeviceInstance_t *pInstance);
 
 /** Initialize a device instance.
- * This is useful when uDeviceCreateInstance() is not used and the uDeviceInstance_t
+ * This is useful when pUDeviceCreateInstance() is not used and the uDeviceInstance_t
  * is allocated manually.
  *
  * @param pInstance  the device instance to initialize.
@@ -123,7 +119,7 @@ bool uDeviceIsValidInstance(const uDeviceInstance_t *pInstance);
 int32_t uDeviceGetInstance(uDeviceHandle_t devHandle,
                            uDeviceInstance_t **ppInstance);
 
-/** Get a device instance from a device handle.
+/** Get a device type from a device handle.
  * This will also validate the handle.
  *
  * @param devHandle  the device handle.

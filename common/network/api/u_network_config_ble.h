@@ -69,6 +69,12 @@ typedef struct {
     bool spsServer; /**< True if sps server is to be enabled. */
 } uNetworkConfigurationBle_t;
 
+typedef struct {
+    int32_t role;   /**< Peripheral, central or, peripheral and central,
+                         see uShortRangeBleRole_t in u_short_range.h. */
+    bool spsServer; /**< True if sps server is to be enabled. */
+} uDeviceNetworkCfgBle_t;
+
 #endif // _U_NETWORK_CONFIG_BLE_H_
 
 // End of file

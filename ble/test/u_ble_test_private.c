@@ -142,7 +142,7 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
             // TODO: Use uDeviceOpen() here
             pParameters->devHandle =
-                (uDeviceHandle_t)uDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU);
+                (uDeviceHandle_t)pUDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU);
         }
     }
     (void)moduleType;

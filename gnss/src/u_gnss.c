@@ -226,7 +226,7 @@ int32_t uGnssAdd(uGnssModuleType_t moduleType,
         uDeviceInstance_t *pDevInstance;
 
         errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-        pDevInstance = uDeviceCreateInstance(U_DEVICE_TYPE_GNSS);
+        pDevInstance = pUDeviceCreateInstance(U_DEVICE_TYPE_GNSS);
 
         if (pDevInstance != NULL) {
 

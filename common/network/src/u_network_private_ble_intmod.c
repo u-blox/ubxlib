@@ -93,7 +93,7 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
     if ((uBleModuleType_t)pConfiguration->module == U_BLE_MODULE_TYPE_INTERNAL) {
         errorCode = (int32_t)U_ERROR_COMMON_NO_MEMORY;
         *pDevHandle =
-            (uDeviceHandle_t)uDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU);
+            (uDeviceHandle_t)pUDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU);
         if (*pDevHandle != NULL) {
             errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
         }

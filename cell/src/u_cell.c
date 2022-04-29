@@ -213,7 +213,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
         uDeviceInstance_t *pDevInstance;
 
         handleOrErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-        pDevInstance = uDeviceCreateInstance(U_DEVICE_TYPE_CELL);
+        pDevInstance = pUDeviceCreateInstance(U_DEVICE_TYPE_CELL);
         if (pDevInstance != NULL) {
 
             U_PORT_MUTEX_LOCK(gUCellPrivateMutex);

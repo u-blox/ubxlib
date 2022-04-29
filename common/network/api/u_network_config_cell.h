@@ -80,6 +80,13 @@ typedef struct {
                            if there is no such connection. */
 } uNetworkConfigurationCell_t;
 
+typedef struct {
+    const char *pPin; /**< The PIN of the SIM. */
+    const char *pApn; /**< The APN to use; if left as NULL
+                           a database look-up will be used. */
+    int32_t timeoutSeconds; /**< Timeout when connecting, in seconds. */
+} uDeviceNetworkCfgCell_t;
+
 #endif // _U_NETWORK_CONFIG_CELL_H_
 
 // End of file

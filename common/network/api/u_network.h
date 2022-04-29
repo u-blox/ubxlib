@@ -95,6 +95,35 @@ int32_t uNetworkInit();
  */
 void uNetworkDeinit();
 
+/** Configure a network interface of a u-blox device
+ *
+ * @param devHandle       handle received from uDeviceOpen
+ * @param networkType      type of network, must be valid for
+ *                         this device
+ * @param pConfiguration   a pointer to the configuration
+ *                         information for the given network
+ *                         type.  This must be stored
+ *                         statically, a true constant: the
+ *                         contents are not copied by this
+ *                         function. The configuration
+ *                         structures are defined by this
+ *                         API in the u_network_xxx.h header
+ *                         files and have the name
+ *                         uNetworkConfigurationXxx_t, where
+ *                         xxx is replaced by one of Cell,
+ *                         Ble or Wifi.  The configuration
+ *                         is passed transparently through to
+ *                         the given API, hence the use of
+ *                         void * here. The first entry in
+ *                         all of these structures is of type
+ *                         uNetworkType_t to indicate the
+ *                         type and allow cross-checking.
+ * @return                 zero on success or negative error
+ *                         code on failure.
+ */
+int32_t uNetworkConfigure(uDeviceHandle_t devHandle, uNetworkType_t networkType,
+                          const void *pConfiguration);
+
 /** Add a network instance. When this returns successfully
  * the module is powered up and available for configuration but
  * is not yet connected to anything.
@@ -162,6 +191,28 @@ int32_t uNetworkUp(uDeviceHandle_t devHandle);
  * @return          zero on success else negative error code.
  */
 int32_t uNetworkDown(uDeviceHandle_t devHandle);
+
+/** Bring up the given network interface on a device, connecting it as defined
+ * in the configuration passed to uNetworkConfigure(). If the network
+ * is already up the implementation should return success without
+ * doing anything.
+ *
+ * @param devHandle the handle of the device to bring up.
+ * @param netType   which of the module interfaces.
+ * @return          zero on success else negative error code.
+ */
+int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType);
+
+/** Take down the given network interface on a device, disconnecting
+ * it from any peer entity.  After this function returns
+ * uNetworkInterfaceUp() must be called once more to ensure that the
+ * module is brought back to a responsive state.
+ *
+ * @param devHandle the handle of the device to take down.
+ * @param netType   which of the module interfaces.
+ * @return          zero on success else negative error code.
+ */
+int32_t uNetworkInterfaceDown(uDeviceHandle_t devHandle, uNetworkType_t netType);
 
 #ifdef __cplusplus
 }
