@@ -556,7 +556,6 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
         if ((pBuffer != NULL) && (sizeBytes > 0) && (handle >= 0) &&
             (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
             (gUartData[handle].pDevice != NULL)) {
-            errorCode = U_ERROR_COMMON_NOT_INITIALISED;
 
             U_PORT_MUTEX_LOCK(gMutex);
 

@@ -2529,6 +2529,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
 
     // Start the critical section
     startTimeMs = uPortGetTickTimeMs();
+    (void)startTimeMs; // Suppress value not being read (it is for Windows)
     errorCode = uPortEnterCritical();
     // Note: don't assert inside here as we don't want to leave this test
     // with the critical section active, instead just set errorFlag to indicate

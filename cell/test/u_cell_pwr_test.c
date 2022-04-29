@@ -325,9 +325,6 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
         uPortLog("U_CELL_PWR_TEST: waiting %d second(s) before powering off...\n",
                  pModule->minAwakeTimeSeconds);
         uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
-# if U_CFG_APP_PIN_CELL_VINT < 0
-        timeMs = uPortGetTickTimeMs();
-# endif
         // Test with and without a keep-going callback
         if (x > 0) {
             // Note: can't check if keepGoingCallback is being

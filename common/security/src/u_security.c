@@ -199,7 +199,6 @@ int32_t uSecurityGetSerialNumber(int32_t networkHandle,
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (pSerialNumber != NULL) {
-        errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
         if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
             errorCodeOrSize = uCellSecGetSerialNumber(networkHandle,
                                                       pSerialNumber);

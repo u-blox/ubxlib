@@ -1924,7 +1924,6 @@ int32_t uSockSendTo(uSockDescriptor_t descriptor,
         pContainer = pContainerFindByDescriptor(descriptor);
         if (pContainer != NULL) {
             // Check address and state
-            errnoLocal = U_SOCK_EDESTADDRREQ;
             if (pRemoteAddress != NULL) {
                 errnoLocal = U_SOCK_ENONE;
             } else {
@@ -2266,7 +2265,6 @@ int32_t uSockShutdown(uSockDescriptor_t descriptor,
         pContainer = pContainerFindByDescriptor(descriptor);
         if (pContainer != NULL) {
             // Set the socket state
-            errnoLocal = U_SOCK_EINVAL;
             switch (how) {
                 case U_SOCK_SHUTDOWN_READ:
                     pContainer->socket.state = U_SOCK_STATE_SHUTDOWN_FOR_READ;
@@ -2281,6 +2279,7 @@ int32_t uSockShutdown(uSockDescriptor_t descriptor,
                     errnoLocal = U_SOCK_ENONE;
                     break;
                 default:
+                    errnoLocal = U_SOCK_EINVAL;
                     break;
             }
         }
