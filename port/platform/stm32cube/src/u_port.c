@@ -23,6 +23,7 @@
 #endif
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
+#include "inttypes.h"
 #include "stdbool.h"
 
 #include "u_compiler.h" // For U_INLINE
@@ -106,7 +107,7 @@ void assert_failed(uint8_t *pFile, uint32_t line)
 {
     // printf() rather than uPortLog so that it is always
     // emitted, irrespective of whether debug is on or not
-    printf("assert %s: %lu\n", pFile, line);
+    printf("assert %s: %"PRIu32"\n", pFile, line);
     U_ASSERT(false);
 }
 #endif /* USE_FULL_ASSERT */

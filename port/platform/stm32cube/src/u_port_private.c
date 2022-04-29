@@ -269,6 +269,7 @@ static void timerCallback(TimerHandle_t handle)
         // handle as the payload, IRQ version so as never
         // to block
         uPortEventQueueSendIrq(gEventQueueHandle,
+                               // NOLINTNEXTLINE(bugprone-sizeof-expression)
                                &handle, sizeof(handle));
     }
 }
@@ -428,7 +429,7 @@ int64_t uPortPrivateGetTickTimeMs()
  * -------------------------------------------------------------- */
 
 // Return the base address for a given GPIO pin.
-GPIO_TypeDef *const pUPortPrivateGpioGetReg(int32_t pin)
+GPIO_TypeDef *pUPortPrivateGpioGetReg(int32_t pin)
 {
     int32_t port = U_PORT_STM32F4_GPIO_PORT(pin);
 

@@ -139,6 +139,12 @@ typedef struct {
     uint32_t eventBitMap;
 } uPortUartEvent_t;
 
+/** Function pointers for STM32Cube functions
+ */
+typedef void (*uClockEnFunc_t)(uint32_t);
+typedef void (*uDmaFunc_t)(DMA_TypeDef *);
+typedef uint32_t (*uDmaActiveFunc_t)(DMA_TypeDef *);
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -153,170 +159,186 @@ static uPortMutexHandle_t gMutex = NULL;
 static int32_t gNextHandle = 0;
 
 // Get the bus enable function for the given UART/USART.
-static const void (*gLlApbClkEnable[])(uint32_t) = {0, // This to avoid having to -1 all the time
-                                                    LL_APB2_GRP1_EnableClock,
-                                                    LL_APB1_GRP1_EnableClock,
-                                                    LL_APB1_GRP1_EnableClock,
-                                                    LL_APB1_GRP1_EnableClock,
-                                                    LL_APB1_GRP1_EnableClock,
-                                                    LL_APB2_GRP1_EnableClock,
-                                                    LL_APB1_GRP1_EnableClock,
-                                                    LL_APB1_GRP1_EnableClock
-                                                   };
+static const uClockEnFunc_t gLlApbClkEnable[] = {
+    0, // This to avoid having to -1 all the time
+    LL_APB2_GRP1_EnableClock,
+    LL_APB1_GRP1_EnableClock,
+    LL_APB1_GRP1_EnableClock,
+    LL_APB1_GRP1_EnableClock,
+    LL_APB1_GRP1_EnableClock,
+    LL_APB2_GRP1_EnableClock,
+    LL_APB1_GRP1_EnableClock,
+    LL_APB1_GRP1_EnableClock
+};
 
 // Get the LL driver peripheral number for a given UART/USART.
-static const uint32_t gLlApbGrpPeriphUart[] = {0, // This to avoid having to -1 all the time
-                                               LL_APB2_GRP1_PERIPH_USART1,
-                                               LL_APB1_GRP1_PERIPH_USART2,
-                                               LL_APB1_GRP1_PERIPH_USART3,
-                                               LL_APB1_GRP1_PERIPH_UART4,
-                                               LL_APB1_GRP1_PERIPH_UART5,
-                                               LL_APB2_GRP1_PERIPH_USART6,
-                                               LL_APB1_GRP1_PERIPH_UART7,
-                                               LL_APB1_GRP1_PERIPH_UART8
-                                              };
+static const uint32_t gLlApbGrpPeriphUart[] = {
+    0, // This to avoid having to -1 all the time
+    LL_APB2_GRP1_PERIPH_USART1,
+    LL_APB1_GRP1_PERIPH_USART2,
+    LL_APB1_GRP1_PERIPH_USART3,
+    LL_APB1_GRP1_PERIPH_UART4,
+    LL_APB1_GRP1_PERIPH_UART5,
+    LL_APB2_GRP1_PERIPH_USART6,
+    LL_APB1_GRP1_PERIPH_UART7,
+    LL_APB1_GRP1_PERIPH_UART8
+};
 
 // Get the LL driver peripheral number for a given DMA engine.
-static const uint32_t gLlApbGrpPeriphDma[] = {0, // This to avoid having to -1 all the time
-                                              LL_AHB1_GRP1_PERIPH_DMA1,
-                                              LL_AHB1_GRP1_PERIPH_DMA2
-                                             };
+static const uint32_t gLlApbGrpPeriphDma[] = {
+    0, // This to avoid having to -1 all the time
+    LL_AHB1_GRP1_PERIPH_DMA1,
+    LL_AHB1_GRP1_PERIPH_DMA2
+};
 
 // Get the DMA base address for a given DMA engine
-static DMA_TypeDef *const gpDmaReg[] =  {0,  // This to avoid having to -1 all the time
-                                         DMA1,
-                                         DMA2
-                                        };
+static DMA_TypeDef *const gpDmaReg[] =  {
+    0,  // This to avoid having to -1 all the time
+    DMA1,
+    DMA2
+};
 
 // Get the alternate function required on a GPIO line for a given UART.
 // Note: which function a GPIO line actually performs on that UART is
 // hard coded in the chip; for instance see table 12 of the STM32F437 data sheet.
-static const uint32_t gGpioAf[] = {0, // This to avoid having to -1 all the time
-                                   LL_GPIO_AF_7,  // USART 1
-                                   LL_GPIO_AF_7,  // USART 2
-                                   LL_GPIO_AF_7,  // USART 3
-                                   LL_GPIO_AF_8,  // UART 4
-                                   LL_GPIO_AF_8,  // UART 5
-                                   LL_GPIO_AF_8,  // USART 6
-                                   LL_GPIO_AF_8,  // USART 7
-                                   LL_GPIO_AF_8
-                                  }; // UART 8
+static const uint32_t gGpioAf[] = {
+    0, // This to avoid having to -1 all the time
+    LL_GPIO_AF_7,  // USART 1
+    LL_GPIO_AF_7,  // USART 2
+    LL_GPIO_AF_7,  // USART 3
+    LL_GPIO_AF_8,  // UART 4
+    LL_GPIO_AF_8,  // UART 5
+    LL_GPIO_AF_8,  // USART 6
+    LL_GPIO_AF_8,  // USART 7
+    LL_GPIO_AF_8
+}; // UART 8
 
 // Table of stream IRQn for DMA engine 1
-static const IRQn_Type gDma1StreamIrq[] = {DMA1_Stream0_IRQn,
-                                           DMA1_Stream1_IRQn,
-                                           DMA1_Stream2_IRQn,
-                                           DMA1_Stream3_IRQn,
-                                           DMA1_Stream4_IRQn,
-                                           DMA1_Stream5_IRQn,
-                                           DMA1_Stream6_IRQn,
-                                           DMA1_Stream7_IRQn
-                                          };
+static const IRQn_Type gDma1StreamIrq[] = {
+    DMA1_Stream0_IRQn,
+    DMA1_Stream1_IRQn,
+    DMA1_Stream2_IRQn,
+    DMA1_Stream3_IRQn,
+    DMA1_Stream4_IRQn,
+    DMA1_Stream5_IRQn,
+    DMA1_Stream6_IRQn,
+    DMA1_Stream7_IRQn
+};
 
 // Table of stream IRQn for DMA engine 2
-static const IRQn_Type gDma2StreamIrq[] = {DMA2_Stream0_IRQn,
-                                           DMA2_Stream1_IRQn,
-                                           DMA2_Stream2_IRQn,
-                                           DMA2_Stream3_IRQn,
-                                           DMA2_Stream4_IRQn,
-                                           DMA2_Stream5_IRQn,
-                                           DMA2_Stream6_IRQn,
-                                           DMA2_Stream7_IRQn
-                                          };
+static const IRQn_Type gDma2StreamIrq[] = {
+    DMA2_Stream0_IRQn,
+    DMA2_Stream1_IRQn,
+    DMA2_Stream2_IRQn,
+    DMA2_Stream3_IRQn,
+    DMA2_Stream4_IRQn,
+    DMA2_Stream5_IRQn,
+    DMA2_Stream6_IRQn,
+    DMA2_Stream7_IRQn
+};
 
 // Table of DMAx_Stream_IRQn per DMA engine
-static const IRQn_Type *gpDmaStreamIrq[] = {NULL, // This to avoid having to -1 all the time
-                                            gDma1StreamIrq,
-                                            gDma2StreamIrq
-                                           };
+static const IRQn_Type *gpDmaStreamIrq[] = {
+    NULL, // This to avoid having to -1 all the time
+    gDma1StreamIrq,
+    gDma2StreamIrq
+};
 
 // Table of LL_DMA_CHANNEL_x per channel
-static const int32_t gLlDmaChannel[] = {LL_DMA_CHANNEL_0,
-                                        LL_DMA_CHANNEL_1,
-                                        LL_DMA_CHANNEL_2,
-                                        LL_DMA_CHANNEL_3,
-                                        LL_DMA_CHANNEL_4,
-                                        LL_DMA_CHANNEL_5,
-                                        LL_DMA_CHANNEL_6,
-                                        LL_DMA_CHANNEL_7
-                                       };
+static const int32_t gLlDmaChannel[] = {
+    LL_DMA_CHANNEL_0,
+    LL_DMA_CHANNEL_1,
+    LL_DMA_CHANNEL_2,
+    LL_DMA_CHANNEL_3,
+    LL_DMA_CHANNEL_4,
+    LL_DMA_CHANNEL_5,
+    LL_DMA_CHANNEL_6,
+    LL_DMA_CHANNEL_7
+};
 
 // Table of functions LL_DMA_ClearFlag_HTx(DMA_TypeDef *DMAx) for each stream.
-static const void (*gpLlDmaClearFlagHt[]) (DMA_TypeDef *)  = {LL_DMA_ClearFlag_HT0,
-                                                              LL_DMA_ClearFlag_HT1,
-                                                              LL_DMA_ClearFlag_HT2,
-                                                              LL_DMA_ClearFlag_HT3,
-                                                              LL_DMA_ClearFlag_HT4,
-                                                              LL_DMA_ClearFlag_HT5,
-                                                              LL_DMA_ClearFlag_HT6,
-                                                              LL_DMA_ClearFlag_HT7
-                                                             };
+static const uDmaFunc_t gpLlDmaClearFlagHt[]  = {
+    LL_DMA_ClearFlag_HT0,
+    LL_DMA_ClearFlag_HT1,
+    LL_DMA_ClearFlag_HT2,
+    LL_DMA_ClearFlag_HT3,
+    LL_DMA_ClearFlag_HT4,
+    LL_DMA_ClearFlag_HT5,
+    LL_DMA_ClearFlag_HT6,
+    LL_DMA_ClearFlag_HT7
+};
 
 // Table of functions LL_DMA_ClearFlag_TCx(DMA_TypeDef *DMAx) for each stream.
-static const void (*gpLlDmaClearFlagTc[]) (DMA_TypeDef *)  = {LL_DMA_ClearFlag_TC0,
-                                                              LL_DMA_ClearFlag_TC1,
-                                                              LL_DMA_ClearFlag_TC2,
-                                                              LL_DMA_ClearFlag_TC3,
-                                                              LL_DMA_ClearFlag_TC4,
-                                                              LL_DMA_ClearFlag_TC5,
-                                                              LL_DMA_ClearFlag_TC6,
-                                                              LL_DMA_ClearFlag_TC7
-                                                             };
+static const uDmaFunc_t gpLlDmaClearFlagTc[] = {
+    LL_DMA_ClearFlag_TC0,
+    LL_DMA_ClearFlag_TC1,
+    LL_DMA_ClearFlag_TC2,
+    LL_DMA_ClearFlag_TC3,
+    LL_DMA_ClearFlag_TC4,
+    LL_DMA_ClearFlag_TC5,
+    LL_DMA_ClearFlag_TC6,
+    LL_DMA_ClearFlag_TC7
+};
 
 // Table of functions LL_DMA_ClearFlag_TEx(DMA_TypeDef *DMAx) for each stream.
-static const void (*gpLlDmaClearFlagTe[]) (DMA_TypeDef *)  = {LL_DMA_ClearFlag_TE0,
-                                                              LL_DMA_ClearFlag_TE1,
-                                                              LL_DMA_ClearFlag_TE2,
-                                                              LL_DMA_ClearFlag_TE3,
-                                                              LL_DMA_ClearFlag_TE4,
-                                                              LL_DMA_ClearFlag_TE5,
-                                                              LL_DMA_ClearFlag_TE6,
-                                                              LL_DMA_ClearFlag_TE7
-                                                             };
+static uDmaFunc_t gpLlDmaClearFlagTe[] = {
+    LL_DMA_ClearFlag_TE0,
+    LL_DMA_ClearFlag_TE1,
+    LL_DMA_ClearFlag_TE2,
+    LL_DMA_ClearFlag_TE3,
+    LL_DMA_ClearFlag_TE4,
+    LL_DMA_ClearFlag_TE5,
+    LL_DMA_ClearFlag_TE6,
+    LL_DMA_ClearFlag_TE7
+};
 
 // Table of functions LL_DMA_ClearFlag_DMEx(DMA_TypeDef *DMAx) for each stream.
-static const void (*gpLlDmaClearFlagDme[]) (DMA_TypeDef *)  = {LL_DMA_ClearFlag_DME0,
-                                                               LL_DMA_ClearFlag_DME1,
-                                                               LL_DMA_ClearFlag_DME2,
-                                                               LL_DMA_ClearFlag_DME3,
-                                                               LL_DMA_ClearFlag_DME4,
-                                                               LL_DMA_ClearFlag_DME5,
-                                                               LL_DMA_ClearFlag_DME6,
-                                                               LL_DMA_ClearFlag_DME7
-                                                              };
+static uDmaFunc_t gpLlDmaClearFlagDme[] = {
+    LL_DMA_ClearFlag_DME0,
+    LL_DMA_ClearFlag_DME1,
+    LL_DMA_ClearFlag_DME2,
+    LL_DMA_ClearFlag_DME3,
+    LL_DMA_ClearFlag_DME4,
+    LL_DMA_ClearFlag_DME5,
+    LL_DMA_ClearFlag_DME6,
+    LL_DMA_ClearFlag_DME7
+};
 
 // Table of functions LL_DMA_ClearFlag_FEx(DMA_TypeDef *DMAx) for each stream.
-static const void (*gpLlDmaClearFlagFe[]) (DMA_TypeDef *)  = {LL_DMA_ClearFlag_FE0,
-                                                              LL_DMA_ClearFlag_FE1,
-                                                              LL_DMA_ClearFlag_FE2,
-                                                              LL_DMA_ClearFlag_FE3,
-                                                              LL_DMA_ClearFlag_FE4,
-                                                              LL_DMA_ClearFlag_FE5,
-                                                              LL_DMA_ClearFlag_FE6,
-                                                              LL_DMA_ClearFlag_FE7
-                                                             };
+static uDmaFunc_t gpLlDmaClearFlagFe[] = {
+    LL_DMA_ClearFlag_FE0,
+    LL_DMA_ClearFlag_FE1,
+    LL_DMA_ClearFlag_FE2,
+    LL_DMA_ClearFlag_FE3,
+    LL_DMA_ClearFlag_FE4,
+    LL_DMA_ClearFlag_FE5,
+    LL_DMA_ClearFlag_FE6,
+    LL_DMA_ClearFlag_FE7
+};
 
 // Table of functions LL_DMA_IsActiveFlag_HTx(DMA_TypeDef *DMAx) for each stream.
-static const uint32_t (*gpLlDmaIsActiveFlagHt[]) (DMA_TypeDef *)  = {LL_DMA_IsActiveFlag_HT0,
-                                                                     LL_DMA_IsActiveFlag_HT1,
-                                                                     LL_DMA_IsActiveFlag_HT2,
-                                                                     LL_DMA_IsActiveFlag_HT3,
-                                                                     LL_DMA_IsActiveFlag_HT4,
-                                                                     LL_DMA_IsActiveFlag_HT5,
-                                                                     LL_DMA_IsActiveFlag_HT6,
-                                                                     LL_DMA_IsActiveFlag_HT7
-                                                                    };
+static const uDmaActiveFunc_t gpLlDmaIsActiveFlagHt[] = {
+    LL_DMA_IsActiveFlag_HT0,
+    LL_DMA_IsActiveFlag_HT1,
+    LL_DMA_IsActiveFlag_HT2,
+    LL_DMA_IsActiveFlag_HT3,
+    LL_DMA_IsActiveFlag_HT4,
+    LL_DMA_IsActiveFlag_HT5,
+    LL_DMA_IsActiveFlag_HT6,
+    LL_DMA_IsActiveFlag_HT7
+};
 
 // Table of functions LL_DMA_IsActiveFlag_TCx(DMA_TypeDef *DMAx) for each stream.
-static const uint32_t (*gpLlDmaIsActiveFlagTc[]) (DMA_TypeDef *)  = {LL_DMA_IsActiveFlag_TC0,
-                                                                     LL_DMA_IsActiveFlag_TC1,
-                                                                     LL_DMA_IsActiveFlag_TC2,
-                                                                     LL_DMA_IsActiveFlag_TC3,
-                                                                     LL_DMA_IsActiveFlag_TC4,
-                                                                     LL_DMA_IsActiveFlag_TC5,
-                                                                     LL_DMA_IsActiveFlag_TC6,
-                                                                     LL_DMA_IsActiveFlag_TC7
-                                                                    };
+static const uDmaActiveFunc_t gpLlDmaIsActiveFlagTc[] = {
+    LL_DMA_IsActiveFlag_TC0,
+    LL_DMA_IsActiveFlag_TC1,
+    LL_DMA_IsActiveFlag_TC2,
+    LL_DMA_IsActiveFlag_TC3,
+    LL_DMA_IsActiveFlag_TC4,
+    LL_DMA_IsActiveFlag_TC5,
+    LL_DMA_IsActiveFlag_TC6,
+    LL_DMA_IsActiveFlag_TC7
+};
 
 // Table of the constant data per UART.
 static const uPortUartConstData_t gUartCfg[] = {{}, // This to avoid having to -1 all the time
@@ -1209,6 +1231,7 @@ int32_t uPortUartGetReceiveSize(int32_t handle)
 int32_t uPortUartRead(int32_t handle, void *pBuffer,
                       size_t sizeBytes)
 {
+    uint8_t *pDataPtr = pBuffer;
     uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     size_t thisSize;
     uPortUartData_t *pUartData;
@@ -1232,7 +1255,7 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                 if (sizeOrErrorCode > sizeBytes) {
                     sizeOrErrorCode = sizeBytes;
                 }
-                memcpy(pBuffer, pUartData->pRxBufferRead,
+                memcpy(pDataPtr, pUartData->pRxBufferRead,
                        sizeOrErrorCode);
                 // Move the pointer on
                 pUartData->pRxBufferRead += sizeOrErrorCode;
@@ -1245,8 +1268,8 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                 if (thisSize > sizeBytes) {
                     thisSize = sizeBytes;
                 }
-                memcpy(pBuffer, pUartData->pRxBufferRead, thisSize);
-                pBuffer = (char *) pBuffer + thisSize;
+                memcpy(pDataPtr, pUartData->pRxBufferRead, thisSize);
+                pDataPtr = pDataPtr + thisSize;
                 sizeBytes -= thisSize;
                 sizeOrErrorCode = thisSize;
                 // Move the read pointer on, wrapping as necessary
@@ -1262,9 +1285,7 @@ int32_t uPortUartRead(int32_t handle, void *pBuffer,
                     if (thisSize > sizeBytes) {
                         thisSize = sizeBytes;
                     }
-                    memcpy(pBuffer, pUartData->pRxBufferRead, thisSize);
-                    pBuffer = (char *) pBuffer + thisSize;
-                    sizeBytes -= thisSize;
+                    memcpy(pDataPtr, pUartData->pRxBufferRead, thisSize);
                     sizeOrErrorCode += thisSize;
                     // Move the read pointer on
                     pUartData->pRxBufferRead += thisSize;
@@ -1286,6 +1307,7 @@ int32_t uPortUartWrite(int32_t handle,
                        const void *pBuffer,
                        size_t sizeBytes)
 {
+    const uint8_t *pDataPtr = pBuffer;
     uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     uPortUartData_t *pUartData;
     USART_TypeDef *pReg;
@@ -1302,7 +1324,7 @@ int32_t uPortUartWrite(int32_t handle,
 
             // Do the blocking send
             while (sizeBytes > 0) {
-                LL_USART_TransmitData8(pReg, (uint8_t) * ((const char *) pBuffer));
+                LL_USART_TransmitData8(pReg, *pDataPtr);
                 // Hint when debugging: if your code stops dead here
                 // it is because the CTS line of this MCU's UART HW
                 // is floating high, stopping the UART from
@@ -1312,7 +1334,7 @@ int32_t uPortUartWrite(int32_t handle,
                 // was wrong and it's not connected to the right
                 // thing.
                 while (!LL_USART_IsActiveFlag_TXE(pReg)) {}
-                (const char *) pBuffer++;
+                pDataPtr++;
                 sizeBytes--;
             }
             while (!LL_USART_IsActiveFlag_TC(pReg)) {}
