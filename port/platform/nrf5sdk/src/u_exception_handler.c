@@ -60,39 +60,39 @@ static void dumpData(HardFault_stack_t *frame)
         uPortLogF("  R0:  0x%08x  R1:   0x%08x  R2:  0x%08x  R3:  0x%08x\n",
                   frame->r0, frame->r1, frame->r2, frame->r3);
         uPortLogF("  R12: 0x%08x  XPSR: 0x%08x\n", frame->r12, frame->psr);
-    }
 
 #ifndef U_DEBUG_UTILS_DUMP_THREADS
-    // Our monitor will automatically call addr2line for target strings
-    // that starts with "Backtrace: ", so we print PC and LR again
-    // as a backtrace:
-    uPortLogF("  Backtrace: 0x%08x 0x%08x\n", frame->pc, frame->lr);
+        // Our monitor will automatically call addr2line for target strings
+        // that starts with "Backtrace: ", so we print PC and LR again
+        // as a backtrace:
+        uPortLogF("  Backtrace: 0x%08x 0x%08x\n", frame->pc, frame->lr);
 #else
-    uStackFrame_t sFrame;
-    TaskSnapshot_t snapShot;
-    char *pName;
-    uint32_t psp = ((uint32_t)frame) + sizeof(HardFault_stack_t);
-    uint32_t stackTop;
+        uStackFrame_t sFrame;
+        TaskSnapshot_t snapShot;
+        char *pName;
+        uint32_t psp = ((uint32_t)frame) + sizeof(HardFault_stack_t);
+        uint32_t stackTop;
 
-    vTaskGetSnapshot(xTaskGetCurrentTaskHandle(), &snapShot);
-    pName = pcTaskGetName(xTaskGetCurrentTaskHandle());
-    stackTop = (uint32_t)snapShot.pxTopOfStack;
+        vTaskGetSnapshot(xTaskGetCurrentTaskHandle(), &snapShot);
+        pName = pcTaskGetName(xTaskGetCurrentTaskHandle());
+        stackTop = (uint32_t)snapShot.pxTopOfStack;
 
-    uPortLogF("### Dumping current thread (%s) ###\n", pName);
-    uPortLogF("  Backtrace: 0x%08x 0x%08x ", frame->pc, frame->lr);
-    if (uDebugUtilsInitStackFrame(psp, stackTop, &sFrame)) {
-        for (int depth = 0; depth < 16; depth++) {
-            if (uDebugUtilsGetNextStackFrame(stackTop, &sFrame)) {
-                if ((depth > 0) || (sFrame.pc != frame->lr)) {
-                    uPortLogF("0x%08x ", (unsigned int)sFrame.pc);
+        uPortLogF("### Dumping current thread (%s) ###\n", pName);
+        uPortLogF("  Backtrace: 0x%08x 0x%08x ", frame->pc, frame->lr);
+        if (uDebugUtilsInitStackFrame(psp, stackTop, &sFrame)) {
+            for (int depth = 0; depth < 16; depth++) {
+                if (uDebugUtilsGetNextStackFrame(stackTop, &sFrame)) {
+                    if ((depth > 0) || (sFrame.pc != frame->lr)) {
+                        uPortLogF("0x%08x ", (unsigned int)sFrame.pc);
+                    }
+                } else {
+                    break;
                 }
-            } else {
-                break;
             }
         }
-    }
-    uPortLogF("\n\n");
+        uPortLogF("\n\n");
 #endif
+    }
     while (1);
 }
 
