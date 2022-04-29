@@ -302,13 +302,6 @@ typedef struct uCellPrivateNet_t {
     struct uCellPrivateNet_t *pNext;
 } uCellPrivateNet_t;
 
-/** Storage for the UART power saving or AT+UPSV mode values.
- */
-typedef struct {
-    int32_t mode;    /**< the mode, use -1 for "empty". */
-    int32_t timeout; /**< the timeout, where relevant, use -1 for "not present". */
-}  uCellPrivateUartPowerSaving_t;
-
 /** Context for the cell loc API.
  */
 typedef struct {
@@ -317,12 +310,9 @@ typedef struct {
     bool gnssEnable;                     /**< whether a GNSS chip attached
                                               to the cellular module should
                                               be used in the fix or not. */
-    uPortMutexHandle_t
-    fixDataStorageMutex;  /**< mutex to protect manipulation of the fix data storage. */
-    void *pFixDataStorage;               /**< pointer to data storage used when establishing a fix. */
-    int32_t fixStatus;                   /**< status of a location fix. */
-    uCellPrivateUartPowerSaving_t
-    savedUartPowerSaving; /**< in case we need to suspend UART power saving. */
+    uPortMutexHandle_t fixDataStorageMutex;  /**< protect manipulation of fix data storage. */
+    void *pFixDataStorage;/**< pointer to data storage used when establishing a fix. */
+    int32_t fixStatus;    /**< status of a location fix. */
 } uCellPrivateLocContext_t;
 
 /** Type to keep track of the deep sleep state.

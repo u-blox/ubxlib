@@ -228,35 +228,6 @@ static int32_t numberToX1e7(const char *pNumber)
     return isNegative ? -(int32_t) x1e7 : (int32_t) x1e7;
 }
 
-// Handler that is called to set UART power saving back up
-// again if it was suspended during a Cell Locate fix.
-//lint -esym(818, pParam) Suppress could be pointer to const,
-// need to follow function signature
-static void setUartPowerSavingCallback(uAtClientHandle_t atHandle,
-                                       void *pParam)
-{
-    // pParam is a pointer to a uCellPrivateUartPowerSaving_t
-    const uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParam;
-    uCellPrivateLocContext_t *pContext;
-    uCellPrivateUartPowerSaving_t *pSavedUartPowerSaving;
-
-    (void) atHandle;
-
-    if (pInstance != NULL) {
-        pContext = pInstance->pLocContext;
-        if (pContext != NULL) {
-            pSavedUartPowerSaving = &(pContext->savedUartPowerSaving);
-            if ((pSavedUartPowerSaving->mode >= 0) &&
-                (uCellPrivateResumeUartPowerSaving(pInstance, pSavedUartPowerSaving->mode,
-                                                   pSavedUartPowerSaving->timeout) == 0)) {
-                // If the resumption was successful, clear the parameters once more
-                pSavedUartPowerSaving->mode = -1;
-                pSavedUartPowerSaving->timeout = -1;
-            }
-        }
-    }
-}
-
 // Handler that is called via uAtClientCallback()
 // from the UULOC or UULOCIND URCs (the latter in case
 // it indicates a fatal error) and ultimately either calls
@@ -450,11 +421,6 @@ static void UULOC_urc(uAtClientHandle_t atHandle, void *pParam)
                     free(pUrcStorage);
                 }
             }
-            if (pContext->savedUartPowerSaving.mode >= 0) {
-                // We have a stashed UART power saving value, so
-                // launch another callback to re-enable it
-                uAtClientCallback(atHandle, setUartPowerSavingCallback, pInstance);
-            }
         }
     }
 }
@@ -539,9 +505,6 @@ static int32_t ensureContext(uCellPrivateInstance_t *pInstance)
                                        "+UULOCIND:", UULOCIND_urc,
                                        pInstance);
                 pContext->pFixDataStorage = NULL;
-                // Put -1 in these to indicate "empty" at the outset
-                pContext->savedUartPowerSaving.mode = -1;
-                pContext->savedUartPowerSaving.timeout = -1;
                 pInstance->pLocContext = pContext;
             } else {
                 // Free context on failure to create a fixDataStorageMutex
@@ -617,32 +580,6 @@ static int32_t beginLocationFix(const uCellPrivateInstance_t *pInstance)
     int32_t sensorType = U_CELL_LOC_MODULE_HAS_CELL_LOCATE << 1; // See below
 
     uPortLog("U_CELL_LOC: getting location.\n");
-
-    // For SARA-R5 there are issues around having UART
-    // power saving active during the relatively long
-    // periods of Cell Locate activity, hence we
-    // suspend it here and resume it at the end
-    // Note that we don't check for errors here, this is
-    // on a "best effort" basis
-
-    // If the saved mode still has something in it we might be
-    // in a race condition waiting for a previous saved mode to
-    // be written, so hold off for a moment to let that work
-    // itself out
-    for (size_t x = 0; (pContext->savedUartPowerSaving.mode >= 0) && (x < 3); x++) {
-        uPortTaskBlock(5000);
-    }
-    if ((pContext->savedUartPowerSaving.mode < 0) &&
-        (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5)) {
-        uCellPrivateSuspendUartPowerSaving(pInstance,
-                                           &(pContext->savedUartPowerSaving.mode),
-                                           &(pContext->savedUartPowerSaving.timeout));
-        if (pContext->savedUartPowerSaving.mode == 0) {
-            // If the UPSV mode was already 0 then we don't need to be
-            // concerned, just set the mode back to "empty"
-            pContext->savedUartPowerSaving.mode = -1;
-        }
-    }
 
     // Request progress indications
     uAtClientLock(atHandle);
@@ -1143,13 +1080,6 @@ int32_t uCellLocGet(int32_t cellHandle,
                     if (pTimeUtc != NULL) {
                         *pTimeUtc = fixDataStorageBlock.timeUtc;
                     }
-                } else {
-                    if (pContext->savedUartPowerSaving.mode >= 0) {
-                        // If there was a problem, a timeout say, and we
-                        // still have a stashed UART power saving value,
-                        // call the callback directly to restore it
-                        setUartPowerSavingCallback(pInstance->atHandle, (void *) pInstance);
-                    }
                 }
             }
 
@@ -1330,10 +1260,6 @@ void uCellLocGetStop(int32_t cellHandle)
             uAtClientRemoveUrcHandler(pInstance->atHandle, "+UULOC:");
             free(pContext->pFixDataStorage);
             pContext->pFixDataStorage = NULL;
-            if (pContext->savedUartPowerSaving.mode >= 0) {
-                // Restore any stashed UART power saving value
-                setUartPowerSavingCallback(pInstance->atHandle, (void *) pInstance);
-            }
         }
 
         U_PORT_MUTEX_UNLOCK(pContext->fixDataStorageMutex);
