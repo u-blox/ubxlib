@@ -1328,11 +1328,13 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
         static uPortGattSubscribeParams_t subParams = {
             .notifyCb = gattNotifyFunc,
             .cccWriteRespCb = gattCccWriteResp,
-            .valueHandle = gNinaW15SpsService.attrHandle + 2, // SPS FIFO
-            .cccHandle = gNinaW15SpsService.attrHandle + 3,
+            .valueHandle = 0, // Set separately below
+            .cccHandle = 0,   // Set separately below
             .receiveNotifications = true,
             .receiveIndications = false,
         };
+        subParams.valueHandle = gNinaW15SpsService.attrHandle + 2, // SPS FIFO
+        subParams.cccHandle = gNinaW15SpsService.attrHandle + 3,
 
         uPortLog("U_PORT_TEST: uPortGattSubscribe - invalid conn handle\n");
         errorCode = uPortGattSubscribe(-1, &subParams);

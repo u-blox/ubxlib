@@ -1379,7 +1379,7 @@ void uCellMqttDeinit(int32_t cellHandle)
     if (pInstance != NULL) {
         pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
         if (pContext->connected) {
-            connect(pInstance, false);
+            (void)connect(pInstance, false);
         }
 
         uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUMQTT");

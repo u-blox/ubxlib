@@ -522,7 +522,7 @@ static int32_t echoData(int32_t cellHandle, int32_t sockHandle)
     count = 0;
     while ((y < sizeof(buffer)) && (count < 100)) {
         z = uCellSockWrite(cellHandle, sockHandle,
-                           U_CELL_PWR_TEST_ECHO_STRING + y,
+                           &U_CELL_PWR_TEST_ECHO_STRING[y],
                            sizeof(buffer) - y);
         if (z > 0) {
             y += z;
@@ -900,9 +900,6 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
     if (gSockHandle >= 0) {
         disconnectFromEchoServer(cellHandle, &gSockHandle);
     }
-
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
     // Use a callback to track our connectivity state, if we can
     //lint -e(1773) Suppress complaints about
     // passing the pointer as non-volatile
@@ -911,7 +908,6 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                                                        (void *) &connectionCallbackParameter) == 0) {
         connectionCallbackParameter = 0;
     }
-#  pragma GCC diagnostic pop
 
     // Make a cellular connection
     U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
@@ -1013,14 +1009,11 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         U_PORT_TEST_ASSERT(activeTimeSeconds == U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS);
         U_PORT_TEST_ASSERT(periodicWakeupSeconds == U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS);
 
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
         // Set a wake-up callback
         //lint -e(1773) Suppress complaints about
         // passing the pointer as non-volatile
         U_PORT_TEST_ASSERT(uCellPwrSetDeepSleepWakeUpCallback(cellHandle, wakeCallback,
                                                               (void *) &wakeCallbackParam) == 0);
-#  pragma GCC diagnostic pop
 
         // Now actually enable 3GPP power saving
         uPortLog("U_CELL_PWR_TEST: **REQUESTING** 3GPP power saving on...\n");
@@ -1302,8 +1295,6 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
     U_PORT_TEST_ASSERT(uCellPwrSetEDrxCallback(cellHandle, eDrxCallback,
                                                (void *) &cellHandle) == 0);
 
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
     // Use a callback to track our connectivity state, if we can
     //lint -e(1773) Suppress complaints about
     // passing the pointer as non-volatile
@@ -1312,7 +1303,6 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
                                                        (void *) &connectionCallbackParameter) == 0) {
         connectionCallbackParameter = 0;
     }
-#  pragma GCC diagnostic pop
 
     // Make a cellular connection
     U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
