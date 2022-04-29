@@ -183,8 +183,8 @@ def parse_backtrace(ctx, elf_file, line):
     Example usage: inv esp-idf.parse-backtrace ubxlib.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
     """
     # Copy the PATH variable after loading IDF export.sh so that we can access the toolchain
-    env = ctx.run(f'{ctx.esp_idf_pre_command} env', hide=True).stdout
+    env_cmd = "env" if u_utils.is_linux() else "set"
+    env = ctx.run(f'{ctx.esp_idf_pre_command} {env_cmd}', hide=True).stdout
     path = re.findall(r"^PATH=(.*)", env, flags=re.MULTILINE)[0]
     ctx.config.run.env["PATH"] = path
-
     task_utils.parse_backtrace(ctx, elf_file, line, toolchain_prefix="xtensa-esp32-elf-")

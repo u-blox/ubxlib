@@ -23,9 +23,16 @@
 #include "stdbool.h"
 #include "string.h"
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "task_snapshot.h"
+#ifdef ESP_PLATFORM
+# include "freertos/FreeRTOS.h"
+# include "freertos/task.h"
+# include "freertos/additions/task_snapshot.h"
+#else
+# include "FreeRTOS.h"
+# include "task.h"
+# include "task_snapshot.h"
+#endif
+
 
 #include "u_port_debug.h"
 
@@ -35,6 +42,10 @@
 
 #ifdef __arm__
 # include "../arch/arm/u_stack_frame_cortex.c"
+#elif defined(__XTENSA__)
+# include "../arch/xtensa/u_stack_frame.c"
+#else
+# error "Unsupported architecture"
 #endif
 
 /* ----------------------------------------------------------------
