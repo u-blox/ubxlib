@@ -1090,15 +1090,17 @@ int32_t uCellLocGet(int32_t cellHandle,
                     pFixDataStorage->type = U_CELL_LOC_FIX_DATA_STORAGE_TYPE_BLOCK;
                     pFixDataStorage->store.pBlock = &fixDataStorageBlock;
                     pContext->pFixDataStorage = (void *) pFixDataStorage;
+                    // Register a URC handler and give it the instance,
+                    // which has our data storage attached to it
+                    uAtClientRemoveUrcHandler(pInstance->atHandle, "+UULOC:");
+                    uAtClientSetUrcHandler(pInstance->atHandle,
+                                           "+UULOC:", UULOC_urc,
+                                           pInstance);
                     // Start the location fix
                     pContext->fixStatus = (int32_t) U_LOCATION_STATUS_UNKNOWN;
                     errorCode = beginLocationFix(pInstance);
-                    if (errorCode == 0) {
-                        // Register a URC handler and give it the instance,
-                        // which has our data storage attached to it
-                        uAtClientSetUrcHandler(pInstance->atHandle,
-                                               "+UULOC:", UULOC_urc,
-                                               pInstance);
+                    if (errorCode != 0) {
+                        uAtClientRemoveUrcHandler(pInstance->atHandle, "+UULOC:");
                     }
                 }
             }
@@ -1209,13 +1211,14 @@ int32_t uCellLocGetStart(int32_t cellHandle,
                     pContext->pFixDataStorage = (void *) pFixDataStorage;
                     // Start the location fix
                     pContext->fixStatus = (int32_t) U_LOCATION_STATUS_UNKNOWN;
+                    // Register a URC handler and give it the instance,
+                    // which has our data storage attached to it
+                    uAtClientRemoveUrcHandler(pInstance->atHandle, "+UULOC:");
+                    uAtClientSetUrcHandler(pInstance->atHandle, "+UULOC:",
+                                           UULOC_urc, pInstance);
                     errorCode = beginLocationFix(pInstance);
-                    if (errorCode == 0) {
-                        // Register a URC handler and give it the instance,
-                        // which has our data storage attached to it
+                    if (errorCode != 0) {
                         uAtClientRemoveUrcHandler(pInstance->atHandle, "+UULOC:");
-                        uAtClientSetUrcHandler(pInstance->atHandle, "+UULOC:",
-                                               UULOC_urc, pInstance);
                     }
                 }
             }
