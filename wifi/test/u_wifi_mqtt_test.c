@@ -191,7 +191,7 @@ static void wifiConnectionCallback(int32_t wifiHandle,
             "Unknown", "Remote Close", "Out of range",
             "Roaming", "Security problems", "Network disabled"
         };
-        if ((disconnectReason < 0) && (disconnectReason >= 6)) {
+        if ((disconnectReason < 0) || (disconnectReason >= 6)) {
             // For all other values use "Unknown"
             //lint -esym(438, disconnectReason)
             disconnectReason = 0;
