@@ -406,7 +406,7 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     U_PORT_TEST_ASSERT(err == (int32_t)U_ERROR_COMMON_SUCCESS);
 
 
-    for (count = 0; ((count < MQTT_RETRY_COUNT) || !mqttSessionDisconnected); count++) {
+    for (count = 0; ((count < MQTT_RETRY_COUNT) && !mqttSessionDisconnected); count++) {
         uPortTaskBlock(1000);
     }
 
