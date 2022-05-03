@@ -64,7 +64,7 @@ If your MCU is not on the list:
 |**APIs provided by host**|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[ble](/ble "ble API")<br />[network](/common/network "network API")|[ble](/ble "ble API")<br />[network](/common/network "network API")| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>| N/A | N/A |
 
 
-# Supported modules as `ubxlib` periperhals and APIs
+# Supported modules as `ubxlib` peripherals and APIs
 
 Peripherals are u-blox modules which accept commands (e.g. AT-commands) over a serial interface and have no open MCU environment. To run the APIs they need to be attached to a host which runs `ubxlib`. For example in the [test farm](/port/platform/common/automation/DATABASE.md) combinations of hosts and peripherals are listed.
 
