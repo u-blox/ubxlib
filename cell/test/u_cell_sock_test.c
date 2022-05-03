@@ -155,6 +155,28 @@ static const char gAllChars[] = "the quick brown fox jumps over the lazy dog "
  * are being used and complains if they are marked as static.
  * -------------------------------------------------------------- */
 
+// Compare two socket IP addresses. Returns 0 if equal.
+static inline int32_t compareIpAddr(const uSockIpAddress_t *pAddr1,
+                                    const uSockIpAddress_t *pAddr2)
+{
+    int32_t ret;
+    ret = memcmp(&(pAddr1->type),
+                 &(pAddr2->type),
+                 sizeof(pAddr1->type));
+    if (ret == 0) {
+        if (pAddr1->type == U_SOCK_ADDRESS_TYPE_V4) {
+            ret = memcmp(&(pAddr1->address.ipv4),
+                         &(pAddr2->address.ipv4),
+                         sizeof(pAddr1->address.ipv4));
+        } else {
+            ret = memcmp(&(pAddr1->address.ipv6[0]),
+                         &(pAddr2->address.ipv6[0]),
+                         sizeof(pAddr1->address.ipv6));
+        }
+    }
+    return ret;
+}
+
 // Compare two int32_t values.
 bool compareInt32(const void *p1, const void *p2)
 {
@@ -692,9 +714,8 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
         }
         U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
         U_PORT_TEST_ASSERT(memcmp(pBuffer, gAllChars, sizeof(gAllChars)) == 0);
-        U_PORT_TEST_ASSERT(memcmp(&(address.ipAddress),
-                                  &(echoServerAddressUdp.ipAddress),
-                                  sizeof(address.ipAddress)) == 0);
+        U_PORT_TEST_ASSERT(compareIpAddr(&address.ipAddress,
+                                         &echoServerAddressUdp.ipAddress) == 0);
         U_PORT_TEST_ASSERT(address.port == echoServerAddressUdp.port);
         U_PORT_TEST_ASSERT(!gClosedCallbackCalledUdp);
     }
