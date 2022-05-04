@@ -13,7 +13,7 @@
             "device": "NRF5340_XXAA_APP",
             "interface": "swd",
             "servertype": "jlink",
-            "runToMain": true,
+            "runToEntryPoint": "main",
             "armToolchainPath": "${input:getArmToolchainPath}",
             "postLaunchCommands": [
                 "add-symbol-file ./zephyr/zephyr.elf 0",
@@ -41,7 +41,7 @@
             "device": "NRF52840_xxAA",
             "interface": "swd",
             "servertype": "jlink",
-            "runToMain": true,
+            "runToEntryPoint": "main",
             "armToolchainPath": "${input:getArmToolchainPath}",
             "preLaunchTask": "Predebug evkninab3 runner [nRF5 SDK]"
         },
@@ -54,7 +54,7 @@
             "device": "NRF52840_xxAA",
             "interface": "swd",
             "servertype": "jlink",
-            "runToMain": true,
+            "runToEntryPoint": "main",
             "armToolchainPath": "${input:getArmToolchainPath}",
             "preLaunchTask": "Predebug evkninab3 runner [Zephyr]"
         },
