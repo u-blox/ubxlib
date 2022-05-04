@@ -83,7 +83,7 @@ bool uDebugUtilsInitStackFrame(uint32_t sp, uint32_t stackTop, uStackFrame_t *pF
         // To make esp_backtrace_get_next_frame() point on correct
         // SP (which is located in pSp[4]) on next call we emulate a base save
         // in pSp[4+3] and store the address of it as SP.
-        espFrame.sp = &pSp[4 + 3];
+        espFrame.sp = (uint32_t)&pSp[4 + 3];
     } else {
         // The return PC was not executeable so let's try next frame instead
         espFrame.next_pc = pSp[3];
