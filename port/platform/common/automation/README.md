@@ -221,8 +221,6 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 
 [scripts/u_run_doxygen.py](./scripts/u_run_doxygen.py): run Doxygen to check that there are no documentation errors; called by `automation.test` PyInvoke task.
 
-[scripts/u_run_lint.py](u_run_lint.py): run a Lint check; called by called by `automation.test` PyInvoke task.  NOTE: if you add a NEW DIRECTORY containing a PLATFORM INDEPENDENT `.c` or `.cpp` file anywhere in the `ubxlib` tree YOU MUST ALSO ADD it to the `LINT_DIRS` variable of this script.  All the Lint error/warning/information messages available for GCC are included with the exception of those suppressed by the [ubxlib.lnt](/port/platform/lint/ubxlib.lnt) configuration file kept in the [port/platform/lint](/port/platform/lint) directory.  To run Lint yourself you must install a GCC compiler and `flexelint`: read [u_run_lint.py](u_run_lint.py) to determine how to go about using the tools.  A NOTE ON STUBS: by convention, any source file ending in `_stub.c` or  `_stub.cpp` is ommitted from checking; in order to check the stub files add the flag `U_CFG_LINT_USE_STUBS` to the instance being run: with this defined the stub files will be used and the file that is being stubbed will be omitted.  For instance, with `U_CFG_LINT_USE_STUBS` defined `blah_stub.c` would replace `blah.c`.
-
 [scripts/u_run_static_size.py](./scripts/u_run_static_size.py): run a static check of code/RAM size; called by called by `automation.test` PyInvoke task.
 
 [scripts/u_run_no_floating_point.py](./scripts/u_run_no_floating_point.py): run a static size check without floating point support, checking that no floating point has crept in; called by [u_run.py](u_run.py).
@@ -247,5 +245,4 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 - If you add a new platform or test suite, add it to [DATABASE.md](DATABASE.md) and make sure that the result is parsed correctly by [u_data.py](./scripts/u_data.py) (e.g. by running `automation.<command>` PyInvoke tasks) from the command-line and checking that everything is correct).
 - If you add a new item in the range 0 to 9 (i.e. a checker with no platform), update [automation.py](./tasks/automation.py) to include it.
 - If you add a new directory OFF THE ROOT of `ubxlib`, i.e. something like `ubxlib/blah`, add it to the `ASTYLE_DIRS` variable of the [u_run_astyle.py](./scripts/u_run_astyle.py) script.
-- If you add a new directory that contains PLATFORM INDEPENDENT `.c` or `.cpp` files anywhere in the `ubxlib` tree, add it to the `LINT_DIRS` variable of the [u_run_lint.py](./scripts/u_run_lint.py) script.
 - If you add a new source file in platform-independent, non-test, non-example code make sure that the source file list (and if necessary the include file list) down in [port/platform/static_size](/port/platform/static_size) is updated to include it, or it will be missed out of the size estimate.
