@@ -8,17 +8,6 @@
 	},
 	"tasks": [
         {
-            "type": "shell",
-            "label": "Create workdir",
-            "linux": {
-                "command": "mkdir -p /tmp/work"
-            },
-            "windows": {
-                "command": "echo Not supported for Windows"
-            },
-            "problemMatcher": []
-        },
-        {
             "label": "Clean all builds",
             "type": "shell",
             "linux": {
@@ -213,50 +202,17 @@
             "problemMatcher": []
         },
         {
-            "label": "Docker: u_run",
-            "type": "shell",
-            "options": {
-                "env": {
-                    "DOCKER_CWD": "ubxlib/port/platform/common/automation",
-                    "INSTANCE": "${input:instance}",
-                    "DOCKER_TEST_OUPUT": "/workdir/_test_output/instance_${input:instance}",
-                    "HOST_TEST_OUPUT": "${workspaceFolder}/_test_output/instance_${input:instance}",
-                },
-                "cwd": "${workspaceRoot}/port/platform/common/automation/docker/agent"
-            },
-            "linux": {
-                "command": "mkdir -p ${HOST_TEST_OUPUT} && export DEV_COMMAND=\"cd $DOCKER_CWD && python u_run.py -d $DOCKER_TEST_OUPUT/debug.txt -s $DOCKER_TEST_OUPUT/summary.txt -u /workdir/ubxlib -w $DOCKER_TEST_OUPUT $INSTANCE\" && docker-compose -f docker-compose-dev.yml run --rm ubxlib_agent"
-            },
-            "windows": {
-                "command": "echo Not supported for Windows"
-            },
-            "problemMatcher": {
-                "base": "$gcc",
-                "fileLocation": ["relative", "${workspaceRoot}"],
-                // Re-map the docker path to host path so that GCC issues will popup correctly in PROBLEMS tab
-                "pattern": {
-                    "regexp": "\/workdir\/ubxlib\/(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
-                    "file": 1,
-                    "line": 2,
-                    "column": 3,
-                    "severity": 4,
-                    "message": 5
-                }
-            }
-        },
-        {
             "label": "Docker: bash",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceRoot}/port/platform/common/automation/docker/agent"
+                "cwd": "${workspaceRoot}/port/platform/common/automation/docker/builder"
             },
             "linux": {
-                "command": "docker-compose -f docker-compose-dev.yml run --rm ubxlib_agent"
+                "command": "docker-compose run --rm -w /workdir/ubxlib/port/platform/common/automation -v ${workspaceRoot}:/workdir/ubxlib -v $HOME:/home/ubxlib ubxlib_builder sh"
             },
             "windows": {
                 "command": "echo \"Not supported for Windows\""
             },
-            "dependsOn": "Create workdir",
             "problemMatcher": []
         }
     ],
