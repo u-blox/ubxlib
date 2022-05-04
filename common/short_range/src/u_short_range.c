@@ -43,6 +43,7 @@
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
+#include "u_port_gpio.h"
 #include "u_port_uart.h"
 
 #include "u_at_client.h"
@@ -1114,7 +1115,6 @@ int32_t uShortRangeSetBaudrate(uDeviceHandle_t *pDevHandle,
 
     if ((pInstance != NULL) &&
         (pInstance->atHandle != NULL)) {
-
         snprintf(atBuffer, sizeof(atBuffer), "AT+UMRS=%d,1,8,1,1", (int)pUartConfig->baudRate);
         errorCode = executeAtCommand(pInstance->atHandle, 1, atBuffer);
 
@@ -1127,6 +1127,92 @@ int32_t uShortRangeSetBaudrate(uDeviceHandle_t *pDevHandle,
         }
     }
 
+    return errorCode;
+}
+
+// Configure GPIO
+int32_t uShortRangeGpioConfig(uDeviceHandle_t devHandle, int32_t gpioId,
+                              bool isOutput, int32_t level)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uShortRangePrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUShortRangePrivateMutex != NULL) {
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        if ((pInstance != NULL) && ((int32_t) gpioId >= 0)) {
+            atHandle = pInstance->atHandle;
+            uAtClientCommandStart(atHandle, "AT+UGPIOC=");
+            // Write GPIO ID.
+            uAtClientWriteInt(atHandle, (int32_t) gpioId);
+            // Write GPIO direction.
+            uAtClientWriteInt(atHandle, isOutput ? 0 : 1);
+            if (isOutput) {
+                // Write initial output value
+                uAtClientWriteInt(atHandle, level);
+            }
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return errorCode;
+}
+
+// Set GPIO
+int32_t uShortRangeGpioSet(uDeviceHandle_t devHandle, int32_t gpioId,
+                           int32_t level)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+    uShortRangePrivateInstance_t *pInstance;
+    uAtClientHandle_t atHandle;
+
+    if (gUShortRangePrivateMutex != NULL) {
+        pInstance = pUShortRangePrivateGetInstance(devHandle);
+        if ((pInstance != NULL) && ((int32_t) gpioId >= 0)) {
+            atHandle = pInstance->atHandle;
+
+            uAtClientCommandStart(atHandle, "AT+UGPIOW=");
+            // Write GPIO ID
+            uAtClientWriteInt(atHandle, (int32_t) gpioId);
+            // Write output level
+            uAtClientWriteInt(atHandle, level);
+            uAtClientCommandStopReadResponse(atHandle);
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+        }
+    }
+
+    return errorCode;
+}
+
+int32_t uShortRangeResetToDefaultSettings(int32_t pinDataReady)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uPortGpioConfig_t gpioConfig;
+
+    if (gUShortRangePrivateMutex == NULL) {
+        return (int32_t) errorCode;
+    }
+
+    U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
+    gpioConfig.pin = pinDataReady;
+    gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+    errorCode = uPortGpioConfig(&gpioConfig);
+    uPortGpioSet(pinDataReady, 0); //assert
+
+    //initiate DTR reset sequence
+    if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        uPortTaskBlock(1200); // 1s silence
+        for (int32_t count = 0; count < 5; count++) { // 5 transfers from deassert to assert
+            uPortTaskBlock(40);
+            uPortLog("U_SHORT_RANGE: DTR state: on\n");
+            uPortGpioSet(pinDataReady, 1); //deassert
+            uPortTaskBlock(40);
+            uPortLog("U_SHORT_RANGE: DTR state: off\n");
+            uPortGpioSet(pinDataReady, 0); //assert
+        }
+        uPortTaskBlock(1200); // 1s silence
+    }
     return errorCode;
 }
 

@@ -244,19 +244,6 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
                             const uShortRangeUartConfig_t *pUartConfig,
                             bool restart, uDeviceHandle_t *pDevHandle);
 
-
-/** Sets new UART baudrate for a short range module
- *
- * @param[in,out] pDevHandle  a pointer to a short range device handle that has been
- *                            opened with uShortRangeOpenUart(). If the reconfiguration
- *                            of the UART settings succeeds a new device handle will
- *                            be allocated and returned via this parameter.
- * @param pUartConfig         the new UART configuration to be used.
- * @return                    0 on success or negative error code on failure.
- */
-int32_t uShortRangeSetBaudrate(uDeviceHandle_t *pDevHandle,
-                               const uShortRangeUartConfig_t *pUartConfig);
-
 /** Closes and disconnects all associated handles, such as UART and EDM, for the short range instance
  *
  * @param devHandle     the short range device handle to close.
@@ -376,7 +363,46 @@ int32_t uShortRangeGetEdmStreamHandle(uDeviceHandle_t devHandle);
  */
 int32_t uShortRangeGetUartHandle(uDeviceHandle_t devHandle);
 
+/** Sets new UART baudrate for a short range module
+ *
+ * @param[in,out] pDevHandle  a pointer to a short range device handle that has been
+ *                            opened with uShortRangeOpenUart(). If the reconfiguration
+ *                            of the UART settings succeeds a new device handle will
+ *                            be allocated and returned via this parameter.
+ * @param pUartConfig         the new UART configuration to be used.
+ * @return                    0 on success or negative error code on failure.
+ */
+int32_t uShortRangeSetBaudrate(uDeviceHandle_t *pDevHandle,
+                               const uShortRangeUartConfig_t *pUartConfig);
 
+/** Configure a GPIO of a shortrange module.
+ *
+ * @param [in] devHandle    the handle of the shortrange device handle.
+ * @param gpioId            the GPIO ID to configure (often the same as pin number).
+ * @param isOutput          the direction, set to true for an output, false for
+ *                          an input.
+ * @param level             the initial level to set, only used if isOutput
+ *                          is true; 0 for low or non-zero for high.
+ * @return                  zero on success else negative error code.
+ */
+int32_t uShortRangeGpioConfig(uDeviceHandle_t devHandle, int32_t gpioId, bool isOutput,
+                              int32_t level);
+
+/** Set the state of a GPIO of a shortrange module.
+ *
+ * @param [in] devHandle    the handle of the shortrange device handle.
+ * @param gpioId            the GPIO ID to set (often the same as pin number).
+ * @param level             the level to set, 0 for low or non-zero for high.
+ * @return                  zero on success else negative error code.
+ */
+int32_t uShortRangeGpioSet(uDeviceHandle_t devHandle, int32_t gpioId, int32_t level);
+
+/** Resets the module settings to default values of a shortrange module.
+ *
+ * @param pinDataReady      the GPIO ID for DTR (often the same as pin number).
+ * @return                  zero on success else negative error code.
+ */
+int32_t uShortRangeResetToDefaultSettings(int32_t pinDataReady);
 
 #ifdef __cplusplus
 }
