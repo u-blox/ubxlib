@@ -24,6 +24,8 @@ def get_u_packages_config(ctx: Context):
         ctx.config.run.env["UBXLIB_PKG_DIR"] = os.environ["UBXLIB_PKG_DIR"]
 
     # Load u_packages.yml
+    if not 'cfg_dir' in ctx.config:
+        ctx.config['cfg_dir'] = os.getcwd()
     cfg_file = os.path.join(ctx.config['cfg_dir'], "u_packages.yml")
     pkg_cfg = u_config.load_config_yaml(cfg_file, is_linux())
     # For all packages that doesn't specify package_dir we add a default value

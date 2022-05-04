@@ -105,9 +105,11 @@
         {
             "id": "getArmToolchainPath",
             "type": "command",
-            "command": "extension.commandvariable.file.content",
+            "command": "shellCommand.execute",
             "args": {
-                "fileName": "${workspaceFolder}/.vscode/arm-toolchain-path.txt"
+                "useFirstResult": "skip",
+                "command": "python -m scripts.u_get_arm_toolchain",
+                "cwd": "${workspaceFolder}/port/platform/common/automation",
             }
         }
     ]

@@ -218,6 +218,8 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 
 [scripts/u_get_likely_base_branch.py](./scripts/u_get_likely_base_branch.py): script used for guessing the base branch for a commit. This is used by `Jenkinsfile` to determine if the base branch is `development` or `master`.
 
+[scripts/u_get_arm_toolchain.py](./scripts/u_get_arm_toolchain.py): script used by vscode to get the ARM toolchain path via `u_packages`.
+
 # Maintenance
 - If you add a new API make sure that it is listed in the `APIs available` column of at least one row in [DATABASE.md](DATABASE.md), otherwise [u_select.py](./scripts/u_select.py) will **not**  select it for testing on a Pull Request.
 - If you add a new board to the test machine or change the COM port or debugger serial number that an existing board uses on the test machine, update [u_connection.py](./scripts/u_connection.py) to match.
