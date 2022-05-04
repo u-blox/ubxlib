@@ -55,17 +55,6 @@
             "interface": "swd",
             "servertype": "jlink",
             "runToMain": true,
-            "rttConfig": {
-                "enabled": true,
-                "address": "auto",
-                "decoders": [
-                    {
-                        "label": "",
-                        "port": 0,
-                        "type": "console"
-                    }
-                ]
-            },
             "armToolchainPath": "${input:getArmToolchainPath}",
             "preLaunchTask": "Predebug evkninab3 runner [Zephyr]"
         },
