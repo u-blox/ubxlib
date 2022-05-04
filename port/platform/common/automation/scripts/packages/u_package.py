@@ -2,7 +2,8 @@ import os
 from invoke import Context
 from portalocker import Lock
 from portalocker.exceptions import AlreadyLocked
-from .. import u_utils, u_config
+from .. import u_config
+from .u_pkg_utils import is_automation, is_linux
 from .u_base_package import *
 from .u_nrfconnectsdk_package import UNrfConnectSdkPackage
 from .u_esp_idf_package import UEspIdfPackage
@@ -15,7 +16,7 @@ def get_u_packages_config(ctx: Context):
     # First check if user have specified a specific folder to put
     # the u_packages in
     if not "UBXLIB_PKG_DIR" in os.environ:
-        if u_utils.is_linux():
+        if is_linux():
             pkg_dir = "${HOME}/.ubxlibpkg"
         else:
             pkg_dir = "${UserProfile}/.ubxlibpkg"
@@ -24,7 +25,7 @@ def get_u_packages_config(ctx: Context):
 
     # Load u_packages.yml
     cfg_file = os.path.join(ctx.config['cfg_dir'], "u_packages.yml")
-    pkg_cfg = u_config.load_config_yaml(cfg_file, u_utils.is_linux())
+    pkg_cfg = u_config.load_config_yaml(cfg_file, is_linux())
     # For all packages that doesn't specify package_dir we add a default value
     for pkg_name in pkg_cfg:
         if not "package_dir" in pkg_cfg[pkg_name]:
@@ -56,7 +57,7 @@ def load(ctx: Context, packages: List[str]) -> Dict[str,UBasePackage]:
 
     try:
         with Lock(f"{UBXLIB_PKG_DIR}/lock",
-                  fail_when_locked = not u_utils.is_automation(),
+                  fail_when_locked = not is_automation(),
                   timeout=AUTOMATION_LOCK_TIMEOUT):
             u_packages = {}
             needs_install = []
