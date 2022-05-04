@@ -1,0 +1,7 @@
+analyzer:
+  - --jobs=12
+  - --disable=misc-misplaced-const
+  - --disable=bugprone-signed-char-misuse
+  - --disable=clang-diagnostic-sign-compare
+  - --disable=clang-diagnostic-#warnings
+  - --disable=clang-diagnostic-unknown-attributes

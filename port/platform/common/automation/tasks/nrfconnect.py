@@ -1,19 +1,44 @@
 import os
 import shutil
 import sys
+import json
 
-from invoke import task
+from invoke import task, Exit
 from tasks import task_utils
 from scripts import u_utils
 from scripts.u_log_readers import URttReader
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
-from scripts.packages import u_package
+from scripts.packages import u_package, u_pkg_utils
 
 DEFAULT_CMAKE_DIR = f"{u_utils.UBXLIB_DIR}/port/platform/zephyr/runner"
 DEFAULT_BOARD_NAME = "nrf5340dk_nrf5340_cpuapp"
 DEFAULT_OUTPUT_NAME = f"runner_{DEFAULT_BOARD_NAME}"
 DEFAULT_BUILD_DIR = os.path.join("_build","nrfconnect")
 DEFAULT_MCU = "NRF5340_XXAA_APP"
+
+def filter_compile_commands(input_json_file='compile_commands.json',
+                            output_json_file='filtered_commands.json',
+                            include_dirs=[],
+                            exclude_patterns=[]):
+    # Load input json file
+    with open(input_json_file) as f:
+        commands = json.load(f)
+    # Make sure the paths are expanded
+    include_dirs = [os.path.abspath(os.path.expanduser(x)) for x in include_dirs]
+    filtered_commands = []
+    for cmd in commands:
+        file_path = os.path.abspath(cmd["file"])
+        included = any(file_path.startswith(dir) for dir in include_dirs)
+        excluded = any(pattern in file_path for pattern in exclude_patterns)
+        if included and not excluded:
+            # When -nostdinc is specified clang doesn't function correctly
+            # but removing seems to succeed...
+            cmd["command"] = cmd["command"].replace("-nostdinc", "")
+            filtered_commands.append(cmd)
+
+    # Write output json file
+    with open(output_json_file, 'w') as outfile:
+        json.dump(filtered_commands, outfile)
 
 @task()
 def check_installation(ctx):
@@ -151,3 +176,64 @@ def parse_backtrace(ctx, elf_file, line):
     Example usage: inv nrfconnect.parse-backtrace zephyr.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
     """
     task_utils.parse_backtrace(ctx, elf_file, line, toolchain_prefix=f"{ctx.arm_toolchain_path}/arm-none-eabi-")
+
+@task(
+    pre=[check_installation],
+    help={
+        "cmake_dir": f"CMake project directory to build (default: {DEFAULT_CMAKE_DIR})",
+        "board_name": f"Zephyr board name (default: {DEFAULT_BOARD_NAME})",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME})",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
+        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)"
+    }
+)
+def analyze(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
+            output_name=DEFAULT_OUTPUT_NAME, build_dir=DEFAULT_BUILD_DIR,
+            u_flags=None):
+    """Run CodeChecker static code analyzer (clang-analyze + clang-tidy)"""
+    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    os.makedirs(build_dir, exist_ok=True)
+
+    if u_flags:
+        ctx.config.run.env["U_FLAGS"] = u_flags_to_cflags(u_flags)
+
+    # Start by getting the compile commands by using the CMAKE_EXPORT_COMPILE_COMMANDS setting
+    # This will generate compile_commands.json
+    with ctx.prefix(u_pkg_utils.change_dir_prefix(build_dir)):
+        ctx.run(f'{ctx.zephyr_pre_command}cmake -DBOARD={board_name} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -G Ninja {cmake_dir}')
+
+    # Now when we got all compile commands we filter out only the relevant (i.e. commands for compiling ubxlib source)
+    filter_compile_commands(input_json_file=f"{build_dir}/compile_commands.json",
+                            output_json_file=f"{build_dir}/filtered_commands.json",
+                            include_dirs=[u_utils.UBXLIB_DIR],
+                            exclude_patterns=[build_dir])
+
+    with ctx.prefix(u_pkg_utils.change_dir_prefix(build_dir)):
+        # Need to first build zephyr lib so that we get the generated headers
+        ctx.run(f'ninja zephyr')
+        # Do the analyze
+        analyze_proc = ctx.run(f'CodeChecker analyze filtered_commands.json -o ./analyze ' \
+                               f'--config {u_utils.CODECHECKER_CFG_FILE} -i {u_utils.CODECHECKER_IGNORE_FILE}', warn=True)
+        # Regardless if there is an error in previous step we try to convert the analyze result to HTML
+        parse_proc = ctx.run(f'CodeChecker parse -e html ./analyze -o ./analyze_html', warn=True, hide=u_utils.is_automation())
+        # Now check the return codes
+        if parse_proc.exited == 2:
+            if u_utils.is_automation():
+                # When running on Jenkins we print out an URL to the test report
+                workspace_dir = os.environ['WORKSPACE']
+                rel_analyze_path = os.path.relpath(f"{build_dir}/analyze_html/index.html", workspace_dir)
+                url = f"{os.environ['BUILD_URL']}artifact/{rel_analyze_path}"
+                print("\n"
+                      "*************************************************************\n"
+                      "* CodeChecker returned a report\n"
+                      "*************************************************************\n",
+                      file=sys.stderr)
+                print(f"Please see the report here:\n{url}")
+                raise Exit(f"CodeChecker found things to address")
+        elif not parse_proc.ok:
+            print(parse_proc.stdout)
+            print(parse_proc.stderr, file=sys.stderr)
+            raise Exit(f"CodeChecker parse failed")
+
+        if not analyze_proc.ok:
+            raise Exit(f"CodeChecker analyze returned an error")

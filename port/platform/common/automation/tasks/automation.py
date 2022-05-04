@@ -26,6 +26,7 @@ class Command(Enum):
     FLASH = 2
     LOG = 3
     TEST = 4
+    STATIC_ANALYZE = 5
 
 def eprint(*args, **kwargs):
     """Helper function for writing to stderr"""
@@ -64,6 +65,12 @@ def instance_command(ctx, instance_str, cmd):
     mcu = u_data.get_mcu_for_instance(db_data, instance)
     toolchain = u_data.get_toolchain_for_instance(db_data, instance)
     description = u_data.get_description_for_instance(db_data, instance)
+
+    # CodeChecker needs some special handling but will only change the
+    # "TEST" command to "STATIC_ANALYZE"
+    if platform.lower().startswith("codechecker:") and cmd == Command.TEST:
+        cmd = Command.STATIC_ANALYZE
+        platform = platform.split(":", 2)[1]
 
     # Defines may be provided via an environment
     # variable, in a list separated with semicolons, e.g.:
@@ -121,6 +128,8 @@ def instance_command(ctx, instance_str, cmd):
                 nrfconnect.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
             elif cmd == Command.TEST:
                 check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
+            elif cmd == Command.STATIC_ANALYZE:
+                nrfconnect.analyze(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines)
             else:
                 raise Exit(f"Unsupported command for MCU '{mcu}' on platform: '{platform}'")
         else:
@@ -164,6 +173,8 @@ def instance_command(ctx, instance_str, cmd):
             stm32cubef4.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, port=port)
         elif cmd == Command.TEST:
             check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
+        elif cmd == Command.STATIC_ANALYZE:
+            stm32cubef4.analyze(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines)
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 

@@ -3,7 +3,7 @@ import shutil
 import time
 import sys
 from telnetlib import Telnet
-from invoke import task
+from invoke import task, Exit
 from tasks import task_utils
 from scripts import u_utils
 from scripts.u_flags import u_flags_to_cflags, get_cflags_from_u_flags_yml
@@ -64,6 +64,11 @@ def check_installation(ctx):
 def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAME,
           build_dir=DEFAULT_BUILD_DIR, jobs=DEFAULT_JOB_COUNT, u_flags=None):
     """Build a STM32CubeF4 SDK based application"""
+    # When user calls the "analyze" task it will in turn call this function
+    # with ctx.is_static_analyze=True
+    is_static_analyze = False
+    if hasattr(ctx, 'is_static_analyze'):
+        is_static_analyze = ctx.is_static_analyze
 
     # Handle u_flags
     if u_flags:
@@ -76,14 +81,24 @@ def build(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAM
             clean(ctx, output_name, build_dir)
         cflags = u_flags["cflags"]
 
-    build_dir = os.path.abspath(os.path.join(build_dir, output_name))
-    os.makedirs(build_dir, exist_ok=True)
+    ctx.build_dir = os.path.abspath(os.path.join(build_dir, output_name))
+    os.makedirs(ctx.build_dir, exist_ok=True)
     with ctx.prefix(u_pkg_utils.change_dir_prefix(makefile_dir)):
         # OUTPUT_DIRECTORY is very picky in Windows.
         # Seems it must be a relative path and `\` directory separators must NOT be used.
-        build_dir = os.path.relpath(build_dir, makefile_dir).replace("\\", "/")
-        ctx.run(f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
-                f'CFLAGS="{cflags}" {" ".join(ctx.stm32cubef4_env)}')
+        build_dir = os.path.relpath(ctx.build_dir, makefile_dir).replace("\\", "/")
+        build_cmd = f'make -j{jobs} UBXLIB_PATH={ctx.config.root_dir} OUTPUT_DIRECTORY={build_dir} '\
+                    f'CFLAGS=\'{cflags}\' {" ".join(ctx.stm32cubef4_env)}'
+        if is_static_analyze:
+            ctx.analyze_dir = f"{ctx.build_dir}/analyze"
+            check_proc = ctx.run(f'CodeChecker check -b "{build_cmd}" -o {ctx.analyze_dir} ' \
+                                 f'--config {u_utils.CODECHECKER_CFG_FILE} -i {u_utils.CODECHECKER_IGNORE_FILE}', warn=True)
+            if check_proc.exited == 1:
+                raise Exit("CodeChecker error")
+            elif check_proc.exited >= 128:
+                raise Exit("CodeChecker fatal error")
+        else:
+            ctx.run(build_cmd)
 
 @task(
     help={
@@ -189,3 +204,39 @@ def parse_backtrace(ctx, elf_file, line):
     Example usage: inv stm32cubef4.parse-backtrace zephyr.elf "Backtrace:0x400ec4df:0x3ffbabb0 0x400df5a6:0x3ffbabd0"
     """
     task_utils.parse_backtrace(ctx, elf_file, line, toolchain_prefix=f"{ctx.arm_toolchain_path}/arm-none-eabi-")
+
+@task(
+    pre=[check_installation],
+    help={
+        "makefile_dir": f"Makefile project directory to build (default: {DEFAULT_MAKEFILE_DIR})",
+        "output_name": f"An output name (build sub folder, default: {DEFAULT_OUTPUT_NAME}",
+        "build_dir": f"Output build directory (default: {DEFAULT_BUILD_DIR})",
+        "u_flags": "Extra u_flags (when this is specified u_flags.yml will not be used)",
+        "jobs": f"The number of Makefile jobs (default: {DEFAULT_JOB_COUNT})"
+    }
+)
+def analyze(ctx, makefile_dir=DEFAULT_MAKEFILE_DIR, output_name=DEFAULT_OUTPUT_NAME,
+            build_dir=DEFAULT_BUILD_DIR, jobs=DEFAULT_JOB_COUNT, u_flags=None):
+    """Run CodeChecker static code analyzer (clang-analyze + clang-tidy)"""
+    ctx.is_static_analyze = True
+    build(ctx, makefile_dir, output_name, build_dir, jobs, u_flags)
+
+    parse_proc = ctx.run(f'CodeChecker parse -e html {ctx.analyze_dir} -o {ctx.build_dir}/analyze_html', warn=True, hide=u_utils.is_automation())
+    # Check the return codes
+    if parse_proc.exited == 2:
+        if u_utils.is_automation():
+            # When running on Jenkins we print out an URL to the test report
+            workspace_dir = os.environ['WORKSPACE']
+            rel_analyze_path = os.path.relpath(f"{build_dir}/analyze_html/index.html", workspace_dir)
+            url = f"{os.environ['BUILD_URL']}artifact/{rel_analyze_path}"
+            print("\n"
+                    "*************************************************************\n"
+                    "* CodeChecker returned a report\n"
+                    "*************************************************************\n",
+                    file=sys.stderr)
+            print(f"Please see the report here:\n{url}")
+            raise Exit(f"CodeChecker found things to address")
+    elif not parse_proc.ok:
+        print(parse_proc.stdout)
+        print(parse_proc.stderr, file=sys.stderr)
+        raise Exit(f"CodeChecker parse failed")
