@@ -753,16 +753,17 @@ int32_t uShortRangeSetIpConnectionStatusCallback(int32_t shortRangeHandle,
     if (gUShortRangePrivateMutex != NULL) {
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL && pCallback != NULL) {
-            pInstance->pIpConnectionStatusCallback = pCallback;
-            pInstance->pIpConnectionStatusCallbackParameter = pCallbackParameter;
+        if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        } else if (pInstance != NULL && pCallback == NULL) {
-            pInstance->pIpConnectionStatusCallback = NULL;
-            pInstance->pIpConnectionStatusCallbackParameter = NULL;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pCallback != NULL) {
+                pInstance->pIpConnectionStatusCallback = pCallback;
+                pInstance->pIpConnectionStatusCallbackParameter = pCallbackParameter;
+            } else {
+                pInstance->pIpConnectionStatusCallback = NULL;
+                pInstance->pIpConnectionStatusCallbackParameter = NULL;
+            }
+            configureConnectionUrcHandlers(pInstance);
         }
-        configureConnectionUrcHandlers(pInstance);
     }
 
     return errorCode;
@@ -778,16 +779,17 @@ int32_t uShortRangeSetBtConnectionStatusCallback(int32_t shortRangeHandle,
     if (gUShortRangePrivateMutex != NULL) {
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL && pCallback != NULL) {
-            pInstance->pBtConnectionStatusCallback = pCallback;
-            pInstance->pBtConnectionStatusCallbackParameter = pCallbackParameter;
+        if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        } else if (pInstance != NULL && pCallback == NULL) {
-            pInstance->pBtConnectionStatusCallback = NULL;
-            pInstance->pBtConnectionStatusCallbackParameter = NULL;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pCallback != NULL) {
+                pInstance->pBtConnectionStatusCallback = pCallback;
+                pInstance->pBtConnectionStatusCallbackParameter = pCallbackParameter;
+            } else {
+                pInstance->pBtConnectionStatusCallback = NULL;
+                pInstance->pBtConnectionStatusCallbackParameter = NULL;
+            }
+            configureConnectionUrcHandlers(pInstance);
         }
-        configureConnectionUrcHandlers(pInstance);
     }
 
     return errorCode;
@@ -803,16 +805,17 @@ int32_t uShortRangeSetMqttConnectionStatusCallback(int32_t shortRangeHandle,
     if (gUShortRangePrivateMutex != NULL) {
         pInstance = pUShortRangePrivateGetInstance(shortRangeHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL && pCallback != NULL) {
-            pInstance->pMqttConnectionStatusCallback = pCallback;
-            pInstance->pMqttConnectionStatusCallbackParameter = pCallbackParameter;
+        if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        } else if (pInstance != NULL && pCallback == NULL) {
-            pInstance->pMqttConnectionStatusCallback = NULL;
-            pInstance->pMqttConnectionStatusCallbackParameter = NULL;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pCallback != NULL) {
+                pInstance->pMqttConnectionStatusCallback = pCallback;
+                pInstance->pMqttConnectionStatusCallbackParameter = pCallbackParameter;
+            } else {
+                pInstance->pMqttConnectionStatusCallback = NULL;
+                pInstance->pMqttConnectionStatusCallbackParameter = NULL;
+            }
+            configureConnectionUrcHandlers(pInstance);
         }
-        configureConnectionUrcHandlers(pInstance);
     }
 
     return errorCode;

@@ -140,7 +140,6 @@ static const char gTestData[] =  "_____0000:012345678901234567890123456789012345
 static volatile int32_t gConnHandle;
 static volatile int32_t gBytesReceived;
 static volatile int32_t gErrors = 0;
-static volatile uint32_t gIndexInBlock;
 static const int32_t gTotalBytes = (sizeof gTestData - 1) * U_BLE_TEST_TEST_DATA_LOOPS;
 static volatile int32_t gBytesSent;
 static volatile int32_t gChannel;
@@ -163,13 +162,18 @@ static int32_t gNetworkHandle = -1;
 
 #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
 
-// Print out text.
-static void print(const char *pStr, size_t length)
+/** Print text from a buffer and wrap when end is reached
+ *
+ * @param pBuffer         the buffer to print from.
+ * @param bufLength       the length of the buffer to print from.
+ * @param startIndex      the starting index in the buffer to print.
+ * @param printLength     the number of charcters to print from the buffer.
+ */
+static void wrapPrint(const char *pBuffer, size_t bufLength,
+                      uint32_t startIndex, uint32_t printLength)
 {
-    char c;
-
-    for (size_t x = 0; x < length; x++) {
-        c = *pStr++;
+    for (size_t x = 0; x < printLength; x++) {
+        char c = pBuffer[(startIndex + x) % bufLength];
         if (!isprint((int32_t) c)) {
             // Print the hex
             uPortLog("[%02x]", c);
@@ -228,37 +232,30 @@ static void bleDataCallback(int32_t channel, void *pParameters)
     U_PORT_TEST_ASSERT(channel == gChannel);
 
     do {
-        length = uBleDataReceive(gBleHandle, channel, buffer, sizeof buffer);
+        length = uBleDataReceive(gBleHandle, channel, buffer, sizeof(buffer));
         if (length > 0) {
-            int32_t errorOrigDataStartIndex = -1;
-            int32_t errorRecDataStartIndex = -1;
-            int32_t errorLength = -1;
+            int32_t previousBytesReceived = gBytesReceived;
+            int32_t errorStartByte = -1;
 
             // Compare the data with the expected data
             for (int32_t x = 0; (x < length); x++) {
-                gBytesReceived++;
-                if (gTestData[gIndexInBlock] != buffer[x]) {
-                    if (errorOrigDataStartIndex < 0) {
-                        errorOrigDataStartIndex = gIndexInBlock;
-                        errorRecDataStartIndex = x;
-                        errorLength = 1;
-                    } else {
-                        errorLength++;
+                int32_t index = gBytesReceived % (sizeof(gTestData) - 1);
+                if (gTestData[index] != buffer[x]) {
+                    if (errorStartByte < 0) {
+                        errorStartByte = x;
                     }
                     gErrors++;
                 }
-                if (++gIndexInBlock >= sizeof gTestData - 1) {
-                    gIndexInBlock -= sizeof gTestData - 1;
-                }
+                gBytesReceived++;
             }
 
-            uPortLog("U_NETWORK_TEST: received %d bytes (total %d with %d errors).\n", length, gBytesReceived,
-                     gErrors);
-            if (errorOrigDataStartIndex >= 0) {
+            uPortLog("U_NETWORK_TEST: received %d bytes (total %d with %d errors).\n",
+                     length, gBytesReceived, gErrors);
+            if (errorStartByte >= 0) {
                 uPortLog("U_NETWORK_TEST: expected:\n");
-                print(gTestData + errorOrigDataStartIndex, errorLength);
+                wrapPrint(gTestData, sizeof(gTestData) - 1, previousBytesReceived, errorStartByte + 1);
                 uPortLog("U_NETWORK_TEST: got:\n");
-                print(buffer + errorRecDataStartIndex, errorLength);
+                wrapPrint(buffer, sizeof(buffer), 0, errorStartByte + 1);
             }
         }
     } while (length > 0);
@@ -558,7 +555,6 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                 gConnHandle = -1;
                 gBytesSent = 0;
                 gBytesReceived = 0;
-                gIndexInBlock = 0;
                 U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gBleConnectionSem, 0, 1) == 0);
 
                 uBleDataSetCallbackConnectionStatus(gUNetworkTestCfg[x].handle,
