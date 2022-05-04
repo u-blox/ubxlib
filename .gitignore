@@ -20,6 +20,5 @@ _work
 *.state.json
 u_flags.yml
 config.yml
-arm-toolchain-path.txt
 _build
 /port/platform/arduino/ubxlib

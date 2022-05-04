@@ -9,7 +9,15 @@ from io import BytesIO
 from zipfile import ZipFile
 from tarfile import TarFile
 from glob import glob
-from ..u_utils import is_linux
+import platform
+
+def is_automation():
+    """Returns True if running automated (detected by checking if there is a TTY)"""
+    return not sys.stdin.isatty()
+
+def is_linux():
+    '''Returns True when system is Linux'''
+    return platform.system() == 'Linux'
 
 def question(text):
     """ Prompt user for yes/no question

@@ -1,8 +1,8 @@
 import os
 import shutil
 from . import u_pkg_utils
-from .. import u_utils
 from invoke import Context
+from .u_pkg_utils import is_linux
 from .u_base_package import UAbortedException, UGitPackage
 
 ESP_IDF_URL="https://github.com/espressif/esp-idf"
@@ -17,7 +17,7 @@ class UEspIdfPackage(UGitPackage):
             if not u_pkg_utils.question("Do you want to remove the directory and re-install?"):
                 raise UAbortedException
             shutil.rmtree(idf_tools_dir)
-        if u_utils.is_linux():
+        if is_linux():
             ctx.run(f"{self.package_dir}/install.sh")
         else:
             ctx.run(f"{self.package_dir}/install.bat")
