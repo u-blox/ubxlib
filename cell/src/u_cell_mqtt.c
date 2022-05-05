@@ -361,6 +361,8 @@ static void messageIndicationCallback(uAtClientHandle_t atHandle,
 // A local "trampoline" for the disconnect callback,
 // here so that it can call pDisconnectCallback
 // in a separate task.
+//lint -esym(818, pParam) Suppress "could be pointing to const",
+// gotta follow the function signature
 static void disconnectCallback(uAtClientHandle_t atHandle,
                                void *pParam)
 {

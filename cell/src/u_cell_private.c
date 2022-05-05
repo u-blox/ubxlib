@@ -550,7 +550,7 @@ int32_t uCellPrivateGetImei(const uCellPrivateInstance_t *pInstance,
 // no use for this API.
 bool uCellPrivateIsRegistered(const uCellPrivateInstance_t *pInstance)
 {
-    return U_CELL_PRIVATE_STATUS_MEANS_REGISTERED(pInstance->networkStatus[U_CELL_NET_REG_DOMAIN_PS]);
+    return U_CELL_NET_STATUS_MEANS_REGISTERED(pInstance->networkStatus[U_CELL_NET_REG_DOMAIN_PS]);
 }
 
 // Convert module RAT to our RAT.

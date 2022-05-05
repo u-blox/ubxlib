@@ -180,6 +180,13 @@ static const uCellNetRegTypes_t gRegTypes[] = {
 };
 
 /* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: FORWARD DECLARATIONS
+ * -------------------------------------------------------------- */
+
+static int32_t activateContext(const uCellPrivateInstance_t *pInstance,
+                               int32_t contextId, int32_t profileId);
+
+/* ----------------------------------------------------------------
  * STATIC FUNCTIONS: URC AND RELATED FUNCTIONS
  * -------------------------------------------------------------- */
 
@@ -223,6 +230,18 @@ static void powerSaving3gppCallback(uAtClientHandle_t atHandle,
         }
         free(pCallback);
     }
+}
+
+// Callback that will be called if we need to reactivate a context
+// on regaining service after some sort of network outage.
+static void activateContextCallback(uAtClientHandle_t atHandle,
+                                    void *pParameter)
+{
+    uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParameter;
+
+    (void) atHandle;
+
+    activateContext(pInstance, U_CELL_NET_CONTEXT_ID, U_CELL_NET_PROFILE_ID);
 }
 
 // Set the current network status.
@@ -336,11 +355,26 @@ static void setNetworkStatus(uCellPrivateInstance_t *pInstance,
     pInstance->networkStatus[domain] = status;
 
     pInstance->rat[domain] = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
-    if (U_CELL_PRIVATE_STATUS_MEANS_REGISTERED(status) &&
+    if (U_CELL_NET_STATUS_MEANS_REGISTERED(status) &&
         (rat >= 0) &&
         (rat < (int32_t) (sizeof(g3gppRatToCellRat) /
                           sizeof(g3gppRatToCellRat[0])))) {
         pInstance->rat[domain] = (uCellNetRat_t) g3gppRatToCellRat[rat];
+        if (pInstance->profileState == U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION) {
+            // This flag will be set if we had been knocked out
+            // of our PDP context by a network outage and need
+            // to get it back again; make sure to get this in the
+            // queue before any user registratioon status callback
+            // so that everything is sorted for them
+            if (!U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                    U_CELL_PRIVATE_FEATURE_USE_UPSD_CONTEXT_ACTIVATION)) {
+                // Use the AT client's callback mechanism to do the operation
+                // out of the URC task
+                uAtClientCallback(pInstance->atHandle,
+                                  activateContextCallback, pInstance);
+            }
+            pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_UP;
+        }
     }
 
     // Set the sleep state based on this new RAT state
@@ -424,7 +458,7 @@ static inline uCellNetStatus_t CXREG_urc(uCellPrivateInstance_t *pInstance,
                                  sizeof(g3gppStatusToCellStatus[0])))) {
         status = g3gppStatusToCellStatus[status3gpp];
     }
-    if (U_CELL_PRIVATE_STATUS_MEANS_REGISTERED(status)) {
+    if (U_CELL_NET_STATUS_MEANS_REGISTERED(status)) {
         // Skip <ci> (<lac> already absorbed by the
         // read of secondInt above) and potentially
         // <rac_or_mme> also if this was a CEREG response and
@@ -484,7 +518,7 @@ static void CEREG_urc(uAtClientHandle_t atHandle,
     }
 
     status = CXREG_urc(pInstance, U_CELL_NET_REG_DOMAIN_PS, skippedParameters);
-    if (U_CELL_PRIVATE_STATUS_MEANS_REGISTERED(status) &&
+    if (U_CELL_NET_STATUS_MEANS_REGISTERED(status) &&
         (pSleepContext != NULL)) {
         // If we have a sleep context, try to read the
         // parameters from the end of +CEREG also
@@ -590,6 +624,24 @@ static void CSCON_urc(uAtClientHandle_t atHandle,
     }
 }
 
+// Detect deactivation of an internal profile, which will occur if we
+// fall out of service.
+static void UUPSDD_urc(uAtClientHandle_t atHandle,
+                       void *pParameter)
+{
+    uCellPrivateInstance_t *pInstance = (uCellPrivateInstance_t *) pParameter;
+
+    // Skip the parameter; we don't care since we only ever
+    // activate a single internal profile
+    uAtClientSkipParameters(atHandle, 1);
+
+    if (pInstance->profileState == U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_UP) {
+        // Set the state so that, should we re-register with the network,
+        // we will reactivate the internal profile
+        pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION;
+    }
+}
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: REGISTRATION RELATED
  * -------------------------------------------------------------- */
@@ -621,6 +673,7 @@ static int32_t radioOff(uCellPrivateInstance_t *pInstance)
 
     // Try three times to do this, would like to
     // get it right but sometimes modules fight back
+    pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_DOWN;
     for (size_t x = 3; (x > 0) && (errorCode < 0); x--) {
         // Wait for flip time to expire
         while (uPortGetTickTimeMs() < pInstance->lastCfunFlipTimeMs +
@@ -698,6 +751,7 @@ static int32_t prepareConnect(uCellPrivateInstance_t *pInstance)
     uAtClientSetUrcHandler(atHandle, "+CREG:", CREG_urc, pInstance);
     uAtClientSetUrcHandler(atHandle, "+CGREG:", CGREG_urc, pInstance);
     uAtClientSetUrcHandler(atHandle, "+CEREG:", CEREG_urc, pInstance);
+    uAtClientSetUrcHandler(atHandle, "+UUPSDD:", UUPSDD_urc, pInstance);
 
     // Switch on the unsolicited result codes for registration
     // and also ask for the additional parameters <lac>, <ci> and
@@ -1057,7 +1111,7 @@ static int32_t registerNetwork(uCellPrivateInstance_t *pInstance,
                                              sizeof(g3gppStatusToCellStatus[0])))) {
                     status = g3gppStatusToCellStatus[status3gpp];
                 }
-                if (U_CELL_PRIVATE_STATUS_MEANS_REGISTERED(status)) {
+                if (U_CELL_NET_STATUS_MEANS_REGISTERED(status)) {
                     // Skip <lac>, <ci>
                     if ((regType == 2 /* CEREG */) && (gRegTypes[regType].type == 4) &&
                         ((pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R410M_02B) ||
@@ -1542,13 +1596,14 @@ static bool isActiveUpsd(const uCellPrivateInstance_t *pInstance,
 
 // Deactivate context using 3GPP commands, required
 // for SARA-R4/R5 and TOBY modules.
-static int32_t deactivate(const uCellPrivateInstance_t *pInstance,
+static int32_t deactivate(uCellPrivateInstance_t *pInstance,
                           int32_t contextId)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     uAtClientHandle_t atHandle = pInstance->atHandle;
 
     if (isActive(pInstance, contextId)) {
+        pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_DOWN;
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, "AT+CGACT=");
         uAtClientWriteInt(atHandle, 0);
@@ -1562,13 +1617,14 @@ static int32_t deactivate(const uCellPrivateInstance_t *pInstance,
 
 // Deactivate context using AT+UPSD commands, required
 // for SARA-G3 and SARA-U2 modules.
-static  int32_t deactivateUpsd(const uCellPrivateInstance_t *pInstance,
+static  int32_t deactivateUpsd(uCellPrivateInstance_t *pInstance,
                                int32_t profileId)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     uAtClientHandle_t atHandle = pInstance->atHandle;
 
     if (isActiveUpsd(pInstance, profileId)) {
+        pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_DOWN;
         uAtClientLock(atHandle);
         uAtClientCommandStart(atHandle, "AT+UPSDA=");
         uAtClientWriteInt(atHandle, U_CELL_NET_PROFILE_ID);
@@ -2034,6 +2090,7 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
                         if (pMccMnc != NULL) {
                             memcpy(pInstance->mccMnc, pMccMnc, sizeof(pInstance->mccMnc));
                         }
+                        pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_UP;
                         pInstance->connectedAtMs = uPortGetTickTimeMs();
                         uPortLog("U_CELL_NET: connected after %d second(s).\n",
                                  (int32_t) ((uPortGetTickTimeMs() -
@@ -2254,6 +2311,7 @@ int32_t uCellNetActivate(uDeviceHandle_t cellHandle,
                 }
 
                 if (errorCode == 0) {
+                    pInstance->profileState = U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_UP;
                     pInstance->connectedAtMs = uPortGetTickTimeMs();
                     if (pApn != NULL) {
                         uPortLog("U_CELL_NET: activated on APN \"%s\".\n", pApn);
@@ -2355,6 +2413,7 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
                 uAtClientRemoveUrcHandler(atHandle, "+CREG:");
                 uAtClientRemoveUrcHandler(atHandle, "+CGREG:");
                 uAtClientRemoveUrcHandler(atHandle, "+CEREG:");
+                uAtClientRemoveUrcHandler(atHandle, "+UUPSDD:");
                 uPortLog("U_CELL_NET: disconnected.\n");
             } else {
                 uPortLog("U_CELL_NET: unable to disconnect.\n");

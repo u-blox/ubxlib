@@ -108,6 +108,17 @@ extern "C" {
 # define U_CELL_NET_SCAN_TIME_SECONDS (60 * 3)
 #endif
 
+/** Determine if a given cellular network status value means that
+ * we're registered with the network.
+ */
+#define U_CELL_NET_STATUS_MEANS_REGISTERED(status)                 \
+   (((status) == U_CELL_NET_STATUS_REGISTERED_HOME) ||             \
+    ((status) == U_CELL_NET_STATUS_REGISTERED_ROAMING) ||          \
+    ((status) == U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_HOME) ||    \
+    ((status) == U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_ROAMING) || \
+    ((status) == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME) ||     \
+    ((status) == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING))
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -502,6 +513,10 @@ void uCellNetScanGetLast(uDeviceHandle_t cellHandle);
  * call-back allows the application to know the various
  * states of the network scanning, registration and rejections
  * from the networks.
+ * You may use the U_CELL_NET_STATUS_MEANS_REGISTERED macro
+ * with the second parameter passed to the callback to
+ * determine if the status value means that the module is
+ * currently registered with the network or not.
  *
  * @param cellHandle                  the handle of the cellular
  *                                    instance.

@@ -97,17 +97,6 @@ extern "C" {
      ((rat) == U_CELL_NET_RAT_CATM1) ||    \
      ((rat) == U_CELL_NET_RAT_NB1))
 
-/** Determine if a given network status value means that
- * we're registered.
- */
-#define U_CELL_PRIVATE_STATUS_MEANS_REGISTERED(status)             \
-   (((status) == U_CELL_NET_STATUS_REGISTERED_HOME) ||             \
-    ((status) == U_CELL_NET_STATUS_REGISTERED_ROAMING) ||          \
-    ((status) == U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_HOME) ||    \
-    ((status) == U_CELL_NET_STATUS_REGISTERED_SMS_ONLY_ROAMING) || \
-    ((status) == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_HOME) ||     \
-    ((status) == U_CELL_NET_STATUS_REGISTERED_NO_CSFB_ROAMING))
-
 /** Determine if the given feature is supported or not
  * by the pointed-to module.
  */
@@ -355,6 +344,19 @@ typedef struct {
     int32_t sleepTime;
 } uCellPrivateUartSleepCache_t;
 
+/** Track the state of the profile that is mapped to the
+ * active PDP context; required to make sure we reactivate
+ * it when we return from a coverage gap. */
+//lint -esym(769, uCellPrivateProfileState_t::U_CELL_PRIVATE_PROFILE_STATE_NULL) Suppress not referenced
+//lint -esym(769, uCellPrivateProfileState_t::U_CELL_PRIVATE_PROFILE_STATE_MAX_NUM) Suppress not referenced
+typedef enum {
+    U_CELL_PRIVATE_PROFILE_STATE_NULL = 0,
+    U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_UP,
+    U_CELL_PRIVATE_PROFILE_STATE_REQUIRES_REACTIVATION,
+    U_CELL_PRIVATE_PROFILE_STATE_SHOULD_BE_DOWN,
+    U_CELL_PRIVATE_PROFILE_STATE_MAX_NUM
+} uCellPrivateProfileState_t;
+
 /** Definition of a cellular instance.
  */
 typedef struct uCellPrivateInstance_t {
@@ -408,6 +410,7 @@ typedef struct uCellPrivateInstance_t {
     bool inWakeUpCallback; /**< So that we can avoid recursion. */
     uCellPrivateSleep_t *pSleepContext; /**< Context for sleep stuff. */
     uCellPrivateUartSleepCache_t uartSleepCache; /**< Used only by uCellPwrEnable/DisableUartSleep(). */
+    uCellPrivateProfileState_t profileState; /**< To track whether a profile is meant to be active. */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 
