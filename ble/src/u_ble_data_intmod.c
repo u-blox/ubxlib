@@ -1161,17 +1161,21 @@ int32_t uBleDataConnectSps(int32_t bleHandle,
             // by the remote side. So then we don't have to do more here
 
             if (gapConnHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE) {
+                errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 spsConnHandle = findFreeSpsConnHandle();
 
                 if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
                     spsConnection_t *pSpsConn = initSpsConnection(spsConnHandle, gapConnHandle, SPS_CLIENT);
-                    memcpy(pSpsConn->remoteAddr, pAddress, sizeof(pSpsConn->remoteAddr) - 1);
-                    // Preset server handles (if they are not preset gNextConnServerHandles
-                    // is all zero, which will trigger discovery later)
-                    memcpy(&(pSpsConn->client.attHandle), &gNextConnServerHandles, sizeof(uBleDataSpsHandles_t));
-                    // Maybe disable flow control
-                    pSpsConn->flowCtrlEnabled = gFlowCtrlOnNext;
-                    gFlowCtrlOnNext = true;
+                    if (pSpsConn != NULL) {
+                        memcpy(pSpsConn->remoteAddr, pAddress, sizeof(pSpsConn->remoteAddr) - 1);
+                        // Preset server handles (if they are not preset gNextConnServerHandles
+                        // is all zero, which will trigger discovery later)
+                        memcpy(&(pSpsConn->client.attHandle), &gNextConnServerHandles, sizeof(uBleDataSpsHandles_t));
+                        // Maybe disable flow control
+                        pSpsConn->flowCtrlEnabled = gFlowCtrlOnNext;
+                        gFlowCtrlOnNext = true;
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
                 }
             }
         }
