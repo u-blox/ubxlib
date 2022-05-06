@@ -219,7 +219,11 @@ def instance_command(ctx, instance_str, cmd):
             return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
         elif instance[0] == 5:
             return_code = u_run_no_floating_point.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
-        elif instance[0] >= 6 and instance[0] <= 9:
+        # instance 6 is codechecker and that will be handled by the platforms above
+        elif instance[0] == 7:
+            print(defines)
+            return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
+        elif instance[0] >= 8 and instance[0] <= 9:
             raise Exit(f"Instance {instance_str} reserved, nothing to do.")
         check_return_code(return_code)
 

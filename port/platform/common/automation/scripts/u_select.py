@@ -41,7 +41,7 @@ NEVER_DISCARD = ["DATABASE.md", "CMakeLists.txt", "source.txt", "include.txt"]
 EXT_CODE = ["c", "cpp", "h", "hpp"]
 
 # The instances to always run: Lint (with and without logging), Doxygen and AStyle and size
-INSTANCES_ALWAYS = [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [1], [2], [4], [5]]
+INSTANCES_ALWAYS = [[1], [2], [4], [5], [6,1], [6,2], [7]]
 
 def instances_string(instances):
     '''Return a string of the form "1.2.3, 0.1"'''
