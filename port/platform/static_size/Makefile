@@ -25,7 +25,7 @@ endif
 SILENT = @
 
 # Compiler flags
-CFLAGS += -Os -g0
+override CFLAGS += -Os -g0
 LDFLAGS += -Wl,--cref --specs=nano.specs -lc -lnosys
 
 # Compiler flags for no float
@@ -61,7 +61,7 @@ ABS_SRCS = $(realpath $(SRCS))
 OBJS_FLOAT := $(ABS_SRCS:$(UBXLIB_BASE)/%.c=$(OBJDIR_FLOAT)/%.o)
 OBJS_NO_FLOAT := $(ABS_SRCS:$(UBXLIB_BASE)/%.c=$(OBJDIR_NO_FLOAT)/%.o)
 
-CFLAGS += $(INC:%=-I%)
+override CFLAGS += $(INC:%=-I%)
 
 .PHONY: clean float_size no_float_size
 

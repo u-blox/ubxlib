@@ -464,13 +464,18 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
 /** Tell the given AT client to throw away asynchronous events; use NULL
  * as the parameter to apply this to all AT clients.  This function
  * is useful when the application that is using the AT client is shutting
- * things down but may have issues callbacks, either for URCs
+ * things down but may have issued callbacks, either for URCs
  * directly or for callbacks via uAtClientCallback().  Such asynchronous
  * callbacks may have been given pointers to context data which will
  * become invalid, yet they may still be sitting in a queue waiting
  * to be processed and so could access out of range memory if they are
  * allowed to run; calling this function before invalidating such pointers,
  * then later calling uAtClientRemove(), avoids any surprises.
+ * Note that this function stops any future asynchronous events but
+ * an asynchronous event currently running will, of course, continue
+ * to execute; hence it is important that any APIs called from an
+ * asynchronous event have their own mutex protection against such
+ * shut-down situations.
  *
  * @param atHandle the handle of the AT client the should ignore
  *                 asynchronous events.

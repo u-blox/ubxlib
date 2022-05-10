@@ -1218,8 +1218,8 @@ static int32_t defineContext(const uCellPrivateInstance_t *pInstance,
 // in non-AT+UPSD mode.
 static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
                                      int32_t contextId,
-                                     const char *pPassword,
-                                     const char *pUsername)
+                                     const char *pUsername,
+                                     const char *pPassword)
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
 
@@ -1227,8 +1227,14 @@ static int32_t setAuthenticationMode(const uCellPrivateInstance_t *pInstance,
     uAtClientCommandStart(atHandle, "AT+UAUTHREQ=");
     uAtClientWriteInt(atHandle, contextId);
     uAtClientWriteInt(atHandle, 3); // Automatic choice of authentication type
-    uAtClientWriteString(atHandle, pPassword, true);
-    uAtClientWriteString(atHandle, pUsername, true);
+    if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
+        uAtClientWriteString(atHandle, pUsername, true);
+        uAtClientWriteString(atHandle, pPassword, true);
+    } else {
+        // For SARA-R4 modules the parameters are reversed
+        uAtClientWriteString(atHandle, pPassword, true);
+        uAtClientWriteString(atHandle, pUsername, true);
+    }
     uAtClientCommandStopReadResponse(atHandle);
     return uAtClientUnlock(atHandle);
 }

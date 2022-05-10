@@ -391,8 +391,11 @@ static int32_t establishMqttConnectionToBroker(const uMqttClientContext_t *pCont
         }
     }
 
-    if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
+    if (len >= (int32_t)sizeof(url)) {
+        err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+    }
 
+    if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
         atHandle = pMqttSession->atHandle;
         uPortLog("U_WIFI_MQTT: Sending AT+UDCP\n");
         uAtClientLock(atHandle);

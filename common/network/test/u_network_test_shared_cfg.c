@@ -102,7 +102,7 @@ static uNetworkConfigurationBle_t gConfigurationBle = {
     .spsServer = true // Enable sps server
 };
 #else
-static uNetworkConfigurationBle_t gConfigurationBle = {U_NETWORK_TYPE_NONE};
+static uNetworkConfigurationBle_t gConfigurationBle = { .type = U_NETWORK_TYPE_NONE };
 #endif
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
@@ -128,7 +128,7 @@ static uNetworkConfigurationCell_t gConfigurationCell = {
     .pinVInt = U_CFG_APP_PIN_CELL_VINT
 };
 #else
-static uNetworkConfigurationCell_t gConfigurationCell = {U_NETWORK_TYPE_NONE};
+static uNetworkConfigurationCell_t gConfigurationCell = { .type = U_NETWORK_TYPE_NONE };
 #endif
 
 /** The network configuration for Wifi.
@@ -147,7 +147,7 @@ static uNetworkConfigurationWifi_t gConfigurationWifi = {
     .pPassPhrase = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE)
 };
 #else
-static uNetworkConfigurationWifi_t gConfigurationWifi = {U_NETWORK_TYPE_NONE};
+static uNetworkConfigurationWifi_t gConfigurationWifi = { .type = U_NETWORK_TYPE_NONE };
 #endif
 
 /* ----------------------------------------------------------------
@@ -172,7 +172,7 @@ static uNetworkConfigurationGnss_t gConfigurationGnss = {
     U_CFG_APP_CELL_PIN_GNSS_DATA_READY
 };
 #else
-static uNetworkConfigurationGnss_t gConfigurationGnss = {U_NETWORK_TYPE_NONE};
+static uNetworkConfigurationGnss_t gConfigurationGnss = { .type = U_NETWORK_TYPE_NONE };
 #endif
 
 /** All of the information for the underlying network

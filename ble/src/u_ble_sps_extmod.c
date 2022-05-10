@@ -34,6 +34,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "stdio.h"
 #include "string.h"    // memset()
 
 #include "u_error_common.h"
@@ -525,11 +526,8 @@ int32_t uBleSpsConnectSps(uDeviceHandle_t devHandle,
         if (pInstance != NULL) {
             errorCode = (int32_t) U_SHORT_RANGE_ERROR_INVALID_MODE;
             if (pInstance->mode == U_SHORT_RANGE_MODE_EDM) {
-                char url[20];
-                memset(url, 0, 20);
-                char start[] = "sps://";
-                memcpy(url, start, 6);
-                memcpy((url + 6), pAddress, 13);
+                char url[32];
+                snprintf(url, sizeof(url), "sps://%s", pAddress);
                 atHandle = pInstance->atHandle;
 
                 uPortLog("U_BLE_SPS: Setting config\n");

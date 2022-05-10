@@ -48,6 +48,7 @@ static void thread_dump(const struct k_thread *thread, void *user_data)
     uint32_t stackBottom = (uint32_t)thread->stack_info.start;
     uint32_t stackTop = stackBottom + thread->stack_info.size;
     uint32_t sp = thread->callee_saved.psp;
+    (void)user_data;
     uPortLogF("  %s (%s): bottom: %08x, top: %08x, sp: %08x\n",
               thread->name,
               k_thread_state_str((k_tid_t)thread),

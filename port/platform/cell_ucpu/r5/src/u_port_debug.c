@@ -28,7 +28,7 @@
 
 #include "u_error_common.h"
 
-#include "ucpu_debug_api.h"
+#include "ucpu_sdk_debug.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -61,7 +61,7 @@ void uPortLogF(const char *pFormat, ...)
 
     if (gPortLogOn) {
         va_start(args, pFormat);
-        debug_vprint(pFormat, args);
+        ucpu_sdk_debug_va_list(pFormat, args);
         va_end(args);
     }
 }

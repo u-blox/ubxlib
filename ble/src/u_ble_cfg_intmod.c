@@ -75,7 +75,6 @@ int32_t uBleCfgConfigure(uDeviceHandle_t devHandle,
 
     if (pCfg != NULL) {
         bool startAdv;
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
 
         if (pCfg->role == U_BLE_CFG_ROLE_DISABLED) {
             uPortGattDown();

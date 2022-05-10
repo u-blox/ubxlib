@@ -404,13 +404,10 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
                 (pContext->pDisconnectCallback != NULL)) {
                 // Launch the local callback via the AT
                 // parser's callback facility.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
                 //lint -e(1773) Suppress complaints about
                 // passing the pointer as non-volatile
                 uAtClientCallback(atHandle, disconnectCallback,
                                   (void *) pInstance);
-#pragma GCC diagnostic pop
             }
             pContext->connected = false;
             // Keep alive returns to "off" when the session ends,
@@ -492,17 +489,10 @@ static void UUMQTTC_UUMQTTSNC_urc(uAtClientHandle_t atHandle,
                 // we're discarding volatile
                 // from the pointer: just need to follow
                 // the function signature guys...
-#ifndef __cplusplus
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-#endif
                 //lint -e(1773) Suppress complaints about
                 // passing the pointer as non-volatile
                 uAtClientCallback(atHandle, messageIndicationCallback,
                                   (void *) pContext);
-#ifndef __cplusplus
-#pragma GCC diagnostic pop
-#endif
             }
         }
         pUrcStatus->flagsBitmap |= 1 << U_CELL_MQTT_URC_FLAG_UNREAD_MESSAGES_UPDATED;
@@ -725,23 +715,10 @@ static void UUMQTTCM_urc(uAtClientHandle_t atHandle,
         if (pContext->pMessageIndicationCallback != NULL) {
             // Launch our local callback via the AT
             // parser's callback facility
-            // Launch our local callback via the AT
-            // parser's callback facility
-            // GCC can complain here that
-            // we're discarding volatile
-            // from the pointer: just need to follow
-            // the function signature guys...
-#ifndef __cplusplus
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-#endif
             //lint -e(1773) Suppress complaints about
             // passing the pointer as non-volatile
             uAtClientCallback(atHandle, messageIndicationCallback,
                               (void *) pContext);
-#ifndef __cplusplus
-#pragma GCC diagnostic pop
-#endif
         }
     }
     uAtClientRestoreStopTag(atHandle);
@@ -2145,24 +2122,14 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                     if (errorCode != 0) {
                         // Free memory again if we failed somewhere
                         if (pInstance->pMqttContext != NULL) {
-                            // GCC can complain here that
-                            // we're discarding volatile
-                            // from the pointers when freeing
-                            // them
-#ifndef __cplusplus
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-#endif
                             //lint -e(605) Suppress complaints about
                             // freeing a volatile pointer as well
-                            free(((volatile uCellMqttContext_t *) pInstance->pMqttContext)->pUrcMessage);
+                            volatile uCellMqttContext_t *pCtx = (volatile uCellMqttContext_t *)pInstance->pMqttContext;
+                            free((void *)pCtx->pUrcMessage);
                         }
                         //lint -e(605) Suppress complaints about
                         // freeing this volatile pointer as well
-                        free(pInstance->pMqttContext);
-#ifndef __cplusplus
-#pragma GCC diagnostic pop
-#endif
+                        free((void *)pInstance->pMqttContext);
                         pInstance->pMqttContext = NULL;
                     }
                 }
@@ -2186,28 +2153,17 @@ void uCellMqttDeinit(uDeviceHandle_t cellHandle)
     if (pInstance != NULL) {
         pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
         if (pContext->connected) {
-            connect(pInstance, false);
+            (void)connect(pInstance, false);
         }
 
         uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUMQTT");
         free(pContext->pBrokerNameStr);
-        // GCC can complain here that
-        // we're discarding volatile
-        // from the pointers when freeing
-        // them
-#ifndef __cplusplus
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-#endif
         //lint -e(605) Suppress complaints about
         // freeing a volatile pointer as well
-        free(pContext->pUrcMessage);
+        free((void *)pContext->pUrcMessage);
         //lint -e(605) Suppress complaints about
         // freeing this volatile pointer as well
-        free(pContext);
-#ifndef __cplusplus
-#pragma GCC diagnostic pop
-#endif
+        free((void *)pContext);
         pInstance->pMqttContext = NULL;
     }
 

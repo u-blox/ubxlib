@@ -206,7 +206,7 @@ static void timerCallbackInt(struct k_timer *pKTimer)
         // Send an event to our event task with the pointer
         // pKTimer as the payload
         uPortEventQueueSendIrq(gTimerEventQueueHandle,
-                               &pKTimer, sizeof(pKTimer));
+                               &pKTimer, sizeof(pKTimer)); // NOLINT(bugprone-sizeof-expression)
     }
 }
 

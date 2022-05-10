@@ -201,7 +201,7 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
             "Unknown", "Remote Close", "Out of range",
             "Roaming", "Security problems", "Network disabled"
         };
-        if ((disconnectReason < 0) && (disconnectReason >= 6)) {
+        if ((disconnectReason < 0) || (disconnectReason >= 6)) {
             // For all other values use "Unknown"
             //lint -esym(438, disconnectReason)
             disconnectReason = 0;

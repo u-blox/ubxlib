@@ -3,7 +3,7 @@ from invoke import task, Exit
 from pathlib import PurePath
 
 from scripts import u_utils, u_data, u_connection, u_select, u_report
-from scripts import u_run_log, u_run_windows, u_run_linux, u_run_lint, u_run_doxygen, u_run_astyle
+from scripts import u_run_log, u_run_windows, u_run_linux, u_run_doxygen, u_run_astyle
 from scripts import u_run_pylint, u_run_static_size, u_run_no_floating_point
 
 from scripts.packages import u_package
@@ -26,6 +26,7 @@ class Command(Enum):
     FLASH = 2
     LOG = 3
     TEST = 4
+    STATIC_ANALYZE = 5
 
 def eprint(*args, **kwargs):
     """Helper function for writing to stderr"""
@@ -64,6 +65,12 @@ def instance_command(ctx, instance_str, cmd):
     mcu = u_data.get_mcu_for_instance(db_data, instance)
     toolchain = u_data.get_toolchain_for_instance(db_data, instance)
     description = u_data.get_description_for_instance(db_data, instance)
+
+    # CodeChecker needs some special handling but will only change the
+    # "TEST" command to "STATIC_ANALYZE"
+    if platform.lower().startswith("codechecker:") and cmd == Command.TEST:
+        cmd = Command.STATIC_ANALYZE
+        platform = platform.split(":", 2)[1]
 
     # Defines may be provided via an environment
     # variable, in a list separated with semicolons, e.g.:
@@ -121,6 +128,8 @@ def instance_command(ctx, instance_str, cmd):
                 nrfconnect.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial)
             elif cmd == Command.TEST:
                 check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
+            elif cmd == Command.STATIC_ANALYZE:
+                nrfconnect.analyze(ctx, board_name=board, output_name="", build_dir=ctx.build_dir, u_flags=defines)
             else:
                 raise Exit(f"Unsupported command for MCU '{mcu}' on platform: '{platform}'")
         else:
@@ -164,6 +173,8 @@ def instance_command(ctx, instance_str, cmd):
             stm32cubef4.log(ctx, output_name="", build_dir=ctx.build_dir, debugger_serial=serial, port=port)
         elif cmd == Command.TEST:
             check_return_code(u_run_log.run(instance, ctx.build_dir, ctx.reporter, ctx.test_report))
+        elif cmd == Command.STATIC_ANALYZE:
+            stm32cubef4.analyze(ctx, output_name="", build_dir=ctx.build_dir, u_flags=defines)
         else:
             raise Exit(f"Unsupported command for platform: '{platform}'")
 
@@ -198,9 +209,7 @@ def instance_command(ctx, instance_str, cmd):
         # Handle Lint, AStyle and so on...
         if cmd != Command.TEST:
             raise Exit(f"'{description}' only supports 'test' command")
-        if instance[0] == 0:
-            return_code = u_run_lint.run(defines, u_utils.UBXLIB_DIR, ctx.reporter, None)
-        elif instance[0] == 1:
+        if instance[0] == 1:
             return_code = u_run_doxygen.run(u_utils.UBXLIB_DIR, ctx.reporter)
         elif instance[0] == 2:
             return_code = u_run_astyle.run(u_utils.UBXLIB_DIR, ctx.reporter)
@@ -210,7 +219,11 @@ def instance_command(ctx, instance_str, cmd):
             return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
         elif instance[0] == 5:
             return_code = u_run_no_floating_point.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
-        elif instance[0] >= 6 and instance[0] <= 9:
+        # instance 6 is codechecker and that will be handled by the platforms above
+        elif instance[0] == 7:
+            print(defines)
+            return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
+        elif instance[0] >= 8 and instance[0] <= 9:
             raise Exit(f"Instance {instance_str} reserved, nothing to do.")
         check_return_code(return_code)
 

@@ -41,16 +41,16 @@ ubxlib
 ```
 After following the above steps, run the following command to generate build files.
 ```
-cmake -DCMAKE_TOOLCHAIN_FILE=path/to/armToolchian -DU_CFG_APP_FILTER=port -GNinja ubxlib\port\platform\cell_ucpu\r5\runner
+cmake -DCMAKE_TOOLCHAIN_FILE=path/to/armToolchian -DU_CFG_TEST_FILTER=port -GNinja ubxlib\port\platform\cell_ucpu\r5\runner
 ```
 If the above command is successful, run the following command in the same directory to generate the executable to run on the SARA5UCPU platform.
 ```
 ninja
 ```
 A .bin file will be generated after the above command, which you can flash on to SARAR5UCPU platform.
-Please note that if you want to run tests or examples you have to provide the name of test or example using `U_CFG_APP_FILTER`, otherwise, if you wish write your own application you can simply edit the `u_main.c` file placed at `cell_ucpu\r5\app`. Currently supported tests and examples are mentioned in the table below.
+Please note that if you want to run tests or examples you have to provide the name of test group or example using `U_CFG_TEST_FILTER`, if you want to run a specific test, provide it's name using `U_CFG_APP_FILTER` along with the `U_CFG_TEST_FILTER`. If you wish to write your own application you can simply edit the `u_main.c` file placed at `cell_ucpu\r5\app`. Currently supported tests and examples are mentioned in the table below.
 
-| Tests\Examples  | U_CFG_APP_FILTER |
+| Tests\Examples  | U_CFG_TEST_FILTER |
 | -------------   | ------------- 	 |
 | port tests  | port  |
 | cellular tests  | cell  |

@@ -525,6 +525,9 @@ static const uCellSecC2cTestAt_t gTestAt[] = {
 // Initialise the guard areas on the buffers.
 static void initGuards()
 {
+    // The buffers here doesn't need null termination so we suppress the
+    // clang-tidy warning
+    // NOLINTBEGIN(bugprone-not-null-terminated-result)
     memcpy(gBufferA, U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
     memcpy(gBufferA + sizeof(gBufferA) - U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
            U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
@@ -536,6 +539,7 @@ static void initGuards()
     memcpy(gBufferC + sizeof(gBufferC) - U_CELL_SEC_C2C_GUARD_LENGTH_BYTES,
            U_CELL_SEC_C2C_GUARD, U_CELL_SEC_C2C_GUARD_LENGTH_BYTES);
 #endif
+    // NOLINTEND(bugprone-not-null-terminated-result)
 }
 
 // Print out text.

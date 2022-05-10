@@ -130,7 +130,7 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
             "Unknown", "Remote Close", "Out of range",
             "Roaming", "Security problems", "Network disabled"
         };
-        if ((disconnectReason < 0) && (disconnectReason >= 6)) {
+        if ((disconnectReason < 0) || (disconnectReason >= 6)) {
             // For all other values use "Unknown"
             disconnectReason = 0;
         }
@@ -260,6 +260,7 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
 
 static void uWifiScanResultCallback(uDeviceHandle_t devHandle, uWifiNetScanResult_t *pResult)
 {
+    (void)devHandle;
     if (strcmp(pResult->ssid, U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID)) == 0) {
         gScanResult = *pResult;
     }

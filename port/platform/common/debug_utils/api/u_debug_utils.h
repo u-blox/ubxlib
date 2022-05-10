@@ -85,6 +85,31 @@ int32_t uDebugUtilsInitInactivityDetector(volatile int32_t *pActivityCounter);
  *       Backtrace: 0x00050e16 0x0004e68a 0x0005c910 0x0005a1b6 0x0005a196 0x0005a196 0x0005d724
  *     sysworkq (pending): bottom: 200289a0, top: 200291a0, sp: 20029120
  *       Backtrace: 0x00050e16 0x000525d4 0x0004fe8c 0x0005d724
+ *
+ * NOTES:
+ * For FreeRTOS the current thread will not be printed correctly.
+ * The reason for this is that the current implementation just look
+ * at the stack pointer in the task TCB. Since this pointer is only
+ * updated on a context switch you will not get a correct backtrace
+ * for this thread.
+ *
+ * There are some architecture specific limitations:
+ *
+ * ARM Cortex Mx
+ * As dicussed here, GCC doesn't provide frame chains:
+ * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=92172
+ * This is a huge disadvantage since it makes it much harder to provide
+ * a reliable backtrace. Supposedly it is possible to do the backtrace
+ * using the GCC generated unwinding tables as the library below uses:
+ * https://github.com/red-rocket-computing/backtrace
+ * However, this backtrace crashed for us why we ended up not using it.
+ * Instead we use a crude way of doing a backtrace for ARM where the stack
+ * is manually iterated. This method is not 100% reliable and may create
+ * false entries. However, it has proven to be much better than anticipated.
+ *
+ * Xtensa (ESP32)
+ * It is important to note that for Xtensa, our backtrace generator is not
+ * reentrant.
  */
 void uDebugUtilsDumpThreads(void);
 

@@ -114,6 +114,7 @@ def run(defines, ubxlib_dir, reporter):
         "CC=" + GNU_INSTALL_ROOT + os.sep + GNU_COMPILER,
         "SIZE=" + GNU_INSTALL_ROOT + os.sep + GNU_SIZE,
         "OUTDIR=" + build_dir,
+        "CFLAGS=" + cflags,
         "-j8",
         "no_float_size"
     ]

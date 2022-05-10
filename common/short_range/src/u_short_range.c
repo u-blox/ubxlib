@@ -872,19 +872,20 @@ int32_t uShortRangeSetIpConnectionStatusCallback(uDeviceHandle_t devHandle,
     if (gUShortRangePrivateMutex != NULL) {
         pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL && pCallback != NULL) {
-            // TODO: Removed when network API has been adjusted
-            pInstance->wifiHandle = devHandle;
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pCallback != NULL) {
+                // TODO: Removed when network API has been adjusted
+                pInstance->wifiHandle = devHandle;
 
-            pInstance->pIpConnectionStatusCallback = pCallback;
-            pInstance->pIpConnectionStatusCallbackParameter = pCallbackParameter;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        } else if (pInstance != NULL && pCallback == NULL) {
-            pInstance->pIpConnectionStatusCallback = NULL;
-            pInstance->pIpConnectionStatusCallbackParameter = NULL;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                pInstance->pIpConnectionStatusCallback = pCallback;
+                pInstance->pIpConnectionStatusCallbackParameter = pCallbackParameter;
+            } else {
+                pInstance->pIpConnectionStatusCallback = NULL;
+                pInstance->pIpConnectionStatusCallbackParameter = NULL;
+            }
+            configureConnectionUrcHandlers(pInstance);
         }
-        configureConnectionUrcHandlers(pInstance);
     }
 
     return errorCode;
@@ -903,16 +904,17 @@ int32_t uShortRangeSetBtConnectionStatusCallback(uDeviceHandle_t devHandle,
         pInstance->bleHandle = devHandle;
 
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL && pCallback != NULL) {
-            pInstance->pBtConnectionStatusCallback = pCallback;
-            pInstance->pBtConnectionStatusCallbackParameter = pCallbackParameter;
+        if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        } else if (pInstance != NULL && pCallback == NULL) {
-            pInstance->pBtConnectionStatusCallback = NULL;
-            pInstance->pBtConnectionStatusCallbackParameter = NULL;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pCallback != NULL) {
+                pInstance->pBtConnectionStatusCallback = pCallback;
+                pInstance->pBtConnectionStatusCallbackParameter = pCallbackParameter;
+            } else {
+                pInstance->pBtConnectionStatusCallback = NULL;
+                pInstance->pBtConnectionStatusCallbackParameter = NULL;
+            }
+            configureConnectionUrcHandlers(pInstance);
         }
-        configureConnectionUrcHandlers(pInstance);
     }
 
     return errorCode;
@@ -928,19 +930,20 @@ int32_t uShortRangeSetMqttConnectionStatusCallback(uDeviceHandle_t devHandle,
     if (gUShortRangePrivateMutex != NULL) {
         pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (pInstance != NULL && pCallback != NULL) {
-            // TODO: Removed when network API has been adjusted
-            pInstance->wifiHandle = devHandle;
+        if (pInstance != NULL) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (pCallback != NULL) {
+                // TODO: Removed when network API has been adjusted
+                pInstance->wifiHandle = devHandle;
 
-            pInstance->pMqttConnectionStatusCallback = pCallback;
-            pInstance->pMqttConnectionStatusCallbackParameter = pCallbackParameter;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        } else if (pInstance != NULL && pCallback == NULL) {
-            pInstance->pMqttConnectionStatusCallback = NULL;
-            pInstance->pMqttConnectionStatusCallbackParameter = NULL;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                pInstance->pMqttConnectionStatusCallback = pCallback;
+                pInstance->pMqttConnectionStatusCallbackParameter = pCallbackParameter;
+            } else {
+                pInstance->pMqttConnectionStatusCallback = NULL;
+                pInstance->pMqttConnectionStatusCallbackParameter = NULL;
+            }
+            configureConnectionUrcHandlers(pInstance);
         }
-        configureConnectionUrcHandlers(pInstance);
     }
 
     return errorCode;

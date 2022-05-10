@@ -295,6 +295,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                             }
                             if (errorCode == 0) {
                                 errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
+                                (void)errorCode; // Suppress value not being read (the value is a failsafe)
                                 // Ensure that the sole RAT set is the one
                                 // we want for testing this module
                                 for (size_t x = 0; x < pModule->maxNumSimultaneousRats; x++) {

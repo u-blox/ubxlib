@@ -4,8 +4,8 @@ import shutil
 from urllib.request import urlopen
 from invoke import Context
 from .u_base_package import UPackageException, UAbortedException, UBasePackage
+from .u_pkg_utils import is_linux
 from . import u_pkg_utils
-from .. import u_utils
 
 ZEPHYR_URL="https://github.com/zephyrproject-rtos/zephyr.git"
 SDK_NRF_URL="https://github.com/nrfconnect/sdk-nrf"
@@ -42,7 +42,7 @@ class UNrfConnectSdkPackage(UBasePackage):
 
     def check_installed(self, ctx: Context):
         """Check that the toolchain for nRF connect SDK is installed"""
-        if not u_utils.is_linux():
+        if not is_linux():
             # Windows has a toolchain archive - make sure it has been downloaded
             if not self.check_windows_toolchain(ctx):
                 return False
@@ -59,7 +59,7 @@ class UNrfConnectSdkPackage(UBasePackage):
                 raise UAbortedException
             shutil.rmtree(self.package_dir)
 
-        if not u_utils.is_linux():
+        if not is_linux():
             # Windows has a toolchain archive - make sure it has been downloaded
             if not self.check_windows_toolchain(ctx):
                 self.install_windows_toolchain(ctx)

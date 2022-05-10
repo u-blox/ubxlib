@@ -1074,6 +1074,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
                         uPortLog("U_SECURITY_TEST: end to end encryption version"
                                  " check not supported, assuming v1.\n");
                         version = 1;
+                        (void)version; // Not used at the moment
                     }
 
                     // Allocate memory to receive into

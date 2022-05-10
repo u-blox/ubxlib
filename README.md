@@ -76,7 +76,7 @@ Peripherals are u-blox modules which accept commands (e.g. AT-commands) over a s
 
 \* Through the u-blox [CellLocate](https://www.u-blox.com/en/product/celllocate) mobile network-based location service.
 
-# Strucure of `ubxlib`
+# Structure of `ubxlib`
 The APIs for each type of u-blox module can be found in the relevant directory (e.g. [cell](/cell) for cellular modules and [ble](/ble)/[wifi](/wifi) for BLE/Wi-Fi modules).  The [common](/common) directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the [network](/common/network) API and the [sockets](/common/sockets) API.  All APIs are documented in the API header files.
 
 Examples demonstrating the use of the APIs can be found in the [example](/example) directory.
@@ -122,7 +122,6 @@ In order for u-blox to support multiple platforms with this code there is also a
         ¦       +---<mcu>      <-- e.g. esp32
         ¦           +---cfg    <-- platform specific config (pins, OS things, MCU HW blocks)
         ¦           +---runner <-- a build which compiles and links all examples and tests
-        +---lint               <-- Lint checking, used by the test automation
         +---static_size        <-- a build that measures RAM/flash usage
         +---common             <-- things common to all platforms, most notably...
             +---automation     <-- the internal Python automation scripts that test everything

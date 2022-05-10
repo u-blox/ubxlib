@@ -2131,7 +2131,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                                                                    "testTaskRxData",
                                                                    //lint -e(866) Suppress unusual
                                                                    // use of & in sizeof()
-                                                                   sizeof(&gTestConfig),
+                                                                   sizeof(&gTestConfig), // NOLINT(bugprone-sizeof-expression)
                                                                    U_SOCK_TEST_TASK_STACK_SIZE_BYTES,
                                                                    U_SOCK_TEST_TASK_PRIORITY,
                                                                    U_SOCK_TEST_RECEIVE_QUEUE_LENGTH);
@@ -2373,7 +2373,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
                                                                "testTaskRxData",
                                                                //lint -e(866) Suppress unusual
                                                                // use of & in sizeof()
-                                                               sizeof(&gTestConfig),
+                                                               sizeof(&gTestConfig), // NOLINT(bugprone-sizeof-expression)
                                                                U_SOCK_TEST_TASK_STACK_SIZE_BYTES,
                                                                U_SOCK_TEST_TASK_PRIORITY,
                                                                U_SOCK_TEST_RECEIVE_QUEUE_LENGTH);

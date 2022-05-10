@@ -28,14 +28,18 @@ def instanceToStr(instance) {
     return str
 }
 
-def isFirmware(mcu) {
-    def m = mcu.toLowerCase()
-    return m != "win32" && m != "linux32" && m != ""
+def isCodeChecker(json_entry) {
+    return json_entry.platform.toLowerCase().startsWith("codechecker:")
 }
 
-def testOnLinux(mcu) {
-    def m = mcu.toLowerCase()
-    return m == "linux32"
+def isFirmware(json_entry) {
+    def m = json_entry.mcu.toLowerCase()
+    return !isCodeChecker(json_entry) && m != "win32" && m != "linux32" && m != ""
+}
+
+def testOnLinux(json_entry) {
+    def mcuIsLinux = json_entry.mcu.toLowerCase() == "linux32"
+    return mcuIsLinux || isCodeChecker(json_entry)
 }
 
 // This is helper function for executing commands inside the "ubxlib_builder" docker container.
@@ -50,7 +54,10 @@ def dockerCommand(cmd, relWorkspaceDir=".", extra_env=[]) {
     def env_args = ([
         "HOME=/home/ubxlib",
         "BUILD_DIR=${env.WORKSPACE}/_build",
-        "TEST_DIR=${env.WORKSPACE}/_test"
+        "TEST_DIR=${env.WORKSPACE}/_test",
+        // Jenkins environment variables
+        "BUILD_URL=${env.BUILD_URL}",
+        "WORKSPACE=${env.WORKSPACE}"
     ] + extra_env).collect { "-e $it" }.join(' ')
     sh "mkdir -p ${env.HOME}/ubxlib"
     def uid = sh(script: "id -u", returnStdout: true).trim()
@@ -130,7 +137,7 @@ def parallelBuild(json) {
     def parallel_pipelines = [:]
     for (instance in json.instances) {
         def instance_str = instanceToStr(instance.id)
-        if (isFirmware(instance.mcu)) { // Only build for embedded devices (windows and Linux are built in the test stage for now)
+        if (isFirmware(instance)) { // Only build for embedded devices (windows and Linux are built in the test stage for now)
             parallel_pipelines["$instance_str"] = dockerBuildPipeline(instance_str, instance.platform, json.filter)
         }
     }
@@ -152,7 +159,7 @@ def testPipelineOnWindows(instance_str, json_entry, subst_dir, filter) {
         def build_dir = "${working_dir}/${instance_str}/" + default_build_sub_dir
         def hw_label = "INSTANCE_${json_entry.id[0]}"
         lock(hw_label) {
-            if (isFirmware(json_entry.mcu)) {
+            if (isFirmware(json_entry)) {
                 stage("Unstash (${env.NODE_NAME})") {
                     unstash name: "${instance_str}_fw"
                 }
@@ -217,11 +224,10 @@ def testPipelineOnLinux(instance_str, json_entry, subst_dir, filter) {
 
         // Select the only Linux test agent that is designated
         // for testing (as well as building)
-        node('TEST-gb-cmb-dt-052')
-        {
+        node('TEST-gb-cmb-dt-052') {
             lock(hw_label) {
                 // Don't currently do FW on Linux
-                if (!isFirmware(json_entry.mcu)) {
+                if (!isFirmware(json_entry)) {
                     stage("Checkout (${env.NODE_NAME})") {
                         dir(ubxlib_dir) {
                             checkout([
@@ -236,19 +242,17 @@ def testPipelineOnLinux(instance_str, json_entry, subst_dir, filter) {
                     stage('Test') {
                         echo "Starting tests on ${env.NODE_NAME}"
                         def instance_workdir = "${working_dir}/${instance_str}"
-                        def test_report_arg = "--test-report ${test_report_file}"
                         def workspace_path = env.WORKSPACE
-                        if (json_entry.id[0] <= 9) {
-                            // Some special care is needed for instances <= 9
-                            // * Lint must use subst as the command line otherwise exceeds Windows max lengh
-                            // * Instances <= 9 doesn't write any .xml report data
-                            test_report_arg = ""
-                            workspace_path = subst_dir
+                        def test_report_arg = ""
+                        if (!isCodeChecker(json_entry)) {
+                            test_report_arg = "--test-report ${test_report_file}"
                         }
                         try {
                             // Start the test
                             def abs_ubxlib_dir = "${workspace_path}/${ubxlib_dir}"
                             def abs_instance_workdir = "${workspace_path}/${instance_workdir}"
+                            // Make sure to clean first
+                            sh "rm -rf ${abs_instance_workdir}"
                             dir("${abs_instance_workdir}") {
                                 ansiColor('xterm') {
                                     // Check if there is a test filter
@@ -258,8 +262,8 @@ def testPipelineOnLinux(instance_str, json_entry, subst_dir, filter) {
                             }
                         } finally {
                             // Store summary-, debug- and test report file as artifacts
-                            archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${test_report_file}, ${instance_workdir}/**/${debug_file}, ${instance_workdir}/**/*.hex, ${instance_workdir}/**/*.bin, ${instance_workdir}/**/*.elf, ${instance_workdir}/**/*.exe, ${instance_workdir}/**/*.map", allowEmptyArchive: true
-                            if (test_report_arg != "") {
+                            archiveArtifacts artifacts: "${instance_workdir}/**/${summary_file}, ${instance_workdir}/**/${test_report_file}, ${instance_workdir}/**/${debug_file}, ${instance_workdir}/**/*.hex, ${instance_workdir}/**/*.bin, ${instance_workdir}/**/*.elf, ${instance_workdir}/**/*.exe, ${instance_workdir}/**/*.map, ${instance_workdir}/**/analyze_html/*", allowEmptyArchive: true
+                            if (test_report_arg != "")  {
                                 // Record the test results
                                 junit "${working_dir}/${instance_str}/${test_report_file}"
                             }
@@ -284,7 +288,7 @@ def parallelTest(json, subst_dir) {
                 stage_name = "${json_entry.description} (${instance_str})"
             }
 
-            if (testOnLinux(json_entry.mcu)) {
+            if (testOnLinux(json_entry)) {
                 // At the moment only a single case is tested (i.e. run, as well as built)
                 // on a Linux host, so we have a specific test pipeline for that, currently
                 // locked to a specific test agent

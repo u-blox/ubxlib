@@ -87,7 +87,7 @@ static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
                                                         U_CFG_APP_PIN_CELL_VINT
                                                        };
 #else
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+static const uNetworkConfigurationCell_t gConfigCell = { .type = U_NETWORK_TYPE_NONE };
 #endif
 
 /* ----------------------------------------------------------------

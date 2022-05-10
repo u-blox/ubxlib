@@ -607,9 +607,10 @@ int32_t uPortPrivateTaskDelete(const uPortTaskHandle_t taskHandle)
         }
 
         if (result == 0) {
-            // Just clearing the pStackStartAdress. We need to keep the handle
-            // to delete the thread later from uPortPrivateDeinit() routine.
+            // Just clearing the pStackStartAdress and decrement number of threads created.
+            // We need to keep the handle to delete the thread later from uPortPrivateDeinit() routine.
             gThreadInfo[index].pStackStartAddress = NULL;
+            gNumOfThreadsCreated--;
             // Terminate the thread.
             result = (int32_t)tx_thread_terminate(threadPtr);
         }

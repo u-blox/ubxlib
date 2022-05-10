@@ -10,7 +10,7 @@
             "marus25.cortex-debug",
             "shardulm94.trailing-spaces",
             "ms-python.python",
-            "rioj7.command-variable"
+            "augustocdias.tasks-shell-input"
         ]
     },
     // Workaround when using remote development via SSH - see ticket:
@@ -24,7 +24,8 @@
             }
         },
         "files.associations": {
-            "*.h": "c"
+            "*.h": "c",
+            "typeinfo": "c"
         }
     }
 }

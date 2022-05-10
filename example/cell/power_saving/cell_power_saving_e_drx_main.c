@@ -103,7 +103,7 @@ static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
                                                         U_CFG_APP_PIN_CELL_VINT
                                                        };
 #else
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+static const uNetworkConfigurationCell_t gConfigCell = { .type = U_NETWORK_TYPE_NONE };
 #endif
 
 // Flag that allows us to check if E-DRX has been set.
@@ -120,6 +120,8 @@ static void callback(uDeviceHandle_t cellHandle, uCellNetRat_t rat,
                      int32_t pagingWindowSecondsAssigned,
                      void *pParameter)
 {
+    (void)pParameter;
+    (void)cellHandle;
     uPortLog("## Requested E-DRX is %s, %d seconds; assigned E-DRX is"
              " %d seconds, assigned paging window %d seconds.\n",
              onNotOff ? "on" : "off", eDrxSecondsRequested,
