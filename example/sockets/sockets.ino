@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,6 +21,15 @@
 
 // Include the ubxlib library
 #include <ubxlib.h>
+
+// Bring in the U_CFG_APP_xxx application settings; you ONLY need
+// this for the U_CFG_APP_xxx values below, it is not required by
+// the ubxlib code
+#include <u_cfg_app_platform_specific.h>
+
+// Required, just for this example file, to bring in U_CFG_OS_xxx;
+// you would not need this in your application.
+#include <u_cfg_os_platform_specific.h>
 
 /* ----------------------------------------------------------------
  * VARIABLES

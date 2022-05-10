@@ -26,6 +26,7 @@ UBXLIB_SRC_DIRS += \
 
 # Additional include directories
 UBXLIB_INC += \
+	${UBXLIB_BASE} \
 	${UBXLIB_BASE}/cfg \
 	${UBXLIB_BASE}/port/api \
 

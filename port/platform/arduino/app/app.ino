@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,15 @@
 
 #include <ubxlib.h>
 #include <ubxlib_test.h>
+
+// Bring in the U_CFG_APP_xxx application settings; you ONLY need
+// this for the U_CFG_APP_xxx values below, it is not required by
+// the ubxlib code
+#include <u_cfg_app_platform_specific.h>
+
+// Required, just for this example file, to bring in U_CFG_OS_xxx;
+// you would not need this in your application.
+#include <u_cfg_os_platform_specific.h>
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS

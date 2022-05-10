@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,43 +23,11 @@
  * instructions.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
+// Bring in all of the ubxlib public header files
+#include "ubxlib.h"
 
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-#include "string.h"
-
-// Required by ubxlib
-#include "u_port.h"
-#include "u_port_os.h"
-
-// The next two lines will cause uPortLog() output
-// to be sent to ubxlib's chosen trace output.
-// Comment them out to send the uPortLog() output
-// to print() instead.
-#include "u_cfg_sw.h"
-#include "u_port_debug.h"
-
-// For default values for U_CFG_APP_xxx
+// Bring in the application settings
 #include "u_cfg_app_platform_specific.h"
-
-// For the cellular module types
-#include "u_cell_module_type.h"
-
-// For the network API
-#include "u_network.h"
-#include "u_network_config_cell.h"
-#include "u_network_config_wifi.h"
-
-// For the security description
-#include "u_security.h"
-
-// For the MQTT client API
-#include "u_mqtt_client.h"
 
 // For U_SHORT_RANGE_TEST_WIFI()
 #include "u_short_range_test_selector.h"
@@ -67,7 +35,7 @@
 #ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
 # include "u_cfg_test_platform_specific.h"
-#include "u_wifi_test_cfg.h"
+# include "u_wifi_test_cfg.h"
 #endif
 
 /* ----------------------------------------------------------------
@@ -80,10 +48,6 @@
 // by editing this code to add [D]TLS security (see below) and
 // changing MY_BROKER_NAME to have ":8883" on the end.
 #define MY_BROKER_NAME "ubxlib.it-sgn.u-blox.com"
-
-#ifndef U_CFG_ENABLE_LOGGING
-# define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
-#endif
 
 // For u-blox internal testing only
 #ifdef U_PORT_TEST_ASSERT

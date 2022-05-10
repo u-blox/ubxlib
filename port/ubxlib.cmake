@@ -101,6 +101,7 @@ u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/mutex_debug)
 
 # Additional include directories
 list(APPEND UBXLIB_INC
+  ${UBXLIB_BASE}
   ${UBXLIB_BASE}/cfg
   ${UBXLIB_BASE}/port/api
 )
