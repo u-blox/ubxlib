@@ -154,7 +154,7 @@ static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
                                                         U_CFG_APP_PIN_CELL_VINT    // This pin MUST be connected
                                                        };
 #else
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+static const uNetworkConfigurationCell_t gConfigCell = { .type = U_NETWORK_TYPE_NONE };
 #endif
 
 // Flag that allows us to check if power saving has been set.
@@ -170,6 +170,8 @@ static void callback(int32_t networkHandle, bool onNotOff,
                      int32_t activeTimeSeconds, int32_t periodicWakeupSeconds,
                      void *pParameter)
 {
+    (void)networkHandle;
+    (void)pParameter;
     uPortLog("## 3GPP power saving is %s, active time %d seconds,"
              " periodic wake-up %d seconds.\n", onNotOff ? "on" : "off",
              activeTimeSeconds, periodicWakeupSeconds);

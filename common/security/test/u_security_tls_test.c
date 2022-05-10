@@ -272,6 +272,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
             U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
             if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
                 networkHandle = gUNetworkTestCfg[x].handle;
+                (void)networkHandle; // Will be unused when U_CFG_APP_GNSS_UART > 0
             }
         }
     }

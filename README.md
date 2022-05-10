@@ -122,7 +122,6 @@ In order for u-blox to support multiple platforms with this code there is also a
         ¦       +---<mcu>      <-- e.g. esp32
         ¦           +---cfg    <-- platform specific config (pins, OS things, MCU HW blocks)
         ¦           +---runner <-- a build which compiles and links all examples and tests
-        +---lint               <-- Lint checking, used by the test automation
         +---static_size        <-- a build that measures RAM/flash usage
         +---common             <-- things common to all platforms, most notably...
             +---automation     <-- the internal Python automation scripts that test everything

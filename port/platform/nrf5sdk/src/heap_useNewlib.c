@@ -174,6 +174,7 @@ void *_sbrk_r(struct _reent *pReent, int incr)
                   ISR_STACK_LENGTH_BYTES;  // Once running, OK to reuse all remaining RAM except ISR stack (MSP) stack
     DRN_ENTER_CRITICAL_SECTION();
     char *previousHeapEnd = currentHeapEnd;
+    (void)pReent;
 
     SBRK_DETAILED_LOG(incr);
     if (currentHeapEnd + incr > limit) {
@@ -225,12 +226,14 @@ void __malloc_lock(struct _reent *r)
     // here but that's only available in a later version of FreeRTOS
     // than NRF5 uses, so get it from CMSIS directly
     bool insideAnISR = ((SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0);
+    (void)r;
     configASSERT( !insideAnISR ); // Make damn sure no mallocs inside ISRs!!
     vTaskSuspendAll();
 };
 
 void __malloc_unlock(struct _reent *r)
 {
+    (void)r;
     (void)xTaskResumeAll();
 };
 

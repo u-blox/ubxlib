@@ -362,9 +362,10 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
                 // of the subscribe topic and subscribe to it
                 strncpy(topicBuffer, U_LOCATION_PRIVATE_CLOUD_LOCATE_MQTT_SUBSCRIBE_TOPIC_PREFIX,
                         sizeof(topicBuffer));
-                strncat(topicBuffer, pClientIdStr, sizeof(topicBuffer) - 1); // -1 to allow room for terminator
+                strncat(topicBuffer, pClientIdStr,
+                        sizeof(topicBuffer) - strlen(topicBuffer) - 1); // -1 to allow room for terminator
                 strncat(topicBuffer, U_LOCATION_PRIVATE_CLOUD_LOCATE_MQTT_SUBSCRIBE_TOPIC_POSTFIX,
-                        sizeof(topicBuffer) - 1); // -1 to allow room for terminator
+                        sizeof(topicBuffer) - strlen(topicBuffer) - 1); // -1 to allow room for terminator
                 errorCode = uMqttClientSubscribe(pMqttClientContext, topicBuffer, U_MQTT_QOS_EXACTLY_ONCE);
                 subscribed = (errorCode >= 0);
             }

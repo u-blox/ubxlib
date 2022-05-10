@@ -550,8 +550,8 @@ static uint8_t notifyCallback(struct bt_conn *conn,
 static void cccWriteResponseCb(struct bt_conn *conn, uint8_t err,
                                struct bt_gatt_write_params *params)
 {
-
     int32_t connHandle = findConnHandle(conn);
+    (void)params;
     // Make sure that we are currently setting up a subscription,
     // that it is on the same connection and that there is a callback given
     if ((connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE) &&
@@ -660,7 +660,7 @@ static void gattXchangeMtuRsp(struct bt_conn *conn, uint8_t err,
                               struct bt_gatt_exchange_params *params)
 {
     int32_t connHandle = findConnHandle(conn);
-
+    (void)params;
     if (connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE) {
         if (gCurrentConnections[connHandle].mtuXchangeCallback != NULL) {
             gCurrentConnections[connHandle].mtuXchangeCallback(connHandle, err);

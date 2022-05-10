@@ -160,11 +160,6 @@ __DEFAULT_SETTINGS["DOXYGEN_DOXYFILE"] = "Doxyfile"
 #u_run_static_size.py
 __DEFAULT_SETTINGS["STATIC_SIZE_ARM_GNU_INSTALL_ROOT" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] = \
     "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2020-q4-major/bin"
-# u_run_lint.py
-__DEFAULT_SETTINGS["LINT_PLATFORM_CONFIG_FILES"] = ["co-gcc.lnt", "ubxlib.lnt"]
-__DEFAULT_SETTINGS["LINT_COMPILER_INCLUDE_DIRS" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =         \
-    ["C:\\TDM-GCC-64\\x86_64-w64-mingw32\\include",
-     "C:\\TDM-GCC-64\\lib\\gcc\\x86_64-w64-mingw32\\9.2.0\\include"]
 # u_run_windows.py
 __DEFAULT_SETTINGS["WINDOWS_MSVC_BUILD_TOOLS_PATH" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =         \
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools"

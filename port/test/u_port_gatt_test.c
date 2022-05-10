@@ -966,6 +966,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
         gGattIterReturnValue = U_PORT_GATT_ITER_STOP;
         errorCode = uPortGattStartPrimaryServiceDiscovery(connHandle, NULL,
                                                           gattServiceDiscoveryCallback);
+        U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_SERVICE, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(svc->connHandle, connHandle);
         U_PORT_TEST_ASSERT_EQUAL(svc->attrHandle, gExpectedServices[0]->attrHandle);
@@ -980,6 +981,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
             uPortGattStartPrimaryServiceDiscovery(connHandle,
                                                   &gNinaW15SpsService.uuid.uuid,
                                                   gattServiceDiscoveryCallback);
+        U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_SERVICE, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(svc->connHandle, connHandle);
         U_PORT_TEST_ASSERT_EQUAL(svc->attrHandle, gNinaW15SpsService.attrHandle);
@@ -1098,6 +1100,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCharDisc")
         errorCode = uPortGattStartCharacteristicDiscovery(connHandle, NULL,
                                                           gNinaW15SpsService.attrHandle,
                                                           gattCharDiscoveryCallback);
+        U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CHARACTERISTIC, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(ch->connHandle, connHandle);
         U_PORT_TEST_ASSERT_EQUAL(ch->attrHandle, gNinaW15SpsService.attrHandle + 1);
@@ -1116,6 +1119,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCharDisc")
         errorCode = uPortGattStartCharacteristicDiscovery(connHandle,
                                                           (uPortGattUuid_t *)&gAppearanceCharUuid, 1,
                                                           gattCharDiscoveryCallback);
+        U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CHARACTERISTIC, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(ch->connHandle, connHandle);
         U_PORT_TEST_ASSERT_EQUAL(ch->attrHandle, gNinaW15GenericAccessService.attrHandle + 3);
@@ -1217,6 +1221,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattDescDisc")
         errorCode = uPortGattStartDescriptorDiscovery(connHandle, U_PORT_GATT_CHRC_DESC_CLIENT_CHAR_CONF,
                                                       gNinaW15SpsService.attrHandle + 1, // SPS FIFO char value
                                                       gattDescriptorDiscoveryCallback);
+        U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         uPortLog("U_PORT_TEST: uPortGattStartDescriptorDiscovery errorCode %d\n", errorCode);
 
         descriptorEvt_t *desc = &evt.desc;
@@ -1242,6 +1247,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattDescDisc")
         errorCode = uPortGattStartDescriptorDiscovery(connHandle, U_PORT_GATT_CHRC_DESC_CLIENT_CHAR_CONF,
                                                       gNinaW15SpsService.attrHandle + 1,
                                                       gattDescriptorDiscoveryCallback);
+        U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_DESCRIPTOR, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(desc->connHandle, connHandle);
         U_PORT_TEST_ASSERT_EQUAL(desc->attrHandle, gNinaW15SpsService.attrHandle + 3); // FIFIO char CCC
@@ -1322,11 +1328,13 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
         static uPortGattSubscribeParams_t subParams = {
             .notifyCb = gattNotifyFunc,
             .cccWriteRespCb = gattCccWriteResp,
-            .valueHandle = gNinaW15SpsService.attrHandle + 2, // SPS FIFO
-            .cccHandle = gNinaW15SpsService.attrHandle + 3,
+            .valueHandle = 0, // Set separately below
+            .cccHandle = 0,   // Set separately below
             .receiveNotifications = true,
             .receiveIndications = false,
         };
+        subParams.valueHandle = gNinaW15SpsService.attrHandle + 2, // SPS FIFO
+        subParams.cccHandle = gNinaW15SpsService.attrHandle + 3,
 
         uPortLog("U_PORT_TEST: uPortGattSubscribe - invalid conn handle\n");
         errorCode = uPortGattSubscribe(-1, &subParams);
@@ -1339,6 +1347,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
         gGattIterReturnValue = U_PORT_GATT_ITER_CONTINUE;
         uPortLog("U_PORT_TEST: uPortGattSubscribe - SPS FIFO\n");
         errorCode = uPortGattSubscribe(connHandle, &subParams);
+        U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_WRITE_CCC, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(evt.writeCcc.err, 0);
 
@@ -1527,6 +1536,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattServerConf")
         notifyEvt_t *notify = &evt.notify;
         uPortLog("U_PORT_TEST: notify data to remote client\n");
         errorCode = uPortGattNotify(connHandle, &gSpsFifoChar, "abcd", 4);
+        U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         uPortLog("U_PORT_TEST: wait for data to echo back\n");
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_SPS_WRITE_FIFO_CHAR, &evt, CONNECTION_SETUP_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(notify->length, sizeof(notify->data));

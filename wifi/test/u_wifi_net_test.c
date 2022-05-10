@@ -249,6 +249,7 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
 
 static void uWifiScanResultCallback(int32_t wifiHandle, uWifiNetScanResult_t *pResult)
 {
+    (void)wifiHandle;
     if (strcmp(pResult->ssid, U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID)) == 0) {
         gScanResult = *pResult;
     }

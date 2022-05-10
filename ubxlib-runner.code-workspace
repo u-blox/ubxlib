@@ -24,7 +24,8 @@
             }
         },
         "files.associations": {
-            "*.h": "c"
+            "*.h": "c",
+            "typeinfo": "c"
         }
     }
 }

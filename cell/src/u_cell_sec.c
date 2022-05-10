@@ -295,6 +295,7 @@ static size_t encryptC2cConfirmationTag(const char *pC2cConfirmationTagHex,
         // (which is at least as big, as checked with
         // a #error above)
         memcpy(pOutputBuffer + length, pTeSecret, U_SECURITY_C2C_TE_SECRET_LENGTH_BYTES);
+        // NOLINTNEXTLINE(readability-suspicious-call-argument)
         if (uPortCryptoHmacSha256(pHMacKey,
                                   U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES,
                                   pOutputBuffer,
@@ -513,8 +514,10 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
                 uAtClientResponseStart(atHandle, "+USECC2C:");
                 // Must get back a zero and then another zero indicating
                 // success
+                // NOLINTBEGIN(misc-redundant-expression)
                 if ((uAtClientReadInt(atHandle) == 0) &&
                     (uAtClientReadInt(atHandle) == 0)) {
+                    // NOLINTEND(misc-redundant-expression)
                     // Success: read the key
                     x = uAtClientReadString(atHandle, buffer,
                                             sizeof(buffer), false);
@@ -579,6 +582,7 @@ int32_t uCellSecC2cPair(int32_t cellHandle,
                             // Encrypt the buffer, which should contain the
                             // hex-coded C2C confirmation tag, with all the
                             // other bits and pieces
+                            // NOLINTNEXTLINE(readability-suspicious-call-argument)
                             x = (int32_t) encryptC2cConfirmationTag(buffer, pTESecret,
                                                                     pKey, pHMac,
                                                                     pEncryptedC2cConfirmationTag);

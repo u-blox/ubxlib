@@ -77,6 +77,8 @@ extern int32_t gTickTimerRtosCount;
 #ifdef U_DEBUG_UTILS_DUMP_THREADS
 static void dummyAssert(const char *pFileStr, int32_t line)
 {
+    (void)pFileStr;
+    (void)line;
 }
 #endif
 
