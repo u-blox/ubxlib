@@ -241,6 +241,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
         returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
                                  (void *) &gConfigCell,
                                  &devHandle);
+        uPortLog("### Added network with return code %d.\n", returnCode);
         uCellPwrSetRequested3gppPowerSaving(devHandle, MY_RAT, false, -1, -1);
         // Reboot the module, if required, to apply the settings
         if (uCellPwrRebootIsRequired(devHandle)) {
