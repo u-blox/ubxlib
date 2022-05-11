@@ -226,7 +226,6 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
         U_PORT_TEST_ASSERT(uShortRangeSetBaudrate(&gHandles.devHandle, &uart) == 0);
         U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
     }
-    uShortRangeClose(gHandles.devHandle);
     uShortRangeTestPrivateCleanup(&gHandles);
     uPortLog("U_SHORT_RANGE_TEST: shortRangeUartSetBaudrate succeded.\n");
 }
@@ -278,7 +277,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
         uPortLog("U_SHORT_RANGE_TEST: Setting baudrate on host to %d\n", uart.baudRate);
         U_PORT_TEST_ASSERT(uShortRangeOpenUart(moduleType, &uart, false,
                                                &gHandles.devHandle) == 0); // target should already be at 115200 due to DTR reset
-        uShortRangeClose(gHandles.devHandle);
+        uShortRangeTestPrivateCleanup(&gHandles);
 
         uPortLog("U_SHORT_RANGE_TEST: shortRangeResetToDefaultSettings succeded.\n");
     }
