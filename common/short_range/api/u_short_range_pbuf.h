@@ -21,6 +21,8 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+#include "u_compiler.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,38 +37,44 @@ extern "C" {
 /**
  * List of Pointer to payload
  */
-typedef struct uShortRangePbuf_t {
-    // pointer to payload
-    char *pData;
-
-    // next link
-    struct uShortRangePbuf_t *pNext;
-
-    // length of the payload
-    size_t len;
+// *INDENT-OFF*
+#ifdef _MSC_VER
+// Suppress zero-sized array in struct/union - it's intentional
+#pragma warning( push )
+#pragma warning( disable : 4200 )
+#endif
+typedef U_PACKED_STRUCT(uShortRangePbuf_t) {
+    struct uShortRangePbuf_t *pNext; /**< Used for linked list of pBuf */
+    uint16_t length; /**< Number of used bytes in the data buffer */
+    char data[];  /**< Data buffer */
 } uShortRangePbuf_t;
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif
+// *INDENT-ON*
 
 /**
  * List of pbufs. Each pbuf list corresponds to one EDM payload
  */
-typedef struct uShortRangePbufList_t {
+// *INDENT-OFF*
+typedef U_PACKED_STRUCT(uShortRangePbufList_t) {
     uShortRangePbuf_t *pBufHead;
     uShortRangePbuf_t *pBufTail;
-    uShortRangePbuf_t *pBufCurr;
     struct uShortRangePbufList_t *pNext;
+    // total length of the packet data
+    uint16_t totalLen;
     // edm channel of this payload
-    int32_t edmChannel;
-    // total length of the payload
-    size_t totalLen;
+    int8_t edmChannel;
 } uShortRangePbufList_t;
+// *INDENT-ON*
 
 /** List of pbuf list. Packet list contains multiple
  * EDM payloads. Packet list are mainly used in message based
  * datapath clients like MQTT, UDP
  */
 typedef struct uShortRangePktList_t {
-    uShortRangePbufList_t *pPbufListHead;
-    uShortRangePbufList_t *pPbufListTail;
+    uShortRangePbufList_t *pBufListHead;
+    uShortRangePbufList_t *pBufListTail;
     int32_t pktCount;
 } uShortRangePktList_t;
 
@@ -84,85 +92,85 @@ int32_t uShortRangeMemPoolInit(void);
  */
 void uShortRangeMemPoolDeInit(void);
 
-/** Allocate memory for pbuf list from the pbuf list
- * memory pool. Refer to pBufListPool in u_short_range_pbuf.c
- * Memory pool should have been initialized before using this
- * API. Refer to uShortRangeMemPoolInit()
- *
- * @return  Pointer to uShortRangePbufList_t or NULL
- *
- */
-uShortRangePbufList_t *pUShortRangeAllocPbufList(void);
-
 /** Allocate fixed size memory from gEdmPayLoadPool memory pool.
  * Refer to gEdmPayLoadPool in u_short_range_pbuf.c
  * Memory pool should have been initialized before using this
  * API. Refer to uShortRangeMemPoolInit()
  *
- * @return  Pointer to the allocated payload or NULL
+ * @param[out] ppBuf a double pointer to destination pbuf.
+ * @return  data size of the returned pbuf, on failure negative error code.
  *
  */
-void *pUShortRangeAllocPayload(void);
+int32_t uShortRangePbufAlloc(uShortRangePbuf_t **ppBuf);
 
-/** Insert the payload to the pbuf list.
+/** Allocate memory for pbuf list from the pbuf list
+ * memory pool. Refer to pBufListPool in u_short_range_pbuf.c
+ * Memory pool should have been initialized before using this
+ * API. Refer to uShortRangeMemPoolInit()
  *
- * @param pList Pointer to the pbuf list
- * @param pData Pointer to the payload allocated from payload pool.
- *              address of the stack memory should not be passed to this function.
- * @param len   Length of the payload
- */
-int32_t uShortRangeInsertPayloadToPbufList(uShortRangePbufList_t *pList, char *pData, size_t len);
-
-/** Move the payload contained in each pbufs in a pbuflist to the given destination buffer.
- *  At the end of move operation, next pbuf position to read will be updated in the pbuflist.
+ * @return  pointer to uShortRangePbufList_t or NULL.
  *
- * @param pList Pointer to the pbuf list.
- * @param pData Pointer to the destination buffer.
- * @param len   Length of the destination buffer.
- * @return      Copied length
  */
-size_t uShortRangeMovePayloadFromPbufList(uShortRangePbufList_t *pList, char *pData, size_t len);
+uShortRangePbufList_t *pUShortRangePbufListAlloc(void);
 
-/** Put the allocated memory for pbuf, pbuf list, payload in to their
+/** Put the allocated memory for pbufs and packet in to their
  * free list of respective pool.
  *
- * @param pList Pointer to the pbuf list.
+ * @param pBufList Pointer to the packet.
  */
-void uShortRangeFreePbufList(uShortRangePbufList_t *pList);
+void uShortRangePbufListFree(uShortRangePbufList_t *pBufList);
+
+/** Append a pbuf to a pbuf list.
+ *
+ * @param pBufList pointer to the destination pbuf list.
+ * @param pBuf     the pbuf to be added to the list.
+ * @return         zero on success, on failure negative error code.
+ */
+int32_t uShortRangePbufListAppend(uShortRangePbufList_t *pBufList, uShortRangePbuf_t *pBuf);
+
+/** Reads and consume data from the pbuf list.
+ *  At the end of move operation, next pbuf position to read will be updated in the pbuflist.
+ *
+ * @param pBufList pointer to the pbuf list.
+ * @param pData    pointer to the destination buffer.
+ * @param len      length of the destination buffer.
+ * @return         copied length.
+ */
+size_t uShortRangePbufListConsumeData(uShortRangePbufList_t *pBufList, char *pData, size_t len);
 
 /** Link a new pbuf list to the existing pbuf list.
  *  The pointer allocated for the new pbuf list from the pbuf list pool
  *  will be added to its free list.
  *
- * @param pOldList Pointer to the existing pbuf list.
- * @param pNewList Pointer to the new pbuf list.
+ * @param pOldList pointer to the existing pbuf list.
+ * @param pNewList pointer to the new pbuf list.
  */
-void uShortRangeMergePbufList(uShortRangePbufList_t *pOldList, uShortRangePbufList_t *pNewList);
+void uShortRangePbufListMerge(uShortRangePbufList_t *pOldList, uShortRangePbufList_t *pNewList);
 
 /** Insert a pbuf list to the packet list.
  *
- * @param pPktList  Pointer to the packet list.
- * @param pPbufList Pointer to the pbuf list.
+ * @param pPktList  pointer to the packet list.
+ * @param pBufList  pointer to the pbuf list.
  * @return          zero on success or negative error code.
  */
-int32_t uShortRangeInsertPktToPktList(uShortRangePktList_t *pPktList,
-                                      uShortRangePbufList_t *pPbufList);
+int32_t uShortRangePktListAppend(uShortRangePktList_t *pPktList,
+                                 uShortRangePbufList_t *pBufList);
 
-/** Copy the contents of one packet from the packet list in to the given buffer.
- * If the given buffer size cannot accommodate the size of a single packet, Partial
+/** Read and consume a packet in a packet list.
+ * If the given buffer size cannot accommodate the size of a complete packet, partial
  * data will be copied.
  *
- * @param pPktList    Pointer to the packet list
- * @param pData       Pointer to the destination buffer
- * @param pLen        On entry this should point to length of destination buffer.
- *                    On return this will be updated to copied length.
- * @param pEdmChannel On return EDM channel corresponding to the read packet will be updated.
+ * @param pPktList    pointer to the packet list.
+ * @param pData       pointer to the destination buffer.
+ * @param pLen        on entry this should point to length of destination buffer.
+ *                    on return this will be updated to copied length.
+ * @param pEdmChannel on return EDM channel corresponding to the read packet will be updated.
  * @return            zero on success or negative error code.
  *                    U_ERROR_COMMON_TEMPORARY_FAILURE, if given buffer cannot accommodate
- *                    the entire message.
+ *                    the entire message - in this case the packet will be flushed.
  */
-int32_t uShortRangeReadPktFromPktList(uShortRangePktList_t *pPktList, char *pData, size_t *pLen,
-                                      int32_t *pEdmChannel);
+int32_t uShortRangePktListConsumePacket(uShortRangePktList_t *pPktList, char *pData, size_t *pLen,
+                                        int32_t *pEdmChannel);
 #ifdef __cplusplus
 }
 #endif

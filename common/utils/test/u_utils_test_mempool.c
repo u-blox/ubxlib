@@ -54,7 +54,8 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-
+#define TEST_BLOCK_COUNT 8
+#define TEST_BLOCK_SIZE  64
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -81,8 +82,6 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolBasic")
 {
     int32_t errCode;
     uMemPoolDesc_t mempoolDesc;
-    int32_t numOfBlks = 8;
-    uint32_t sizeOfBlk = 64;
     uint8_t *pBuf1;
     uint8_t *pBuf2;
     int32_t heapUsed;
@@ -93,7 +92,7 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolBasic")
     uPortDeinit();
     heapUsed = uPortGetHeapFree();
 
-    errCode = uMemPoolInit(&mempoolDesc, sizeOfBlk, numOfBlks);
+    errCode = uMemPoolInit(&mempoolDesc, TEST_BLOCK_SIZE, TEST_BLOCK_COUNT);
     U_PORT_TEST_ASSERT(errCode == U_ERROR_COMMON_SUCCESS);
 
     pBuf1 = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
@@ -102,7 +101,10 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolBasic")
     pBuf2 = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
     U_PORT_TEST_ASSERT(pBuf2 != NULL);
 
-    U_PORT_TEST_ASSERT((uint32_t)(pBuf2 - pBuf1) == sizeOfBlk);
+    // The memory pool will divide a contiguous buffer into back-to-back
+    // blocks. So check that the second block is exactly TEST_BLOCK_SIZE
+    // bytes after first block
+    U_PORT_TEST_ASSERT_EQUAL(TEST_BLOCK_SIZE, (uint32_t)(pBuf2 - pBuf1));
 
     uMemPoolFreeMem(&mempoolDesc, (void *)pBuf1);
     uMemPoolFreeMem(&mempoolDesc, (void *)pBuf2);
@@ -118,13 +120,11 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolBasic")
 }
 
 
-U_PORT_TEST_FUNCTION("[mempool]", "mempoolResize")
+U_PORT_TEST_FUNCTION("[mempool]", "mempoolFull")
 {
     int32_t errCode;
     uMemPoolDesc_t mempoolDesc;
-    int32_t numOfBlks = 8;
-    uint32_t sizeOfBlk = 64;
-    uint8_t *pBuf[16];
+    uint8_t *pBuf[TEST_BLOCK_COUNT];
     int32_t heapUsed;
 
     // Whatever called us likely initialised the
@@ -133,15 +133,23 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolResize")
     uPortDeinit();
     heapUsed = uPortGetHeapFree();
 
-    errCode = uMemPoolInit(&mempoolDesc, sizeOfBlk, numOfBlks);
+    errCode = uMemPoolInit(&mempoolDesc, TEST_BLOCK_SIZE, TEST_BLOCK_COUNT);
     U_PORT_TEST_ASSERT(errCode == U_ERROR_COMMON_SUCCESS);
 
-    for (int32_t i = 0; i < sizeof(pBuf) / sizeof(uint8_t *); i++) {
+    // Allocate all buffers available in the pool
+    for (int32_t i = 0; i < TEST_BLOCK_COUNT; i++) {
         pBuf[i] = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
         U_PORT_TEST_ASSERT(pBuf[i] != NULL);
     }
+    // Now we should have allocated each block so make sure uMemPoolAllocMem returns NULL
+    U_PORT_TEST_ASSERT(uMemPoolAllocMem(&mempoolDesc) == NULL);
 
-    for (int32_t i = 0; i < sizeof(pBuf) / sizeof(uint8_t *); i++) {
+    // Free one buffer and make sure the we then can allocate it again
+    uMemPoolFreeMem(&mempoolDesc, (void *)pBuf[0]);
+    pBuf[0] = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
+    U_PORT_TEST_ASSERT(pBuf[0] != NULL);
+
+    for (int32_t i = 0; i < TEST_BLOCK_COUNT; i++) {
         uMemPoolFreeMem(&mempoolDesc, (void *)pBuf[i]);
     }
 
@@ -159,10 +167,8 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolFreeAllMem")
 {
     int32_t errCode;
     uMemPoolDesc_t mempoolDesc;
-    int32_t numOfBlks = 8;
-    uint32_t sizeOfBlk = 64;
-    uint8_t *pBuf1[16];
-    uint8_t *pBuf2[16];
+    uint8_t *pBuf1[TEST_BLOCK_COUNT];
+    uint8_t *pBuf2[TEST_BLOCK_COUNT];
     int32_t heapUsed;
 
     // Whatever called us likely initialised the
@@ -172,29 +178,27 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolFreeAllMem")
     heapUsed = uPortGetHeapFree();
     uPortLog("Heap used at start %d\n", heapUsed);
 
-    errCode = uMemPoolInit(&mempoolDesc, sizeOfBlk, numOfBlks);
+    errCode = uMemPoolInit(&mempoolDesc, TEST_BLOCK_SIZE, TEST_BLOCK_COUNT);
     U_PORT_TEST_ASSERT(errCode == U_ERROR_COMMON_SUCCESS);
 
-    for (int32_t i = 0; i < sizeof(pBuf1) / sizeof(uint8_t *); i++) {
+    // Allocate all buffers available in the pool
+    for (int32_t i = 0; i < TEST_BLOCK_COUNT; i++) {
         pBuf1[i] = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
         U_PORT_TEST_ASSERT(pBuf1[i] != NULL);
     }
-
 
     // Now free all the allocated blocks
     uMemPoolFreeAllMem(&mempoolDesc);
 
     // Allocate the memory for blocks again
-    for (int32_t i = 0; i < sizeof(pBuf2) / sizeof(uint8_t *); i++) {
+    for (int32_t i = 0; i < TEST_BLOCK_COUNT; i++) {
         pBuf2[i] = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
         U_PORT_TEST_ASSERT(pBuf2[i] != NULL);
-
     }
 
     // Check all the memory that were added to free list were
     // allocated again
-    for (int32_t i = 0; i < sizeof(pBuf1) / sizeof(uint8_t *); i++) {
-
+    for (int32_t i = 0; i < TEST_BLOCK_COUNT; i++) {
         U_PORT_TEST_ASSERT(pBuf1[i] == pBuf2[i]);
     }
 
@@ -209,43 +213,4 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolFreeAllMem")
 
 }
 
-U_PORT_TEST_FUNCTION("[mempool]", "mempoolCrossThreshold")
-{
-    int32_t errCode;
-    uMemPoolDesc_t mempoolDesc;
-    // Pool can grow up till the twice the number of blocks
-    int32_t numOfBlks = 4;
-    uint32_t sizeOfBlk = 64;
-    uint8_t *pBuf[8];
-    uint8_t *pBuf2;
-    int32_t heapUsed;
-
-    // Whatever called us likely initialised the
-    // port so deinitialise it here to obtain the
-    // correct initial heap size
-    uPortDeinit();
-    heapUsed = uPortGetHeapFree();
-
-    errCode = uMemPoolInit(&mempoolDesc, sizeOfBlk, numOfBlks);
-    U_PORT_TEST_ASSERT(errCode == U_ERROR_COMMON_SUCCESS);
-
-    for (int32_t i = 0; i < sizeof(pBuf) / sizeof(uint8_t *); i++) {
-        pBuf[i] = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
-        U_PORT_TEST_ASSERT(pBuf[i] != NULL);
-    }
-
-    // Exceeded the max number of blocks (8)
-    // Trying to allocate for 9th should fail
-    pBuf2 = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
-    U_PORT_TEST_ASSERT(pBuf2 == NULL);
-
-    uMemPoolDeinit(&mempoolDesc);
-
-    // Check for memory leaks
-    heapUsed -= uPortGetHeapFree();
-    uPortLog("U_MEMPOOL_TEST: we have leaked %d byte(s).\n", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));
-}
 // End of file

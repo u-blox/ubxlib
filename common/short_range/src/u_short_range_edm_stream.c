@@ -423,15 +423,14 @@ static void eventHandler(void *pParam, size_t paramLength)
 static bool enqueueEdmAtEvent(uShortRangeEdmEvent_t *pEvent)
 {
     bool success = false;
-    uShortRangePbufList_t *pBufList;
     uShortRangeEdmStreamEvent_t event;
 
-    pBufList = pEvent->params.atEvent.pBufList;
+    uShortRangePbufList_t *pBufList = pEvent->params.atEvent.pBufList;
     gEdmStream.atResponseLength = (int32_t)pBufList->totalLen;
     gEdmStream.atResponseRead = 0;
-    uShortRangeMovePayloadFromPbufList(pBufList, gEdmStream.pAtResponseBuffer,
-                                       gEdmStream.atResponseLength);
-    uShortRangeFreePbufList(pBufList);
+    uShortRangePbufListConsumeData(pBufList, gEdmStream.pAtResponseBuffer,
+                                   gEdmStream.atResponseLength);
+    uShortRangePbufListFree(pBufList);
 
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
     uEdmChLogStart(LOG_CH_AT_RX, "\"");

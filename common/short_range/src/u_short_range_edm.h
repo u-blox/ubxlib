@@ -16,6 +16,12 @@
 #ifndef _U_SHORT_RANGE_EDM_H_
 #define _U_SHORT_RANGE_EDM_H_
 
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_short_range.h"
+
 /** @file */
 
 #define U_SHORT_RANGE_EDM_OK                  0

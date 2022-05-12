@@ -69,6 +69,19 @@
 # define U_INLINE __attribute__ ((always_inline)) inline
 #endif
 
+
+/** U_PACKED_STRUCT: macro for creating packed structs
+ */
+#ifdef _MSC_VER
+/** Microsoft Visual C++ definition.
+ */
+# define U_PACKED_STRUCT(NAME) __pragma( pack(push, 1) ) struct NAME __pragma( pack(pop))
+#else
+/** Default (GCC) definition.
+ */
+# define U_PACKED_STRUCT(NAME) struct __attribute__((packed)) NAME
+#endif
+
 #endif // _U_COMPILER_H_
 
 // End of file

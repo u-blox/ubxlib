@@ -84,7 +84,7 @@ typedef struct uBleSpsChannel_s {
     uShortRangePrivateInstance_t  *pInstance;
     uShortRangePbufList_t         *pSpsRxBuff;
     uint32_t                      txTimeout;
-    struct uBleSpsChannel_s   *pNext;
+    struct uBleSpsChannel_s       *pNext;
 } uBleSpsChannel_t;
 
 typedef struct {
@@ -256,7 +256,7 @@ static void deleteSpsChannel(const uShortRangePrivateInstance_t *pInstance,
             // This happens when the list only has one item
             *ppListHead = NULL;
         }
-        uShortRangeFreePbufList(pChannel->pSpsRxBuff);
+        uShortRangePbufListFree(pChannel->pSpsRxBuff);
 
         free(pChannel);
     }
@@ -271,7 +271,7 @@ static void deleteAllSpsChannels(uBleSpsChannel_t **ppListHead)
     while (pChannel != NULL) {
         uBleSpsChannel_t *pChanToFree;
 
-        uShortRangeFreePbufList(pChannel->pSpsRxBuff);
+        uShortRangePbufListFree(pChannel->pSpsRxBuff);
         pChanToFree = pChannel;
         pChannel = pChannel->pNext;
         free(pChanToFree);
@@ -404,7 +404,7 @@ static void dataCallback(int32_t handle, int32_t channel, uShortRangePbufList_t 
                     if (pChannel->pSpsRxBuff == NULL) {
                         pChannel->pSpsRxBuff = pBufList;
                     } else {
-                        uShortRangeMergePbufList(pChannel->pSpsRxBuff, pBufList);
+                        uShortRangePbufListMerge(pChannel->pSpsRxBuff, pBufList);
                     }
 
                     if (bufferWasEmtpy) {
@@ -609,7 +609,7 @@ int32_t uBleSpsDisconnect(uDeviceHandle_t devHandle, int32_t connHandle)
 int32_t uBleSpsReceive(uDeviceHandle_t devHandle, int32_t channel, char *pData, int32_t length)
 {
     uShortRangePrivateInstance_t *pInstance = pUShortRangePrivateGetInstance(devHandle);
-    uShortRangePbufList_t *pList;
+    uShortRangePbufList_t *pBufList;
     int32_t sizeOrErrorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
     if (uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS) {
@@ -617,10 +617,10 @@ int32_t uBleSpsReceive(uDeviceHandle_t devHandle, int32_t channel, char *pData, 
         if (pInstance != NULL) {
             uBleSpsChannel_t *pChannel = getSpsChannel(pInstance, channel, gpChannelList);
             if (pChannel != NULL) {
-                pList = pChannel->pSpsRxBuff;
-                sizeOrErrorCode = (int32_t)uShortRangeMovePayloadFromPbufList(pList, pData, length);
-                if ((pList != NULL) && (pList->totalLen == 0)) {
-                    uShortRangeFreePbufList(pList);
+                pBufList = pChannel->pSpsRxBuff;
+                sizeOrErrorCode = (int32_t)uShortRangePbufListConsumeData(pBufList, pData, length);
+                if ((pBufList != NULL) && (pBufList->totalLen == 0)) {
+                    uShortRangePbufListFree(pBufList);
                     pChannel->pSpsRxBuff = NULL;
                 }
             }
