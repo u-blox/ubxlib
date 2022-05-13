@@ -73,6 +73,7 @@
 #include <u_mempool.h>
 #include <u_ringbuffer.h>
 #include <u_time.h>
+#include <u_debug_utils.h>
 #include <u_at_client.h>
 #include <u_security.h>
 #include <u_security_credential.h>

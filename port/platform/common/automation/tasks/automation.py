@@ -5,6 +5,7 @@ from pathlib import PurePath
 from scripts import u_utils, u_data, u_connection, u_select, u_report
 from scripts import u_run_log, u_run_windows, u_run_linux, u_run_doxygen, u_run_astyle
 from scripts import u_run_pylint, u_run_static_size, u_run_no_floating_point
+from scripts import u_run_check_ubxlib_h
 
 from scripts.packages import u_package
 from scripts.u_logging import ULog
@@ -223,7 +224,9 @@ def instance_command(ctx, instance_str, cmd):
         elif instance[0] == 7:
             print(defines)
             return_code = u_run_static_size.run(defines, u_utils.UBXLIB_DIR, ctx.reporter)
-        elif instance[0] >= 8 and instance[0] <= 9:
+        elif instance[0] == 8:
+            return_code = u_run_check_ubxlib_h.run(u_utils.UBXLIB_DIR, ctx.reporter)
+        elif instance[0] == 9:
             raise Exit(f"Instance {instance_str} reserved, nothing to do.")
         check_return_code(return_code)
 

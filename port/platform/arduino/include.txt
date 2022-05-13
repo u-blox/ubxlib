@@ -20,6 +20,7 @@ port/platform/common/event_queue
 port/platform/common/mbedtls
 port/platform/esp-idf/src
 port/platform/common/runner
+port/platform/common/debug_utils/api
 port/platform/esp-idf/mcu/esp32/cfg
 port/platform/esp-idf
 common/network/api
