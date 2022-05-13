@@ -78,6 +78,8 @@ typedef enum {
     U_NETWORK_TYPE_MAX_NUM
 } uNetworkType_t;
 
+typedef int32_t uNetworkCfgVersion_t;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
@@ -94,35 +96,6 @@ int32_t uNetworkInit();
  * be removed internally with a call to uNetworkRemove().
  */
 void uNetworkDeinit();
-
-/** Configure a network interface of a u-blox device
- *
- * @param devHandle       handle received from uDeviceOpen
- * @param networkType      type of network, must be valid for
- *                         this device
- * @param pConfiguration   a pointer to the configuration
- *                         information for the given network
- *                         type.  This must be stored
- *                         statically, a true constant: the
- *                         contents are not copied by this
- *                         function. The configuration
- *                         structures are defined by this
- *                         API in the u_network_xxx.h header
- *                         files and have the name
- *                         uNetworkConfigurationXxx_t, where
- *                         xxx is replaced by one of Cell,
- *                         Ble or Wifi.  The configuration
- *                         is passed transparently through to
- *                         the given API, hence the use of
- *                         void * here. The first entry in
- *                         all of these structures is of type
- *                         uNetworkType_t to indicate the
- *                         type and allow cross-checking.
- * @return                 zero on success or negative error
- *                         code on failure.
- */
-int32_t uNetworkConfigure(uDeviceHandle_t devHandle, uNetworkType_t networkType,
-                          const void *pConfiguration);
 
 /** Add a network instance. When this returns successfully
  * the module is powered up and available for configuration but
@@ -197,11 +170,32 @@ int32_t uNetworkDown(uDeviceHandle_t devHandle);
  * is already up the implementation should return success without
  * doing anything.
  *
- * @param devHandle the handle of the device to bring up.
- * @param netType   which of the module interfaces.
- * @return          zero on success else negative error code.
+ * @param devHandle        the handle of the device to bring up.
+ * @param netType          which of the module interfaces.
+ * @param pConfiguration   a pointer to the configuration
+ *                         information for the given network
+ *                         type.  This must be stored
+ *                         statically, a true constant: the
+ *                         contents are not copied by this
+ *                         function. The configuration
+ *                         structures are defined by this
+ *                         API in the u_network_xxx.h header
+ *                         files and have the name
+ *                         uNetworkConfigurationXxx_t, where
+ *                         xxx is replaced by one of Cell,
+ *                         Ble or Wifi.  The configuration
+ *                         is passed transparently through to
+ *                         the given API, hence the use of
+ *                         void * here. The second entry in
+ *                         all of these structures is of type
+ *                         uNetworkType_t to indicate the
+ *                         type and allow cross-checking.
+ *                         Can be set to NULL on subsequent calls
+ *                         if the previous configuration should unchanged
+ * @return                 zero on success else negative error code.
  */
-int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType);
+int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,
+                            const void *pConfiguration);
 
 /** Take down the given network interface on a device, disconnecting
  * it from any peer entity.  After this function returns

@@ -63,6 +63,7 @@ typedef struct {
     int32_t module;             /**< Module identification (when applicable).*/
     const void
     *pNetworkCfg[U_NETWORK_TYPE_MAX_NUM]; /**< Network configuration for the device interfaces.*/
+    void *pNetworkPrivate;      /**< Possible network private data.*/
 
     // TODO: Add structs of function pointers here for socket-, MQTT-implementation etc.
     int32_t netType;            /**< This is only temporarily used for migration for the new uDevice API.

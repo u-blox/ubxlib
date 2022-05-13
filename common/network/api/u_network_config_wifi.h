@@ -72,6 +72,9 @@ typedef struct {
 } uNetworkConfigurationWifi_t;
 
 typedef struct {
+    uNetworkCfgVersion_t
+    version;             /**< Version of this network configuration. */
+    uNetworkType_t type;     /**< For error checking purposes. */
     const char *pSsid;       /**< The access point SSID to connect */
     int32_t authentication;  /**< The access point authentication mode. Values are:
                                  1: Open (No authentication)

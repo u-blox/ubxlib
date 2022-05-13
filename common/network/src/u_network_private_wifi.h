@@ -101,6 +101,17 @@ int32_t uNetworkUpWifi(uDeviceHandle_t devHandle,
 int32_t uNetworkDownWifi(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationWifi_t *pConfiguration);
 
+/** Take up or down the given Wifi network instance. uNetworkAddWifi()
+ * must have been called first to create this instance.
+ *
+ * @param devHandle        the handle of the instance to take down.
+ * @param cfg              a pointer to the configuration for this
+ *                         instance. Only required for up
+ * @param up               Take the wifi up or down
+ * @return                 zero on success else negative error code.
+ */
+int32_t uNetworkChangeStateWifi(uDeviceHandle_t devHandle, uDeviceNetworkCfgWifi_t *cfg, bool up);
+
 #ifdef __cplusplus
 }
 #endif

@@ -70,8 +70,11 @@ typedef struct {
 } uNetworkConfigurationBle_t;
 
 typedef struct {
-    int32_t role;   /**< Peripheral, central or, peripheral and central,
-                         see uShortRangeBleRole_t in u_short_range.h. */
+    uNetworkCfgVersion_t
+    version;         /**< Version of this network configuration. */
+    uNetworkType_t type; /**< For error checking purposes. */
+    int32_t role;        /**< Peripheral, central or, peripheral and central,
+                              see uShortRangeBleRole_t in u_short_range.h. */
     bool spsServer; /**< True if sps server is to be enabled. */
 } uDeviceNetworkCfgBle_t;
 

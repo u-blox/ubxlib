@@ -58,6 +58,8 @@
 #include "u_network_config_wifi.h"
 #include "u_network_private_wifi.h"
 
+#include "u_device_internal.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -180,6 +182,8 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
     (void)pBssid;
     uNetworkPrivateWifiInstance_t *pInstance;
     pInstance = (uNetworkPrivateWifiInstance_t *)pCallbackParameter;
+    uPortQueueHandle_t queHandle = pInstance ? pInstance->statusQueue : U_DEVICE_INSTANCE(
+                                       devHandle)->pNetworkPrivate;
 
     uStatusMessage_t msg = {
         .msgType = (status == U_WIFI_NET_CON_STATUS_DISCONNECTED) ? U_MSG_WIFI_DISCONNECT : U_MSG_WIFI_CONNECT,
@@ -187,7 +191,7 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
         .netStatusMask = 0
     };
     // We don't care if the queue gets full here
-    (void)uPortQueueSend(pInstance->statusQueue, &msg);
+    (void)uPortQueueSend(queHandle, &msg);
 
 #if defined(U_CFG_ENABLE_LOGGING) && !U_CFG_OS_CLIB_LEAKS
     if (status == U_WIFI_NET_CON_STATUS_CONNECTED) {
@@ -223,6 +227,8 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     (void)interfaceType;
     uNetworkPrivateWifiInstance_t *pInstance;
     pInstance = (uNetworkPrivateWifiInstance_t *)pCallbackParameter;
+    uPortQueueHandle_t queHandle = pInstance ? pInstance->statusQueue : U_DEVICE_INSTANCE(
+                                       devHandle)->pNetworkPrivate;
 
 #if !U_CFG_OS_CLIB_LEAKS
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
@@ -236,7 +242,7 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
         .netStatusMask = statusMask
     };
     // We don't care if the queue gets full here
-    (void)uPortQueueSend(pInstance->statusQueue, &msg);
+    (void)uPortQueueSend(queHandle, &msg);
 }
 
 static inline void statusQueueClear(const uPortQueueHandle_t queueHandle)
@@ -443,7 +449,7 @@ int32_t uNetworkUpWifi(uDeviceHandle_t devHandle,
     if ((pInstance != NULL) && (pInstance->devHandle != NULL) &&
         (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS)) {
 
-        // Clear status queue since we are only interrested in fresh messages
+        // Clear status queue since we are only interested in fresh messages
         statusQueueClear(pInstance->statusQueue);
 
         errorCode = uWifiNetSetNetworkStatusCallback(pInstance->devHandle,
@@ -492,7 +498,7 @@ int32_t uNetworkDownWifi(uDeviceHandle_t devHandle,
     // Find the instance in the list
     pInstance = pGetInstance(devHandle);
     if (pInstance != NULL && pInstance->devHandle != NULL) {
-        // Clear status queue since we are only interrested in fresh messages
+        // Clear status queue since we are only interested in fresh messages
         statusQueueClear(pInstance->statusQueue);
 
         errorCode = uWifiNetStationDisconnect(pInstance->devHandle);
@@ -513,4 +519,89 @@ int32_t uNetworkDownWifi(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
+int32_t uNetworkChangeStateWifi(uDeviceHandle_t devHandle, uDeviceNetworkCfgWifi_t *pCfg, bool up)
+{
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+    uDeviceInstance_t *devInstance;
+    errorCode = uDeviceGetInstance(devHandle, &devInstance);
+    if (errorCode != 0) {
+        return errorCode;
+    }
+    if (!pCfg || pCfg->type != U_NETWORK_TYPE_WIFI) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+
+    // Callback message queue, may or may not be initiated before
+    uPortQueueHandle_t queHandle = (uPortQueueHandle_t)devInstance->pNetworkPrivate;
+    if (up) {
+        if (!queHandle) {
+            errorCode = uPortQueueCreate(2, sizeof(uStatusMessage_t), &queHandle);
+            if (errorCode == 0) {
+                devInstance->pNetworkPrivate = queHandle;
+                errorCode = uWifiNetSetConnectionStatusCallback(devHandle, wifiConnectionCallback, NULL);
+                if (errorCode == 0) {
+                    errorCode = uWifiNetSetNetworkStatusCallback(devHandle, wifiNetworkStatusCallback, NULL);
+                }
+            }
+        }
+        if (errorCode == 0) {
+            // Clear status queue since we are only interested in fresh messages
+            statusQueueClear(queHandle);
+
+            errorCode = uWifiNetStationConnect(devHandle,
+                                               pCfg->pSsid,
+                                               (uWifiNetAuth_t)pCfg->authentication,
+                                               pCfg->pPassPhrase);
+
+            if (errorCode == 0) {
+                // Wait until the network layer is up before return
+                errorCode = statusQueueWaitForWifiConnected(queHandle, 20);
+                if (errorCode == 0) {
+                    errorCode = statusQueueWaitForNetworkUp(queHandle,
+                                                            U_NETWORK_PRIVATE_WIFI_NETWORK_TIMEOUT_SEC);
+                }
+            }
+
+            if (errorCode == (int32_t)U_WIFI_ERROR_ALREADY_CONNECTED_TO_SSID) {
+                // This is mainly used for test system:
+                // If we already are connected to the SSID we return success
+                errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+            }
+
+            if (errorCode != 0) {
+                // Something went wrong, clean up
+                uNetworkChangeStateWifi(devHandle, pCfg, false);
+            }
+
+            uWifiNetSetNetworkStatusCallback(queHandle, NULL, NULL);
+        }
+    } else {
+        if (queHandle) {
+            statusQueueClear(queHandle);
+
+            errorCode = uWifiNetStationDisconnect(devHandle);
+            uPortLog("uWifiNetStationDisconnect: %d\n", errorCode);
+
+            if (errorCode == 0) {
+                // Wait until the wifi have been disabled before return
+                errorCode = statusQueueWaitForWifiDisabled(queHandle, 5);
+            }
+
+            if (errorCode == (int32_t)U_WIFI_ERROR_ALREADY_DISCONNECTED) {
+                // This is mainly used for test system:
+                // If we already are disconnected we return success
+                errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+            }
+            if (errorCode == 0) {
+                uWifiNetSetConnectionStatusCallback(devHandle, NULL, NULL);
+                uPortQueueDelete(queHandle);
+                devInstance->pNetworkPrivate = NULL;
+            }
+        } else {
+            errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+        }
+    }
+
+    return errorCode;
+}
 // End of file

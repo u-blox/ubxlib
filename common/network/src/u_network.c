@@ -179,14 +179,15 @@ static int32_t remove(uDeviceHandle_t devHandle)
     return errorCode;
 }
 
-static int32_t uNetworkInterfaceChange(uDeviceHandle_t devHandle, uNetworkType_t netType, bool up)
+static int32_t uNetworkInterfaceChangeState(uDeviceHandle_t devHandle, uNetworkType_t netType,
+                                            bool up)
 {
     int32_t returnCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uDeviceInstance_t *pInstance;
     if (uDeviceGetInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
         switch (uDeviceGetDeviceType(devHandle)) {
             case U_DEVICE_TYPE_CELL: {
-                uNetworkConfigurationCell_t cellCfg;
+                static uNetworkConfigurationCell_t cellCfg;
                 //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
                 uDeviceNetworkCfgCell_t *devCellCfg = (uDeviceNetworkCfgCell_t *)
                                                       pInstance->pNetworkCfg[U_NETWORK_TYPE_CELL];
@@ -204,18 +205,12 @@ static int32_t uNetworkInterfaceChange(uDeviceHandle_t devHandle, uNetworkType_t
                 break;
             case U_DEVICE_TYPE_SHORT_RANGE: {
                 if (netType == U_NETWORK_TYPE_WIFI) {
-                    uNetworkConfigurationWifi_t wifiCfg;
                     //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
-                    uDeviceNetworkCfgWifi_t *devWifiCfg = (uDeviceNetworkCfgWifi_t *)
-                                                          pInstance->pNetworkCfg[U_NETWORK_TYPE_WIFI];
-                    wifiCfg.type = U_NETWORK_TYPE_WIFI;
-                    wifiCfg.module = pInstance->module;
-                    wifiCfg.pSsid = devWifiCfg->pSsid;
-                    wifiCfg.authentication = devWifiCfg->authentication;
-                    wifiCfg.pPassPhrase = devWifiCfg->pPassPhrase;
-                    returnCode = up ? uNetworkUpWifi(devHandle, &wifiCfg) : uNetworkDownWifi(devHandle, &wifiCfg);
+                    uDeviceNetworkCfgWifi_t *pDevWifiCfg = (uDeviceNetworkCfgWifi_t *)
+                                                           pInstance->pNetworkCfg[U_NETWORK_TYPE_WIFI];
+                    returnCode = uNetworkChangeStateWifi(devHandle, pDevWifiCfg, up);
                 } else if (netType == U_NETWORK_TYPE_BLE) {
-                    uNetworkConfigurationBle_t bleCfg;
+                    static uNetworkConfigurationBle_t bleCfg;
                     //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
                     uDeviceNetworkCfgBle_t *devBleCfg = (uDeviceNetworkCfgBle_t *)
                                                         pInstance->pNetworkCfg[U_NETWORK_TYPE_BLE];
@@ -330,21 +325,6 @@ void uNetworkDeinit()
         uPortMutexDelete(gMutex);
         gMutex = NULL;
     }
-}
-
-// Configure a network interface for a u-blox device
-int32_t uNetworkConfigure(uDeviceHandle_t devHandle, uNetworkType_t networkType,
-                          const void *pConfiguration)
-{
-    int32_t returnCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-    uDeviceInstance_t *pInstance;
-    if (uDeviceGetInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS &&
-        networkType >= U_NETWORK_TYPE_NONE &&
-        networkType < U_NETWORK_TYPE_MAX_NUM) {
-        pInstance->pNetworkCfg[networkType] = pConfiguration;
-        returnCode = (int32_t)U_ERROR_COMMON_SUCCESS;
-    }
-    return returnCode;
 }
 
 // Add a network instance.
@@ -539,14 +519,30 @@ int32_t uNetworkDown(uDeviceHandle_t devHandle)
     return errorCode;
 }
 
-int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType)
+int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,
+                            const void *pConfiguration)
 {
-    return uNetworkInterfaceChange(devHandle, netType, true);
+    int32_t returnCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    uDeviceInstance_t *pInstance;
+    if (uDeviceGetInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS &&
+        netType >= U_NETWORK_TYPE_NONE &&
+        netType < U_NETWORK_TYPE_MAX_NUM) {
+        if (!pConfiguration) {
+            // Use possible last set configuration
+            pConfiguration = pInstance->pNetworkCfg[netType];
+        }
+        // GNSS don't have any network configuration
+        if (pInstance->deviceType == U_DEVICE_TYPE_GNSS || pConfiguration) {
+            pInstance->pNetworkCfg[netType] = pConfiguration;
+            returnCode = uNetworkInterfaceChangeState(devHandle, netType, true);
+        }
+    }
+    return returnCode;
 }
 
 int32_t uNetworkInterfaceDown(uDeviceHandle_t devHandle, uNetworkType_t netType)
 {
-    return uNetworkInterfaceChange(devHandle, netType, false);
+    return uNetworkInterfaceChangeState(devHandle, netType, false);
 }
 
 // End of file

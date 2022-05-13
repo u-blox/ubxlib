@@ -91,6 +91,7 @@ static int32_t uDeviceCellAdd(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *p
     }
 
     uNetworkConfigurationCell_t cellCfg;
+    memset(&cellCfg, 0, sizeof(cellCfg));
     cellCfg.type = U_NETWORK_TYPE_CELL;
     cellCfg.moduleType = pDevCfg->deviceCfg.cellCfg.moduleType;
 
@@ -114,6 +115,7 @@ static int32_t uDeviceGnssAdd(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *p
     }
 
     uNetworkConfigurationGnss_t gnssCfg;
+    memset(&gnssCfg, 0, sizeof(gnssCfg));
     gnssCfg.type = U_NETWORK_TYPE_GNSS;
     gnssCfg.moduleType = pDevCfg->deviceCfg.gnssCfg.moduleType;
     gnssCfg.transportType = pDevCfg->deviceCfg.gnssCfg.transportType;
@@ -128,6 +130,7 @@ static int32_t uDeviceGnssAdd(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *p
     gnssCfg.transportType = pDevCfg->deviceCfg.gnssCfg.transportType;
     gnssCfg.gnssAtPinPwr = pDevCfg->deviceCfg.gnssCfg.gnssAtPinPwr;
     gnssCfg.gnssAtPinDataReady = pDevCfg->deviceCfg.gnssCfg.gnssAtPinDataReady;
+    gnssCfg.devHandleAt = pDevCfg->deviceCfg.gnssCfg.devHandleAt;
 
     return uNetworkAddGnss(&gnssCfg, pUDeviceHandle);
 }
@@ -220,7 +223,7 @@ U_INLINE int32_t uDeviceGetDeviceType(uDeviceHandle_t devHandle)
 
 int32_t uDeviceOpen(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *pUDeviceHandle)
 {
-    if (!pDevCfg || !pUDeviceHandle) {
+    if ((pDevCfg == NULL) || (pUDeviceHandle == NULL)) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
     int32_t returnCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
@@ -244,6 +247,11 @@ int32_t uDeviceOpen(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *pUDeviceHan
         default:
             break;
     }
+    if (*pUDeviceHandle != NULL) {
+        uDeviceInstance_t *pUDeviceInstance = U_DEVICE_INSTANCE(*pUDeviceHandle);
+        pUDeviceInstance->pNetworkPrivate = NULL;
+    }
+
     return returnCode;
 }
 
