@@ -2697,4 +2697,143 @@ int32_t uCellPwrWakeUpFromDeepSleep(int32_t cellHandle,
     return uCellPwrOn(cellHandle, NULL, pKeepGoingCallback);
 }
 
+// Disable 32 kHz sleep.
+int32_t uCellPwrDisableUartSleep(int32_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uCellPrivateUartSleepCache_t *pUartSleepCache;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) && (pInstance->pModule != NULL)) {
+            pUartSleepCache = &(pInstance->uartSleepCache);
+            // If a wake-up handler has been set then the module supports
+            // UART sleep, if it has not then it doesn't and we can say so
+            atHandle = pInstance->atHandle;
+            // If a sleep handler is not set then sleep is already
+            // disabled, so that's fine
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            if (uAtClientWakeUpHandlerIsSet(atHandle)) {
+                // Read and stash the current UART sleep parameters
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UPSV?");
+                uAtClientCommandStop(atHandle);
+                uAtClientResponseStart(atHandle, "+UPSV:");
+                pUartSleepCache->mode = uAtClientReadInt(atHandle);
+                if (pUartSleepCache->mode == 1) {
+                    // Mode 1 has a time attached
+                    pUartSleepCache->sleepTime = uAtClientReadInt(atHandle);
+                }
+                uAtClientResponseStop(atHandle);
+                errorCode = uAtClientUnlock(atHandle);
+                if (errorCode == 0) {
+                    // Now switch off sleep and remove the handler,
+                    // so that everyone knows sleep is gone
+                    uAtClientLock(atHandle);
+                    uAtClientCommandStart(atHandle, "AT+UPSV=");
+                    uAtClientWriteInt(atHandle, 0);
+                    uAtClientCommandStopReadResponse(atHandle);
+                    errorCode = uAtClientUnlock(atHandle);
+                    if (errorCode == 0) {
+                        uAtClientSetWakeUpHandler(atHandle, NULL, NULL, 0);
+                    }
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+// Enable 32 kHz sleep.
+int32_t uCellPwrEnableUartSleep(int32_t cellHandle)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance;
+    uCellPrivateUartSleepCache_t *pUartSleepCache;
+    uAtClientHandle_t atHandle;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) && (pInstance->pModule != NULL)) {
+            pUartSleepCache = &(pInstance->uartSleepCache);
+            errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+            atHandle = pInstance->atHandle;
+            if (uAtClientWakeUpHandlerIsSet(atHandle)) {
+                // If the sleep handler is set the sleep is already
+                // enabled, there is nothing to do
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            } else {
+                // If no sleep handler is set then either sleep
+                // is not supported or it has been disabled:
+                // if it has been disabled then the cache
+                // will contain the previous mode so check it
+                if (pUartSleepCache->mode > 0) {
+                    // There is a cached mode, put it back again
+#ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
+                    uAtClientLock(atHandle);
+                    uAtClientCommandStart(atHandle, "AT+UPSV=");
+                    uAtClientWriteInt(atHandle, pUartSleepCache->mode);
+                    if (pUartSleepCache->mode == 1) {
+                        // Mode 1 has a time
+                        uAtClientWriteInt(atHandle, pUartSleepCache->sleepTime);
+                    }
+                    uAtClientCommandStopReadResponse(atHandle);
+                    errorCode = uAtClientUnlock(atHandle);
+                    if (errorCode == 0) {
+                        // Empty the cache so that we know sleep
+                        // has been re-enabled
+                        pUartSleepCache->mode = 0;
+                        pUartSleepCache->sleepTime = 0;
+                        uAtClientSetWakeUpHandler(atHandle, uCellPrivateWakeUpCallback, pInstance,
+                                                  (U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000) -
+                                                  U_CELL_POWER_SAVING_UART_WAKEUP_MARGIN_MILLISECONDS);
+                    } else {
+                        // Return a clearer error code than "AT error"
+                        errorCode = (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+                    }
+#endif
+                }
+            }
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return errorCode;
+}
+
+
+// Determine whether UART, AKA 32 kHz, sleep is enabled or not.
+bool uCellPwrUartSleepIsEnabled(int32_t cellHandle)
+{
+    bool isEnabled = false;
+    uCellPrivateInstance_t *pInstance;
+
+    if (gUCellPrivateMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+        pInstance = pUCellPrivateGetInstance(cellHandle);
+        if ((pInstance != NULL) && (pInstance->pModule != NULL)) {
+            isEnabled = uAtClientWakeUpHandlerIsSet(pInstance->atHandle);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+    }
+
+    return isEnabled;
+}
+
+
 // End of file

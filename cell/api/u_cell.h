@@ -132,7 +132,17 @@ extern "C" {
  * achieve the same behaviour.  Must be set to at least 1, since
  * the wake-up function is called just before the timeout.
  */
-#define U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS 6
+# define U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS 6
+#endif
+
+
+#ifndef U_CELL_POWER_SAVING_UART_WAKEUP_MARGIN_MILLISECONDS
+/** The time within U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS
+ * at which this code should comme commence the "please be awake"
+ * procedure, rather than just expecting the AT interface to
+ * be responsive.
+ */
+# define U_CELL_POWER_SAVING_UART_WAKEUP_MARGIN_MILLISECONDS 500
 #endif
 
 /* ----------------------------------------------------------------

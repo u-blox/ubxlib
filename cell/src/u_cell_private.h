@@ -344,6 +344,13 @@ typedef struct {
     // *INDENT-ON*
 } uCellPrivateSleep_t;
 
+/** Structure in which the UART sleep parameters can be cached.
+ */
+typedef struct {
+    int32_t mode;
+    int32_t sleepTime;
+} uCellPrivateUartSleepCache_t;
+
 /** Definition of a cellular instance.
  */
 typedef struct uCellPrivateInstance_t {
@@ -396,6 +403,7 @@ typedef struct uCellPrivateInstance_t {
     uCellPrivateDeepSleepState_t deepSleepState; /**< The current deep sleep state. */
     bool inWakeUpCallback; /**< So that we can avoid recursion. */
     uCellPrivateSleep_t *pSleepContext; /**< Context for sleep stuff. */
+    uCellPrivateUartSleepCache_t uartSleepCache; /**< Used only by uCellPwrEnable/DisableUartSleep(). */
     struct uCellPrivateInstance_t *pNext;
 } uCellPrivateInstance_t;
 

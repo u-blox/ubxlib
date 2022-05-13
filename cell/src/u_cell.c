@@ -373,7 +373,8 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                     // flow control lines is such that such power saving
                     // cannot be supported
                     uAtClientSetWakeUpHandler(atHandle, uCellPrivateWakeUpCallback, pInstance,
-                                              (U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000) - 500);
+                                              (U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000) -
+                                              U_CELL_POWER_SAVING_UART_WAKEUP_MARGIN_MILLISECONDS);
 #endif
                     // ...and finally add it to the list
                     addCellInstance(pInstance);
