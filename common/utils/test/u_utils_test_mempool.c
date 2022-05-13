@@ -73,7 +73,15 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-
+static bool isAllBytes(uint8_t *pBuf, size_t size, uint8_t cmpByte)
+{
+    for (size_t i = 0; i < size; i++) {
+        if (pBuf[i] != cmpByte) {
+            return false;
+        }
+    }
+    return true;
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -95,16 +103,19 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolBasic")
     errCode = uMemPoolInit(&mempoolDesc, TEST_BLOCK_SIZE, TEST_BLOCK_COUNT);
     U_PORT_TEST_ASSERT(errCode == U_ERROR_COMMON_SUCCESS);
 
+    // Allocate first buffer and fill with all 0xff
     pBuf1 = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
     U_PORT_TEST_ASSERT(pBuf1 != NULL);
+    memset(pBuf1, 0xFF, TEST_BLOCK_SIZE);
 
+    // Allocate first buffer and fill with all 0xee
     pBuf2 = (uint8_t *)uMemPoolAllocMem(&mempoolDesc);
     U_PORT_TEST_ASSERT(pBuf2 != NULL);
+    memset(pBuf2, 0xEE, TEST_BLOCK_SIZE);
 
-    // The memory pool will divide a contiguous buffer into back-to-back
-    // blocks. So check that the second block is exactly TEST_BLOCK_SIZE
-    // bytes after first block
-    U_PORT_TEST_ASSERT_EQUAL(TEST_BLOCK_SIZE, (uint32_t)(pBuf2 - pBuf1));
+    // Now check that no bytes "leaked" over to the other buffer
+    U_PORT_TEST_ASSERT(isAllBytes(pBuf1, TEST_BLOCK_SIZE, 0xFF));
+    U_PORT_TEST_ASSERT(isAllBytes(pBuf2, TEST_BLOCK_SIZE, 0xEE));
 
     uMemPoolFreeMem(&mempoolDesc, (void *)pBuf1);
     uMemPoolFreeMem(&mempoolDesc, (void *)pBuf2);

@@ -43,7 +43,26 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+// Configuration value if a "fence" should be added between
+// the mempool buffer chunks for detecting buffer overflows.
+// Since this only adds 2 bytes per chunk it is enabled by default.
+#ifndef U_MEMPOOL_USE_BUF_FENCE
+# define U_MEMPOOL_USE_BUF_FENCE 1
+#endif
+
+#if U_MEMPOOL_USE_BUF_FENCE
+# define U_REAL_BLOCK_SIZE(userBlockSize) \
+    (userBlockSize + sizeof(uint16_t))
+#else
+# define U_REAL_BLOCK_SIZE(userBlockSize) (userBlockSize)
+#endif
+
+#define U_BUFFER_SIZE(pMemPool) \
+    (U_REAL_BLOCK_SIZE(pMemPool->blockSize) * pMemPool->totalBlockCount)
+
+#define U_FENCE_MAGIC 0xBEEF
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -72,7 +91,8 @@ static void initFreeList(uMemPoolDesc_t *pMemPool)
     pMemPool->pFreeList = pLastFree;
     for (int i = 1; i < pMemPool->totalBlockCount; i++) {
         uMemPoolFreeList_t *pFree;
-        pFree = (uMemPoolFreeList_t *)&pMemPool->pBuffer[i * pMemPool->blockSize];
+        size_t realBlockSize = U_REAL_BLOCK_SIZE(pMemPool->blockSize);
+        pFree = (uMemPoolFreeList_t *)&pMemPool->pBuffer[i * realBlockSize];
         pLastFree->pNext = pFree;
         pLastFree = pFree;
     }
@@ -88,9 +108,9 @@ int32_t uMemPoolInit(uMemPoolDesc_t *pMemPool, uint32_t blockSize, int32_t blkCo
 {
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
-    if (pMemPool != NULL) {
+    if ((pMemPool != NULL) && (blockSize >= sizeof(uMemPoolFreeList_t))) {
         memset(pMemPool, 0, sizeof(uMemPoolDesc_t));
-        pMemPool->blockSize = MAX(blockSize, sizeof(uint32_t));
+        pMemPool->blockSize = blockSize;
         pMemPool->usedBlockCount = 0;
         pMemPool->totalBlockCount = blkCount;
 
@@ -128,7 +148,7 @@ void *uMemPoolAllocMem(uMemPoolDesc_t *pMemPool)
         // If this is the first call to uMemPoolAllocMem we need to
         // allocate the buffer
         if (pMemPool->pBuffer == NULL) {
-            pMemPool->pBuffer = (uint8_t *)malloc(pMemPool->blockSize * pMemPool->totalBlockCount);
+            pMemPool->pBuffer = (uint8_t *)malloc(U_BUFFER_SIZE(pMemPool));
             uPortLog("U_MEM_POOL: Allocated buffer %p\n", pMemPool->pBuffer);
             if (pMemPool->pBuffer != NULL) {
                 initFreeList(pMemPool);
@@ -141,6 +161,15 @@ void *uMemPoolAllocMem(uMemPoolDesc_t *pMemPool)
             pMemPool->pFreeList = pMemPool->pFreeList->pNext;
             pMemPool->usedBlockCount++;
         }
+
+#if U_MEMPOOL_USE_BUF_FENCE
+        // Add the memory fence right after the user allocation
+        if (pAllocMem != NULL) {
+            uint8_t *pDataPtr = (uint8_t *)pAllocMem;
+            uint16_t *pMagic = (uint16_t *)&pDataPtr[pMemPool->blockSize];
+            *pMagic = U_FENCE_MAGIC;
+        }
+#endif
 
         U_PORT_MUTEX_UNLOCK(pMemPool->mutex);
     }
@@ -157,7 +186,17 @@ void uMemPoolFreeMem(uMemPoolDesc_t *pMemPool, void *pMem)
         // Make sure the memory segment is within our buffer
         uPortLog("pMem: %08x\n", pMem);
         U_ASSERT((uint8_t *)pMem >= pMemPool->pBuffer);
-        U_ASSERT((uint8_t *)pMem < (pMemPool->pBuffer + pMemPool->blockSize * pMemPool->totalBlockCount));
+        U_ASSERT((uint8_t *)pMem < (pMemPool->pBuffer + U_BUFFER_SIZE(pMemPool)));
+
+#if U_MEMPOOL_USE_BUF_FENCE
+        // Validate the magic number
+        uint8_t *pDataPtr = (uint8_t *)pMem;
+        uint16_t *pMagic = (uint16_t *)&pDataPtr[pMemPool->blockSize];
+        U_ASSERT(*pMagic == U_FENCE_MAGIC);
+        // Invalidate
+        *pMagic = 0;
+#endif
+
         // Add the freed memory reference before the head
         pMemNext = pMemPool->pFreeList;
         pMemPool->pFreeList = (uMemPoolFreeList_t *)pMem;
