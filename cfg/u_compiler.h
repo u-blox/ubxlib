@@ -84,4 +84,14 @@
 
 #endif // _U_COMPILER_H_
 
+
+/** U_CLANG_ANALYZER_NORETURN: attribute used for telling clang that
+ *  a function never returns. Typically functions such as assert handlers.
+ */
+#ifdef __clang_analyzer__
+# define U_CLANG_ANALYZER_NORETURN __attribute__((analyzer_noreturn))
+#else
+# define U_CLANG_ANALYZER_NORETURN
+#endif
+
 // End of file
