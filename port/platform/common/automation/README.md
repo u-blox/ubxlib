@@ -27,7 +27,6 @@ When running on Jenkins the test system will run these two test instances in seq
 
 **NOTE:** It is important to note that the values set for the instances in [DATABASE.md](DATABASE.md) are used as input to the build, flash and test stage.
 
-
 # Reading The Jenkins Output
 You can follow the testing in realtime on Jenkins. You will get a nice overview in the BlueOcean UI:
 
@@ -143,6 +142,8 @@ When you switch version in `u_packages.yml` the package manager will first check
 [CodeChecker](https://github.com/Ericsson/codechecker) is a frame work for static code analysis using [Clang Static Analyzer](https://clang-analyzer.llvm.org/). We currently support running CodeChecker for STM32Cube and nRFConnect platforms.
 
 In `DATABASE.md` the CodeChecker is run by adding `CodeChecker:` prefix to the `Platform` field. All defines and configurations will be regarded exactly like building a firmware for the specific platform.
+
+If you are running CodeChecker locally you need to `pip3 install codechecker` and, on Windows, install at least [LLVM version 14](https://github.com/llvm/llvm-project/releases/tag/llvmorg-14.0.0), adding the `bin` directory to your path.
 
 ## Reports
 As a general rule Clang Static Analyzer rarely gives you false positive so look closely at the feedback. Clang-tidy, on the other hand, is a Linter so there you will see some false positives.

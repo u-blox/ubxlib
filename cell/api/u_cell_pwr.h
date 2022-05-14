@@ -878,6 +878,33 @@ int32_t uCellPwrGetDeepSleepActive(uDeviceHandle_t cellHandle,
 int32_t uCellPwrWakeUpFromDeepSleep(uDeviceHandle_t cellHandle,
                                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
+/** Disable UART, AKA 32 kHz, sleep.
+ * 32 kHz sleep is always enabled where supported by the module;
+ * call this function to disable 32 kHz sleep.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            zero on success or negative error code on
+ *                    failure.
+ */
+int32_t uCellPwrDisableUartSleep(uDeviceHandle_t cellHandle);
+
+/** Enable UART, AKA 32 kHz sleep.  32 kHz sleep is always enabled
+ * where supported - you only need to call this if you have
+ * previously called uCellPwrDisableUartSleep().
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            zero on success or negative error code on
+ *                    failure.
+ */
+int32_t uCellPwrEnableUartSleep(uDeviceHandle_t cellHandle);
+
+/** Determine whether UART, AKA 32 kHz, sleep is enabled or not.
+ *
+ * @param cellHandle  the handle of the cellular instance.
+ * @return            true if UART sleep is enabled, else false.
+ */
+bool uCellPwrUartSleepIsEnabled(uDeviceHandle_t cellHandle);
+
 #ifdef __cplusplus
 }
 #endif

@@ -853,6 +853,61 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
                        (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
 }
 
+/** Test UART power saving.
+ */
+U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingUart")
+{
+    int32_t heapUsed;
+    int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
+    uDeviceHandle_t cellHandle;
+
+    // In case a previous test failed
+    uCellTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Do the standard preamble
+    U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
+                                                &gHandles, true) == 0);
+    cellHandle = gHandles.cellHandle;
+
+    if (uCellPwrUartSleepIsEnabled(cellHandle)) {
+        // Check that enabling when already enabled is fine
+        U_PORT_TEST_ASSERT(uCellPwrEnableUartSleep(cellHandle) == 0);
+        // Now disable it and check that worked
+        U_PORT_TEST_ASSERT(uCellPwrDisableUartSleep(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(!uCellPwrUartSleepIsEnabled(cellHandle));
+        // Check that disabling when already disabled is fine
+        U_PORT_TEST_ASSERT(uCellPwrDisableUartSleep(cellHandle) == 0);
+        // Now enable it again and check that worked
+        U_PORT_TEST_ASSERT(uCellPwrEnableUartSleep(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(uCellPwrUartSleepIsEnabled(cellHandle));
+    } else {
+        // Nothing much to do here: if sleep is not enabled at the outset
+        // then it is not supported so just show that disabling it is
+        // fine and enabling it is not
+        U_PORT_TEST_ASSERT(uCellPwrDisableUartSleep(cellHandle) == 0);
+        U_PORT_TEST_ASSERT(uCellPwrEnableUartSleep(cellHandle) < 0);
+    }
+
+    // Do the standard postamble, leaving the module on for the next
+    // test to speed things up
+    uCellTestPrivatePostamble(&gHandles, false);
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost - heapClibLossOffset,
+             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= ((int32_t) gSystemHeapLost) - heapClibLossOffset));
+}
+
 # ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
 #  if (U_CFG_APP_PIN_CELL_PWR_ON >= 0) && (U_CFG_APP_PIN_CELL_VINT >= 0)
 

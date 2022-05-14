@@ -2,6 +2,8 @@ import os
 import shutil
 import sys
 import json
+import re
+from pathlib import Path
 
 from invoke import task, Exit
 from tasks import task_utils
@@ -16,6 +18,12 @@ DEFAULT_OUTPUT_NAME = f"runner_{DEFAULT_BOARD_NAME}"
 DEFAULT_BUILD_DIR = os.path.join("_build","nrfconnect")
 DEFAULT_MCU = "NRF5340_XXAA_APP"
 
+def posix_path(path):
+    path = Path(path).expanduser().as_posix()
+    if not u_pkg_utils.is_linux():
+        path = path.lower()
+    return path
+
 def filter_compile_commands(input_json_file='compile_commands.json',
                             output_json_file='filtered_commands.json',
                             include_dirs=[],
@@ -23,11 +31,24 @@ def filter_compile_commands(input_json_file='compile_commands.json',
     # Load input json file
     with open(input_json_file) as f:
         commands = json.load(f)
-    # Make sure the paths are expanded
-    include_dirs = [os.path.abspath(os.path.expanduser(x)) for x in include_dirs]
+
+    # Convert and expand to posix path so the path format is the same
+    # as we will use for the compile commands
+    include_dirs = [ posix_path(dir) for dir in include_dirs ]
+    # Windows needs some special treatments
+    if not u_pkg_utils.is_linux():
+        # FS in Windows is case insensitive
+        exclude_patterns = [ pattern.lower().replace("\\", "/") for pattern in exclude_patterns ]
     filtered_commands = []
     for cmd in commands:
-        file_path = os.path.abspath(cmd["file"])
+        # Convert all paths to posix
+        cmd["file"] = posix_path(cmd["file"])
+        cmd["directory"] = posix_path(cmd["directory"])
+        # Windows needs some more special treatments
+        if not u_pkg_utils.is_linux():
+            for match in re.finditer(r"([a-zA-Z]:\\[^ ]*)", cmd["command"]):
+                cmd["command"] = cmd["command"].replace(match[0], match[0].replace("\\", "/"))
+        file_path = cmd["file"]
         included = any(file_path.startswith(dir) for dir in include_dirs)
         excluded = any(pattern in file_path for pattern in exclude_patterns)
         if included and not excluded:
@@ -210,7 +231,7 @@ def analyze(ctx, cmake_dir=DEFAULT_CMAKE_DIR, board_name=DEFAULT_BOARD_NAME,
 
     with ctx.prefix(u_pkg_utils.change_dir_prefix(build_dir)):
         # Need to first build zephyr lib so that we get the generated headers
-        ctx.run(f'ninja zephyr')
+        ctx.run(f'{ctx.zephyr_pre_command}ninja zephyr')
         # Do the analyze
         analyze_proc = ctx.run(f'CodeChecker analyze filtered_commands.json -o ./analyze ' \
                                f'--config {u_utils.CODECHECKER_CFG_FILE} -i {u_utils.CODECHECKER_IGNORE_FILE}', warn=True)
