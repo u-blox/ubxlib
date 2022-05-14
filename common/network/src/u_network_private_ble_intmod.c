@@ -70,6 +70,8 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateInitBle() for consistency?
 // Initialise the network API for BLE.
 int32_t uNetworkInitBle(void)
 {
@@ -78,13 +80,16 @@ int32_t uNetworkInitBle(void)
     return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateDeinitBle() for consistency?
 // Deinitialise the sho network API.
 void uNetworkDeinitBle(void)
 {
     uBleDeinit();
 }
 
-// Add a BLE network instance.
+// TODO: WILL BE REMOVED: into uDevicePrivateAddShortRange() in
+// u_device_private_short_range.c.
 int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
                        uDeviceHandle_t *pDevHandle)
 {
@@ -102,7 +107,8 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
     return errorCode;
 }
 
-// Remove a BLE network instance.
+// TODO: WILL BE REMOVED: into uDevicePrivateRemoveShortRange() in
+// u_device_private_short_range.c.
 int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle)
 {
     if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
@@ -112,7 +118,8 @@ int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle)
     return (int32_t)U_ERROR_COMMON_SUCCESS;
 }
 
-// Bring up the given BLE network instance.
+// TODO: WILL BE REMOVED: functionality will be in the "up" part
+// of uNetworkChangeStateBle().
 int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
                       const uNetworkConfigurationBle_t *pConfiguration)
 {
@@ -135,7 +142,8 @@ int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
-// Take down the given BLE network instance.
+// TODO: WILL BE REMOVED: functionality will be in the "down" part
+// of uNetworkChangeStateBle().
 int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
                         const uNetworkConfigurationBle_t *pConfiguration)
 {
@@ -157,5 +165,17 @@ int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
+// TODO rename to uNetworkPrivateChangeStateBle() for consistency?
+// Bring a BLE interface up or take it down.
+int32_t uNetworkChangeStateBle(uDeviceHandle_t devHandle,
+                               uDeviceNetworkCfgBle_t *pCfg, bool up)
+{
+    (void) devHandle;
+    (void) pCfg;
+    (void) up;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+}
+
 #endif
+
 // End of file

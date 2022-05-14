@@ -41,7 +41,9 @@
  * irrespective of whether BLE is used there.
  */
 
-/** The network configuration for BLE.  Note that the pin
+/** TODO: WILL BE REMOVED: the device-related stuff is in uDevice
+ * and the network-related stuff is in the new network cfg struct.
+ * The network configuration for BLE.  Note that the pin
  * numbers are those of the MCU: if you are using an MCU inside
  * a u-blox module the IO pin numbering for the module is likely
  * different to that from the MCU: check the data sheet for the
@@ -69,13 +71,30 @@ typedef struct {
     bool spsServer; /**< True if sps server is to be enabled. */
 } uNetworkConfigurationBle_t;
 
+// TODO will eventually be renamed to uNetworkCfgBle_t, since
+// it is actually nothing to do with the device stuff.
+/** The network configuration for BLE.
+ */
 typedef struct {
-    uNetworkCfgVersion_t
-    version;         /**< Version of this network configuration. */
+    uNetworkCfgVersion_t version; /**< Version of this network
+                                       configuration; allow your
+                                       compiler to initialise this
+                                       to zero unless otherwise
+                                       specified below. */
     uNetworkType_t type; /**< For error checking purposes. */
     int32_t role;        /**< Peripheral, central or, peripheral and central,
                               see uShortRangeBleRole_t in u_short_range.h. */
-    bool spsServer; /**< True if sps server is to be enabled. */
+    bool spsServer;      /**< True if sps server is to be enabled. */
+    /* This is the end of version 0 of this structure:
+       should any fields be added to this structure in
+       future they must be added AFTER this point and
+       instructions must be given against each one
+       as to how to set the version field if any of
+       the new fields are populated. For example,
+       if int32_t magic were added, the comment
+       against it might end with the clause "; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
 } uDeviceNetworkCfgBle_t;
 
 #endif // _U_NETWORK_CONFIG_BLE_H_

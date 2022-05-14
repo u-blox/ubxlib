@@ -14,8 +14,20 @@
  * limitations under the License.
  */
 
+// TODO: since we've not revealed this file on master yet, could
+// we possibly rename it to u_device_shared.c to follow the
+// convention used elsewhere in ubxlib (see u_location_shared.c,
+// u_location_test_shared.c, u_sock_test_shared.c), i.e. this
+// is in the src directory, so no one else should be calling the
+// functions (in other words it is already implicitly "internal"),
+// but actually uDevice is sharing these functions with the rest
+// of ubxlib, just not the customer, so "shared" is the important/
+// unusual thing about it.
+
 /** @file
- * @brief Internal high-level API for initializing an u-blox device (chip or module).
+ * @brief Functions for initializing a u-blox device (chip or module),
+ * that do not form part of the device API but are shared internally
+ * for use within ubxlib.
  */
 
 #ifdef U_CFG_OVERRIDE
@@ -56,7 +68,7 @@
 
 #include "u_device_internal.h"
 
-/*
+/* TODO: remove this comment eventually.
 
  ***************** PLEASE NOTE *****************
 
@@ -84,6 +96,8 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO: move this to become uDevicePrivateCellAdd() in
+// u_device_private_cell.c.
 static int32_t uDeviceCellAdd(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *pUDeviceHandle)
 {
     if (pDevCfg->transport != U_DEVICE_TRANSPORT_TYPE_UART) {
@@ -105,9 +119,13 @@ static int32_t uDeviceCellAdd(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *p
     cellCfg.pinPwrOn = pDevCfg->deviceCfg.cellCfg.pinPwrOn;
     cellCfg.pinVInt = pDevCfg->deviceCfg.cellCfg.pinVInt;
 
+    // TODO move functionality of uNetworkAddCell() into static function
+    // in u_device_private_cell.c.
     return uNetworkAddCell(&cellCfg, pUDeviceHandle);
 }
 
+// TODO: move this to become uDevicePrivateGnssAdd() in
+// u_device_private_gnss.c.
 static int32_t uDeviceGnssAdd(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *pUDeviceHandle)
 {
     if (pDevCfg->transport != U_DEVICE_TRANSPORT_TYPE_UART) {
@@ -132,9 +150,13 @@ static int32_t uDeviceGnssAdd(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *p
     gnssCfg.gnssAtPinDataReady = pDevCfg->deviceCfg.gnssCfg.gnssAtPinDataReady;
     gnssCfg.devHandleAt = pDevCfg->deviceCfg.gnssCfg.devHandleAt;
 
+    // TODO move functionality of uNetworkAddGnss() into a static function
+    // in u_device_private_gnss.c.
     return uNetworkAddGnss(&gnssCfg, pUDeviceHandle);
 }
 
+// TODO: move this to become uDevicePrivateShortRangeAdd() in
+// u_device_private_short_range.c.
 static int32_t uDeviceShortRangeAdd(const uDeviceConfig_t *pDevCfg,
                                     uDeviceHandle_t *pUDeviceHandle)
 {
@@ -153,6 +175,8 @@ static int32_t uDeviceShortRangeAdd(const uDeviceConfig_t *pDevCfg,
     return uShortRangeOpenUart(pDevCfg->deviceCfg.shoCfg.module, &uartCfg, false, pUDeviceHandle);
 }
 
+// TODO: move this to become uDevicePrivateAddShortRangeOpenCpu()
+// in u_device_private_short_range.c.
 static int32_t uDeviceShortRangeOpenCpuAdd(const uDeviceConfig_t *pDevCfg,
                                            uDeviceHandle_t *pUDeviceHandle)
 {
@@ -161,6 +185,9 @@ static int32_t uDeviceShortRangeOpenCpuAdd(const uDeviceConfig_t *pDevCfg,
     uNetworkConfigurationBle_t bleCfg;
     bleCfg.type = U_NETWORK_TYPE_BLE;
     bleCfg.module = U_SHORT_RANGE_MODULE_TYPE_INTERNAL;
+
+    // TODO move functionality of uNetworkAddBle() into a static function
+    // in u_device_private_short_range.c.
     return uNetworkAddBle(&bleCfg, pUDeviceHandle);
 }
 
@@ -221,6 +248,11 @@ U_INLINE int32_t uDeviceGetDeviceType(uDeviceHandle_t devHandle)
     return returnCode;
 }
 
+/* ----------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ * -------------------------------------------------------------- */
+
+// TODO: move to u_device.c since this is not internal at all?
 int32_t uDeviceOpen(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *pUDeviceHandle)
 {
     if ((pDevCfg == NULL) || (pUDeviceHandle == NULL)) {
@@ -255,6 +287,7 @@ int32_t uDeviceOpen(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *pUDeviceHan
     return returnCode;
 }
 
+// TODO: move to u_device.c since this is not internal at all?
 int32_t uDeviceClose(uDeviceHandle_t pUDeviceHandle)
 {
     int32_t returnCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;

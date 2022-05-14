@@ -41,7 +41,9 @@
  * irrespective of whether cellular is used there.
  */
 
-/** The network configuration for cellular.  Note that the pin
+/** TODO: WILL BE REMOVED: the device-related stuff is in uDevice
+ * and the network-related stuff is in the new network cfg struct.
+ * The network configuration for cellular.  Note that the pin
  * numbers are those of the MCU: if you are using an MCU inside
  * a u-blox module the IO pin numbering for the module is likely
  * different to that from the MCU: check the data sheet for the
@@ -80,15 +82,32 @@ typedef struct {
                            if there is no such connection. */
 } uNetworkConfigurationCell_t;
 
+// TODO will eventually be renamed to uNetworkCfgCell_t, since
+// it is actually nothing to do with the device stuff.
+/** The network configuration for cellular.
+ */
 typedef struct {
-    uNetworkCfgVersion_t
-    version;         /**< Version of this network configuration. */
+    uNetworkCfgVersion_t version; /**< Version of this network
+                                       configuration; allow your
+                                       compiler to initialise this
+                                       to zero unless otherwise
+                                       specified below. */
     uNetworkType_t type; /**< For error checking purposes. */
     const char *pPin;    /**< The PIN of the SIM. */
-    const char *pApn;   /**< The APN to use; if left as NULL
+    const char *pApn;    /**< The APN to use; if left as NULL
                               a database look-up will be used. */
-    int32_t
-    timeoutSeconds; /**< Timeout when connecting, in seconds. */
+    int32_t timeoutSeconds; /**< Timeout when connecting, in seconds. */
+    /* This is the end of version 0 of this
+       structure: should any fields be added to
+       this structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
+       against it might end with the clause "; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
 } uDeviceNetworkCfgCell_t;
 
 #endif // _U_NETWORK_CONFIG_CELL_H_

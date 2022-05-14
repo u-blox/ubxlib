@@ -39,15 +39,20 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateInitBle() for consistency?
 int32_t uNetworkInitBle(void)
 {
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateDeinitBle() for consistency?
 void uNetworkDeinitBle(void)
 {
 }
 
+// TODO: WILL BE REMOVED.
 int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
                        uDeviceHandle_t *pDevHandle)
 {
@@ -56,12 +61,14 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+// TODO: WILL BE REMOVED.
 int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle)
 {
     (void) devHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+// TODO: WILL BE REMOVED.
 int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
                       const uNetworkConfigurationBle_t *pConfiguration)
 {
@@ -70,11 +77,22 @@ int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+// TODO: WILL BE REMOVED.
 int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
                         const uNetworkConfigurationBle_t *pConfiguration)
 {
     (void) devHandle;
     (void) pConfiguration;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+}
+
+// TODO rename this to uNetworkPrivateChangeStateBle() for consistency?
+int32_t uNetworkChangeStateBle(uDeviceHandle_t devHandle,
+                               uDeviceNetworkCfgBle_t *pCfg, bool up)
+{
+    (void) devHandle;
+    (void) pCfg;
+    (void) up;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

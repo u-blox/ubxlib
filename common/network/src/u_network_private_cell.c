@@ -51,6 +51,8 @@
 #include "u_network_config_cell.h"
 #include "u_network_private_cell.h"
 
+#include "u_device_internal.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -72,6 +74,9 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+// TODO: I guess this is replaced by a uDevicePrivateCellInstance_t
+// structure (with reduced contents) in u_device_private_cell.h, as
+// the structure will be hung off the uDevice structure?
 /** The things we need to remember per instance.
  */
 typedef struct {
@@ -85,6 +90,8 @@ typedef struct {
  * VARIABLES
  * -------------------------------------------------------------- */
 
+// TODO: I guess this shouldn't be required in the end as this will
+// be hung off the uDevice structure?
 /** Array to keep track of the instances.
  */
 static uNetworkPrivateCellInstance_t gInstance[U_NETWORK_PRIVATE_CELL_MAX_NUM];
@@ -143,6 +150,8 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateInitCell() for consistency?
 // Initialise the network API for cellular.
 int32_t uNetworkInitCell(void)
 {
@@ -158,6 +167,8 @@ int32_t uNetworkInitCell(void)
     return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateDeinitCell() for consistency?
 // Deinitialise the cellular network API.
 void uNetworkDeinitCell(void)
 {
@@ -165,7 +176,8 @@ void uNetworkDeinitCell(void)
     uAtClientDeinit();
 }
 
-// Add a cellular network instance.
+// TODO: WILL BE REMOVED: functionality will be in a static function inside
+// u_device_private_cell.c.
 int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
                         uDeviceHandle_t *pDevHandle)
 {
@@ -237,7 +249,8 @@ int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
     return errorCodeOrHandle;
 }
 
-// Remove a cellular network instance.
+// TODO: WILL BE REMOVED: functionality will be in a static function
+// inside u_device_private_cell.c.
 int32_t uNetworkRemoveCell(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -258,7 +271,8 @@ int32_t uNetworkRemoveCell(uDeviceHandle_t devHandle)
     return errorCode;
 }
 
-// Bring up the given cellular network instance.
+// TODO: WILL BE REMOVED: functionality will be in the "up" part
+// of uNetworkChangeStateCell().
 int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
                        const uNetworkConfigurationCell_t *pConfiguration)
 {
@@ -287,7 +301,8 @@ int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
-// Take down the given cellular network instance.
+// TODO: WILL BE REMOVED: functionality will be in the "down" part
+// of uNetworkChangeStateCell().
 int32_t uNetworkDownCell(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationCell_t *pConfiguration)
 {
@@ -315,6 +330,18 @@ int32_t uNetworkDownCell(uDeviceHandle_t devHandle,
     }
 
     return errorCode;
+}
+
+// TODO rename to uNetworkPrivateChangeStateCell() for consistency?
+// Bring a cellular interface up or take it down.
+int32_t uNetworkChangeStateCell(uDeviceHandle_t devHandle,
+                                uDeviceNetworkCfgCell_t *pCfg, bool up)
+{
+    (void) devHandle;
+    (void) pCfg;
+    (void) up;
+
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
 // End of file

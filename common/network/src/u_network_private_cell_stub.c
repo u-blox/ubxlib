@@ -35,16 +35,20 @@
 #include "u_network_config_cell.h"
 #include "u_network_private_cell.h"
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateInitCell() for consistency?
 int32_t uNetworkInitCell(void)
 {
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateDeinitCell() for consistency?
 void uNetworkDeinitCell(void)
 {
-
 }
 
+// TODO: WILL BE REMOVED.
 int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
                         uDeviceHandle_t *pDevHandle)
 {
@@ -53,12 +57,14 @@ int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+// TODO: WILL BE REMOVED.
 int32_t uNetworkRemoveCell(uDeviceHandle_t devHandle)
 {
     (void) devHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+// TODO: WILL BE REMOVED.
 int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
                        const uNetworkConfigurationCell_t *pConfiguration)
 {
@@ -67,11 +73,22 @@ int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+// TODO: WILL BE REMOVED.
 int32_t uNetworkDownCell(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationCell_t *pConfiguration)
 {
     (void) devHandle;
     (void) pConfiguration;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+}
+
+// TODO rename to uNetworkPrivateChangeStateWifi() for consistency?
+int32_t uNetworkChangeStateCell(uDeviceHandle_t devHandle,
+                                uDeviceNetworkCfgCell_t *pCfg, bool up)
+{
+    (void) devHandle;
+    (void) pCfg;
+    (void) up;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

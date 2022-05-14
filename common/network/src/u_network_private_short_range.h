@@ -32,6 +32,9 @@
 extern "C" {
 #endif
 
+// TODO: I guess the contents of this whole file evaporates, as it
+// ends up in uDevice?
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -61,6 +64,8 @@ typedef struct {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO: does this get removed, as I guess the functionality ends up
+// in uDevice?
 /** Initialise the network API for short range.
  * May be called multiple times.
  *
@@ -68,6 +73,8 @@ typedef struct {
  */
 int32_t uNetworkInitShortRange(void);
 
+// TODO: does this get removed, as I guess the functionality ends up
+// in uDevice?
 /** Deinitialise the short range network API.
  * May be called multiple times. A reference counter is used to keep track
  * of number of calls to uNetworkInitShortRange(). When this function
@@ -78,7 +85,8 @@ int32_t uNetworkInitShortRange(void);
  */
 void uNetworkDeinitShortRange(void);
 
-/** Add a short range network instance.
+/** TODO: WILL BE REMOVED.
+ * Add a short range network instance.
  * This function will open a UART port according to input config.
  * If the function is called multiple times with the same config
  * the UART port will only be open for the first call and all
@@ -95,7 +103,8 @@ int32_t uNetworkAddShortRange(uNetworkType_t netType,
                               const uShortRangeConfig_t *pConfiguration,
                               uDeviceHandle_t *pDevHandle);
 
-/** Remove a short range network instance.
+/** TODO: WILL BE REMOVED.
+ * Remove a short range network instance.
  * Please note that when uNetworkAddShortRange() has been called
  * multiple times with the same config, uNetworkRemoveShortRange()
  * must be called the same amount of time until the UART is closed.
@@ -109,6 +118,8 @@ int32_t uNetworkAddShortRange(uNetworkType_t netType,
  */
 int32_t uNetworkRemoveShortRange(uDeviceHandle_t devHandle);
 
+// TODO: does this get removed, as I guess the functionality ends up
+// in uDevice, since the AT interface is part of the device?
 /** Get the AT client.
  *
  * @param devHandle  the handle of the short range instance.

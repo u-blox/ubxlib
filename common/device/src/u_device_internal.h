@@ -17,6 +17,16 @@
 #ifndef _U_DEVICE_INTERNAL_H_
 #define _U_DEVICE_INTERNAL_H_
 
+// TODO: since we've not revealed this file on master yet, could
+// we possibly rename it to u_device_shared.h to follow the
+// convention used elsewhere in ubxlib (see u_location_shared.h,
+// u_location_test_shared.h, u_sock_test_shared.h), i.e. this
+// is in the src directory, so no one else should be calling the
+// functions (in other words it is already implicitly "internal"),
+// but actually uDevice is sharing these functions with the rest
+// of ubxlib, just not the customer, so "shared" is the important/
+// unusual thing about it.
+
 /* Only header files representing a direct and unavoidable
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
@@ -26,7 +36,9 @@
 #include "u_device.h"
 
 /** @file
- * @brief Internal high-level API for initializing an u-blox device (chip or module).
+ * @brief Functions for initializing a u-blox device (chip or module),
+ * that do not form part of the device API but are shared internally
+ * for use within ubxlib.
  */
 
 #ifdef __cplusplus
@@ -36,7 +48,6 @@ extern "C" {
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
 
 /** Convenience macro to get the uDeviceInstance_t from a uDeviceHandle_t.
  *  Note: If you also want to validate the handle you should instead use
@@ -61,13 +72,24 @@ typedef struct {
     uint32_t magic;             /**< Magic number for detecting a stale uDeviceInstance_t.*/
     uDeviceType_t deviceType;   /**< Type of device.*/
     int32_t module;             /**< Module identification (when applicable).*/
-    const void
-    *pNetworkCfg[U_NETWORK_TYPE_MAX_NUM]; /**< Network configuration for the device interfaces.*/
+    const void *pNetworkCfg[U_NETWORK_TYPE_MAX_NUM]; /**< Network config for device interfaces.*/
+
+    // TODO: is it intended that the network layer hangs its private data here?
+    // If so, does the "multi-network" nature of SHO require something more
+    // special (i.e. a linked list or some such), or is that complication handled
+    // entirely within the short range bit of the device code (in a thread-safe
+    // manner), rather than up here in the network-agnostic structure (which
+    // would then require some form of thread-safety up here)?  In either case,
+    // how is that thread-safety achieved (e.g. do we need some way to initialise
+    // a mutex in the short range bit of this, which might bring us back to
+    // needing a uDeviceInit() function).
     void *pNetworkPrivate;      /**< Possible network private data.*/
 
-    // TODO: Add structs of function pointers here for socket-, MQTT-implementation etc.
+    // Note: In the future structs of function pointers for socket, MQTT etc.
+    // implementations may be added here.
     int32_t netType;            /**< This is only temporarily used for migration for the new uDevice API.
                                      It should be removed when uNetwork have been adjusted.*/
+    // TODO: remove once we're finished.
     void *pContext;             /**< This is only temporarily used for migration for the new uDevice API.
                                      It will point at the private instance struct for the specific device type.*/
 } uDeviceInstance_t;

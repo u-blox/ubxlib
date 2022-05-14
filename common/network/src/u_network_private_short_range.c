@@ -48,6 +48,9 @@
 #include "u_network.h"
 #include "u_network_private_short_range.h"
 
+// TODO: I guess the contents of this whole file evaporates, as it
+// ends up in uDevice?
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -113,7 +116,6 @@ static uNetworkPrivateShoInstance_t *pFindUart(int32_t uart)
     return pIter;
 }
 
-
 // Find instance by handle - return NULL if not found.
 static uNetworkPrivateShoInstance_t *pFindHandle(uDeviceHandle_t devHandle)
 {
@@ -155,6 +157,8 @@ static void uNetworkConfigToShortRangeUartConfig(const uShortRangeConfig_t *pCon
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO: does this get removed, as I guess the functionality ends up
+// in uDevice?
 // Initialise the network API for short range.
 int32_t uNetworkInitShortRange(void)
 {
@@ -175,6 +179,8 @@ int32_t uNetworkInitShortRange(void)
     return errCode;
 }
 
+// TODO: does this get removed, as I guess the functionality ends up
+// in uDevice?
 // Deinitialise the short range network API.
 void uNetworkDeinitShortRange(void)
 {
@@ -188,7 +194,8 @@ void uNetworkDeinitShortRange(void)
     }
 }
 
-// Add a short range network instance.
+// TODO: WILL BE REMOVED: functionality will be in
+// uDevicePrivateShortRangeAdd() in u_device_private_short_range.c.
 int32_t uNetworkAddShortRange(uNetworkType_t netType,
                               const uShortRangeConfig_t *pConfiguration,
                               uDeviceHandle_t *pDevHandle)
@@ -276,7 +283,8 @@ int32_t uNetworkAddShortRange(uNetworkType_t netType,
     return errorCode;
 }
 
-// Remove a short range network instance.
+// TODO: WILL BE REMOVED: functionality will be in
+// uDevicePrivateShortRangeRemove() in u_device_private_short_range.c.
 int32_t uNetworkRemoveShortRange(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -304,6 +312,8 @@ int32_t uNetworkRemoveShortRange(uDeviceHandle_t devHandle)
     return errorCode;
 }
 
+// TODO: does this get removed, as I guess the functionality ends up
+// in uDevice, since the AT interface is part of the device?
 uAtClientHandle_t uNetworkGetAtClientShortRange(uDeviceHandle_t devHandle)
 {
     uNetworkPrivateShoInstance_t *pInstance;

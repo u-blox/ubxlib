@@ -184,19 +184,30 @@ static int32_t uNetworkInterfaceChangeState(uDeviceHandle_t devHandle, uNetworkT
 {
     int32_t returnCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uDeviceInstance_t *pInstance;
+
+    // TODO: this doesn't lock a mutex, which is fine in the sense that,
+    // when we're done, it won't have a linked-list to worry about,
+    // however there is then nothing to stop two tasks trying to bring
+    // the network interface up or down at the same time, which might
+    // prove interesting.  If we intend to remove the mutex then we
+    // should state that these functions are not thread-safe up at the
+    // start of u_network.h (see what we do for other files).
+    // Also, I've modified a few variable names below so that the variable
+    // name follows the pattern of the type name, just for consistency.
+
     if (uDeviceGetInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
         switch (uDeviceGetDeviceType(devHandle)) {
             case U_DEVICE_TYPE_CELL: {
-                static uNetworkConfigurationCell_t cellCfg;
+                static uNetworkConfigurationCell_t cfgCell;
                 //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
-                uDeviceNetworkCfgCell_t *devCellCfg = (uDeviceNetworkCfgCell_t *)
-                                                      pInstance->pNetworkCfg[U_NETWORK_TYPE_CELL];
-                if (devCellCfg) {
-                    cellCfg.moduleType = (int32_t)U_NETWORK_TYPE_CELL;
-                    cellCfg.pApn = devCellCfg->pApn;
-                    cellCfg.pPin = devCellCfg->pPin;
-                    cellCfg.timeoutSeconds = devCellCfg->timeoutSeconds;
-                    returnCode = up ? uNetworkUpCell(devHandle, &cellCfg) : uNetworkDownCell(devHandle, &cellCfg);
+                uDeviceNetworkCfgCell_t *pDevCfgCell = (uDeviceNetworkCfgCell_t *)
+                                                       pInstance->pNetworkCfg[U_NETWORK_TYPE_CELL];
+                if (pDevCfgCell) {
+                    cfgCell.moduleType = (int32_t) U_NETWORK_TYPE_CELL;
+                    cfgCell.pApn = pDevCfgCell->pApn;
+                    cfgCell.pPin = pDevCfgCell->pPin;
+                    cfgCell.timeoutSeconds = pDevCfgCell->timeoutSeconds;
+                    returnCode = up ? uNetworkUpCell(devHandle, &cfgCell) : uNetworkDownCell(devHandle, &cfgCell);
                 }
             }
             break;
@@ -206,19 +217,19 @@ static int32_t uNetworkInterfaceChangeState(uDeviceHandle_t devHandle, uNetworkT
             case U_DEVICE_TYPE_SHORT_RANGE: {
                 if (netType == U_NETWORK_TYPE_WIFI) {
                     //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
-                    uDeviceNetworkCfgWifi_t *pDevWifiCfg = (uDeviceNetworkCfgWifi_t *)
+                    uDeviceNetworkCfgWifi_t *pDevCfgWifi = (uDeviceNetworkCfgWifi_t *)
                                                            pInstance->pNetworkCfg[U_NETWORK_TYPE_WIFI];
-                    returnCode = uNetworkChangeStateWifi(devHandle, pDevWifiCfg, up);
+                    returnCode = uNetworkChangeStateWifi(devHandle, pDevCfgWifi, up);
                 } else if (netType == U_NETWORK_TYPE_BLE) {
-                    static uNetworkConfigurationBle_t bleCfg;
+                    static uNetworkConfigurationBle_t cfgBle;
                     //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
-                    uDeviceNetworkCfgBle_t *devBleCfg = (uDeviceNetworkCfgBle_t *)
-                                                        pInstance->pNetworkCfg[U_NETWORK_TYPE_BLE];
-                    bleCfg.type = U_NETWORK_TYPE_BLE;
-                    bleCfg.module = pInstance->module;
-                    bleCfg.role = devBleCfg->role;
-                    bleCfg.spsServer = devBleCfg->spsServer;
-                    returnCode = up ? uNetworkUpBle(devHandle, &bleCfg) : uNetworkDownBle(devHandle, &bleCfg);
+                    uDeviceNetworkCfgBle_t *pDevCfgBle = (uDeviceNetworkCfgBle_t *)
+                                                         pInstance->pNetworkCfg[U_NETWORK_TYPE_BLE];
+                    cfgBle.type = U_NETWORK_TYPE_BLE;
+                    cfgBle.module = pInstance->module;
+                    cfgBle.role = pDevCfgBle->role;
+                    cfgBle.spsServer = pDevCfgBle->spsServer;
+                    returnCode = up ? uNetworkUpBle(devHandle, &cfgBle) : uNetworkDownBle(devHandle, &cfgBle);
                 }
             }
             break;
@@ -327,7 +338,7 @@ void uNetworkDeinit()
     }
 }
 
-// Add a network instance.
+// TODO: WILL BE REMOVED: functionality will be in uDeviceOpen().
 int32_t uNetworkAdd(uNetworkType_t type,
                     const void *pConfiguration,
                     uDeviceHandle_t *pDevHandle)
@@ -404,7 +415,7 @@ int32_t uNetworkAdd(uNetworkType_t type,
     return errorCodeOrHandle;
 }
 
-// Remove a network instance.
+// TODO: WILL BE REMOVED: functionality will be in uDeviceClose().
 int32_t uNetworkRemove(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -429,7 +440,7 @@ int32_t uNetworkRemove(uDeviceHandle_t devHandle)
     return errorCode;
 }
 
-// Bring up the given network instance.
+// TODO: WILL BE REMOVED: functionality will be in uNetworkInterfaceUp().
 int32_t uNetworkUp(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -474,7 +485,7 @@ int32_t uNetworkUp(uDeviceHandle_t devHandle)
     return errorCode;
 }
 
-// Take down the given network instance.
+// TODO: WILL BE REMOVED: functionality will be in uNetworkInterfaceDown().
 int32_t uNetworkDown(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -531,7 +542,7 @@ int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,
             // Use possible last set configuration
             pConfiguration = pInstance->pNetworkCfg[netType];
         }
-        // GNSS don't have any network configuration
+        // GNSS doesn't have any network configuration
         if (pInstance->deviceType == U_DEVICE_TYPE_GNSS || pConfiguration) {
             pInstance->pNetworkCfg[netType] = pConfiguration;
             returnCode = uNetworkInterfaceChangeState(devHandle, netType, true);

@@ -61,6 +61,8 @@
 #include "u_network_config_gnss.h"
 #include "u_network_private_gnss.h"
 
+#include "u_device_internal.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -76,6 +78,9 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+// TODO: I guess this is replaced by a uDevicePrivateGnssInstance_t
+// structure (with reduced contents) in u_device_private_gnss.h, as
+// the structure will be hung off the uDevice structure?
 /** The things we need to remember per instance.
  */
 typedef struct {
@@ -88,6 +93,8 @@ typedef struct {
  * VARIABLES
  * -------------------------------------------------------------- */
 
+// TODO: I guess this shouldn't be required in the end as this will
+// be hung off the uDevice structure?
 /** Array to keep track of the instances.
  */
 static uNetworkPrivateGnssInstance_t gInstance[U_NETWORK_PRIVATE_GNSS_MAX_NUM];
@@ -151,7 +158,8 @@ void uNetworkDeinitGnss(void)
     uGnssDeinit();
 }
 
-// Add a GNSS network instance.
+// TODO: WILL BE REMOVED: functionality will be in a static function inside
+// u_device_private_gnss.c.
 int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration,
                         uDeviceHandle_t *pDevHandle)
 {
@@ -266,7 +274,8 @@ int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration,
     return errorCodeOrHandle;
 }
 
-// Remove a GNSS network instance.
+// TODO: WILL BE REMOVED: functionality will be in a static function
+// inside u_device_private_gnss.c.
 int32_t uNetworkRemoveGnss(uDeviceHandle_t devHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -298,7 +307,8 @@ int32_t uNetworkRemoveGnss(uDeviceHandle_t devHandle)
     return errorCode;
 }
 
-// Bring up the given GNSS network instance.
+// TODO: WILL BE REMOVED: functionality is in the "up" part
+// of uNetworkChangeStateGnss().
 int32_t uNetworkUpGnss(uDeviceHandle_t devHandle,
                        const uNetworkConfigurationGnss_t *pConfiguration)
 {
@@ -317,13 +327,25 @@ int32_t uNetworkUpGnss(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
-// Take down the given GNSS network instance.
+// TODO: WILL BE REMOVED: functionality is in the "up" part
+// of uNetworkChangeStateGnss().
 int32_t uNetworkDownGnss(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationGnss_t *pConfiguration)
 {
     (void) pConfiguration;
     // Power off
     return uGnssPwrOff(devHandle);
+}
+
+// Bring a GNSS interface up or take it down.
+int32_t uNetworkChangeStateGnss(uDeviceHandle_t devHandle,
+                                uDeviceNetworkCfgGnss_t *pCfg, bool up)
+{
+    (void) devHandle;
+    (void) pCfg;
+    (void) up;
+
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
 // End of file

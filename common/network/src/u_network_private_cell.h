@@ -45,6 +45,8 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateInitCell() for consistency?
 /** Initialise the network API for cellular.  Should not be
  * called if this API is already initialised.
  *
@@ -52,6 +54,8 @@ extern "C" {
  */
 int32_t uNetworkInitCell(void);
 
+// TODO since we're changing things, rename this to
+// uNetworkPrivateDeinitCell() for consistency?
 /** Deinitialise the cellular network API; should only be called
  * if this API was previously initialised.  BEFORE this is called
  * all cellular network instances must have been removed with
@@ -59,7 +63,8 @@ int32_t uNetworkInitCell(void);
  */
 void uNetworkDeinitCell(void);
 
-/** Add a cellular network instance.  uNetworkInitCell() must have
+/** TODO: WILL BE REMOVED.
+ * Add a cellular network instance.  uNetworkInitCell() must have
  * been called before this is called.
  *
  * @param pConfiguration   a pointer to the configuration.
@@ -69,7 +74,8 @@ void uNetworkDeinitCell(void);
 int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
                         uDeviceHandle_t *pDevHandle);
 
-/** Remove a cellular network instance.  It is up to the caller
+/** TODO: WILL BE REMOVED.
+ * Remove a cellular network instance.  It is up to the caller
  * to ensure that the network is disconnected and/or powered
  * down etc.; all this function does is remove the logical
  * instance.  uNetworkInitCell() must have been called before
@@ -80,7 +86,8 @@ int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
  */
 int32_t uNetworkRemoveCell(uDeviceHandle_t devHandle);
 
-/** Bring up the given cellular network instance. uNetworkAddCell()
+/** TODO: WILL BE REMOVED.
+ * Bring up the given cellular network instance. uNetworkAddCell()
  * must have been called first to create this instance.
  *
  * @param devHandle        the handle of the instance to bring up.
@@ -91,7 +98,8 @@ int32_t uNetworkRemoveCell(uDeviceHandle_t devHandle);
 int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
                        const uNetworkConfigurationCell_t *pConfiguration);
 
-/** Take down the given cellular network instance. uNetworkAddCell()
+/** TODO: WILL BE REMOVED.
+ * Take down the given cellular network instance. uNetworkAddCell()
  * must have been called first to create this instance.
  *
  * @param devHandle        the handle of the instance to take down.
@@ -101,6 +109,19 @@ int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
  */
 int32_t uNetworkDownCell(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationCell_t *pConfiguration);
+
+// TODO rename to uNetworkPrivateChangeStateCell() for consistency?
+/** Take up or down the given cellular network instance. uDeviceOpen()
+ * must have been called first to create the device handle.
+ *
+ * @param devHandle        the handle of the instance to take down.
+ * @param pCfg             a pointer to the configuration for this
+ *                         instance. Only required for up.
+ * @param up               take the cellular interface up or down.
+ * @return                 zero on success else negative error code.
+ */
+int32_t uNetworkChangeStateCell(uDeviceHandle_t devHandle,
+                                uDeviceNetworkCfgCell_t *pCfg, bool up);
 
 #ifdef __cplusplus
 }
