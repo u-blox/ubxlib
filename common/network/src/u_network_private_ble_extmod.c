@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@
 
 #include "u_error_common.h"
 
+#include "u_device_shared.h"
+
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
@@ -73,8 +75,7 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// TODO since we're changing things, rename this to
-//  uNetworkPrivateInitBle() for consistency?
+// TODO: WILL BE REMOVED
 // Initialise the network API for BLE.
 int32_t uNetworkInitBle(void)
 {
@@ -86,8 +87,7 @@ int32_t uNetworkInitBle(void)
     return errorCode;
 }
 
-// TODO since we're changing things, rename this to
-// uNetworkPrivateDeinitBle() for consistency?
+// TODO: WILL BE REMOVED
 // Deinitialise the sho network API.
 void uNetworkDeinitBle(void)
 {
@@ -160,15 +160,34 @@ int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
     return uNetworkUpBle(devHandle, pConfiguration);
 }
 
-// TODO rename this to uNetworkPrivateChangeStateBle() for consistency?
 // Bring a BLE interface up or take it down.
-int32_t uNetworkChangeStateBle(uDeviceHandle_t devHandle,
-                               uDeviceNetworkCfgBle_t *pCfg, bool up)
+int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
+                                      uNetworkCfgBle_t *pCfg,
+                                      bool upNotDown)
 {
-    (void) devHandle;
-    (void) pCfg;
-    (void) up;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    uDeviceInstance_t *pDevInstance;
+    int32_t errorCode = uDeviceGetInstance(devHandle, &pDevInstance);
+    uBleCfg_t bleCfg;
+
+    (void) upNotDown;
+
+    if (errorCode == 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pCfg != NULL) && (pCfg->version == 0) &&
+            (pCfg->type == U_NETWORK_TYPE_BLE)) {
+            // Up and down is the same function as the pCfg variable
+            // determines if ble and/or sps is enabled or disabled.
+            // So we trust the user to set the correct values here.
+            bleCfg.role = (uBleCfgRole_t) pCfg->role;
+            bleCfg.spsServer = pCfg->spsServer;
+            errorCode = uBleCfgConfigure(devHandle, &bleCfg);
+            if (errorCode >= 0) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
+    }
+
+    return errorCode;
 }
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@
 
 #include "u_error_common.h"
 
-#include "u_device_internal.h"
+#include "u_device_shared.h"
 
 #include "u_ble_module_type.h"
 #include "u_ble.h"
@@ -50,6 +50,7 @@
 #include "u_network_private_ble.h"
 
 #include "u_port_debug.h"
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -70,9 +71,7 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// TODO since we're changing things, rename this to
-// uNetworkPrivateInitBle() for consistency?
-// Initialise the network API for BLE.
+// TODO: WILL BE REMOVED.
 int32_t uNetworkInitBle(void)
 {
     uBleInit();
@@ -80,9 +79,7 @@ int32_t uNetworkInitBle(void)
     return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
-// TODO since we're changing things, rename this to
-// uNetworkPrivateDeinitBle() for consistency?
-// Deinitialise the sho network API.
+// TODO: WILL BE REMOVED.
 void uNetworkDeinitBle(void)
 {
     uBleDeinit();
@@ -165,14 +162,14 @@ int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
-// TODO rename to uNetworkPrivateChangeStateBle() for consistency?
 // Bring a BLE interface up or take it down.
-int32_t uNetworkChangeStateBle(uDeviceHandle_t devHandle,
-                               uDeviceNetworkCfgBle_t *pCfg, bool up)
+int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
+                                      uNetworkCfgBle_t *pCfg,
+                                      bool upNotDown)
 {
     (void) devHandle;
     (void) pCfg;
-    (void) up;
+    (void) upNotDown;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

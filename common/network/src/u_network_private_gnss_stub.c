@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@
 #include "u_network_config_gnss.h"
 #include "u_network_private_gnss.h"
 
+// TODO: WILL BE REMOVED.
 // TODO since we're changing things, rename this to
 // uNetworkPrivateInitGnss() for consistency?
 int32_t uNetworkInitGnss()
@@ -42,6 +43,7 @@ int32_t uNetworkInitGnss()
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+// TODO: WILL BE REMOVED.
 // TODO since we're changing things, rename this to
 // uNetworkPrivateDeinitGnss() for consistency?
 void uNetworkDeinitGnss()
@@ -83,12 +85,13 @@ int32_t uNetworkDownGnss(uDeviceHandle_t devHandle,
 }
 
 // TODO rename to uNetworkPrivateChangeStateGnss() for consistency?
-int32_t uNetworkChangeStateGnss(uDeviceHandle_t devHandle,
-                                uDeviceNetworkCfgGnss_t *pCfg, bool up)
+int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
+                                       uNetworkCfgGnss_t *pCfg,
+                                       bool upNotDown)
 {
     (void) devHandle;
     (void) pCfg;
-    (void) up;
+    (void) upNotDown;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

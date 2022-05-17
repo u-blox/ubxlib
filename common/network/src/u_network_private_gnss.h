@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,14 +44,16 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Initialise the network API for GNSS.  Should not be
+/** TODO: WILL BE REMOVED.
+ * Initialise the network API for GNSS.  Should not be
  * called if this API is already initialised.
  *
  * @return  zero on success else negative error code.
  */
 int32_t uNetworkInitGnss(void);
 
-/** Deinitialise the GNSS network API; should only be called
+/** TODO: WILL BE REMOVED.
+ * Deinitialise the GNSS network API; should only be called
  * if this API was previously initialised.  BEFORE this is called
  * all GNSS network instances must have been removed with
  * a call to uNetworkRemoveGnss().
@@ -111,11 +113,12 @@ int32_t uNetworkDownGnss(uDeviceHandle_t devHandle,
  * @param devHandle        the handle of the instance to take down.
  * @param pCfg             a pointer to the configuration for this
  *                         instance. Only required for up.
- * @param up               take the GNSS interface up or down.
+ * @param upNotDown        take the GNSS interface up or down.
  * @return                 zero on success else negative error code.
  */
-int32_t uNetworkChangeStateGnss(uDeviceHandle_t devHandle,
-                                uDeviceNetworkCfgGnss_t *pCfg, bool up);
+int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
+                                       uNetworkCfgGnss_t *pCfg,
+                                       bool upNotDown);
 
 #ifdef __cplusplus
 }

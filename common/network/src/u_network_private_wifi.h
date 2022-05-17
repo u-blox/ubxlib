@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,18 +109,18 @@ int32_t uNetworkUpWifi(uDeviceHandle_t devHandle,
 int32_t uNetworkDownWifi(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationWifi_t *pConfiguration);
 
-// TODO rename to uNetworkPrivateChangeStateWifi() for consistency?
 /** Take up or down the given Wifi network instance. uDeviceOpen()
  * must have been called first to create the device handle.
  *
  * @param devHandle        the handle of the instance to take down.
  * @param pCfg             a pointer to the configuration for this
  *                         instance. Only required for up.
- * @param up               take the wifi interface up or down.
+ * @param upNotDown        take the wifi interface up or down.
  * @return                 zero on success else negative error code.
  */
-int32_t uNetworkChangeStateWifi(uDeviceHandle_t devHandle,
-                                uDeviceNetworkCfgWifi_t *pCfg, bool up);
+int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
+                                       uNetworkCfgWifi_t *pCfg,
+                                       bool upNotDown);
 
 #ifdef __cplusplus
 }

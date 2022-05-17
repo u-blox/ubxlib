@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,38 +26,35 @@
 
 /** @file
  * @brief This header file defines the network API. These functions are
- * thread-safe.  TODO: maybe not!
+ * thread-safe.
  *
  * The functions here should be used in conjunction with those in the
- * uDevice API in the following sequence; think of it as "ready, steady,
- * go ... off".
+ * uDevice API in the following sequence.
  *
- * uNetworkInit():          call this at start of day in order to make
- *                          this API available: READY.
+ * uDeviceInit():           call this at start of day in order to make
+ *                          the device API available.
  * uDeviceOpen():           call this with a pointer to a const structure
  *                          containing the physical configuration for the
  *                          device (module type, physical interface (UART
  *                          etc.), pins used, etc.): when the function
  *                          returns the module is powered-up and ready to
- *                          support a network: STEADY.
+ *                          support a network.
  * uNetworkInterfaceUp():   call this with the device handle and a pointer
  *                          to a const structure containing the network
  *                          configuration (e.g. SSID in the case of Wifi,
  *                          APN in the case of cellular, etc.) when you
  *                          would like the network to connect; after this
  *                          is called you can send and receive stuff over
- *                          the network: GO.
- * uNetworkInterfaceDown(): disconnect and shut-down the network; once this
- *                          has returned the module may enter a lower-power
- *                          or powered-off state: you must call
- *                          uNetworkInterfaceUp() to talk with it again: OFF.
- * uDeviceClose():          call this to clear up any resources belonging to
- *                          the network; once this is called uDeviceOpen()
+ *                          the network.
+ * uNetworkInterfaceDown(): disconnect the network; the nework remains
+ *                          powered-up and may be reconfigured etc.: you
+ *                          must call uNetworkInterfaceUp() to talk with
+ *                          it again.
+ * uDeviceClose():          call this to power the device down and clear
+ *                          up any resources belonging to it; uDeviceOpen()
  *                          must be called re-instantiate the device.
- * uNetworkDeinit():        call this at end of day in order to clear up any
- *                          resources owned by this API.
- *                          TODO: state whether this does any form of
- *                          device closing or not [not sure it is able to].
+ * uDeviceDeinit():         call this at end of day in order to clear up any
+ *                          resources owned by the device API.
  */
 
 #ifdef __cplusplus
@@ -104,7 +101,8 @@ typedef int32_t uNetworkCfgVersion_t;
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Initialise the network API.  If the network API has already
+/** TODO: WILL BE REMOVED: functionality will be in uDeviceInit().
+ * Initialise the network API.  If the network API has already
  * been initialised this function returns success without doing
  * anything.
  *
@@ -112,18 +110,9 @@ typedef int32_t uNetworkCfgVersion_t;
  */
 int32_t uNetworkInit();
 
-/** Deinitialise the network API.  Any network instances will
+/** TODO: WILL BE REMOVED: functionality will be in uDeviceDeinit().
+ * Deinitialise the network API.  Any network instances will
  * be removed internally with a call to uNetworkRemove().
- * TODO: QUESTION: this used to remove all the networks, i.e.
- * to do what is now uDeviceClose() also.  It could do that
- * because there was a linked list of what used to be networks
- * and which are now devices/networks.  Since [I think] that
- * list is now gone (because the user carries the context around
- * via the device handle), I don't believe it can do so anymore;
- * this is a behaviour change for the customer that we need to
- * highlight very clearly as they will otherwise have memory leaks;
- * this will have an effect on all of the examples also, since
- * they expect such a clean-up to happen.
  */
 void uNetworkDeinit();
 

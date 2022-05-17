@@ -21,7 +21,8 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
-#include "u_device_internal.h"
+
+#include "u_device_shared.h"
 
 /** @file
  * @brief This header file defines types, functions and inclusions that

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,8 +71,6 @@ typedef struct {
     bool spsServer; /**< True if sps server is to be enabled. */
 } uNetworkConfigurationBle_t;
 
-// TODO will eventually be renamed to uNetworkCfgBle_t, since
-// it is actually nothing to do with the device stuff.
 /** The network configuration for BLE.
  */
 typedef struct {
@@ -95,7 +93,7 @@ typedef struct {
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
-} uDeviceNetworkCfgBle_t;
+} uNetworkCfgBle_t;
 
 #endif // _U_NETWORK_CONFIG_BLE_H_
 

@@ -26,6 +26,7 @@
  * @brief This is a high-level API for initializing a u-blox device
  * (chip or module). These functions are generally used in conjunction
  * with those in the network API, see u_network.h for further information.
+ * These functions are thread-safe.
  */
 
 #ifdef __cplusplus
@@ -117,7 +118,7 @@ typedef struct {
        against it might and with the clause"; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
-} uDeviceConfigUart_t;
+} uDeviceCfgUart_t;
 
 /** I2C transport configuration.
  */
@@ -137,7 +138,7 @@ typedef struct {
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
-} uDeviceConfigI2c_t;
+} uDeviceCfgI2c_t;
 
 /** Cellular device configuration.
 */
@@ -156,6 +157,7 @@ typedef struct {
     int32_t pinVInt;          /**< The input pin that is connected to the
                                    VINT pin of the cellular module; use -1
                                    if there is no such connection. */
+    const char *pPin;         /**< The PIN of the SIM. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and
@@ -166,7 +168,7 @@ typedef struct {
        against it might end with the clause "; if this
        field is populated then the version field
        of this structure must be set to 1 or higher". */
-} uDeviceConfigCell_t;
+} uDeviceCfgCell_t;
 
 /** GNSS device configuration.
  */
@@ -218,7 +220,7 @@ typedef struct {
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
-} uDeviceConfigGnss_t;
+} uDeviceCfgGnss_t;
 
 /** Short-range device configuration.
  */
@@ -226,7 +228,7 @@ typedef struct {
     uDeviceVersion_t version; /**< Version of this structure; allow your
                                    compiler to initialise this to zero
                                    unless otherwise specified below. */
-    int32_t module;           /**< The module type that is connected,
+    int32_t moduleType;       /**< The module type that is connected,
                                    see uShortRangeModuleType_t in
                                    u_short_range_module_type.h. */
     /* This is the end of version 0 of this structure:
@@ -239,7 +241,7 @@ typedef struct {
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
-} uDeviceConfigShortRange_t;
+} uDeviceCfgShortRange_t;
 
 /** The complete device configuration.
  */
@@ -249,14 +251,14 @@ typedef struct {
                                    unless otherwise specified below. */
     uDeviceType_t deviceType;
     union {
-        uDeviceConfigCell_t cellCfg;
-        uDeviceConfigGnss_t gnssCfg;
-        uDeviceConfigShortRange_t shoCfg;
+        uDeviceCfgCell_t cfgCell;
+        uDeviceCfgGnss_t cfgGnss;
+        uDeviceCfgShortRange_t cfgSho;
     } deviceCfg;
-    uDeviceTransportType_t transport;
+    uDeviceTransportType_t transportType;
     union {
-        uDeviceConfigUart_t uartCfg;
-        uDeviceConfigI2c_t i2cCfg;
+        uDeviceCfgUart_t cfgUart;
+        uDeviceCfgI2c_t cfgI2c;
     } transportCfg;
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
@@ -268,34 +270,44 @@ typedef struct {
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
-} uDeviceConfig_t;
+} uDeviceCfg_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Initialise the device API.  If the device API has already
+ * been initialised this function returns success without doing
+ * anything.
+ *
+ * @return  zero on success else negative error code.
+ */
+int32_t uDeviceInit();
+
+/** Deinitialise the device API.  Note that this performs no
+ * clean-up, it is up to the caller to ensure that all devices
+ * have been closed with a call to uDeviceClose().
+ *
+ * @return  zero on success else negative error code.
+ */
+int32_t uDeviceDeinit();
+
 /** Open a device instance.
  *
- * @param pDevCfg              Device configuration
- * @param[out] pUDeviceHandle  A new device handle.
- * @return                     0 on success else a negative error code.
+ * @param pDeviceCfg          device configuration, cannot be NULL.
+ * @param[out] pDeviceHandle  a place to put the device handle;
+ *                            cannot be NULL.
+ * @return                    zero on success else a negative error code.
  */
-int32_t uDeviceOpen(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *pUDeviceHandle);
+int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
+                    uDeviceHandle_t *pDeviceHandle);
 
-/** Close an open device instance.
- * TODO: QUESTION - what happens to the actual device?  Is it affected
- * by this operation?  Previously the device was deliberately left
- * unaffected, allowing the user to leave, for instance, a cellular module
- * up and registered with the network so that they didn't have the time/
- * power waste of doing all that on a subsequent device/network "up".
- * I believe that is still the case; if so we should say that here,
- * as I think it is important we are consistent about this across
- * all device types.
+/** Close an open device instance, powering it off.
  *
- * @param pUDeviceHandle  Handle to a previously opened device.
- * @return                0 on success else a negative error code.
+ * @param devHandle handle to a previously opened device.
+ * @return          zero on success else a negative error code.
  */
-int32_t uDeviceClose(uDeviceHandle_t pUDeviceHandle);
+int32_t uDeviceClose(uDeviceHandle_t devHandle);
 
 #ifdef __cplusplus
 }

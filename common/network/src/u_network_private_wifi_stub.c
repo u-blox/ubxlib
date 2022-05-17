@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,15 +39,13 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// TODO since we're changing things, rename this to
-// uNetworkPrivateInitWifi() for consistency?
+// TODO: WILL BE REMOVED.
 int32_t uNetworkInitWifi(void)
 {
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-// TODO since we're changing things, rename this to
-// uNetworkPrivateDeinitWifi() for consistency?
+// TODO: WILL BE REMOVED.
 void uNetworkDeinitWifi()
 {
 }
@@ -86,13 +84,13 @@ int32_t uNetworkDownWifi(uDeviceHandle_t devHandle,
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-// TODO rename to uNetworkPrivateChangeStateWifi() for consistency?
-int32_t uNetworkChangeStateWifi(uDeviceHandle_t devHandle,
-                                uDeviceNetworkCfgWifi_t *pCfg, bool up)
+int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
+                                       uNetworkCfgWifi_t *pCfg,
+                                       bool upNotDown)
 {
     (void) devHandle;
     (void) pCfg;
-    (void) up;
+    (void) upNotDown;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

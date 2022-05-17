@@ -322,7 +322,7 @@
 
 #include "u_error_common.h"
 
-#include "u_device_internal.h"
+#include "u_device_shared.h"
 
 #include "u_port_clib_platform_specific.h" /* struct timeval in some cases and
                                               integer stdio, must be included

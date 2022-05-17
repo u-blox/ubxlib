@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,6 +44,7 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO: WILL BE REMOVED.
 /** Initialise the network API for BLE.  Should not be
  * called if this API is already initialised.
  *
@@ -51,6 +52,7 @@ extern "C" {
  */
 int32_t uNetworkInitBle(void);
 
+// TODO: WILL BE REMOVED.
 /** Deinitialise the BLE network API; should only be
  * called if this API was previously initialised.  BEFORE this is
  * called all BLE network instances must have been removed
@@ -58,6 +60,7 @@ int32_t uNetworkInitBle(void);
  */
 void uNetworkDeinitBle(void);
 
+// TODO: WILL BE REMOVED.
 /** Add a BLE network instance.  uNetworkInitBle() must have
  * been called before this is called.
  *
@@ -68,6 +71,7 @@ void uNetworkDeinitBle(void);
 int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
                        uDeviceHandle_t *pDevHandle);
 
+// TODO: WILL BE REMOVED.
 /** Remove a BLE network instance.  It is up to the caller
  * to ensure that the network is disconnected and/or powered
  * down etc.; all this function does is remove the logical
@@ -79,6 +83,7 @@ int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
  */
 int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle);
 
+// TODO: WILL BE REMOVED.
 /** Bring up the given BLE network instance. uNetworkAddBle()
  * must have been called first to create this instance.
  *
@@ -90,6 +95,7 @@ int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle);
 int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
                       const uNetworkConfigurationBle_t *pConfiguration);
 
+// TODO: WILL BE REMOVED.
 /** Take down the given BLE network instance. uNetworkAddBle()
  * must have been called first to create this instance.
  *
@@ -100,6 +106,19 @@ int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
  */
 int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
                         const uNetworkConfigurationBle_t *pConfiguration);
+
+/** Take up or down the given BLE network instance. uDeviceOpen()
+ * must have been called first to create the device handle.
+ *
+ * @param devHandle        the handle of the instance to take down.
+ * @param pCfg             a pointer to the configuration for this
+ *                         instance. Only required for up.
+ * @param upNotDown        take the BLE interface up or down.
+ * @return                 zero on success else negative error code.
+ */
+int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
+                                      uNetworkCfgBle_t *pCfg,
+                                      bool upNotDown);
 
 #ifdef __cplusplus
 }

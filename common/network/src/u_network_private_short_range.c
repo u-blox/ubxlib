@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@
 
 #include "u_error_common.h"
 
-#include "u_device_internal.h"
+#include "u_device_shared.h"
 
 #include "u_at_client.h"
 
@@ -58,7 +58,6 @@
 #ifndef U_NETWORK_PRIVATE_SHO_MAX_NUM
 # define U_NETWORK_PRIVATE_SHO_MAX_NUM 1
 #endif
-
 
 /* ----------------------------------------------------------------
  * TYPES

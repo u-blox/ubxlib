@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@
  */
 
 /** TODO: WILL BE REMOVED: the device-related stuff is in uDevice
- * and the network-related stuff is in the new network cfg struct.
+ * and the network-related stuff is in uNetworkCfgWifi_t.
  * The network configuration for Wifi.  Note that any pin
  * numbers are those of the MCU: if you are using an MCU inside
  * a u-blox module the IO pin numbering for the module is likely
@@ -73,8 +73,6 @@ typedef struct {
     const char *pPassPhrase; /**< WPA/WPA2/WPA3 passphrase - should be NULL for open */
 } uNetworkConfigurationWifi_t;
 
-// TODO will eventually be renamed to uNetworkCfgWifi_t, since
-// it is actually nothing to do with the device stuff.
 /** The network configuration for Wifi.
  */
 typedef struct {
@@ -100,7 +98,7 @@ typedef struct {
        against it might end with the clause "; if this
        field is populated then the version field
        of this structure must be set to 1 or higher". */
-} uDeviceNetworkCfgWifi_t;
+} uNetworkCfgWifi_t;
 
 #endif // _U_NETWORK_CONFIG_WIFI_H_
 

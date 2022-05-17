@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@
 
 #include "u_error_common.h"
 
-#include "u_device_internal.h"
+#include "u_device_shared.h"
 
 #include "u_port_os.h"
 
@@ -60,6 +60,9 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+// TODO: WILL BE REMOVED, the network layer will not keep a list,
+// the user will carry the network stuff around, attached to the
+// device handle.
 /** Definition of a network, intended to be used in a linked list.
  */
 typedef struct uNetwork_t {
@@ -72,11 +75,15 @@ typedef struct uNetwork_t {
  * VARIABLES
  * -------------------------------------------------------------- */
 
+// TODO: WILL BE REMOVED, mutex will be in uDevice.
 /** Mutex to protect the list.  Also used
  * for a non-NULL check that we're initialised.
  */
 static uPortMutexHandle_t gMutex = NULL;
 
+// TODO: WILL BE REMOVED, the network layer will not keep a list,
+// the user will carry the network stuff around, attached to the
+// device handle.
 /** Root of the nework instance list.
  */
 static uNetwork_t *gpNetworkListHead = NULL;
@@ -85,6 +92,7 @@ static uNetwork_t *gpNetworkListHead = NULL;
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO: WILL BE REMOVED, the network layer will not keep a list,
 // Retrieve a network instance from the list
 // Note: this does not lock the mutex, you have to do that.
 static uNetwork_t *pGetNetwork(uDeviceHandle_t devHandle)
@@ -99,18 +107,20 @@ static uNetwork_t *pGetNetwork(uDeviceHandle_t devHandle)
     return pNetwork;
 }
 
+// Get the network type from the device instance.
 static uNetworkType_t getNetworkType(uDeviceHandle_t devHandle)
 {
     uDeviceInstance_t *pInstance;
     uNetworkType_t type = U_NETWORK_TYPE_NONE;
 
-    if (uDeviceGetInstance(devHandle, &pInstance) == (int32_t )U_ERROR_COMMON_SUCCESS) {
+    if (uDeviceGetInstance(devHandle, &pInstance) == 0) {
         type = (uNetworkType_t) pInstance->netType;
     }
 
     return type;
 }
 
+// TODO: WILL BE REMOVED, the network layer will not keep a list,
 // Add a network to the list, mallocing as necessary.
 // Note: this does not lock the mutex, you have to do that.
 static uNetwork_t *pAddInstance()
@@ -129,6 +139,7 @@ static uNetwork_t *pAddInstance()
     return pNetwork;
 }
 
+// TODO: WILL BE REMOVED, the network layer will not keep a list,
 // Remove a network instance from the list, freeing memory.
 // Note: this does not lock the mutex, you have to do that.
 static void removeInstance(const uNetwork_t *pNetwork)
@@ -151,6 +162,7 @@ static void removeInstance(const uNetwork_t *pNetwork)
     }
 }
 
+// TODO: WILL BE REMOVED, the network layer will not keep a list,
 // Remove a network (does not free the instance,
 // call removeInstance() for that).
 // Note: this does not lock the mutex, you have to do that.
@@ -179,79 +191,68 @@ static int32_t remove(uDeviceHandle_t devHandle)
     return errorCode;
 }
 
-static int32_t uNetworkInterfaceChangeState(uDeviceHandle_t devHandle, uNetworkType_t netType,
-                                            bool up)
+// Bring a network up or down.
+// This must be called between uDeviceLock() and uDeviceUnlock().
+static int32_t networkInterfaceChangeState(uDeviceHandle_t devHandle,
+                                           uNetworkType_t netType,
+                                           bool upNotDown)
 {
-    int32_t returnCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uDeviceInstance_t *pInstance;
 
-    // TODO: this doesn't lock a mutex, which is fine in the sense that,
-    // when we're done, it won't have a linked-list to worry about,
-    // however there is then nothing to stop two tasks trying to bring
-    // the network interface up or down at the same time, which might
-    // prove interesting.  If we intend to remove the mutex then we
-    // should state that these functions are not thread-safe up at the
-    // start of u_network.h (see what we do for other files).
-    // Also, I've modified a few variable names below so that the variable
-    // name follows the pattern of the type name, just for consistency.
-
-    if (uDeviceGetInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+    if (uDeviceGetInstance(devHandle, &pInstance) == 0) {
         switch (uDeviceGetDeviceType(devHandle)) {
             case U_DEVICE_TYPE_CELL: {
-                static uNetworkConfigurationCell_t cfgCell;
-                //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
-                uDeviceNetworkCfgCell_t *pDevCfgCell = (uDeviceNetworkCfgCell_t *)
-                                                       pInstance->pNetworkCfg[U_NETWORK_TYPE_CELL];
-                if (pDevCfgCell) {
-                    cfgCell.moduleType = (int32_t) U_NETWORK_TYPE_CELL;
-                    cfgCell.pApn = pDevCfgCell->pApn;
-                    cfgCell.pPin = pDevCfgCell->pPin;
-                    cfgCell.timeoutSeconds = pDevCfgCell->timeoutSeconds;
-                    returnCode = up ? uNetworkUpCell(devHandle, &cfgCell) : uNetworkDownCell(devHandle, &cfgCell);
-                }
+                uNetworkCfgCell_t *pDevCfgCell = (uNetworkCfgCell_t *)
+                                                 pInstance->pNetworkCfg[U_NETWORK_TYPE_CELL];
+                errorCode = uNetworkPrivateChangeStateCell(devHandle, pDevCfgCell, upNotDown);
             }
             break;
-            case U_DEVICE_TYPE_GNSS:
-                returnCode = up ? uNetworkUpGnss(devHandle, NULL) : uNetworkDownGnss(devHandle, NULL);
-                break;
+            case U_DEVICE_TYPE_GNSS: {
+                uNetworkCfgGnss_t *pDevCfgGnss = (uNetworkCfgGnss_t *)
+                                                 pInstance->pNetworkCfg[U_NETWORK_TYPE_GNSS];
+                errorCode = uNetworkPrivateChangeStateGnss(devHandle, pDevCfgGnss, upNotDown);
+            }
+            break;
             case U_DEVICE_TYPE_SHORT_RANGE: {
                 if (netType == U_NETWORK_TYPE_WIFI) {
                     //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
-                    uDeviceNetworkCfgWifi_t *pDevCfgWifi = (uDeviceNetworkCfgWifi_t *)
-                                                           pInstance->pNetworkCfg[U_NETWORK_TYPE_WIFI];
-                    returnCode = uNetworkChangeStateWifi(devHandle, pDevCfgWifi, up);
+                    uNetworkCfgWifi_t *pDevCfgWifi = (uNetworkCfgWifi_t *)
+                                                     pInstance->pNetworkCfg[U_NETWORK_TYPE_WIFI];
+                    errorCode = uNetworkPrivateChangeStateWifi(devHandle, pDevCfgWifi, upNotDown);
                 } else if (netType == U_NETWORK_TYPE_BLE) {
-                    static uNetworkConfigurationBle_t cfgBle;
-                    //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
-                    uDeviceNetworkCfgBle_t *pDevCfgBle = (uDeviceNetworkCfgBle_t *)
-                                                         pInstance->pNetworkCfg[U_NETWORK_TYPE_BLE];
-                    cfgBle.type = U_NETWORK_TYPE_BLE;
-                    cfgBle.module = pInstance->module;
-                    cfgBle.role = pDevCfgBle->role;
-                    cfgBle.spsServer = pDevCfgBle->spsServer;
-                    returnCode = up ? uNetworkUpBle(devHandle, &cfgBle) : uNetworkDownBle(devHandle, &cfgBle);
+                    uNetworkCfgBle_t *pDevCfgBle = (uNetworkCfgBle_t *)
+                                                   pInstance->pNetworkCfg[U_NETWORK_TYPE_BLE];
+                    errorCode = uNetworkPrivateChangeStateBle(devHandle, pDevCfgBle, upNotDown);
                 }
             }
             break;
-            case U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU:
-                // Not implemented yet
-                break;
+            case U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU: {
+                if (netType == U_NETWORK_TYPE_BLE) {
+                    uNetworkCfgBle_t *pDevCfgBle = (uNetworkCfgBle_t *)
+                                                   pInstance->pNetworkCfg[U_NETWORK_TYPE_BLE];
+                    errorCode = uNetworkPrivateChangeStateBle(devHandle, pDevCfgBle, upNotDown);
+                }
+            }
+            break;
             default:
                 break;
         }
     }
-    return returnCode;
-}
 
+    return errorCode;
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Initialise the network API.
+// TODO: WILL BE REMOVED: functionality will be in uDeviceInit().
 int32_t uNetworkInit()
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+
+    uDeviceInit();
 
     if (gMutex == NULL) {
         errorCode = uPortMutexCreate(&gMutex);
@@ -305,7 +306,7 @@ int32_t uNetworkInit()
     return errorCode;
 }
 
-// Deinitialise the network API.
+// TODO: WILL BE REMOVED: functionality will be in uDeviceDeinit().
 void uNetworkDeinit()
 {
     uNetwork_t **ppNetwork = &gpNetworkListHead;
@@ -335,6 +336,8 @@ void uNetworkDeinit()
         U_PORT_MUTEX_UNLOCK(gMutex);
         uPortMutexDelete(gMutex);
         gMutex = NULL;
+
+        uDeviceDeinit();
     }
 }
 
@@ -343,12 +346,13 @@ int32_t uNetworkAdd(uNetworkType_t type,
                     const void *pConfiguration,
                     uDeviceHandle_t *pDevHandle)
 {
-    int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    // Lock the API
+    int32_t errorCodeOrHandle = uDeviceLock();
     uNetwork_t *pNetwork;
 
     *pDevHandle = NULL;
 
-    if (gMutex != NULL) {
+    if ((gMutex != NULL) && (errorCodeOrHandle == 0)) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
@@ -363,7 +367,8 @@ int32_t uNetworkAdd(uNetworkType_t type,
                         // First parameter in the config must indicate
                         // that it is for BLE
                         if (*((const uNetworkType_t *) pConfiguration) == U_NETWORK_TYPE_BLE) {
-                            errorCodeOrHandle = uNetworkAddBle((const uNetworkConfigurationBle_t *) pConfiguration, pDevHandle);
+                            errorCodeOrHandle = uNetworkAddBle((const uNetworkConfigurationBle_t *) pConfiguration,
+                                                               pDevHandle);
                         }
                         break;
                     case U_NETWORK_TYPE_CELL:
@@ -410,6 +415,8 @@ int32_t uNetworkAdd(uNetworkType_t type,
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
+        // ...and done
+        uDeviceUnlock();
     }
 
     return errorCodeOrHandle;
@@ -418,10 +425,11 @@ int32_t uNetworkAdd(uNetworkType_t type,
 // TODO: WILL BE REMOVED: functionality will be in uDeviceClose().
 int32_t uNetworkRemove(uDeviceHandle_t devHandle)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    // Lock the API
+    int32_t errorCode = uDeviceLock();
     uNetwork_t *pNetwork;
 
-    if (gMutex != NULL) {
+    if ((gMutex != NULL) && (errorCode == 0)) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
@@ -435,6 +443,8 @@ int32_t uNetworkRemove(uDeviceHandle_t devHandle)
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
+        // ...and done
+        uDeviceUnlock();
     }
 
     return errorCode;
@@ -443,11 +453,12 @@ int32_t uNetworkRemove(uDeviceHandle_t devHandle)
 // TODO: WILL BE REMOVED: functionality will be in uNetworkInterfaceUp().
 int32_t uNetworkUp(uDeviceHandle_t devHandle)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    // Lock the API
+    int32_t errorCode = uDeviceLock();
     uNetwork_t *pNetwork;
     const void *pConfiguration;
 
-    if (gMutex != NULL) {
+    if ((gMutex != NULL) && (errorCode == 0)) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
@@ -480,6 +491,8 @@ int32_t uNetworkUp(uDeviceHandle_t devHandle)
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
+        // ...and done
+        uDeviceUnlock();
     }
 
     return errorCode;
@@ -488,11 +501,12 @@ int32_t uNetworkUp(uDeviceHandle_t devHandle)
 // TODO: WILL BE REMOVED: functionality will be in uNetworkInterfaceDown().
 int32_t uNetworkDown(uDeviceHandle_t devHandle)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    // Lock the API
+    int32_t errorCode = uDeviceLock();
     uNetwork_t *pNetwork;
     const void *pConfiguration;
 
-    if (gMutex != NULL) {
+    if ((gMutex != NULL) && (errorCode == 0)) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
@@ -525,35 +539,55 @@ int32_t uNetworkDown(uDeviceHandle_t devHandle)
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
+        // ...and done
+        uDeviceUnlock();
     }
 
     return errorCode;
 }
 
-int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,
+int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle,
+                            uNetworkType_t netType,
                             const void *pConfiguration)
 {
-    int32_t returnCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    // Lock the API
+    int32_t errorCode = uDeviceLock();
     uDeviceInstance_t *pInstance;
-    if (uDeviceGetInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS &&
-        netType >= U_NETWORK_TYPE_NONE &&
-        netType < U_NETWORK_TYPE_MAX_NUM) {
-        if (!pConfiguration) {
-            // Use possible last set configuration
-            pConfiguration = pInstance->pNetworkCfg[netType];
+
+    if (errorCode == 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((uDeviceGetInstance(devHandle, &pInstance) == 0) &&
+            (netType >= U_NETWORK_TYPE_NONE) &&
+            (netType < U_NETWORK_TYPE_MAX_NUM)) {
+
+            if (pConfiguration == NULL) {
+                // Use possible last set configuration
+                pConfiguration = pInstance->pNetworkCfg[netType];
+            }
+            if (pConfiguration != NULL) {
+                pInstance->pNetworkCfg[netType] = pConfiguration;
+                errorCode = networkInterfaceChangeState(devHandle, netType, true);
+            }
         }
-        // GNSS doesn't have any network configuration
-        if (pInstance->deviceType == U_DEVICE_TYPE_GNSS || pConfiguration) {
-            pInstance->pNetworkCfg[netType] = pConfiguration;
-            returnCode = uNetworkInterfaceChangeState(devHandle, netType, true);
-        }
+        // ...and done
+        uDeviceUnlock();
     }
-    return returnCode;
+
+    return errorCode;
 }
 
 int32_t uNetworkInterfaceDown(uDeviceHandle_t devHandle, uNetworkType_t netType)
 {
-    return uNetworkInterfaceChangeState(devHandle, netType, false);
+    // Lock the API
+    int32_t errorCode = uDeviceLock();
+
+    if (errorCode == 0) {
+        errorCode = networkInterfaceChangeState(devHandle, netType, false);
+        // ...and done
+        uDeviceUnlock();
+    }
+
+    return errorCode;
 }
 
 // End of file

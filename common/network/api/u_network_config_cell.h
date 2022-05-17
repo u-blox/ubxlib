@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@
  */
 
 /** TODO: WILL BE REMOVED: the device-related stuff is in uDevice
- * and the network-related stuff is in the new network cfg struct.
+ * and the network-related stuff is in uNetworkCfgCell_t.
  * The network configuration for cellular.  Note that the pin
  * numbers are those of the MCU: if you are using an MCU inside
  * a u-blox module the IO pin numbering for the module is likely
@@ -82,8 +82,6 @@ typedef struct {
                            if there is no such connection. */
 } uNetworkConfigurationCell_t;
 
-// TODO will eventually be renamed to uNetworkCfgCell_t, since
-// it is actually nothing to do with the device stuff.
 /** The network configuration for cellular.
  */
 typedef struct {
@@ -93,7 +91,6 @@ typedef struct {
                                        to zero unless otherwise
                                        specified below. */
     uNetworkType_t type; /**< For error checking purposes. */
-    const char *pPin;    /**< The PIN of the SIM. */
     const char *pApn;    /**< The APN to use; if left as NULL
                               a database look-up will be used. */
     int32_t timeoutSeconds; /**< Timeout when connecting, in seconds. */
@@ -108,7 +105,7 @@ typedef struct {
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
-} uDeviceNetworkCfgCell_t;
+} uNetworkCfgCell_t;
 
 #endif // _U_NETWORK_CONFIG_CELL_H_
 

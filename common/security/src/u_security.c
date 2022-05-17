@@ -137,7 +137,7 @@
 
 #include "u_error_common.h"
 
-#include "u_device_internal.h"
+#include "u_device_shared.h"
 
 #include "u_cell_sec.h"
 

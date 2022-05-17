@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,8 @@
 
 #include "u_at_client.h"
 
+#include "u_device_shared.h"
+
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 
@@ -57,8 +59,6 @@
 #include "u_network_private_short_range.h"
 #include "u_network_config_wifi.h"
 #include "u_network_private_wifi.h"
-
-#include "u_device_internal.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -337,8 +337,7 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// TODO since we're changing things, rename this to
-// uNetworkPrivateInitWifi() for consistency?
+// TODO: WILL BE REMOVED.
 // Initialise the network API for Wifi.
 int32_t uNetworkInitWifi(void)
 {
@@ -354,8 +353,7 @@ int32_t uNetworkInitWifi(void)
     return errorCode;
 }
 
-// TODO since we're changing things, rename this to
-// uNetworkPrivateDeinitWifi() for consistency?
+// TODO: WILL BE REMOVED.
 // Deinitialise the Wifi network API.
 void uNetworkDeinitWifi(void)
 {
@@ -533,28 +531,27 @@ int32_t uNetworkDownWifi(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
-// TODO rename to uNetworkPrivateChangeStateWifi() for consistency?
 // Bring a Wifi interface up or take it down.
-int32_t uNetworkChangeStateWifi(uDeviceHandle_t devHandle,
-                                uDeviceNetworkCfgWifi_t *pCfg, bool up)
+int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
+                                       uNetworkCfgWifi_t *pCfg, bool upNotDown)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
-    uDeviceInstance_t *devInstance;
-    errorCode = uDeviceGetInstance(devHandle, &devInstance);
+    uDeviceInstance_t *pDevInstance;
+    errorCode = uDeviceGetInstance(devHandle, &pDevInstance);
     if (errorCode != 0) {
         return errorCode;
     }
-    if (!pCfg || pCfg->type != U_NETWORK_TYPE_WIFI) {
+    if ((pCfg == NULL) || (pCfg->version != 0) || (pCfg->type != U_NETWORK_TYPE_WIFI)) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
     // Callback message queue, may or may not be initiated before
-    uPortQueueHandle_t queueHandle = (uPortQueueHandle_t)devInstance->pNetworkPrivate;
-    if (up) {
+    uPortQueueHandle_t queueHandle = (uPortQueueHandle_t) pDevInstance->pNetworkPrivate;
+    if (upNotDown) {
         if (!queueHandle) {
             errorCode = uPortQueueCreate(2, sizeof(uStatusMessage_t), &queueHandle);
             if (errorCode == 0) {
-                devInstance->pNetworkPrivate = queueHandle;
+                pDevInstance->pNetworkPrivate = queueHandle;
                 errorCode = uWifiNetSetConnectionStatusCallback(devHandle, wifiConnectionCallback, NULL);
                 if (errorCode == 0) {
                     errorCode = uWifiNetSetNetworkStatusCallback(devHandle, wifiNetworkStatusCallback, NULL);
@@ -587,7 +584,8 @@ int32_t uNetworkChangeStateWifi(uDeviceHandle_t devHandle,
 
             if (errorCode != 0) {
                 // Something went wrong, clean up
-                uNetworkChangeStateWifi(devHandle, pCfg, false);
+                // TODO: check recursion...?
+                uNetworkPrivateChangeStateWifi(devHandle, pCfg, false);
             }
 
             uWifiNetSetNetworkStatusCallback(queueHandle, NULL, NULL);
@@ -612,7 +610,7 @@ int32_t uNetworkChangeStateWifi(uDeviceHandle_t devHandle,
             if (errorCode == 0) {
                 uWifiNetSetConnectionStatusCallback(devHandle, NULL, NULL);
                 uPortQueueDelete(queueHandle);
-                devInstance->pNetworkPrivate = NULL;
+                pDevInstance->pNetworkPrivate = NULL;
             }
         } else {
             errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;

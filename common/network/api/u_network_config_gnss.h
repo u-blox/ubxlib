@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@
  */
 
 /** TODO: WILL BE REMOVED: the device-related stuff is in uDevice
- * and the network-related stuff is in the new network cfg struct.
+ * and the network-related stuff is in uNetworkCfgGnss_t.
  * The network configuration for GNSS.  Note that the pin
  * numbers are those of the MCU: if you are using an MCU inside
  * a u-blox module the IO pin numbering for the module is likely
@@ -107,8 +107,6 @@ typedef struct {
                                      specify -1. */
 } uNetworkConfigurationGnss_t;
 
-// TODO will eventually be renamed to uNetworkCfgGnss_t, since
-// it is actually nothing to do with the device stuff.
 /** The network configuration for GNSS; currently carries no GNSS-specific
  * information, necessary for forwards-compatibility should such information
  * be required in future.
@@ -119,7 +117,7 @@ typedef struct {
                                        compiler to initialise this
                                        to zero unless otherwise
                                        specified below. */
-    uNetworkType_t type;     /**< For error checking purposes. */
+    uNetworkType_t type;          /**< For error checking purposes. */
     /* This is the end of version 0 of this
        structure: should any fields be added to
        this structure in future they must be
@@ -131,7 +129,7 @@ typedef struct {
        against it might end with the clause "; if this
        field is populated then the version field of
        this structure must be set to 1 or higher". */
-} uDeviceNetworkCfgGnss_t;
+} uNetworkCfgGnss_t;
 
 #endif // _U_NETWORK_CONFIG_GNSS_H_
 

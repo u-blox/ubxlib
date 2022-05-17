@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,8 +45,7 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-// TODO since we're changing things, rename this to
-// uNetworkPrivateInitCell() for consistency?
+// TODO: WILL BE REMOVED.
 /** Initialise the network API for cellular.  Should not be
  * called if this API is already initialised.
  *
@@ -54,8 +53,7 @@ extern "C" {
  */
 int32_t uNetworkInitCell(void);
 
-// TODO since we're changing things, rename this to
-// uNetworkPrivateDeinitCell() for consistency?
+// TODO: WILL BE REMOVED.
 /** Deinitialise the cellular network API; should only be called
  * if this API was previously initialised.  BEFORE this is called
  * all cellular network instances must have been removed with
@@ -110,18 +108,18 @@ int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
 int32_t uNetworkDownCell(uDeviceHandle_t devHandle,
                          const uNetworkConfigurationCell_t *pConfiguration);
 
-// TODO rename to uNetworkPrivateChangeStateCell() for consistency?
 /** Take up or down the given cellular network instance. uDeviceOpen()
  * must have been called first to create the device handle.
  *
  * @param devHandle        the handle of the instance to take down.
  * @param pCfg             a pointer to the configuration for this
  *                         instance. Only required for up.
- * @param up               take the cellular interface up or down.
+ * @param upNotDown        take the cellular interface up or down.
  * @return                 zero on success else negative error code.
  */
-int32_t uNetworkChangeStateCell(uDeviceHandle_t devHandle,
-                                uDeviceNetworkCfgCell_t *pCfg, bool up);
+int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
+                                       uNetworkCfgCell_t *pCfg,
+                                       bool upNotDown);
 
 #ifdef __cplusplus
 }

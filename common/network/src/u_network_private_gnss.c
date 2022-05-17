@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,13 +35,11 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
-#include "u_cfg_os_platform_specific.h"
+#include "u_cfg_os_platform_specific.h" // For U_CFG_OS_CLIB_LEAKS
 
 #include "u_error_common.h"
 
 #include "u_port_uart.h"
-
-#include "u_device_internal.h"
 
 #include "u_at_client.h"
 
@@ -61,12 +59,15 @@
 #include "u_network_config_gnss.h"
 #include "u_network_private_gnss.h"
 
-#include "u_device_internal.h"
+#include "u_device.h"
+#include "u_device_shared.h"
+#include "u_device_shared_gnss.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+// TODO: WILL BE REMOVED
 #ifndef U_NETWORK_PRIVATE_GNSS_MAX_NUM
 /** The maximum number of instances of GNSS that can be
  * active at any one time.
@@ -93,8 +94,7 @@ typedef struct {
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// TODO: I guess this shouldn't be required in the end as this will
-// be hung off the uDevice structure?
+// TODO: WILL BE REMOVED
 /** Array to keep track of the instances.
  */
 static uNetworkPrivateGnssInstance_t gInstance[U_NETWORK_PRIVATE_GNSS_MAX_NUM];
@@ -103,6 +103,7 @@ static uNetworkPrivateGnssInstance_t gInstance[U_NETWORK_PRIVATE_GNSS_MAX_NUM];
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+// TODO: WILL BE REMOVED
 // Find a free place in the list.
 static uNetworkPrivateGnssInstance_t *pGetFree()
 {
@@ -119,6 +120,7 @@ static uNetworkPrivateGnssInstance_t *pGetFree()
     return pFree;
 }
 
+// TODO: WILL BE REMOVED
 // Find the given instance in the list.
 static uNetworkPrivateGnssInstance_t *pGetInstance(uDeviceHandle_t devHandle)
 {
@@ -139,7 +141,7 @@ static uNetworkPrivateGnssInstance_t *pGetInstance(uDeviceHandle_t devHandle)
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Initialise the network API for GNSS.
+// TODO: WILL BE REMOVED.
 int32_t uNetworkInitGnss(void)
 {
     uGnssInit();
@@ -152,7 +154,7 @@ int32_t uNetworkInitGnss(void)
     return (int32_t) U_ERROR_COMMON_SUCCESS;
 }
 
-// Deinitialise the GNSS network API.
+// TODO: WILL BE REMOVED.
 void uNetworkDeinitGnss(void)
 {
     uGnssDeinit();
@@ -338,14 +340,36 @@ int32_t uNetworkDownGnss(uDeviceHandle_t devHandle,
 }
 
 // Bring a GNSS interface up or take it down.
-int32_t uNetworkChangeStateGnss(uDeviceHandle_t devHandle,
-                                uDeviceNetworkCfgGnss_t *pCfg, bool up)
+int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
+                                       uNetworkCfgGnss_t *pCfg,
+                                       bool upNotDown)
 {
-    (void) devHandle;
-    (void) pCfg;
-    (void) up;
+    uDeviceGnssInstance_t *pContext;
+    uDeviceInstance_t *pDevInstance;
+    int32_t errorCode = uDeviceGetInstance(devHandle, &pDevInstance);
 
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+    if (errorCode == 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pContext = (uDeviceGnssInstance_t *) pDevInstance->pContext;
+        if ((pCfg != NULL) && (pCfg->version == 0) &&
+            (pCfg->type == U_NETWORK_TYPE_GNSS) && (pContext != NULL)) {
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            // If the GNSS chip was directly connected to this MCU
+            // then it would have been powered up by the device API.
+            // If it is used over an AT interface then it will have
+            // been left powered off so that Cell Locate could use it,
+            // hence we need to manage the power here.
+            if (pContext->transportType == (int32_t) U_GNSS_TRANSPORT_UBX_AT) {
+                if (upNotDown) {
+                    errorCode = uGnssPwrOn(devHandle);
+                } else {
+                    errorCode = uGnssPwrOff(devHandle);
+                }
+            }
+        }
+    }
+
+    return errorCode;
 }
 
 // End of file
