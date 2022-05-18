@@ -52,10 +52,10 @@
 #endif
 
 #ifndef U_CFG_OS_PRIORITY_MAX
-/** The maximum task priority, default is set to 63 (64-1).
+/** The maximum task priority, default is set to 30 (31-1).
  * Idletask is 0.
  */
-# define U_CFG_OS_PRIORITY_MAX  63
+# define U_CFG_OS_PRIORITY_MAX  30
 #endif
 
 #ifndef U_CFG_OS_YIELD_MS
