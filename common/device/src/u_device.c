@@ -28,11 +28,18 @@
 
 #include "u_error_common.h"
 
+#include "u_port_os.h"
+
 #include "u_device.h"
 #include "u_device_shared.h"
+
+#include "u_location.h"
+#include "u_location_shared.h"
+
 #include "u_device_private_cell.h"
 #include "u_device_private_gnss.h"
 #include "u_device_private_short_range.h"
+
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -77,8 +84,14 @@ int32_t uDeviceInit()
         }
     }
 
+    if ((errorCode == 0) || (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED)) {
+        // Initialise the internally shared location API
+        errorCode = uLocationSharedInit();
+    }
+
     // Clean up on error
     if (errorCode != 0) {
+        uLocationSharedDeinit();
         uDevicePrivateShortRangeDeinit();
         uDevicePrivateCellDeinit();
         uDevicePrivateGnssDeinit();
@@ -90,6 +103,7 @@ int32_t uDeviceInit()
 
 int32_t uDeviceDeinit()
 {
+    uLocationSharedDeinit();
     uDevicePrivateShortRangeDeinit();
     uDevicePrivateGnssDeinit();
     uDevicePrivateCellDeinit();
