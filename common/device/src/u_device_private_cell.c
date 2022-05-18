@@ -33,6 +33,9 @@
 #include "u_port.h"
 #include "u_port_uart.h"
 
+#include "u_device.h"
+#include "u_device_shared.h"
+
 #include "u_at_client.h"
 
 #include "u_cell_module_type.h"
@@ -40,8 +43,6 @@
 #include "u_cell_net.h"
 #include "u_cell_pwr.h"
 
-#include "u_device.h"
-#include "u_device_shared.h"
 #include "u_device_shared_cell.h"
 #include "u_device_private_cell.h"
 
@@ -141,7 +142,7 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
             // Add an AT client on the UART with the recommended
             // default buffer size.
             errorCode = (int32_t) U_CELL_ERROR_AT;
-            pContext->at = uAtClientAdd(pCfgUart->uart,
+            pContext->at = uAtClientAdd(pContext->uart,
                                         U_AT_CLIENT_STREAM_TYPE_UART,
                                         NULL,
                                         U_CELL_AT_BUFFER_LENGTH_BYTES);
@@ -214,14 +215,15 @@ int32_t uDevicePrivateCellInit()
     if (errorCode == 0) {
         errorCode = uCellInit();
     }
+
     return errorCode;
 }
 
 // Deinitialise cellular.
 void uDevicePrivateCellDeinit()
 {
-    uAtClientDeinit();
     uCellDeinit();
+    uAtClientDeinit();
 }
 
 // Power up a cellular device, making it available for configuration.
