@@ -106,11 +106,11 @@ static int32_t removeDevice(uDeviceHandle_t devHandle)
             }
         }
         if (errorCode == 0) {
+            // This will destroy the instance
             uCellRemove(devHandle);
             uAtClientRemove(pContext->at);
             uPortUartClose(pContext->uart);
             free(pContext);
-            uDeviceDestroyInstance(U_DEVICE_INSTANCE(devHandle));
         }
     }
 

@@ -89,6 +89,7 @@
 #include <u_short_range_pbuf.h>
 #include <u_short_range_edm_stream.h>
 #include <u_short_range_sec_tls.h>
+#include <u_short_range_module_type.h>
 
 // BLE/cellular/GNSS/Wi-Fi APIs
 #include <u_ble.h>

@@ -82,6 +82,7 @@ static int32_t removeDevice(uDeviceHandle_t devHandle)
             errorCode = uGnssPwrOff(devHandle);
         }
         if (errorCode == 0) {
+            // This will destroy the instance
             uGnssRemove(devHandle);
             switch (pContext->transportType) {
                 case U_GNSS_TRANSPORT_UBX_UART:
@@ -98,7 +99,6 @@ static int32_t removeDevice(uDeviceHandle_t devHandle)
                     break;
             }
             free(pContext);
-            uDeviceDestroyInstance(U_DEVICE_INSTANCE(devHandle));
         }
     }
 

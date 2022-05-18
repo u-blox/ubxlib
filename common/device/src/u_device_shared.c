@@ -111,7 +111,8 @@ void uDeviceDestroyInstance(uDeviceInstance_t *pInstance)
         pInstance->magic = 0;
         free(pInstance);
     } else {
-        uPortLog("U_DEVICE: Warning: trying to destroy an already destroyed instance");
+        uPortLog("U_DEVICE: Warning: trying to destroy an already"
+                 " destroyed instance.\n");
     }
 }
 
