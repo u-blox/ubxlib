@@ -34,7 +34,6 @@ gnss/src/u_gnss_util.c
 gnss/src/u_gnss_private.c
 wifi/src/u_wifi.c
 wifi/src/u_wifi_cfg.c
-wifi/src/u_wifi_net.c
 wifi/src/u_wifi_sock.c
 wifi/src/u_wifi_mqtt.c
 common/device/src/u_device_internal.c

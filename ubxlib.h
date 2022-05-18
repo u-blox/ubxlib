@@ -116,7 +116,6 @@
 #include <u_wifi.h>
 #include <u_wifi_cfg.h>
 #include <u_wifi_mqtt.h>
-#include <u_wifi_net.h>
 #include <u_wifi_sock.h>
 
 #endif // _U_UBXLIB_H_
