@@ -70,27 +70,36 @@
 // link using uNetworkConfigurationCell_t.
 // When U_CFG_TEST_SHORT_RANGE_MODULE_TYPE is set this example will instead use
 // uNetworkConfigurationWifi_t config to setup a Wifi connection.
+
 #if U_SHORT_RANGE_TEST_WIFI()
 
-// Wifi network configuration:
 // Set U_CFG_TEST_SHORT_RANGE_MODULE_TYPE to your module type,
 // chosen from the values in common/short_range/api/u_short_range_module_type.h
-static uNetworkConfigurationWifi_t gConfig = {
+
+// DEVICE i.e. module/chip configuration: in this case a short-range
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_SHORT_RANGE,
+    .deviceCfg = {
+        .cfgSho = {
+            .moduleType = U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_SHORT_RANGE_UART,
+            .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+            .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+            .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+            .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+        },
+    },
+};
+// NETWORK configuration for Wi-Fi
+static const uNetworkCfgWifi_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_WIFI,
-    .module = U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-    .uart = U_CFG_APP_SHORT_RANGE_UART,
-    /* Note that the pin numbers
-        that follow are those of the MCU:
-        if you are using an MCU inside
-        a u-blox module the IO pin numbering
-        for the module is likely different
-        to that from the MCU: check the data
-        sheet for the module to determine
-        the mapping. */
-    .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
-    .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
-    .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-    .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
     .pSsid = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID), /* Wifi SSID - replace with your SSID */
     .authentication = U_WIFI_TEST_CFG_AUTHENTICATION, /* Authentication mode (see uWifiNetAuth_t in wifi/api/u_wifi_net.h) */
     .pPassPhrase = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE) /* WPA2 passphrase */
@@ -99,37 +108,51 @@ static const uNetworkType_t gNetType = U_NETWORK_TYPE_WIFI;
 
 #elif defined(U_CFG_TEST_CELL_MODULE_TYPE)
 
-// Cellular network configuration:
+// Cellular configuration.
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
-static const uNetworkConfigurationCell_t gConfig = {
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
+// DEVICE i.e. module/chip configuration: in this case a cellular
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pPin = NULL, /* SIM pin */
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        },
+    },
+};
+// NETWORK configuration for cellular
+static const uNetworkCfgCell_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_CELL,
-    .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
-    .pPin = NULL, /* SIM pin */
     .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-    .timeoutSeconds = 240, /* Connection timeout in seconds */
-    .uart = U_CFG_APP_CELL_UART,
-    /* Note that the pin numbers
-        that follow are those of the MCU:
-        if you are using an MCU inside
-        a u-blox module the IO pin numbering
-        for the module is likely different
-        to that from the MCU: check the data
-        sheet for the module to determine
-        the mapping. */
-    .pinTxd = U_CFG_APP_PIN_CELL_TXD,
-    .pinRxd = U_CFG_APP_PIN_CELL_RXD,
-    .pinCts = U_CFG_APP_PIN_CELL_CTS,
-    .pinRts = U_CFG_APP_PIN_CELL_RTS,
-    .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
-    .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
-    .pinVInt = U_CFG_APP_PIN_CELL_VINT
+    .timeoutSeconds = 240 /* Connection timeout in seconds */
 };
 static const uNetworkType_t gNetType = U_NETWORK_TYPE_CELL;
-
 #else
 // No module available - set some dummy values to make test system happy
-static const uNetworkConfigurationCell_t gConfig = {U_NETWORK_TYPE_NONE};
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgCell_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
 static const uNetworkType_t gNetType = U_NETWORK_TYPE_CELL;
 #endif
 
@@ -207,17 +230,16 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a network instance, in this case of type cell
-    // since that's what we have configuration information
-    // for above.
-    returnCode = uNetworkAdd(gNetType, (void *) &gConfig, &devHandle);
-    uPortLog("Added network with return code %d.\n", returnCode);
+    // Open the device
+    returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
+    uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // Bring up the network layer
+    // Bring up the network interface
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(devHandle) == 0) {
+    if (uNetworkInterfaceUp(devHandle, gNetType,
+                            &gNetworkCfg) == 0) {
 
         // Do things using the network, for
         // example connect and send data to
@@ -268,7 +290,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
             uPortLog("Unable to connect to server!\n");
         }
 
-        // Note: since devHandle is a cellular
+        // Note: if devHandle is a cellular
         // handle any of the `cell` API calls
         // could be made here using it.
         // If the configuration used were Wifi
@@ -283,13 +305,16 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSockets")
 
         // When finished with the network layer
         uPortLog("Taking down network...\n");
-        uNetworkDown(devHandle);
+        uNetworkInterfaceDown(devHandle, gNetType);
     } else {
         uPortLog("Unable to bring up the network!\n");
     }
 
-    // Calling these will also deallocate the network handle
-    uNetworkDeinit();
+    // Close the device
+    uDeviceClose(devHandle);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("Done.\n");

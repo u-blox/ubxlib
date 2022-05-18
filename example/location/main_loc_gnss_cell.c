@@ -63,70 +63,80 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// Cellular network configuration:
+// Cellular configuration.
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                        U_CFG_TEST_CELL_MODULE_TYPE,
-                                                        NULL, /* SIM pin */
-                                                        NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-                                                        240, /* Connection timeout in seconds */
-                                                        U_CFG_APP_CELL_UART,
-                                                        /* Note that the pin numbers
-                                                           that follow are those of the MCU:
-                                                           if you are using an MCU inside
-                                                           a u-blox module the IO pin numbering
-                                                           for the module is likely different
-                                                           to that from the MCU: check the data
-                                                           sheet for the module to determine
-                                                           the mapping. */
-                                                        U_CFG_APP_PIN_CELL_TXD,
-                                                        U_CFG_APP_PIN_CELL_RXD,
-                                                        U_CFG_APP_PIN_CELL_CTS,
-                                                        U_CFG_APP_PIN_CELL_RTS,
-                                                        U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                        U_CFG_APP_PIN_CELL_PWR_ON,
-                                                        U_CFG_APP_PIN_CELL_VINT
-                                                       };
+// DEVICE i.e. module/chip configuration: in this case a cellular
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfgCell = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pPin = NULL, /* SIM pin */
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        },
+    },
+};
+// NETWORK configuration for cellular
+static const uNetworkCfgCell_t gNetworkCfgCell = {
+    .type = U_NETWORK_TYPE_CELL,
+    .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
+    .timeoutSeconds = 240 /* Connection timeout in seconds */
+};
 #else
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+static const uDeviceCfg_t gDeviceCfgCell = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgCell_t gNetworkCfgCell = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
-// GNSS network configuration:
+// GNSS configuration.
 // Set U_CFG_TEST_GNSS_MODULE_TYPE to your module type,
 // chosen from the values in gnss/api/u_gnss_module_type.h
+
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-static uNetworkConfigurationGnss_t gConfigGnss = {U_NETWORK_TYPE_GNSS,
-                                                  U_CFG_TEST_GNSS_MODULE_TYPE,
-                                                  /* Note that the pin numbers
-                                                     used here are those of the MCU:
-                                                     if you are using an MCU inside
-                                                     a u-blox module the IO pin numbering
-                                                     for the module is likely different
-                                                     to that from the MCU: check the data
-                                                     sheet for the module to determine
-                                                     the mapping. */
-                                                  U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-                                                  /* Connection is via the cellular
-                                                     module's AT interface. */
-                                                  U_GNSS_TRANSPORT_UBX_AT,
-                                                  /* The GNSS UART number and pins are
-                                                     all irrelevant since the GNSS chip
-                                                     is not connected to this MCU; it is
-                                                     connected to the cellular module. */
-                                                  -1, -1, -1, -1, -1,
-                                                  /* The handle of the cellular interface will
-                                                     be filled in later. */
-                                                  0,
-                                                  /* The pins of the *cellular* *module*
-                                                     that are connected to the GNSS chip's
-                                                     power and Data Ready lines. */
-                                                  U_CFG_APP_CELL_PIN_GNSS_POWER,
-                                                  U_CFG_APP_CELL_PIN_GNSS_DATA_READY
-                                                  };
+// DEVICE i.e. module/chip configuration: in this case a GNSS
+// module connected via the AT interface of a cellular module
+static uDeviceCfg_t gDeviceCfgGnss = {
+    .deviceType = U_DEVICE_TYPE_GNSS,
+    .deviceCfg = {
+        .cfgGnss = {
+            .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
+            .transportType = U_GNSS_TRANSPORT_UBX_AT, // Connection via cellular module's AT interface
+            .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
+            .devHandleAt = NULL, // Handle of the cellular interface, will be filled-in later
+            .gnssAtPinPwr = U_CFG_APP_CELL_PIN_GNSS_POWER, // The pins of the *cellular* *module* that are connected
+            .gnssAtPinDataReady = U_CFG_APP_CELL_PIN_GNSS_DATA_READY // to the GNSS chip's power and Data Ready lines
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_NONE
+};
+// NETWORK configuration for GNSS; nothing to do but the type
+static const uNetworkCfgGnss_t gNetworkCfgGnss = {
+    .type = U_NETWORK_TYPE_GNSS
+};
 #else
-static uNetworkConfigurationGnss_t gConfigGnss = {U_NETWORK_TYPE_NONE};
+static uDeviceCfg_t gDeviceCfgGnss = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgGnss_t gNetworkCfgGnss = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
 /* ----------------------------------------------------------------
@@ -199,29 +209,26 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a cellular network instance
-    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                             (void *) &gConfigCell,
-                             &devHandleCell);
-    uPortLog("Added cellular network with return code %d.\n", returnCode);
+    // Open the cellular device
+    returnCode = uDeviceOpen(&gDeviceCfgCell, &devHandleCell);
+    uPortLog("Opened cellular device with return code %d.\n", returnCode);
 
     // Copy the cellular handle into the GNSS configuration
-    gConfigGnss.devHandleAt = devHandleCell;
+    gDeviceCfgGnss.deviceCfg.cfgGnss.devHandleAt = devHandleCell;
 
-    // Add a GNSS network instance
-    returnCode = uNetworkAdd(U_NETWORK_TYPE_GNSS,
-                             (void *) &gConfigGnss,
-                             &devHandleGnss);
-    uPortLog("Added GNSS network with return code %d.\n", returnCode);
+    // Open the GNSS device
+    returnCode = uDeviceOpen(&gDeviceCfgGnss, &devHandleGnss);
+    uPortLog("Opened GNSS device with return code %d.\n", returnCode);
 
     // You may configure the networks as required
     // here using any of the GNSS or cell API calls.
 
     // Bring up the cellular network layer
     uPortLog("Bringing up cellular...\n");
-    if (uNetworkUp(devHandleCell) == 0) {
+    if (uNetworkInterfaceUp(devHandleCell, U_NETWORK_TYPE_CELL,
+                            &gNetworkCfgCell) == 0) {
 
         // You may use the cellular network, as normal,
         // at any time, for example connect and
@@ -229,7 +236,8 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
 
         // Bring up the GNSS network layer
         uPortLog("Bringing up GNSS...\n");
-        if (uNetworkUp(devHandleGnss) == 0) {
+        if (uNetworkInterfaceUp(devHandleGnss, U_NETWORK_TYPE_GNSS,
+                                &gNetworkCfgGnss) == 0) {
 
             // Here you may use the GNSS API with the network handle
             // if you wish to configure the GNSS chip etc.
@@ -244,21 +252,25 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
 
             // When finished with the GNSS network layer
             uPortLog("Taking down GNSS...\n");
-            uNetworkDown(devHandleGnss);
+            uNetworkInterfaceDown(devHandleGnss, U_NETWORK_TYPE_GNSS);
         } else {
             uPortLog("Unable to bring up GNSS!\n");
         }
 
         // When finished with the cellular network layer
         uPortLog("Taking down cellular network...\n");
-        uNetworkDown(devHandleCell);
+        uNetworkInterfaceDown(devHandleCell, U_NETWORK_TYPE_CELL);
 
     } else {
         uPortLog("Unable to bring up the cellular network!\n");
     }
 
-    // Calling these will also deallocate the network handles
-    uNetworkDeinit();
+    // Close the devices
+    uDeviceClose(devHandleGnss);
+    uDeviceClose(devHandleCell);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("Done.\n");

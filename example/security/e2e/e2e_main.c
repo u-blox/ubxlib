@@ -69,34 +69,50 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// Cellular network configuration:
+// Cellular configuration.
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                        U_CFG_TEST_CELL_MODULE_TYPE,
-                                                        NULL, /* SIM pin */
-                                                        NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-                                                        240, /* Connection timeout in seconds */
-                                                        U_CFG_APP_CELL_UART,
-                                                        /* Note that the pin numbers
-                                                           that follow are those of the MCU:
-                                                           if you are using an MCU inside
-                                                           a u-blox module the IO pin numbering
-                                                           for the module is likely different
-                                                           to that from the MCU: check the data
-                                                           sheet for the module to determine
-                                                           the mapping. */
-                                                        U_CFG_APP_PIN_CELL_TXD,
-                                                        U_CFG_APP_PIN_CELL_RXD,
-                                                        U_CFG_APP_PIN_CELL_CTS,
-                                                        U_CFG_APP_PIN_CELL_RTS,
-                                                        U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                        U_CFG_APP_PIN_CELL_PWR_ON,
-                                                        U_CFG_APP_PIN_CELL_VINT
-                                                       };
+// DEVICE i.e. module/chip configuration: in this case a cellular
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pPin = NULL, /* SIM pin */
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        },
+    },
+};
+// NETWORK configuration for cellular
+static const uNetworkCfgCell_t gNetworkCfg = {
+    .type = U_NETWORK_TYPE_CELL,
+    .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
+    .timeoutSeconds = 240 /* Connection timeout in seconds */
+};
 #else
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgCell_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
 /* ----------------------------------------------------------------
@@ -130,19 +146,16 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a network instance, in this case of type cell
-    // since that's what we have configuration information
-    // for above.
-    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                             (void *) &gConfigCell,
-                             &devHandle);
-    uPortLog("Added network with return code %d.\n", returnCode);
+    // Open the device
+    returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
+    uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // Bring up the network layer
+    // Bring up the network interface
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(devHandle) == 0) {
+    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                            &gNetworkCfg) == 0) {
 
         // The module must have previously been security
         // sealed for this example to work
@@ -231,7 +244,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
 
         // When finished with the network layer
         uPortLog("Taking down network...\n");
-        uNetworkDown(devHandle);
+        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
     } else {
         uPortLog("Unable to bring up the network!\n");
     }
@@ -242,8 +255,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecE2e")
                         !uSecurityIsSupported(devHandle));
 #endif
 
-    // Calling these will also deallocate the network handle
-    uNetworkDeinit();
+    // Close the device
+    uDeviceClose(devHandle);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("Done.\n");
