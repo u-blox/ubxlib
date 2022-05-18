@@ -29,6 +29,9 @@
 
 #include "u_error_common.h"
 
+#include "u_device.h"
+#include "u_device_shared.h"
+
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
@@ -38,8 +41,6 @@
 
 #include "u_ble_module_type.h"
 
-#include "u_device.h"
-#include "u_device_shared.h"
 #include "u_device_shared_short_range.h"
 #include "u_device_private_short_range.h"
 

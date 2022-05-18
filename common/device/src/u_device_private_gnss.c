@@ -32,9 +32,12 @@
 
 #include "u_error_common.h"
 
-#include "u_at_client.h"
-
 #include "u_port_uart.h"
+
+#include "u_device.h"
+#include "u_device_shared.h"
+
+#include "u_at_client.h"
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"                 // For uCellAtClientHandleGet()
@@ -48,8 +51,6 @@
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
 
-#include "u_device.h"
-#include "u_device_shared.h"
 #include "u_device_shared_gnss.h"
 #include "u_device_private_gnss.h"
 
@@ -110,13 +111,13 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
                          const uDeviceCfgGnss_t *pCfgGnss,
                          uDeviceHandle_t *pDeviceHandle)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
     uDeviceGnssInstance_t *pContext;
     int32_t atDevType = uDeviceGetDeviceType(pCfgGnss->devHandleAt);
 
     pContext = (uDeviceGnssInstance_t *) malloc(sizeof(uDeviceGnssInstance_t));
     if (pContext != NULL) {
-        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        errorCodeOrHandle = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pContext->transportHandle.uart = -1;
         switch (pCfgGnss->transportType) {
             case U_GNSS_TRANSPORT_UBX_UART:
@@ -124,43 +125,43 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
             case U_GNSS_TRANSPORT_NMEA_UART:
                 // Open a UART with the recommended buffer length
                 // and default baud rate.
-                errorCode = uPortUartOpen(pCfgUart->uart,
-                                          pCfgUart->baudRate, NULL,
-                                          U_GNSS_UART_BUFFER_LENGTH_BYTES,
-                                          pCfgUart->pinTxd,
-                                          pCfgUart->pinRxd,
-                                          pCfgUart->pinCts,
-                                          pCfgUart->pinRts);
-                if (errorCode >= 0) {
-                    pContext->transportHandle.uart = errorCode;
+                errorCodeOrHandle = uPortUartOpen(pCfgUart->uart,
+                                                  pCfgUart->baudRate, NULL,
+                                                  U_GNSS_UART_BUFFER_LENGTH_BYTES,
+                                                  pCfgUart->pinTxd,
+                                                  pCfgUart->pinRxd,
+                                                  pCfgUart->pinCts,
+                                                  pCfgUart->pinRts);
+                if (errorCodeOrHandle >= 0) {
+                    pContext->transportHandle.uart = errorCodeOrHandle;
                 }
                 break;
             case U_GNSS_TRANSPORT_UBX_AT:
                 // Get the AT devHandle from the network instance we are
                 // attached through
                 if (atDevType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
-                    errorCode = uShortRangeAtClientHandleGet(pCfgGnss->devHandleAt,
-                                                             //lint -e(181) Suppress unusual pointer cast
-                                                             (uAtClientHandle_t *) &(pContext->transportHandle.pAt)); // *NOPAD*
+                    errorCodeOrHandle = uShortRangeAtClientHandleGet(pCfgGnss->devHandleAt,
+                                                                     //lint -e(181) Suppress unusual pointer cast
+                                                                     (uAtClientHandle_t *) &(pContext->transportHandle.pAt)); // *NOPAD*
                 } else if (atDevType == (int32_t) U_DEVICE_TYPE_CELL) {
-                    errorCode = uCellAtClientHandleGet(pCfgGnss->devHandleAt,
-                                                       //lint -e(181) Suppress unusual pointer cast
-                                                       (uAtClientHandle_t *) &(pContext->transportHandle.pAt)); // *NOPAD*
+                    errorCodeOrHandle = uCellAtClientHandleGet(pCfgGnss->devHandleAt,
+                                                               //lint -e(181) Suppress unusual pointer cast
+                                                               (uAtClientHandle_t *) &(pContext->transportHandle.pAt)); // *NOPAD*
                 }
                 break;
             default:
                 break;
         }
 
-        if (errorCode >= 0) {
+        if (errorCodeOrHandle >= 0) {
             pContext->transportType = (uGnssTransportType_t) pCfgGnss->transportType;
             // Add the GNSS instance, which actually creates pDeviceHandle
-            errorCode = uGnssAdd((uGnssModuleType_t) pCfgGnss->moduleType,
-                                 (uGnssTransportType_t) pContext->transportType,
-                                 pContext->transportHandle,
-                                 pCfgGnss->pinGnssEnablePower, false,
-                                 pDeviceHandle);
-            if (errorCode == 0) {
+            errorCodeOrHandle = uGnssAdd((uGnssModuleType_t) pCfgGnss->moduleType,
+                                         (uGnssTransportType_t) pContext->transportType,
+                                         pContext->transportHandle,
+                                         pCfgGnss->pinGnssEnablePower, false,
+                                         pDeviceHandle);
+            if (errorCodeOrHandle == 0) {
                 if (pContext->transportType == (int32_t) U_GNSS_TRANSPORT_UBX_AT) {
                     // If specified, and if the GNSS chip is not inside the
                     // intervening module, set the pins of the AT module that
@@ -201,8 +202,8 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
                     // then we leave the GNSS chip powered off so that Cell Locate
                     // can use it.  If the GNSS chip is to be used directly then
                     // uNetworkInterfaceUpGnss() will power it up and "claim" it.
-                    errorCode = uGnssPwrOn(*pDeviceHandle);
-                    if (errorCode != 0) {
+                    errorCodeOrHandle = uGnssPwrOn(*pDeviceHandle);
+                    if (errorCodeOrHandle != 0) {
                         // If we failed to power on, clean up
                         removeDevice(*pDeviceHandle);
                     }
@@ -220,7 +221,7 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
         }
     }
 
-    return errorCode;
+    return errorCodeOrHandle;
 }
 
 /* ----------------------------------------------------------------
