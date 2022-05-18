@@ -75,7 +75,10 @@ extern "C" {
 typedef struct {
     uDeviceHandle_t devHandle;
     uNetworkType_t type;
-    void *pConfiguration;
+    void *pConfiguration;  // TO BE REMOVED
+    // Device and network config
+    uDeviceCfg_t *pDeviceCfg;
+    void *pNetworkCfg;
 } uNetworkTestCfg_t;
 
 /* ----------------------------------------------------------------

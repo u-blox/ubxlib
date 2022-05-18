@@ -150,6 +150,136 @@ static uNetworkConfigurationWifi_t gConfigurationWifi = {
 static uNetworkConfigurationWifi_t gConfigurationWifi = { .type = U_NETWORK_TYPE_NONE };
 #endif
 
+
+// == Device and network configurations ==
+
+static uDeviceCfg_t gDeviceCfgCell = {
+    .version = 0,
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pPin = U_CELL_TEST_CFG_SIM_PIN,
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        }
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        }
+    }
+#else
+    .deviceType = U_DEVICE_TYPE_NONE
+#endif
+};
+
+static uNetworkCfgCell_t gDeviceNetworkCfgCell = {
+    .version = 0,
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+    .type = U_NETWORK_TYPE_CELL,
+# ifdef U_CELL_TEST_CFG_APN
+    .pApn = U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
+# else
+    .pApn = NULL,
+# endif
+    .timeoutSeconds = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS
+#else
+    .type = U_NETWORK_TYPE_NONE
+#endif
+};
+
+static uDeviceCfg_t gDeviceCfgShortrange = {
+    .version = 0,
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+    .deviceType = U_DEVICE_TYPE_SHORT_RANGE,
+    .deviceCfg = {
+        .cfgSho = {
+            .moduleType = U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+        }
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_SHORT_RANGE_UART,
+            .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+            .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+            .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+            .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+        }
+    }
+#else
+    .deviceType = U_DEVICE_TYPE_NONE
+#endif
+};
+
+static uNetworkCfgWifi_t gDeviceNetworkCfgWifi = {
+    .version = 0,
+#if U_SHORT_RANGE_TEST_WIFI()
+    .type = U_NETWORK_TYPE_WIFI,
+    .pSsid = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
+    .authentication = U_WIFI_TEST_CFG_AUTHENTICATION,
+    .pPassPhrase = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE)
+#else
+    .type = U_NETWORK_TYPE_NONE
+#endif
+};
+
+static uNetworkCfgBle_t gDeviceNetworkCfgBle = {
+    .version = 0,
+#if U_SHORT_RANGE_TEST_BLE()
+    .type = U_NETWORK_TYPE_BLE,
+    .role = U_CFG_APP_SHORT_RANGE_ROLE,
+    .spsServer = true
+#else
+    .type = U_NETWORK_TYPE_NONE
+#endif
+};
+
+static uDeviceCfg_t gDeviceCfgGnss = {
+    .version = 0,
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+    .deviceType = U_DEVICE_TYPE_GNSS,
+    .deviceCfg = {
+        .cfgGnss = {
+            .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
+            .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
+            .transportType = U_GNSS_TRANSPORT_NMEA_UART,
+            .gnssAtPinPwr = U_CFG_APP_CELL_PIN_GNSS_POWER,
+            .gnssAtPinDataReady = U_CFG_APP_CELL_PIN_GNSS_DATA_READY
+        }
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_GNSS_UART,
+            .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
+            .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
+            .pinCts = U_CFG_APP_PIN_GNSS_CTS,
+            .pinRts = U_CFG_APP_PIN_GNSS_RTS
+        }
+    }
+#else
+    .deviceType = U_DEVICE_TYPE_NONE
+#endif
+};
+
+static uNetworkCfgGnss_t gDeviceNetworkCfgGnss = {
+    .version = 0,
+#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+    .type = U_NETWORK_TYPE_GNSS
+#else
+    .type = U_NETWORK_TYPE_NONE
+#endif
+};
+
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
@@ -180,10 +310,22 @@ static uNetworkConfigurationGnss_t gConfigurationGnss = { .type = U_NETWORK_TYPE
  * GNSS so that the cellular handle can be passed on to GNSS.
  */
 uNetworkTestCfg_t gUNetworkTestCfg[] = {
-    {NULL, U_NETWORK_TYPE_BLE, (void *) &gConfigurationBle},
-    {NULL, U_NETWORK_TYPE_CELL, (void *) &gConfigurationCell},
-    {NULL, U_NETWORK_TYPE_WIFI, (void *) &gConfigurationWifi},
-    {NULL, U_NETWORK_TYPE_GNSS, (void *) &gConfigurationGnss}
+    {
+        NULL, U_NETWORK_TYPE_BLE, (void *) &gConfigurationBle,
+        &gDeviceCfgShortrange, (void *) &gDeviceNetworkCfgBle
+    },
+    {
+        NULL, U_NETWORK_TYPE_CELL, (void *) &gConfigurationCell,
+        &gDeviceCfgCell, (void *) &gDeviceNetworkCfgCell
+    },
+    {
+        NULL, U_NETWORK_TYPE_WIFI, (void *) &gConfigurationWifi,
+        &gDeviceCfgShortrange, (void *) &gDeviceNetworkCfgWifi
+    },
+    {
+        NULL, U_NETWORK_TYPE_GNSS, (void *) &gConfigurationGnss,
+        &gDeviceCfgGnss, (void *) &gDeviceNetworkCfgGnss
+    }
 };
 
 /** Number of items in the gNetwork array, has to be

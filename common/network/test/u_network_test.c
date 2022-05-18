@@ -105,10 +105,10 @@ static size_t gSystemHeapLost = 0;
 static const char gRemoteSpsAddress[] =
     U_PORT_STRINGIFY_QUOTED(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL);
 #else
-#ifdef U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL
+# ifdef U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL
 static const char gRemoteSpsAddress[] =
     U_PORT_STRINGIFY_QUOTED(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL);
-#endif
+# endif
 #endif
 #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
 #define U_BLE_TEST_TEST_DATA_LOOPS 2
@@ -352,32 +352,18 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Add the networks that support sockets
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
-        if ((*((uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+        if ((gUNetworkTestCfg[x].pDeviceCfg->deviceType != U_DEVICE_TYPE_NONE) &&
             U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             uPortLog("U_NETWORK_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-#if (U_CFG_APP_GNSS_UART < 0)
-            // If there is no GNSS UART then any GNSS chip must
-            // be connected via the cellular module's AT interface
-            // hence we capture the cellular network handle here and
-            // modify the GNSS configuration to use it before we add
-            // the GNSS network
-            uNetworkTestGnssAtConfiguration(devHandle,
-                                            gUNetworkTestCfg[x].pConfiguration);
-#endif
-            errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                    gUNetworkTestCfg[x].pConfiguration,
+            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
             U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
-            if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                devHandle = gUNetworkTestCfg[x].devHandle;
-                (void)devHandle; // Will be unused when U_CFG_APP_GNSS_UART > 0
-            }
         }
     }
 
@@ -398,7 +384,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
 
                 uPortLog("U_NETWORK_TEST: bringing up %s...\n",
                          gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(uNetworkUp(devHandle) == 0);
+                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                       pNetworkCfg->type,
+                                                       pNetworkCfg->pNetworkCfg) == 0);
 
                 uPortLog("U_NETWORK_TEST: looking up echo server \"%s\"...\n",
                          U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
@@ -468,19 +456,19 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
             }
         }
 
-        // Remove each network type, in reverse order so
-        // that GNSS (which might be connected via a cellular
-        // module) is taken down before cellular
-        for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
+        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
             if (gUNetworkTestCfg[x].devHandle != NULL) {
                 uPortLog("U_NETWORK_TEST: taking down %s...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].devHandle) == 0);
+                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
+                                                         gUNetworkTestCfg[x].type) == 0);
+                U_PORT_TEST_ASSERT(uDeviceClose(gUNetworkTestCfg[x].devHandle) == 0);
+                gUNetworkTestCfg[x].devHandle = NULL;
             }
         }
     }
 
-    uNetworkDeinit();
+    uDeviceDeinit();
     uPortDeinit();
 
 #ifndef __XTENSA__
@@ -528,17 +516,16 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Add a BLE network
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
-        if ((*((uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+        if ((gUNetworkTestCfg[x].pDeviceCfg->deviceType != U_DEVICE_TYPE_NONE) &&
             (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_BLE)) {
             uPortLog("U_NETWORK_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                    gUNetworkTestCfg[x].pConfiguration,
+            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
             U_PORT_TEST_ASSERT(errorCode >= 0);
         }
@@ -554,7 +541,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
 
                 uPortLog("U_NETWORK_TEST: bringing up %s...\n",
                          gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(uNetworkUp(devHandle) == 0);
+                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                       pNetworkCfg->type,
+                                                       pNetworkCfg->pNetworkCfg) == 0);
 
                 memset(&spsHandles, 0x00, sizeof spsHandles);
 
@@ -662,12 +651,15 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
             if (gUNetworkTestCfg[x].devHandle != NULL) {
                 uPortLog("U_NETWORK_TEST: taking down %s...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].devHandle) == 0);
+                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
+                                                         gUNetworkTestCfg[x].type) == 0);
+                U_PORT_TEST_ASSERT(uDeviceClose(gUNetworkTestCfg[x].devHandle) == 0);
+                gUNetworkTestCfg[x].devHandle = NULL;
             }
         }
     }
 
-    uNetworkDeinit();
+    uDeviceDeinit();
     uPortDeinit();
 
 #ifndef __XTENSA__

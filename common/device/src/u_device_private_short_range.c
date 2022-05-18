@@ -70,12 +70,16 @@ int32_t uDevicePrivateShortRangeInit()
     if (errorCode == 0) {
         errorCode = uAtClientInit();
     }
+    if (errorCode == 0) {
+        errorCode = uShortRangeInit();
+    }
     return errorCode;
 }
 
 // Deinitialise short-range.
 void uDevicePrivateShortRangeDeinit()
 {
+    uShortRangeDeinit();
     uShortRangeEdmStreamDeinit();
     uAtClientDeinit();
 }
