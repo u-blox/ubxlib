@@ -38,6 +38,10 @@
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 
+#include "u_error_common.h"
+
+#include "u_at_client.h"
+
 //lint -efile(766, u_port.h) Suppress header file not used, which
 // is true if U_CELL_TEST_CFG_APN is not defined
 #include "u_port.h" // For U_PORT_STRINGIFY_QUOTED()
@@ -45,17 +49,18 @@
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 #include "u_cell_module_type.h"
 #include "u_cell_test_cfg.h" // For the cellular test macros
+#include "u_cell.h" // For U_CELL_UART_BAUD_RATE
 #endif
 
-//lint -efile(766, u_wifi_test_cfg.h)
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+#include "u_short_range_module_type.h"
+#include "u_short_range.h" // For U_SHORT_RANGE_UART_BAUD_RATE
+#endif
+
 #include "u_short_range_test_selector.h"
 #if U_SHORT_RANGE_TEST_WIFI()
-//# include "u_short_range_test_private.h"
-//# include "u_short_range_module_type.h"
-//# if U_CFG_TEST_SHORT_RANGE_MODULE_HAS_WIFI()
 # include "u_wifi_test_cfg.h"
 #endif
-//#endif*/
 
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
 #include "u_gnss_module_type.h"
@@ -154,7 +159,7 @@ static uNetworkConfigurationWifi_t gConfigurationWifi = { .type = U_NETWORK_TYPE
 // == Device and network configurations ==
 
 static uDeviceCfg_t gDeviceCfgCell = {
-    .version = 0,
+    // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
     .deviceType = U_DEVICE_TYPE_CELL,
     .deviceCfg = {
@@ -170,6 +175,7 @@ static uDeviceCfg_t gDeviceCfgCell = {
     .transportCfg = {
         .cfgUart = {
             .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
             .pinTxd = U_CFG_APP_PIN_CELL_TXD,
             .pinRxd = U_CFG_APP_PIN_CELL_RXD,
             .pinCts = U_CFG_APP_PIN_CELL_CTS,
@@ -182,7 +188,7 @@ static uDeviceCfg_t gDeviceCfgCell = {
 };
 
 static uNetworkCfgCell_t gDeviceNetworkCfgCell = {
-    .version = 0,
+    // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
     .type = U_NETWORK_TYPE_CELL,
 # ifdef U_CELL_TEST_CFG_APN
@@ -197,7 +203,7 @@ static uNetworkCfgCell_t gDeviceNetworkCfgCell = {
 };
 
 static uDeviceCfg_t gDeviceCfgShortrange = {
-    .version = 0,
+    // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
     .deviceType = U_DEVICE_TYPE_SHORT_RANGE,
     .deviceCfg = {
@@ -209,6 +215,7 @@ static uDeviceCfg_t gDeviceCfgShortrange = {
     .transportCfg = {
         .cfgUart = {
             .uart = U_CFG_APP_SHORT_RANGE_UART,
+            .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
             .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
             .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
             .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
@@ -221,7 +228,7 @@ static uDeviceCfg_t gDeviceCfgShortrange = {
 };
 
 static uNetworkCfgWifi_t gDeviceNetworkCfgWifi = {
-    .version = 0,
+    // Deliberately don't set version to test that the compiler zeroes the field
 #if U_SHORT_RANGE_TEST_WIFI()
     .type = U_NETWORK_TYPE_WIFI,
     .pSsid = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
@@ -233,7 +240,7 @@ static uNetworkCfgWifi_t gDeviceNetworkCfgWifi = {
 };
 
 static uNetworkCfgBle_t gDeviceNetworkCfgBle = {
-    .version = 0,
+    // Deliberately don't set version to test that the compiler zeroes the field
 #if U_SHORT_RANGE_TEST_BLE()
     .type = U_NETWORK_TYPE_BLE,
     .role = U_CFG_APP_SHORT_RANGE_ROLE,
@@ -244,14 +251,14 @@ static uNetworkCfgBle_t gDeviceNetworkCfgBle = {
 };
 
 static uDeviceCfg_t gDeviceCfgGnss = {
-    .version = 0,
+    // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
     .deviceType = U_DEVICE_TYPE_GNSS,
     .deviceCfg = {
         .cfgGnss = {
             .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
-            .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
             .transportType = U_GNSS_TRANSPORT_NMEA_UART,
+            .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
             .gnssAtPinPwr = U_CFG_APP_CELL_PIN_GNSS_POWER,
             .gnssAtPinDataReady = U_CFG_APP_CELL_PIN_GNSS_DATA_READY
         }
@@ -260,6 +267,7 @@ static uDeviceCfg_t gDeviceCfgGnss = {
     .transportCfg = {
         .cfgUart = {
             .uart = U_CFG_APP_GNSS_UART,
+            .baudRate = U_GNSS_UART_BAUD_RATE,
             .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
             .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
             .pinCts = U_CFG_APP_PIN_GNSS_CTS,
@@ -272,7 +280,7 @@ static uDeviceCfg_t gDeviceCfgGnss = {
 };
 
 static uNetworkCfgGnss_t gDeviceNetworkCfgGnss = {
-    .version = 0,
+    // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
     .type = U_NETWORK_TYPE_GNSS
 #else
