@@ -116,7 +116,7 @@ static uNetworkConfigurationBle_t gConfigurationBle = { .type = U_NETWORK_TYPE_N
 static uNetworkConfigurationCell_t gConfigurationCell = {
     .type = U_NETWORK_TYPE_CELL,
     .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
-    .pPin = U_CELL_TEST_CFG_SIM_PIN,
+    .pSimPinCode = U_CELL_TEST_CFG_SIM_PIN,
 # ifdef U_CELL_TEST_CFG_APN
     .pApn = U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
 # else
@@ -165,7 +165,7 @@ static uDeviceCfg_t gDeviceCfgCell = {
     .deviceCfg = {
         .cfgCell = {
             .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
-            .pPin = U_CELL_TEST_CFG_SIM_PIN,
+            .pSimPinCode = U_CELL_TEST_CFG_SIM_PIN,
             .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
             .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
             .pinVInt = U_CFG_APP_PIN_CELL_VINT

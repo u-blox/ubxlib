@@ -148,7 +148,7 @@ typedef struct {
                                    unless otherwise specified below. */
     int32_t moduleType;       /**< The module type that is connected,
                                    see uCellModuleType_t in u_cell_module_type.h. */
-    const char *pPin;         /**< The PIN of the SIM. */
+    const char *pSimPinCode;  /**< The PIN of the SIM. */
     int32_t pinEnablePower;   /**< The output pin that enables power
                                    to the cellular module; use -1 if
                                    there is no such connection. */

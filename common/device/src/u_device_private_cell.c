@@ -175,7 +175,7 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
                     if (errorCode == 0) {
 #endif
                         // Power on
-                        errorCode = uCellPwrOn(*pDeviceHandle, pCfgCell->pPin,
+                        errorCode = uCellPwrOn(*pDeviceHandle, pCfgCell->pSimPinCode,
                                                keepGoingCallback);
 #if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
                     }

@@ -55,7 +55,7 @@ typedef struct {
                               purposes. */
     int32_t moduleType; /**< The module type that is connected,
                              see uCellModuleType_t in u_cell_module_type.h. */
-    const char *pPin; /**< The PIN of the SIM. */
+    const char *pSimPinCode; /**< The PIN of the SIM. */
     const char *pApn; /**< The APN to use; if left as NULL
                            a database look-up will be used. */
     int32_t timeoutSeconds; /**< Timeout that covers power-on and

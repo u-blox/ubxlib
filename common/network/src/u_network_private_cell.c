@@ -251,7 +251,7 @@ int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
                     if (x == 0) {
 #endif
                         // Power on
-                        x = uCellPwrOn(*pDevHandle, pConfiguration->pPin,
+                        x = uCellPwrOn(*pDevHandle, pConfiguration->pSimPinCode,
                                        keepGoingCallbackToBeDeleted);
 #if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
                     }
@@ -306,7 +306,7 @@ int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
         pInstance->stopTimeMs = uPortGetTickTimeMs() +
                                 (((int64_t) pConfiguration->timeoutSeconds) * 1000);
         // Power on, in case we weren't on before
-        errorCode = uCellPwrOn(devHandle, pConfiguration->pPin,
+        errorCode = uCellPwrOn(devHandle, pConfiguration->pSimPinCode,
                                keepGoingCallbackToBeDeleted);
         if (errorCode == 0) {
             // Connect using automatic selection,

@@ -1708,7 +1708,7 @@ bool uCellPwrIsAlive(uDeviceHandle_t cellHandle)
 }
 
 // Power the cellular module on.
-int32_t uCellPwrOn(uDeviceHandle_t cellHandle, const char *pPin,
+int32_t uCellPwrOn(uDeviceHandle_t cellHandle, const char *pSimPinCode,
                    bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -1722,7 +1722,7 @@ int32_t uCellPwrOn(uDeviceHandle_t cellHandle, const char *pPin,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             errorCode = (int32_t) U_CELL_ERROR_PIN_ENTRY_NOT_SUPPORTED;
-            if (pPin == NULL) {
+            if (pSimPinCode == NULL) {
                 errorCode = uCellPwrPrivateOn(pInstance, pKeepGoingCallback, true);
             } else {
                 uPortLog("U_CELL_PWR: a SIM PIN has been set but PIN entry is"
