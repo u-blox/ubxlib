@@ -1365,8 +1365,14 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     uPortTaskBlock(200);
     uPortLog("U_PORT_TEST: unlocking mutex, allowing task to execute\n");
     U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);;
+
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     // Pause to let the task print its opening messages
     uPortTaskBlock(1200);
+#else
+    // Some platforms (e.g. Windows) can be a little slow at this
+    uPortTaskBlock(10000);
+#endif
 
     uPortLog("U_PORT_TEST: trying to lock the mutex, should fail...\n");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);
