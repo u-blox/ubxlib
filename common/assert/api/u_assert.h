@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+#include "u_compiler.h"
 
 /** @file
  * @brief Assert macro, function and hook.
@@ -89,7 +90,7 @@ void uAssertHookSet(upAssertFailed_t *pAssertFailed);
  */
 //lint -function(exit, uAssertFailed) tell Lint that this has the same
 // proprties as exit()
-void uAssertFailed(const char *pFileStr, int32_t line);
+void uAssertFailed(const char *pFileStr, int32_t line) U_CLANG_ANALYZER_NORETURN;
 
 #ifdef __cplusplus
 }

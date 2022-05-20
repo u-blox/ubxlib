@@ -516,17 +516,17 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel,
         sockHandle = pSock->sockHandle;
         if (pSock->protocol == U_SOCK_PROTOCOL_UDP) {
 
-            if (uShortRangeInsertPktToPktList(&pSock->udpPktList,
+            if (uShortRangePktListAppend(&pSock->udpPktList,
                                               pBufList) != (int32_t)U_ERROR_COMMON_SUCCESS) {
                 uPortLog("U_WIFI_SOCK: UDP pkt insert failed\n");
-                uShortRangeFreePbufList(pBufList);
+                uShortRangePbufListFree(pBufList);
             }
         } else {
 
             if (pSock->pTcpRxBuff == NULL) {
                 pSock->pTcpRxBuff = pBufList;
             } else {
-                uShortRangeMergePbufList(pSock->pTcpRxBuff, pBufList);
+                uShortRangePbufListMerge(pSock->pTcpRxBuff, pBufList);
             }
         }
 
@@ -1144,14 +1144,14 @@ int32_t uWifiSockRead(uDeviceHandle_t devHandle,
 
     if (errnoLocal == U_SOCK_ENONE) {
         pList = pSock->pTcpRxBuff;
-        errnoLocal = (int32_t)uShortRangeMovePayloadFromPbufList(pList, (char *)pData, dataSizeBytes);
+        errnoLocal = (int32_t)uShortRangePbufListConsumeData(pList, (char *)pData, dataSizeBytes);
         if (errnoLocal == 0) {
             // If there are no data available we must return U_SOCK_EWOULDBLOCK
             errnoLocal = -U_SOCK_EWOULDBLOCK;
         }
 
         if ((pList != NULL) && (pList->totalLen == 0)) {
-            uShortRangeFreePbufList(pList);
+            uShortRangePbufListFree(pList);
             pSock->pTcpRxBuff = NULL;
         }
     }
@@ -1284,7 +1284,7 @@ int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
     // Read the data
     if (errnoLocal == U_SOCK_ENONE) {
 
-        errnoLocal = uShortRangeReadPktFromPktList(&pSock->udpPktList, (char *)pData, &dataSizeBytes, NULL);
+        errnoLocal = uShortRangePktListConsumePacket(&pSock->udpPktList, (char *)pData, &dataSizeBytes, NULL);
 
         if ((errnoLocal == (int32_t)U_ERROR_COMMON_NO_MEMORY) ||
             (errnoLocal == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER)) {

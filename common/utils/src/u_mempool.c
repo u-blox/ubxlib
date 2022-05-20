@@ -32,6 +32,8 @@
 #include "stdlib.h"    // malloc() and free()
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+
+#include "u_assert.h"
 #include "u_port.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
@@ -41,10 +43,33 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+// Configuration value if a "fence" should be added between
+// the mempool buffer chunks for detecting buffer overflows.
+// Since this only adds 2 bytes per chunk it is enabled by default.
+#ifndef U_MEMPOOL_USE_BUF_FENCE
+# define U_MEMPOOL_USE_BUF_FENCE 1
+#endif
+
+#if U_MEMPOOL_USE_BUF_FENCE
+# define U_REAL_BLOCK_SIZE(userBlockSize) \
+    (userBlockSize + sizeof(uint16_t))
+#else
+# define U_REAL_BLOCK_SIZE(userBlockSize) (userBlockSize)
+#endif
+
+#define U_BUFFER_SIZE(pMemPool) \
+    (U_REAL_BLOCK_SIZE(pMemPool->blockSize) * pMemPool->totalBlockCount)
+
+#define U_FENCE_MAGIC 0xBEEF
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
+
+typedef struct uMemPoolFree {
+    struct uMemPoolFree *pNext;
+} uMemPoolFreeList_t;
 
 /* ----------------------------------------------------------------
  * PROTOTYPES
@@ -57,56 +82,39 @@
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-static void freeAllMem(uMemPoolDesc_t *pMemPool)
+
+static void initFreeList(uMemPoolDesc_t *pMemPool)
 {
-    pMemPool->currBlkIndex = -1;
-    pMemPool->pFreedList = NULL;
-}
-
-// realloc not available in zephyr
-static void *resizePool(uMemPoolDesc_t *pMemPool, uint32_t blkCount)
-{
-    void *pNewBlk;
-
-    pNewBlk = malloc(blkCount * sizeof(uint8_t *));
-
-    if (pNewBlk != NULL) {
-        //zeroize the contents
-        memset(pNewBlk, 0, blkCount * sizeof(uint8_t *));
-        //Copy the contents from old pool to new pool
-        memcpy(pNewBlk, pMemPool->ppBlk, pMemPool->cfgedBlkCount * sizeof(uint8_t *));
-        // free the old pool
-        free(pMemPool->ppBlk);
+    // Initialize the freed linked list
+    U_ASSERT(pMemPool->pBuffer != NULL);
+    uMemPoolFreeList_t *pLastFree = (uMemPoolFreeList_t *)pMemPool->pBuffer;
+    pMemPool->pFreeList = pLastFree;
+    for (int i = 1; i < pMemPool->totalBlockCount; i++) {
+        uMemPoolFreeList_t *pFree;
+        size_t realBlockSize = U_REAL_BLOCK_SIZE(pMemPool->blockSize);
+        pFree = (uMemPoolFreeList_t *)&pMemPool->pBuffer[i * realBlockSize];
+        pLastFree->pNext = pFree;
+        pLastFree = pFree;
     }
-
-    return pNewBlk;
+    pLastFree->pNext = NULL;
+    pMemPool->usedBlockCount = 0;
 }
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-int32_t uMemPoolInit(uMemPoolDesc_t *pMemPool, uint32_t elementSize, int32_t blkCount)
+
+int32_t uMemPoolInit(uMemPoolDesc_t *pMemPool, uint32_t blockSize, int32_t blkCount)
 {
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
-    if (pMemPool != NULL) {
-
-        err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+    if ((pMemPool != NULL) && (blockSize >= sizeof(uMemPoolFreeList_t))) {
         memset(pMemPool, 0, sizeof(uMemPoolDesc_t));
-        freeAllMem(pMemPool);
-        pMemPool->elementSize = MAX(elementSize, sizeof(uint32_t));
-        pMemPool->currBlkCount = blkCount;
-        pMemPool->cfgedBlkCount = blkCount;
-        pMemPool->maxBlkCount = pMemPool->cfgedBlkCount * 2;
-        pMemPool->ppBlk = (uint8_t **)malloc(sizeof(uint8_t *) * blkCount);
+        pMemPool->blockSize = blockSize;
+        pMemPool->usedBlockCount = 0;
+        pMemPool->totalBlockCount = blkCount;
 
-        if (pMemPool->ppBlk != NULL) {
-            for (int32_t i = 0; i < blkCount; i++) {
-                pMemPool->ppBlk[i] = NULL;
-            }
-            uPortMutexCreate(&pMemPool->mutex);
-            uPortLog("U_MEM_POOL: Allocated pool %p\n", pMemPool->ppBlk);
-            err = (int32_t)U_ERROR_COMMON_SUCCESS;
-        }
+        err = uPortMutexCreate(&pMemPool->mutex);
     }
 
     return err;
@@ -117,14 +125,11 @@ void uMemPoolDeinit(uMemPoolDesc_t *pMemPool)
     if ((pMemPool != NULL) && (pMemPool->mutex != NULL)) {
 
         U_PORT_MUTEX_LOCK(pMemPool->mutex);
-        // run through the pool to free
-        for (int32_t i = 0; ((i < pMemPool->currBlkCount) && pMemPool->ppBlk[i]); ) {
-            uPortLog("U_MEM_POOL: Freeing block address %p\n", pMemPool->ppBlk[i]);
-            free(pMemPool->ppBlk[i]);
-            i += pMemPool->cfgedBlkCount;
+
+        if (pMemPool->pBuffer != NULL) {
+            uPortLog("U_MEM_POOL: Freeing buffer: %p\n", pMemPool->pBuffer);
+            free(pMemPool->pBuffer);
         }
-        uPortLog("U_MEM_POOL: Freeing pool address %p\n", pMemPool->ppBlk);
-        free(pMemPool->ppBlk);
         U_PORT_MUTEX_UNLOCK(pMemPool->mutex);
 
         uPortMutexDelete(pMemPool->mutex);
@@ -135,75 +140,40 @@ void uMemPoolDeinit(uMemPoolDesc_t *pMemPool)
 void *uMemPoolAllocMem(uMemPoolDesc_t *pMemPool)
 {
     void *pAllocMem = NULL;
-    int32_t i;
-    uint8_t *pBuff;
-    bool noMemAvailable = false;
 
     if ((pMemPool != NULL) && (pMemPool->mutex != NULL)) {
 
         U_PORT_MUTEX_LOCK(pMemPool->mutex);
+
+        // If this is the first call to uMemPoolAllocMem we need to
+        // allocate the buffer
+        if (pMemPool->pBuffer == NULL) {
+            pMemPool->pBuffer = (uint8_t *)malloc(U_BUFFER_SIZE(pMemPool));
+            uPortLog("U_MEM_POOL: Allocated buffer %p\n", pMemPool->pBuffer);
+            if (pMemPool->pBuffer != NULL) {
+                initFreeList(pMemPool);
+            }
+        }
+
         // Grab the free memory available in the free list
-        if (pMemPool->pFreedList) {
-            pAllocMem = pMemPool->pFreedList;
-            pMemPool->pFreedList = pMemPool->pFreedList->pNext;
-        } else {
-            pMemPool->currBlkIndex++;
-            // Check if all the blocks are consumed
-            // in this case, pool is reallocated to store more blocks.
-            if (pMemPool->currBlkIndex == pMemPool->currBlkCount) {
-
-                //increment the current block count in the granularity
-                // of configured factor
-                pMemPool->currBlkCount += pMemPool->cfgedBlkCount;
-
-                if (pMemPool->currBlkCount <= pMemPool->maxBlkCount) {
-
-                    // reallocate the pool to include more blocks
-                    // where each block is of elementSize
-                    pMemPool->ppBlk = (uint8_t **)resizePool(pMemPool,
-                                                             (uint32_t)(sizeof(uint8_t *) * pMemPool->currBlkCount));
-                    if (pMemPool->ppBlk == NULL) {
-                        noMemAvailable = true;
-                    }
-                    uPortLog("U_MEM_POOL: Resized pool %p to allot more blocks\n", pMemPool->ppBlk);
-                } else {
-                    noMemAvailable = true;
-                }
-            }
-
-            if (noMemAvailable == false) {
-                if (pMemPool->ppBlk[pMemPool->currBlkIndex] == NULL) {
-
-                    int32_t blkCount = pMemPool->currBlkCount - pMemPool->currBlkIndex;
-
-                    // Allocate memory for the total number of blocks
-                    // in one shot and then subdivide it
-                    //lint -e{647} suppress suspicious truncation
-                    pBuff = (uint8_t *)malloc(blkCount * pMemPool->elementSize);
-
-                    for (i = 0; i < pMemPool->currBlkCount && pBuff; i++) {
-                        //lint -e{679} suppress suspicious truncation in arithmetic expression combining with pointer.
-                        pMemPool->ppBlk[pMemPool->currBlkIndex + i] = pBuff + (i * pMemPool->elementSize);
-                    }
-                }
-                pAllocMem = pMemPool->ppBlk[pMemPool->currBlkIndex];
-            } else {
-                // if we reach here, subsequent alloc will succeed
-                // only if freed memory is present in the free list.
-                pMemPool->currBlkCount -= pMemPool->cfgedBlkCount;
-                pMemPool->currBlkIndex--;
-            }
+        if (pMemPool->pFreeList) {
+            pAllocMem = pMemPool->pFreeList;
+            pMemPool->pFreeList = pMemPool->pFreeList->pNext;
+            pMemPool->usedBlockCount++;
         }
 
-        if (noMemAvailable == false) {
-            // zeroize the contents
-            //lint -e{668} suppress Possibly passing a. null pointer to function memset
-            memset(pAllocMem, 0, pMemPool->elementSize);
+#if U_MEMPOOL_USE_BUF_FENCE
+        // Add the memory fence right after the user allocation
+        if (pAllocMem != NULL) {
+            uint8_t *pDataPtr = (uint8_t *)pAllocMem;
+            uint16_t *pMagic = (uint16_t *)&pDataPtr[pMemPool->blockSize];
+            *pMagic = U_FENCE_MAGIC;
         }
+#endif
 
         U_PORT_MUTEX_UNLOCK(pMemPool->mutex);
     }
-    //lint -e{429} suppress pBuff (line 148) not been freed
+
     return pAllocMem;
 }
 
@@ -213,10 +183,25 @@ void uMemPoolFreeMem(uMemPoolDesc_t *pMemPool, void *pMem)
 
     if ((pMemPool != NULL) && (pMem != NULL) && (pMemPool->mutex != NULL)) {
         U_PORT_MUTEX_LOCK(pMemPool->mutex);
+        // Make sure the memory segment is within our buffer
+        uPortLog("pMem: %08x\n", pMem);
+        U_ASSERT((uint8_t *)pMem >= pMemPool->pBuffer);
+        U_ASSERT((uint8_t *)pMem < (pMemPool->pBuffer + U_BUFFER_SIZE(pMemPool)));
+
+#if U_MEMPOOL_USE_BUF_FENCE
+        // Validate the magic number
+        uint8_t *pDataPtr = (uint8_t *)pMem;
+        uint16_t *pMagic = (uint16_t *)&pDataPtr[pMemPool->blockSize];
+        U_ASSERT(*pMagic == U_FENCE_MAGIC);
+        // Invalidate
+        *pMagic = 0;
+#endif
+
         // Add the freed memory reference before the head
-        pMemNext = pMemPool->pFreedList;
-        pMemPool->pFreedList = (uMemPoolFreedList_t *)pMem;
-        pMemPool->pFreedList->pNext = (uMemPoolFreedList_t *)pMemNext;
+        pMemNext = pMemPool->pFreeList;
+        pMemPool->pFreeList = (uMemPoolFreeList_t *)pMem;
+        pMemPool->pFreeList->pNext = (uMemPoolFreeList_t *)pMemNext;
+        pMemPool->usedBlockCount--;
         U_PORT_MUTEX_UNLOCK(pMemPool->mutex);
     }
 }
@@ -225,10 +210,7 @@ void uMemPoolFreeAllMem(uMemPoolDesc_t *pMemPool)
 {
     if ((pMemPool != NULL) && (pMemPool->mutex != NULL)) {
         U_PORT_MUTEX_LOCK(pMemPool->mutex);
-        freeAllMem(pMemPool);
-        for (int32_t i = 0; (i < pMemPool->currBlkCount && (pMemPool->ppBlk != NULL)); i++) {
-            memset(pMemPool->ppBlk[i], 0, pMemPool->elementSize);
-        }
+        initFreeList(pMemPool);
         U_PORT_MUTEX_UNLOCK(pMemPool->mutex);
     }
 }
