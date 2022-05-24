@@ -91,22 +91,37 @@
  * -------------------------------------------------------------- */
 
 // Cellular network configuration:
-// Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
-// chosen from the values in cell/api/u_cell_module_type.h
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                        U_CELL_MODULE_TYPE_SARA_R5,
-                                                        NULL, // SIM pin
-                                                        NULL, // APN: NULL to accept default.
-                                                        240, // Connection timeout in seconds
-                                                        0, // The UART HW block to use.
-                                                        -1, // U_CFG_APP_PIN_CELL_TXD
-                                                        -1, // U_CFG_APP_PIN_CELL_RXD
-                                                        -1, // U_CFG_APP_PIN_CELL_CTS
-                                                        -1, // U_CFG_APP_PIN_CELL_RTS
-                                                        -1, // U_CFG_APP_PIN_CELL_ENABLE_POWER
-                                                        -1, // U_CFG_APP_PIN_CELL_PWR_ON
-                                                        -1  // U_CFG_APP_PIN_CELL_VINT
-                                                        };
+
+static uDeviceCfg_t gDeviceCfgCell = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CELL_MODULE_TYPE_SARA_R5,
+            .pSimPinCode = NULL
+            .pinEnablePower = -1,
+            .pinPwrOn = -1,
+            .pinVInt = -1
+        }
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = 0,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = -1,
+            .pinRxd = -1,
+            .pinCts = -1,
+            .pinRts = -1
+        }
+    }
+};
+
+static uNetworkCfgCell_t gDeviceNetworkCfgCell = {
+    .type = U_NETWORK_TYPE_CELL,
+    .pApn = NULL,
+    .timeoutSeconds = 240
+};
+
 
 // MQTT thread handle
 static uPortTaskHandle_t mqttThreadHandle;
@@ -114,8 +129,8 @@ static uPortTaskHandle_t mqttThreadHandle;
 // Socket thread handle
 static uPortTaskHandle_t socketThreadHandle;
 
-// Network handle
-int32_t networkHandle;
+// Device handle
+uDeviceHandle_t gDeviceHandle;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -406,25 +421,24 @@ U_PORT_TEST_FUNCTION("[exampleUart]", "uartTestExample")
 {
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a network instance, in this case of type cell
+    // Add a device with network, in this case of type cell
     // since that's what we have configuration information
     // for above
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    uDeviceOpen(gDeviceCfgCell, &gDeviceHandle);
 
     // Bring up the network
     uPortLog("Bringing up the network...\n");
-    if ((networkHandle > 0) && (uNetworkUp(networkHandle) == 0)) {
-
+    if ((gDeviceHandle > 0) &&
+        (uNetworkInterfaceUp(gDeviceHandle, U_NETWORK_TYPE_CELL, gDeviceNetworkCfgCell) == 0)) {
         // Start threads
         StartThreads();
     } else {
         uPortLog("Unable to bring up the network!\n");
         // Calling these will also deallocate the network handle
-        uNetworkDeinit();
+        uDeviceClose(gDeviceHandle);
+        uDeviceDeinit();
         uPortDeinit();
     }
 

@@ -357,7 +357,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     // Add the networks that support sockets
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
-        if ((gUNetworkTestCfg[x].pDeviceCfg->deviceType != U_DEVICE_TYPE_NONE) &&
+        if (uNetworkTestDeviceValidForOpen(x) &&
             U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
             uPortLog("U_NETWORK_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -462,12 +462,17 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
                 U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
                                                          gUNetworkTestCfg[x].type) == 0);
-                U_PORT_TEST_ASSERT(uDeviceClose(gUNetworkTestCfg[x].devHandle) == 0);
-                gUNetworkTestCfg[x].devHandle = NULL;
             }
         }
     }
 
+    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+        if (gUNetworkTestCfg[x].devHandle != NULL) {
+            uPortLog("U_NETWORK_TEST: closing %s...\n",
+                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+            U_PORT_TEST_ASSERT(uNetworkTestClose(x) == 0);
+        }
+    }
     uDeviceDeinit();
     uPortDeinit();
 
@@ -521,7 +526,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
     // Add a BLE network
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
-        if ((gUNetworkTestCfg[x].pDeviceCfg->deviceType != U_DEVICE_TYPE_NONE) &&
+        if (uNetworkTestDeviceValidForOpen(x) &&
             (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_BLE)) {
             uPortLog("U_NETWORK_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -653,7 +658,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
                 U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
                                                          gUNetworkTestCfg[x].type) == 0);
-                U_PORT_TEST_ASSERT(uDeviceClose(gUNetworkTestCfg[x].devHandle) == 0);
+                U_PORT_TEST_ASSERT(uNetworkTestClose(x) == 0);
                 gUNetworkTestCfg[x].devHandle = NULL;
             }
         }
@@ -708,12 +713,12 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Add the networks that support location
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
-        if ((*((uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+        if (uNetworkTestDeviceValidForOpen(x) &&
             U_NETWORK_TEST_TYPE_HAS_LOCATION(gUNetworkTestCfg[x].type)) {
             uPortLog("U_NETWORK_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -723,14 +728,12 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
             // hence we capture the cellular network handle here and
             // modify the GNSS configuration to use it before we add
             // the GNSS network
-            uNetworkTestGnssAtConfiguration(devHandle,
-                                            gUNetworkTestCfg[x].pConfiguration);
+            uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
 #endif
-            errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                    gUNetworkTestCfg[x].pConfiguration,
+            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
             U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
-            if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
+            if (gUNetworkTestCfg[x].pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
                 devHandle = gUNetworkTestCfg[x].devHandle;
                 (void)devHandle; // Will be unused when U_CFG_APP_GNSS_UART > 0
             }
@@ -748,7 +751,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
 
                 uPortLog("U_NETWORK_TEST: bringing up %s...\n",
                          gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(uNetworkUp(devHandle) == 0);
+                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                       pNetworkCfg->type,
+                                                       pNetworkCfg->pNetworkCfg) == 0);
                 if (gpULocationTestCfg[gUNetworkTestCfg[x].type]->numEntries > 0) {
                     // Just take the first one, we don't care which as this
                     // is a network test not a location test
@@ -801,12 +806,19 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
             if (gUNetworkTestCfg[x].devHandle != NULL) {
                 uPortLog("U_NETWORK_TEST: taking down %s...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].devHandle) == 0);
+                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
+                                                         gUNetworkTestCfg[x].type) == 0);
             }
         }
     }
 
-    uNetworkDeinit();
+    for (int32_t x = (int32_t)gUNetworkTestCfgSize - 1; x >= 0; x--) {
+        if (gUNetworkTestCfg[x].devHandle != NULL) {
+            U_PORT_TEST_ASSERT(uNetworkTestClose(x) == 0);
+            gUNetworkTestCfg[x].devHandle = NULL;
+        }
+    }
+    uDeviceDeinit();
     uPortDeinit();
 
 #ifndef __XTENSA__

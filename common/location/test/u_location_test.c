@@ -116,33 +116,29 @@ static void stdPreamble()
 #endif
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Add each network type if its not already been added
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (gUNetworkTestCfg[x].devHandle == NULL) {
-            if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
-                uPortLog("U_LOCATION_TEST: adding %s network...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+        if (uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_LOCATION_TEST: adding %s network...\n",
+                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)
-                // If there is no GNSS UART then any GNSS chip must
-                // be connected via the cellular module's AT interface
-                // hence we capture the cellular network handle here and
-                // modify the GNSS configuration to use it before we add
-                // the GNSS network
-                uNetworkTestGnssAtConfiguration(devHandle,
-                                                gUNetworkTestCfg[x].pConfiguration);
+            // If there is no GNSS UART then any GNSS chip must
+            // be connected via the cellular module's AT interface
+            // hence we capture the cellular network handle here and
+            // modify the GNSS configuration to use it before we add
+            // the GNSS network
+            uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
 #endif
-                errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                        gUNetworkTestCfg[x].pConfiguration,
-                                        &gUNetworkTestCfg[x].devHandle);
-                U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
+            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
+                                    &gUNetworkTestCfg[x].devHandle);
+            U_PORT_TEST_ASSERT_EQUAL((int32_t)U_ERROR_COMMON_SUCCESS, errorCode);
 #if (U_CFG_APP_GNSS_UART < 0)
-                if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                    devHandle = gUNetworkTestCfg[x].devHandle;
-                }
-#endif
+            if (gUNetworkTestCfg[x].pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
+                devHandle = gUNetworkTestCfg[x].devHandle;
             }
+#endif
         }
     }
 
@@ -151,7 +147,9 @@ static void stdPreamble()
         if (gUNetworkTestCfg[x].devHandle != NULL) {
             uPortLog("U_LOCATION_TEST: bringing up %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkUp(gUNetworkTestCfg[x].devHandle) == 0);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceUp(gUNetworkTestCfg[x].devHandle,
+                                                   gUNetworkTestCfg[x].type,
+                                                   gUNetworkTestCfg[x].pNetworkCfg) == 0);
         }
     }
 }
@@ -507,9 +505,9 @@ U_PORT_TEST_FUNCTION("[location]", "locationCleanUp")
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
     for (size_t y = 0; y < gUNetworkTestCfgSize; y++) {
-        gUNetworkTestCfg[y].devHandle = NULL;
+        uNetworkTestClose(y);
     }
-    uNetworkDeinit();
+    uDeviceDeinit();
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {

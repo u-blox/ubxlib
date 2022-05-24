@@ -45,6 +45,7 @@
 //lint -efile(766, u_port.h) Suppress header file not used, which
 // is true if U_CELL_TEST_CFG_APN is not defined
 #include "u_port.h" // For U_PORT_STRINGIFY_QUOTED()
+#include "u_port_debug.h"
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
 #include "u_cell_module_type.h"
@@ -361,24 +362,110 @@ const char *gpUNetworkTestTypeName[] = {"none",     // U_NETWORK_TYPE_NONE
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+static bool validNetwork(int32_t index)
+{
+    bool isOk;
+    switch (gUNetworkTestCfg[index].type) {
+        case U_NETWORK_TYPE_BLE:
+            isOk = gDeviceNetworkCfgBle.type != U_NETWORK_TYPE_NONE;
+            break;
+        case U_NETWORK_TYPE_CELL:
+            isOk = gDeviceNetworkCfgCell.type != U_NETWORK_TYPE_NONE;
+            break;
+        case U_NETWORK_TYPE_WIFI:
+            isOk = gDeviceNetworkCfgWifi.type != U_NETWORK_TYPE_NONE;
+            break;
+        case U_NETWORK_TYPE_GNSS:
+            isOk = gDeviceNetworkCfgGnss.type != U_NETWORK_TYPE_NONE;
+            break;
+        default:
+            isOk = false;
+            break;
+    }
+    return isOk;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Update a GNSS network configuration for use with the AT interface.
-void uNetworkTestGnssAtConfiguration(uDeviceHandle_t devHandleAt,
-                                     void *pGnssConfiguration)
+// Update a GNSS network configuration for use with the CELL AT interface.
+void uNetworkTestGnssAtCfg(uDeviceHandle_t devHandleAt, uDeviceCfg_t *pUDeviceCfg)
 {
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
     if ((devHandleAt != NULL) &&
-        (*((uNetworkType_t *) (pGnssConfiguration)) == U_NETWORK_TYPE_GNSS)) {
-        ((uNetworkConfigurationGnss_t *) pGnssConfiguration)->transportType = U_GNSS_TRANSPORT_UBX_AT;
-        ((uNetworkConfigurationGnss_t *) pGnssConfiguration)->devHandleAt = devHandleAt;
+        (pUDeviceCfg->deviceType == U_DEVICE_TYPE_GNSS)) {
+        pUDeviceCfg->transportType = U_DEVICE_TRANSPORT_TYPE_NONE;
+        pUDeviceCfg->deviceCfg.cfgGnss.transportType = U_GNSS_TRANSPORT_UBX_AT;
+        pUDeviceCfg->deviceCfg.cfgGnss.devHandleAt = devHandleAt;
     }
 #else
-    (void) devHandleAt;
-    (void) pGnssConfiguration;
+    (void)devHandleAt;
+    (void)pUDeviceCfg;
 #endif
+}
+
+bool uNetworkTestDeviceValidForOpen(int32_t index)
+{
+    bool isOk = gUNetworkTestCfg[index].pDeviceCfg->deviceType != U_DEVICE_TYPE_NONE &&
+                validNetwork(index);
+    if (isOk) {
+        // Check if this device is already open
+        for (size_t i = 0; isOk && i < gUNetworkTestCfgSize; i++) {
+            if ((i != index) &&
+                (gUNetworkTestCfg[index].pDeviceCfg == gUNetworkTestCfg[i].pDeviceCfg) &&
+                gUNetworkTestCfg[i].devHandle != NULL) {
+                // Was open
+                isOk = false;
+            }
+        }
+    }
+    return isOk;
+}
+
+int32_t uNetworkTestClose(int32_t index)
+{
+    // Close the device at the specified index.
+    // Find possible multiple use of this device and
+    // mark them as closed as well.
+    int32_t errorCode = U_ERROR_COMMON_SUCCESS;
+    uPortLogF("uNetworkTestClose %d\n", index);
+    if (gUNetworkTestCfg[index].devHandle != NULL) {
+        errorCode = uDeviceClose(gUNetworkTestCfg[index].devHandle);
+        if (errorCode == 0) {
+            for (size_t i = 0; i < gUNetworkTestCfgSize; i++) {
+                if ((i != index) &&
+                    (gUNetworkTestCfg[index].pDeviceCfg == gUNetworkTestCfg[i].pDeviceCfg)) {
+                    gUNetworkTestCfg[i].devHandle = NULL;
+                }
+            }
+            gUNetworkTestCfg[index].devHandle = NULL;
+        }
+    }
+    return errorCode;
+}
+
+int32_t uNetworkTestGetModuleType(int32_t index)
+{
+    int32_t type = 0;
+    switch (gUNetworkTestCfg[index].pDeviceCfg->deviceType) {
+        case U_DEVICE_TYPE_CELL:
+            type = gUNetworkTestCfg[index].pDeviceCfg->deviceCfg.cfgCell.moduleType;
+            break;
+
+        case U_DEVICE_TYPE_GNSS:
+            type = gUNetworkTestCfg[index].pDeviceCfg->deviceCfg.cfgGnss.moduleType;
+            break;
+
+        case U_DEVICE_TYPE_SHORT_RANGE:
+            type = gUNetworkTestCfg[index].pDeviceCfg->deviceCfg.cfgSho.moduleType;
+            break;
+
+        default:
+            type = (int32_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL;
+            break;
+    }
+    return type;
 }
 
 // End of file

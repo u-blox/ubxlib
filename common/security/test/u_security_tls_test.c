@@ -249,12 +249,12 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Add each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
-        if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+        if (uNetworkTestDeviceValidForOpen(x) &&
             (U_NETWORK_TEST_TYPE_HAS_SECURE_SOCK(gUNetworkTestCfg[x].type))) {
             uPortLog("U_SECURITY_TLS_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -264,13 +264,11 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
             // hence we capture the cellular network handle here and
             // modify the GNSS configuration to use it before we add
             // the GNSS network
-            uNetworkTestGnssAtConfiguration(devHandle,
-                                            gUNetworkTestCfg[x].pConfiguration);
+            uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
 #endif
-            errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                    gUNetworkTestCfg[x].pConfiguration,
+            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
-            U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
+            U_PORT_TEST_ASSERT_EQUAL((int32_t)U_ERROR_COMMON_SUCCESS, errorCode);
             if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
                 devHandle = gUNetworkTestCfg[x].devHandle;
                 (void)devHandle; // Will be unused when U_CFG_APP_GNSS_UART > 0
@@ -292,7 +290,9 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
 
             uPortLog("U_SECURITY_TLS_TEST: bringing up %s...\n",
                      gpUNetworkTestTypeName[pNetworkCfg->type]);
-            U_PORT_TEST_ASSERT(uNetworkUp(devHandle) == 0);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                   pNetworkCfg->type,
+                                                   pNetworkCfg->pNetworkCfg) == 0);
 
             // Check if the client certificate is already
             // stored on the module
@@ -468,11 +468,13 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         if (gUNetworkTestCfg[x].devHandle != NULL) {
             uPortLog("U_SECURITY_TLS_TEST: taking down %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].devHandle) == 0);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
+                                                     gUNetworkTestCfg[x].type) == 0);
+            U_PORT_TEST_ASSERT(uDeviceClose(gUNetworkTestCfg[x].devHandle) == 0);
         }
     }
 
-    uNetworkDeinit();
+    uDeviceDeinit();
     uPortDeinit();
 
 #if !defined(__XTENSA__) && !defined(ARDUINO)
@@ -509,7 +511,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
     }
-    uNetworkDeinit();
+    uDeviceDeinit();
 
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {

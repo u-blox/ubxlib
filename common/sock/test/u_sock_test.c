@@ -427,12 +427,12 @@ static void stdPreamble()
 #endif
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Add each network type if its not already been added
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         if (gUNetworkTestCfg[x].devHandle == NULL) {
-            if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
+            if (uNetworkTestDeviceValidForOpen(x)) {
                 uPortLog("U_SOCK_TEST: adding %s network...\n",
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)
@@ -441,13 +441,11 @@ static void stdPreamble()
                 // hence we capture the cellular network handle here and
                 // modify the GNSS configuration to use it before we add
                 // the GNSS network
-                uNetworkTestGnssAtConfiguration(devHandle,
-                                                gUNetworkTestCfg[x].pConfiguration);
+                uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
 #endif
-                errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                        gUNetworkTestCfg[x].pConfiguration,
+                errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                         &gUNetworkTestCfg[x].devHandle);
-                U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
+                U_PORT_TEST_ASSERT_EQUAL((int32_t)U_ERROR_COMMON_SUCCESS, errorCode);
 #if (U_CFG_APP_GNSS_UART < 0)
                 if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
                     devHandle = gUNetworkTestCfg[x].devHandle;
@@ -468,7 +466,9 @@ static void stdPreamble()
         if (gUNetworkTestCfg[x].devHandle != NULL) {
             uPortLog("U_SOCK_TEST: bringing up %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT_EQUAL(0, uNetworkUp(gUNetworkTestCfg[x].devHandle));
+            U_PORT_TEST_ASSERT_EQUAL(0, uNetworkInterfaceUp(gUNetworkTestCfg[x].devHandle,
+                                                            gUNetworkTestCfg[x].type,
+                                                            gUNetworkTestCfg[x].pNetworkCfg));
         }
     }
 
@@ -1997,8 +1997,11 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
                              " cycling network layer before trying again...\n");
                     // Give us something to search for in the log
                     uPortLog("U_SOCK_TEST: *** WARNING *** RETRY UDP.\n");
-                    U_PORT_TEST_ASSERT(uNetworkDown(devHandle) == 0);
-                    U_PORT_TEST_ASSERT(uNetworkUp(devHandle) == 0);
+                    U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
+                                                             gUNetworkTestCfg[x].type) == 0);
+                    U_PORT_TEST_ASSERT(uNetworkInterfaceUp(gUNetworkTestCfg[x].devHandle,
+                                                           gUNetworkTestCfg[x].type,
+                                                           gUNetworkTestCfg[x].pNetworkCfg) == 0);
                     errno = 0;
                 }
             }
@@ -2243,8 +2246,11 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
                              " network layer before trying again...\n");
                     // Give us something to search for in the log
                     uPortLog("U_SOCK_TEST: *** WARNING *** RETRY UDP.\n");
-                    U_PORT_TEST_ASSERT(uNetworkDown(devHandle) == 0);
-                    U_PORT_TEST_ASSERT(uNetworkUp(devHandle) == 0);
+                    U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
+                                                             gUNetworkTestCfg[x].type) == 0);
+                    U_PORT_TEST_ASSERT(uNetworkInterfaceUp(gUNetworkTestCfg[x].devHandle,
+                                                           gUNetworkTestCfg[x].type,
+                                                           gUNetworkTestCfg[x].pNetworkCfg) == 0);
                     errno = 0;
                 }
             }
@@ -2534,9 +2540,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].devHandle = NULL;
+        uNetworkTestClose(x);
     }
-    uNetworkDeinit();
+    uDeviceDeinit();
 
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
