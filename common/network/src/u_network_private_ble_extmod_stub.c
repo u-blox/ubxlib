@@ -39,51 +39,6 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// TODO: WILL BE REMOVED.
-int32_t uNetworkInitBle(void)
-{
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-void uNetworkDeinitBle(void)
-{
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
-                       uDeviceHandle_t *pDevHandle)
-{
-    (void) pConfiguration;
-    (void) pDevHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle)
-{
-    (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
-                      const uNetworkConfigurationBle_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
-                        const uNetworkConfigurationBle_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
 int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
                                       uNetworkCfgBle_t *pCfg,
                                       bool upNotDown)

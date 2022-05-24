@@ -70,10 +70,6 @@ typedef struct {
     void *pContext;             /**< private instance data for the device. */
     const void *pNetworkCfg[U_NETWORK_TYPE_MAX_NUM]; /**< Network config for device interfaces. */
     void *pNetworkPrivate;      /**< a place to hook the network private data. */
-    int32_t netType;            /**< this is only temporarily used for
-                                     migration for the new uDevice API.
-                                     TODO: it should be removed when uNetwork
-                                     has been adjusted. */
     // Note: In the future structs of function pointers for socket, MQTT etc.
     // implementations may be added here.
 } uDeviceInstance_t;

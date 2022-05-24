@@ -61,7 +61,7 @@ void uDevicePrivateGnssDeinit()
 {
 }
 
-int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg
+int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
                               uDeviceHandle_t *pDeviceHandle)
 {
     (void) pDevCfg;

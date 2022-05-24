@@ -88,77 +88,8 @@
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
 
-/** The network configuration for BLE.
+/** Cellular device configuration used during testing.
  */
-#if U_SHORT_RANGE_TEST_BLE()
-static uNetworkConfigurationBle_t gConfigurationBle = {
-# ifdef U_CFG_BLE_MODULE_INTERNAL
-    .type = U_NETWORK_TYPE_BLE,
-    .module = (int32_t)U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
-# else
-    .type = U_NETWORK_TYPE_BLE,
-    .module = U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-# endif
-    .uart = U_CFG_APP_SHORT_RANGE_UART,
-    .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
-    .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
-    .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-    .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
-    .role = U_CFG_APP_SHORT_RANGE_ROLE, // Peripheral
-    .spsServer = true // Enable sps server
-};
-#else
-static uNetworkConfigurationBle_t gConfigurationBle = { .type = U_NETWORK_TYPE_NONE };
-#endif
-
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
-/** The network configuration for cellular.
- */
-static uNetworkConfigurationCell_t gConfigurationCell = {
-    .type = U_NETWORK_TYPE_CELL,
-    .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
-    .pSimPinCode = U_CELL_TEST_CFG_SIM_PIN,
-# ifdef U_CELL_TEST_CFG_APN
-    .pApn = U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
-# else
-    .pApn = NULL,
-# endif
-    .timeoutSeconds = U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS,
-    .uart = U_CFG_APP_CELL_UART,
-    .pinTxd = U_CFG_APP_PIN_CELL_TXD,
-    .pinRxd = U_CFG_APP_PIN_CELL_RXD,
-    .pinCts = U_CFG_APP_PIN_CELL_CTS,
-    .pinRts = U_CFG_APP_PIN_CELL_RTS,
-    .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
-    .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
-    .pinVInt = U_CFG_APP_PIN_CELL_VINT
-};
-#else
-static uNetworkConfigurationCell_t gConfigurationCell = { .type = U_NETWORK_TYPE_NONE };
-#endif
-
-/** The network configuration for Wifi.
- */
-#if U_SHORT_RANGE_TEST_WIFI()
-static uNetworkConfigurationWifi_t gConfigurationWifi = {
-    .type = U_NETWORK_TYPE_WIFI,
-    .module = U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-    .uart = U_CFG_APP_SHORT_RANGE_UART,
-    .pinTxd = U_CFG_APP_PIN_SHORT_RANGE_TXD,
-    .pinRxd = U_CFG_APP_PIN_SHORT_RANGE_RXD,
-    .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
-    .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS,
-    .pSsid = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
-    .authentication = U_WIFI_TEST_CFG_AUTHENTICATION,
-    .pPassPhrase = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE)
-};
-#else
-static uNetworkConfigurationWifi_t gConfigurationWifi = { .type = U_NETWORK_TYPE_NONE };
-#endif
-
-
-// == Device and network configurations ==
-
 static uDeviceCfg_t gDeviceCfgCell = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
@@ -188,7 +119,9 @@ static uDeviceCfg_t gDeviceCfgCell = {
 #endif
 };
 
-static uNetworkCfgCell_t gDeviceNetworkCfgCell = {
+/** Cellular network configuration used during testing.
+ */
+static uNetworkCfgCell_t gNetworkCfgCell = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
     .type = U_NETWORK_TYPE_CELL,
@@ -203,7 +136,9 @@ static uNetworkCfgCell_t gDeviceNetworkCfgCell = {
 #endif
 };
 
-static uDeviceCfg_t gDeviceCfgShortrange = {
+/** Short range device configuration used during testing.
+ */
+static uDeviceCfg_t gDeviceCfgShortRange = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
     .deviceType = U_DEVICE_TYPE_SHORT_RANGE,
@@ -228,7 +163,9 @@ static uDeviceCfg_t gDeviceCfgShortrange = {
 #endif
 };
 
-static uNetworkCfgWifi_t gDeviceNetworkCfgWifi = {
+/** Wifi network configuration used during testing.
+ */
+static uNetworkCfgWifi_t gNetworkCfgWifi = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #if U_SHORT_RANGE_TEST_WIFI()
     .type = U_NETWORK_TYPE_WIFI,
@@ -240,7 +177,9 @@ static uNetworkCfgWifi_t gDeviceNetworkCfgWifi = {
 #endif
 };
 
-static uNetworkCfgBle_t gDeviceNetworkCfgBle = {
+/** BLE network configuration used during testing.
+ */
+static uNetworkCfgBle_t gNetworkCfgBle = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #if U_SHORT_RANGE_TEST_BLE()
     .type = U_NETWORK_TYPE_BLE,
@@ -251,6 +190,8 @@ static uNetworkCfgBle_t gDeviceNetworkCfgBle = {
 #endif
 };
 
+/** GNSS device configuration used during testing.
+ */
 static uDeviceCfg_t gDeviceCfgGnss = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
@@ -280,7 +221,9 @@ static uDeviceCfg_t gDeviceCfgGnss = {
 #endif
 };
 
-static uNetworkCfgGnss_t gDeviceNetworkCfgGnss = {
+/** GNSS network configuration used during testing.
+ */
+static uNetworkCfgGnss_t gNetworkCfgGnss = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
     .type = U_NETWORK_TYPE_GNSS
@@ -293,47 +236,26 @@ static uNetworkCfgGnss_t gDeviceNetworkCfgGnss = {
  * VARIABLES
  * -------------------------------------------------------------- */
 
-#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-/** The network configuration for GNSS.
- */
-static uNetworkConfigurationGnss_t gConfigurationGnss = {
-    U_NETWORK_TYPE_GNSS,
-    U_CFG_TEST_GNSS_MODULE_TYPE,
-    U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-    U_GNSS_TRANSPORT_NMEA_UART,
-    U_CFG_APP_GNSS_UART,
-    U_CFG_APP_PIN_GNSS_TXD,
-    U_CFG_APP_PIN_GNSS_RXD,
-    U_CFG_APP_PIN_GNSS_CTS,
-    U_CFG_APP_PIN_GNSS_RTS,
-    0,
-    U_CFG_APP_CELL_PIN_GNSS_POWER,
-    U_CFG_APP_CELL_PIN_GNSS_DATA_READY
-};
-#else
-static uNetworkConfigurationGnss_t gConfigurationGnss = { .type = U_NETWORK_TYPE_NONE };
-#endif
-
 /** All of the information for the underlying network
  * types as an array.  Order is important: CELL must come before
  * GNSS so that the cellular handle can be passed on to GNSS.
  */
 uNetworkTestCfg_t gUNetworkTestCfg[] = {
     {
-        NULL, U_NETWORK_TYPE_BLE, (void *) &gConfigurationBle,
-        &gDeviceCfgShortrange, (void *) &gDeviceNetworkCfgBle
+        NULL, U_NETWORK_TYPE_BLE, &gDeviceCfgShortRange,
+        (void *) &gNetworkCfgBle
     },
     {
-        NULL, U_NETWORK_TYPE_CELL, (void *) &gConfigurationCell,
-        &gDeviceCfgCell, (void *) &gDeviceNetworkCfgCell
+        NULL, U_NETWORK_TYPE_CELL, &gDeviceCfgCell,
+        (void *) &gNetworkCfgCell
     },
     {
-        NULL, U_NETWORK_TYPE_WIFI, (void *) &gConfigurationWifi,
-        &gDeviceCfgShortrange, (void *) &gDeviceNetworkCfgWifi
+        NULL, U_NETWORK_TYPE_WIFI, &gDeviceCfgShortRange,
+        (void *) &gNetworkCfgWifi
     },
     {
-        NULL, U_NETWORK_TYPE_GNSS, (void *) &gConfigurationGnss,
-        &gDeviceCfgGnss, (void *) &gDeviceNetworkCfgGnss
+        NULL, U_NETWORK_TYPE_GNSS, &gDeviceCfgGnss,
+        (void *) &gNetworkCfgGnss
     }
 };
 
@@ -367,16 +289,16 @@ static bool validNetwork(int32_t index)
     bool isOk;
     switch (gUNetworkTestCfg[index].type) {
         case U_NETWORK_TYPE_BLE:
-            isOk = gDeviceNetworkCfgBle.type != U_NETWORK_TYPE_NONE;
+            isOk = gNetworkCfgBle.type != U_NETWORK_TYPE_NONE;
             break;
         case U_NETWORK_TYPE_CELL:
-            isOk = gDeviceNetworkCfgCell.type != U_NETWORK_TYPE_NONE;
+            isOk = gNetworkCfgCell.type != U_NETWORK_TYPE_NONE;
             break;
         case U_NETWORK_TYPE_WIFI:
-            isOk = gDeviceNetworkCfgWifi.type != U_NETWORK_TYPE_NONE;
+            isOk = gNetworkCfgWifi.type != U_NETWORK_TYPE_NONE;
             break;
         case U_NETWORK_TYPE_GNSS:
-            isOk = gDeviceNetworkCfgGnss.type != U_NETWORK_TYPE_NONE;
+            isOk = gNetworkCfgGnss.type != U_NETWORK_TYPE_NONE;
             break;
         default:
             isOk = false;

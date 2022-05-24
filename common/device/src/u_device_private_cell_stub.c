@@ -61,7 +61,7 @@ void uDevicePrivateCellDeinit()
 {
 }
 
-int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg
+int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
                               uDeviceHandle_t *pDeviceHandle)
 {
     (void) pDevCfg;

@@ -55,7 +55,6 @@
 #include "u_wifi.h"
 
 #include "u_network.h"
-#include "u_network_private_short_range.h"
 #include "u_network_config_wifi.h"
 #include "u_network_private_wifi.h"
 
@@ -63,16 +62,9 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_NETWORK_PRIVATE_WIFI_MAX_NUM
-# define U_NETWORK_PRIVATE_WIFI_MAX_NUM 1
-#endif
-
 #ifndef U_NETWORK_PRIVATE_WIFI_NETWORK_TIMEOUT_SEC
 # define U_NETWORK_PRIVATE_WIFI_NETWORK_TIMEOUT_SEC 5
 #endif
-
-#define U_SHORT_RANGE_AUTH_OPEN 1
-#define U_SHORT_RANGE_AUTH_WPA_PSK 2
 
 //lint -esym(767, LOG_TAG) Suppress LOG_TAG defined differently in another module
 //lint -esym(750, LOG_TAG) Suppress LOG_TAG not referenced
@@ -81,15 +73,6 @@
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-
-// TODO: I guess this is replaced by a uDevicePrivateWifiInstance_t
-// structure (with reduced contents) in u_device_private_wifi.h, as
-// the structure will be hung off the uDevice structure?
-typedef struct {
-    uDeviceHandle_t devHandle;      /**< The u-blox device devHandle. */
-    uPortQueueHandle_t statusQueue; /**< Message queue used for wifi connection
-                                         and network status events. */
-} uNetworkPrivateWifiInstance_t;
 
 typedef enum {
     U_MSG_WIFI_CONNECT,
@@ -107,70 +90,9 @@ typedef struct {
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// TODO: I guess this shouldn't be required in the end as this will
-// be hung off the uDevice structure?
-/** Array to keep track of the instances.
- */
-static uNetworkPrivateWifiInstance_t gInstance[U_NETWORK_PRIVATE_WIFI_MAX_NUM];
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-
-static uNetworkPrivateWifiInstance_t *pGetFree()
-{
-    uNetworkPrivateWifiInstance_t *pFree = NULL;
-
-    for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
-         (pFree == NULL); x++) {
-        if (gInstance[x].devHandle == NULL) {
-            pFree = &(gInstance[x]);
-        }
-    }
-
-    return pFree;
-}
-
-// Find the given instance in the list.
-static uNetworkPrivateWifiInstance_t *pGetInstance(uDeviceHandle_t devHandle)
-{
-    uNetworkPrivateWifiInstance_t *pInstance = NULL;
-
-    // Find the devHandle in the list
-    for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
-         (pInstance == NULL); x++) {
-        if (gInstance[x].devHandle == devHandle) {
-            pInstance = &(gInstance[x]);
-        }
-    }
-
-    return pInstance;
-}
-
-static void clearInstance(uNetworkPrivateWifiInstance_t *pInstance)
-{
-    pInstance->devHandle = NULL;
-    pInstance->statusQueue = NULL;
-}
-
-// Parse a int32_t value to uWifiAuth_t
-// Returns 0 on success, -1 on failure
-static int32_t parseAuthentication(int32_t value, uWifiAuth_t *pDstAuth)
-{
-    switch (value) {
-        case U_SHORT_RANGE_AUTH_OPEN:
-            *pDstAuth = U_WIFI_AUTH_OPEN;
-            break;
-
-        case U_SHORT_RANGE_AUTH_WPA_PSK:
-            *pDstAuth = U_WIFI_AUTH_WPA_PSK;
-            break;
-
-        default:
-            return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-    }
-    return (int32_t)U_ERROR_COMMON_SUCCESS;
-}
 
 static void wifiConnectionCallback(uDeviceHandle_t devHandle,
                                    int32_t connId,
@@ -184,10 +106,8 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
     (void)connId;
     (void)channel;
     (void)pBssid;
-    uNetworkPrivateWifiInstance_t *pInstance;
-    pInstance = (uNetworkPrivateWifiInstance_t *)pCallbackParameter;
-    uPortQueueHandle_t queueHandle = pInstance ? pInstance->statusQueue : U_DEVICE_INSTANCE(
-                                         devHandle)->pNetworkPrivate;
+    (void)pCallbackParameter;
+    uPortQueueHandle_t queueHandle = U_DEVICE_INSTANCE(devHandle)->pNetworkPrivate;
 
     uStatusMessage_t msg = {
         .msgType = (status == U_WIFI_CON_STATUS_DISCONNECTED) ? U_MSG_WIFI_DISCONNECT : U_MSG_WIFI_CONNECT,
@@ -229,10 +149,8 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
 {
     (void)devHandle;
     (void)interfaceType;
-    uNetworkPrivateWifiInstance_t *pInstance;
-    pInstance = (uNetworkPrivateWifiInstance_t *)pCallbackParameter;
-    uPortQueueHandle_t queueHandle = pInstance ? pInstance->statusQueue : U_DEVICE_INSTANCE(
-                                         devHandle)->pNetworkPrivate;
+    (void)pCallbackParameter;
+    uPortQueueHandle_t queueHandle = U_DEVICE_INSTANCE(devHandle)->pNetworkPrivate;
 
 #if !U_CFG_OS_CLIB_LEAKS
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
@@ -335,200 +253,6 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-
-// TODO: WILL BE REMOVED.
-// Initialise the network API for Wifi.
-int32_t uNetworkInitWifi(void)
-{
-    int32_t errorCode = uNetworkInitShortRange();
-    if (errorCode >= 0) {
-        errorCode = uWifiInit();
-    }
-
-    for (size_t x = 0; x < sizeof(gInstance) / sizeof(gInstance[0]); x++) {
-        clearInstance(&gInstance[x]);
-    }
-
-    return errorCode;
-}
-
-// TODO: WILL BE REMOVED.
-// Deinitialise the Wifi network API.
-void uNetworkDeinitWifi(void)
-{
-    uWifiDeinit();
-    uNetworkDeinitShortRange();
-}
-
-// TODO: WILL BE REMOVED: the functionality will be in
-// uDevicePrivateAddShortRange() and the "up" part of
-// uNetworkChangeStateWifi().
-int32_t uNetworkAddWifi(const uNetworkConfigurationWifi_t *pConfiguration,
-                        uDeviceHandle_t *pDevHandle)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-    uNetworkPrivateWifiInstance_t *pInstance;
-    const uShortRangeConfig_t shoConfig = {
-        .module = pConfiguration->module,
-        .uart = pConfiguration->uart,
-        .pinTxd = pConfiguration->pinTxd,
-        .pinRxd = pConfiguration->pinRxd,
-        .pinCts = pConfiguration->pinCts,
-        .pinRts = pConfiguration->pinRts
-    };
-
-    // Check that the module supports Wifi
-    const uShortRangeModuleInfo_t *pModuleInfo;
-    pModuleInfo = uShortRangeGetModuleInfo(pConfiguration->module);
-    if (!pModuleInfo) {
-        return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    }
-    if (!pModuleInfo->supportsWifi) {
-        return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-    }
-
-    pInstance = pGetFree();
-    if (pInstance != NULL) {
-        errorCode = uNetworkAddShortRange(U_NETWORK_TYPE_WIFI, &shoConfig, pDevHandle);
-
-        if (errorCode >= 0) {
-            pInstance->devHandle = *pDevHandle;
-        }
-
-        if (errorCode >= 0) {
-            errorCode = uPortQueueCreate(2, sizeof(uStatusMessage_t), &pInstance->statusQueue);
-        }
-
-        if (errorCode >= 0) {
-            errorCode = uWifiSetConnectionStatusCallback(pInstance->devHandle,
-                                                         wifiConnectionCallback,
-                                                         pInstance);
-        }
-
-        if (errorCode < 0) {
-            // Something went wrong - cleanup...
-            if (pInstance->statusQueue) {
-                uPortQueueDelete(pInstance->statusQueue);
-                pInstance->statusQueue = NULL;
-            }
-
-            if (pInstance->devHandle != NULL) {
-                uNetworkRemoveShortRange(pInstance->devHandle);
-            }
-            clearInstance(pInstance);
-        }
-    }
-
-    return errorCode;
-}
-
-// TODO: WILL BE REMOVED: the device part will be in
-// uDevicePrivateRemoveWifi() and the network part in
-// the "down" part of uNetworkChangeStateWifi().
-int32_t uNetworkRemoveWifi(uDeviceHandle_t devHandle)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uNetworkPrivateWifiInstance_t *pInstance;
-
-    // Find the instance in the list
-    pInstance = pGetInstance(devHandle);
-    if (pInstance != NULL) {
-        uWifiSetConnectionStatusCallback(pInstance->devHandle, NULL, NULL);
-        uPortQueueDelete(pInstance->statusQueue);
-        pInstance->statusQueue = NULL;
-        uNetworkRemoveShortRange(pInstance->devHandle);
-        clearInstance(pInstance);
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-    }
-
-    return errorCode;
-}
-
-// TODO: WILL BE REMOVED: the device part will be in uDevicePrivateAddWifi()
-// and the network part in the "up" part of uNetworkChangeStateWifi().
-int32_t uNetworkUpWifi(uDeviceHandle_t devHandle,
-                       const uNetworkConfigurationWifi_t *pConfiguration)
-{
-    int32_t errorCode;
-    uWifiAuth_t auth;
-    uNetworkPrivateWifiInstance_t *pInstance;
-
-    // Find the instance in the list
-    pInstance = pGetInstance(devHandle);
-    errorCode = parseAuthentication(pConfiguration->authentication, &auth);
-    if ((pInstance != NULL) && (pInstance->devHandle != NULL) &&
-        (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS)) {
-
-        // Clear status queue since we are only interested in fresh messages
-        statusQueueClear(pInstance->statusQueue);
-
-        errorCode = uWifiSetNetworkStatusCallback(pInstance->devHandle,
-                                                  wifiNetworkStatusCallback,
-                                                  pInstance);
-
-        if (errorCode >= 0) {
-            errorCode = uWifiStationConnect(pInstance->devHandle,
-                                            pConfiguration->pSsid,
-                                            (uWifiAuth_t) pConfiguration->authentication,
-                                            pConfiguration->pPassPhrase);
-        }
-
-        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-            // Wait until the network layer is up before return
-            errorCode = statusQueueWaitForWifiConnected(pInstance->statusQueue, 20);
-            if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                errorCode = statusQueueWaitForNetworkUp(pInstance->statusQueue,
-                                                        U_NETWORK_PRIVATE_WIFI_NETWORK_TIMEOUT_SEC);
-            }
-            if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
-                uNetworkDownWifi(devHandle, pConfiguration);
-            }
-        }
-
-        if (errorCode == (int32_t) U_WIFI_ERROR_ALREADY_CONNECTED_TO_SSID) {
-            // This is mainly used for test system:
-            // If we already are connected to the SSID we return success
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        }
-
-        uWifiSetNetworkStatusCallback(pInstance->devHandle, NULL, NULL);
-    }
-
-    return errorCode;
-}
-
-// TODO: WILL BE REMOVED: the functionality is in the "down" part of
-// uNetworkChangeStateWifi().
-int32_t uNetworkDownWifi(uDeviceHandle_t devHandle,
-                         const uNetworkConfigurationWifi_t *pConfiguration)
-{
-    (void) pConfiguration;
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uNetworkPrivateWifiInstance_t *pInstance;
-
-    // Find the instance in the list
-    pInstance = pGetInstance(devHandle);
-    if (pInstance != NULL && pInstance->devHandle != NULL) {
-        // Clear status queue since we are only interested in fresh messages
-        statusQueueClear(pInstance->statusQueue);
-
-        errorCode = uWifiStationDisconnect(pInstance->devHandle);
-        uPortLog("uWifiStationDisconnect: %d\n", errorCode);
-
-        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-            // Wait until the wifi have been disabled before return
-            errorCode = statusQueueWaitForWifiDisabled(pInstance->statusQueue, 5);
-        }
-
-        if (errorCode == (int32_t) U_WIFI_ERROR_ALREADY_DISCONNECTED) {
-            // This is mainly used for test system:
-            // If we already are disconnected we return success
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        }
-    }
-
-    return errorCode;
-}
 
 // Bring a Wifi interface up or take it down.
 int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,

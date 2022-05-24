@@ -35,56 +35,6 @@
 #include "u_network_config_gnss.h"
 #include "u_network_private_gnss.h"
 
-// TODO: WILL BE REMOVED.
-// TODO since we're changing things, rename this to
-// uNetworkPrivateInitGnss() for consistency?
-int32_t uNetworkInitGnss()
-{
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-// TODO since we're changing things, rename this to
-// uNetworkPrivateDeinitGnss() for consistency?
-void uNetworkDeinitGnss()
-{
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration,
-                        uDeviceHandle_t *pDevHandle)
-{
-    (void) pConfiguration;
-    (void) pDevHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkRemoveGnss(uDeviceHandle_t devHandle)
-{
-    (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkUpGnss(uDeviceHandle_t devHandle,
-                       const uNetworkConfigurationGnss_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkDownGnss(uDeviceHandle_t devHandle,
-                         const uNetworkConfigurationGnss_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO rename to uNetworkPrivateChangeStateGnss() for consistency?
 int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
                                        uNetworkCfgGnss_t *pCfg,
                                        bool upNotDown)

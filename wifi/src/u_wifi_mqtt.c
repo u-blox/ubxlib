@@ -517,7 +517,7 @@ static void edmMqttDataCallback(int32_t edmHandle, int32_t edmChannel,
 
                 uPortLog("U_WIFI_MQTT: EDM data event for channel %d\n", edmChannel);
                 if (uShortRangePktListAppend(&pMqttSession->rxPkt,
-                                                  pBufList) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                                             pBufList) == (int32_t)U_ERROR_COMMON_SUCCESS) {
                     pMqttSession->unreadMsgsCount = pMqttSession->rxPkt.pktCount;
                     // Schedule user data pDataCb
                     if (pMqttSession->pDataCb) {
@@ -1245,7 +1245,8 @@ int32_t uWifiMqttMessageRead(const uMqttClientContext_t *pContext,
 
                 memset(pMessage, 0, *pMessageSizeBytes);
                 memset(pTopicNameStr, 0, topicNameSizeBytes);
-                err = uShortRangePktListConsumePacket(&pMqttSession->rxPkt, pMessage, pMessageSizeBytes, &edmChannel);
+                err = uShortRangePktListConsumePacket(&pMqttSession->rxPkt, pMessage, pMessageSizeBytes,
+                                                      &edmChannel);
 
                 pMqttSession->unreadMsgsCount = pMqttSession->rxPkt.pktCount;
                 if (err == 0) {

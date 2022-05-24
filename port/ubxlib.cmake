@@ -128,7 +128,6 @@ u_add_module_dir(short_range ${UBXLIB_BASE}/wifi)
 u_add_source_file(short_range ${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod.c)
 u_add_source_file(short_range ${UBXLIB_BASE}/common/network/src/u_network_private_ble_intmod.c)
 u_add_source_file(short_range ${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c)
-u_add_source_file(short_range ${UBXLIB_BASE}/common/network/src/u_network_private_short_range.c)
 u_add_source_file(short_range ${UBXLIB_BASE}/common/device/src/u_device_private_short_range.c)
 # cell
 u_add_module_dir(cell ${UBXLIB_BASE}/cell)

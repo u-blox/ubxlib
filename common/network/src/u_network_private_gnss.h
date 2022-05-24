@@ -44,69 +44,6 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** TODO: WILL BE REMOVED.
- * Initialise the network API for GNSS.  Should not be
- * called if this API is already initialised.
- *
- * @return  zero on success else negative error code.
- */
-int32_t uNetworkInitGnss(void);
-
-/** TODO: WILL BE REMOVED.
- * Deinitialise the GNSS network API; should only be called
- * if this API was previously initialised.  BEFORE this is called
- * all GNSS network instances must have been removed with
- * a call to uNetworkRemoveGnss().
- */
-void uNetworkDeinitGnss(void);
-
-/** TODO: WILL BE REMOVED.
- * Add a GNSS network instance.  uNetworkInitGnss() must have
- * been called before this is called.
- *
- * @param pConfiguration   a pointer to the configuration.
- * @param[out] pDevHandle  a pointer to the output handle. Will only be set on success.
- * @return                 zero on success or negative error code on failure.
- */
-int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration,
-                        uDeviceHandle_t *pDevHandle);
-
-/** TODO: WILL BE REMOVED.
- * Remove a GNSS network instance.  It is up to the caller
- * to ensure that the network is disconnected and/or powered
- * down etc.; all this function does is remove the logical
- * instance.  uNetworkInitGnss() must have been called before
- * this is called.
- *
- * @param devHandle  the handle of the GNSS instance to remove.
- * @return           zero on success else negative error code.
- */
-int32_t uNetworkRemoveGnss(uDeviceHandle_t devHandle);
-
-/** TODO: WILL BE REMOVED.
- * Bring up the given GNSS network instance. uNetworkAddGnss()
- * must have been called first to create this instance.
- *
- * @param devHandle        the handle of the instance to bring up.
- * @param pConfiguration   a pointer to the configuration for this
- *                         instance.
- * @return                 zero on success else negative error code.
- */
-int32_t uNetworkUpGnss(uDeviceHandle_t devHandle,
-                       const uNetworkConfigurationGnss_t *pConfiguration);
-
-/** TODO: WILL BE REMOVED.
- * Take down the given GNSS network instance. uNetworkAddGnss()
- * must have been called first to create this instance.
- *
- * @param devHandle        the handle of the instance to take down.
- * @param pConfiguration   a pointer to the configuration for this
- *                         instance.
- * @return                 zero on success else negative error code.
- */
-int32_t uNetworkDownGnss(uDeviceHandle_t devHandle,
-                         const uNetworkConfigurationGnss_t *pConfiguration);
-
 /** Take up or down the given GNSS network instance. uDeviceOpen()
  * must have been called first to create the device handle.
  *

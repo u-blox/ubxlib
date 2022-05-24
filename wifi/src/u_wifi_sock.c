@@ -517,7 +517,7 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel,
         if (pSock->protocol == U_SOCK_PROTOCOL_UDP) {
 
             if (uShortRangePktListAppend(&pSock->udpPktList,
-                                              pBufList) != (int32_t)U_ERROR_COMMON_SUCCESS) {
+                                         pBufList) != (int32_t)U_ERROR_COMMON_SUCCESS) {
                 uPortLog("U_WIFI_SOCK: UDP pkt insert failed\n");
                 uShortRangePbufListFree(pBufList);
             }
@@ -1284,7 +1284,8 @@ int32_t uWifiSockReceiveFrom(uDeviceHandle_t devHandle,
     // Read the data
     if (errnoLocal == U_SOCK_ENONE) {
 
-        errnoLocal = uShortRangePktListConsumePacket(&pSock->udpPktList, (char *)pData, &dataSizeBytes, NULL);
+        errnoLocal = uShortRangePktListConsumePacket(&pSock->udpPktList, (char *)pData, &dataSizeBytes,
+                                                     NULL);
 
         if ((errnoLocal == (int32_t)U_ERROR_COMMON_NO_MEMORY) ||
             (errnoLocal == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER)) {
