@@ -38,6 +38,19 @@ extern "C" {
 # define U_PORT_UART_EVENT_QUEUE_SIZE 20
 #endif
 
+#ifndef U_PORT_UART_WRITE_TIMEOUT_MS
+/** uPortUartWrite() should always succeed in sending all characters;
+ * however, when flow control is enabled, it is possible that the
+ * receiving UART at the far end blocks transmission, potentially
+ * indefinitely, causing uPortUartWrite() to hang.  It is not
+ * desirable to cause the whole application to fail because of an
+ * IO function; this [deliberately very large] defensive time-out
+ * may be employed by an implementation of uPortUartWrite()
+ * as a guard against that.
+ */
+# define U_PORT_UART_WRITE_TIMEOUT_MS 30000
+#endif
+
 /** The event which means that received data is available; this
  * will be sent if the receive buffer goes from empty to containing
  * one or more bytes of received data. It is used as a bit-mask.

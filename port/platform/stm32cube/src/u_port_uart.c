@@ -1307,23 +1307,25 @@ int32_t uPortUartWrite(int32_t handle,
                        const void *pBuffer,
                        size_t sizeBytes)
 {
+    int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     const uint8_t *pDataPtr = pBuffer;
-    uErrorCode_t sizeOrErrorCode = U_ERROR_COMMON_NOT_INITIALISED;
     uPortUartData_t *pUartData;
     USART_TypeDef *pReg;
+    bool txOk = true;
+    int64_t startTimeMs;
 
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        sizeOrErrorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        sizeOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         pUartData = pGetUartDataByHandle(handle);
         if (pUartData != NULL) {
             pReg = gUartCfg[pUartData->uart].pReg;
-            sizeOrErrorCode = sizeBytes;
-
             // Do the blocking send
-            while (sizeBytes > 0) {
+            sizeOrErrorCode = (int32_t) sizeBytes;
+            startTimeMs = uPortGetTickTimeMs();
+            while ((sizeBytes > 0) && (txOk)) {
                 LL_USART_TransmitData8(pReg, *pDataPtr);
                 // Hint when debugging: if your code stops dead here
                 // it is because the CTS line of this MCU's UART HW
@@ -1333,17 +1335,24 @@ int32_t uPortUartWrite(int32_t handle,
                 // it or the CTS pin when configuring this UART
                 // was wrong and it's not connected to the right
                 // thing.
-                while (!LL_USART_IsActiveFlag_TXE(pReg)) {}
-                pDataPtr++;
-                sizeBytes--;
+                while (!(txOk = LL_USART_IsActiveFlag_TXE(pReg)) &&
+                       (uPortGetTickTimeMs() - startTimeMs < U_PORT_UART_WRITE_TIMEOUT_MS)) {}
+                if (txOk) {
+                    pDataPtr++;
+                    sizeBytes--;
+                }
             }
-            while (!LL_USART_IsActiveFlag_TC(pReg)) {}
+            // Wait for transmission to complete so that we don't
+            // write over stuff the next time
+            while (!LL_USART_IsActiveFlag_TC(pReg) &&
+                   (uPortGetTickTimeMs() - startTimeMs < U_PORT_UART_WRITE_TIMEOUT_MS)) {}
+            sizeOrErrorCode -= (int32_t) sizeBytes;
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);
     }
 
-    return (int32_t) sizeOrErrorCode;
+    return sizeOrErrorCode;
 }
 
 // Set an event callback.
