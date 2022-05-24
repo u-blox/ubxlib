@@ -142,6 +142,11 @@ static const char gSendData[] =  "______000:012345678901234567890123456789012345
  */
 static bool gDisconnectCallbackCalled;
 
+/** Keep track of the number of unread messages;
+ * messageIndicationCallback gets a pointer to this.
+ */
+static int32_t gNumUnread;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -256,7 +261,6 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
     int32_t y;
     int32_t z;
     size_t s;
-    int32_t numUnread;
     int64_t startTimeMs;
     char *pTopicOut;
     char *pTopicIn;
@@ -307,7 +311,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                 // Make a unique topic name to stop different boards colliding
                 snprintf(pTopicOut, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                          "ubx_test/%s", gSerialNumber);
-                numUnread = 0;
+                gNumUnread = 0;
                 // Open an MQTT client
                 if (run == 0) {
                     uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client...\n");
@@ -378,7 +382,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                         // Set the message indication callback
                         U_PORT_TEST_ASSERT(uMqttClientSetMessageCallback(gpMqttContextA,
                                                                          messageIndicationCallback,
-                                                                         &numUnread) == 0);
+                                                                         &gNumUnread) == 0);
 
                         uPortLog("U_MQTT_CLIENT_TEST: subscribing to topic \"%s\"...\n", pTopicOut);
                         startTimeMs = uPortGetTickTimeMs();
@@ -451,14 +455,14 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
 
                         uPortLog("U_MQTT_CLIENT_TEST: waiting for an unread message indication...\n");
                         startTimeMs = uPortGetTickTimeMs();
-                        while ((numUnread == 0) &&
+                        while ((gNumUnread == 0) &&
                                (uPortGetTickTimeMs() < startTimeMs +
                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000))) {
                             uPortTaskBlock(1000);
                         }
 
-                        if (numUnread > 0) {
-                            uPortLog("U_MQTT_CLIENT_TEST: %d message(s) unread.\n", numUnread);
+                        if (gNumUnread > 0) {
+                            uPortLog("U_MQTT_CLIENT_TEST: %d message(s) unread.\n", gNumUnread);
                         } else {
                             uPortLog("U_MQTT_CLIENT_TEST: no messages unread after %d ms.\n",
                                      (int32_t) (uPortGetTickTimeMs() - startTimeMs));
@@ -466,8 +470,8 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                             U_PORT_TEST_ASSERT(false);
                         }
 
-                        U_PORT_TEST_ASSERT(numUnread == 1);
-                        U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == numUnread);
+                        U_PORT_TEST_ASSERT(gNumUnread == 1);
+                        U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == gNumUnread);
 
                         uPortLog("U_MQTT_CLIENT_TEST: reading the message...\n");
                         qos = U_MQTT_QOS_MAX_NUM;
@@ -564,7 +568,6 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
     int32_t y;
     int32_t z;
     size_t s;
-    int32_t numUnread;
     int64_t startTimeMs;
     char *pTopicNameOutMqtt;
     uMqttSnTopicName_t topicNameOut;
@@ -627,7 +630,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
         // Make a unique topic name to stop different boards colliding
         snprintf(pTopicNameOutMqtt, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                  "ubx_test/%s", gSerialNumber);
-        numUnread = 0;
+        gNumUnread = 0;
         // Open an MQTT-SN client
         uPortLog("U_MQTTSN_CLIENT_TEST: opening MQTT-SN client...\n");
         gpMqttContextA = pUMqttClientOpen(devHandle, NULL);
@@ -675,7 +678,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
                 // Set the message indication callback
                 U_PORT_TEST_ASSERT(uMqttClientSetMessageCallback(gpMqttContextA,
                                                                  messageIndicationCallback,
-                                                                 &numUnread) == 0);
+                                                                 &gNumUnread) == 0);
 
                 uPortLog("U_MQTTSN_CLIENT_TEST: subscribing to MQTT topic \"%s\"...\n", pTopicNameOutMqtt);
                 startTimeMs = uPortGetTickTimeMs();
@@ -752,14 +755,14 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
 
                     uPortLog("U_MQTTSN_CLIENT_TEST: waiting for an unread message indication...\n");
                     startTimeMs = uPortGetTickTimeMs();
-                    while ((numUnread == 0) &&
+                    while ((gNumUnread == 0) &&
                            (uPortGetTickTimeMs() < startTimeMs +
                             (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000))) {
                         uPortTaskBlock(1000);
                     }
 
-                    if (numUnread > 0) {
-                        uPortLog("U_MQTTSN_CLIENT_TEST: %d message(s) unread.\n", numUnread);
+                    if (gNumUnread > 0) {
+                        uPortLog("U_MQTTSN_CLIENT_TEST: %d message(s) unread.\n", gNumUnread);
                     } else {
                         uPortLog("U_MQTTSN_CLIENT_TEST: no messages unread after %d ms.\n",
                                  (int32_t) (uPortGetTickTimeMs() - startTimeMs));
@@ -767,8 +770,8 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
                         U_PORT_TEST_ASSERT(false);
                     }
 
-                    U_PORT_TEST_ASSERT(numUnread == 1);
-                    U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == numUnread);
+                    U_PORT_TEST_ASSERT(gNumUnread == 1);
+                    U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == gNumUnread);
 
                     uPortLog("U_MQTTSN_CLIENT_TEST: reading the message...\n");
                     memset(&topicNameIn, 0xFF, sizeof(topicNameIn));

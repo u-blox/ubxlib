@@ -104,7 +104,7 @@ static const uDeviceCfg_t gDeviceCfg = {
 static const uNetworkCfgWifi_t gNetworkCfg = {
     .type = U_NETWORK_TYPE_WIFI,
     .pSsid = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID), /* Wifi SSID - replace with your SSID */
-    .authentication = U_WIFI_TEST_CFG_AUTHENTICATION, /* Authentication mode (see uWifiNetAuth_t in wifi/api/u_wifi_net.h) */
+    .authentication = U_WIFI_TEST_CFG_AUTHENTICATION, /* Authentication mode (see uWifiAuth_t in wifi/api/u_wifi.h) */
     .pPassPhrase = U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE) /* WPA2 passphrase */
 };
 static const uNetworkType_t gNetType = U_NETWORK_TYPE_WIFI;

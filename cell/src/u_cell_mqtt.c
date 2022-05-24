@@ -283,12 +283,21 @@ typedef struct {
     volatile uCellMqttUrcMessage_t *pUrcMessage; /**< storage for an MQTT message
                                                       received in a URC, only
                                                       required for SARA-R4. */
+    size_t numTries; /**< The number of tries for a radio-related operation. */ 
     bool mqttSn; /**< true if this is an MQTT-SN session, else false. */
 } uCellMqttContext_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
+
+/** The values of MQTT error code that mean a retry should be performed.
+ */
+const int32_t gMqttRetryErrorCode[] = {33 /* Timeout */, 34 /* No radio service */};
+
+/** The values of MQTT-SN error code that mean a retry should be performed.
+ */
+const int32_t gMqttSnRetryErrorCode[] = {21 /* Timeout */, 22 /* No radio service */};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS: URCS AND RELATED FUNCTIONS
@@ -1064,6 +1073,31 @@ static int32_t doSaraR4OldSyntaxUmqttQuery(const uCellPrivateInstance_t *pInstan
     return errorCode;
 }
 
+// Determine whether an MQTT operation should be retried.
+static bool mqttRetry(const uCellPrivateInstance_t *pInstance, bool mqttSn)
+{
+    bool retry = false;
+    int32_t errorCode;
+
+    errorCode = getLastMqttErrorCode(pInstance);
+    if (errorCode >= 0) {
+        if (mqttSn) {
+            for (size_t x = 0; (x < sizeof(gMqttSnRetryErrorCode) / sizeof(gMqttSnRetryErrorCode[0])) &&
+                                !retry; x++) {
+                retry = (errorCode == gMqttSnRetryErrorCode[x]);
+            }
+        } else {
+            for (size_t x = 0; (x < sizeof(gMqttRetryErrorCode) / sizeof(gMqttRetryErrorCode[0])) &&
+                                !retry; x++) {
+                retry = (errorCode == gMqttRetryErrorCode[x]);
+            }
+        }
+    }
+
+    return retry;
+}
+
+
 // Determine whether MQTT TLS security is on or off.
 static bool isSecured(const uCellPrivateInstance_t *pInstance,
                       int32_t *pSecurityProfileId)
@@ -1262,6 +1296,7 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
     int64_t startTimeMs;
     int64_t stopTimeMs;
     int32_t status = 1;
+    size_t tryCount = 0;
 
     pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
     mqttSn = pContext->mqttSn;
@@ -1279,62 +1314,69 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
         }
     }
 
-    uAtClientLock(atHandle);
-    pUrcStatus->flagsBitmap = 0;
-    // Have seen this take a little while to respond
-    uAtClientTimeoutSet(atHandle, 15000);
-    uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
-    // Conveniently log-in/connect is always command 0 and
-    // log out/disconnect is always command 1
-    uAtClientWriteInt(atHandle, (int32_t) onNotOff);
-    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-        uAtClientCommandStop(atHandle);
-        // Don't need to worry about the MQTT-SN form of the AT
-        // command here since the old syntax SARA-R4's do not
-        // support MQTT-SN
-        uAtClientResponseStart(atHandle, "+UMQTTC:");
-        // Skip the first parameter, which is just
-        // our UMQTTC command number again
-        uAtClientSkipParameters(atHandle, 1);
-        status = uAtClientReadInt(atHandle);
-        uAtClientResponseStop(atHandle);
-    } else {
-        uAtClientCommandStopReadResponse(atHandle);
-    }
-
-    if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
-        if (!onNotOff &&
-            U_CELL_PRIVATE_HAS(pInstance->pModule,
+    // Note that we retry this if the failure was due to radio conditions
+    do {
+        uAtClientLock(atHandle);
+        pUrcStatus->flagsBitmap = 0;
+        // Have seen this take a little while to respond
+        uAtClientTimeoutSet(atHandle, 15000);
+        uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+        // Conveniently log-in/connect is always command 0 and
+        // log out/disconnect is always command 1
+        uAtClientWriteInt(atHandle, (int32_t) onNotOff);
+        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-            // For disconnections on SARA-R4 old syntax that's it
-            pContext->connected = false;
-            pContext->keptAlive = false;
-            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            uAtClientCommandStop(atHandle);
+            // Don't need to worry about the MQTT-SN form of the AT
+            // command here since the old syntax SARA-R4's do not
+            // support MQTT-SN
+            uAtClientResponseStart(atHandle, "+UMQTTC:");
+            // Skip the first parameter, which is just
+            // our UMQTTC command number again
+            uAtClientSkipParameters(atHandle, 1);
+            status = uAtClientReadInt(atHandle);
+            uAtClientResponseStop(atHandle);
         } else {
-            // Otherwise wait for the URC for success
-            uPortLog("U_CELL_MQTT: waiting for response for up to %d"
-                     " second(s)...\n",
-                     U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS);
-            errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-            startTimeMs = uPortGetTickTimeMs();
-            stopTimeMs = startTimeMs + (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-            while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED)) == 0) &&
-                   (uPortGetTickTimeMs() < stopTimeMs) &&
-                   ((pContext->pKeepGoingCallback == NULL) ||
-                    pContext->pKeepGoingCallback())) {
-                uPortTaskBlock(1000);
-            }
-            if ((int32_t) onNotOff == pContext->connected) {
-                uPortLog("U_CELL_MQTT: %s after %d second(s).\n",
-                         onNotOff ? "connected" : "disconnected",
-                         (uPortGetTickTimeMs() - startTimeMs) / 1000);
+            uAtClientCommandStopReadResponse(atHandle);
+        }
+
+        if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
+            if (!onNotOff &&
+                U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                // For disconnections on SARA-R4 old syntax that's it
+                pContext->connected = false;
+                pContext->keptAlive = false;
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             } else {
-                printErrorCodes(pInstance);
+                // Otherwise wait for the URC for success
+                uPortLog("U_CELL_MQTT: waiting for response for up to %d"
+                         " second(s)...\n",
+                         U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS);
+                errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                startTimeMs = uPortGetTickTimeMs();
+                stopTimeMs = startTimeMs + (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_CONNECT_UPDATED)) == 0) &&
+                       (uPortGetTickTimeMs() < stopTimeMs) &&
+                       ((pContext->pKeepGoingCallback == NULL) ||
+                        pContext->pKeepGoingCallback())) {
+                    uPortTaskBlock(1000);
+                }
+                if ((int32_t) onNotOff == pContext->connected) {
+                    uPortLog("U_CELL_MQTT: %s after %d second(s).\n",
+                             onNotOff ? "connected" : "disconnected",
+                             (uPortGetTickTimeMs() - startTimeMs) / 1000);
+                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                } else {
+                    printErrorCodes(pInstance);
+                }
             }
         }
-    } else {
+        tryCount++;
+    } while ((errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) &&
+             (tryCount < pContext->numTries) && mqttRetry(pInstance, mqttSn));
+
+    if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
         printErrorCodes(pInstance);
     }
 
@@ -1415,6 +1457,7 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
     bool isAscii;
     bool messageWritten = false;
     int64_t stopTimeMs;
+    size_t tryCount = 0;
 
     pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
     mqttSn = pContext->mqttSn;
@@ -1460,116 +1503,122 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
                 }
             }
         }
+
         if ((pTextMessage != NULL) ||
             U_CELL_PRIVATE_HAS(pInstance->pModule,
                                U_CELL_PRIVATE_FEATURE_MQTT_BINARY_PUBLISH)) {
             errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
             atHandle = pInstance->atHandle;
-            uAtClientLock(atHandle);
-            pUrcStatus->flagsBitmap = 0;
-            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                // In the old SARA-R4 syntax there's no URC
-                // for a publish, so the timeout is that
-                // of the AT command
-                uAtClientTimeoutSet(atHandle,
-                                    U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-            }
-            uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
-            // Publish the message
-            if (pTextMessage != NULL) {
-                // ASCII or hex mode
-                uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_PUBLISH_STRING(mqttSn));
-            } else {
-                // Binary mode (not supported by MQTT-SN, hence we don't need a macro)
-                uAtClientWriteInt(atHandle, 9);
-            }
-            // QoS
-            uAtClientWriteInt(atHandle, (int32_t) qos);
-            // Retention
-            uAtClientWriteInt(atHandle, (int32_t) retain);
-            if (pTextMessage != NULL) {
-                // If we aren't doing binary mode...
-                if (isAscii) {
-                    // ASCII mode
-                    uAtClientWriteInt(atHandle, 0);
+            // We retry this if the failure was due to radio conditions
+            do {
+                uAtClientLock(atHandle);
+                pUrcStatus->flagsBitmap = 0;
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                    // In the old SARA-R4 syntax there's no URC
+                    // for a publish, so the timeout is that
+                    // of the AT command
+                    uAtClientTimeoutSet(atHandle,
+                                        U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                }
+                uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+                // Publish the message
+                if (pTextMessage != NULL) {
+                    // ASCII or hex mode
+                    uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_PUBLISH_STRING(mqttSn));
                 } else {
-                    // Hex mode
-                    uAtClientWriteInt(atHandle, 1);
+                    // Binary mode (not supported by MQTT-SN, hence we don't need a macro)
+                    uAtClientWriteInt(atHandle, 9);
                 }
-            }
-            if (mqttSn) {
-                // Specify the topic type for MQTT-SN
-                uAtClientWriteInt(atHandle, topicNameType);
-            }
-            // Topic
-            uAtClientWriteString(atHandle, pTopicNameStr, true);
-            if (pTextMessage == NULL) {
-                // The length of the binary message
-                uAtClientWriteInt(atHandle, (int32_t) messageSizeBytes);
-                uAtClientCommandStop(atHandle);
-                // Wait for the prompt
-                if (uAtClientWaitCharacter(atHandle, '>') == 0) {
-                    // Allow plenty of time for this to complete
-                    uAtClientTimeoutSet(atHandle, 10000);
-                    // Wait for it...
-                    uPortTaskBlock(50);
-                    // Write the binary message
-                    messageWritten = (uAtClientWriteBytes(atHandle,
-                                                          pMessage,
-                                                          messageSizeBytes,
-                                                          true) == messageSizeBytes);
+                // QoS
+                uAtClientWriteInt(atHandle, (int32_t) qos);
+                // Retention
+                uAtClientWriteInt(atHandle, (int32_t) retain);
+                if (pTextMessage != NULL) {
+                    // If we aren't doing binary mode...
+                    if (isAscii) {
+                        // ASCII mode
+                        uAtClientWriteInt(atHandle, 0);
+                    } else {
+                        // Hex mode
+                        uAtClientWriteInt(atHandle, 1);
+                    }
                 }
-            } else {
-                // ASCII or hex message
-                uAtClientWriteString(atHandle, pTextMessage, true);
-                messageWritten = true;
-                uAtClientCommandStop(atHandle);
-            }
+                if (mqttSn) {
+                    // Specify the topic type for MQTT-SN
+                    uAtClientWriteInt(atHandle, topicNameType);
+                }
+                // Topic
+                uAtClientWriteString(atHandle, pTopicNameStr, true);
+                if (pTextMessage == NULL) {
+                    // The length of the binary message
+                    uAtClientWriteInt(atHandle, (int32_t) messageSizeBytes);
+                    uAtClientCommandStop(atHandle);
+                    // Wait for the prompt
+                    if (uAtClientWaitCharacter(atHandle, '>') == 0) {
+                        // Allow plenty of time for this to complete
+                        uAtClientTimeoutSet(atHandle, 10000);
+                        // Wait for it...
+                        uPortTaskBlock(50);
+                        // Write the binary message
+                        messageWritten = (uAtClientWriteBytes(atHandle,
+                                                              pMessage,
+                                                              messageSizeBytes,
+                                                              true) == messageSizeBytes);
+                    }
+                } else {
+                    // ASCII or hex message
+                    uAtClientWriteString(atHandle, pTextMessage, true);
+                    messageWritten = true;
+                    uAtClientCommandStop(atHandle);
+                }
+
+                if (messageWritten) {
+                    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                        uAtClientResponseStart(atHandle, MQTT_COMMAND_AT_RESPONSE_STRING(mqttSn));
+                        // Skip the first parameter, which is just
+                        // our UMQTTC command number again
+                        uAtClientSkipParameters(atHandle, 1);
+                        status = uAtClientReadInt(atHandle);
+                    } else {
+                        uAtClientResponseStart(atHandle, NULL);
+                    }
+                }
+                // If the message wasn't written this will tidy
+                // up any rubbish lying around in the AT buffer
+                uAtClientResponseStop(atHandle);
+
+                if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
+                    if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                           U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                        // For the old SARA-R4 syntax, that's it
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    } else {
+                        // Wait for a URC to say that the publish
+                        // has succeeded
+                        errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                        stopTimeMs = uPortGetTickTimeMs() +
+                                     (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                        while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_UPDATED)) == 0) &&
+                               (uPortGetTickTimeMs() < stopTimeMs) &&
+                               ((pContext->pKeepGoingCallback == NULL) ||
+                                pContext->pKeepGoingCallback())) {
+                            uPortTaskBlock(1000);
+                        }
+                        if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS)) != 0) {
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
+                    }
+                }
+                tryCount++;
+            } while ((errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) &&
+                     (tryCount < pContext->numTries) && mqttRetry(pInstance, mqttSn));
 
             // Free memory (it is legal C to free a NULL pointer)
             free(pTextMessage);
 
-            if (messageWritten) {
-                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                    uAtClientResponseStart(atHandle, MQTT_COMMAND_AT_RESPONSE_STRING(mqttSn));
-                    // Skip the first parameter, which is just
-                    // our UMQTTC command number again
-                    uAtClientSkipParameters(atHandle, 1);
-                    status = uAtClientReadInt(atHandle);
-                } else {
-                    uAtClientResponseStart(atHandle, NULL);
-                }
-            }
-            // If the message wasn't written this will tidy
-            // up any rubbish lying around in the AT buffer
-            uAtClientResponseStop(atHandle);
-
-            if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
-                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                    // For the old SARA-R4 syntax, that's it
-                    errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                } else {
-                    // Wait for a URC to say that the publish
-                    // has succeeded
-                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                    stopTimeMs = uPortGetTickTimeMs() +
-                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_UPDATED)) == 0) &&
-                           (uPortGetTickTimeMs() < stopTimeMs) &&
-                           ((pContext->pKeepGoingCallback == NULL) ||
-                            pContext->pKeepGoingCallback())) {
-                        uPortTaskBlock(1000);
-                    }
-                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS)) != 0) {
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    } else {
-                        printErrorCodes(pInstance);
-                    }
-                }
-            } else {
+            if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
                 printErrorCodes(pInstance);
             }
         }
@@ -1592,6 +1641,7 @@ static int32_t subscribe(const uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle;
     int32_t status = 1;
     int64_t stopTimeMs;
+    size_t tryCount = 0;
 
     pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
     mqttSn = pContext->mqttSn;
@@ -1603,63 +1653,68 @@ static int32_t subscribe(const uCellPrivateInstance_t *pInstance,
         (strlen(pTopicFilterStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) {
         errorCodeOrQos = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
         atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        pUrcStatus->flagsBitmap = 0;
-        pUrcStatus->topicNameShort[0] = 0;
-        uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
-        uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_SUBSCRIBE(mqttSn));
-        // Max QoS
-        uAtClientWriteInt(atHandle, (int32_t) maxQos);
-        if (mqttSn) {
-            if (pTopicId != NULL) {
-                // If we're retrieving a topic ID then this must be a normal
-                // MQTT topic
-                uAtClientWriteInt(atHandle, 0);
-            } else {
-                // Specify the topic type given to us
-                uAtClientWriteInt(atHandle, topicNameType);
-            }
-        }
-        // Topic
-        uAtClientWriteString(atHandle, pTopicFilterStr, true);
-        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-            uAtClientCommandStop(atHandle);
-            // Don't need to worry about the MQTT-SN form of the AT
-            // command here since the old syntax SARA-R4's do not
-            // support MQTT-SN
-            uAtClientResponseStart(atHandle, "+UMQTTC:");
-            // Skip the first parameter, which is just
-            // our UMQTTC command number again
-            uAtClientSkipParameters(atHandle, 1);
-            status = uAtClientReadInt(atHandle);
-            uAtClientResponseStop(atHandle);
-        } else {
-            uAtClientCommandStopReadResponse(atHandle);
-        }
-
-        if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
-            // On all platforms need to wait for a URC to
-            // say that the subscribe has succeeded
-            errorCodeOrQos = (int32_t) U_ERROR_COMMON_TIMEOUT;
-            stopTimeMs = uPortGetTickTimeMs() +
-                         (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-            while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_UPDATED)) == 0) &&
-                   (uPortGetTickTimeMs() < stopTimeMs) &&
-                   ((pContext->pKeepGoingCallback == NULL) ||
-                    pContext->pKeepGoingCallback())) {
-                uPortTaskBlock(1000);
-            }
-            if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS)) != 0) {
-                errorCodeOrQos = (int32_t) pUrcStatus->subscribeQoS;
+        // We retry this if the failure was due to radio conditions
+        do {
+            uAtClientLock(atHandle);
+            pUrcStatus->flagsBitmap = 0;
+            pUrcStatus->topicNameShort[0] = 0;
+            uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+            uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_SUBSCRIBE(mqttSn));
+            // Max QoS
+            uAtClientWriteInt(atHandle, (int32_t) maxQos);
+            if (mqttSn) {
                 if (pTopicId != NULL) {
-                    //lint -e{1773} Suppress attempt to cast away volatile
-                    *pTopicId = (uint16_t) strtol((char *) pUrcStatus->topicNameShort, NULL, 10);
+                    // If we're retrieving a topic ID then this must be a normal
+                    // MQTT topic
+                    uAtClientWriteInt(atHandle, 0);
+                } else {
+                    // Specify the topic type given to us
+                    uAtClientWriteInt(atHandle, topicNameType);
                 }
-            } else {
-                printErrorCodes(pInstance);
             }
-        } else {
+            // Topic
+            uAtClientWriteString(atHandle, pTopicFilterStr, true);
+            if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                   U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
+                uAtClientCommandStop(atHandle);
+                // Don't need to worry about the MQTT-SN form of the AT
+                // command here since the old syntax SARA-R4's do not
+                // support MQTT-SN
+                uAtClientResponseStart(atHandle, "+UMQTTC:");
+                // Skip the first parameter, which is just
+                // our UMQTTC command number again
+                uAtClientSkipParameters(atHandle, 1);
+                status = uAtClientReadInt(atHandle);
+                uAtClientResponseStop(atHandle);
+            } else {
+                uAtClientCommandStopReadResponse(atHandle);
+            }
+
+            if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
+                // On all platforms need to wait for a URC to
+                // say that the subscribe has succeeded
+                errorCodeOrQos = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                stopTimeMs = uPortGetTickTimeMs() +
+                             (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_UPDATED)) == 0) &&
+                       (uPortGetTickTimeMs() < stopTimeMs) &&
+                       ((pContext->pKeepGoingCallback == NULL) ||
+                        pContext->pKeepGoingCallback())) {
+                    uPortTaskBlock(1000);
+                }
+                if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_SUBSCRIBE_SUCCESS)) != 0) {
+                    errorCodeOrQos = (int32_t) pUrcStatus->subscribeQoS;
+                    if (pTopicId != NULL) {
+                        //lint -e{1773} Suppress attempt to cast away volatile
+                        *pTopicId = (uint16_t) strtol((char *) pUrcStatus->topicNameShort, NULL, 10);
+                    }
+                }
+            }
+            tryCount++;
+        } while ((errorCodeOrQos < 0) && (tryCount < pContext->numTries) &&
+                 mqttRetry(pInstance, mqttSn));
+
+        if (errorCodeOrQos < 0) {
             printErrorCodes(pInstance);
         }
     }
@@ -1679,6 +1734,7 @@ static int32_t unsubscribe(const uCellPrivateInstance_t *pInstance,
     uAtClientHandle_t atHandle;
     int32_t status = 1;
     int64_t stopTimeMs;
+    size_t tryCount = 0;
 
     pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
     mqttSn = pContext->mqttSn;
@@ -1687,55 +1743,60 @@ static int32_t unsubscribe(const uCellPrivateInstance_t *pInstance,
         (strlen(pTopicFilterStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) {
         errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
         atHandle = pInstance->atHandle;
-        uAtClientLock(atHandle);
-        pUrcStatus->flagsBitmap = 0;
-        uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
-        uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_UNSUBSCRIBE(mqttSn));
-        if (mqttSn) {
-            // Specify the topic type for MQTT-SN
-            uAtClientWriteInt(atHandle, topicNameType);
-        }
-        // Topic
-        uAtClientWriteString(atHandle, pTopicFilterStr, true);
-        if (U_CELL_PRIVATE_HAS(pInstance->pModule,
-                               U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-            uAtClientCommandStop(atHandle);
-            // Don't need to worry about the MQTT-SN form of the AT
-            // command here since the old syntax SARA-R4's do not
-            // support MQTT-SN
-            uAtClientResponseStart(atHandle, "+UMQTTC:");
-            // Skip the first parameter, which is just
-            // our UMQTTC command number again
-            uAtClientSkipParameters(atHandle, 1);
-            status = uAtClientReadInt(atHandle);
-            uAtClientResponseStop(atHandle);
-        } else {
-            uAtClientCommandStopReadResponse(atHandle);
-        }
-
-        if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
+        // We retry this if the failure was due to radio conditions
+        do {
+            uAtClientLock(atHandle);
+            pUrcStatus->flagsBitmap = 0;
+            uAtClientCommandStart(atHandle, MQTT_COMMAND_AT_COMMAND_STRING(mqttSn));
+            uAtClientWriteInt(atHandle, MQTT_COMMAND_OPCODE_UNSUBSCRIBE(mqttSn));
+            if (mqttSn) {
+                // Specify the topic type for MQTT-SN
+                uAtClientWriteInt(atHandle, topicNameType);
+            }
+            // Topic
+            uAtClientWriteString(atHandle, pTopicFilterStr, true);
             if (U_CELL_PRIVATE_HAS(pInstance->pModule,
                                    U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
-                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                uAtClientCommandStop(atHandle);
+                // Don't need to worry about the MQTT-SN form of the AT
+                // command here since the old syntax SARA-R4's do not
+                // support MQTT-SN
+                uAtClientResponseStart(atHandle, "+UMQTTC:");
+                // Skip the first parameter, which is just
+                // our UMQTTC command number again
+                uAtClientSkipParameters(atHandle, 1);
+                status = uAtClientReadInt(atHandle);
+                uAtClientResponseStop(atHandle);
             } else {
-                // If this is the new syntax we need to wait
-                // for a URC to say that the unsubscribe has succeeded
-                errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                stopTimeMs = uPortGetTickTimeMs() +
-                             (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED)) == 0) &&
-                       (uPortGetTickTimeMs() < stopTimeMs) &&
-                       ((pContext->pKeepGoingCallback == NULL) ||
-                        pContext->pKeepGoingCallback())) {
-                    uPortTaskBlock(1000);
-                }
-                if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS)) != 0) {
+                uAtClientCommandStopReadResponse(atHandle);
+            }
+
+            if ((uAtClientUnlock(atHandle) == 0) && (status == 1)) {
+                if (U_CELL_PRIVATE_HAS(pInstance->pModule,
+                                       U_CELL_PRIVATE_FEATURE_MQTT_SARA_R4_OLD_SYNTAX)) {
                     errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 } else {
-                    printErrorCodes(pInstance);
+                    // If this is the new syntax we need to wait
+                    // for a URC to say that the unsubscribe has succeeded
+                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                    stopTimeMs = uPortGetTickTimeMs() +
+                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_UPDATED)) == 0) &&
+                           (uPortGetTickTimeMs() < stopTimeMs) &&
+                           ((pContext->pKeepGoingCallback == NULL) ||
+                            pContext->pKeepGoingCallback())) {
+                        uPortTaskBlock(1000);
+                    }
+                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_UNSUBSCRIBE_SUCCESS)) != 0) {
+                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                    }
                 }
             }
-        } else {
+            tryCount++;
+        } while ((errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) &&
+                 (tryCount < pContext->numTries) && mqttRetry(pInstance, mqttSn));
+
+        if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
             printErrorCodes(pInstance);
         }
     }
@@ -1972,6 +2033,7 @@ int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                     pContext->numUnreadMessages = 0;
                     pContext->pBrokerNameStr = NULL;
                     pContext->pUrcMessage = NULL;
+                    pContext->numTries = U_CELL_MQTT_RETRIES_DEFAULT + 1;
                     pContext->mqttSn = mqttSn;
                     pInstance->pMqttContext = pContext;
                     if (U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType)) {
@@ -2918,6 +2980,41 @@ int32_t uCellMqttSetDisconnectCallback(uDeviceHandle_t cellHandle,
     return errorCode;
 }
 
+// Set the number of retries on radio-related failure.
+void uCellMqttSetRetries(uDeviceHandle_t cellHandle, size_t numRetries)
+{
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, NULL, true);
+
+    if (pInstance != NULL) {
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        pContext->numTries = numRetries + 1;
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+}
+
+// Get the number of retries on radio-related failure.
+int32_t uCellMqttGetRetries(uDeviceHandle_t cellHandle)
+{
+    int32_t errorCodeOrRetries = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uCellPrivateInstance_t *pInstance = NULL;
+    volatile uCellMqttContext_t *pContext;
+
+    U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCodeOrRetries, true);
+
+    if ((errorCodeOrRetries == 0) && (pInstance != NULL)) {
+        pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
+        errorCodeOrRetries = ((int32_t) pContext->numTries) - 1;
+    }
+
+    U_CELL_MQTT_EXIT_FUNCTION();
+
+    return errorCodeOrRetries;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: MQTT ONLY
  * -------------------------------------------------------------- */
@@ -3108,6 +3205,7 @@ int32_t uCellMqttSnRegisterNormalTopic(uDeviceHandle_t cellHandle,
     volatile uCellMqttUrcStatus_t *pUrcStatus;
     uAtClientHandle_t atHandle;
     int64_t stopTimeMs;
+    size_t tryCount = 0;
 
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
@@ -3122,34 +3220,41 @@ int32_t uCellMqttSnRegisterNormalTopic(uDeviceHandle_t cellHandle,
             if ((pTopicNameStr != NULL) && (pTopicName != NULL)) {
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 atHandle = pInstance->atHandle;
-                uAtClientLock(atHandle);
-                pUrcStatus->flagsBitmap = 0;
-                // Don't need to worry about the MQTT form of the AT
-                // command here since this is MQTT-SN only
-                uAtClientCommandStart(atHandle, "AT+UMQTTSNC=");
-                // Register a topic
-                uAtClientWriteInt(atHandle, 2);
-                // The topic
-                uAtClientWriteString(atHandle, pTopicNameStr, true);
-                uAtClientCommandStopReadResponse(atHandle);
-                if (uAtClientUnlock(atHandle) == 0) {
-                    // Wait for a URC to get the ID
-                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                    stopTimeMs = uPortGetTickTimeMs() +
-                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_REGISTER_UPDATED)) == 0) &&
-                           (uPortGetTickTimeMs() < stopTimeMs) &&
-                           ((pContext->pKeepGoingCallback == NULL) ||
-                            pContext->pKeepGoingCallback())) {
-                        uPortTaskBlock(1000);
+                // We retry this if the failure was due to radio conditions
+                do {
+                    uAtClientLock(atHandle);
+                    pUrcStatus->flagsBitmap = 0;
+                    // Don't need to worry about the MQTT form of the AT
+                    // command here since this is MQTT-SN only
+                    uAtClientCommandStart(atHandle, "AT+UMQTTSNC=");
+                    // Register a topic
+                    uAtClientWriteInt(atHandle, 2);
+                    // The topic
+                    uAtClientWriteString(atHandle, pTopicNameStr, true);
+                    uAtClientCommandStopReadResponse(atHandle);
+                    if (uAtClientUnlock(atHandle) == 0) {
+                        // Wait for a URC to get the ID
+                        errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                        stopTimeMs = uPortGetTickTimeMs() +
+                                     (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                        while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_REGISTER_UPDATED)) == 0) &&
+                               (uPortGetTickTimeMs() < stopTimeMs) &&
+                               ((pContext->pKeepGoingCallback == NULL) ||
+                                pContext->pKeepGoingCallback())) {
+                            uPortTaskBlock(1000);
+                        }
+                        if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_REGISTER_SUCCESS)) != 0) {
+                            pTopicName->name.id = (uint16_t) pUrcStatus->topicId;
+                            pTopicName->type = U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL;
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
                     }
-                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_REGISTER_SUCCESS)) != 0) {
-                        pTopicName->name.id = (uint16_t) pUrcStatus->topicId;
-                        pTopicName->type = U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL;
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    } else {
-                        printErrorCodes(pInstance);
-                    }
+                    tryCount++;
+                } while ((errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) &&
+                         (tryCount < pContext->numTries) && mqttRetry(pInstance, true));
+
+                if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    printErrorCodes(pInstance);
                 }
             }
         }
@@ -3329,7 +3434,7 @@ int32_t uCellMqttSnMessageRead(uDeviceHandle_t cellHandle,
     uCellPrivateInstance_t *pInstance = NULL;
     volatile uCellMqttContext_t *pContext;
     char topicNameStr[U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES];
-    int32_t topicNameType;
+    int32_t topicNameType = U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL;
 
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
@@ -3365,6 +3470,7 @@ int32_t uCellMqttSnSetWillMessaage(uDeviceHandle_t cellHandle,
     volatile uCellMqttUrcStatus_t *pUrcStatus;
     uAtClientHandle_t atHandle;
     int64_t stopTimeMs;
+    size_t tryCount = 0;
 
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
@@ -3379,32 +3485,38 @@ int32_t uCellMqttSnSetWillMessaage(uDeviceHandle_t cellHandle,
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 pUrcStatus = &(pContext->urcStatus);
                 atHandle = pInstance->atHandle;
-                uAtClientLock(atHandle);
-                pUrcStatus->flagsBitmap = 0;
-                // Don't need to worry about the MQTT form of the AT
-                // command here since this is MQTT-SN only
-                uAtClientCommandStart(atHandle, "AT+UMQTTSNC=");
-                // "will" message update
-                uAtClientWriteInt(atHandle, 8);
-                // The new "will" message
-                uAtClientWriteString(atHandle, pMessage, true);
-                uAtClientCommandStopReadResponse(atHandle);
-                if (uAtClientUnlock(atHandle) == 0) {
-                    // Wait for a URC to indicate success
-                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                    stopTimeMs = uPortGetTickTimeMs() +
-                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_UPDATED)) == 0) &&
-                           (uPortGetTickTimeMs() < stopTimeMs) &&
-                           ((pContext->pKeepGoingCallback == NULL) ||
-                            pContext->pKeepGoingCallback())) {
-                        uPortTaskBlock(1000);
+                // We retry this if the failure was due to radio conditions
+                do {
+                    uAtClientLock(atHandle);
+                    pUrcStatus->flagsBitmap = 0;
+                    // Don't need to worry about the MQTT form of the AT
+                    // command here since this is MQTT-SN only
+                    uAtClientCommandStart(atHandle, "AT+UMQTTSNC=");
+                    // "will" message update
+                    uAtClientWriteInt(atHandle, 8);
+                    // The new "will" message
+                    uAtClientWriteString(atHandle, pMessage, true);
+                    uAtClientCommandStopReadResponse(atHandle);
+                    if (uAtClientUnlock(atHandle) == 0) {
+                        // Wait for a URC to indicate success
+                        errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                        stopTimeMs = uPortGetTickTimeMs() +
+                                     (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                        while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_UPDATED)) == 0) &&
+                               (uPortGetTickTimeMs() < stopTimeMs) &&
+                               ((pContext->pKeepGoingCallback == NULL) ||
+                                pContext->pKeepGoingCallback())) {
+                            uPortTaskBlock(1000);
+                        }
+                        if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_SUCCESS)) != 0) {
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
                     }
-                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_MESSAGE_SUCCESS)) != 0) {
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    } else {
-                        printErrorCodes(pInstance);
-                    }
+                } while ((errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) &&
+                         (tryCount < pContext->numTries) && mqttRetry(pInstance, true));
+
+                if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    printErrorCodes(pInstance);
                 }
             }
         }
@@ -3426,6 +3538,7 @@ int32_t uCellMqttSnSetWillParameters(uDeviceHandle_t cellHandle,
     volatile uCellMqttUrcStatus_t *pUrcStatus;
     uAtClientHandle_t atHandle;
     int64_t stopTimeMs;
+    size_t tryCount = 0;
 
     U_CELL_MQTT_ENTRY_FUNCTION(cellHandle, &pInstance, &errorCode, true);
 
@@ -3444,36 +3557,42 @@ int32_t uCellMqttSnSetWillParameters(uDeviceHandle_t cellHandle,
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 pUrcStatus = &(pContext->urcStatus);
                 atHandle = pInstance->atHandle;
-                uAtClientLock(atHandle);
-                pUrcStatus->flagsBitmap = 0;
-                // Don't need to worry about the MQTT form of the AT
-                // command here since this is MQTT-SN only
-                uAtClientCommandStart(atHandle, "AT+UMQTTSNC=");
-                // "will" parameters update
-                uAtClientWriteInt(atHandle, 7);
-                // The QoS
-                uAtClientWriteInt(atHandle, (int32_t) qos);
-                // Retention
-                uAtClientWriteInt(atHandle, (int32_t) retain);
-                // The topic string
-                uAtClientWriteString(atHandle, pTopicNameStr, true);
-                uAtClientCommandStopReadResponse(atHandle);
-                if (uAtClientUnlock(atHandle) == 0) {
-                    // Wait for a URC to indicate success
-                    errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
-                    stopTimeMs = uPortGetTickTimeMs() +
-                                 (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                    while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_UPDATED)) == 0) &&
-                           (uPortGetTickTimeMs() < stopTimeMs) &&
-                           ((pContext->pKeepGoingCallback == NULL) ||
-                            pContext->pKeepGoingCallback())) {
-                        uPortTaskBlock(1000);
+                // We retry this if the failure was due to radio conditions
+                do {
+                    uAtClientLock(atHandle);
+                    pUrcStatus->flagsBitmap = 0;
+                    // Don't need to worry about the MQTT form of the AT
+                    // command here since this is MQTT-SN only
+                    uAtClientCommandStart(atHandle, "AT+UMQTTSNC=");
+                    // "will" parameters update
+                    uAtClientWriteInt(atHandle, 7);
+                    // The QoS
+                    uAtClientWriteInt(atHandle, (int32_t) qos);
+                    // Retention
+                    uAtClientWriteInt(atHandle, (int32_t) retain);
+                    // The topic string
+                    uAtClientWriteString(atHandle, pTopicNameStr, true);
+                    uAtClientCommandStopReadResponse(atHandle);
+                    if (uAtClientUnlock(atHandle) == 0) {
+                        // Wait for a URC to indicate success
+                        errorCode = (int32_t) U_ERROR_COMMON_TIMEOUT;
+                        stopTimeMs = uPortGetTickTimeMs() +
+                                     (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                        while (((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_UPDATED)) == 0) &&
+                               (uPortGetTickTimeMs() < stopTimeMs) &&
+                               ((pContext->pKeepGoingCallback == NULL) ||
+                                pContext->pKeepGoingCallback())) {
+                            uPortTaskBlock(1000);
+                        }
+                        if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_SUCCESS)) != 0) {
+                            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        }
                     }
-                    if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_WILL_PARAMETERS_SUCCESS)) != 0) {
-                        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                    } else {
-                        printErrorCodes(pInstance);
-                    }
+                } while ((errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) &&
+                         (tryCount < pContext->numTries) && mqttRetry(pInstance, true));
+
+                if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                    printErrorCodes(pInstance);
                 }
             }
         }
