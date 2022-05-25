@@ -75,7 +75,8 @@ extern "C" {
 typedef struct {
     uDeviceHandle_t devHandle;
     uNetworkType_t type;
-    void *pConfiguration;
+    uDeviceCfg_t *pDeviceCfg;
+    void *pNetworkCfg;
 } uNetworkTestCfg_t;
 
 /* ----------------------------------------------------------------
@@ -110,18 +111,38 @@ extern const char *gpUNetworkTestTypeName[];
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Update a GNSS network configuration for use with the AT
- * interface.
+/** Update a GNSS device configuration for use with the AT
+ *  interface of a another device
  *
- * @param devHandleAt        the device handle providing the
- *                           AT interface (e.g. cellular).  NOT the
- *                           AT client handle, the handle of the network.
- * @param pGnssConfiguration a pointer to a structure of type
- *                           uNetworkConfigurationGnss_t where the first
- *                           element is set to U_NETWORK_TYPE_GNSS.
+ * @param devHandleAt    the device handle providing the
+ *                       AT interface (e.g. cellular).  NOT the
+ *                       AT client handle, the handle of the device.
+ * @param pUDeviceCfg    a pointer to a possible GNSS device configuration.
  */
-void uNetworkTestGnssAtConfiguration(uDeviceHandle_t devHandleAt,
-                                     void *pGnssConfiguration);
+void uNetworkTestGnssAtCfg(uDeviceHandle_t devHandleAt, uDeviceCfg_t *pUDeviceCfg);
+
+/** Check if a specified test configuration is valid within the current set
+ *  of defines and that it hasn't been opened already
+ *
+ * @param index  test configuration index.
+ * @return       true or false.
+ */
+bool uNetworkTestDeviceValidForOpen(int32_t index);
+
+/** Close the device for the test configuration at the specified index.
+ *  Handle possible multiple references to this device.
+ *
+ * @param index  test configuration index.
+ * @return       zero on success else negative error code.
+ */
+int32_t uNetworkTestClose(int32_t index);
+
+/** Get the module type of a specified test configuration
+ *
+ * @param index  test configuration index.
+ * @return       module type.
+ */
+int32_t uNetworkTestGetModuleType(int32_t index);
 
 #endif // _U_NETWORK_TEST_CFG_H_
 

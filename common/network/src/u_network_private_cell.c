@@ -42,6 +42,10 @@
 
 #include "u_at_client.h"
 
+#include "u_device.h"
+#include "u_device_shared.h"
+#include "u_device_shared_cell.h"
+
 #include "u_cell_module_type.h"
 #include "u_cell.h"
 #include "u_cell_net.h"
@@ -55,85 +59,31 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_NETWORK_PRIVATE_CELL_MAX_NUM
-/** The maximum number of instances of cellular that can be
- * active at any one time.
- */
-# define U_NETWORK_PRIVATE_CELL_MAX_NUM 3
-#endif
-
-#ifndef U_NETWORK_PRIVATE_CELL_POWER_ON_GUARD_TIME_SECONDS
-/** How long the cellular module is allowed to power-on.
- */
-# define U_NETWORK_PRIVATE_CELL_POWER_ON_GUARD_TIME_SECONDS 60
-#endif
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
-
-/** The things we need to remember per instance.
- */
-typedef struct {
-    int32_t uart;
-    uAtClientHandle_t at;
-    uDeviceHandle_t devHandle;
-    int64_t stopTimeMs;
-} uNetworkPrivateCellInstance_t;
 
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
 
-/** Array to keep track of the instances.
- */
-static uNetworkPrivateCellInstance_t gInstance[U_NETWORK_PRIVATE_CELL_MAX_NUM];
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Find a free place in the list.
-static uNetworkPrivateCellInstance_t *pGetFree()
-{
-    uNetworkPrivateCellInstance_t *pFree = NULL;
-
-    for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
-         (pFree == NULL); x++) {
-        if ((gInstance[x].uart < 0) && (gInstance[x].at == NULL) &&
-            (gInstance[x].devHandle == NULL)) {
-            pFree = &(gInstance[x]);
-        }
-    }
-
-    return pFree;
-}
-
-// Find the given instance in the list.
-static uNetworkPrivateCellInstance_t *pGetInstance(uDeviceHandle_t devHandle)
-{
-    uNetworkPrivateCellInstance_t *pInstance = NULL;
-
-    // Find the devHandle in the list
-    for (size_t x = 0; (x < sizeof(gInstance) / sizeof(gInstance[0])) &&
-         (pInstance == NULL); x++) {
-        if (gInstance[x].devHandle == devHandle) {
-            pInstance = &(gInstance[x]);
-        }
-    }
-
-    return pInstance;
-}
-
-// Call-back for connection timeout.
+// Call-back for connect/disconnect timeout.
 static bool keepGoingCallback(uDeviceHandle_t devHandle)
 {
-    uNetworkPrivateCellInstance_t *pInstance;
+    uDeviceCellContext_t *pContext;
+    uDeviceInstance_t *pDevInstance = NULL;
     bool keepGoing = false;
 
-    pInstance = pGetInstance(devHandle);
-    if ((pInstance != NULL) && (uPortGetTickTimeMs() < pInstance->stopTimeMs)) {
-        keepGoing = true;
+    if (uDeviceGetInstance(devHandle, &pDevInstance) == 0) {
+        pContext = (uDeviceCellContext_t *) pDevInstance->pContext;
+        if ((pContext == NULL) ||
+            (uPortGetTickTimeMs() < pContext->stopTimeMs)) {
+            keepGoing = true;
+        }
     }
 
     return keepGoing;
@@ -143,175 +93,35 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Initialise the network API for cellular.
-int32_t uNetworkInitCell(void)
+// Bring a cellular interface up or take it down.
+int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
+                                       uNetworkCfgCell_t *pCfg,
+                                       bool upNotDown)
 {
-    uAtClientInit();
-    uCellInit();
+    uDeviceCellContext_t *pContext;
+    uDeviceInstance_t *pDevInstance;
+    int32_t errorCode = uDeviceGetInstance(devHandle, &pDevInstance);
 
-    for (size_t x = 0; x < sizeof(gInstance) / sizeof(gInstance[0]); x++) {
-        gInstance[x].uart = -1;
-        gInstance[x].at = NULL;
-        gInstance[x].devHandle = NULL;
-    }
-
-    return (int32_t) U_ERROR_COMMON_SUCCESS;
-}
-
-// Deinitialise the cellular network API.
-void uNetworkDeinitCell(void)
-{
-    uCellDeinit();
-    uAtClientDeinit();
-}
-
-// Add a cellular network instance.
-int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
-                        uDeviceHandle_t *pDevHandle)
-{
-    int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-    uNetworkPrivateCellInstance_t *pInstance;
-    int32_t x;
-
-    pInstance = pGetFree();
-    if (pInstance != NULL) {
-        // Open a UART with the recommended buffer length
-        // and default baud rate.
-        errorCodeOrHandle = uPortUartOpen(pConfiguration->uart,
-                                          U_CELL_UART_BAUD_RATE, NULL,
-                                          U_CELL_UART_BUFFER_LENGTH_BYTES,
-                                          pConfiguration->pinTxd,
-                                          pConfiguration->pinRxd,
-                                          pConfiguration->pinCts,
-                                          pConfiguration->pinRts);
-        if (errorCodeOrHandle >= 0) {
-            pInstance->uart = errorCodeOrHandle;
-
-            // Add an AT client on the UART with the recommended
-            // default buffer size.
-            errorCodeOrHandle = (int32_t) U_CELL_ERROR_AT;
-            pInstance->at = uAtClientAdd(pInstance->uart,
-                                         U_AT_CLIENT_STREAM_TYPE_UART,
-                                         NULL,
-                                         U_CELL_AT_BUFFER_LENGTH_BYTES);
-            if (pInstance->at != NULL) {
-                // Set printing of AT commands by the cellular driver,
-                // which can be useful while debugging.
-                uAtClientPrintAtSet(pInstance->at, true);
-
-                // Add a cell instance
-                errorCodeOrHandle = uCellAdd((uCellModuleType_t) pConfiguration->moduleType,
-                                             pInstance->at,
-                                             pConfiguration->pinEnablePower,
-                                             pConfiguration->pinPwrOn,
-                                             pConfiguration->pinVInt, false,
-                                             pDevHandle);
-                if (errorCodeOrHandle >= 0) {
-                    pInstance->devHandle = *pDevHandle;
-                    // Set the timeout
-                    pInstance->stopTimeMs = uPortGetTickTimeMs() +
-                                            (U_NETWORK_PRIVATE_CELL_POWER_ON_GUARD_TIME_SECONDS * 1000);
-#if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
-                    // For the special case of DTR power saving the DTR pin,
-                    // which is not in the configuration structure, is set
-                    // at compile time
-                    x = uCellPwrSetDtrPowerSavingPin(*pDevHandle, U_CFG_APP_PIN_CELL_DTR);
-                    if (x == 0) {
-#endif
-                        // Power on
-                        x = uCellPwrOn(*pDevHandle, pConfiguration->pPin,
-                                       keepGoingCallback);
-#if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
-                    }
-#endif
-                    if (x != 0) {
-                        // If we failed to power on, clean up
-                        uNetworkRemoveCell(*pDevHandle);
-                        errorCodeOrHandle = x;
-                    }
-                }
+    if (errorCode == 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        pContext = (uDeviceCellContext_t *) pDevInstance->pContext;
+        if ((pCfg != NULL) && (pCfg->version == 0) &&
+            (pCfg->type == U_NETWORK_TYPE_CELL) && (pContext != NULL)) {
+            // Set the stop time for the connect/disconnect calls
+            pContext->stopTimeMs = uPortGetTickTimeMs() +
+                                   (((int64_t) pCfg->timeoutSeconds) * 1000);
+            if (upNotDown) {
+                // Connect using automatic selection,
+                // default no user name or password for the APN
+                errorCode = uCellNetConnect(devHandle, NULL,
+                                            pCfg->pApn,
+                                            NULL, NULL,
+                                            keepGoingCallback);
+            } else {
+                // Disconnect
+                errorCode = uCellNetDisconnect(devHandle, keepGoingCallback);
             }
         }
-    }
-
-    return errorCodeOrHandle;
-}
-
-// Remove a cellular network instance.
-int32_t uNetworkRemoveCell(uDeviceHandle_t devHandle)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uNetworkPrivateCellInstance_t *pInstance;
-
-    // Find the instance in the list
-    pInstance = pGetInstance(devHandle);
-    if (pInstance != NULL) {
-        uCellRemove(pInstance->devHandle);
-        pInstance->devHandle = NULL;
-        uAtClientRemove(pInstance->at);
-        pInstance->at = NULL;
-        uPortUartClose(pInstance->uart);
-        pInstance->uart = -1;
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-    }
-
-    return errorCode;
-}
-
-// Bring up the given cellular network instance.
-int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
-                       const uNetworkConfigurationCell_t *pConfiguration)
-{
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    uNetworkPrivateCellInstance_t *pInstance;
-
-    // Find the instance in the list
-    pInstance = pGetInstance(devHandle);
-    if (pInstance != NULL) {
-        // Set the timeout
-        pInstance->stopTimeMs = uPortGetTickTimeMs() +
-                                (((int64_t) pConfiguration->timeoutSeconds) * 1000);
-        // Power on, in case we weren't on before
-        errorCode = uCellPwrOn(devHandle, pConfiguration->pPin,
-                               keepGoingCallback);
-        if (errorCode == 0) {
-            // Connect using automatic selection,
-            // default no user name or password for the APN
-            errorCode = uCellNetConnect(devHandle, NULL,
-                                        pConfiguration->pApn,
-                                        NULL, NULL,
-                                        keepGoingCallback);
-        }
-    }
-
-    return errorCode;
-}
-
-// Take down the given cellular network instance.
-int32_t uNetworkDownCell(uDeviceHandle_t devHandle,
-                         const uNetworkConfigurationCell_t *pConfiguration)
-{
-    int32_t errorCode;
-
-    if (pConfiguration->pinPwrOn >= 0) {
-        // Disonnect with default timeout, ignoring
-        // error code as we're going to power off anyway
-        uCellNetDisconnect(devHandle, NULL);
-        // Power off with default timeout
-        errorCode = uCellPwrOff(devHandle, NULL);
-        if (errorCode != 0) {
-            // If that didn't do it, try the hard way
-            errorCode = uCellPwrOffHard(devHandle, false, NULL);
-            if (errorCode != 0) {
-                // If that didn't do it, try the truly hard way
-                errorCode = uCellPwrOffHard(devHandle, true, NULL);
-            }
-        }
-    } else {
-        // If we don't have a power-on pin connected,
-        // just do a network disconnect as otherwise we
-        // won't be able to power back on again
-        errorCode = uCellNetDisconnect(devHandle, NULL);
     }
 
     return errorCode;

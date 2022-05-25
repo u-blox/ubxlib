@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@
 
 #include "u_error_common.h"
 
+#include "u_device_shared.h"
+
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
@@ -49,7 +51,6 @@
 #include "u_ble_cfg.h"
 
 #include "u_network.h"
-#include "u_network_private_short_range.h"
 #include "u_network_config_ble.h"
 #include "u_network_private_ble.h"
 
@@ -73,83 +74,34 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Initialise the network API for BLE.
-int32_t uNetworkInitBle(void)
+// Bring a BLE interface up or take it down.
+int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
+                                      uNetworkCfgBle_t *pCfg,
+                                      bool upNotDown)
 {
-    int32_t errorCode = uNetworkInitShortRange();
-    if (errorCode >= 0) {
-        errorCode = uBleInit();
+    uDeviceInstance_t *pDevInstance;
+    int32_t errorCode = uDeviceGetInstance(devHandle, &pDevInstance);
+    uBleCfg_t bleCfg;
+
+    (void) upNotDown;
+
+    if (errorCode == 0) {
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((pCfg != NULL) && (pCfg->version == 0) &&
+            (pCfg->type == U_NETWORK_TYPE_BLE)) {
+            // Up and down is the same function as the pCfg variable
+            // determines if ble and/or sps is enabled or disabled.
+            // So we trust the user to set the correct values here.
+            bleCfg.role = (uBleCfgRole_t) pCfg->role;
+            bleCfg.spsServer = pCfg->spsServer;
+            errorCode = uBleCfgConfigure(devHandle, &bleCfg);
+            if (errorCode >= 0) {
+                errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            }
+        }
     }
 
     return errorCode;
-}
-
-// Deinitialise the sho network API.
-void uNetworkDeinitBle(void)
-{
-    uBleDeinit();
-    uNetworkDeinitShortRange();
-}
-
-// Add a BLE network instance.
-int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration,
-                       uDeviceHandle_t *pDevHandle)
-{
-    int32_t errorCode;
-    const uShortRangeConfig_t shoConfig = {
-        .module = pConfiguration->module,
-        .uart = pConfiguration->uart,
-        .pinTxd = pConfiguration->pinTxd,
-        .pinRxd = pConfiguration->pinRxd,
-        .pinCts = pConfiguration->pinCts,
-        .pinRts = pConfiguration->pinRts
-    };
-
-    // Check that the module supports BLE
-    const uShortRangeModuleInfo_t *pModuleInfo;
-    pModuleInfo = uShortRangeGetModuleInfo(pConfiguration->module);
-    if (!pModuleInfo) {
-        return (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-    }
-    if (!pModuleInfo->supportsBle) {
-        return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
-    }
-
-    errorCode = uNetworkAddShortRange(U_NETWORK_TYPE_BLE, &shoConfig, pDevHandle);
-
-    return errorCode;
-}
-
-// Remove a BLE network instance.
-int32_t uNetworkRemoveBle(uDeviceHandle_t devHandle)
-{
-    return uNetworkRemoveShortRange(devHandle);
-}
-
-// Bring up the given BLE network instance.
-int32_t uNetworkUpBle(uDeviceHandle_t devHandle,
-                      const uNetworkConfigurationBle_t *pConfiguration)
-{
-    int32_t errorCode;
-    uBleCfg_t cfg;
-    cfg.role = (uBleCfgRole_t) pConfiguration->role;
-    cfg.spsServer = pConfiguration->spsServer;
-    errorCode = uBleCfgConfigure(devHandle, &cfg);
-    if (errorCode >= 0) {
-        errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-    }
-
-    return errorCode;
-}
-
-// Take down the given BLE network instance.
-int32_t uNetworkDownBle(uDeviceHandle_t devHandle,
-                        const uNetworkConfigurationBle_t *pConfiguration)
-{
-    // Up and down is the same function as the pConfiguration variable determines
-    // if ble and/or sps is enabled or disabled. So we trust the user to set the
-    // correct values here.
-    return uNetworkUpBle(devHandle, pConfiguration);
 }
 
 #endif

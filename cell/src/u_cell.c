@@ -43,7 +43,7 @@
 #include "u_port_gpio.h"
 
 #include "u_at_client.h"
-#include "u_device_internal.h"
+#include "u_device_shared.h"
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"         // Order is

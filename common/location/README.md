@@ -7,63 +7,55 @@ The directories include the API and the C source files necessary to call into th
 A simple usage example, obtaining position via a GNSS chip, is shown below.  Note that, before calling `app_start()` the platform must be initialised (clocks started, heap available, RTOS running), in other words `app_task()` can be thought of as a task entry point.  If you open the `u_main.c` file in the `app` directory of your platform you will see how we do this, with `main()` calling a porting API `uPortPlatformStart()` to sort that all out; you could paste the example code into `app_start()` there (and add the inclusions) as a quick and dirty test (`runner` will build it).
 
 ```
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-
-#include "u_cfg_sw.h"
+#include "ubxlib.h"
 #include "u_cfg_app_platform_specific.h"
-
-#include "u_error_common.h"
-
-#include "u_port.h"
-
-#include "u_gnss_module_type.h"
-#include "u_gnss_type.h"
-
-#include "u_network.h"
-#include "u_network_config_gnss.h"
-
-#include "u_location.h"
 
 // The entry point: before this is called the system
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
 int app_start() {
     uDeviceHandle_t devHandle = NULL;
+    int32_t x;
     uLocation_t location;
-    const uNetworkConfigurationGnss_t config = {U_NETWORK_TYPE_GNSS,
-                                                U_GNSS_MODULE_TYPE_M8,
-                                                /* Note that the pin numbers
-                                                   used here are those of the MCU:
-                                                   if you are using an MCU inside
-                                                   a u-blox module the IO pin numbering
-                                                   for the module is likely different
-                                                   to that from the MCU: check the data
-                                                   sheet for the module to determine
-                                                   the mapping. */
-                                                U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-                                                /* Connecton is UART. */
-                                                U_GNSS_TRANSPORT_NMEA_UART,
-                                                U_CFG_APP_GNSS_UART,
-                                                U_CFG_APP_PIN_GNSS_TXD,
-                                                U_CFG_APP_PIN_GNSS_RXD,
-                                                U_CFG_APP_PIN_GNSS_CTS,
-                                                U_CFG_APP_PIN_GNSS_RTS,
-                                                0, -1, -1
-                                               };
+    uDeviceCfg_t deviceCfg = {
+        .deviceType = U_DEVICE_TYPE_GNSS,
+        .deviceCfg = {
+            .cfgGnss = {
+                .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
+                .transportType = U_GNSS_TRANSPORT_UBX_UART,
+                .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
+                .devHandleAt = NULL, // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
+                .gnssAtPinPwr = -1, // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
+                .gnssAtPinDataReady = -1 // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
+            },
+        },
+        .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+        .transportCfg = {
+            .cfgUart = {
+                .uart = U_CFG_APP_GNSS_UART,
+                .baudRate = U_GNSS_UART_BAUD_RATE,
+                .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
+                .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
+                .pinCts = U_CFG_APP_PIN_GNSS_CTS,
+                .pinRts = U_CFG_APP_PIN_GNSS_RTS
+            },
+        },
+    };
+    uNetworkCfgGnss_t networkCfg = {
+        .type = U_NETWORK_TYPE_GNSS
+    };
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a network instance of type GNSS using
-    // the configuration
-    uNetworkAdd(U_NETWORK_TYPE_GNSS, (void *) &config, &devHandle);
+    // Open the device
+    x = uDeviceOpen(&deviceCfg, &devHandle);
+    uPortLog("## Opened device with return code %d.\n", x);
 
-    // Bring up the GNSS network layer
-    if (uNetworkUp(devHandle) == 0) {
+    // Bring up the network layer
+    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
+                            &networkCfg) == 0) {
         // Get location
         if (uLocationGet(devHandle, U_LOCATION_TYPE_GNSS,
                          NULL, NULL, &location, NULL) == 0) {
@@ -74,12 +66,14 @@ int app_start() {
 
         }
         // When finished with the GNSS network layer
-        uNetworkDown(devHandle);
+        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
     }
 
-    // Calling these will also deallocate all the handles that
-    // were allocated above.
-    uNetworkDeinit();
+    // Close the device
+    uDeviceClose(devHandle);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     while(1);

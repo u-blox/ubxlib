@@ -41,7 +41,7 @@
 
 #include "u_port_os.h"
 
-#include "u_device_internal.h"
+#include "u_device_shared.h"
 
 #include "u_security_credential.h"
 #include "u_security_tls.h"

@@ -283,7 +283,7 @@ typedef struct {
     volatile uCellMqttUrcMessage_t *pUrcMessage; /**< storage for an MQTT message
                                                       received in a URC, only
                                                       required for SARA-R4. */
-    size_t numTries; /**< The number of tries for a radio-related operation. */ 
+    size_t numTries; /**< The number of tries for a radio-related operation. */
     bool mqttSn; /**< true if this is an MQTT-SN session, else false. */
 } uCellMqttContext_t;
 
@@ -1083,12 +1083,12 @@ static bool mqttRetry(const uCellPrivateInstance_t *pInstance, bool mqttSn)
     if (errorCode >= 0) {
         if (mqttSn) {
             for (size_t x = 0; (x < sizeof(gMqttSnRetryErrorCode) / sizeof(gMqttSnRetryErrorCode[0])) &&
-                                !retry; x++) {
+                 !retry; x++) {
                 retry = (errorCode == gMqttSnRetryErrorCode[x]);
             }
         } else {
             for (size_t x = 0; (x < sizeof(gMqttRetryErrorCode) / sizeof(gMqttRetryErrorCode[0])) &&
-                                !retry; x++) {
+                 !retry; x++) {
                 retry = (errorCode == gMqttRetryErrorCode[x]);
             }
         }

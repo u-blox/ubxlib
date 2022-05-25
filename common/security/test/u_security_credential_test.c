@@ -99,16 +99,16 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
     uNetworkTestCfg_t *pNetworkCfg = NULL;
     uDeviceHandle_t devHandle = NULL;
 
-    uPortInit();
-    uNetworkInit();
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     uPortLog("U_SECURITY_CREDENTIAL_TEST: checking which storage"
              " formats are supported.\n");
 
     // Add each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].devHandle = -1;
-        if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
+        gUNetworkTestCfg[x].devHandle = NULL;
+        if (uNetworkTestDeviceValidForOpen(x)) {
             int32_t returnCode;
             uPortLog("U_SECURITY_CREDENTIAL_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
@@ -118,11 +118,9 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
             // hence we capture the cellular network handle here and
             // modify the GNSS configuration to use it before we add
             // the GNSS network
-            uNetworkTestGnssAtConfiguration(devHandle,
-                                            gUNetworkTestCfg[x].pConfiguration);
+            uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
 #endif
-            returnCode = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                     gUNetworkTestCfg[x].pConfiguration,
+            returnCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                      &gUNetworkTestCfg[x].devHandle);
             U_PORT_TEST_ASSERT(returnCode >= 0);
             if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
@@ -171,14 +169,10 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
     // Remove each network type, in reverse order so
     // that GNSS is taken down before cellular
     for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
-        if (gUNetworkTestCfg[x].devHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: taking down %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].devHandle) == 0);
-        }
+        U_PORT_TEST_ASSERT(uDeviceClose(uNetworkTestClose(x) == 0);
     }
 
-    uNetworkDeinit();
+    uDeviceDeinit();
     uPortDeinit();
 }
 #endif
@@ -204,14 +198,14 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Add each network type
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
-        if ((*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) &&
+        if (uNetworkTestDeviceValidForOpen(x) &&
             U_NETWORK_TEST_TYPE_HAS_CREDENTIAL_STORAGE(gUNetworkTestCfg[x].type,
-                                                       ((const uNetworkConfigurationBle_t *) gUNetworkTestCfg[x].pConfiguration)->module)) {
+                                                       uNetworkTestGetModuleType(x))) {
             uPortLog("U_SECURITY_CREDENTIAL_TEST: adding %s network...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)
@@ -220,11 +214,9 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             // hence we capture the cellular network handle here and
             // modify the GNSS configuration to use it before we add
             // the GNSS network
-            uNetworkTestGnssAtConfiguration(devHandle,
-                                            gUNetworkTestCfg[x].pConfiguration);
+            uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
 #endif
-            errorCode = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                    gUNetworkTestCfg[x].pConfiguration,
+            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
             U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
             if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
@@ -460,14 +452,10 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     // that GNSS (which might be connected via a cellular
     // module) is taken down before cellular
     for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
-        if (gUNetworkTestCfg[x].devHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: taking down %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkDown(gUNetworkTestCfg[x].devHandle) == 0);
-        }
+        U_PORT_TEST_ASSERT(uNetworkTestClose(x) == 0);
     }
 
-    uNetworkDeinit();
+    uDeviceDeinit();
     uPortDeinit();
 
 #ifndef __XTENSA__
@@ -502,7 +490,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialCleanUp")
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
     }
-    uNetworkDeinit();
+    uDeviceDeinit();
 
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {

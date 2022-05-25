@@ -50,31 +50,48 @@
 // u_cfg_app_platform_specific.h under the ESP-IDF platform; you may
 // edit the values in that file or you may replace the values
 // here with the appropriate pin numbers (where -1 means "not
-// connected/used", it is up to you.
-static const uNetworkConfigurationCell_t configCell = {U_NETWORK_TYPE_CELL,
-                                                       U_CFG_TEST_CELL_MODULE_TYPE,
-                                                       NULL, /* SIM pin, must be NULL */
-                                                       NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-                                                       240, /* Connection timeout in seconds */
-                                                       U_CFG_APP_CELL_UART,
-                                                       /* Note that the pin numbers
-                                                          that follow are those of the MCU:
-                                                          if you are using an MCU inside
-                                                          a u-blox module the IO pin numbering
-                                                          for the module is likely different
-                                                          to that from the MCU: check the data
-                                                          sheet for the module to determine
-                                                          the mapping. */
-                                                       U_CFG_APP_PIN_CELL_TXD,
-                                                       U_CFG_APP_PIN_CELL_RXD,
-                                                       U_CFG_APP_PIN_CELL_CTS,
-                                                       U_CFG_APP_PIN_CELL_RTS,
-                                                       U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                       U_CFG_APP_PIN_CELL_PWR_ON,
-                                                       U_CFG_APP_PIN_CELL_VINT
-                                                      };
+// connected/used"), it is up to you.
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different from that of the MCU: check
+// the data sheet for the module to determine the mapping.
+//
+// DEVICE i.e. module/chip configuration: in this case a cellular
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pPin = NULL, /* SIM pin */
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        },
+    },
+};
+// NETWORK configuration for cellular
+static const uNetworkCfgCell_t gNetworkCfg = {
+    .type = U_NETWORK_TYPE_CELL,
+    .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
+    .timeoutSeconds = 240 /* Connection timeout in seconds */
+};
 #else
-static const uNetworkConfigurationCell_t configCell = {U_NETWORK_TYPE_NONE};
+// No module available - set some dummy values to make test system happy
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgCell_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
 // The network handle
@@ -142,22 +159,19 @@ void setup() {
     int32_t returnCode;
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a network instance, in this case of type cell
-    // since that's what we have configuration information
-    // for above.  Once this function has returned a
+    // Open the device.  Once this function has returned a
     // non-negative value then the transport is powered-up,
     // can be configured etc. but is not yet connected.
-    returnCode = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                             (void *) &configCell,
-                             &devHandle);
+    returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     if (returnCode >= 0) {
         printf("Added network with handle %d.\n", devHandle);
         // Bring up the network layer, i.e. connect it so that
         // after this point it may be used to transfer data.
         printf("Bringing up the network...\n");
-        errorCode = uNetworkUp(devHandle);
+       errorCode = uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                                       &gNetworkCfg);
     } else {
         printf("Unable to add network, error %d!\n", devHandle);
     }
@@ -242,8 +256,8 @@ void loop() {
         printf("Network is not available!\n");
     }
 
-    // The remainder is for u-blox internal testing only,
-    // you can happily delete it
+    // The remainder of this function is for u-blox internal
+    // testing only, you can happily delete it
     int32_t failures = 0;
     int32_t tests = 0;
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
@@ -253,6 +267,13 @@ void loop() {
     }
 #endif
     printf("%d Tests %d Failures 0 Ignored\n", tests, failures);
+
+    // Close the device
+    uDeviceClose(devHandle);
+
+    // Tidy up
+    uDeviceDeinit();
+    uPortDeinit();
 
     // We make the loop stop here as otherwise it will
     // send data again and you could run-up a large bill

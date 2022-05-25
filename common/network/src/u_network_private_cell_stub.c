@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,43 +35,13 @@
 #include "u_network_config_cell.h"
 #include "u_network_private_cell.h"
 
-int32_t uNetworkInitCell(void)
-{
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-void uNetworkDeinitCell(void)
-{
-
-}
-
-int32_t uNetworkAddCell(const uNetworkConfigurationCell_t *pConfiguration,
-                        uDeviceHandle_t *pDevHandle)
-{
-    (void) pConfiguration;
-    (void) pDevHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkRemoveCell(uDeviceHandle_t devHandle)
+int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
+                                       uNetworkCfgCell_t *pCfg,
+                                       bool upNotDown)
 {
     (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkUpCell(uDeviceHandle_t devHandle,
-                       const uNetworkConfigurationCell_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkDownCell(uDeviceHandle_t devHandle,
-                         const uNetworkConfigurationCell_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
+    (void) pCfg;
+    (void) upNotDown;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

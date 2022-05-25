@@ -56,32 +56,49 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// GNSS network configuration:
+// GNSS configuration.
 // Set U_CFG_TEST_GNSS_MODULE_TYPE to your module type,
 // chosen from the values in gnss/api/u_gnss_module_type.h
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_GNSS,
-                                                    U_CFG_TEST_GNSS_MODULE_TYPE,
-                                                    /* Note that the pin numbers
-                                                       used here are those of the MCU:
-                                                       if you are using an MCU inside
-                                                       a u-blox module the IO pin numbering
-                                                       for the module is likely different
-                                                       to that from the MCU: check the data
-                                                       sheet for the module to determine
-                                                       the mapping. */
-                                                    U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-                                                    /* Connecton is UART. */
-                                                    U_GNSS_TRANSPORT_UBX_UART,
-                                                    U_CFG_APP_GNSS_UART,
-                                                    U_CFG_APP_PIN_GNSS_TXD,
-                                                    U_CFG_APP_PIN_GNSS_RXD,
-                                                    U_CFG_APP_PIN_GNSS_CTS,
-                                                    U_CFG_APP_PIN_GNSS_RTS,
-                                                    0, -1, -1
-                                                   };
+// DEVICE i.e. module/chip configuration: in this case a GNSS
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_GNSS,
+    .deviceCfg = {
+        .cfgGnss = {
+            .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
+            .transportType = U_GNSS_TRANSPORT_UBX_UART,
+            .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
+            .devHandleAt = NULL, // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
+            .gnssAtPinPwr = -1, // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
+            .gnssAtPinDataReady = -1 // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_GNSS_UART,
+            .baudRate = U_GNSS_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
+            .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
+            .pinCts = U_CFG_APP_PIN_GNSS_CTS,
+            .pinRts = U_CFG_APP_PIN_GNSS_RTS
+        },
+    },
+};
+// NETWORK configuration for GNSS; nothing to do but the type
+static const uNetworkCfgGnss_t gNetworkCfg = {
+    .type = U_NETWORK_TYPE_GNSS
+};
 #else
-static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_NONE};
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgGnss_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
 /* ----------------------------------------------------------------
@@ -138,20 +155,19 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a network instance of type GNSS
-    returnCode = uNetworkAdd(U_NETWORK_TYPE_GNSS,
-                             (void *) &gConfig,
-                             &devHandle);
-    uPortLog("Added network with return code %d.\n", returnCode);
+    // Open the device
+    returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
+    uPortLog("Opened device with return code %d.\n", returnCode);
 
     // You may configure GNSS as required here
     // here using any of the GNSS API calls.
 
-    // Bring up the GNSS network layer
-    uPortLog("Bringing up GNSS...\n");
-    if (uNetworkUp(devHandle) == 0) {
+    // Bring up the GNSS network interface
+    uPortLog("Bringing up the network...\n");
+    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
+                            &gNetworkCfg) == 0) {
 
         // Get location
         if (uLocationGet(devHandle, U_LOCATION_TYPE_GNSS,
@@ -167,13 +183,16 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 
         // When finished with the GNSS network layer
         uPortLog("Taking down GNSS...\n");
-        uNetworkDown(devHandle);
+        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
     } else {
         uPortLog("Unable to bring up GNSS!\n");
     }
 
-    // Calling these will also deallocate the network handle
-    uNetworkDeinit();
+    // Close the device
+    uDeviceClose(devHandle);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("Done.\n");

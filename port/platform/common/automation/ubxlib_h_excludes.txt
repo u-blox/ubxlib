@@ -4,9 +4,6 @@
 # there are some header files in public API directories which we deliberately do NOT want
 # included.  Only file names should be listed.
 
-# Customers should use the BLE and Wi-Fi module types, this would just be confusing
-u_short_range_module_type.h
-
 # Example only
 u_lib.h
 u_lib_internal.h

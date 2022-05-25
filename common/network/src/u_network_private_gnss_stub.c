@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,43 +35,13 @@
 #include "u_network_config_gnss.h"
 #include "u_network_private_gnss.h"
 
-int32_t uNetworkInitGnss()
-{
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-void uNetworkDeinitGnss()
-{
-
-}
-
-int32_t uNetworkAddGnss(const uNetworkConfigurationGnss_t *pConfiguration,
-                        uDeviceHandle_t *pDevHandle)
-{
-    (void) pConfiguration;
-    (void) pDevHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkRemoveGnss(uDeviceHandle_t devHandle)
+int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
+                                       uNetworkCfgGnss_t *pCfg,
+                                       bool upNotDown)
 {
     (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkUpGnss(uDeviceHandle_t devHandle,
-                       const uNetworkConfigurationGnss_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkDownGnss(uDeviceHandle_t devHandle,
-                         const uNetworkConfigurationGnss_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
+    (void) pCfg;
+    (void) upNotDown;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

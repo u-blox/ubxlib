@@ -17,33 +17,17 @@ This API relies upon the [common/ubx_protocol](/common/ubx_protocol) component t
 # Usage
 The [api](api) directory contains the files that define the GNSS APIs, each API function documented in its header file.  In the [src](src) directory you will find the implementation of the APIs and in the [test](test) directory the tests for the APIs that can be run on any platform.
 
-A simple usage example is given below.  Note that, before calling `app_start()` the platform must be initialised (clocks started, heap available, RTOS running), in other words `app_task()` can be thought of as a task entry point.  If you open the `u_main.c` file in the `app` directory of your platform you will see how we do this, with `main()` calling a porting API `uPortPlatformStart()` to sort that all out; you could paste the example code into `app_start()` there (and add the inclusions) as a quick and dirty test (`runner` will build it).
+A simple usage example is given below.  Note that, before calling `app_start()` the platform must be initialised (clocks started, heap available, RTOS running), in other words `app_task()` can be thought of as a task entry point.  If you open the `u_main.c` file in the `app` directory of your platform you will see how we do this, with `main()` calling a porting API `uPortPlatformStart()` to sort that all out; you could paste the example code into `app_start()` there (and add the inclusion of `ubxlib.h`) as a quick and dirty test (`runner` will build it).
 
 ```
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-
-#include "u_cfg_sw.h"
+#include "ubxlib.h"
 #include "u_cfg_app_platform_specific.h"
-
-#include "u_error_common.h"
-
-#include "u_port.h"
-#include "u_port_uart.h"
-
-#include "u_gnss_module_type.h"
-#include "u_gnss_type.h"
-#include "u_gnss.h"
-#include "u_gnss_pwr.h"
-#include "u_gnss_pos.h"
 
 // The entry point: before this is called the system
 // clocks must have been started and the RTOS must be running;
 // we are in task space.
 int app_start() {
-    int32_t uartHandle;
+    uGnssTransportHandle_t transportHandle;
     uDeviceHandle_t gnssHandle = NULL;
     int32_t latitudeX1e7;
     int32_t longitudeX1e7;
@@ -59,19 +43,19 @@ int app_start() {
     // for your hardware, either set the #defines
     // appropriately or replace them with the right
     // numbers, using -1 for a pin that is not connected.
-    uartHandle = uPortUartOpen(U_CFG_APP_GNSS_UART,
-                               U_GNSS_UART_BAUD_RATE, NULL,
-                               U_GNSS_UART_BUFFER_LENGTH_BYTES,
-                               U_CFG_APP_PIN_GNSS_TXD,
-                               U_CFG_APP_PIN_GNSS_RXD,
-                               U_CFG_APP_PIN_GNSS_CTS,
-                               U_CFG_APP_PIN_GNSS_RTS);
+    transportHandle.uart = uPortUartOpen(U_CFG_APP_GNSS_UART,
+                                         U_GNSS_UART_BAUD_RATE, NULL,
+                                         U_GNSS_UART_BUFFER_LENGTH_BYTES,
+                                         U_CFG_APP_PIN_GNSS_TXD,
+                                         U_CFG_APP_PIN_GNSS_RXD,
+                                         U_CFG_APP_PIN_GNSS_CTS,
+                                         U_CFG_APP_PIN_GNSS_RTS);
 
     // Add a GNSS instance, giving it the UART handle and
     // the pin that enables power to the GNSS module; use
     // -1 if there is no such pin.
     uGnssAdd(U_GNSS_MODULE_TYPE_M8,
-             U_GNSS_TRANSPORT_NMEA_UART, uartHandle,
+             U_GNSS_TRANSPORT_NMEA_UART, transportHandle,
              U_CFG_APP_PIN_GNSS_ENABLE_POWER, false,
              &gnssHandle);
 
@@ -81,14 +65,14 @@ int app_start() {
     // Power up the GNSS module
     if (uGnssPwrOn(gnssHandle) == 0) {
         // Read position
-        if (uGnssGetPos(gnssHandle, &latitudeX1e7, &longitudeX1e7,
+        if (uGnssPosGet(gnssHandle, &latitudeX1e7, &longitudeX1e7,
                         NULL, NULL, NULL, NULL, NULL, NULL) == 0) {
             printf("I am here: https://maps.google.com/?q=%3.7f,%3.7f\n",
                    ((double) latitudeX1e7) / 10000000,
                    ((double) longitudeX1e7) / 10000000); 
         }
         // When finished using the module
-        uGnssPwrOff(gnssHandle, NULL);
+        uGnssPwrOff(gnssHandle);
     }
 
     // Calling these will also deallocate all the handles that

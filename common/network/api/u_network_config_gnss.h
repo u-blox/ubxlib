@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,69 +41,29 @@
  * irrespective of whether GNSS is used there.
  */
 
-/** The network configuration for GNSS.  Note that the pin
- * numbers are those of the MCU: if you are using an MCU inside
- * a u-blox module the IO pin numbering for the module is likely
- * different to that from the MCU: check the data sheet for the
- * module to determine the mapping.
+/** The network configuration for GNSS; currently carries no GNSS-specific
+ * information, necessary for forwards-compatibility should such information
+ * be required in future.
  */
 typedef struct {
-    uNetworkType_t type; /**< All uNetworkConfigurationXxx structures
-                              must begin with this for error checking
-                              purposes. */
-    int32_t moduleType; /**< The module type that is connected,
-                             see uGnssModuleType_t in u_gnss_module_type.h. */
-    int32_t pinGnssEnablePower; /**< The output pin that is used to power-on
-                                     the GNSS module; use -1 if there is no
-                                     such connection. */
-    int32_t transportType; /**< The transport type to use,
-                                chosen from uGnssTransportType_t
-                                in gnss.h. */
-    int32_t uart; /**< The UART HW block to use; ignored if transportType
-                       does not indicate a UART connection. */
-    int32_t pinTxd; /** The output pin that sends UART data to
-                        the GNSS module; ignored if transportType
-                        does not indicate a UART connection. */
-    int32_t pinRxd; /** The input pin that receives UART data from
-                        the GNSS module; ignored if transportType
-                        does not indicate a UART connection. */
-    int32_t pinCts; /**< The input pin that the GNSS module
-                         will use to indicate that data can be sent
-                         to it; use -1 if there is no such connection,
-                         ignored if transportType does not indicate a
-                         UART connection. */
-    int32_t pinRts; /**< The output pin output pin that tells the
-                         GNSS module that it can send more UART
-                         data; use -1 if there is no such connection,
-                         ignored if transportType does not indicate a
-                         UART connection. */
-    uDeviceHandle_t devHandleAt;  /**< If transportType is set to
-                                   U_GNSS_TRANSPORT_UBX_AT, set
-                                   this to the handle of the
-                                   network which provides the
-                                   AT interface, i.e. the module
-                                   through which the GNSS module is
-                                   connected; ignored if transportType
-                                   is set to anything else. */
-    int32_t gnssAtPinPwr; /**< Only relevant if transportType
-                               is set to U_GNSS_TRANSPORT_UBX_AT:
-                               set this to the pin of the intermediate
-                               (e.g. cellular) module that powers
-                               the GNSS chip.  For instance, in the
-                               case of a cellular module, GPIO2
-                               is module pin 23 and hence 23 would be
-                               used here. If there is no such
-                               functionality then use -1. */
-    int32_t gnssAtPinDataReady; /**< Only relevant if transportType is set
-                                     to U_GNSS_TRANSPORT_UBX_AT: set this to
-                                     the pin of the intermediate (e.g. cellular
-                                     module that is connected to the Data Ready
-                                     pin of the GNSS chip.  For instance, in
-                                     the case of cellular, GPIO3 is cellular
-                                     module pin 24 and hence 24 would be used here.
-                                     If no Data Ready signalling is required then
-                                     specify -1. */
-} uNetworkConfigurationGnss_t;
+    uNetworkCfgVersion_t version; /**< Version of this network
+                                       configuration; allow your
+                                       compiler to initialise this
+                                       to zero unless otherwise
+                                       specified below. */
+    uNetworkType_t type;          /**< For error checking purposes. */
+    /* This is the end of version 0 of this
+       structure: should any fields be added to
+       this structure in future they must be
+       added AFTER this point and instructions
+       must be given against each one as to how
+       to set the version field if any of the
+       new fields are populated. For example, if
+       int32_t magic were added, the comment
+       against it might end with the clause "; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
+} uNetworkCfgGnss_t;
 
 #endif // _U_NETWORK_CONFIG_GNSS_H_
 

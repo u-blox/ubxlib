@@ -23,7 +23,10 @@
  * please keep #includes to your .c files. */
 
 /** @file
- * @brief This is a high-level API for initializing an u-blox device (chip or module)
+ * @brief This is a high-level API for initializing a u-blox device
+ * (chip or module). These functions are generally used in conjunction
+ * with those in the network API, see u_network.h for further information.
+ * These functions are thread-safe.
  */
 
 #ifdef __cplusplus
@@ -62,12 +65,36 @@ typedef enum {
     U_DEVICE_TRANSPORT_TYPE_MAX_NUM
 } uDeviceTransportType_t;
 
+/** A version number for the device configuration structure. In
+ * general you should allow the compiler to initialise any variable
+ * of this type to zero and ignore it.  It is only set to a value
+ * other than zero when variables in a new and extended version of
+ * the structure it is a part of are being used, the version number
+ * being employec by this code to detect that and, more importantly,
+ * to adopt default values for any new elements when the version
+ * number is STILL ZERO, maintaining backwards compatibility with
+ * existing application code.  The structure this is a part of will
+ * include instructions as to when a non-zero version number should
+ * be set.
+ */
 typedef int32_t uDeviceVersion_t;
 
-/** Uart transport configuration.
+/* Note: try, wherever possible, to use only basic types in the
+ * configuration structures in this file (i.e. int32_t, const char,
+ * bool, etc.) since otherwise you'll end up dragging
+ * device/transport-type-specific headers into every application,
+ * irrespective of whether that device/transport-type is used there.
+ * Never use any types that are network-specific here; if you find
+ * you need to do so there's something wrong, the device should
+ * know nothing about the network.
+ */
+
+/** UART transport configuration.
  */
 typedef struct {
-    uDeviceVersion_t version; /**< Version of this structure. */
+    uDeviceVersion_t version; /**< Version of this structure; allow your
+                                   compiler to initialise this to zero
+                                   unless otherwise specified below. */
     int32_t uart;             /**< The UART HW block to use. */
     int32_t baudRate;         /**< Uart speed value
                                    Currently only applicable for short-range modules. */
@@ -81,22 +108,47 @@ typedef struct {
     int32_t pinRts;          /**< The output pin output pin that tells the
                                   module that it can send more UART
                                   data; use -1 if there is no such connection. */
-} uDeviceConfigUart_t;
+    /* This is the end of version 0 of this structure:
+       should any fields be added to this structure in
+       future they must be added AFTER this point and
+       instructions must be given against each one
+       as to how to set the version field if any of
+       the new fields are populated. For example,
+       if int32_t pinMagic were added, the comment
+       against it might and with the clause"; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
+} uDeviceCfgUart_t;
 
 /** I2C transport configuration.
  */
 typedef struct {
-    uDeviceVersion_t version;  /**< Version of this structure. */
-    int32_t pinSda;            /** I2C data pin. */
-    int32_t pinScl;            /** I2C clock pin. */
-} uDeviceConfigI2c_t;
+    uDeviceVersion_t version;  /**< Version of this structure; allow your
+                                    compiler to initialise this to zero
+                                    unless otherwise specified below. */
+    int32_t pinSda;            /**< I2C data pin. */
+    int32_t pinScl;            /**< I2C clock pin. */
+    /* This is the end of version 0 of this structure:
+       should any fields be added to this structure in
+       future they must be added AFTER this point and
+       instructions must be given against each one
+       as to how to set the version field if any of
+       the new fields are populated. For example,
+       if int32_t pinMagic were added, the comment
+       against it might end with the clause "; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
+} uDeviceCfgI2c_t;
 
 /** Cellular device configuration.
 */
 typedef struct {
-    uDeviceVersion_t version; /**< Version of this structure. */
+    uDeviceVersion_t version; /**< Version of this structure; allow your
+                                   compiler to initialise this to zero
+                                   unless otherwise specified below. */
     int32_t moduleType;       /**< The module type that is connected,
                                    see uCellModuleType_t in u_cell_module_type.h. */
+    const char *pSimPinCode;  /**< The PIN of the SIM. */
     int32_t pinEnablePower;   /**< The output pin that enables power
                                    to the cellular module; use -1 if
                                    there is no such connection. */
@@ -106,38 +158,32 @@ typedef struct {
     int32_t pinVInt;          /**< The input pin that is connected to the
                                    VINT pin of the cellular module; use -1
                                    if there is no such connection. */
-} uDeviceConfigCell_t;
+    /* This is the end of version 0 of this structure:
+       should any fields be added to this structure in
+       future they must be added AFTER this point and
+       instructions must be given against each one
+       as to how to set the version field if any of
+       the new fields are populated. For example,
+       if int32_t pinMagic were added, the comment
+       against it might end with the clause "; if this
+       field is populated then the version field
+       of this structure must be set to 1 or higher". */
+} uDeviceCfgCell_t;
 
 /** GNSS device configuration.
  */
 typedef struct {
-    uDeviceVersion_t version;   /**< Version of this structure. */
-    int32_t moduleType;         /**< The module type that is connected,
-                                     see uGnssModuleType_t in u_gnss_module_type.h. */
-    int32_t pinGnssEnablePower; /**< The output pin that is used to power-on
-                                     the GNSS module; use -1 if there is no
-                                     such connection. */
-    int32_t transportType;      /**< The transport type to use,
-                                     chosen from uGnssTransportType_t
-                                     in gnss.h. */
-    int32_t gnssAtPinPwr;       /**< Only relevant if transportType
-                                     is set to U_GNSS_TRANSPORT_UBX_AT:
-                                     set this to the pin of the intermediate
-                                     (e.g. cellular) module that powers
-                                     the GNSS chip.  For instance, in the
-                                     case of a cellular module, GPIO2
-                                     is module pin 23 and hence 23 would be
-                                     used here. If there is no such
-                                     functionality then use -1. */
-    int32_t gnssAtPinDataReady; /**< Only relevant if transportType is set
-                                     to U_GNSS_TRANSPORT_UBX_AT: set this to
-                                     the pin of the intermediate (e.g. cellular
-                                     module that is connected to the Data Ready
-                                     pin of the GNSS chip.  For instance, in
-                                     the case of cellular, GPIO3 is cellular
-                                     module pin 24 and hence 24 would be used here.
-                                     If no Data Ready signalling is required then
-                                     specify -1. */
+    uDeviceVersion_t version;    /**< Version of this structure; allow your
+                                      compiler to initialise this to zero
+                                      unless otherwise specified below. */
+    int32_t moduleType;          /**< The module type that is connected,
+                                      see uGnssModuleType_t in u_gnss_module_type.h. */
+    int32_t transportType;       /**< The transport type to use,
+                                      chosen from uGnssTransportType_t
+                                      in gnss.h. */
+    int32_t pinGnssEnablePower;  /**< The output pin that is used to power-on
+                                      the GNSS module; use -1 if there is no
+                                      such connection. */
     uDeviceHandle_t devHandleAt; /**< If transportType is set to
                                       U_GNSS_TRANSPORT_UBX_AT, set
                                       this to the handle of the
@@ -146,54 +192,122 @@ typedef struct {
                                       through which the GNSS module is
                                       connected; ignored if transportType
                                       is set to anything else. */
-
-} uDeviceConfigGnss_t;
+    int32_t gnssAtPinPwr;        /**< Only relevant if transportType
+                                      is set to U_GNSS_TRANSPORT_UBX_AT:
+                                      set this to the pin of the intermediate
+                                      (e.g. cellular) module that powers
+                                      the GNSS chip.  For instance, in the
+                                      case of a cellular module, GPIO2
+                                      is module pin 23 and hence 23 would be
+                                      used here. If there is no such
+                                      functionality then use -1. */
+    int32_t gnssAtPinDataReady;  /**< Only relevant if transportType is set
+                                      to U_GNSS_TRANSPORT_UBX_AT: set this to
+                                      the pin of the intermediate (e.g. cellular
+                                      module that is connected to the Data Ready
+                                      pin of the GNSS chip.  For instance, in
+                                      the case of cellular, GPIO3 is cellular
+                                      module pin 24 and hence 24 would be used here.
+                                      If no Data Ready signalling is required then
+                                      specify -1. */
+    /* This is the end of version 0 of this structure:
+       should any fields be added to this structure in
+       future they must be added AFTER this point and
+       instructions must be given against each one
+       as to how to set the version field if any of
+       the new fields are populated. For example,
+       if int32_t pinMagic were added, the comment
+       against it might end with the clause "; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
+} uDeviceCfgGnss_t;
 
 /** Short-range device configuration.
  */
 typedef struct {
-    uDeviceVersion_t version; /**< Version of this structure. */
-    int32_t module;           /**< The module type that is connected,
-                                   see uShortRangeModuleType_t in u_short_range_module_type.h. */
-} uDeviceConfigShortRange_t;
+    uDeviceVersion_t version; /**< Version of this structure; allow your
+                                   compiler to initialise this to zero
+                                   unless otherwise specified below. */
+    int32_t moduleType;       /**< The module type that is connected,
+                                   see uShortRangeModuleType_t in
+                                   u_short_range_module_type.h. */
+    /* This is the end of version 0 of this structure:
+       should any fields be added to this structure in
+       future they must be added AFTER this point and
+       instructions must be given against each one
+       as to how to set the version field if any of
+       the new fields are populated. For example,
+       if int32_t pinMagic were added, the comment
+       against it might end with the clause "; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
+} uDeviceCfgShortRange_t;
 
 /** The complete device configuration.
  */
 typedef struct {
-    uDeviceVersion_t version; /**< Version of this structure. */
+    uDeviceVersion_t version; /**< Version of this structure; allow your
+                                   compiler to initialise this to zero
+                                   unless otherwise specified below. */
     uDeviceType_t deviceType;
     union {
-        uDeviceConfigCell_t cellCfg;
-        uDeviceConfigGnss_t gnssCfg;
-        uDeviceConfigShortRange_t shoCfg;
+        uDeviceCfgCell_t cfgCell;
+        uDeviceCfgGnss_t cfgGnss;
+        uDeviceCfgShortRange_t cfgSho;
     } deviceCfg;
-    uDeviceTransportType_t transport;
+    uDeviceTransportType_t transportType;
     union {
-        uDeviceConfigUart_t uartCfg;
-        uDeviceConfigI2c_t i2cCfg;
+        uDeviceCfgUart_t cfgUart;
+        uDeviceCfgI2c_t cfgI2c;
     } transportCfg;
-} uDeviceConfig_t;
+    /* This is the end of version 0 of this structure:
+       should any fields be added to this structure in
+       future they must be added AFTER this point and
+       instructions must be given against each one
+       as to how to set the version field if any of
+       the new fields are populated. For example,
+       if int32_t magic were added, the comment
+       against it might end with the clause "; if this
+       field is populated then the version field of
+       this structure must be set to 1 or higher". */
+} uDeviceCfg_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Initialise the device API.  If the device API has already
+ * been initialised this function returns success without doing
+ * anything.
+ *
+ * @return  zero on success else negative error code.
+ */
+int32_t uDeviceInit();
+
+/** Deinitialise the device API.  Note that this performs no
+ * clean-up, it is up to the caller to ensure that all devices
+ * have been closed with a call to uDeviceClose().
+ *
+ * @return  zero on success else negative error code.
+ */
+int32_t uDeviceDeinit();
+
 /** Open a device instance.
  *
- * @param pDevCfg              Device configuration
- * @param[out] pUDeviceHandle  A new device handle.
- *
- * @return                     0 on success else a negative error code.
+ * @param pDeviceCfg          device configuration, cannot be NULL.
+ * @param[out] pDeviceHandle  a place to put the device handle;
+ *                            cannot be NULL.
+ * @return                    zero on success else a negative error code.
  */
-int32_t uDeviceOpen(const uDeviceConfig_t *pDevCfg, uDeviceHandle_t *pUDeviceHandle);
+int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
+                    uDeviceHandle_t *pDeviceHandle);
 
-/** Close an open device instance.
+/** Close an open device instance, powering it off.
  *
- * @param pUDeviceHandle  Handle to a previously opened device.
- *
- * @return                0 on success else a negative error code.
+ * @param devHandle handle to a previously opened device.
+ * @return          zero on success else a negative error code.
  */
-int32_t uDeviceClose(uDeviceHandle_t pUDeviceHandle);
+int32_t uDeviceClose(uDeviceHandle_t devHandle);
 
 #ifdef __cplusplus
 }

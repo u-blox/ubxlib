@@ -61,7 +61,7 @@ extern int32_t gStdoutCounter;
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// The task within which th examples and tests run.
+// The task within which the examples and tests run.
 static void appTask(void *pParam)
 {
     (void) pParam;

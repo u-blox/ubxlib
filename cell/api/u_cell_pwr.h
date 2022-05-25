@@ -220,7 +220,7 @@ bool uCellPwrIsAlive(uDeviceHandle_t cellHandle);
  * with this driver.
  *
  * @param cellHandle         the handle of the cellular instance.
- * @param pPin               pointer to a string giving the PIN of
+ * @param pSimPinCode        pointer to a string giving the PIN of
  *                           the SIM. It is module dependent as to
  *                           whether this can be non-NULL; if it is
  *                           non-NULL and the module does not support
@@ -256,7 +256,8 @@ bool uCellPwrIsAlive(uDeviceHandle_t cellHandle);
  * @return                   zero on success or negative error
  *                           code on failure.
  */
-int32_t uCellPwrOn(uDeviceHandle_t cellHandle, const char *pPin,
+int32_t uCellPwrOn(uDeviceHandle_t cellHandle,
+                   const char *pSimPinCode,
                    bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Power the cellular module off.
