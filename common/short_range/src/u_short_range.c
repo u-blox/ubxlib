@@ -1182,31 +1182,31 @@ int32_t uShortRangeGpioSet(uDeviceHandle_t devHandle, int32_t gpioId,
     return errorCode;
 }
 
-int32_t uShortRangeResetToDefaultSettings(int32_t pinDataReady)
+int32_t uShortRangeResetToDefaultSettings(int32_t pinResetToDefaults)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uPortGpioConfig_t gpioConfig;
 
     if (gUShortRangePrivateMutex == NULL) {
-        return (int32_t) errorCode;
+        return errorCode;
     }
 
     U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
-    gpioConfig.pin = pinDataReady;
+    gpioConfig.pin = pinResetToDefaults;
     gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
     errorCode = uPortGpioConfig(&gpioConfig);
-    uPortGpioSet(pinDataReady, 0); //assert
+    uPortGpioSet(pinResetToDefaults, 0); //assert
 
-    //initiate DTR reset sequence
+    //initiate reset sequence
     if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
         uPortTaskBlock(1200); // 1s silence
         for (int32_t count = 0; count < 5; count++) { // 5 transfers from deassert to assert
             uPortTaskBlock(40);
-            uPortLog("U_SHORT_RANGE: DTR state: on\n");
-            uPortGpioSet(pinDataReady, 1); //deassert
+            uPortLog("U_SHORT_RANGE: setting module DSR to state 1 (deasserted)...\n");
+            uPortGpioSet(pinResetToDefaults, 1); //deassert
             uPortTaskBlock(40);
-            uPortLog("U_SHORT_RANGE: DTR state: off\n");
-            uPortGpioSet(pinDataReady, 0); //assert
+            uPortLog("U_SHORT_RANGE: setting module DSR to state 0 (asserted)...\n");
+            uPortGpioSet(pinResetToDefaults, 0); //assert
         }
         uPortTaskBlock(1200); // 1s silence
     }

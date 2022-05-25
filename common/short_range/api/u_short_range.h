@@ -401,10 +401,11 @@ int32_t uShortRangeGpioSet(uDeviceHandle_t devHandle, int32_t gpioId, int32_t le
 
 /** Resets the module settings to default values of a shortrange module.
  *
- * @param pinDataReady      the GPIO ID for DTR (often the same as pin number).
- * @return                  zero on success else negative error code.
+ * @param pinResetToDefaults the pin of this MCU that MUST BE CONNECTED TO
+ *                           the DSR pin of the module.
+ * @return                   zero on success else negative error code.
  */
-int32_t uShortRangeResetToDefaultSettings(int32_t pinDataReady);
+int32_t uShortRangeResetToDefaultSettings(int32_t pinResetToDefaults);
 
 #ifdef __cplusplus
 }

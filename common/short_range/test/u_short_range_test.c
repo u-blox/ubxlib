@@ -62,10 +62,11 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
-#ifndef U_CFG_APP_PIN_SHORT_RANGE_DTR
-/** The GPIO ID to use when testing.
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS
+/** The GPIO pin to use in the shortRangeResetToDefaultSettings()
+ * test.
  */
-# define U_CFG_APP_PIN_SHORT_RANGE_DTR -1
+# define U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS -1
 #endif
 #endif
 /* ----------------------------------------------------------------
@@ -244,7 +245,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
                                      .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
                                    };
-    if (U_CFG_APP_PIN_SHORT_RANGE_DTR >= 0) {
+    if (U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0) {
         uPortDeinit();
 
         U_PORT_TEST_ASSERT(uPortInit() == 0);
@@ -265,8 +266,9 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
         U_PORT_TEST_ASSERT(uShortRangeSetBaudrate(&gHandles.devHandle, &uart) == 0); // set to 19200
         U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0); // should get valid respons
 
-        uPortLog("U_SHORT_RANGE_TEST: Restoring to default settings via DTR pin...\n");
-        uShortRangeResetToDefaultSettings(U_CFG_APP_PIN_SHORT_RANGE_DTR); // restore to default 115200
+        uPortLog("U_SHORT_RANGE_TEST: Restoring to default settings via GPIO pin...\n");
+        // restore to default 115200
+        uShortRangeResetToDefaultSettings(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS);
 
         uPortLog("U_SHORT_RANGE_TEST: Comm. should now fail due to different baudrates.");
         U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) != 0); // should not get valid respons
@@ -276,7 +278,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
         uShortRangeClose(gHandles.devHandle);
         uPortLog("U_SHORT_RANGE_TEST: Setting baudrate on host to %d\n", uart.baudRate);
         U_PORT_TEST_ASSERT(uShortRangeOpenUart(moduleType, &uart, false,
-                                               &gHandles.devHandle) == 0); // target should already be at 115200 due to DTR reset
+                                               &gHandles.devHandle) == 0); // target should already be at 115200 due to reset
         uShortRangeTestPrivateCleanup(&gHandles);
 
         uPortLog("U_SHORT_RANGE_TEST: shortRangeResetToDefaultSettings succeded.\n");
