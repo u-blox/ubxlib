@@ -96,10 +96,7 @@ typedef struct uShortRangePrivateConnection_t {
 //lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallback) Suppress not reference, it is
 //lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallbackParameter) Suppress not reference, it is
 typedef struct uShortRangePrivateInstance_t {
-    uDeviceHandle_t bleHandle; /**< Temporary device handle for BLE.
-                                    Should be removed when network API has been adjusted*/
-    uDeviceHandle_t wifiHandle; /**< Temporary device handle for WiFi.
-                                     Should be removed when network API has been adjusted*/
+    uDeviceHandle_t devHandle; /**< Handle for corresponding device */
     uShortRangeModes_t mode;
     int32_t uartHandle;
     const uShortRangePrivateModule_t *pModule; /**< Pointer to the module type. */

@@ -306,8 +306,11 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
             }
 
             if (errorCode != 0) {
-                // Something went wrong, clean up
-                // TODO: check recursion...?
+                // Something went wrong, clean up.
+                // Use a recursive call here for convenience.
+                // This is without risk for a loop as the upNotDown
+                // parameter is false and hence this line can not
+                // be reached in the call.
                 uNetworkPrivateChangeStateWifi(devHandle, pCfg, false);
             }
 

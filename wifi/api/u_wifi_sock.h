@@ -175,7 +175,7 @@ int32_t uWifiSockConnect(uDeviceHandle_t devHandle,
  *                      completed unless pCallback is non-
  *                      NULL, in which case this function
  *                      will return and will call pCallback,
- *                      with the first parameter the wifiHandle
+ *                      with the first parameter the devHandle
  *                      and the second parameter the sockHandle,
  *                      when the socket is eventually closed.
  * @return              zero on success else negated
@@ -383,7 +383,7 @@ int32_t uWifiSockRead(uDeviceHandle_t devHandle,
  * @param[in] pCallback  the callback to be called, or
  *                       NULL to cancel a previous callback.
  *                       The first parameter passed to the
- *                       callback will be wifiHandle, the
+ *                       callback will be devHandle, the
  *                       second sockHandle.
  * @return               zero on success else negated
  *                       value of U_SOCK_Exxx from
@@ -400,7 +400,7 @@ int32_t uWifiSockRegisterCallbackData(uDeviceHandle_t devHandle,
  * @param[in] pCallback  the callback to be called, or
  *                       NULL to cancel a previous callback.
  *                       The first parameter passed to the
- *                       callback will be wifiHandle, the
+ *                       callback will be devHandle, the
  *                       second sockHandle.
  * @return               zero on success else negated
  *                       value of U_SOCK_Exxx from

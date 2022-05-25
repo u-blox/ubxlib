@@ -140,7 +140,6 @@ int32_t uBleTestPrivatePreamble(uBleModuleType_t moduleType,
         errorCodeOrHandle = uBleInit();
 
         if (errorCodeOrHandle >= (int32_t) U_ERROR_COMMON_SUCCESS) {
-            // TODO: Use uDeviceOpen() here
             pParameters->devHandle =
                 (uDeviceHandle_t)pUDeviceCreateInstance(U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU);
         }
@@ -163,7 +162,6 @@ void uBleTestPrivatePostamble(uBleTestPrivate_t *pParameters)
     uAtClientDeinit();
 
 #else
-    // TODO: Use uDeviceClose() here
     uDeviceDestroyInstance((uDeviceInstance_t *)pParameters->devHandle);
     uBleDeinit();
     (void)pParameters;
