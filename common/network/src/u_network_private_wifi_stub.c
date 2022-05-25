@@ -39,51 +39,6 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// TODO: WILL BE REMOVED.
-int32_t uNetworkInitWifi(void)
-{
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-void uNetworkDeinitWifi()
-{
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkAddWifi(const uNetworkConfigurationWifi_t *pConfiguration,
-                        uDeviceHandle_t *pDevHandle)
-{
-    (void) pConfiguration;
-    (void) pDevHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkRemoveWifi(uDeviceHandle_t devHandle)
-{
-    (void) devHandle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkUpWifi(uDeviceHandle_t devHandle,
-                       const uNetworkConfigurationWifi_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-// TODO: WILL BE REMOVED.
-int32_t uNetworkDownWifi(uDeviceHandle_t devHandle,
-                         const uNetworkConfigurationWifi_t *pConfiguration)
-{
-    (void) devHandle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
 int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
                                        uNetworkCfgWifi_t *pCfg,
                                        bool upNotDown)

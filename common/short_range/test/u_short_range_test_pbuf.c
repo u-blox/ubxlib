@@ -49,6 +49,7 @@
 #include "u_port_os.h"
 #include "u_mempool.h"
 #include "u_short_range_pbuf.h"
+#include "u_short_range_edm.h" // For U_SHORT_RANGE_EDM_BLK_SIZE
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -71,21 +72,19 @@
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
-static char *generatePayLoad(uMemPoolDesc_t *pMemPool, uint32_t size)
+static int32_t generatePayLoad(uShortRangePbuf_t **ppBuf)
 {
-    char *pPayLoad;
-    uint32_t i;
+    int32_t errorCode;
 
-    pPayLoad = (char *)uMemPoolAllocMem(pMemPool);
+    errorCode = uShortRangePbufAlloc(ppBuf);
 
-    if (pPayLoad != NULL) {
-        for (i = 0; i < size; i++) {
-
-            pPayLoad[i] = rand() % 128;
-
+    if (errorCode > 0) {
+        for (int i = 0; i < errorCode; i++) {
+            (*ppBuf)->data[i] = rand() % 128;
+            (*ppBuf)->length++;
         }
     }
-    return pPayLoad;
+    return errorCode;
 }
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS: TESTS
@@ -93,19 +92,17 @@ static char *generatePayLoad(uMemPoolDesc_t *pMemPool, uint32_t size)
 U_PORT_TEST_FUNCTION("[pbuf]", "pbufInsertPayload")
 {
     int32_t errCode;
-    uMemPoolDesc_t mempoolDesc;
     uShortRangePbufList_t *pPbufList;
     int32_t numOfBlks = 8;
-    uint32_t sizeOfBlk = 64;
-    char *pBuf;
+    uShortRangePbuf_t *pBuf;
     int32_t heapUsed;
-    char *pBuf2;
-    char *pBuf3;
+    char *pBuffer2;
+    char *pBuffer3;
     size_t copiedLen = 0;
     int32_t i;
     //lint -e{679} suppress loss of precision
     //lint -e{647} suppress suspicious truncation
-    size_t totalLen = numOfBlks * sizeOfBlk;
+    size_t totalLen = numOfBlks * U_SHORT_RANGE_EDM_BLK_SIZE;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -114,46 +111,40 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufInsertPayload")
     rand();
     heapUsed = uPortGetHeapFree();
 
-    errCode = uMemPoolInit(&mempoolDesc, sizeOfBlk, numOfBlks);
-    U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
-
     errCode = uShortRangeMemPoolInit();
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    pPbufList = pUShortRangeAllocPbufList();
+    pPbufList = pUShortRangePbufListAlloc();
     U_PORT_TEST_ASSERT(pPbufList != NULL);
 
-    pBuf2 = (char *)malloc(totalLen);
-    U_PORT_TEST_ASSERT(pBuf2 != NULL);
-    //lint -e{668} suppress Possibly passing a. null pointer to function memset - we are not!
-    memset(pBuf2, 0, totalLen);
+    pBuffer2 = (char *)malloc(totalLen);
+    U_PORT_TEST_ASSERT(pBuffer2 != NULL);
+    memset(pBuffer2, 0, totalLen);
 
-    pBuf3 = (char *)malloc(totalLen);
-    U_PORT_TEST_ASSERT(pBuf3 != NULL);
-    //lint -e{668} suppress Possibly passing a. null pointer to function memset - we are not!
-    memset(pBuf3, 0, totalLen);
+    pBuffer3 = (char *)malloc(totalLen);
+    U_PORT_TEST_ASSERT(pBuffer3 != NULL);
+    memset(pBuffer3, 0, totalLen);
 
     for (i = 0; i < numOfBlks; i++) {
-        pBuf = generatePayLoad(&mempoolDesc, sizeOfBlk);
-        //lint -e{679} suppress Suspicious Truncation in arithmetic expression combining with pointer
-        memcpy(&pBuf2[i * sizeOfBlk], pBuf, sizeOfBlk);
-        errCode = uShortRangeInsertPayloadToPbufList(pPbufList, pBuf, sizeOfBlk);
+        int32_t sizeOfBlk = generatePayLoad(&pBuf);
+        U_PORT_TEST_ASSERT_EQUAL(U_SHORT_RANGE_EDM_BLK_SIZE, sizeOfBlk);
+        memcpy(&pBuffer2[i * sizeOfBlk], &pBuf->data[0], sizeOfBlk);
+        errCode = uShortRangePbufListAppend(pPbufList, pBuf);
         U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
     }
 
     for (i = 0; i < (int32_t)totalLen; i++) {
-        copiedLen += uShortRangeMovePayloadFromPbufList(pPbufList, &pBuf3[i], 1);
+        copiedLen += uShortRangePbufListConsumeData(pPbufList, &pBuffer3[i], 1);
     }
 
     U_PORT_TEST_ASSERT(copiedLen == totalLen);
 
-    errCode = memcmp(pBuf2, pBuf3, totalLen);
+    errCode = memcmp(pBuffer2, pBuffer3, totalLen);
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
     uShortRangeMemPoolDeInit();
-    uMemPoolDeinit(&mempoolDesc);
-    free(pBuf2);
-    free(pBuf3);
+    free(pBuffer2);
+    free(pBuffer3);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
@@ -166,21 +157,19 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufInsertPayload")
 U_PORT_TEST_FUNCTION("[pbuf]", "pbufPktList")
 {
     int32_t errCode;
-    uMemPoolDesc_t mempoolDesc;
     uShortRangePbufList_t *pPbufList1;
     uShortRangePbufList_t *pPbufList2;
     uShortRangePktList_t pktList;
     int32_t numOfBlks = 8;
-    uint32_t sizeOfBlk = 64;
-    char *pBuf;
+    uShortRangePbuf_t *pBuf;
     int32_t heapUsed;
-    char *pBuf1;
-    char *pBuf2;
-    char *pBuf3;
+    char *pBuffer1;
+    char *pBuffer2;
+    char *pBuffer3;
     int32_t i;
     //lint -e{679} suppress loss of precision
     //lint -e{647} suppress suspicious truncation
-    size_t totalLen = numOfBlks * sizeOfBlk;
+    size_t totalLen = numOfBlks * U_SHORT_RANGE_EDM_BLK_SIZE;
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -190,81 +179,78 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufPktList")
     rand();
     heapUsed = uPortGetHeapFree();
 
-    errCode = uMemPoolInit(&mempoolDesc, sizeOfBlk, numOfBlks);
-    U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
-
     errCode = uShortRangeMemPoolInit();
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    pPbufList1 = pUShortRangeAllocPbufList();
+    pPbufList1 = pUShortRangePbufListAlloc();
     U_PORT_TEST_ASSERT(pPbufList1 != NULL);
 
-    pPbufList2 = pUShortRangeAllocPbufList();
+    pPbufList2 = pUShortRangePbufListAlloc();
     U_PORT_TEST_ASSERT(pPbufList2 != NULL);
 
-    pBuf1 = (char *)malloc(totalLen);
-    U_PORT_TEST_ASSERT(pBuf1 != NULL);
-    //lint -e{668} suppress Possibly passing a. null pointer to function memset - we are not!
-    memset(pBuf1, 0, totalLen);
+    pBuffer1 = (char *)malloc(totalLen);
+    U_PORT_TEST_ASSERT(pBuffer1 != NULL);
+    memset(pBuffer1, 0, totalLen);
 
-    pBuf2 = (char *)malloc(totalLen);
-    U_PORT_TEST_ASSERT(pBuf2 != NULL);
-    //lint -e{668} suppress Possibly passing a. null pointer to function memset - we are not!
-    memset(pBuf2, 0, totalLen);
+    pBuffer2 = (char *)malloc(totalLen);
+    U_PORT_TEST_ASSERT(pBuffer2 != NULL);
+    memset(pBuffer2, 0, totalLen);
 
-    pBuf3 = (char *)malloc(totalLen);
-    U_PORT_TEST_ASSERT(pBuf3 != NULL);
-    //lint -e{668} suppress Possibly passing a. null pointer to function memset - we are not!
-    memset(pBuf3, 0, totalLen);
+    pBuffer3 = (char *)malloc(totalLen);
+    U_PORT_TEST_ASSERT(pBuffer3 != NULL);
+    memset(pBuffer3, 0, totalLen);
 
-    for (i = 0; i < numOfBlks; i++) {
-        pBuf = generatePayLoad(&mempoolDesc, sizeOfBlk);
-        //lint -e{679} suppress Suspicious Truncation in arithmetic expression combining with pointer
-        memcpy(&pBuf1[i * sizeOfBlk], pBuf, sizeOfBlk);
-        errCode = uShortRangeInsertPayloadToPbufList(pPbufList1, pBuf, sizeOfBlk);
+    // Generate packet 1 half the size of the memory pool
+    // Fill it with random data
+    for (i = 0; i < numOfBlks / 2; i++) {
+        int32_t sizeOfBlk = generatePayLoad(&pBuf);
+        U_PORT_TEST_ASSERT_EQUAL(U_SHORT_RANGE_EDM_BLK_SIZE, sizeOfBlk);
+        memcpy(&pBuffer1[i * sizeOfBlk], &pBuf->data[0], sizeOfBlk);
+        errCode = uShortRangePbufListAppend(pPbufList1, pBuf);
         U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
     }
 
-    for (i = 0; i < numOfBlks; i++) {
-        pBuf = generatePayLoad(&mempoolDesc, sizeOfBlk);
-        //lint -e{679} suppress Suspicious Truncation in arithmetic expression combining with pointer
-        memcpy(&pBuf2[i * sizeOfBlk], pBuf, sizeOfBlk);
-        errCode = uShortRangeInsertPayloadToPbufList(pPbufList2, pBuf, sizeOfBlk);
+    // Generate packet 2 half the size of the memory pool
+    // Fill it with random data
+    for (i = 0; i < numOfBlks / 2; i++) {
+        int32_t sizeOfBlk = generatePayLoad(&pBuf);
+        U_PORT_TEST_ASSERT(sizeOfBlk > 0);
+        memcpy(&pBuffer2[i * sizeOfBlk], &pBuf->data[0], sizeOfBlk);
+        errCode = uShortRangePbufListAppend(pPbufList2, pBuf);
         U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
     }
 
     memset((void *)&pktList, 0, sizeof(uShortRangePktList_t));
 
-    errCode = uShortRangeInsertPktToPktList(&pktList, pPbufList1);
+    // Add the two packets to a packet list
+    errCode = uShortRangePktListAppend(&pktList, pPbufList1);
+    U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
+    errCode = uShortRangePktListAppend(&pktList, pPbufList2);
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    errCode = uShortRangeInsertPktToPktList(&pktList, pPbufList2);
+    // Read out the first packet
+    errCode = uShortRangePktListConsumePacket(&pktList, pBuffer3, (size_t *)&totalLen, NULL);
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    errCode = uShortRangeReadPktFromPktList(&pktList, pBuf3, (size_t *)&totalLen, NULL);
+    // Verify that the content we read out is the same as what we put in
+    errCode = memcmp(pBuffer3, pBuffer1, totalLen);
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    errCode = memcmp(pBuf3, pBuf1, totalLen);
+    memset(pBuffer3, 0, totalLen);
+
+    errCode = uShortRangePktListConsumePacket(&pktList, pBuffer3, &totalLen, NULL);
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    //lint -e{668} suppress Possibly passing a. null pointer to function memset - we are not!
-    memset(pBuf3, 0, totalLen);
-
-    errCode = uShortRangeReadPktFromPktList(&pktList, pBuf3, &totalLen, NULL);
+    errCode = memcmp(pBuffer3, pBuffer2, totalLen);
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
 
-    errCode = memcmp(pBuf3, pBuf2, totalLen);
-    U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_SUCCESS);
-
-
-    errCode = uShortRangeReadPktFromPktList(&pktList, pBuf3, &totalLen, NULL);
+    errCode = uShortRangePktListConsumePacket(&pktList, pBuffer3, &totalLen, NULL);
     U_PORT_TEST_ASSERT(errCode == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
     uShortRangeMemPoolDeInit();
-    uMemPoolDeinit(&mempoolDesc);
-    free(pBuf1);
-    free(pBuf2);
-    free(pBuf3);
+    free(pBuffer1);
+    free(pBuffer2);
+    free(pBuffer3);
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();

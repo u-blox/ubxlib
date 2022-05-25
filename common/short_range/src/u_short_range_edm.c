@@ -25,6 +25,7 @@
 #include <stdbool.h>
 
 #include "u_error_common.h"
+#include "u_assert.h"
 #include "u_short_range_module_type.h"
 #include "u_short_range_pbuf.h"
 #include "u_at_client.h"
@@ -77,18 +78,18 @@ static uShortRangeEdmEvent_t *parseConnectIpv4Event(uint8_t channel, char *buffe
                                                     uint16_t payloadLength);
 static uShortRangeEdmEvent_t *parseConnectIpv6Event(uint8_t channel, char *buffer,
                                                     uint16_t payloadLength);
-static uShortRangeEdmEvent_t *parseConnectEvent(uint8_t channel, uShortRangePbufList_t *pPbufList);
+static uShortRangeEdmEvent_t *parseConnectEvent(uint8_t channel, uShortRangePbufList_t *pBufList);
 static uShortRangeEdmEvent_t *parseDisconnectEvent(uint8_t channel);
-static uShortRangeEdmEvent_t *parseDataEvent(uint8_t channel, uShortRangePbufList_t *pPbufList);
-static uShortRangeEdmEvent_t *parseAtResponseOrEvent(uShortRangePbufList_t *pPbufList);
+static uShortRangeEdmEvent_t *parseDataEvent(uint8_t channel, uShortRangePbufList_t *pBufList);
+static uShortRangeEdmEvent_t *parseAtResponseOrEvent(uShortRangePbufList_t *pBufList);
 static uShortRangeEdmEvent_t *parseEdmPayload(uint16_t idAndType, uint8_t channel,
-                                              uShortRangePbufList_t *pPbufList);
-//static void resetPayload(void);
+                                              uShortRangePbufList_t *pBufList);
 
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
 static edmParserState_t gEdmParserState = EDM_PARSER_STATE_PARSE_START_BYTE;
+static uShortRangePbufList_t *gCurPBufList = NULL;
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -213,17 +214,17 @@ static uShortRangeEdmEvent_t *parseConnectIpv6Event(uint8_t channel, char *pBuff
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseConnectEvent(uint8_t channel, uShortRangePbufList_t *pPbufList)
+static uShortRangeEdmEvent_t *parseConnectEvent(uint8_t channel, uShortRangePbufList_t *pBufList)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
     uint16_t payloadLength = 0;
     char *pBuffer = NULL;
 
-    if ((pPbufList != NULL) &&
-        (pPbufList->totalLen > 2)) {
+    if ((pBufList != NULL) &&
+        (pBufList->totalLen > 2)) {
 
-        pBuffer = pPbufList->pBufHead->pData;
-        payloadLength = (uint16_t)pPbufList->totalLen;
+        pBuffer = &pBufList->pBufHead->data[0];
+        payloadLength = (uint16_t)pBufList->totalLen;
         uint8_t type = (uint8_t)pBuffer[0];
 
         switch (type) {
@@ -259,52 +260,52 @@ static uShortRangeEdmEvent_t *parseDisconnectEvent(uint8_t channel)
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseDataEvent(uint8_t channel, uShortRangePbufList_t *pPbufList)
+static uShortRangeEdmEvent_t *parseDataEvent(uint8_t channel, uShortRangePbufList_t *pBufList)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
 
-    if ((pPbufList != NULL) && (pPbufList->totalLen > 0)) {
+    if ((pBufList != NULL) && (pBufList->totalLen > 0)) {
         pEvent = allocateEdmEvent();
         pEvent->type = U_SHORT_RANGE_EDM_EVENT_DATA;
         pEvent->params.dataEvent.channel = channel;
-        pEvent->params.dataEvent.pBufList = pPbufList;
+        pEvent->params.dataEvent.pBufList = pBufList;
     }
 
     return pEvent;
 }
 
-static uShortRangeEdmEvent_t *parseAtResponseOrEvent(uShortRangePbufList_t *pPbufList)
+static uShortRangeEdmEvent_t *parseAtResponseOrEvent(uShortRangePbufList_t *pBufList)
 {
     uShortRangeEdmEvent_t *pEvent = allocateEdmEvent();
     pEvent->type = U_SHORT_RANGE_EDM_EVENT_AT;
-    pEvent->params.atEvent.pBufList = pPbufList;
+    pEvent->params.atEvent.pBufList = pBufList;
     return pEvent;
 }
 
 static uShortRangeEdmEvent_t *parseEdmPayload(uint16_t idAndType, uint8_t channel,
-                                              uShortRangePbufList_t *pPbufList)
+                                              uShortRangePbufList_t *pBufList)
 {
     uShortRangeEdmEvent_t *pEvent = NULL;
 
     switch (idAndType) {
 
         case U_SHORT_RANGE_EDM_TYPE_CONNECT_EVENT:
-            pEvent = parseConnectEvent(channel, pPbufList);
-            uShortRangeFreePbufList(pPbufList);
+            pEvent = parseConnectEvent(channel, pBufList);
+            uShortRangePbufListFree(pBufList);
             break;
 
         case U_SHORT_RANGE_EDM_TYPE_DISCONNECT_EVENT:
             pEvent = parseDisconnectEvent(channel);
-            uShortRangeFreePbufList(pPbufList);
+            uShortRangePbufListFree(pBufList);
             break;
 
         case U_SHORT_RANGE_EDM_TYPE_DATA_EVENT:
-            pEvent = parseDataEvent(channel, pPbufList);
+            pEvent = parseDataEvent(channel, pBufList);
             break;
 
         case U_SHORT_RANGE_EDM_TYPE_AT_RESPONSE:
         case U_SHORT_RANGE_EDM_TYPE_AT_EVENT:
-            pEvent = parseAtResponseOrEvent(pPbufList);
+            pEvent = parseAtResponseOrEvent(pBufList);
             break;
 
         case U_SHORT_RANGE_EDM_TYPE_START_EVENT:
@@ -338,46 +339,47 @@ void uShortRangeEdmResetParser(void)
 bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
 {
     edmParserState_t newState = gEdmParserState;
-    static uint32_t byteIndex;
     static uint16_t payloadLength;
-    static uShortRangePbufList_t *pPbufList;
-    static char *pPayload;
+    static uShortRangePbuf_t *pBuf;
+    static int32_t pBufSize;
     static char header[U_SHORT_RANGE_EDM_HEADER_SIZE];
+    static uint32_t headerIndex;
     static uint16_t idAndType;
     static uint8_t channel;
     bool charConsumed = false;
+    int32_t result;
 
     switch (gEdmParserState) {
 
         case EDM_PARSER_STATE_PARSE_START_BYTE:
             if (c == U_SHORT_RANGE_EDM_HEAD) {
-                byteIndex = 0;
+                headerIndex = 0;
                 newState = EDM_PARSER_STATE_PARSE_PAYLOAD_LENGTH;
             }
             charConsumed = true;
             break;
 
         case EDM_PARSER_STATE_PARSE_PAYLOAD_LENGTH:
-            if (byteIndex == 0) {
+            if (headerIndex == 0) {
                 payloadLength = (uint16_t)(uint8_t)c << 8;
-                byteIndex++;
+                headerIndex++;
             } else {
                 payloadLength |= (uint16_t)(uint8_t)c;
                 if (payloadLength < 2) {
                     // Something is wrong, start over
                     newState = EDM_PARSER_STATE_PARSE_START_BYTE;
                 } else {
-                    byteIndex = 0;
+                    headerIndex = 0;
                     newState = EDM_PARSER_STATE_PARSE_HEADER_LENGTH;
                 }
             }
             charConsumed = true;
             break;
         case EDM_PARSER_STATE_PARSE_HEADER_LENGTH:
-            header[byteIndex++] = c;
+            header[headerIndex++] = c;
             payloadLength--;
 
-            if (byteIndex == 2) {
+            if (headerIndex == 2) {
 
                 idAndType = ((uint16_t)(uint8_t)header[0] << 8) | (uint16_t)(uint8_t)header[1];
 
@@ -388,13 +390,16 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
 
                     // Channel does not exist for these types so
                     // fill in -1
-                    header[byteIndex++] = -1;
+                    header[headerIndex++] = -1;
                 }
             }
 
-            if (byteIndex == U_SHORT_RANGE_EDM_HEADER_SIZE) {
+            if (headerIndex == U_SHORT_RANGE_EDM_HEADER_SIZE) {
                 channel = header[2];
-                pPbufList = NULL;
+                // gCurPBufChain should always be NULL here
+                // If it's not we have a leak
+                U_ASSERT(gCurPBufList == NULL);
+                pBuf = NULL;
                 newState = EDM_PARSER_STATE_ALLOCATE_PBUFLIST;
                 // For disconnect event there is no payload
                 // so directly head to parse tail byte
@@ -410,10 +415,9 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
 
             // if allocation fails stay back until
             // we have some free memory in their respective pool
-            pPbufList = pUShortRangeAllocPbufList();
-            if (pPbufList != NULL) {
-                pPbufList->edmChannel = channel;
-                pPayload = NULL;
+            gCurPBufList = pUShortRangePbufListAlloc();
+            if (gCurPBufList != NULL) {
+                gCurPBufList->edmChannel = channel;
                 newState = EDM_PARSER_STATE_ALLOCATE_PAYLOAD;
             }
             // we dont consume the input char in this state
@@ -424,9 +428,9 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
 
             // if allocation fails stay back until
             // we have some free memory in their respective pool
-            pPayload = (char *)pUShortRangeAllocPayload();
-            if (pPayload != NULL) {
-                byteIndex = 0;
+            pBufSize = uShortRangePbufAlloc(&pBuf);
+            if (pBufSize > 0) {
+                headerIndex = 0;
                 newState = EDM_PARSER_STATE_ACCUMULATE_PAYLOAD;
             }
             // we dont consume the input char in this state
@@ -435,38 +439,34 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
 
         case EDM_PARSER_STATE_ACCUMULATE_PAYLOAD:
 
-            if ((byteIndex < U_SHORT_RANGE_EDM_BLK_SIZE) &&
-                (pPayload != NULL)) {
+            U_ASSERT(pBufSize > 0);
+            U_ASSERT(pBuf != NULL);
+            U_ASSERT(pBuf->length < pBufSize);
 
-                pPayload[byteIndex++] = c;
-                payloadLength--;
-            }
+            pBuf->data[pBuf->length++] = c;
+            payloadLength--;
 
-            if ((byteIndex == U_SHORT_RANGE_EDM_BLK_SIZE) ||
+            if ((pBuf->length == pBufSize) ||
                 (payloadLength == 0)) {
-
-                // stay back in this state until
-                // insert succeeds
-                if (uShortRangeInsertPayloadToPbufList(pPbufList,
-                                                       pPayload,
-                                                       byteIndex) == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                    if (payloadLength == 0) {
-                        newState = EDM_PARSER_STATE_PARSE_TAIL_BYTE;
-                    } else if (byteIndex == U_SHORT_RANGE_EDM_BLK_SIZE) {
-                        // we have some more data coming in
-                        // so allocate memory for payload
-                        pPayload = NULL;
-                        newState = EDM_PARSER_STATE_ALLOCATE_PAYLOAD;
-                    }
+                result = uShortRangePbufListAppend(gCurPBufList, pBuf);
+                U_ASSERT(result == 0);
+                if (payloadLength == 0) {
+                    newState = EDM_PARSER_STATE_PARSE_TAIL_BYTE;
+                } else if (pBuf->length == pBufSize) {
+                    // we have some more data coming in
+                    // so allocate memory for payload
+                    newState = EDM_PARSER_STATE_ALLOCATE_PAYLOAD;
                 }
+                pBuf = NULL;
             }
             charConsumed = true;
             break;
 
         case EDM_PARSER_STATE_PARSE_TAIL_BYTE:
+            newState = EDM_PARSER_STATE_PARSE_START_BYTE;
             if (c == U_SHORT_RANGE_EDM_TAIL) {
                 if (ppResultEvent != NULL) {
-                    *ppResultEvent = parseEdmPayload(idAndType, channel, pPbufList);
+                    *ppResultEvent = parseEdmPayload(idAndType, channel, gCurPBufList);
                     if (*ppResultEvent == NULL) {
                         // No event was generated
                         // Reset parser
@@ -475,9 +475,12 @@ bool uShortRangeEdmParse(char c, uShortRangeEdmEvent_t **ppResultEvent)
                         newState = EDM_PARSER_STATE_WAIT_FOR_EVENT_PROCESSING;
                     }
                 }
-                pPbufList = NULL;
-                pPayload = NULL;
             }
+            if (newState == EDM_PARSER_STATE_PARSE_START_BYTE) {
+                // Always de-allocate the buffer when we reset the parser
+                uShortRangePbufListFree(gCurPBufList);
+            }
+            gCurPBufList = NULL;
             charConsumed = true;
             break;
 

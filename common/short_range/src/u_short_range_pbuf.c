@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include "u_assert.h"
 #include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_error_common.h"
@@ -51,12 +52,28 @@
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
-static uMemPoolDesc_t pBufListPool;
-static uMemPoolDesc_t pBufPool;
-static uMemPoolDesc_t gEdmPayLoadPool;
+static uMemPoolDesc_t gPBufListPool;
+static uMemPoolDesc_t gPBufPool;
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+static void freePbuf(uShortRangePbuf_t *pBuf, bool freeWholeChain)
+{
+    if (freeWholeChain) {
+        while (pBuf != NULL) {
+            uShortRangePbuf_t *pNext = pBuf->pNext;
+            // Basic sanity check - pbuf length should never be longer than pool block size
+            U_ASSERT(pBuf->length <= gPBufPool.blockSize);
+            uMemPoolFreeMem(&gPBufPool, pBuf);
+            pBuf = pNext;
+        }
+    } else if (pBuf != NULL) {
+        // Basic sanity check - pbuf length should never be longer than pool block size
+        U_ASSERT(pBuf->length <= gPBufPool.blockSize);
+        uMemPoolFreeMem(&gPBufPool, pBuf);
+    }
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -66,19 +83,16 @@ int32_t uShortRangeMemPoolInit(void)
 {
     int32_t err;
 
-    err = uMemPoolInit(&pBufListPool, sizeof(uShortRangePbufList_t), U_SHORT_RANGE_PBUFLIST_COUNT);
+    err = uMemPoolInit(&gPBufListPool, sizeof(uShortRangePbufList_t),
+                       U_SHORT_RANGE_PBUFLIST_COUNT);
 
     if (err == 0) {
 
-        err = uMemPoolInit(&pBufPool, sizeof(uShortRangePbuf_t), U_SHORT_RANGE_PBUF_COUNT);
-
-        if (err == 0) {
-            err = uMemPoolInit(&gEdmPayLoadPool, U_SHORT_RANGE_EDM_BLK_SIZE, U_SHORT_RANGE_EDM_BLK_COUNT);
-        }
+        err = uMemPoolInit(&gPBufPool, sizeof(uShortRangePbuf_t) + U_SHORT_RANGE_EDM_BLK_SIZE,
+                           U_SHORT_RANGE_EDM_BLK_COUNT);
 
         if (err != (int32_t)U_ERROR_COMMON_SUCCESS) {
-            uMemPoolDeinit(&pBufListPool);
-            uMemPoolDeinit(&pBufPool);
+            uMemPoolDeinit(&gPBufListPool);
         }
     }
 
@@ -87,66 +101,53 @@ int32_t uShortRangeMemPoolInit(void)
 
 void uShortRangeMemPoolDeInit(void)
 {
-    uMemPoolDeinit(&pBufPool);
-    uMemPoolDeinit(&pBufListPool);
-    uMemPoolDeinit(&gEdmPayLoadPool);
-    return;
+    uMemPoolDeinit(&gPBufPool);
+    uMemPoolDeinit(&gPBufListPool);
 }
 
+int32_t uShortRangePbufAlloc(uShortRangePbuf_t **ppBuf)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    *ppBuf = (uShortRangePbuf_t *)uMemPoolAllocMem(&gPBufPool);
+    if (*ppBuf != NULL) {
+        (*ppBuf)->length = 0;
+        (*ppBuf)->pNext = NULL;
+        errorCode = gPBufPool.blockSize - sizeof(uShortRangePbuf_t);
+    }
+    return errorCode;
+}
 
-uShortRangePbufList_t *pUShortRangeAllocPbufList(void)
+uShortRangePbufList_t *pUShortRangePbufListAlloc(void)
 {
     uShortRangePbufList_t *pList;
-    pList = (uShortRangePbufList_t *)uMemPoolAllocMem(&pBufListPool);
+    pList = (uShortRangePbufList_t *)uMemPoolAllocMem(&gPBufListPool);
+    if (pList != NULL) {
+        memset(pList, 0, sizeof(uShortRangePbufList_t));
+    }
     return pList;
 }
 
-void *pUShortRangeAllocPayload(void)
+void uShortRangePbufListFree(uShortRangePbufList_t *pBufList)
 {
-    void *pPayload;
-    pPayload = uMemPoolAllocMem(&gEdmPayLoadPool);
-    return pPayload;
-}
-
-void uShortRangeFreePbufList(uShortRangePbufList_t *pList)
-{
-    uShortRangePbuf_t *pTemp;
-    uShortRangePbuf_t *pNext;
-
-    if (pList != NULL) {
-
-        for (pTemp = pList->pBufHead; pTemp != NULL; pTemp = pNext) {
-
-            pNext = pTemp->pNext;
-            uMemPoolFreeMem(&gEdmPayLoadPool, pTemp->pData);
-            uMemPoolFreeMem(&pBufPool, pTemp);
-        }
-        pList->totalLen = 0;
-        uMemPoolFreeMem(&pBufListPool, pList);
-
+    if (pBufList != NULL) {
+        freePbuf(pBufList->pBufHead, true);
+        pBufList->totalLen = 0;
+        uMemPoolFreeMem(&gPBufListPool, pBufList);
     }
 }
 
-int32_t uShortRangeInsertPayloadToPbufList(uShortRangePbufList_t *pList, char *pData, size_t len)
+int32_t uShortRangePbufListAppend(uShortRangePbufList_t *pBufList, uShortRangePbuf_t *pBuf)
 {
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-    uShortRangePbuf_t *pBuf;
 
-    pBuf = (uShortRangePbuf_t *)uMemPoolAllocMem(&pBufPool);
-
-    if ((pBuf != NULL) && (pList != NULL)) {
-
-        pBuf->pData = pData;
-        pBuf->len = len;
-
-        if (pList->pBufHead == NULL) {
-            pList->pBufHead = pBuf;
-            pList->pBufCurr = pBuf;
+    if ((pBuf != NULL) && (pBufList != NULL)) {
+        if (pBufList->pBufHead == NULL) {
+            pBufList->pBufHead = pBuf;
         } else {
-            pList->pBufTail->pNext = pBuf;
+            pBufList->pBufTail->pNext = pBuf;
         }
-        pList->pBufTail = pBuf;
-        pList->totalLen += len;
+        pBufList->pBufTail = pBuf;
+        pBufList->totalLen += pBuf->length;
 
         err = (int32_t)U_ERROR_COMMON_SUCCESS;
     }
@@ -154,54 +155,60 @@ int32_t uShortRangeInsertPayloadToPbufList(uShortRangePbufList_t *pList, char *p
     return err;
 }
 
-void uShortRangeMergePbufList(uShortRangePbufList_t *pOldList, uShortRangePbufList_t *pNewList)
+void uShortRangePbufListMerge(uShortRangePbufList_t *pOldList, uShortRangePbufList_t *pNewList)
 {
     if ((pOldList != NULL) &&
         (pNewList != NULL) &&
         (pOldList->totalLen > 0) &&
         (pNewList->totalLen > 0)) {
 
-        pOldList->pBufTail->pNext = pNewList->pBufHead;
-        pOldList->pBufTail = pNewList->pBufTail;
-        pOldList->totalLen += pNewList->totalLen;
+        if (pOldList->pBufTail != NULL) {
+            pOldList->pBufTail->pNext = pNewList->pBufHead;
+            pOldList->pBufTail = pNewList->pBufTail;
+            pOldList->totalLen += pNewList->totalLen;
+        } else {
+            *pOldList = *pNewList;
+        }
 
-        uMemPoolFreeMem(&pBufListPool, pNewList);
+        uMemPoolFreeMem(&gPBufListPool, pNewList);
     }
 }
 
 
-size_t uShortRangeMovePayloadFromPbufList(uShortRangePbufList_t *pList, char *pData, size_t len)
+size_t uShortRangePbufListConsumeData(uShortRangePbufList_t *pBufList, char *pData, size_t len)
 {
     size_t copiedLen = 0;
     uShortRangePbuf_t *pTemp;
     uShortRangePbuf_t *pNext = NULL;
 
-    if ((pList != NULL) && (pData != NULL)) {
+    if ((pBufList != NULL) && (pData != NULL)) {
 
-        for (pTemp = pList->pBufCurr; (len != 0 && pTemp != NULL); pTemp = pNext) {
+        for (pTemp = pBufList->pBufHead; (len != 0 && pTemp != NULL); pTemp = pNext) {
+            // Basic sanity check - pbuf length should never be longer than pool block size
+            U_ASSERT(pTemp->length <= gPBufPool.blockSize);
 
-            if (pTemp->pData != NULL) {
-
-                if (pTemp->len < len) {
-
-                    // Copy the data to the given buffer
-                    memcpy(&pData[copiedLen], pTemp->pData, pTemp->len);
-                    copiedLen += pTemp->len;
-                    pList->totalLen -= pTemp->len;
-                    len -= pTemp->len;
-                    pNext = pTemp->pNext;
-                    pList->pBufCurr = pNext;
-                } else {
-
-                    // Do partial copy
-                    memcpy(&pData[copiedLen], pTemp->pData, len);
-                    copiedLen += len;
-                    pList->totalLen -= len;
-                    pTemp->len -= len;
-                    // move the remaining data to start
-                    memmove(pTemp->pData, &pTemp->pData[len], pTemp->len);
-                    len = 0;
+            if (pTemp->length <= len) {
+                // Copy the data to the given buffer
+                memcpy(&pData[copiedLen], &pTemp->data[0], pTemp->length);
+                copiedLen += pTemp->length;
+                pBufList->totalLen -= pTemp->length;
+                len -= pTemp->length;
+                pNext = pTemp->pNext;
+                // We are done with this pbuf - put it back in the pool
+                freePbuf(pTemp, false);
+                pBufList->pBufHead = pNext;
+                if (pBufList->pBufHead == NULL) {
+                    pBufList->pBufTail = NULL;
                 }
+            } else {
+                // Do partial copy
+                memcpy(&pData[copiedLen], &pTemp->data[0], len);
+                copiedLen += len;
+                pBufList->totalLen -= (uint16_t)len;
+                pTemp->length -= (uint16_t)len;
+                // move the remaining data to start
+                memmove(&pTemp->data[0], &pTemp->data[len], pTemp->length);
+                len = 0;
             }
         }
     }
@@ -210,8 +217,8 @@ size_t uShortRangeMovePayloadFromPbufList(uShortRangePbufList_t *pList, char *pD
 }
 
 
-int32_t uShortRangeInsertPktToPktList(uShortRangePktList_t *pPktList,
-                                      uShortRangePbufList_t *pPbufList)
+int32_t uShortRangePktListAppend(uShortRangePktList_t *pPktList,
+                                 uShortRangePbufList_t *pPbufList)
 {
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
@@ -219,13 +226,13 @@ int32_t uShortRangeInsertPktToPktList(uShortRangePktList_t *pPktList,
         (pPbufList != NULL) &&
         (pPbufList->totalLen > 0)) {
 
-        if (pPktList->pPbufListHead == NULL) {
-            pPktList->pPbufListHead = pPbufList;
+        if (pPktList->pBufListHead == NULL) {
+            pPktList->pBufListHead = pPbufList;
         } else {
-            pPktList->pPbufListTail->pNext = pPbufList;
+            pPktList->pBufListTail->pNext = pPbufList;
         }
 
-        pPktList->pPbufListTail = pPbufList;
+        pPktList->pBufListTail = pPbufList;
         pPktList->pktCount++;
 
         err = (int32_t)U_ERROR_COMMON_SUCCESS;
@@ -234,8 +241,8 @@ int32_t uShortRangeInsertPktToPktList(uShortRangePktList_t *pPktList,
     return err;
 }
 
-int32_t uShortRangeReadPktFromPktList(uShortRangePktList_t *pPktList, char *pData, size_t *pLen,
-                                      int32_t *pEdmChannel)
+int32_t uShortRangePktListConsumePacket(uShortRangePktList_t *pPktList, char *pData, size_t *pLen,
+                                        int32_t *pEdmChannel)
 {
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     uShortRangePbufList_t *pTemp;
@@ -247,8 +254,8 @@ int32_t uShortRangeReadPktFromPktList(uShortRangePktList_t *pPktList, char *pDat
         (pLen != NULL)) {
 
         err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
-        pTemp = pPktList->pPbufListHead;
-        ppTemp = &pPktList->pPbufListHead;
+        pTemp = pPktList->pBufListHead;
+        ppTemp = &pPktList->pBufListHead;
 
         if ((pTemp != NULL) && (pTemp->totalLen > 0)) {
 
@@ -256,7 +263,7 @@ int32_t uShortRangeReadPktFromPktList(uShortRangePktList_t *pPktList, char *pDat
                 *pEdmChannel = pTemp->edmChannel;
             }
 
-            *pLen = uShortRangeMovePayloadFromPbufList(pTemp, pData, *pLen);
+            *pLen = uShortRangePbufListConsumeData(pTemp, pData, *pLen);
             err = (int32_t)U_ERROR_COMMON_SUCCESS;
 
             if (pTemp->totalLen > 0) {
@@ -265,7 +272,7 @@ int32_t uShortRangeReadPktFromPktList(uShortRangePktList_t *pPktList, char *pDat
 
             *ppTemp = pTemp->pNext;
             pPktList->pktCount--;
-            uShortRangeFreePbufList(pTemp);
+            uShortRangePbufListFree(pTemp);
 
             if (pPktList->pktCount == 0) {
                 memset((void *)pPktList, 0, sizeof(uShortRangePktList_t));

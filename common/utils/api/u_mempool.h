@@ -40,47 +40,28 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-typedef struct uMemPoolFreed {
-    struct uMemPoolFreed *pNext;
-} uMemPoolFreedList_t;
-
 typedef struct {
-    uint32_t elementSize;
-
-    // count of number of blocks used
-    int32_t currBlkCount;
-
-    //number of blocks configured by user initially
-    int32_t cfgedBlkCount;
-
-    //Maximum threshold level, this need to be set to (n * cfedBlkCount)
-    int32_t maxBlkCount;
-
-    // pointer to the block
-    int32_t currBlkIndex;
-
-    // Free list
-    uMemPoolFreedList_t *pFreedList;
-
-    // Pool containing array of referenced to the block.
-    // Each block is of elementSize.
-    uint8_t **ppBlk;
-
-    uPortMutexHandle_t mutex;
+    uint32_t blockSize; /**< The size of each block */
+    int32_t usedBlockCount; /**< The number of currently used blocks */
+    int32_t totalBlockCount; /**< The total number of blocks */
+    struct uMemPoolFree *pFreeList; /**< Linked list of free blocks */
+    uint8_t *pBuffer; /**< Data buffer (sub-divided into blocks) */
+    uPortMutexHandle_t mutex; /**< Mutex for thread protection */
 } uMemPoolDesc_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
+
 /** Initialize memory pool.
  *
  * @param pMemPool      pointer to empty memory pool.
- * @param elementSize   size of each element.
- * @param numOfBlks     Number of blocks each of elementSize.
+ * @param blockSize     size of each block.
+ * @param numOfBlks     Number of blocks each of blockSize.
  *
  * @return              zero on success else negative error code.
  */
-int32_t uMemPoolInit(uMemPoolDesc_t *pMemPool, uint32_t elementSize, int32_t numOfBlks);
+int32_t uMemPoolInit(uMemPoolDesc_t *pMemPool, uint32_t blockSize, int32_t numOfBlks);
 
 /** Deinitialize memory pool. This API will free all the references to the block
  *  and the pool itself.

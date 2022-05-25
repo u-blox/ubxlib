@@ -54,7 +54,6 @@ UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod.c \
 	${UBXLIB_BASE}/common/network/src/u_network_private_ble_intmod.c \
 	${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c \
-	${UBXLIB_BASE}/common/network/src/u_network_private_short_range.c \
 	${UBXLIB_BASE}/common/device/src/u_device_private_short_range.c
 endif
 

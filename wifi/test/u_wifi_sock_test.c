@@ -63,7 +63,7 @@
 #include "u_short_range.h"
 
 #include "u_wifi_module_type.h"
-#include "u_wifi_net.h"
+#include "u_wifi.h"
 #include "u_wifi_sock.h"
 #include "u_wifi_test_private.h"
 
@@ -145,11 +145,11 @@ static volatile bool gAsyncClosedCallbackCalledTcp = false;
  */
 static volatile bool gAsyncClosedCallbackCalledUdp = false;
 
-static const uint32_t gNetStatusMaskAllUp = U_WIFI_NET_STATUS_MASK_IPV4_UP |
-                                            U_WIFI_NET_STATUS_MASK_IPV6_UP;
+static const uint32_t gWifiStatusMaskAllUp = U_WIFI_STATUS_MASK_IPV4_UP |
+                                             U_WIFI_STATUS_MASK_IPV6_UP;
 
 static volatile int32_t gWifiConnected = 0;
-static volatile uint32_t gNetStatusMask = 0;
+static volatile uint32_t gWifiStatusMask = 0;
 
 /** A string of all possible characters, including strings
  * that might appear as terminators in the AT interface.
@@ -263,7 +263,7 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
     (void)pBssid;
     (void)disconnectReason;
     (void)pCallbackParameter;
-    if (status == U_WIFI_NET_CON_STATUS_CONNECTED) {
+    if (status == U_WIFI_CON_STATUS_CONNECTED) {
 #if !U_CFG_OS_CLIB_LEAKS
         uPortLog(LOG_TAG "Connected Wifi connId: %d, bssid: %s, channel: %d\n",
                  connId,
@@ -303,11 +303,11 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     (void)pCallbackParameter;
 #if !U_CFG_OS_CLIB_LEAKS
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
-             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
-             ((statusMask & U_WIFI_NET_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+             ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+             ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
 #endif
 
-    gNetStatusMask = statusMask;
+    gWifiStatusMask = statusMask;
 }
 
 // Helper function to connect wifi
@@ -317,27 +317,27 @@ static void connectWifi()
     int32_t waitCtr = 0;
 
     // Add unsolicited response cb for connection status
-    tmp = uWifiNetSetConnectionStatusCallback(gHandles.devHandle,
-                                              wifiConnectionCallback, NULL);
+    tmp = uWifiSetConnectionStatusCallback(gHandles.devHandle,
+                                           wifiConnectionCallback, NULL);
     TEST_CHECK_TRUE(tmp == 0);
     if (!TEST_HAS_ERROR()) {
         // Add unsolicited response cb for IP status
-        tmp = uWifiNetSetNetworkStatusCallback(gHandles.devHandle,
-                                               wifiNetworkStatusCallback, NULL);
+        tmp = uWifiSetNetworkStatusCallback(gHandles.devHandle,
+                                            wifiNetworkStatusCallback, NULL);
         TEST_CHECK_TRUE(tmp == 0);
     }
     if (!TEST_HAS_ERROR()) {
         // Connect to wifi network
-        tmp = uWifiNetStationConnect(gHandles.devHandle,
-                                     U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
-                                     U_WIFI_NET_AUTH_WPA_PSK,
-                                     U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
+        tmp = uWifiStationConnect(gHandles.devHandle,
+                                  U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
+                                  U_WIFI_AUTH_WPA_PSK,
+                                  U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
         TEST_CHECK_TRUE(tmp == 0);
     }
 
     //Wait for connection and IP events.
     //There could be multiple IP events depending on network configuration.
-    while (!TEST_HAS_ERROR() && (!gWifiConnected || (gNetStatusMask != gNetStatusMaskAllUp))) {
+    while (!TEST_HAS_ERROR() && (!gWifiConnected || (gWifiStatusMask != gWifiStatusMaskAllUp))) {
         if (waitCtr++ >= 15) {
             if (!gWifiConnected) {
                 uPortLog(LOG_TAG "Unable to connect to WifiNetwork\n");
@@ -358,7 +358,7 @@ static void disconnectWifi()
     int32_t tmp;
     int32_t waitCtr = 0;
 
-    tmp = uWifiNetStationDisconnect(gHandles.devHandle);
+    tmp = uWifiStationDisconnect(gHandles.devHandle);
     TEST_CHECK_TRUE(tmp == 0);
 
     while (!TEST_HAS_ERROR() && gWifiConnected) {
@@ -371,12 +371,12 @@ static void disconnectWifi()
         waitCtr++;
     }
     // Remove callbacks (regardless if there was an error)
-    tmp = uWifiNetSetConnectionStatusCallback(gHandles.devHandle,
-                                              NULL, NULL);
+    tmp = uWifiSetConnectionStatusCallback(gHandles.devHandle,
+                                           NULL, NULL);
     TEST_CHECK_TRUE(tmp == 0);
 
-    tmp = uWifiNetSetNetworkStatusCallback(gHandles.devHandle,
-                                           NULL, NULL);
+    tmp = uWifiSetNetworkStatusCallback(gHandles.devHandle,
+                                        NULL, NULL);
     TEST_CHECK_TRUE(tmp == 0);
 }
 
@@ -401,7 +401,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     // Obtain the initial heap size
     heapUsed = uPortGetHeapFree();
 
-    gNetStatusMask = 0;
+    gWifiStatusMask = 0;
     gWifiConnected = 0;
 
     // Malloc a buffer to receive things into.
@@ -635,7 +635,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     // Obtain the initial heap size
     heapUsed = uPortGetHeapFree();
 
-    gNetStatusMask = 0;
+    gWifiStatusMask = 0;
     gWifiConnected = 0;
 
     // Malloc a buffer to receive things into.

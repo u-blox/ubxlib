@@ -22,6 +22,8 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 #include "u_device.h" // uDeviceHandle_t
+#include "u_at_client.h"
+#include "u_short_range_module_type.h"
 
 /** @file
  * @brief This header file defines the ShortRange APIs. These APIs are not

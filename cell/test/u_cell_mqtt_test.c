@@ -242,6 +242,13 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
                           NULL, false);
         U_PORT_TEST_ASSERT(x == 0);
 
+        // Check retry count setting/getting.
+        U_PORT_TEST_ASSERT(uCellMqttGetRetries(cellHandle) == U_CELL_MQTT_RETRIES_DEFAULT);
+        uCellMqttSetRetries(cellHandle, 0);
+        U_PORT_TEST_ASSERT(uCellMqttGetRetries(cellHandle) == 0);
+        uCellMqttSetRetries(cellHandle, U_CELL_MQTT_RETRIES_DEFAULT);
+        U_PORT_TEST_ASSERT(uCellMqttGetRetries(cellHandle) == U_CELL_MQTT_RETRIES_DEFAULT);
+
         // Note: deliberately not setting a disconnect callback
         // here; here we test having none, testing with a disconnect
         // callback is done at the MQTT client layer above

@@ -67,7 +67,7 @@ int main(void)
         .pinCts = -1,
         .pinRts = -1,
         .pSsid = "MySSID",
-        .authentication = 2 /* WPA/WPA2/WPA3 - see wifi/api/u_wifi_net.h */,
+        .authentication = 2 /* WPA/WPA2/WPA3 - see wifi/api/u_wifi.h */,
         .pPassPhrase = "MyPassphrase"
     };
 

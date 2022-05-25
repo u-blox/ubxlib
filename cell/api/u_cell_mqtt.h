@@ -91,6 +91,13 @@ extern "C" {
 # define U_CELL_MQTT_WILL_MESSAGE_MAX_LENGTH_BYTES 256
 #endif
 
+#ifndef U_CELL_MQTT_RETRIES_DEFAULT
+/** The number of times to retry an MQTT operation if the
+ * failure is due to radio conditions.
+ */
+# define U_CELL_MQTT_RETRIES_DEFAULT 2
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -540,6 +547,24 @@ int32_t uCellMqttGetLastErrorCode(uDeviceHandle_t cellHandle);
 int32_t uCellMqttSetDisconnectCallback(uDeviceHandle_t cellHandle,
                                        void (*pCallback) (int32_t, void *),
                                        void *pCallbackParam);
+
+/** Set the number of retries that the MQTT client will make for any
+ * operation that fails due to the radio interface.  If this function
+ * is not called U_CELL_MQTT_RETRIES_DEFAULT will apply.
+ *
+ * @param cellHandle  the handle of the cellular instance to be used.
+ * @param numRetries  the number of retries.
+ */
+void uCellMqttSetRetries(uDeviceHandle_t cellHandle, size_t numRetries);
+
+/** Get the number of retries that the MQTT client will make for any
+ * operation that fails due to the radio interface.
+ *
+ * @param cellHandle the handle of the cellular instance to be used.
+ * @return           on success, the number of retries, else negative
+ *                   error code.
+ */
+int32_t uCellMqttGetRetries(uDeviceHandle_t cellHandle);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS: MQTT ONLY

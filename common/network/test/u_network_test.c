@@ -857,7 +857,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         gUNetworkTestCfg[x].devHandle = NULL;
     }
-    uNetworkDeinit();
+    uDeviceDeinit();
 
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {

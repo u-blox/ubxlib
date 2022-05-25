@@ -20,7 +20,7 @@
  * avoid linking short-range features into your application.
  */
 
-##ifdef U_CFG_OVERRIDE
+#ifdef U_CFG_OVERRIDE
 # include "u_cfg_override.h"  // For a customer's configuration override
 #endif
 
@@ -61,7 +61,7 @@ void uDevicePrivateShortRangeDeinit()
 {
 }
 
-int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg
+int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg,
                                     uDeviceHandle_t *pDeviceHandle)
 {
     (void) pDevCfg;
@@ -69,7 +69,21 @@ int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
 }
 
+int32_t uDevicePrivateShortRangeOpenCpuAdd(const uDeviceCfg_t *pDevCfg,
+                                           uDeviceHandle_t *pDeviceHandle)
+{
+    (void) pDevCfg;
+    (void) pDeviceHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+}
+
 int32_t uDevicePrivateShortRangeRemove(uDeviceHandle_t devHandle)
+{
+    (void) devHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+}
+
+int32_t uDevicePrivateShortRangeOpenCpuRemove(uDeviceHandle_t devHandle)
 {
     (void) devHandle;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;

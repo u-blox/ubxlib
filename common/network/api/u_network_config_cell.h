@@ -41,47 +41,6 @@
  * irrespective of whether cellular is used there.
  */
 
-/** TODO: WILL BE REMOVED: the device-related stuff is in uDevice
- * and the network-related stuff is in uNetworkCfgCell_t.
- * The network configuration for cellular.  Note that the pin
- * numbers are those of the MCU: if you are using an MCU inside
- * a u-blox module the IO pin numbering for the module is likely
- * different to that from the MCU: check the data sheet for the
- * module to determine the mapping.
- */
-typedef struct {
-    uNetworkType_t type; /**< All uNetworkConfigurationXxx structures
-                              must begin with this for error checking
-                              purposes. */
-    int32_t moduleType; /**< The module type that is connected,
-                             see uCellModuleType_t in u_cell_module_type.h. */
-    const char *pSimPinCode; /**< The PIN of the SIM. */
-    const char *pApn; /**< The APN to use; if left as NULL
-                           a database look-up will be used. */
-    int32_t timeoutSeconds; /**< Timeout that covers power-on and
-                                 connect in seconds. */
-    int32_t uart; /**< The UART HW block to use. */
-    int32_t pinTxd; /** The output pin that sends UART data to
-                        the cellular module. */
-    int32_t pinRxd; /** The input pin that receives UART data from
-                        the cellular module. */
-    int32_t pinCts; /**< The input pin that the cellular module
-                         will use to indicate that data can be sent
-                         to it; use -1 if there is no such connection. */
-    int32_t pinRts; /**< The output pin output pin that tells the
-                         cellular module that it can send more UART
-                         data; use -1 if there is no such connection. */
-    int32_t pinEnablePower; /**< The output pin that enables power
-                                 to the cellular module; use -1 if
-                                 there is no such connection. */
-    int32_t pinPwrOn; /**< The output pin that is connected to the
-                           PWR_ON pin of the cellular module; use -1
-                           if there is no such connection. */
-    int32_t pinVInt;  /**< The input pin that is connected to the
-                           VINT pin of the cellular module; use -1
-                           if there is no such connection. */
-} uNetworkConfigurationCell_t;
-
 /** The network configuration for cellular.
  */
 typedef struct {
