@@ -689,7 +689,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
 // URCs.
 // NOTE: don't include "\r\n" in the string to be echoed
 // unless it really is a line ending as this is used as a
-// cue to send back a URC interleaved between lines.
+// cue to send back a URC interleaved between the lines.
 //lint -e{818} Suppress 'pParameters' could be declared as const:
 // need to follow function signature
 static void atEchoServerCallback(int32_t uartHandle, uint32_t eventBitmask,
@@ -709,6 +709,9 @@ static void atEchoServerCallback(int32_t uartHandle, uint32_t eventBitmask,
 
     if (eventBitmask & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) {
         // Loop until no received characters left to process
+        // The thing we receive is treated as a string lower down
+        // and so memset() here to ensure a terminator.
+        memset(gAtServerBuffer, 0, sizeof(gAtServerBuffer));
         while ((uPortUartGetReceiveSize(uartHandle) > 0) && (sizeOrError >= 0)) {
             sizeOrError = uPortUartRead(uartHandle, pReceive,
                                         sizeof(gAtServerBuffer) -
@@ -722,7 +725,7 @@ static void atEchoServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                 }
             }
             // Wait long enough for everything to have been received
-            // and for any prints in the sending task to be printed
+            // and any prints in the sending task to be printed
             uPortTaskBlock(100);
         }
 
@@ -1543,8 +1546,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
 }
 
 /** Add an AT client and use an AT echo responder to bounce-back
- * to us the the test responses/URCs of gAtClientTestSet2[] where
- * they are acted up on by the AT client and the outcome checked.
+ * to us the test responses/URCs of gAtClientTestSet2[] where
+ * they are acted upon by the AT client and the outcome checked.
  * Requires two UARTs wired back-to-back.
  */
 U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")

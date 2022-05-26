@@ -87,7 +87,7 @@ extern "C" {
 
 /** The number of URCs that should be found in test set 2
  */
-#define U_AT_CLIENT_TEST_NUM_URCS_SET_2 40
+#define U_AT_CLIENT_TEST_NUM_URCS_SET_2 34
 
 /* ----------------------------------------------------------------
  * TYPES
