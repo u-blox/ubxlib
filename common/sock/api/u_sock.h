@@ -363,7 +363,7 @@ typedef struct {
  *
  * @param devHandle      the handle of the underlying network
  *                       layer to use, usually established by
- *                       a call to uNetworkAdd().
+ *                       a call to uDeviceOpen().
  * @param type           the type of socket to create.
  * @param protocol       the protocol that will run over the given
  *                       socket.

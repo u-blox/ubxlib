@@ -28,7 +28,7 @@
  * to determine location using any u-blox module and potentially a
  * cloud service.  These functions are thread-safe with the exception
  * that the network layer should not be deactivated (i.e. with
- * uNetworkDeinit()) while an asynchronous location request is
+ * uDeviceDeinit()) while an asynchronous location request is
  * outstanding.
  */
 
@@ -250,9 +250,9 @@ typedef enum {
  * -------------------------------------------------------------- */
 
 /** Get the current location, returning on success or when
- * pKeepGoingCallback returns false.  uNetworkUp() (see the network
- * API) must have been called on the given networkHandle for this
- * function to work.
+ * pKeepGoingCallback returns false.  uNetworkInterfaceUp() (see the
+ * network API) must have been called on the given networkHandle for
+ * this function to work.
  * Note that if you have a GNSS chip inside your cellular module
  * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
  * location call on the cell network will use that GNSS chip, there
@@ -348,9 +348,9 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                      uLocation_t *pLocation,
                      bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
-/** Get the current location, non-blocking version.  uNetworkUp() (see
- * the network API) must have been called on the given networkHandle for
- * this function to work.
+/** Get the current location, non-blocking version.  uNetworkInterfaceUp()
+ * (see the network API) must have been called on the given networkHandle
+ * for this function to work.
  * Note that if you have a GNSS chip inside your cellular module
  * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
  * location call on the cell network will use that GNSS chip, there is
