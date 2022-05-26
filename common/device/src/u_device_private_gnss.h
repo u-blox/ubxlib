@@ -73,12 +73,14 @@ void uDevicePrivateGnssDeinit(void);
 int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
                               uDeviceHandle_t *pDeviceHandle);
 
-/** Remove a GNSS device, powering it down.
+/** Remove a GNSS device.
  *
  * @param devHandle the handle of the device.
+ * @param powerOff  if true then also power the device off.
  * @return          zero on success else negative error code.
  */
-int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle);
+int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle,
+                                 bool powerOff);
 
 #ifdef __cplusplus
 }

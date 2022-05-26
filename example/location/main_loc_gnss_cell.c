@@ -266,8 +266,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCell")
     }
 
     // Close the devices
-    uDeviceClose(devHandleGnss);
-    uDeviceClose(devHandleCell);
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandleGnss, false);
+    uDeviceClose(devHandleCell, false);
 
     // Tidy up
     uDeviceDeinit();

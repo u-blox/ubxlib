@@ -248,7 +248,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecPsk")
     EXAMPLE_FINAL_STATE(((size > 0) && (size < sizeof(pskId))) || !uSecurityIsSupported(devHandle));
 
     // Close the device
-    uDeviceClose(devHandle);
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

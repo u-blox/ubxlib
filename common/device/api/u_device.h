@@ -302,12 +302,20 @@ int32_t uDeviceDeinit();
 int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg,
                     uDeviceHandle_t *pDeviceHandle);
 
-/** Close an open device instance, powering it off.
+/** Close an open device instance.
  *
  * @param devHandle handle to a previously opened device.
+ * @param powerOff  if true then also power the device off; leave
+ *                  this as false to simply logically disconnect
+ *                  the device, in which case the device will be
+ *                  able to return to a useful state on
+ *                  uDeviceOpen() very quickly.  Note that Short
+ *                  Range devices do not support powering off;
+ *                  setting this parameter to true will result in
+ *                  an error.
  * @return          zero on success else a negative error code.
  */
-int32_t uDeviceClose(uDeviceHandle_t devHandle);
+int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff);
 
 #ifdef __cplusplus
 }

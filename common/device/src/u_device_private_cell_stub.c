@@ -69,9 +69,11 @@ int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
 }
 
-int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle)
+int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle,
+                                 bool powerOff)
 {
     (void) devHandle;
+    (void) powerOff;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
 }
 

@@ -397,7 +397,8 @@ int32_t uNetworkTestDeviceClose(int32_t index)
             }
         }
         if (okToClose) {
-            errorCode = uDeviceClose(gUNetworkTestCfg[index].devHandle);
+            // Note that we don't power the device off in order to speed up testing
+            errorCode = uDeviceClose(gUNetworkTestCfg[index].devHandle, false);
             if (errorCode == 0) {
                 uPortLog("U_NETWORK_TEST: closed %s device on configuration %d.\n",
                          gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType],

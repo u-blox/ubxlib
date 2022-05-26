@@ -73,12 +73,14 @@ void uDevicePrivateCellDeinit(void);
 int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
                               uDeviceHandle_t *pDeviceHandle);
 
-/** Remove a cellular device, powering it down.
+/** Remove a cellular device.
  *
  * @param devHandle the handle of the device.
+ * @param powerOff  if true then also power the device off.
  * @return          zero on success else negative error code.
  */
-int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle);
+int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle,
+                                 bool powerOff);
 
 #ifdef __cplusplus
 }

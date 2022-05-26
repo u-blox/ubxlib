@@ -93,20 +93,20 @@ int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg,
 int32_t uDevicePrivateShortRangeOpenCpuAdd(const uDeviceCfg_t *pDevCfg,
                                            uDeviceHandle_t *pDeviceHandle);
 
-/** Remove a short-range device, powering it down.  Note that
- * this is ONLY for use where the short-range device is external
- * to the MCU; where the short-range "device" is actually on-board
- * the MCU, use uDevicePrivateShortRangeOpenCpuRemove() instead.
+/** Remove a short-range device.  Note that this is ONLY for use
+ * where the short-range device is external to the MCU; where the
+ * short-range "device" is actually on-board the MCU, use
+ * uDevicePrivateShortRangeOpenCpuRemove() instead.
  *
  * @param devHandle the handle of the device.
  * @return          zero on success else negative error code.
  */
 int32_t uDevicePrivateShortRangeRemove(uDeviceHandle_t devHandle);
 
-/** Remove a short-range device, powering it down.  Note that
- * this is ONLY for use where the short-range "device" is on-board
- * the MCU; where the short-range device is external to the MCU,
- * use uDevicePrivateShortRangeRemove() instead.
+/** Remove a short-range device.  Note that this is ONLY for use
+ * where the short-range "device" is on-board the MCU; where the
+ * short-range device is external to the MCU, use
+ * uDevicePrivateShortRangeRemove() instead.
  *
  * @param devHandle the handle of the device.
  * @return          zero on success else negative error code.
