@@ -126,7 +126,7 @@ static int32_t networkInterfaceChangeState(uDeviceHandle_t devHandle,
 
 int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle,
                             uNetworkType_t netType,
-                            const void *pConfiguration)
+                            const void *pCfg)
 {
     // Lock the API
     int32_t errorCode = uDeviceLock();
@@ -138,12 +138,12 @@ int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle,
             (netType >= U_NETWORK_TYPE_NONE) &&
             (netType < U_NETWORK_TYPE_MAX_NUM)) {
 
-            if (pConfiguration == NULL) {
+            if (pCfg == NULL) {
                 // Use possible last set configuration
-                pConfiguration = pInstance->pNetworkCfg[netType];
+                pCfg = pInstance->pNetworkCfg[netType];
             }
-            if (pConfiguration != NULL) {
-                pInstance->pNetworkCfg[netType] = pConfiguration;
+            if (pCfg != NULL) {
+                pInstance->pNetworkCfg[netType] = pCfg;
                 errorCode = networkInterfaceChangeState(devHandle, netType, true);
             }
         }
