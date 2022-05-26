@@ -76,6 +76,15 @@
  */
 #define U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH (U_AT_CLIENT_TEST_PREFIX_LENGTH + 62)
 
+/** A string for testing a particular case of the "wait for single character" test
+ * where a URC arrives at the same time as we are waiting for the character.
+ */
+#define U_AT_CLIENT_TEST_ECHO_WAIT "@" U_AT_CLIENT_TEST_PREFIX " \"string2\"\r\nOK\r\n"
+
+/** The number of characters in U_AT_CLIENT_TEST_ECHO_WAIT.
+ */
+#define U_AT_CLIENT_TEST_ECHO_WAIT_LENGTH (U_AT_CLIENT_TEST_PREFIX_LENGTH + 17)
+
 /** A test string.
  */
 #define U_AT_CLIENT_TEST_STRING_THREE "string3"
@@ -490,71 +499,20 @@ static const uAtClientTestEchoEarlyStop_t gAtClientTestEchoEarlyStop4 = {U_AT_CL
     }
 };
 
-/** Parameters for "wait for char" test, first iteration,
- * to be referenced in gAtClientTestSet2.
- * Wait for the initial 's'.
+/** Parameters for "wait for char" test, to be
+ * referenced in gAtClientTestSet2.
+ * Wait for the '@' character at the start, the point
+ * being to check that the URC which should arrive at the
+ * same time is handled correctly; this is intended to work
+ * with the string U_AT_CLIENT_TEST_ECHO_WAIT.
  */
 //lint -e{785} Suppress too few initialisers
 //lint -e{708} Suppress union initialisation
-static const uAtClientTestEchoWaitForChar_t gAtClientTestEchoWaitForChar0 = {U_AT_CLIENT_TEST_PREFIX, 's', 5,
+static const uAtClientTestEchoWaitForChar_t gAtClientTestEchoWaitForChar0 = {U_AT_CLIENT_TEST_PREFIX, '@', 1,
     {
-        {
-            U_AT_CLIENT_TEST_PARAMETER_STRING,
-            {.pString = "tring1"}, 0
-        },
         {
             U_AT_CLIENT_TEST_PARAMETER_STRING,
             {.pString = "string2"}, 0
-        },
-        {
-            U_AT_CLIENT_TEST_PARAMETER_UINT64,
-            {.uint64 = UINT64_MAX}, 0
-        },
-        {
-            U_AT_CLIENT_TEST_PARAMETER_INT32,
-            {.int32 = INT32_MAX}, 0
-        },
-        {
-            U_AT_CLIENT_TEST_PARAMETER_BYTES,
-            {.pBytes = "\x00\x7f\xff"}, 3
-        }
-    }
-};
-
-/** Parameters for "wait for char" test, second iteration,
- * to be referenced in gAtClientTestSet2.
- * Wait for the '8' in the uint64_t.
- */
-//lint -e{785} Suppress too few initialisers
-//lint -e{708} Suppress union initialisation
-static const uAtClientTestEchoWaitForChar_t gAtClientTestEchoWaitForChar1 = {U_AT_CLIENT_TEST_PREFIX, '8', 3,
-    {
-        {
-            U_AT_CLIENT_TEST_PARAMETER_UINT64,
-            {.uint64 = 446744073709551615ULL}, 0
-        },
-        {
-            U_AT_CLIENT_TEST_PARAMETER_INT32,
-            {.int32 = INT32_MAX}, 0
-        },
-        {
-            U_AT_CLIENT_TEST_PARAMETER_BYTES,
-            {.pBytes = "\x00\x7f\xff"}, 3
-        }
-    }
-};
-
-/** Parameters for "wait for char" test, third iteration,
- * to be referenced in gAtClientTestSet2.
- * Wait for the 0x7f in the byte array.
- */
-//lint -e{785} Suppress too few initialisers
-//lint -e{708} Suppress union initialisation
-static const uAtClientTestEchoWaitForChar_t gAtClientTestEchoWaitForChar2 = {U_AT_CLIENT_TEST_PREFIX, '\x7f', 1,
-    {
-        {
-            U_AT_CLIENT_TEST_PARAMETER_BYTES,
-            {.pBytes = "\xff"}, 1
         }
     }
 };
@@ -761,11 +719,8 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
     if (isprint((int32_t) pWaitForChar->character)) {
         uPortLog("('%c') ", pWaitForChar->character);
     }
-    uPortLog("and then read the remaining %d parameter(s).\n",
-             pWaitForChar->numParameters);
-
-    // Begin processing the response
-    uAtClientResponseStart(atClientHandle, pWaitForChar->pPrefix);
+    uPortLog("between a command and a response, then read the response"
+             " and the remaining %d parameter(s).\n", pWaitForChar->numParameters);
 
     // Wait for the character
     uPortLog("U_AT_CLIENT_TEST_%d: waiting for character 0x%02x",
@@ -774,10 +729,17 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
         uPortLog(" ('%c')", pWaitForChar->character);
     }
     uPortLog("...\n");
+
     lastError = uAtClientWaitCharacter(atClientHandle, pWaitForChar->character);
-    if (lastError != 0) {
+    if (lastError == 0) {
+        uPortLog("U_AT_CLIENT_TEST_%d: received character 0x%02x.\n", index + 1,
+                 pWaitForChar->character);
+    } else {
         uPortLog("U_AT_CLIENT_TEST_%d: character didn't turn up.\n", index + 1);
     }
+
+    // Begin processing the response
+    uAtClientResponseStart(atClientHandle, pWaitForChar->pPrefix);
 
     // Read the given number of parameters
     for (size_t x = 0; (x < pWaitForChar->numParameters) && (lastError == 0); x++) {
@@ -2054,38 +2016,13 @@ const uAtClientTestEcho_t gAtClientTestSet2[] = {
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
-        U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
+        U_AT_CLIENT_TEST_ECHO_WAIT, U_AT_CLIENT_TEST_ECHO_WAIT_LENGTH, &gAtClientUrc5,
         handleWaitForChar, (const void *) &gAtClientTestEchoWaitForChar0,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {
-        U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
+        U_AT_CLIENT_TEST_ECHO_WAIT, U_AT_CLIENT_TEST_ECHO_WAIT_LENGTH, &gAtClientUrc5,
         handleWaitForChar, (const void *) &gAtClientTestEchoWaitForChar0,
-        (int32_t) U_ERROR_COMMON_SUCCESS
-    },
-    {
-        U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
-        handleWaitForChar, (const void *) &gAtClientTestEchoWaitForChar1,
-        (int32_t) U_ERROR_COMMON_SUCCESS
-    },
-    {
-        U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
-        handleWaitForChar, (const void *) &gAtClientTestEchoWaitForChar1,
-        (int32_t) U_ERROR_COMMON_SUCCESS
-    },
-    {
-        U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, NULL,
-        handleWaitForChar, (const void *) &gAtClientTestEchoWaitForChar2,
-        (int32_t) U_ERROR_COMMON_SUCCESS
-    },
-    {
-        U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
-        handleWaitForChar, (const void *) &gAtClientTestEchoWaitForChar2,
-        (int32_t) U_ERROR_COMMON_SUCCESS
-    },
-    {
-        U_AT_CLIENT_TEST_ECHO_SKIP, U_AT_CLIENT_TEST_ECHO_SKIP_LENGTH, &gAtClientUrc5,
-        handleWaitForChar, (const void *) &gAtClientTestEchoWaitForChar2,
         (int32_t) U_ERROR_COMMON_SUCCESS
     },
     {

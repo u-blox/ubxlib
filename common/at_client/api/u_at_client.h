@@ -325,6 +325,9 @@ extern "C" {
  * a little if nothing is available so that, when we do get
  * stuff, it is likely to be a substantial string, otherwise
  * we may search pointlessly through partial strings.
+ * This also helps ensure that line prefixes are caught,
+ * in one go, reducing the chance of us not recognising
+ * something because we only have part of the prefix.
  */
 # define U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS 10
 #endif
@@ -981,7 +984,11 @@ void uAtClientSkipBytes(uAtClientHandle_t atHandle,
  * upon.
  *
  * @param atHandle  the handle of the AT client.
- * @param character the character that is expected.
+ * @param character the character that is expected;
+ *                  should not be 0x0d or 0x0a as these
+ *                  characters always precede a URC
+ *                  and will be processed as part of URC
+ *                  reception.
  * @return          zero if the character arrived,
  *                  else negative error code.
  */

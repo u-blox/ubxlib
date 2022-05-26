@@ -74,7 +74,7 @@
  * testing: make sure that the priority of the task RUNNING
  * the tests is lower than this.
  */
-#define U_CFG_TEST_OS_TASK_PRIORITY U_CFG_OS_PRIORITY_MIN + 11
+#define U_CFG_TEST_OS_TASK_PRIORITY U_CFG_OS_PRIORITY_MIN + 12
 
 /** The minimum free stack space permitted for the main task,
  * basically what's left as a margin for user code.  This makes

@@ -59,6 +59,9 @@
 #include "u_cell.h"
 #include "u_cell_net.h"
 #include "u_cell_loc.h"
+#if U_CFG_APP_PIN_CELL_PWR_ON < 0
+#include "u_cell_pwr.h"
+#endif
 
 #include "u_cell_test_cfg.h"
 #include "u_cell_test_private.h"
@@ -532,6 +535,13 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
     }
     U_PORT_TEST_ASSERT(gErrorCode == 0);
     U_PORT_TEST_ASSERT(gTimeUtc > U_CELL_LOC_TEST_MIN_UTC_TIME);
+
+#if U_CFG_APP_PIN_CELL_PWR_ON < 0
+    // The standard postamble would normally power the module off
+    // but if there is no power-on pin it won't (for obvious reasons)
+    // so instead rebooot here to ensure a clean start
+    uCellPwrReboot(cellHandle, NULL);
+#endif
 
     // Do the standard postamble
     uCellTestPrivatePostamble(&gHandles, false);

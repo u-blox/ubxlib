@@ -1450,7 +1450,7 @@ static int32_t bufferReadChar(uAtClientInstance_t *pClient)
     return character;
 }
 
-// Look for pString in the current receive buffer,
+// Look for pString at the start of the current receive buffer
 // without bringing more data into it, and if the string
 // is there consume it.
 static bool bufferMatch(const uAtClientInstance_t *pClient,
@@ -1462,7 +1462,7 @@ static bool bufferMatch(const uAtClientInstance_t *pClient,
     bufferRewind(pClient);
 
     if ((pReceiveBuffer->length - pReceiveBuffer->readIndex) >= length) {
-        if (pString && (memcmp(U_AT_CLIENT_DATA_BUFFER_PTR(pClient->pReceiveBuffer) +
+        if (pString && (memcmp(U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
                                pReceiveBuffer->readIndex,
                                pString, length) == 0)) {
             // Consume the matching part
@@ -1477,16 +1477,16 @@ static bool bufferMatch(const uAtClientInstance_t *pClient,
 // Check if the current byte in the buffer matches
 // character and, if so, consume it.
 static bool consumeOneCharacter(uAtClientInstance_t *pClient,
-                                char character)
+                                char character, bool destructive)
 {
     int32_t readCharacter = bufferReadChar(pClient);
 
-    if (readCharacter >= 0) {
-        if (((char) readCharacter) != character) {
-            // If we read something other than character,
-            // reset the buffer index to "put it back"
-            pClient->pReceiveBuffer->readIndex--;
-        }
+    if ((readCharacter >= 0) && (((char) readCharacter) != character) &&
+        !destructive) {
+        // If we read something and it was not the wanted
+        // character then, if we're not being destructive,
+        // decrement the buffer index to "put it back"
+        pClient->pReceiveBuffer->readIndex--;
     }
 
     return ((char) readCharacter) == character;
@@ -1507,8 +1507,9 @@ static void setScope(uAtClientInstance_t *pClient,
                 break;
             case U_AT_CLIENT_SCOPE_INFORMATION:
                 // Consume the space that should follow the
-                // information response prefix
-                consumeOneCharacter(pClient, ' ');
+                // information response prefix, if it is
+                // there
+                consumeOneCharacter(pClient, ' ', false);
                 pStopTag->pTagDef = &gInformationStopTag;
                 break;
             case U_AT_CLIENT_SCOPE_NONE:
@@ -3308,33 +3309,81 @@ void uAtClientSkipBytes(uAtClientHandle_t atHandle,
 int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
                                char character)
 {
+    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
-    uErrorCode_t errorCode = U_ERROR_COMMON_UNKNOWN;
-    int32_t c = -1;
+    uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
+    int64_t stopTimeMs;
+    bool urcFound;
 
     // IMPORTANT: this can't lock pClient->mutex as it
     // checks for URCs and hence may end up calling a
     // URC handler which itself will need to be able
     // to perform a lock.
 
-    if (!pClient->stopTag.found) {
-        while ((pClient->error == U_ERROR_COMMON_SUCCESS) &&
-               (c != character)) {
-            c = bufferReadChar(pClient);
-            if (c == -1) {
-                setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+    // Can't allow CR or LF since we remove them from the
+    // stream as part of looking for URCs
+    if ((character != 0x0d) && (character != 0x0a)) {
+        errorCode = U_ERROR_COMMON_NOT_FOUND;
+        if (!pClient->stopTag.found) {
+            // While there is a timeout inside the call to bufferFill()
+            // below, it might be that the length in the buffer never
+            // gets to zero (in which case we won't call bufferFill())
+            // and hence, for safety, we run our own AT timeout guard
+            // on the loop as well
+            stopTimeMs = uPortGetTickTimeMs() + pClient->atTimeoutMs;
+            if (stopTimeMs < 0) {
+                // Protect against wrapping
+                stopTimeMs = pClient->atTimeoutMs;
             }
-            // Continue to look for URCs,
-            // you never know when the sneaky
-            // buggers might turn up.
-            bufferMatchOneUrc(pClient);
-            // Check for a device error landing
-            // in the buffer
-            deviceErrorInBuffer(pClient);
-        }
+            while ((errorCode != U_ERROR_COMMON_SUCCESS) &&
+                   (pClient->error == U_ERROR_COMMON_SUCCESS)) {
+                // Continue to look for URCs, you never
+                // know when they might turn up
+                do {
+                    // Need to remove any CR/LF's at the start
+                    while (bufferMatch(pClient, U_AT_CLIENT_CRLF,
+                                       U_AT_CLIENT_CRLF_LENGTH_BYTES)) {}
+                    urcFound = bufferMatchOneUrc(pClient);
+                } while (urcFound);
 
-        if (c == character) {
-            errorCode = U_ERROR_COMMON_SUCCESS;
+                // Check for a device error landing in the buffer
+                deviceErrorInBuffer(pClient);
+                // Now we can check for our wanted character, removing
+                // at least one character now that we know that what is
+                // in there is not a URC.  Of course this relies upon
+                // the module sending URCs in coherent lines, not
+                // stuttering them out with gaps such that we receive just
+                // part of a URC prefix, but the alternative is to not
+                // remove irrelevant characters (e.g. from URCs that
+                // we have set no capture for) in our search for the
+                // wanted character, which would be a larger problem
+                if (consumeOneCharacter(pClient, character, true)) {
+                    // Got it: the character will be removed from the buffer
+                    // and all is good
+                    errorCode = U_ERROR_COMMON_SUCCESS;
+                } else {
+                    // Remove the processed stuff from the buffer
+                    bufferRewind(pClient);
+                    if (pReceiveBuffer->length == 0) {
+                        // If there's nothing left, try to get more stuff
+                        if (!bufferFill(pClient, true)) {
+                            // If we don't get any data within
+                            // the timeout, set an error to
+                            // indicate the need for recovery
+                            setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+                            consecutiveTimeout(pClient);
+                        } else {
+                            pClient->numConsecutiveAtTimeouts = 0;
+                        }
+                    } else {
+                        if (uPortGetTickTimeMs() > stopTimeMs) {
+                            // If we're stuck, set an error
+                            setError(pClient, U_ERROR_COMMON_DEVICE_ERROR);
+                            consecutiveTimeout(pClient);
+                        }
+                    }
+                }
+            }
         }
     }
 

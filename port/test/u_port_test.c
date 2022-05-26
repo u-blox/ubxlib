@@ -621,6 +621,11 @@ static void osTestTask(void *pParameters)
     uPortLog("U_PORT_TEST: uPortTaskGetHandle() returned 0x%08x\n", taskHandle);
     U_PORT_TEST_ASSERT(gTaskHandle == taskHandle);
 
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
+    // Only do this if we can rely on timing, since if this
+    // task doesn't run immediately rhe lock is given to
+    // it the calling task's tryLock might succeed (which we
+    // sometimes see on Windows)
     uPortLog("U_PORT_TEST_OS_TASK: task trying to lock the mutex.\n");
     U_PORT_TEST_ASSERT(gMutexHandle != NULL);
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 500) == 0);
@@ -628,6 +633,7 @@ static void osTestTask(void *pParameters)
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);
     uPortLog("U_PORT_TEST_OS_TASK: unlocking it again.\n");
     U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);
+#endif
 
     uPortLog("U_PORT_TEST_OS_TASK: locking it again (non-try version).\n");
     U_PORT_MUTEX_LOCK(gMutexHandle);
@@ -1359,8 +1365,14 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     uPortTaskBlock(200);
     uPortLog("U_PORT_TEST: unlocking mutex, allowing task to execute\n");
     U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);;
+
+#ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     // Pause to let the task print its opening messages
     uPortTaskBlock(1200);
+#else
+    // Some platforms (e.g. Windows) can be a little slow at this
+    uPortTaskBlock(10000);
+#endif
 
     uPortLog("U_PORT_TEST: trying to lock the mutex, should fail...\n");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);
