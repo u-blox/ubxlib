@@ -63,6 +63,11 @@ extern "C" {
                                                                   ((type == U_NETWORK_TYPE_BLE) && \
                                                                    (module != (int32_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL)))
 
+/** Determine if the given device is a short range module.
+ */
+#define U_NETWORK_TEST_DEVICE_IS_SHORT_RANGE(deviceType) ((deviceType == U_DEVICE_TYPE_SHORT_RANGE) || \
+                                                          (deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU))
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -101,6 +106,13 @@ extern const size_t gUNetworkTestCfgSize;
 // as const: this may be used in position independent code
 // and hence can't be const
 extern const char *gpUNetworkTestTypeName[];
+
+/** Return a name for a device type.
+ */
+//lint -esym(843, gpUNetworkTestDeviceTypeName) Suppress could be declared
+// as const: this may be used in position independent code
+// and hence can't be const
+extern const char *gpUNetworkTestDeviceTypeName[];
 #endif
 
 #ifdef __cplusplus
@@ -112,7 +124,7 @@ extern const char *gpUNetworkTestTypeName[];
  * -------------------------------------------------------------- */
 
 /** Update a GNSS device configuration for use with the AT
- *  interface of a another device
+ * interface of a another device.
  *
  * @param devHandleAt    the device handle providing the
  *                       AT interface (e.g. cellular).  NOT the
@@ -121,21 +133,27 @@ extern const char *gpUNetworkTestTypeName[];
  */
 void uNetworkTestGnssAtCfg(uDeviceHandle_t devHandleAt, uDeviceCfg_t *pUDeviceCfg);
 
-/** Check if a specified test configuration is valid within the current set
- *  of defines and that it hasn't been opened already
+/** Check if a specified test configuration is valid within the
+ * current set of defines and that it hasn't been opened already.
+ * If it has been opened already the existing device handle is
+ * copied into the given test configuration.
  *
  * @param index  test configuration index.
  * @return       true or false.
  */
 bool uNetworkTestDeviceValidForOpen(int32_t index);
 
-/** Close the device for the test configuration at the specified index.
- *  Handle possible multiple references to this device.
+/** Close the device for the test configuration at the specified index,
+ * but only if it isn't required by another network.
  *
  * @param index  test configuration index.
  * @return       zero on success else negative error code.
  */
-int32_t uNetworkTestClose(int32_t index);
+int32_t uNetworkTestDeviceClose(int32_t index);
+
+/** Close all networks and devices in the list.
+ */
+void uNetworkTestCleanUp(void);
 
 /** Get the module type of a specified test configuration
  *

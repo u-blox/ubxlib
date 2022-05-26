@@ -429,30 +429,30 @@ static void stdPreamble()
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add each network type if its not already been added
+    // Add the devices for each network configuration
+    // if not already added
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (gUNetworkTestCfg[x].devHandle == NULL) {
-            if (uNetworkTestDeviceValidForOpen(x)) {
-                uPortLog("U_SOCK_TEST: adding %s network...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
+            uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_SOCK_TEST: adding device for network %s...\n",
+                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)
-                // If there is no GNSS UART then any GNSS chip must
-                // be connected via the cellular module's AT interface
-                // hence we capture the cellular network handle here and
-                // modify the GNSS configuration to use it before we add
-                // the GNSS network
-                uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
+            // If there is no GNSS UART then any GNSS chip must
+            // be connected via the cellular module's AT interface
+            // hence we capture the cellular network handle here and
+            // modify the GNSS configuration to use it before we add
+            // the GNSS network
+            uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
 #endif
-                errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
-                                        &gUNetworkTestCfg[x].devHandle);
-                U_PORT_TEST_ASSERT_EQUAL((int32_t)U_ERROR_COMMON_SUCCESS, errorCode);
-#if (U_CFG_APP_GNSS_UART < 0)
-                if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                    devHandle = gUNetworkTestCfg[x].devHandle;
-                }
-#endif
-            }
+            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
+                                    &gUNetworkTestCfg[x].devHandle);
+            U_PORT_TEST_ASSERT_EQUAL((int32_t)U_ERROR_COMMON_SUCCESS, errorCode);
         }
+#if (U_CFG_APP_GNSS_UART < 0)
+        if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
+            devHandle = gUNetworkTestCfg[x].devHandle;
+        }
+#endif
     }
 
     // It is possible for socket closure in an
@@ -924,6 +924,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
     osCleanup();
@@ -1103,6 +1106,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
+
+    // In case a previous test failed
+    uNetworkTestCleanUp();
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -1335,6 +1341,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
     osCleanup();
@@ -1480,6 +1489,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
     osCleanup();
@@ -1620,6 +1632,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
+
+    // In case a previous test failed
+    uNetworkTestCleanUp();
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -1849,6 +1864,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
     osCleanup();
@@ -2046,6 +2064,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
+
+    // In case a previous test failed
+    uNetworkTestCleanUp();
 
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
@@ -2297,6 +2318,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
     osCleanup();
@@ -2539,9 +2563,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
     // the network, sockets, security and location tests
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        uNetworkTestClose(x);
-    }
+    uNetworkTestCleanUp();
     uDeviceDeinit();
 
     y = uPortTaskStackMinFree(NULL);

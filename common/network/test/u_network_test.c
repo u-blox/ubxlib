@@ -345,6 +345,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     int32_t heapSockInitLoss = 0;
     int32_t errorCode;
 
+    // Make sure we start fresh for this test case
+    uNetworkTestCleanUp();
+
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
@@ -354,12 +357,12 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add the networks that support sockets
+    // Add the devices that support sockets
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].devHandle = NULL;
-        if (uNetworkTestDeviceValidForOpen(x) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
-            uPortLog("U_NETWORK_TEST: adding %s network...\n",
+        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
+            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type) &&
+            uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_NETWORK_TEST: adding device for network %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
@@ -376,7 +379,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     // Do this twice to prove that we can go from down
     // back to up again
     for (size_t a = 0; a < 2; a++) {
-        // Bring up each network type
+        // Bring up each network configuration
         for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
             if (gUNetworkTestCfg[x].devHandle != NULL) {
                 pNetworkCfg = &(gUNetworkTestCfg[x]);
@@ -467,11 +470,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     }
 
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (gUNetworkTestCfg[x].devHandle != NULL) {
-            uPortLog("U_NETWORK_TEST: closing %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkTestClose(x) == 0);
-        }
+        U_PORT_TEST_ASSERT(uNetworkTestDeviceClose(x) == 0);
     }
     uDeviceDeinit();
     uPortDeinit();
@@ -507,12 +506,14 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
 U_PORT_TEST_FUNCTION("[network]", "networkBle")
 {
     uNetworkTestCfg_t *pNetworkCfg = NULL;
-    uDeviceHandle_t devHandle = NULL;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t timeoutCount;
     int32_t errorCode;
     uBleSpsHandles_t spsHandles;
+
+    // In case a previous test failed
+    uNetworkTestCleanUp();
 
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
@@ -523,16 +524,16 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add a BLE network
+    // Add a BLE device, if it was not already there
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].devHandle = NULL;
-        if (uNetworkTestDeviceValidForOpen(x) &&
-            (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_BLE)) {
-            uPortLog("U_NETWORK_TEST: adding %s network...\n",
+        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
+            (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_BLE) &&
+            uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_NETWORK_TEST: adding device for network %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
-            U_PORT_TEST_ASSERT(errorCode >= 0);
+            U_PORT_TEST_ASSERT(errorCode == 0);
         }
     }
     // Do this twice to prove that we can go from down
@@ -542,11 +543,10 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
         for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
             if (gUNetworkTestCfg[x].devHandle != NULL) {
                 pNetworkCfg = &(gUNetworkTestCfg[x]);
-                devHandle = pNetworkCfg->devHandle;
 
                 uPortLog("U_NETWORK_TEST: bringing up %s...\n",
                          gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(gUNetworkTestCfg[x].devHandle,
                                                        pNetworkCfg->type,
                                                        pNetworkCfg->pNetworkCfg) == 0);
 
@@ -658,8 +658,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                          gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
                 U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
                                                          gUNetworkTestCfg[x].type) == 0);
-                U_PORT_TEST_ASSERT(uNetworkTestClose(x) == 0);
-                gUNetworkTestCfg[x].devHandle = NULL;
+                U_PORT_TEST_ASSERT(uNetworkTestDeviceClose(x) == 0);
             }
         }
     }
@@ -706,6 +705,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     int32_t heapUsed;
     int32_t errorCode;
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
@@ -715,12 +717,13 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add the networks that support location
+    // Add the devices for the network types that
+    // support location
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].devHandle = NULL;
-        if (uNetworkTestDeviceValidForOpen(x) &&
-            U_NETWORK_TEST_TYPE_HAS_LOCATION(gUNetworkTestCfg[x].type)) {
-            uPortLog("U_NETWORK_TEST: adding %s network...\n",
+        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
+            U_NETWORK_TEST_TYPE_HAS_LOCATION(gUNetworkTestCfg[x].type) &&
+            uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_NETWORK_TEST: adding device for network %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)
             // If there is no GNSS UART then any GNSS chip must
@@ -733,10 +736,10 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
             errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
             U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
-            if (gUNetworkTestCfg[x].pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
-                devHandle = gUNetworkTestCfg[x].devHandle;
-                (void)devHandle; // Will be unused when U_CFG_APP_GNSS_UART > 0
-            }
+        }
+        if (gUNetworkTestCfg[x].pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
+            devHandle = gUNetworkTestCfg[x].devHandle;
+            (void)devHandle; // Will be unused when U_CFG_APP_GNSS_UART > 0
         }
     }
 
@@ -813,10 +816,91 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     }
 
     for (int32_t x = (int32_t)gUNetworkTestCfgSize - 1; x >= 0; x--) {
-        if (gUNetworkTestCfg[x].devHandle != NULL) {
-            U_PORT_TEST_ASSERT(uNetworkTestClose(x) == 0);
-            gUNetworkTestCfg[x].devHandle = NULL;
+        U_PORT_TEST_ASSERT(uNetworkTestDeviceClose(x) == 0);
+    }
+    uDeviceDeinit();
+    uPortDeinit();
+
+#ifndef __XTENSA__
+    // Check for memory leaks
+    // TODO: this if'defed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
+             " the C library during this test and we have"
+             " leaked %d byte(s).\n",
+             gSystemHeapLost, heapUsed - gSystemHeapLost);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT((heapUsed < 0) ||
+                       (heapUsed <= (int32_t) gSystemHeapLost));
+#else
+    (void) gSystemHeapLost;
+    (void) heapUsed;
+#endif
+}
+
+/** Test BLE and Wifi one after the other on a single device.
+ */
+U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
+{
+    uNetworkTestCfg_t *pNetworkCfg = NULL;
+    uDeviceHandle_t devHandle = NULL;
+    int32_t heapUsed;
+    int32_t errorCode;
+
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
+    // Whatever called us likely initialised the
+    // port so deinitialise it here to obtain the
+    // correct initial heap size
+    uPortDeinit();
+    heapUsed = uPortGetHeapFree();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
+
+    // Open the configurations that are short-range devices
+    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
+            U_NETWORK_TEST_DEVICE_IS_SHORT_RANGE(gUNetworkTestCfg[x].pDeviceCfg->deviceType) &&
+            uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_NETWORK_TEST: adding device for network %s...\n",
+                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
+                                    &gUNetworkTestCfg[x].devHandle);
+            U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
         }
+    }
+
+    // Bring up and down each short-range network type
+    // in turn
+    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+        if ((gUNetworkTestCfg[x].devHandle != NULL) &&
+            U_NETWORK_TEST_DEVICE_IS_SHORT_RANGE(gUNetworkTestCfg[x].pDeviceCfg->deviceType)) {
+            pNetworkCfg = &(gUNetworkTestCfg[x]);
+            devHandle = pNetworkCfg->devHandle;
+
+            uPortLog("U_NETWORK_TEST: bringing up %s...\n",
+                     gpUNetworkTestTypeName[pNetworkCfg->type]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                   pNetworkCfg->type,
+                                                   pNetworkCfg->pNetworkCfg) == 0);
+
+            // TODO: something!
+
+            uPortLog("U_NETWORK_TEST: taking down %s...\n",
+                     gpUNetworkTestTypeName[pNetworkCfg->type]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
+                                                     pNetworkCfg->type) == 0);
+        }
+    }
+
+    for (int32_t x = (int32_t)gUNetworkTestCfgSize - 1; x >= 0; x--) {
+        U_PORT_TEST_ASSERT(uNetworkTestDeviceClose(x) == 0);
     }
     uDeviceDeinit();
     uPortDeinit();
@@ -854,9 +938,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
     // the network, sockets, security and location tests
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].devHandle = NULL;
-    }
+    uNetworkTestCleanUp();
     uDeviceDeinit();
 
     y = uPortTaskStackMinFree(NULL);
