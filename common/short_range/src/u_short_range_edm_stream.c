@@ -166,7 +166,7 @@ typedef struct {
 } uShortRangeEdmStreamConnections_t;
 
 typedef struct uEdmStreamInstance_t {
-    bool isClosing;
+    bool ignoreUartCallback;
     int32_t handle;
     int32_t uartHandle;
     void *atHandle;
@@ -749,7 +749,7 @@ static void uartCallback(int32_t uartHandle, uint32_t eventBitmask,
 {
     (void)pParameters;
     if ((gEdmStream.uartHandle == uartHandle) &&
-        !gEdmStream.isClosing &&
+        !gEdmStream.ignoreUartCallback &&
         (eventBitmask == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
         bool uartEmpty = false;
         // We don't want to read one character at the time from the uart driver since that will be
@@ -919,7 +919,7 @@ int32_t uShortRangeEdmStreamInit()
             errorCodeOrHandle = (uErrorCode_t)uShortRangeMemPoolInit();
         }
         gEdmStream.handle = -1;
-        gEdmStream.isClosing = false;
+        gEdmStream.ignoreUartCallback = false;
     }
 
     uShortRangeEdmResetParser();
@@ -1023,7 +1023,7 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle)
 void uShortRangeEdmStreamClose(int32_t handle)
 {
     if (gMutex != NULL) {
-        gEdmStream.isClosing = true;
+        gEdmStream.ignoreUartCallback = true;
         uPortMutexLock(gMutex);
 
         if ((handle != -1) && (handle == gEdmStream.handle)) {
@@ -1066,7 +1066,7 @@ void uShortRangeEdmStreamClose(int32_t handle)
 
         uShortRangeEdmResetParser();
         uPortMutexUnlock(gMutex);
-        gEdmStream.isClosing = false;
+        gEdmStream.ignoreUartCallback = false;
     }
 }
 

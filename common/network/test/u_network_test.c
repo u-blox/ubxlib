@@ -885,21 +885,20 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
                 pNetworkCfg = &(gUNetworkTestCfg[x]);
                 devHandle = pNetworkCfg->devHandle;
 
-                int32_t heapStart = uPortGetHeapFree();
                 uPortLog("U_NETWORK_TEST: bringing up %s...\n",
-                        gpUNetworkTestTypeName[pNetworkCfg->type]);
+                         gpUNetworkTestTypeName[pNetworkCfg->type]);
                 U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
-                                                    pNetworkCfg->type,
-                                                    pNetworkCfg->pNetworkCfg) == 0);
+                                                       pNetworkCfg->type,
+                                                       pNetworkCfg->pNetworkCfg) == 0);
 
                 // Do something!
                 if (pNetworkCfg->type == U_NETWORK_TYPE_WIFI) {
                     uSockAddress_t address;
                     U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
-                                                        U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                                                        &(address.ipAddress)) == 0);
+                                                          U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                                                          &(address.ipAddress)) == 0);
                 } else if (pNetworkCfg->type == U_NETWORK_TYPE_BLE) {
-    #if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
+#if defined(U_BLE_TEST_CFG_REMOTE_SPS_CENTRAL) || defined(U_BLE_TEST_CFG_REMOTE_SPS_PERIPHERAL)
                     uBleSpsHandles_t spsHandles;
                     int32_t timeoutCount;
 
@@ -909,8 +908,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
                     U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gBleConnectionSem, 0, 1) == 0);
 
                     uBleSpsSetCallbackConnectionStatus(gUNetworkTestCfg[x].devHandle,
-                                                    connectionCallback,
-                                                    &gUNetworkTestCfg[x].devHandle);
+                                                       connectionCallback,
+                                                       &gUNetworkTestCfg[x].devHandle);
                     uBleSpsSetDataAvailableCallback(gUNetworkTestCfg[x].devHandle, bleSpsCallback,
                                                     &gUNetworkTestCfg[x].devHandle);
                     gBleHandle = gUNetworkTestCfg[x].devHandle;
@@ -935,8 +934,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
                             if (a == 0) {
                                 uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
                                 result = uBleSpsConnectSps(gUNetworkTestCfg[x].devHandle,
-                                                        gRemoteSpsAddress,
-                                                        NULL);
+                                                           gRemoteSpsAddress,
+                                                           NULL);
                             } else {
                                 uBleSpsConnParams_t connParams;
                                 connParams.scanInterval = 64;
@@ -948,7 +947,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
                                 connParams.linkLossTimeout = 2000;
                                 uPortLog("U_NETWORK_TEST: Connecting SPS with conn params: %s\n", gRemoteSpsAddress);
                                 result = uBleSpsConnectSps(gUNetworkTestCfg[x].devHandle,
-                                                        gRemoteSpsAddress, &connParams);
+                                                           gRemoteSpsAddress, &connParams);
                             }
 
                             if (result == 0) {
@@ -999,14 +998,13 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
 
                     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gBleConnectionSem) == 0);
                     gBleConnectionSem = NULL;
-    #endif
+#endif
                 }
 
                 uPortLog("U_NETWORK_TEST: taking down %s...\n",
-                        gpUNetworkTestTypeName[pNetworkCfg->type]);
+                         gpUNetworkTestTypeName[pNetworkCfg->type]);
                 U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
-                                                        pNetworkCfg->type) == 0);
-                uPortLog("Memory lost: %d\n", (heapStart - uPortGetHeapFree()));
+                                                         pNetworkCfg->type) == 0);
             }
         }
     }
