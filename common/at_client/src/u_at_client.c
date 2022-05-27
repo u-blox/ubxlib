@@ -324,6 +324,14 @@ typedef struct {
     char mk0[U_AT_CLIENT_MARKER_SIZE]; /** Opening marker. */
 } uAtClientReceiveBuffer_t;
 
+/** Blocking states for the bufferFill() function.
+ */
+typedef enum {
+    U_AT_CLIENT_BLOCK_STATE_NOTHING_RECEIVED,
+    U_AT_CLIENT_BLOCK_STATE_WAIT_FOR_MORE,
+    U_AT_CLIENT_BLOCK_STATE_DO_NOT_BLOCK
+} uAtClientBlockState_t;
+
 /** A struct defining a callback plus its optional parameter.
  */
 typedef struct {
@@ -1114,6 +1122,47 @@ static void bufferRewind(const uAtClientInstance_t *pClient)
     }
 }
 
+// Read from the UART interface in nice coherent lines.
+static int32_t uartReadNoStutter(uAtClientInstance_t *pClient,
+                                 uAtClientBlockState_t blockState,
+                                 int32_t atTimeoutMs)
+{
+    int32_t readLength = 0;
+    int32_t thisReadLength;
+    uAtClientReceiveBuffer_t *pReceiveBuffer = pClient->pReceiveBuffer;
+    char *pBuffer = U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
+                    pReceiveBuffer->lengthBuffered;
+    int32_t bufferSize = pReceiveBuffer->dataBufferSize -
+                         pReceiveBuffer->lengthBuffered;
+
+    // Retry the read until we're sure there's nothing
+    do {
+        thisReadLength = uPortUartRead(pClient->streamHandle,
+                                       pBuffer, bufferSize);
+        if (thisReadLength > 0) {
+            readLength += thisReadLength;
+            pBuffer += thisReadLength;
+            bufferSize -= thisReadLength;
+            if (blockState == U_AT_CLIENT_BLOCK_STATE_NOTHING_RECEIVED) {
+                // Got something: now wait for more
+                blockState = U_AT_CLIENT_BLOCK_STATE_WAIT_FOR_MORE;
+            }
+        } else {
+            if (blockState == U_AT_CLIENT_BLOCK_STATE_WAIT_FOR_MORE) {
+                // We were waiting for more but we have received nothing
+                // so stop blocking now
+                blockState = U_AT_CLIENT_BLOCK_STATE_DO_NOT_BLOCK;
+            }
+        }
+        // Wait for a while.
+        uPortTaskBlock(U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
+    } while ((bufferSize > 0) &&
+             (blockState != U_AT_CLIENT_BLOCK_STATE_DO_NOT_BLOCK) &&
+             (pollTimeRemaining(atTimeoutMs, pClient->lockTimeMs) > 0));
+
+    return readLength;
+}
+
 // This is where data comes into the AT client.
 // Read from the stream into the receive buffer.
 // Returns true on a successful read or false on timeout.
@@ -1132,6 +1181,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     //lint -esym(838, pDataIntercept) Suppress initial value not used: it
     // is if detailed debugging is on
     char *pDataIntercept = NULL;
+    uAtClientBlockState_t blockState = U_AT_CLIENT_BLOCK_STATE_DO_NOT_BLOCK;
 
     // Determine if we're in a callback or not
     switch (pClient->streamType) {
@@ -1183,8 +1233,10 @@ static bool bufferFill(uAtClientInstance_t *pClient,
 
     LOG_BUFFER_FILL(1);
 
-    // If we're blocking, set the timeout value.
+    // If we're blocking, set blockState as appropriate and
+    // set the timeout value.
     if (blocking) {
+        blockState = U_AT_CLIENT_BLOCK_STATE_NOTHING_RECEIVED;
         atTimeoutMs = pClient->atTimeoutMs;
         if (eventIsCallback) {
             // Short timeout if we're in a URC callback
@@ -1221,11 +1273,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
     do {
         switch (pClient->streamType) {
             case U_AT_CLIENT_STREAM_TYPE_UART:
-                readLength = uPortUartRead(pClient->streamHandle,
-                                           U_AT_CLIENT_DATA_BUFFER_PTR(pReceiveBuffer) +
-                                           pReceiveBuffer->lengthBuffered,
-                                           pReceiveBuffer->dataBufferSize -
-                                           pReceiveBuffer->lengthBuffered);
+                readLength = uartReadNoStutter(pClient, blockState, atTimeoutMs);
                 break;
             case U_AT_CLIENT_STREAM_TYPE_EDM:
                 readLength = uShortRangeEdmStreamAtRead(pClient->streamHandle,
@@ -1375,11 +1423,6 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         }
 
         LOG_BUFFER_FILL(14);
-        // Block for a little while in case the data coming
-        // in is stuttering; we want a good load or we'll just
-        // be looping on partially obtained strings to no useful
-        // effect.
-        uPortTaskBlock(U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
     } while ((readLength == 0) &&
              (pollTimeRemaining(atTimeoutMs, pClient->lockTimeMs) > 0));
 
