@@ -885,7 +885,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
                 pNetworkCfg = &(gUNetworkTestCfg[x]);
                 devHandle = pNetworkCfg->devHandle;
 
-                uPortLog("Begin mem: %d", heapUsed - uPortGetHeapFree());
+                int32_t heapStart = uPortGetHeapFree();
                 uPortLog("U_NETWORK_TEST: bringing up %s...\n",
                         gpUNetworkTestTypeName[pNetworkCfg->type]);
                 U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
@@ -1006,7 +1006,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
                         gpUNetworkTestTypeName[pNetworkCfg->type]);
                 U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
                                                         pNetworkCfg->type) == 0);
-                uPortLog("End mem: %d", heapUsed - uPortGetHeapFree());
+                uPortLog("Memory lost: %d\n", (heapStart - uPortGetHeapFree()));
             }
         }
     }

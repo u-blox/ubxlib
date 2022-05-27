@@ -166,6 +166,7 @@ typedef struct {
 } uShortRangeEdmStreamConnections_t;
 
 typedef struct uEdmStreamInstance_t {
+    bool isClosing;
     int32_t handle;
     int32_t uartHandle;
     void *atHandle;
@@ -747,8 +748,9 @@ static void uartCallback(int32_t uartHandle, uint32_t eventBitmask,
                          void *pParameters)
 {
     (void)pParameters;
-    if (gEdmStream.uartHandle == uartHandle &&
-        eventBitmask == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) {
+    if ((gEdmStream.uartHandle == uartHandle) &&
+        !gEdmStream.isClosing &&
+        (eventBitmask == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
         bool uartEmpty = false;
         // We don't want to read one character at the time from the uart driver since that will be
         // quite an overhead when pumping a lot of data. Instead we read into a buffer
@@ -917,6 +919,7 @@ int32_t uShortRangeEdmStreamInit()
             errorCodeOrHandle = (uErrorCode_t)uShortRangeMemPoolInit();
         }
         gEdmStream.handle = -1;
+        gEdmStream.isClosing = false;
     }
 
     uShortRangeEdmResetParser();
@@ -1020,7 +1023,7 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle)
 void uShortRangeEdmStreamClose(int32_t handle)
 {
     if (gMutex != NULL) {
-
+        gEdmStream.isClosing = true;
         uPortMutexLock(gMutex);
 
         if ((handle != -1) && (handle == gEdmStream.handle)) {
@@ -1030,14 +1033,7 @@ void uShortRangeEdmStreamClose(int32_t handle)
             }
             gEdmStream.uartHandle = -1;
             if (gEdmStream.eventQueueHandle >= 0) {
-                // Not so pretty workaround:
-                // Temporarily release the lock to prevent potential deadlock.
-                // This can happen if an URC is received at the same time EDM is closing down.
-                // URC will then try to lock gMutex while uPortEventQueueClose will try to take
-                // the queue lock for eventQueueHandle now held by URC handler.
-                uPortMutexUnlock(gMutex);
                 uPortEventQueueClose(gEdmStream.eventQueueHandle);
-                uPortMutexLock(gMutex);
             }
             gEdmStream.eventQueueHandle = -1;
             if (gEdmStream.atHandle != NULL) {
@@ -1070,6 +1066,7 @@ void uShortRangeEdmStreamClose(int32_t handle)
 
         uShortRangeEdmResetParser();
         uPortMutexUnlock(gMutex);
+        gEdmStream.isClosing = false;
     }
 }
 
