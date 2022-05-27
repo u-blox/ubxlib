@@ -107,7 +107,7 @@ typedef int32_t uNetworkCfgVersion_t;
  *
  * @param devHandle        the handle of the device to bring up.
  * @param netType          which of the module interfaces.
- * @param pCfg             a pointer to the configuration
+ * @param[in] pCfg         a pointer to the configuration
  *                         information for the given network
  *                         type.  This must be stored
  *                         statically, a true constant: the

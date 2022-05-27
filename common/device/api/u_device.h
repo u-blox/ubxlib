@@ -41,9 +41,14 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-/** The u-blox device handle.
+/** Forward declaration for the compiler.
  */
-typedef void *uDeviceHandle_t;
+struct uDeviceCfg_t;
+
+/** The u-blox device handle; this is intended to be anonymous,
+ * the contents should never be referenced by the application.
+ */
+typedef struct uDeviceCfg_t *uDeviceHandle_t;
 
 /** Device types.
  */
@@ -245,7 +250,7 @@ typedef struct {
 
 /** The complete device configuration.
  */
-typedef struct {
+typedef struct uDeviceCfg_t {
     uDeviceVersion_t version; /**< Version of this structure; allow your
                                    compiler to initialise this to zero
                                    unless otherwise specified below. */

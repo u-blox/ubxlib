@@ -102,7 +102,7 @@ uDeviceInstance_t *pUDeviceCreateInstance(uDeviceType_t type);
 /** Destroy/deallocate a device instance created by
  * pUDeviceCreateInstance.
  *
- * @param pInstance  the instance to destroy.
+ * @param[in] pInstance  the instance to destroy.
  */
 void uDeviceDestroyInstance(uDeviceInstance_t *pInstance);
 
@@ -127,16 +127,16 @@ int32_t uDeviceUnlock();
  * pUDeviceCreateInstance() is not used and the
  * uDeviceInstance_t is allocated manually.
  *
- * @param pInstance  the device instance to initialize.
- * @param type       the u-blox device type.
+ * @param[in] pInstance  the device instance to initialize.
+ * @param type           the u-blox device type.
  */
 void uDeviceInitInstance(uDeviceInstance_t *pInstance,
                          uDeviceType_t type);
 
 /** Check if a device instance is valid.
  *
- * @param pInstance  the device instance to check.
- * @return           true if the instance is valid.
+ * @param[in] pInstance  the device instance to check.
+ * @return               true if the instance is valid.
  */
 bool uDeviceIsValidInstance(const uDeviceInstance_t *pInstance);
 

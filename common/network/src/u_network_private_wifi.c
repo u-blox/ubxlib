@@ -314,7 +314,7 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
                 uNetworkPrivateChangeStateWifi(devHandle, pCfg, false);
             }
 
-            uWifiSetNetworkStatusCallback(queueHandle, NULL, NULL);
+            uWifiSetNetworkStatusCallback(devHandle, NULL, NULL);
         }
     } else {
         if (queueHandle) {

@@ -63,12 +63,12 @@ void uDevicePrivateCellDeinit(void);
 /** Add a cellular device, powering it up and making it available
  * for configuration and to support a network interface.
  *
- * @param pDevCfg       a pointer to the device configuration
- *                      structure, one that should have been
- *                      populated for cellular; cannot be NULL.
- * @param pDeviceHandle a pointer to a place to put the device
- *                      handle, cannot be NULL.
- * @return              zero on success else negative error code.
+ * @param[in] pDevCfg        a pointer to the device configuration
+ *                           structure, one that should have been
+ *                           populated for cellular; cannot be NULL.
+ * @param[out] pDeviceHandle a pointer to a place to put the device
+ *                           handle, cannot be NULL.
+ * @return                   zero on success else negative error code.
  */
 int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
                               uDeviceHandle_t *pDeviceHandle);

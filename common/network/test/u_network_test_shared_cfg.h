@@ -126,12 +126,14 @@ extern const char *gpUNetworkTestDeviceTypeName[];
 /** Update a GNSS device configuration for use with the AT
  * interface of a another device.
  *
- * @param devHandleAt    the device handle providing the
- *                       AT interface (e.g. cellular).  NOT the
- *                       AT client handle, the handle of the device.
- * @param pUDeviceCfg    a pointer to a possible GNSS device configuration.
+ * @param devHandleAt          the device handle providing the
+ *                             AT interface (e.g. cellular).  NOT the
+ *                             AT client handle, the handle of the device.
+ * @param[inout] pUDeviceCfg   a pointer to a possible GNSS device
+ *                             configuration.
  */
-void uNetworkTestGnssAtCfg(uDeviceHandle_t devHandleAt, uDeviceCfg_t *pUDeviceCfg);
+void uNetworkTestGnssAtCfg(uDeviceHandle_t devHandleAt,
+                           uDeviceCfg_t *pUDeviceCfg);
 
 /** Check if a specified test configuration is valid within the
  * current set of defines and that it hasn't been opened already.
