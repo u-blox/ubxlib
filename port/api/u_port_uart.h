@@ -236,6 +236,15 @@ int32_t uPortUartEventCallbackSet(int32_t handle,
 
 /** Remove a UART event callback.
  *
+ * NOTE: under the hood, this function likely calls
+ * uPortEventQueueClose() - PLEASE READ THE NOTE against
+ * that function concerning the potential for mutex lock-ups
+ * in the design of your re-entrancy protection.  You might
+ * use the pParam context pointer that is passed to the event
+ * callback (see uPortUartEventCallbackSet()) to inform your
+ * callback when it is being shut-down, and hence avoid such
+ * mutex lock-up issues.
+ *
  * @param handle  the handle of the UART instance for
  *                which the callback is to be removed.
  */

@@ -1291,7 +1291,7 @@ int32_t uSockConnect(uSockDescriptor_t descriptor,
                                sizeof(pContainer->socket.remoteAddress));
                         pContainer->socket.state = U_SOCK_STATE_CONNECTED;
                         uPortLog("U_SOCK: socket with descriptor %d, network"
-                                 " handle %d, socket handle %d, is "
+                                 " handle 0x%08x, socket handle %d, is "
                                  " connected to address \"%.*s\".\n",
                                  descriptor, devHandle, sockHandle,
                                  addressToString(&pContainer->socket.remoteAddress,
@@ -1303,7 +1303,7 @@ int32_t uSockConnect(uSockDescriptor_t descriptor,
                         errnoLocal = -errorCode;
                         uPortLog("U_SOCK: underlying layer errno %d on"
                                  " address \"%.*s\", descriptor/"
-                                 "network/socket %d/%d/%d.\n", errnoLocal,
+                                 "network/socket %d/0x%08x/%d.\n", errnoLocal,
                                  addressToString(pRemoteAddress, true,
                                                  buffer, sizeof(buffer)),
                                  buffer, descriptor, devHandle,

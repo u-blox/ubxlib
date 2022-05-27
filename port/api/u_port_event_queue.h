@@ -244,6 +244,38 @@ int32_t uPortEventQueueStackMinFree(int32_t handle);
 
 /** Close an event queue.
  *
+ * COMMON CODING ERROR: there is a common coding error
+ * in the use of this function which can lead to a mutex
+ * deadlock.  It goes as follows:
+  *
+ * - an event queue is used by an API, and that API
+ *   protects all of its functions for re-entrancy with
+ *   a mutex M,
+ * - the event callback function passed to
+ *   uPortEventQueueOpen(), let's call it C(), also locks
+     mutex M,
+ * - when the API is closed, the function that closes the API
+ *   locks mutex M and then calls uPortEventQueueClose(),
+ * - in order to exit, the event queue code has to shut-down
+ *   the task that it launched to run the call-back in, and
+ *   such an event, as is the nature of events, can happen
+ *   at any time...
+ * - so, after the function that closes the API has locked
+ *   mutex M, such an even goes off; C() is now going to be
+ *   called but it can't have mutex M 'cos it has already
+ *   been locked, it sits there waiting for the mutex,
+ * - the function that closes the API goes on to call
+ *   uPortEventQueueClose(), which cannot complete because
+ *   the task it is running to call C() cannot exit.
+ *
+ * We're mutex locked.
+ *
+ * To avoid this pitfall you MUST MAKE SURE that C()
+ * either (a) does not lock your API mutex or, if it does,
+ * you let it know when a shut-down is in progress so that
+ * it can ignore any events during that time and not try
+ * to lock the mutex at all.
+ *
  * @param handle  the handle of the event queue to close.
  * @return        zero on success else negative error code.
  */
