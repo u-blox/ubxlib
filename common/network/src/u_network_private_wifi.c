@@ -94,6 +94,20 @@ typedef struct {
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+static uPortQueueHandle_t getQueueHandle(uDeviceHandle_t devHandle)
+{
+    uNetworkCfgWifi_t *pDevCfgWifi =
+        (uNetworkCfgWifi_t *)U_DEVICE_INSTANCE(devHandle)->pNetworkCfg[U_NETWORK_TYPE_WIFI];
+    return (uPortQueueHandle_t)pDevCfgWifi->pPrivateData;
+}
+
+static void setQueueHandle(uDeviceHandle_t devHandle, uPortQueueHandle_t queueHandle)
+{
+    uNetworkCfgWifi_t *pDevCfgWifi =
+        (uNetworkCfgWifi_t *)U_DEVICE_INSTANCE(devHandle)->pNetworkCfg[U_NETWORK_TYPE_WIFI];
+    pDevCfgWifi->pPrivateData = queueHandle;
+}
+
 static void wifiConnectionCallback(uDeviceHandle_t devHandle,
                                    int32_t connId,
                                    int32_t status,
@@ -107,7 +121,7 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
     (void)channel;
     (void)pBssid;
     (void)pCallbackParameter;
-    uPortQueueHandle_t queueHandle = U_DEVICE_INSTANCE(devHandle)->pNetworkPrivate;
+    uPortQueueHandle_t queueHandle = getQueueHandle(devHandle);
 
     uStatusMessage_t msg = {
         .msgType = (status == U_WIFI_CON_STATUS_DISCONNECTED) ? U_MSG_WIFI_DISCONNECT : U_MSG_WIFI_CONNECT,
@@ -150,7 +164,7 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     (void)devHandle;
     (void)interfaceType;
     (void)pCallbackParameter;
-    uPortQueueHandle_t queueHandle = U_DEVICE_INSTANCE(devHandle)->pNetworkPrivate;
+    uPortQueueHandle_t queueHandle = getQueueHandle(devHandle);
 
 #if !U_CFG_OS_CLIB_LEAKS
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
@@ -269,12 +283,12 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
     }
 
     // Callback message queue, may or may not be initiated before
-    uPortQueueHandle_t queueHandle = (uPortQueueHandle_t) pDevInstance->pNetworkPrivate;
+    uPortQueueHandle_t queueHandle = getQueueHandle(devHandle);
     if (upNotDown) {
         if (!queueHandle) {
             errorCode = uPortQueueCreate(2, sizeof(uStatusMessage_t), &queueHandle);
             if (errorCode == 0) {
-                pDevInstance->pNetworkPrivate = queueHandle;
+                setQueueHandle(devHandle, queueHandle);
                 errorCode = uWifiSetConnectionStatusCallback(devHandle, wifiConnectionCallback, NULL);
                 if (errorCode == 0) {
                     errorCode = uWifiSetNetworkStatusCallback(devHandle, wifiNetworkStatusCallback, NULL);
@@ -335,8 +349,8 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
             }
             if (errorCode == 0) {
                 uWifiSetConnectionStatusCallback(devHandle, NULL, NULL);
-                uPortQueueDelete(queueHandle);
-                pDevInstance->pNetworkPrivate = NULL;
+                errorCode = uPortQueueDelete(queueHandle);
+                setQueueHandle(devHandle, NULL);
             }
         } else {
             errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
