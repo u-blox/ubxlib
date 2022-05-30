@@ -834,7 +834,9 @@ int32_t uWifiMqttInit(uDeviceHandle_t devHandle, void **ppMqttSession)
             if (initMqttSessions() == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
                 if (getInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
-
+                    if (pInstance->devHandle == NULL) {
+                        pInstance->devHandle = devHandle;
+                    }
                     err = uShortRangeSetMqttConnectionStatusCallback(devHandle,
                                                                      atMqttConnectionCallback,
                                                                      pInstance);

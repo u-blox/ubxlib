@@ -761,6 +761,9 @@ int32_t uWifiSockInitInstance(uDeviceHandle_t devHandle)
             errnoLocal = getInstance(devHandle, &pInstance);
         }
         if ((errnoLocal == U_SOCK_ENONE) && pInstance) {
+            if (pInstance->devHandle == NULL) {
+                pInstance->devHandle = devHandle;
+            }
         }
         if ((errnoLocal == U_SOCK_ENONE) && pInstance) {
             int32_t shortRangeEC;
