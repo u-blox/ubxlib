@@ -54,7 +54,7 @@ extern "C" {
  * @return                 zero on success else negative error code.
  */
 int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
-                                       uNetworkCfgWifi_t *pCfg,
+                                       const uNetworkCfgWifi_t *pCfg,
                                        bool upNotDown);
 
 #ifdef __cplusplus

@@ -54,7 +54,7 @@ extern "C" {
  * @return                 zero on success else negative error code.
  */
 int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
-                                       uNetworkCfgGnss_t *pCfg,
+                                       const uNetworkCfgGnss_t *pCfg,
                                        bool upNotDown);
 
 #ifdef __cplusplus

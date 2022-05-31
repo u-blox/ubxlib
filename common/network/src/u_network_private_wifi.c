@@ -96,12 +96,31 @@ typedef struct {
 
 static uPortQueueHandle_t getQueueHandle(uDeviceHandle_t devHandle)
 {
-    return (uPortQueueHandle_t)(U_DEVICE_INSTANCE(devHandle)->pNetworkContext[U_NETWORK_TYPE_WIFI]);
+    uPortQueueHandle_t queueHandle = NULL;
+    uDeviceInstance_t *pInstance = U_DEVICE_INSTANCE(devHandle);
+
+    for (size_t x = 0; (x < sizeof(pInstance->networkData) /
+                        sizeof(pInstance->networkData[0])); x++) {
+        if (pInstance->networkData[x].networkType == U_NETWORK_TYPE_WIFI) {
+            queueHandle = (uPortQueueHandle_t) pInstance->networkData[x].pContext;
+            break;
+        }
+    }
+
+    return queueHandle;
 }
 
 static void setQueueHandle(uDeviceHandle_t devHandle, uPortQueueHandle_t queueHandle)
 {
-    U_DEVICE_INSTANCE(devHandle)->pNetworkContext[U_NETWORK_TYPE_WIFI] = queueHandle;
+    uDeviceInstance_t *pInstance = U_DEVICE_INSTANCE(devHandle);
+
+    for (size_t x = 0; (x < sizeof(pInstance->networkData) /
+                        sizeof(pInstance->networkData[0])); x++) {
+        if (pInstance->networkData[x].networkType == U_NETWORK_TYPE_WIFI) {
+            pInstance->networkData[x].pContext = queueHandle;
+            break;
+        }
+    }
 }
 
 static void wifiConnectionCallback(uDeviceHandle_t devHandle,
@@ -266,7 +285,8 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
 
 // Bring a Wifi interface up or take it down.
 int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
-                                       uNetworkCfgWifi_t *pCfg, bool upNotDown)
+                                       const uNetworkCfgWifi_t *pCfg,
+                                       bool upNotDown)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     uDeviceInstance_t *pDevInstance;

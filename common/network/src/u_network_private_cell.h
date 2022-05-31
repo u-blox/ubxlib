@@ -55,7 +55,7 @@ extern "C" {
  * @return                 zero on success else negative error code.
  */
 int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
-                                       uNetworkCfgCell_t *pCfg,
+                                       const uNetworkCfgCell_t *pCfg,
                                        bool upNotDown);
 
 #ifdef __cplusplus

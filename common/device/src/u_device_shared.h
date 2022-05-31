@@ -22,7 +22,6 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
-#include "u_network.h"
 #include "u_device.h"
 
 /** @file
@@ -55,21 +54,35 @@ extern "C" {
 #define U_DEVICE_IS_TYPE(devHandle, devType) \
     (devHandle == NULL ? false : U_DEVICE_INSTANCE(devHandle)->deviceType == devType)
 
+#ifndef U_DEVICE_NETWORKS_MAX_NUM
+/** The maximum number of networks supported by a given device.
+ */
+# define U_DEVICE_NETWORKS_MAX_NUM 2
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
+/** Data structure for network stuff that is hooked into the device
+ * structure.
+ */
+typedef struct {
+    int32_t networkType; /**< the type for this network. */
+    const void *pCfg; /**< constant network configuration provided by application. */
+    void *pContext; /**< optional context data for this network interface. */
+} uDeviceNetworkData_t;
+
 /** Internal data structure that uDeviceHandle_t points at.
- *  This structure may be "inherited" by each device type to provide
- *  custom data needed for each driver implementation.
+ * This structure may be "inherited" by each device type to provide
+ * custom data needed for each driver implementation.
  */
 typedef struct {
     uint32_t magic;             /**< magic number for detecting a stale uDeviceInstance_t. */
     uDeviceType_t deviceType;   /**< type of device. */
     int32_t moduleType;         /**< module identification (when applicable). */
     void *pContext;             /**< private instance data for the device. */
-    const void *pNetworkCfg[U_NETWORK_TYPE_MAX_NUM]; /**< Network config for device interfaces. */
-    void *pNetworkContext[U_NETWORK_TYPE_MAX_NUM];  /**< Context data for network interfaces. */
+    uDeviceNetworkData_t networkData[U_DEVICE_NETWORKS_MAX_NUM]; /**< network cfg and private data. */
     // Note: In the future structs of function pointers for socket, MQTT etc.
     // implementations may be added here.
 } uDeviceInstance_t;

@@ -76,7 +76,7 @@
 
 // Bring a BLE interface up or take it down.
 int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
-                                      uNetworkCfgBle_t *pCfg,
+                                      const uNetworkCfgBle_t *pCfg,
                                       bool upNotDown)
 {
     uDeviceInstance_t *pDevInstance;

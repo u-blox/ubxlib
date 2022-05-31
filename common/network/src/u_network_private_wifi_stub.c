@@ -40,7 +40,7 @@
  * -------------------------------------------------------------- */
 
 int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
-                                       uNetworkCfgWifi_t *pCfg,
+                                       const uNetworkCfgWifi_t *pCfg,
                                        bool upNotDown)
 {
     (void) devHandle;

@@ -36,7 +36,7 @@
 #include "u_network_private_gnss.h"
 
 int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
-                                       uNetworkCfgGnss_t *pCfg,
+                                       const uNetworkCfgGnss_t *pCfg,
                                        bool upNotDown)
 {
     (void) devHandle;
