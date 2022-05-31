@@ -143,8 +143,8 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
         .disconnectReason = disconnectReason,
         .netStatusMask = 0
     };
-    // We don't care if the queue gets full here
-    (void)uPortQueueSend(queueHandle, &msg);
+    // We don't care if the queue gets full here, hence use the IRQ form
+    uPortQueueSendIrq(queueHandle, &msg);
 
 #if defined(U_CFG_ENABLE_LOGGING) && !U_CFG_OS_CLIB_LEAKS
     if (status == U_WIFI_CON_STATUS_CONNECTED) {
@@ -192,8 +192,8 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
         .disconnectReason = 0,
         .netStatusMask = statusMask
     };
-    // We don't care if the queue gets full here
-    (void)uPortQueueSend(queueHandle, &msg);
+    // We don't care if the queue gets full here, hence use the IRQ form
+    uPortQueueSendIrq(queueHandle, &msg);
 }
 
 static inline void statusQueueClear(const uPortQueueHandle_t queueHandle)
