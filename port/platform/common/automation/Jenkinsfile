@@ -309,11 +309,14 @@ node('TEST-gb-cmb-dt-022')
     def git_commit_text
     def changed_files
     def subst_drive = "z:"
-    // The KMTronic web relay on 10.20.4.157 controls power to the
-    // 12 V supply of each of the EVKs  The last byte of the URL
-    // is a bit-map of the outputs where 0 sets off and 1 sets on
-    def power_switch_off = new URL("http://10.20.4.157/FFE000")
-    def power_switch_on = new URL("http://10.20.4.157/FFE0FF")
+    // The KMTronic web relays on 10.20.4.157 and 10.20.4.143
+    // control power to the 12 V supply of each of the EVKs.  The
+    // last byte of the URL is a bit-map of the outputs where 0 sets
+    // off and 1 sets on
+    def power_switch_1_on = new URL("http://10.20.4.157/FFE0FF")
+    def power_switch_1_off = new URL("http://10.20.4.157/FFE000")
+    def power_switch_2_on = new URL("http://10.20.4.143/FFE0FF")
+    def power_switch_2_off = new URL("http://10.20.4.143/FFE000")
 
     // All the stages go here
     timeout(time: 100, unit: 'MINUTES') {
@@ -475,13 +478,12 @@ node('TEST-gb-cmb-dt-022')
                     bat(script: "usbswitchcmd -s -n 1750665 1")
                 } catch (err) {
                 }
-                println "Switching off power to EVKs returned HTTP response " + power_switch_off.openConnection().getResponseCode() + "."
+                println "Switching off power to EVKs returned HTTP responses " + power_switch_1_off.openConnection().getResponseCode() + " and " + power_switch_2_off.openConnection().getResponseCode() + "."
                 sleep(time: 5, unit: 'SECONDS')
                 // Switch on power and reconnect USBs
-                power_switch_on.openConnection()
+                println "Switching on power to EVKs again returned HTTP responses " + power_switch_1_on.openConnection().getResponseCode() + " and " + power_switch_2_on.openConnection().getResponseCode() + "."
                 bat(script: "usbswitchcmd -s -n 1750664 0")
                 bat(script: "usbswitchcmd -s -n 1750665 0")
-                println "Switching on power to EVKs again returned HTTP response " + power_switch_on.openConnection().getResponseCode() + "."
                 sleep(time: 5, unit: 'SECONDS')
             }
 

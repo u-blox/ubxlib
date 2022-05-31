@@ -111,6 +111,12 @@
  * tick is 10 ms.
  */
 # define U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS 150
+#else
+/** On platform where we can't rely on timing, we
+ * allow up to this long for the osTestTask to lock the
+ * mutex which indicates that it is running.
+  */
+# define U_PORT_TEST_OS_TEST_TASK_WAIT_SECONDS 60
 #endif // #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
 
 #if (U_CFG_TEST_UART_A >= 0) && (U_CFG_TEST_UART_B < 0)
@@ -252,6 +258,9 @@ static uPortTaskHandle_t gTaskHandle = NULL;
 
 // OS task parameter.
 static char gTaskParameter[6];
+
+// Flag to indicate that the OS test task is running.
+static bool gOsTestTaskHasLockedMutex;
 
 // Stuff to send to the OS test task, must all be positive numbers.
 static const int32_t gStuffToSend[] = {0, 100, 25, 3};
@@ -637,6 +646,8 @@ static void osTestTask(void *pParameters)
 
     uPortLog("U_PORT_TEST_OS_TASK: locking it again (non-try version).\n");
     U_PORT_MUTEX_LOCK(gMutexHandle);
+
+    gOsTestTaskHasLockedMutex = true;
 
     U_PORT_TEST_ASSERT(gQueueHandleControl != NULL);
     U_PORT_TEST_ASSERT(gQueueHandleData != NULL);
@@ -1312,7 +1323,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
 
     uPortLog("U_PORT_TEST: creating a mutex...\n");
     errorCode = uPortMutexCreate(&gMutexHandle);
-    uPortLog("                    returned error code %d, handle"
+    uPortLog("             returned error code %d, handle"
              " 0x%08x.\n", errorCode, gMutexHandle);
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gMutexHandle != NULL);
@@ -1321,7 +1332,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     errorCode = uPortQueueCreate(U_PORT_TEST_QUEUE_LENGTH,
                                  U_PORT_TEST_QUEUE_ITEM_SIZE,
                                  &gQueueHandleData);
-    uPortLog("                    returned error code %d, handle"
+    uPortLog("             returned error code %d, handle"
              " 0x%08x.\n", errorCode, gQueueHandleData);
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gQueueHandleData != NULL);
@@ -1334,7 +1345,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     errorCode = uPortQueueCreate(U_PORT_TEST_QUEUE_LENGTH,
                                  U_PORT_TEST_QUEUE_ITEM_SIZE,
                                  &gQueueHandleControl);
-    uPortLog("                    returned error code %d, handle"
+    uPortLog("             returned error code %d, handle"
              " 0x%08x.\n", errorCode, gQueueHandleControl);
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gQueueHandleControl != NULL);
@@ -1345,6 +1356,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     uPortLog("U_PORT_TEST: locking mutex, preventing task from executing\n");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) == 0);
 
+    gOsTestTaskHasLockedMutex = false;
     uPortLog("U_PORT_TEST: creating a test task with stack %d"
              " byte(s) and priority %d, passing it the pointer"
              " 0x%08x containing the string \"%s\"...\n",
@@ -1356,7 +1368,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
                                 (void *) gTaskParameter,
                                 U_CFG_TEST_OS_TASK_PRIORITY,
                                 &gTaskHandle);
-    uPortLog("                    returned error code %d, handle"
+    uPortLog("             returned error code %d, handle"
              " 0x%08x.\n", errorCode, gTaskHandle);
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gTaskHandle != NULL);
@@ -1370,8 +1382,14 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     // Pause to let the task print its opening messages
     uPortTaskBlock(1200);
 #else
-    // Some platforms (e.g. Windows) can be a little slow at this
-    uPortTaskBlock(10000);
+    // On platforms where we can't rely on timing (e.g. Windows),
+    // wait for the osTestTask to set a flag to indicate that it
+    // has locked the mutex
+    for (size_t x = 0; !gOsTestTaskHasLockedMutex &&
+         (x < U_PORT_TEST_OS_TEST_TASK_WAIT_SECONDS); x++) {
+        uPortTaskBlock(1000);
+    }
+    U_PORT_TEST_ASSERT(gOsTestTaskHasLockedMutex);
 #endif
 
     uPortLog("U_PORT_TEST: trying to lock the mutex, should fail...\n");
