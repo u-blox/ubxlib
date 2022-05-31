@@ -69,6 +69,7 @@ typedef struct {
     int32_t moduleType;         /**< module identification (when applicable). */
     void *pContext;             /**< private instance data for the device. */
     const void *pNetworkCfg[U_NETWORK_TYPE_MAX_NUM]; /**< Network config for device interfaces. */
+    void *pNetworkContext[U_NETWORK_TYPE_MAX_NUM];  /**< Context data for network interfaces. */
     // Note: In the future structs of function pointers for socket, MQTT etc.
     // implementations may be added here.
 } uDeviceInstance_t;

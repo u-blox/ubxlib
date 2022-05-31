@@ -96,16 +96,12 @@ typedef struct {
 
 static uPortQueueHandle_t getQueueHandle(uDeviceHandle_t devHandle)
 {
-    uNetworkCfgWifi_t *pDevCfgWifi =
-        (uNetworkCfgWifi_t *)U_DEVICE_INSTANCE(devHandle)->pNetworkCfg[U_NETWORK_TYPE_WIFI];
-    return (uPortQueueHandle_t)pDevCfgWifi->pPrivateData;
+    return (uPortQueueHandle_t)(U_DEVICE_INSTANCE(devHandle)->pNetworkContext[U_NETWORK_TYPE_WIFI]);
 }
 
 static void setQueueHandle(uDeviceHandle_t devHandle, uPortQueueHandle_t queueHandle)
 {
-    uNetworkCfgWifi_t *pDevCfgWifi =
-        (uNetworkCfgWifi_t *)U_DEVICE_INSTANCE(devHandle)->pNetworkCfg[U_NETWORK_TYPE_WIFI];
-    pDevCfgWifi->pPrivateData = queueHandle;
+    U_DEVICE_INSTANCE(devHandle)->pNetworkContext[U_NETWORK_TYPE_WIFI] = queueHandle;
 }
 
 static void wifiConnectionCallback(uDeviceHandle_t devHandle,

@@ -55,7 +55,6 @@ typedef struct {
                                   1: Open (No authentication)
                                   2: WPA/WPA2/WPA3-PSK */
     const char *pPassPhrase; /**< WPA/WPA2/WPA3 passphrase - should be NULL for open */
-    void *pPrivateData;      /**< Private data pointer, must be set to NULL initially. */
     /* This is the end of version 0 of this
        structure: should any fields be added to
        this structure in future they must be
