@@ -28,10 +28,10 @@
  * @brief Functions for initializing a u-blox device (chip or module),
  * that do not form part of the device API but are shared internally
  * for use within ubxlib.
- * IMPORTANT: NONE of the individual functions here are thread-safe.
- * They are intended to be called in-sequence by the implementations
- * of ubxlib API functions within a uDeviceLock()/uDeviceUnlock()
- * pair to guarantee thread-safety.
+ * IMPORTANT: unless otherwise stated, the individual functions here
+ * are not thread-safe. They are intended to be called in-sequence by
+ * the implementations of ubxlib API functions within a
+ * uDeviceLock()/uDeviceUnlock() pair to guarantee thread-safety.
  */
 
 #ifdef __cplusplus
@@ -105,6 +105,8 @@ void uDeviceMutexDestroy();
 
 /** Create a device instance. uDeviceInstance_t is the internal
  * structure that uDeviceHandle_t will point at.
+ * Note: it is OK to call this even if uDeviceInit()/uDeviceLock()
+ * has not been called.
  *
  * @param type  the u-blox device type.
  * @return      an allocated uDeviceInstance_t struct or NULL if
@@ -114,6 +116,9 @@ uDeviceInstance_t *pUDeviceCreateInstance(uDeviceType_t type);
 
 /** Destroy/deallocate a device instance created by
  * pUDeviceCreateInstance.
+ * Note: it is OK to call this even if uDeviceInit()/
+ * uDeviceLock() has not been called, provided you know that
+ * the instance is not being used by any other task.
  *
  * @param[in] pInstance  the instance to destroy.
  */
@@ -139,6 +144,9 @@ int32_t uDeviceUnlock();
 /** Initialize a device instance. This is useful when
  * pUDeviceCreateInstance() is not used and the
  * uDeviceInstance_t is allocated manually.
+ * Note: it is OK to call this even if uDeviceInit()/
+ * uDeviceLock() has not been called, provided you know that
+ * the instance is not being used by any other task.
  *
  * @param[in] pInstance  the device instance to initialize.
  * @param type           the u-blox device type.
@@ -147,6 +155,8 @@ void uDeviceInitInstance(uDeviceInstance_t *pInstance,
                          uDeviceType_t type);
 
 /** Check if a device instance is valid.
+ * Note: it is OK to call this even if uDeviceInit()/uDeviceLock()
+ * has not been called.
  *
  * @param[in] pInstance  the device instance to check.
  * @return               true if the instance is valid.
@@ -155,6 +165,8 @@ bool uDeviceIsValidInstance(const uDeviceInstance_t *pInstance);
 
 /** Get a device instance from a device handle. This will
  * also validate the handle.
+ * Note: it is OK to call this even if uDeviceInit()/uDeviceLock()
+ * has not been called.
  *
  * @param devHandle       the device handle.
  * @param[out] ppInstance a place to put the output device
@@ -166,6 +178,8 @@ int32_t uDeviceGetInstance(uDeviceHandle_t devHandle,
 
 /** Get a device type from a device handle. This will also
  * validate the handle.
+ * Note: it is OK to call this even if uDeviceInit()/uDeviceLock()
+ * has not been called.
  *
  * @param devHandle  the device handle.
  * @return           the device type (see uDeviceType_t) on success
