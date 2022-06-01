@@ -781,7 +781,8 @@ int32_t uCellInfoGetFirmwareVersionStr(int32_t cellHandle,
         pInstance = pUCellPrivateGetInstance(cellHandle);
         errorCodeOrSize = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((pInstance != NULL) && (pStr != NULL) && (size > 0)) {
-            errorCodeOrSize = getString(pInstance->atHandle, "AT+CGMR",
+            // Use ATI9 instead of AT+CGMR as it contains more information
+            errorCodeOrSize = getString(pInstance->atHandle, "ATI9",
                                         pStr, size);
         }
 
