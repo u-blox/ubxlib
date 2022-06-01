@@ -118,10 +118,11 @@ static void stdPreamble()
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add each network type if its not already been added
+    // Add the device for each network type if not already added
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (uNetworkTestDeviceValidForOpen(x)) {
-            uPortLog("U_LOCATION_TEST: adding %s network...\n",
+        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
+            uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_LOCATION_TEST: adding device for network %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)
             // If there is no GNSS UART then any GNSS chip must
@@ -134,12 +135,12 @@ static void stdPreamble()
             errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
             U_PORT_TEST_ASSERT_EQUAL((int32_t)U_ERROR_COMMON_SUCCESS, errorCode);
-#if (U_CFG_APP_GNSS_UART < 0)
-            if (gUNetworkTestCfg[x].pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
-                devHandle = gUNetworkTestCfg[x].devHandle;
-            }
-#endif
         }
+#if (U_CFG_APP_GNSS_UART < 0)
+        if (gUNetworkTestCfg[x].pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
+            devHandle = gUNetworkTestCfg[x].devHandle;
+        }
+#endif
     }
 
     // Bring up each network type
@@ -376,6 +377,9 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
         heapLossFirstCall[x] = INT_MIN;
     }
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
@@ -504,9 +508,7 @@ U_PORT_TEST_FUNCTION("[location]", "locationCleanUp")
     // the network, sockets, security and location tests
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
-    for (size_t y = 0; y < gUNetworkTestCfgSize; y++) {
-        uNetworkTestClose(y);
-    }
+    uNetworkTestCleanUp();
     uDeviceDeinit();
 
     x = uPortTaskStackMinFree(NULL);

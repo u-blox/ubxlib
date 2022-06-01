@@ -70,7 +70,7 @@ int app_start() {
     }
 
     // Close the device
-    uDeviceClose(devHandle);
+    uDeviceClose(devHandle, true);
 
     // Tidy up
     uDeviceDeinit();

@@ -174,12 +174,13 @@ static void stdPreamble()
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add each network type if its not already been added
+    // Add the device for each network configuration
+    // if not already added
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
         if ((gUNetworkTestCfg[x].devHandle == NULL) &&
-            uNetworkTestDeviceValidForOpen(x) &&
-            U_NETWORK_TEST_TYPE_HAS_MQTT(gUNetworkTestCfg[x].type)) {
-            uPortLog("U_MQTT_CLIENT_TEST: adding %s network...\n",
+            U_NETWORK_TEST_TYPE_HAS_MQTT(gUNetworkTestCfg[x].type) &&
+            uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_MQTT_CLIENT_TEST: adding device for network %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)
             // If there is no GNSS UART then any GNSS chip must
@@ -192,13 +193,12 @@ static void stdPreamble()
             errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
             U_PORT_TEST_ASSERT_EQUAL((int32_t)U_ERROR_COMMON_SUCCESS, errorCode);
-
-#if (U_CFG_APP_GNSS_UART < 0)
-            if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                devHandle = gUNetworkTestCfg[x].devHandle;
-            }
-#endif
         }
+#if (U_CFG_APP_GNSS_UART < 0)
+        if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
+            devHandle = gUNetworkTestCfg[x].devHandle;
+        }
+#endif
     }
 
     // It is possible for MQTT client closure in an
@@ -267,6 +267,9 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
     char *pMessageOut;
     char *pMessageIn;
     uMqttQos_t qos;
+
+    // In case a previous test failed
+    uNetworkTestCleanUp();
 
     // Do the standard preamble, which in this case
     // only adds the networks, doesn't bring them up,
@@ -577,26 +580,28 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
     uMqttQos_t qos;
     char topicNameShortStr[U_MQTT_CLIENT_SN_TOPIC_NAME_SHORT_LENGTH_BYTES];
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     connection.mqttSn = true;
 
-    // Since only cellular supports MQTT-SN we only bring up that single device
+    // Since only cellular supports MQTT-SN we only bring up that configuration
     for (size_t x = 0; (x < gUNetworkTestCfgSize) && (devHandle == NULL); x++) {
-        if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-            if (uNetworkTestDeviceValidForOpen(x) &&
-                (gUNetworkTestCfg[x].devHandle == NULL)) {
-                uPortLog("U_MQTTSN_CLIENT_TEST: adding %s network...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                y = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
-                                &gUNetworkTestCfg[x].devHandle);
-                U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, y);
-                U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].devHandle != NULL);
-            }
-            devHandle = gUNetworkTestCfg[x].devHandle;
-            devIndex = x;
+        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
+            (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) &&
+            uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_MQTTSN_CLIENT_TEST: adding device for network %s...\n",
+                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+            y = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
+                            &gUNetworkTestCfg[x].devHandle);
+            U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, y);
+            U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].devHandle != NULL);
         }
+        devHandle = gUNetworkTestCfg[x].devHandle;
+        devIndex = x;
     }
 
     if (devHandle != NULL) {
@@ -923,9 +928,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientCleanUp")
     // the network, sockets, security and location tests
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        uNetworkTestClose(x);
-    }
+    uNetworkTestCleanUp();
     uDeviceDeinit();
 
     y = uPortTaskStackMinFree(NULL);

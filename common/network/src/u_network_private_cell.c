@@ -95,7 +95,7 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
 
 // Bring a cellular interface up or take it down.
 int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
-                                       uNetworkCfgCell_t *pCfg,
+                                       const uNetworkCfgCell_t *pCfg,
                                        bool upNotDown)
 {
     uDeviceCellContext_t *pContext;

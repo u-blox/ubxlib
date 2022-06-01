@@ -63,22 +63,25 @@ void uDevicePrivateGnssDeinit(void);
 /** Add a GNSS device, powering it up and making it available
  * for configuration and to support receiving satellites.
  *
- * @param pDevCfg       a pointer to the device configuration
- *                      structure, one that should have been
- *                      populated for GNSS; cannot be NULL.
- * @param pDeviceHandle a pointer to a place to put the device
- *                      handle, cannot be NULL.
- * @return              zero on success else negative error code.
+ * @param[in] pDevCfg        a pointer to the device configuration
+ *                           structure, one that should have been
+ *                           populated for GNSS; cannot be NULL.
+ * @param[out] pDeviceHandle a pointer to a place to put the device
+ *                           handle, cannot be NULL.
+ * @return                   zero on success else negative error
+ *                           code.
  */
 int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
                               uDeviceHandle_t *pDeviceHandle);
 
-/** Remove a GNSS device, powering it down.
+/** Remove a GNSS device.
  *
  * @param devHandle the handle of the device.
+ * @param powerOff  if true then also power the device off.
  * @return          zero on success else negative error code.
  */
-int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle);
+int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle,
+                                 bool powerOff);
 
 #ifdef __cplusplus
 }

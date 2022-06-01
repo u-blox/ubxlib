@@ -482,7 +482,7 @@ int32_t uCellSecPskGenerate(uDeviceHandle_t cellHandle,
  * once every 24 hours) the trigger request may return an error.
  *
  * @param cellHandle the handle of the instance to  be used, e.g.
- *                   as returned by uNetworkAdd().
+ *                   obtained through uDeviceOpen().
  * @return           zero on success else negative error code.
  */
 int32_t uCellSecHeartbeatTrigger(uDeviceHandle_t cellHandle);

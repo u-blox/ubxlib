@@ -72,6 +72,7 @@
 // This must be called between uDeviceLock() and uDeviceUnlock().
 static int32_t networkInterfaceChangeState(uDeviceHandle_t devHandle,
                                            uNetworkType_t netType,
+                                           const void *pNetworkCfg,
                                            bool upNotDown)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -80,35 +81,39 @@ static int32_t networkInterfaceChangeState(uDeviceHandle_t devHandle,
     if (uDeviceGetInstance(devHandle, &pInstance) == 0) {
         switch (uDeviceGetDeviceType(devHandle)) {
             case U_DEVICE_TYPE_CELL: {
-                uNetworkCfgCell_t *pDevCfgCell = (uNetworkCfgCell_t *)
-                                                 pInstance->pNetworkCfg[U_NETWORK_TYPE_CELL];
-                errorCode = uNetworkPrivateChangeStateCell(devHandle, pDevCfgCell, upNotDown);
+                if (netType == U_NETWORK_TYPE_CELL) {
+                    errorCode = uNetworkPrivateChangeStateCell(devHandle,
+                                                               (const uNetworkCfgCell_t *) pNetworkCfg,
+                                                               upNotDown);
+                }
             }
             break;
             case U_DEVICE_TYPE_GNSS: {
-                uNetworkCfgGnss_t *pDevCfgGnss = (uNetworkCfgGnss_t *)
-                                                 pInstance->pNetworkCfg[U_NETWORK_TYPE_GNSS];
-                errorCode = uNetworkPrivateChangeStateGnss(devHandle, pDevCfgGnss, upNotDown);
+                if (netType == U_NETWORK_TYPE_GNSS) {
+                    errorCode = uNetworkPrivateChangeStateGnss(devHandle,
+                                                               (const uNetworkCfgGnss_t *) pNetworkCfg,
+                                                               upNotDown);
+                }
             }
             break;
             case U_DEVICE_TYPE_SHORT_RANGE: {
                 if (netType == U_NETWORK_TYPE_WIFI) {
                     //lint -e(1773) Suppress complaints about passing the pointer as non-volatile
-                    uNetworkCfgWifi_t *pDevCfgWifi = (uNetworkCfgWifi_t *)
-                                                     pInstance->pNetworkCfg[U_NETWORK_TYPE_WIFI];
-                    errorCode = uNetworkPrivateChangeStateWifi(devHandle, pDevCfgWifi, upNotDown);
+                    errorCode = uNetworkPrivateChangeStateWifi(devHandle,
+                                                               (const uNetworkCfgWifi_t *) pNetworkCfg,
+                                                               upNotDown);
                 } else if (netType == U_NETWORK_TYPE_BLE) {
-                    uNetworkCfgBle_t *pDevCfgBle = (uNetworkCfgBle_t *)
-                                                   pInstance->pNetworkCfg[U_NETWORK_TYPE_BLE];
-                    errorCode = uNetworkPrivateChangeStateBle(devHandle, pDevCfgBle, upNotDown);
+                    errorCode = uNetworkPrivateChangeStateBle(devHandle,
+                                                              (const uNetworkCfgBle_t *) pNetworkCfg,
+                                                              upNotDown);
                 }
             }
             break;
             case U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU: {
                 if (netType == U_NETWORK_TYPE_BLE) {
-                    uNetworkCfgBle_t *pDevCfgBle = (uNetworkCfgBle_t *)
-                                                   pInstance->pNetworkCfg[U_NETWORK_TYPE_BLE];
-                    errorCode = uNetworkPrivateChangeStateBle(devHandle, pDevCfgBle, upNotDown);
+                    errorCode = uNetworkPrivateChangeStateBle(devHandle,
+                                                              (const uNetworkCfgBle_t *) pNetworkCfg,
+                                                              upNotDown);
                 }
             }
             break;
@@ -120,31 +125,62 @@ static int32_t networkInterfaceChangeState(uDeviceHandle_t devHandle,
     return errorCode;
 }
 
+// Get the network data for the given network type
+// from the device instance.
+static uDeviceNetworkData_t *pGetNetworkData(uDeviceInstance_t *pInstance,
+                                             uNetworkType_t netType)
+{
+    uDeviceNetworkData_t *pNetworkData = NULL;
+
+    for (size_t x = 0; (x < sizeof(pInstance->networkData) /
+                        sizeof(pInstance->networkData[0])); x++) {
+        if (pInstance->networkData[x].networkType == (int32_t) netType) {
+            pNetworkData = &(pInstance->networkData[x]);
+            break;
+        }
+    }
+
+    return pNetworkData;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
 int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle,
                             uNetworkType_t netType,
-                            const void *pConfiguration)
+                            const void *pCfg)
 {
     // Lock the API
     int32_t errorCode = uDeviceLock();
     uDeviceInstance_t *pInstance;
+    uDeviceNetworkData_t *pNetworkData;
 
     if (errorCode == 0) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if ((uDeviceGetInstance(devHandle, &pInstance) == 0) &&
             (netType >= U_NETWORK_TYPE_NONE) &&
             (netType < U_NETWORK_TYPE_MAX_NUM)) {
-
-            if (pConfiguration == NULL) {
-                // Use possible last set configuration
-                pConfiguration = pInstance->pNetworkCfg[netType];
+            pNetworkData = pGetNetworkData(pInstance, netType);
+            if (pNetworkData == NULL) {
+                // No network of this type has yet been brought up on
+                // this device
+                errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                pNetworkData = pGetNetworkData(pInstance, U_NETWORK_TYPE_NONE);
             }
-            if (pConfiguration != NULL) {
-                pInstance->pNetworkCfg[netType] = pConfiguration;
-                errorCode = networkInterfaceChangeState(devHandle, netType, true);
+            if (pNetworkData != NULL) {
+                pNetworkData->networkType = (int32_t) netType;
+                errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+                if (pCfg == NULL) {
+                    // Use possible last set configuration
+                    pCfg = pNetworkData->pCfg;
+                }
+                if (pCfg != NULL) {
+                    pNetworkData->pCfg = pCfg;
+                    errorCode = networkInterfaceChangeState(devHandle, netType,
+                                                            pNetworkData->pCfg,
+                                                            true);
+                }
             }
         }
         // ...and done
@@ -158,9 +194,24 @@ int32_t uNetworkInterfaceDown(uDeviceHandle_t devHandle, uNetworkType_t netType)
 {
     // Lock the API
     int32_t errorCode = uDeviceLock();
+    uDeviceInstance_t *pInstance;
+    uDeviceNetworkData_t *pNetworkData;
 
     if (errorCode == 0) {
-        errorCode = networkInterfaceChangeState(devHandle, netType, false);
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        if ((uDeviceGetInstance(devHandle, &pInstance) == 0) &&
+            (netType >= U_NETWORK_TYPE_NONE) &&
+            (netType < U_NETWORK_TYPE_MAX_NUM)) {
+            // If pNetworkData is NULL then this network has never
+            // been brought up, hence success
+            errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+            pNetworkData = pGetNetworkData(pInstance, netType);
+            if (pNetworkData != NULL) {
+                errorCode = networkInterfaceChangeState(devHandle, netType,
+                                                        pNetworkData->pCfg,
+                                                        false);
+            }
+        }
         // ...and done
         uDeviceUnlock();
     }

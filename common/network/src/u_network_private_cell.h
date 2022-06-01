@@ -49,13 +49,13 @@ extern "C" {
  * must have been called first to create the device handle.
  *
  * @param devHandle        the handle of the instance to take down.
- * @param pCfg             a pointer to the configuration for this
+ * @param[in] pCfg         a pointer to the configuration for this
  *                         instance. Only required for up.
  * @param upNotDown        take the cellular interface up or down.
  * @return                 zero on success else negative error code.
  */
 int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
-                                       uNetworkCfgCell_t *pCfg,
+                                       const uNetworkCfgCell_t *pCfg,
                                        bool upNotDown);
 
 #ifdef __cplusplus

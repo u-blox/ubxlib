@@ -242,6 +242,9 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     uSecurityTlsSettings_t settings = U_SECURITY_TLS_SETTINGS_DEFAULT;
     char hash[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES];
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
@@ -251,12 +254,13 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add each network type
+    // Add the devices for each network configuration
+    // if not already added
     for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].devHandle = NULL;
-        if (uNetworkTestDeviceValidForOpen(x) &&
-            (U_NETWORK_TEST_TYPE_HAS_SECURE_SOCK(gUNetworkTestCfg[x].type))) {
-            uPortLog("U_SECURITY_TLS_TEST: adding %s network...\n",
+        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
+            U_NETWORK_TEST_TYPE_HAS_SECURE_SOCK(gUNetworkTestCfg[x].type) &&
+            uNetworkTestDeviceValidForOpen(x)) {
+            uPortLog("U_SECURITY_TLS_TEST: adding device for network %s...\n",
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
 #if (U_CFG_APP_GNSS_UART < 0)
             // If there is no GNSS UART then any GNSS chip must
@@ -269,10 +273,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
             errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
                                     &gUNetworkTestCfg[x].devHandle);
             U_PORT_TEST_ASSERT_EQUAL((int32_t)U_ERROR_COMMON_SUCCESS, errorCode);
-            if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                devHandle = gUNetworkTestCfg[x].devHandle;
-                (void)devHandle; // Will be unused when U_CFG_APP_GNSS_UART > 0
-            }
+        }
+        if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
+            devHandle = gUNetworkTestCfg[x].devHandle;
+            (void)devHandle; // Will be unused when U_CFG_APP_GNSS_UART > 0
         }
     }
 
@@ -470,7 +474,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                      gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
                                                      gUNetworkTestCfg[x].type) == 0);
-            U_PORT_TEST_ASSERT(uDeviceClose(gUNetworkTestCfg[x].devHandle) == 0);
+            U_PORT_TEST_ASSERT(uNetworkTestDeviceClose(x) == 0);
         }
     }
 
@@ -508,9 +512,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
     // the network, sockets, security and location tests
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].devHandle = NULL;
-    }
+    uNetworkTestCleanUp();
     uDeviceDeinit();
 
     y = uPortTaskStackMinFree(NULL);

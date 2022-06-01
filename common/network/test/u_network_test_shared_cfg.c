@@ -278,6 +278,18 @@ const char *gpUNetworkTestTypeName[] = {"none",     // U_NETWORK_TYPE_NONE
                                         "Wifi",     // U_NETWORK_TYPE_WIFI
                                         "GNSS"      // U_NETWORK_TYPE_GNSS
                                        };
+
+/** Return a name for a device type.
+ */
+//lint -esym(843, gpUNetworkTestDeviceTypeName) Suppress could be declared
+// as const: this may be used in position independent code
+// and hence can't be const
+const char *gpUNetworkTestDeviceTypeName[] = {"none",               // U_DEVICE_TYPE_NONE
+                                              "cellular",           // U_DEVICE_TYPE_CELL
+                                              "GNSS",               // U_DEVICE_TYPE_GNSS
+                                              "short range",        // U_DEVICE_TYPE_SHORT_RANGE
+                                              "short range OpenCPU" // U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU
+                                             };
 #endif
 
 /* ----------------------------------------------------------------
@@ -336,36 +348,86 @@ bool uNetworkTestDeviceValidForOpen(int32_t index)
         for (size_t i = 0; isOk && i < gUNetworkTestCfgSize; i++) {
             if ((i != index) &&
                 (gUNetworkTestCfg[index].pDeviceCfg == gUNetworkTestCfg[i].pDeviceCfg) &&
-                gUNetworkTestCfg[i].devHandle != NULL) {
-                // Was open
+                (gUNetworkTestCfg[i].devHandle != NULL)) {
+                // Was already open, copy the handle in if the current
+                // one is not populated
+                if (gUNetworkTestCfg[index].devHandle == NULL) {
+                    gUNetworkTestCfg[index].devHandle = gUNetworkTestCfg[i].devHandle;
+                }
+                uPortLog("U_NETWORK_TEST: configuration %d: %s device was already open"
+                         " for configuration %d [%s network].\n", index,
+                         gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType],
+                         i, gpUNetworkTestTypeName[gUNetworkTestCfg[i].type]);
                 isOk = false;
             }
         }
     }
+
+    if (isOk) {
+        uPortLog("U_NETWORK_TEST: configuration %d [%s device] is OK to open.\n",
+                 index, gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType]);
+    }
+
     return isOk;
 }
 
-int32_t uNetworkTestClose(int32_t index)
+int32_t uNetworkTestDeviceClose(int32_t index)
 {
-    // Close the device at the specified index.
-    // Find possible multiple use of this device and
-    // mark them as closed as well.
-    int32_t errorCode = U_ERROR_COMMON_SUCCESS;
-    uPortLogF("uNetworkTestClose %d\n", index);
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+    bool okToClose = true;
+
+    // Close the device at the specified index if it
+    // is not in use elsewhere
     if (gUNetworkTestCfg[index].devHandle != NULL) {
-        errorCode = uDeviceClose(gUNetworkTestCfg[index].devHandle);
-        if (errorCode == 0) {
-            for (size_t i = 0; i < gUNetworkTestCfgSize; i++) {
-                if ((i != index) &&
-                    (gUNetworkTestCfg[index].pDeviceCfg == gUNetworkTestCfg[i].pDeviceCfg)) {
-                    gUNetworkTestCfg[i].devHandle = NULL;
-                }
+        uPortLog("U_NETWORK_TEST: asked to close %s device on configuration %d"
+                 " [%s network].\n",
+                 gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType],
+                 index,
+                 gpUNetworkTestTypeName[gUNetworkTestCfg[index].type]);
+        for (size_t i = 0; okToClose && (i < gUNetworkTestCfgSize); i++) {
+            if ((i != index) &&
+                (gUNetworkTestCfg[index].pDeviceCfg == gUNetworkTestCfg[i].pDeviceCfg) &&
+                (gUNetworkTestCfg[i].devHandle != NULL)) {
+                uPortLog("U_NETWORK_TEST: can't close %s device on configuration %d"
+                         " since configuration %d [%s network] still needs it.\n",
+                         gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType],
+                         index, i,
+                         gpUNetworkTestTypeName[gUNetworkTestCfg[i].type]);
+                okToClose = false;
             }
-            gUNetworkTestCfg[index].devHandle = NULL;
         }
+        if (okToClose) {
+            // Note that we don't power the device off in order to speed up testing
+            errorCode = uDeviceClose(gUNetworkTestCfg[index].devHandle, false);
+            if (errorCode == 0) {
+                uPortLog("U_NETWORK_TEST: closed %s device on configuration %d.\n",
+                         gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType],
+                         index);
+            }
+        }
+        // Clear the handle for this entry in all cases
+        gUNetworkTestCfg[index].devHandle = NULL;
     }
     return errorCode;
 }
+
+void uNetworkTestCleanUp(void)
+{
+    uPortLog("U_NETWORK_TEST: running cleanup.\n");
+    // Do this in reverse order in case there is a GNSS
+    // device that needs the cellular device to still be
+    // there
+    for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
+        if ((gUNetworkTestCfg[x].devHandle != NULL) &&
+            (uNetworkTestDeviceClose(x) != 0)) {
+            uPortLog("U_NETWORK_TEST: *** WARNING *** unable to close "
+                     " configuration %d [%s device, %s network].\n",  x,
+                     gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[x].pDeviceCfg->deviceType],
+                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+        }
+    }
+}
+
 
 int32_t uNetworkTestGetModuleType(int32_t index)
 {

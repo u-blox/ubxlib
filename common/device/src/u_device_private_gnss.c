@@ -71,14 +71,15 @@
  * -------------------------------------------------------------- */
 
 // Do all the leg-work to remove a GNSS device.
-static int32_t removeDevice(uDeviceHandle_t devHandle)
+static int32_t removeDevice(uDeviceHandle_t devHandle, bool powerOff)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uDeviceGnssInstance_t *pContext = (uDeviceGnssInstance_t *) U_DEVICE_INSTANCE(devHandle)->pContext;
 
     if (pContext != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        if (pContext->transportType != (int32_t) U_GNSS_TRANSPORT_UBX_AT) {
+        if (powerOff &&
+            (pContext->transportType != (int32_t) U_GNSS_TRANSPORT_UBX_AT)) {
             // If the GNSS chip is connected directly, power it off.
             errorCode = uGnssPwrOff(devHandle);
         }
@@ -205,7 +206,7 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
                     errorCodeOrHandle = uGnssPwrOn(*pDeviceHandle);
                     if (errorCodeOrHandle != 0) {
                         // If we failed to power on, clean up
-                        removeDevice(*pDeviceHandle);
+                        removeDevice(*pDeviceHandle, false);
                     }
                 }
             } else {
@@ -265,10 +266,11 @@ int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
     return errorCode;
 }
 
-// Remove a GNSS device, powering it down.
-int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle)
+// Remove a GNSS device.
+int32_t uDevicePrivateGnssRemove(uDeviceHandle_t devHandle,
+                                 bool powerOff)
 {
-    return removeDevice(devHandle);
+    return removeDevice(devHandle, powerOff);
 }
 
 // End of file

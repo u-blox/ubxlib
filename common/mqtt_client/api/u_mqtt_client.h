@@ -197,7 +197,7 @@ typedef struct {
  * to put them back again.
  *
  * @param devHandle                the device handle to be used,
- *                                 e.g. as returned by uNetworkAdd().
+ *                                 e.g. obtained using uDeviceOpen().
  * @param[in] pSecurityTlsSettings a pointer to the security settings to
  *                                 be applied, NULL for no security.
  *                                 If this is non-NULL, don't forget to

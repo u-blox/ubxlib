@@ -67,12 +67,12 @@ void uDevicePrivateShortRangeDeinit(void);
  * to the MCU; where the short-range "device" is actually on-board
  * the MCU, use uDevicePrivateShortRangeOpenCpuAdd().
  *
- * @param pDevCfg       a pointer to the device configuration
- *                      structure, one that should have been
- *                      populated for short-range; cannot be NULL.
- * @param pDeviceHandle a pointer to a place to put the device
- *                      handle, cannot be NULL.
- * @return              zero on success else negative error code.
+ * @param[in] pDevCfg        a pointer to the device configuration
+ *                           structure, one that should have been
+ *                           populated for short-range; cannot be NULL.
+ * @param[out] pDeviceHandle a pointer to a place to put the device
+ *                           handle, cannot be NULL.
+ * @return                   zero on success else negative error code.
  */
 int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg,
                                     uDeviceHandle_t *pDeviceHandle);
@@ -83,30 +83,30 @@ int32_t uDevicePrivateShortRangeAdd(const uDeviceCfg_t *pDevCfg,
  * the short-range device is external to the MCU, use
  * uDevicePrivateShortRangeAdd() instead.
  *
- * @param pDevCfg       a pointer to the device configuration
- *                      structure, one that should have been
- *                      populated for short-range; cannot be NULL.
- * @param pDeviceHandle a pointer to a place to put the device
- *                      handle, cannot be NULL.
- * @return              zero on success else negative error code.
+ * @param[in] pDevCfg        a pointer to the device configuration
+ *                           structure, one that should have been
+ *                           populated for short-range; cannot be NULL.
+ * @param[out] pDeviceHandle a pointer to a place to put the device
+ *                           handle, cannot be NULL.
+ * @return                   zero on success else negative error code.
  */
 int32_t uDevicePrivateShortRangeOpenCpuAdd(const uDeviceCfg_t *pDevCfg,
                                            uDeviceHandle_t *pDeviceHandle);
 
-/** Remove a short-range device, powering it down.  Note that
- * this is ONLY for use where the short-range device is external
- * to the MCU; where the short-range "device" is actually on-board
- * the MCU, use uDevicePrivateShortRangeOpenCpuRemove() instead.
+/** Remove a short-range device.  Note that this is ONLY for use
+ * where the short-range device is external to the MCU; where the
+ * short-range "device" is actually on-board the MCU, use
+ * uDevicePrivateShortRangeOpenCpuRemove() instead.
  *
  * @param devHandle the handle of the device.
  * @return          zero on success else negative error code.
  */
 int32_t uDevicePrivateShortRangeRemove(uDeviceHandle_t devHandle);
 
-/** Remove a short-range device, powering it down.  Note that
- * this is ONLY for use where the short-range "device" is on-board
- * the MCU; where the short-range device is external to the MCU,
- * use uDevicePrivateShortRangeRemove() instead.
+/** Remove a short-range device.  Note that this is ONLY for use
+ * where the short-range "device" is on-board the MCU; where the
+ * short-range device is external to the MCU, use
+ * uDevicePrivateShortRangeRemove() instead.
  *
  * @param devHandle the handle of the device.
  * @return          zero on success else negative error code.

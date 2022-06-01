@@ -156,7 +156,7 @@ int32_t uDeviceOpen(const uDeviceCfg_t *pDeviceCfg, uDeviceHandle_t *pDeviceHand
     return errorCode;
 }
 
-int32_t uDeviceClose(uDeviceHandle_t devHandle)
+int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff)
 {
     // Lock the API
     int32_t errorCode = uDeviceLock();
@@ -165,16 +165,20 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle)
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         switch (uDeviceGetDeviceType(devHandle)) {
             case U_DEVICE_TYPE_CELL:
-                errorCode = uDevicePrivateCellRemove(devHandle);
+                errorCode = uDevicePrivateCellRemove(devHandle, powerOff);
                 break;
             case U_DEVICE_TYPE_GNSS:
-                errorCode = uDevicePrivateGnssRemove(devHandle);
+                errorCode = uDevicePrivateGnssRemove(devHandle, powerOff);
                 break;
             case U_DEVICE_TYPE_SHORT_RANGE:
-                errorCode = uDevicePrivateShortRangeRemove(devHandle);
+                if (!powerOff) {
+                    errorCode = uDevicePrivateShortRangeRemove(devHandle);
+                }
                 break;
             case U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU:
-                errorCode = uDevicePrivateShortRangeOpenCpuRemove(devHandle);
+                if (!powerOff) {
+                    errorCode = uDevicePrivateShortRangeOpenCpuRemove(devHandle);
+                }
                 break;
             default:
                 break;

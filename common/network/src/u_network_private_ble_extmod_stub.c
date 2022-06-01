@@ -40,7 +40,7 @@
  * -------------------------------------------------------------- */
 
 int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
-                                      uNetworkCfgBle_t *pCfg,
+                                      const uNetworkCfgBle_t *pCfg,
                                       bool upNotDown)
 {
     (void) devHandle;

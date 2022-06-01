@@ -411,7 +411,7 @@ static void UUDPC_urc(uAtClientHandle_t atHandle,
             err |= parseBdAddr(address, conData.address);
             err |= parseUudpcProfile(profile, &conData.profile);
             if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                pInstance->pBtConnectionStatusCallback(pInstance->bleHandle, connHandle,
+                pInstance->pBtConnectionStatusCallback(pInstance->devHandle, connHandle,
                                                        U_SHORT_RANGE_EVENT_CONNECTED,
                                                        &conData,
                                                        pInstance->pBtConnectionStatusCallbackParameter);
@@ -477,14 +477,14 @@ static void UUDPC_urc(uAtClientHandle_t atHandle,
             (protocol == U_SHORT_RANGE_IP_PROTOCOL_UDP)) {
             pInstance->connections[id].type = U_SHORT_RANGE_CONNECTION_TYPE_IP;
             if (pInstance->pIpConnectionStatusCallback != NULL) {
-                pInstance->pIpConnectionStatusCallback(pInstance->wifiHandle, connHandle,
+                pInstance->pIpConnectionStatusCallback(pInstance->devHandle, connHandle,
                                                        U_SHORT_RANGE_EVENT_CONNECTED, &conData,
                                                        pInstance->pIpConnectionStatusCallbackParameter);
             }
         } else if (protocol == U_SHORT_RANGE_IP_PROTOCOL_MQTT) {
             pInstance->connections[id].type = U_SHORT_RANGE_CONNECTION_TYPE_MQTT;
             if (pInstance->pMqttConnectionStatusCallback != NULL) {
-                pInstance->pMqttConnectionStatusCallback(pInstance->wifiHandle, connHandle,
+                pInstance->pMqttConnectionStatusCallback(pInstance->devHandle, connHandle,
                                                          U_SHORT_RANGE_EVENT_CONNECTED, &conData,
                                                          pInstance->pMqttConnectionStatusCallbackParameter);
             }
@@ -508,7 +508,7 @@ static void UUDPD_urc(uAtClientHandle_t atHandle,
         switch (pInstance->connections[id].type) {
             case U_SHORT_RANGE_CONNECTION_TYPE_BT:
                 if (pInstance->pBtConnectionStatusCallback != NULL) {
-                    pInstance->pBtConnectionStatusCallback(pInstance->bleHandle, connHandle,
+                    pInstance->pBtConnectionStatusCallback(pInstance->devHandle, connHandle,
                                                            U_SHORT_RANGE_EVENT_DISCONNECTED, NULL,
                                                            pInstance->pBtConnectionStatusCallbackParameter);
                 }
@@ -516,7 +516,7 @@ static void UUDPD_urc(uAtClientHandle_t atHandle,
 
             case U_SHORT_RANGE_CONNECTION_TYPE_IP:
                 if (pInstance->pIpConnectionStatusCallback != NULL) {
-                    pInstance->pIpConnectionStatusCallback(pInstance->wifiHandle, connHandle,
+                    pInstance->pIpConnectionStatusCallback(pInstance->devHandle, connHandle,
                                                            U_SHORT_RANGE_EVENT_DISCONNECTED, NULL,
                                                            pInstance->pIpConnectionStatusCallbackParameter);
                 }
@@ -524,7 +524,7 @@ static void UUDPD_urc(uAtClientHandle_t atHandle,
 
             case U_SHORT_RANGE_CONNECTION_TYPE_MQTT:
                 if (pInstance->pMqttConnectionStatusCallback != NULL) {
-                    pInstance->pMqttConnectionStatusCallback(pInstance->wifiHandle, connHandle,
+                    pInstance->pMqttConnectionStatusCallback(pInstance->devHandle, connHandle,
                                                              U_SHORT_RANGE_EVENT_DISCONNECTED, NULL,
                                                              pInstance->pMqttConnectionStatusCallbackParameter);
                 }
@@ -875,8 +875,6 @@ int32_t uShortRangeSetIpConnectionStatusCallback(uDeviceHandle_t devHandle,
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             if (pCallback != NULL) {
-                // TODO: Removed when network API has been adjusted
-                pInstance->wifiHandle = devHandle;
 
                 pInstance->pIpConnectionStatusCallback = pCallback;
                 pInstance->pIpConnectionStatusCallbackParameter = pCallbackParameter;
@@ -900,8 +898,6 @@ int32_t uShortRangeSetBtConnectionStatusCallback(uDeviceHandle_t devHandle,
 
     if (gUShortRangePrivateMutex != NULL) {
         pInstance = pUShortRangePrivateGetInstance(devHandle);
-        // TODO: Removed when network API has been adjusted
-        pInstance->bleHandle = devHandle;
 
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
@@ -933,8 +929,6 @@ int32_t uShortRangeSetMqttConnectionStatusCallback(uDeviceHandle_t devHandle,
         if (pInstance != NULL) {
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             if (pCallback != NULL) {
-                // TODO: Removed when network API has been adjusted
-                pInstance->wifiHandle = devHandle;
 
                 pInstance->pMqttConnectionStatusCallback = pCallback;
                 pInstance->pMqttConnectionStatusCallbackParameter = pCallbackParameter;

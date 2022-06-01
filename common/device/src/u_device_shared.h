@@ -22,17 +22,16 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
-#include "u_network.h"
 #include "u_device.h"
 
 /** @file
  * @brief Functions for initializing a u-blox device (chip or module),
  * that do not form part of the device API but are shared internally
  * for use within ubxlib.
- * IMPORTANT: NONE of the individual functions here are thread-safe.
- * They are intended to be called in-sequence by the implementations
- * of ubxlib API functions within a uDeviceLock()/uDeviceUnlock()
- * pair to guarantee thread-safety.
+ * IMPORTANT: unless otherwise stated, the individual functions here
+ * are not thread-safe. They are intended to be called in-sequence by
+ * the implementations of ubxlib API functions within a
+ * uDeviceLock()/uDeviceUnlock() pair to guarantee thread-safety.
  */
 
 #ifdef __cplusplus
@@ -55,21 +54,35 @@ extern "C" {
 #define U_DEVICE_IS_TYPE(devHandle, devType) \
     (devHandle == NULL ? false : U_DEVICE_INSTANCE(devHandle)->deviceType == devType)
 
+#ifndef U_DEVICE_NETWORKS_MAX_NUM
+/** The maximum number of networks supported by a given device.
+ */
+# define U_DEVICE_NETWORKS_MAX_NUM 2
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
+/** Data structure for network stuff that is hooked into the device
+ * structure.
+ */
+typedef struct {
+    int32_t networkType; /**< the type for this network. */
+    const void *pCfg; /**< constant network configuration provided by application. */
+    void *pContext; /**< optional context data for this network interface. */
+} uDeviceNetworkData_t;
+
 /** Internal data structure that uDeviceHandle_t points at.
- *  This structure may be "inherited" by each device type to provide
- *  custom data needed for each driver implementation.
+ * This structure may be "inherited" by each device type to provide
+ * custom data needed for each driver implementation.
  */
 typedef struct {
     uint32_t magic;             /**< magic number for detecting a stale uDeviceInstance_t. */
     uDeviceType_t deviceType;   /**< type of device. */
     int32_t moduleType;         /**< module identification (when applicable). */
     void *pContext;             /**< private instance data for the device. */
-    const void *pNetworkCfg[U_NETWORK_TYPE_MAX_NUM]; /**< Network config for device interfaces. */
-    void *pNetworkPrivate;      /**< a place to hook the network private data. */
+    uDeviceNetworkData_t networkData[U_DEVICE_NETWORKS_MAX_NUM]; /**< network cfg and private data. */
     // Note: In the future structs of function pointers for socket, MQTT etc.
     // implementations may be added here.
 } uDeviceInstance_t;
@@ -92,6 +105,8 @@ void uDeviceMutexDestroy();
 
 /** Create a device instance. uDeviceInstance_t is the internal
  * structure that uDeviceHandle_t will point at.
+ * Note: it is OK to call this even if uDeviceInit()/uDeviceLock()
+ * has not been called.
  *
  * @param type  the u-blox device type.
  * @return      an allocated uDeviceInstance_t struct or NULL if
@@ -101,8 +116,11 @@ uDeviceInstance_t *pUDeviceCreateInstance(uDeviceType_t type);
 
 /** Destroy/deallocate a device instance created by
  * pUDeviceCreateInstance.
+ * Note: it is OK to call this even if uDeviceInit()/
+ * uDeviceLock() has not been called, provided you know that
+ * the instance is not being used by any other task.
  *
- * @param pInstance  the instance to destroy.
+ * @param[in] pInstance  the instance to destroy.
  */
 void uDeviceDestroyInstance(uDeviceInstance_t *pInstance);
 
@@ -126,22 +144,29 @@ int32_t uDeviceUnlock();
 /** Initialize a device instance. This is useful when
  * pUDeviceCreateInstance() is not used and the
  * uDeviceInstance_t is allocated manually.
+ * Note: it is OK to call this even if uDeviceInit()/
+ * uDeviceLock() has not been called, provided you know that
+ * the instance is not being used by any other task.
  *
- * @param pInstance  the device instance to initialize.
- * @param type       the u-blox device type.
+ * @param[in] pInstance  the device instance to initialize.
+ * @param type           the u-blox device type.
  */
 void uDeviceInitInstance(uDeviceInstance_t *pInstance,
                          uDeviceType_t type);
 
 /** Check if a device instance is valid.
+ * Note: it is OK to call this even if uDeviceInit()/uDeviceLock()
+ * has not been called.
  *
- * @param pInstance  the device instance to check.
- * @return           true if the instance is valid.
+ * @param[in] pInstance  the device instance to check.
+ * @return               true if the instance is valid.
  */
 bool uDeviceIsValidInstance(const uDeviceInstance_t *pInstance);
 
 /** Get a device instance from a device handle. This will
  * also validate the handle.
+ * Note: it is OK to call this even if uDeviceInit()/uDeviceLock()
+ * has not been called.
  *
  * @param devHandle       the device handle.
  * @param[out] ppInstance a place to put the output device
@@ -153,6 +178,8 @@ int32_t uDeviceGetInstance(uDeviceHandle_t devHandle,
 
 /** Get a device type from a device handle. This will also
  * validate the handle.
+ * Note: it is OK to call this even if uDeviceInit()/uDeviceLock()
+ * has not been called.
  *
  * @param devHandle  the device handle.
  * @return           the device type (see uDeviceType_t) on success

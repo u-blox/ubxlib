@@ -94,6 +94,35 @@ typedef struct {
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+static uPortQueueHandle_t getQueueHandle(uDeviceHandle_t devHandle)
+{
+    uPortQueueHandle_t queueHandle = NULL;
+    uDeviceInstance_t *pInstance = U_DEVICE_INSTANCE(devHandle);
+
+    for (size_t x = 0; (x < sizeof(pInstance->networkData) /
+                        sizeof(pInstance->networkData[0])); x++) {
+        if (pInstance->networkData[x].networkType == U_NETWORK_TYPE_WIFI) {
+            queueHandle = (uPortQueueHandle_t) pInstance->networkData[x].pContext;
+            break;
+        }
+    }
+
+    return queueHandle;
+}
+
+static void setQueueHandle(uDeviceHandle_t devHandle, uPortQueueHandle_t queueHandle)
+{
+    uDeviceInstance_t *pInstance = U_DEVICE_INSTANCE(devHandle);
+
+    for (size_t x = 0; (x < sizeof(pInstance->networkData) /
+                        sizeof(pInstance->networkData[0])); x++) {
+        if (pInstance->networkData[x].networkType == U_NETWORK_TYPE_WIFI) {
+            pInstance->networkData[x].pContext = queueHandle;
+            break;
+        }
+    }
+}
+
 static void wifiConnectionCallback(uDeviceHandle_t devHandle,
                                    int32_t connId,
                                    int32_t status,
@@ -107,15 +136,15 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
     (void)channel;
     (void)pBssid;
     (void)pCallbackParameter;
-    uPortQueueHandle_t queueHandle = U_DEVICE_INSTANCE(devHandle)->pNetworkPrivate;
+    uPortQueueHandle_t queueHandle = getQueueHandle(devHandle);
 
     uStatusMessage_t msg = {
         .msgType = (status == U_WIFI_CON_STATUS_DISCONNECTED) ? U_MSG_WIFI_DISCONNECT : U_MSG_WIFI_CONNECT,
         .disconnectReason = disconnectReason,
         .netStatusMask = 0
     };
-    // We don't care if the queue gets full here
-    (void)uPortQueueSend(queueHandle, &msg);
+    // We don't care if the queue gets full here, hence use the IRQ form
+    uPortQueueSendIrq(queueHandle, &msg);
 
 #if defined(U_CFG_ENABLE_LOGGING) && !U_CFG_OS_CLIB_LEAKS
     if (status == U_WIFI_CON_STATUS_CONNECTED) {
@@ -150,7 +179,7 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     (void)devHandle;
     (void)interfaceType;
     (void)pCallbackParameter;
-    uPortQueueHandle_t queueHandle = U_DEVICE_INSTANCE(devHandle)->pNetworkPrivate;
+    uPortQueueHandle_t queueHandle = getQueueHandle(devHandle);
 
 #if !U_CFG_OS_CLIB_LEAKS
     uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
@@ -163,8 +192,8 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
         .disconnectReason = 0,
         .netStatusMask = statusMask
     };
-    // We don't care if the queue gets full here
-    (void)uPortQueueSend(queueHandle, &msg);
+    // We don't care if the queue gets full here, hence use the IRQ form
+    uPortQueueSendIrq(queueHandle, &msg);
 }
 
 static inline void statusQueueClear(const uPortQueueHandle_t queueHandle)
@@ -256,7 +285,8 @@ static inline int32_t statusQueueWaitForNetworkUp(const uPortQueueHandle_t queue
 
 // Bring a Wifi interface up or take it down.
 int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
-                                       uNetworkCfgWifi_t *pCfg, bool upNotDown)
+                                       const uNetworkCfgWifi_t *pCfg,
+                                       bool upNotDown)
 {
     int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     uDeviceInstance_t *pDevInstance;
@@ -269,12 +299,12 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
     }
 
     // Callback message queue, may or may not be initiated before
-    uPortQueueHandle_t queueHandle = (uPortQueueHandle_t) pDevInstance->pNetworkPrivate;
+    uPortQueueHandle_t queueHandle = getQueueHandle(devHandle);
     if (upNotDown) {
         if (!queueHandle) {
             errorCode = uPortQueueCreate(2, sizeof(uStatusMessage_t), &queueHandle);
             if (errorCode == 0) {
-                pDevInstance->pNetworkPrivate = queueHandle;
+                setQueueHandle(devHandle, queueHandle);
                 errorCode = uWifiSetConnectionStatusCallback(devHandle, wifiConnectionCallback, NULL);
                 if (errorCode == 0) {
                     errorCode = uWifiSetNetworkStatusCallback(devHandle, wifiNetworkStatusCallback, NULL);
@@ -306,12 +336,15 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
             }
 
             if (errorCode != 0) {
-                // Something went wrong, clean up
-                // TODO: check recursion...?
+                // Something went wrong, clean up.
+                // Use a recursive call here for convenience.
+                // This is without risk for a loop as the upNotDown
+                // parameter is false and hence this line can not
+                // be reached in the call.
                 uNetworkPrivateChangeStateWifi(devHandle, pCfg, false);
             }
 
-            uWifiSetNetworkStatusCallback(queueHandle, NULL, NULL);
+            uWifiSetNetworkStatusCallback(devHandle, NULL, NULL);
         }
     } else {
         if (queueHandle) {
@@ -332,8 +365,8 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
             }
             if (errorCode == 0) {
                 uWifiSetConnectionStatusCallback(devHandle, NULL, NULL);
-                uPortQueueDelete(queueHandle);
-                pDevInstance->pNetworkPrivate = NULL;
+                errorCode = uPortQueueDelete(queueHandle);
+                setQueueHandle(devHandle, NULL);
             }
         } else {
             errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;

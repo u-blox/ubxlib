@@ -87,22 +87,24 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
 }
 
 // Do all the leg-work to remove a cellular device.
-static int32_t removeDevice(uDeviceHandle_t devHandle)
+static int32_t removeDevice(uDeviceHandle_t devHandle, bool powerOff)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     uDeviceCellContext_t *pContext = (uDeviceCellContext_t *) U_DEVICE_INSTANCE(devHandle)->pContext;
 
     if (pContext != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        if (pContext->pinPwrOn >= 0) {
-            // Power off only if we have a pin that will let us power on again
-            errorCode = uCellPwrOff(devHandle, NULL);
-            if (errorCode != 0) {
-                // If that didn't do it, try the hard way
-                errorCode = uCellPwrOffHard(devHandle, false, NULL);
+        if (powerOff) {
+            if (pContext->pinPwrOn >= 0) {
+                // Power off only if we have a pin that will let us power on again
+                errorCode = uCellPwrOff(devHandle, NULL);
                 if (errorCode != 0) {
-                    // If that didn't do it, try the truly hard way
-                    errorCode = uCellPwrOffHard(devHandle, true, NULL);
+                    // If that didn't do it, try the hard way
+                    errorCode = uCellPwrOffHard(devHandle, false, NULL);
+                    if (errorCode != 0) {
+                        // If that didn't do it, try the truly hard way
+                        errorCode = uCellPwrOffHard(devHandle, true, NULL);
+                    }
                 }
             }
         }
@@ -182,7 +184,7 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
 #endif
                     if (errorCode != 0) {
                         // If we failed to power on, clean up
-                        removeDevice(*pDeviceHandle);
+                        removeDevice(*pDeviceHandle, false);
                     }
                 } else {
                     // Failed to add cellular, clean up
@@ -247,10 +249,11 @@ int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
     return errorCode;
 }
 
-// Remove a cellular device, powering it down.
-int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle)
+// Remove a cellular device.
+int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle,
+                                 bool powerOff)
 {
-    return removeDevice(devHandle);
+    return removeDevice(devHandle, powerOff);
 }
 
 // End of file

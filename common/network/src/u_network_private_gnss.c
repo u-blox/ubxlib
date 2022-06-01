@@ -85,7 +85,7 @@
 
 // Bring a GNSS interface up or take it down.
 int32_t uNetworkPrivateChangeStateGnss(uDeviceHandle_t devHandle,
-                                       uNetworkCfgGnss_t *pCfg,
+                                       const uNetworkCfgGnss_t *pCfg,
                                        bool upNotDown)
 {
     uDeviceGnssInstance_t *pContext;

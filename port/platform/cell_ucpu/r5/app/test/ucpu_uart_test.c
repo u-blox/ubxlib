@@ -437,7 +437,7 @@ U_PORT_TEST_FUNCTION("[exampleUart]", "uartTestExample")
     } else {
         uPortLog("Unable to bring up the network!\n");
         // Calling these will also deallocate the network handle
-        uDeviceClose(gDeviceHandle);
+        uDeviceClose(gDeviceHandle, false);
         uDeviceDeinit();
         uPortDeinit();
     }

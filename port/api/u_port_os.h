@@ -55,6 +55,16 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
+/* Note: see here:
+ * https://stackoverflow.com/questions/72415062/c-compiler-checking-of-a-typedefed-void
+ * for a discussion of why we should never have used void * for the
+ * type definitions below.
+ * However, we did, so please just note that it is up to the user
+ * to pass the correct handle type into each of the uPortOsXxx()
+ * functions, the compiler will not emit an error, or a warning,
+ * if the wrong handle type is passed.
+ */
+
 /** Mutex handle.
  */
 typedef void *uPortMutexHandle_t;

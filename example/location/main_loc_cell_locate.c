@@ -222,7 +222,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
     }
 
     // Close the device
-    uDeviceClose(devHandle);
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

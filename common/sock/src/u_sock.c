@@ -1206,7 +1206,7 @@ int32_t uSockCreate(uDeviceHandle_t devHandle, uSockType_t type,
                         pContainer->socket.devHandle = devHandle;
                         pContainer->socket.bytesSent = 0;
                         uPortLog("U_SOCK: socket created, descriptor %d,"
-                                 " network handle %d, socket handle %d.\n",
+                                 " network handle 0x%08x, socket handle %d.\n",
                                  descriptorOrError, devHandle, sockHandle);
                     } else {
                         // Set errno
@@ -1291,7 +1291,7 @@ int32_t uSockConnect(uSockDescriptor_t descriptor,
                                sizeof(pContainer->socket.remoteAddress));
                         pContainer->socket.state = U_SOCK_STATE_CONNECTED;
                         uPortLog("U_SOCK: socket with descriptor %d, network"
-                                 " handle %d, socket handle %d, is "
+                                 " handle 0x%08x, socket handle %d, is "
                                  " connected to address \"%.*s\".\n",
                                  descriptor, devHandle, sockHandle,
                                  addressToString(&pContainer->socket.remoteAddress,
@@ -1303,7 +1303,7 @@ int32_t uSockConnect(uSockDescriptor_t descriptor,
                         errnoLocal = -errorCode;
                         uPortLog("U_SOCK: underlying layer errno %d on"
                                  " address \"%.*s\", descriptor/"
-                                 "network/socket %d/%d/%d.\n", errnoLocal,
+                                 "network/socket %d/0x%08x/%d.\n", errnoLocal,
                                  addressToString(pRemoteAddress, true,
                                                  buffer, sizeof(buffer)),
                                  buffer, descriptor, devHandle,
@@ -1376,7 +1376,7 @@ int32_t uSockClose(uSockDescriptor_t descriptor)
             }
             if (errorCode == 0) {
                 uPortLog("U_SOCK: socket with descriptor %d,"
-                         " network handle %d, socket handle %d,"
+                         " network handle 0x%08x, socket handle %d,"
                          " has been closed.\n",
                          descriptor, devHandle, sockHandle);
                 if (pContainer->socket.state != U_SOCK_STATE_CLOSED) {
@@ -1402,7 +1402,7 @@ int32_t uSockClose(uSockDescriptor_t descriptor)
                 errnoLocal = -errorCode;
                 uPortLog("U_SOCK: underlying socket layer returned"
                          " errno %d on closing descriptor %d,"
-                         " network handle %d, socket handle %d.\n",
+                         " network handle 0x%08x, socket handle %d.\n",
                          errnoLocal, descriptor, devHandle,
                          sockHandle);
             }
@@ -1713,7 +1713,7 @@ int32_t uSockOptionSet(uSockDescriptor_t descriptor,
                                  errnoLocal, option, level);
                     }
                     printSocketOption(pOptionValue, optionValueLength);
-                    uPortLog("by network handle %d, socket"
+                    uPortLog("by network handle 0x%08x, socket"
                              " handle %d.\n", devHandle,
                              sockHandle);
                 }
@@ -1811,7 +1811,7 @@ int32_t uSockOptionGet(uSockDescriptor_t descriptor,
                                      " for socket descriptor %d is ", option,
                                      level, descriptor);
                             printSocketOption(pOptionValue, *pOptionValueLength);
-                            uPortLog("according to network handle %d, socket"
+                            uPortLog("according to network handle 0x%08x, socket"
                                      " handle %d.\n", devHandle, sockHandle);
                         }
                     } else {
@@ -1819,7 +1819,7 @@ int32_t uSockOptionGet(uSockDescriptor_t descriptor,
                         errnoLocal = -errorCode;
                         uPortLog("U_SOCK: getting the value of option"
                                  " %d:0x%04x for socket descriptor %d from"
-                                 " network handle %d, socket handle %d,"
+                                 " network handle 0x%08x, socket handle %d,"
                                  " returned errno %d.\n",
                                  option, level, descriptor, devHandle,
                                  sockHandle, errnoLocal);

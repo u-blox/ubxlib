@@ -834,12 +834,9 @@ int32_t uWifiMqttInit(uDeviceHandle_t devHandle, void **ppMqttSession)
             if (initMqttSessions() == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
                 if (getInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
-                    // TODO: Remove this when Network API has been adjusted so that
-                    //       we can use the same device handle for both BLE and WiFi
-                    if (pInstance->wifiHandle == NULL) {
-                        pInstance->wifiHandle = devHandle;
+                    if (pInstance->devHandle == NULL) {
+                        pInstance->devHandle = devHandle;
                     }
-
                     err = uShortRangeSetMqttConnectionStatusCallback(devHandle,
                                                                      atMqttConnectionCallback,
                                                                      pInstance);

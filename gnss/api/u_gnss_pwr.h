@@ -83,7 +83,7 @@ extern "C" {
 
 /** Power a GNSS chip on.  If the transport type for the given GNSS
  * instance is U_GNSS_TRANSPORT_UBX_AT then you must have powered
- * the associated cellular module up (e.g. with a call to uNetworkAdd()
+ * the associated cellular module up (e.g. with a call to uDeviceOpen()
  * or uCellPwrOn()) before calling this function.  Also powering up
  * a GNSS module which is attached via a cellular module will "claim"
  * the GNSS module for this GNSS interface and so if you use the cellLoc

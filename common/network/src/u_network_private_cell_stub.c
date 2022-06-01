@@ -36,7 +36,7 @@
 #include "u_network_private_cell.h"
 
 int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
-                                       uNetworkCfgCell_t *pCfg,
+                                       const uNetworkCfgCell_t *pCfg,
                                        bool upNotDown)
 {
     (void) devHandle;

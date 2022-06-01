@@ -442,7 +442,7 @@ static void edmIpConnectionCallback(int32_t edmHandle,
         uPortLog("U_WIFI_SOCK: ERROR failed to take lock\n");
     }
 
-    devHandle = pInstance->wifiHandle;
+    devHandle = pInstance->devHandle;
 
     switch (eventType) {
         case U_SHORT_RANGE_EVENT_CONNECTED: {
@@ -510,7 +510,7 @@ static void edmIpDataCallback(int32_t edmHandle, int32_t edmChannel,
 
     U_ASSERT( uShortRangeLock() == (int32_t) U_ERROR_COMMON_SUCCESS );
 
-    devHandle = pInstance->wifiHandle;
+    devHandle = pInstance->devHandle;
     uWifiSockSocket_t *pSock = pFindSocketByEdmChannel(devHandle, edmChannel);
     if (pSock) {
         sockHandle = pSock->sockHandle;
@@ -761,10 +761,8 @@ int32_t uWifiSockInitInstance(uDeviceHandle_t devHandle)
             errnoLocal = getInstance(devHandle, &pInstance);
         }
         if ((errnoLocal == U_SOCK_ENONE) && pInstance) {
-            // TODO: Remove this when Network API has been adjusted so that
-            //       we can use the same device handle for both BLE and WiFi
-            if (pInstance->wifiHandle == NULL) {
-                pInstance->wifiHandle = devHandle;
+            if (pInstance->devHandle == NULL) {
+                pInstance->devHandle = devHandle;
             }
         }
         if ((errnoLocal == U_SOCK_ENONE) && pInstance) {

@@ -63,22 +63,24 @@ void uDevicePrivateCellDeinit(void);
 /** Add a cellular device, powering it up and making it available
  * for configuration and to support a network interface.
  *
- * @param pDevCfg       a pointer to the device configuration
- *                      structure, one that should have been
- *                      populated for cellular; cannot be NULL.
- * @param pDeviceHandle a pointer to a place to put the device
- *                      handle, cannot be NULL.
- * @return              zero on success else negative error code.
+ * @param[in] pDevCfg        a pointer to the device configuration
+ *                           structure, one that should have been
+ *                           populated for cellular; cannot be NULL.
+ * @param[out] pDeviceHandle a pointer to a place to put the device
+ *                           handle, cannot be NULL.
+ * @return                   zero on success else negative error code.
  */
 int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
                               uDeviceHandle_t *pDeviceHandle);
 
-/** Remove a cellular device, powering it down.
+/** Remove a cellular device.
  *
  * @param devHandle the handle of the device.
+ * @param powerOff  if true then also power the device off.
  * @return          zero on success else negative error code.
  */
-int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle);
+int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle,
+                                 bool powerOff);
 
 #ifdef __cplusplus
 }

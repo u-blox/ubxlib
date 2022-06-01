@@ -101,14 +101,13 @@ typedef int32_t uNetworkCfgVersion_t;
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Bring up the given network interface on a device, connecting it as defined
- * in the configuration passed to uNetworkConfigure(). If the network
+/** Bring up the given network interface on a device. If the network
  * is already up the implementation should return success without
  * doing anything.
  *
  * @param devHandle        the handle of the device to bring up.
  * @param netType          which of the module interfaces.
- * @param pConfiguration   a pointer to the configuration
+ * @param[in] pCfg         a pointer to the configuration
  *                         information for the given network
  *                         type.  This must be stored
  *                         statically, a true constant: the
@@ -131,7 +130,7 @@ typedef int32_t uNetworkCfgVersion_t;
  * @return                 zero on success else negative error code.
  */
 int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,
-                            const void *pConfiguration);
+                            const void *pCfg);
 
 /** Take down the given network interface on a device, disconnecting
  * it from any peer entity.  After this function returns

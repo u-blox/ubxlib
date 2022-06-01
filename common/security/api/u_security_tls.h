@@ -419,7 +419,7 @@ typedef struct uSecurityTlsContext_t {
  *
  * @param devHandle     the handle of the device which the
  *                      TLS security context is associated, e.g.
- *                      as returned by uNetworkAdd().
+ *                      obtained using uDeviceOpen().
  * @param pSettings     a pointer to the TLS security settings
  *                      to use.  May be NULL in which case default
  *                      settings are applied; consult the security
