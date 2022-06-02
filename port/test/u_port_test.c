@@ -1027,6 +1027,23 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
 
     U_PORT_TEST_ASSERT(eventCallbackData.callCount == 1);
 
+    // Do the manual send again, this time with the "try" version,
+    // where supported
+    eventCallbackData.callCount = 0;
+    x = uPortUartEventTrySend(uartHandle,
+                              (uint32_t) U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
+                              0);
+    if (x == 0) {
+#ifndef U_PORT_TEST_CHECK_TIME_TAKEN
+        // Some platforms can be a little slow at this
+        uPortTaskBlock(1000);
+#endif
+        U_PORT_TEST_ASSERT(eventCallbackData.callCount == 1);
+    } else {
+        U_PORT_TEST_ASSERT((x == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
+                           (x == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
+    }
+
     // Send data over the UART N times, the callback will check it
     while (bytesSent < size) {
         // -1 to omit gUartTestData string terminator

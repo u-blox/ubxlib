@@ -24,6 +24,8 @@
 
 #include "u_cfg_sw.h"
 #include "u_error_common.h"
+#include "u_cfg_os_platform_specific.h" // For U_CFG_OS_YIELD_MS
+
 #include "u_port_debug.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -800,6 +802,36 @@ int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
 
             // Push an event to event queue
             errorCode = uPortEventQueueSend(gModemUartContext.eventQueueHandle, NULL, 0);
+        }
+    }
+
+    return errorCode;
+}
+
+// Send an event to the callback, non-blocking version.
+int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
+                              int32_t delayMs)
+{
+    int32_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    int64_t startTime = uPortGetTickTimeMs();
+
+    if ((gModemUartMutex != NULL) &&
+        (!gModemUartContext.markedForDeletion)) {
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+
+        if ((handle > 0) &&
+            (gModemUartContext.eventQueueHandle >= 0) &&
+            (gModemUartContext.pEventCallback != NULL) &&
+            (gModemUartContext.pEventCallbackParam != NULL) &&
+            (eventBitMap & U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+
+            do {
+                // Push an event to event queue, IRQ version so as not to block
+                errorCode = uPortEventQueueSendIrq(gModemUartContext.eventQueueHandle,
+                                                   NULL, 0);
+                uPortTaskBlock(U_CFG_OS_YIELD_MS);
+            } while ((errorCode != 0) &&
+                     (uPortGetTickTimeMs() < startTime + delayMs));
         }
     }
 

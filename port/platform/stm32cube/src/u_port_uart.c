@@ -29,6 +29,7 @@
 
 #include "u_cfg_sw.h"
 #include "u_cfg_hw_platform_specific.h"
+#include "u_cfg_os_platform_specific.h" // For U_CFG_OS_YIELD_MS
 
 #include "u_error_common.h"
 
@@ -1505,6 +1506,42 @@ int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
             event.eventBitMap = eventBitMap;
             errorCode = uPortEventQueueSend(pUartData->eventQueueHandle,
                                             &event, sizeof(event));
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Send an event to the callback, but only if there's room on the queue.
+int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
+                              int32_t delayMs)
+{
+    uErrorCode_t errorCode = U_ERROR_COMMON_NOT_INITIALISED;
+    uPortUartData_t *pUartData;
+    uPortUartEvent_t event;
+    int64_t startTime = uPortGetTickTimeMs();
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+        pUartData = pGetUartDataByHandle(handle);
+        if ((pUartData != NULL) &&
+            (pUartData->eventQueueHandle >= 0) &&
+            // The only event we support right now
+            (eventBitMap == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+            event.uartHandle = handle;
+            event.eventBitMap = eventBitMap;
+            do {
+                // Push an event to event queue, IRQ version so as not to block
+                errorCode = uPortEventQueueSendIrq(pUartData->eventQueueHandle,
+                                                   &event, sizeof(event));
+                uPortTaskBlock(U_CFG_OS_YIELD_MS);
+            } while ((errorCode != 0) &&
+                     (uPortGetTickTimeMs() < startTime + delayMs));
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

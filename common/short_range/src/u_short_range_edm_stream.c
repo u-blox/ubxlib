@@ -291,10 +291,24 @@ static uShortRangeEdmStreamConnections_t *findConnection(int32_t channel)
 
 static void processedEvent(void)
 {
+    int32_t sendErrorCode;
+
     uShortRangeEdmResetParser();
     // Trigger an event from the uart to get parsing going again
-    uPortUartEventSend(gEdmStream.uartHandle,
-                       U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+    // First use the "try" version so as not to block, which can
+    // lead to mutex lock-outs if the queue is full: if the "try"
+    // version is not supported on this platform then fall back
+    // to the blocking version; there is no danger here since,
+    // if there are already events in the UART queue, the URC
+    // callback will certainly be run anyway.
+    sendErrorCode = uPortUartEventTrySend(gEdmStream.uartHandle,
+                                          U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
+                                          0);
+    if ((sendErrorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
+        (sendErrorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED)) {
+        uPortUartEventSend(gEdmStream.uartHandle,
+                           U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+    }
 }
 
 static void atEventHandler(void)
