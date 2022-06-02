@@ -34,16 +34,8 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_EDM_STREAM_TASK_STACK_SIZE_BYTES
-#define U_EDM_STREAM_TASK_STACK_SIZE_BYTES  1536
-#endif
-
 #ifndef U_EDM_STREAM_EVENT_QUEUE_SIZE
 #define U_EDM_STREAM_EVENT_QUEUE_SIZE 3
-#endif
-
-#ifndef U_EDM_STREAM_TASK_PRIORITY
-# define U_EDM_STREAM_TASK_PRIORITY (U_CFG_OS_PRIORITY_MAX - 4)
 #endif
 
 /* ----------------------------------------------------------------

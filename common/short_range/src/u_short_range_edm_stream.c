@@ -65,6 +65,14 @@
 #define U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH 500
 #define U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS    9
 
+#ifndef U_EDM_STREAM_TASK_STACK_SIZE_BYTES
+#define U_EDM_STREAM_TASK_STACK_SIZE_BYTES  U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES
+#endif
+
+#ifndef U_EDM_STREAM_TASK_PRIORITY
+# define U_EDM_STREAM_TASK_PRIORITY U_AT_CLIENT_URC_TASK_PRIORITY
+#endif
+
 // Debug logging for EDM activity
 // You can activate debug log output for EDM activity with the defines below
 //

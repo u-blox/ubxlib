@@ -275,29 +275,28 @@ static void wifiConnectCallback(uAtClientHandle_t atHandle,
         return;
     }
 
-    if (uShortRangeLock() != (int32_t)U_ERROR_COMMON_SUCCESS) {
-        return;
+    if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        const uShortRangePrivateInstance_t *pInstance;
+        pInstance = pUShortRangePrivateGetInstance(pStatus->devHandle);
+        if (pInstance && pInstance->pWifiConnectionStatusCallback) {
+            pCallback = pInstance->pWifiConnectionStatusCallback;
+            pCallbackParam = pInstance->pWifiConnectionStatusCallbackParameter;
+        }
+
+        uShortRangeUnlock();
+
+        if (pCallback) {
+            //lint -e(1773) Suppress attempt to cast away volatile
+            pCallback(pStatus->devHandle,
+                      pStatus->connId,
+                      pStatus->status,
+                      pStatus->channel,
+                      pStatus->bssid,
+                      pStatus->reason,
+                      (void *)pCallbackParam);
+        }
     }
 
-    const uShortRangePrivateInstance_t *pInstance;
-    pInstance = pUShortRangePrivateGetInstance(pStatus->devHandle);
-    if (pInstance && pInstance->pWifiConnectionStatusCallback) {
-        pCallback = pInstance->pWifiConnectionStatusCallback;
-        pCallbackParam = pInstance->pWifiConnectionStatusCallbackParameter;
-    }
-
-    uShortRangeUnlock();
-
-    if (pCallback) {
-        //lint -e(1773) Suppress attempt to cast away volatile
-        pCallback(pStatus->devHandle,
-                  pStatus->connId,
-                  pStatus->status,
-                  pStatus->channel,
-                  pStatus->bssid,
-                  pStatus->reason,
-                  (void *)pCallbackParam);
-    }
     free(pStatus);
 }
 
