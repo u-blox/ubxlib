@@ -597,6 +597,7 @@ int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
+
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         // The eventBitMap needs to be translated into the
         // event types known to the ESP32 platform (not a
@@ -613,6 +614,47 @@ int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
             event.size = 0;
             errorCode = uPortQueueSend((const uPortQueueHandle_t) gUartData[handle].queue,
                                        (void *) &event);
+        }
+
+        U_PORT_MUTEX_UNLOCK(gMutex);
+    }
+
+    return errorCode;
+}
+
+// Send an event to the callback, but only if there's room on the queue.
+int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
+                              int32_t delayMs)
+{
+    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
+    uart_event_t event;
+    int64_t startTime = uPortGetTickTimeMs();
+
+    if (gMutex != NULL) {
+
+        U_PORT_MUTEX_LOCK(gMutex);
+
+        errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+        // The eventBitMap needs to be translated into the
+        // event types known to the ESP32 platform (not a
+        // bitmap unfortunately) as they send to the queue
+        // also.  The only eventBitMap type we support at the
+        // moment is U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED
+        // which translates to UART_DATA.
+        if ((handle >= 0) &&
+            (handle < sizeof(gUartData) / sizeof(gUartData[0])) &&
+            !gUartData[handle].markedForDeletion &&
+            (gUartData[handle].eventTaskRunningMutex != NULL)  &&
+            (eventBitMap == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
+            event.type = UART_DATA;
+            event.size = 0;
+            do {
+                // Push an event to event queue, IRQ version so as not to block
+                errorCode = uPortQueueSendIrq((const uPortQueueHandle_t) gUartData[handle].queue,
+                                              (void *) &event);
+                uPortTaskBlock(U_CFG_OS_YIELD_MS);
+            } while ((errorCode != 0) &&
+                     (uPortGetTickTimeMs() < startTime + delayMs));
         }
 
         U_PORT_MUTEX_UNLOCK(gMutex);

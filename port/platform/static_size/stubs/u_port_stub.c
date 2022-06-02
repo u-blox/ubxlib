@@ -393,6 +393,13 @@ int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
     (void) eventBitMap;
     return 0;
 }
+int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
+                              int32_t delayMs)
+{
+    (void) handle;
+    (void) eventBitMap;
+    return 0;
+}
 bool uPortUartEventIsCallback(int32_t handle)
 {
     (void) handle;

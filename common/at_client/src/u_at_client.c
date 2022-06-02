@@ -2824,6 +2824,7 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
     uAtClientInstance_t *pClient = (uAtClientInstance_t *) atHandle;
     int32_t sizeBytes;
     uPortMutexHandle_t streamMutex;
+    int32_t sendErrorCode;
 
     U_AT_CLIENT_LOCK_CLIENT_MUTEX(pClient);
 
@@ -2836,8 +2837,23 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle)
                 sizeBytes = uPortUartGetReceiveSize(pClient->streamHandle);
                 if ((sizeBytes > 0) ||
                     (pClient->pReceiveBuffer->readIndex < pClient->pReceiveBuffer->length)) {
-                    uPortUartEventSend(pClient->streamHandle,
-                                       U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+                    // Note: we use the "try" version of the UART event
+                    // send function here, otherwise if the UART event queue
+                    // is full we may get stuck since (a) this function has
+                    // the AT client API locked and (b) the URC callback may
+                    // be running a URC handler which could also be calling
+                    // into the AT client API to read the elements of the URC;
+                    // there is no danger here since, if there are already
+                    // events in the UART queue, the URC callback will certainly
+                    // be run anyway.
+                    sendErrorCode = uPortUartEventTrySend(pClient->streamHandle,
+                                                          U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
+                                                          0);
+                    if ((sendErrorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) ||
+                        (sendErrorCode == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED)) {
+                        uPortUartEventSend(pClient->streamHandle,
+                                           U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED);
+                    }
                 }
                 break;
             case U_AT_CLIENT_STREAM_TYPE_EDM:

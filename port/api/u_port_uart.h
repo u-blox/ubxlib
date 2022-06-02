@@ -263,7 +263,10 @@ int32_t uPortUartEventCallbackFilterSet(int32_t handle,
  * re-trigger events: for instance, if a data event has only
  * been partially handled it can be re-triggered by calling
  * this function with U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED
- * set.
+ * set.  This call will block until there is room in the queue
+ * to send the event; if you want the function to return
+ * if there is no room in the queue to send the event then use
+ * uPortUartEventTrySend() instead
  *
  * @param handle      the handle of the UART instance.
  * @param eventBitMap the events bit-map with at least one of
@@ -271,6 +274,26 @@ int32_t uPortUartEventCallbackFilterSet(int32_t handle,
  * @return            zero on success else negative error code.
  */
 int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap);
+
+/** Send an event to the callback, returning if there is no
+ * room in the queue to send the event within the given time.
+ * This allows the user to re-trigger events: for instance,
+ * if a data event has only been partially handled it can be
+ * re-triggered by calling this function with
+ * U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED set.  Note that NOT
+ * ALL PLATFORMS support this API: where it is not implemented
+ * U_ERROR_COMMON_NOT_IMPLEMENTED or U_ERROR_COMMON_NOT_SUPPORTED
+ * should be returned.
+ *
+ * @param handle      the handle of the UART instance.
+ * @param eventBitMap the events bit-map with at least one of
+ *                    U_PORT_UART_EVENT_BITMASK_xxx set.
+ * @param delayMs     the maximum time to wait in milliseconds.
+ * @return            zero on success else negative error code.
+ */
+int32_t uPortUartEventTrySend(int32_t handle,
+                              uint32_t eventBitMap,
+                              int32_t delayMs);
 
 /** Detect whether the task currently executing is the
  * event callback for this UART.  Useful if you have code which

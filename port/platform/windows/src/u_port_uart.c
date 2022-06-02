@@ -1020,6 +1020,20 @@ int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap)
     return (int32_t) errorCode;
 }
 
+// Send an event to the callback, non-blocking version.
+int32_t uPortUartEventTrySend(int32_t handle, uint32_t eventBitMap,
+                              int32_t delayMs)
+{
+    (void) handle;
+    (void) eventBitMap;
+    (void) delayMs;
+
+    // Not supported on Windows since uPortEventQueueSendIrq() is
+    // not supported.
+
+    return (int32_t) U_ERROR_COMMON_NOT_SUPPORTED;
+}
+
 // Return true if we're in an event callback.
 bool uPortUartEventIsCallback(int32_t handle)
 {
