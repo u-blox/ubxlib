@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** @brief Functions for bringing up and down a network interface
+ * on a device.  These functions are thread-safe.
+ */
+
 #include "u_device.h"
 
 /** @file

@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-/** @brief This example demonstrates how to bring up a GNSS network
- * and then perform a location fix.
+/** @brief This example demonstrates how to bring up a GNSS device
+ * that is directly connected to this MCU and then perform a location
+ * fix.
  *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
@@ -65,7 +66,7 @@
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && !defined(U_CFG_TEST_GNSS_OVER_AT)
 // DEVICE i.e. module/chip configuration: in this case a GNSS
 // module connected via UART
 static const uDeviceCfg_t gDeviceCfg = {
@@ -73,11 +74,8 @@ static const uDeviceCfg_t gDeviceCfg = {
     .deviceCfg = {
         .cfgGnss = {
             .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
-            .transportType = U_GNSS_TRANSPORT_UBX_UART,
-            .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-            .devHandleAt = NULL, // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
-            .gnssAtPinPwr = -1, // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
-            .gnssAtPinDataReady = -1 // Only relevant for transport U_GNSS_TRANSPORT_UBX_AT
+            .pinEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
+            .pinDataReady = -1 // Not used
         },
     },
     .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
@@ -92,9 +90,12 @@ static const uDeviceCfg_t gDeviceCfg = {
         },
     },
 };
-// NETWORK configuration for GNSS; nothing to do but the type
+// NETWORK configuration for GNSS
 static const uNetworkCfgGnss_t gNetworkCfg = {
-    .type = U_NETWORK_TYPE_GNSS
+    .type = U_NETWORK_TYPE_GNSS,
+    .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
+    .devicePinPwr = -1,
+    .devicePinDataReady = -1
 };
 #else
 static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};

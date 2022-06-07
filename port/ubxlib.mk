@@ -36,6 +36,7 @@ UBXLIB_PRIVATE_INC += \
 
 # Device and network require special care since they contain stub & optional files
 UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_shared.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/network/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/network/src
 UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device.c

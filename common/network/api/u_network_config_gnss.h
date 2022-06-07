@@ -41,9 +41,7 @@
  * irrespective of whether GNSS is used there.
  */
 
-/** The network configuration for GNSS; currently carries no GNSS-specific
- * information, necessary for forwards-compatibility should such information
- * be required in future.
+/** The network configuration for GNSS.
  */
 typedef struct {
     uNetworkCfgVersion_t version; /**< Version of this network
@@ -52,6 +50,39 @@ typedef struct {
                                        to zero unless otherwise
                                        specified below. */
     uNetworkType_t type;          /**< For error checking purposes. */
+    int32_t moduleType;           /**< The module type that is connected,
+                                       see uGnssModuleType_t in
+                                       u_gnss_module_type.h.  Only required
+                                       if the GNSS network is being added
+                                       via a non-GNSS (e.g. cellular) device,
+                                       ignored otherwise. */
+    int32_t devicePinPwr;         /**< Only relevant if the GNSS network
+                                       is on a non-GNSS device, e.g. it
+                                       is connected via or inside
+                                       (e.g. SARA-R510M8S) a cellular
+                                       module, communicating via AT
+                                       commands, and that intermediate module
+                                       is controlling power to GNSS.  This
+                                       is the pin OF THAT INTERMEDIATE MODULE
+                                       and NOT of this MCU.  For instance,
+                                       in the case of a cellular module,
+                                       GPIO2 is cellular module pin 23 and
+                                       hence 23 would be used here. If there
+                                       is no such functionality then use -1. */
+    int32_t devicePinDataReady;   /**< Only relevant if the GNSS network
+                                       is on a non-GNSS device, e.g. it
+                                       is connected via or inside
+                                       (e.g. SARA-R510M8S) a cellular
+                                       module, communicating via AT
+                                       commands, and that intermediate module
+                                       is connected to the Data Ready pin of
+                                       GNSS.  This is the pin OF THAT
+                                       INTERMEDIATE MODULE and NOT of this
+                                       MCU.  For instance, in the case of a
+                                       cellular module, GPIO3 is cellular
+                                       module pin 24 and hence 24
+                                       would be used here. If no Data Ready
+                                       signalling is required then specify -1. */
     /* This is the end of version 0 of this
        structure: should any fields be added to
        this structure in future they must be

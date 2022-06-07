@@ -151,13 +151,16 @@ extern uPortMutexHandle_t gUGnssPrivateMutex;
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Find a GNSS instance in the list by instance handle.
+/** Find a GNSS instance in the list by instance handle.  Note
+ * that this function accepts any handle from the device API, e.g.
+ * if the GNSS network has been brought up on a cellular device then
+ * the cellular device handle may be passed in.
  * Note: gUGnssPrivateMutex should be locked before this is called.
  *
- * @param gnssHandle  the instance handle.
- * @return            a pointer to the instance.
+ * @param handle  the instance handle.
+ * @return        a pointer to the instance.
  */
-uGnssPrivateInstance_t *pUGnssPrivateGetInstance(uDeviceHandle_t gnssHandle);
+uGnssPrivateInstance_t *pUGnssPrivateGetInstance(uDeviceHandle_t handle);
 
 /** Get the module characteristics for a given instance.
  * Note: gUGnssPrivateMutex should be locked before this is called.

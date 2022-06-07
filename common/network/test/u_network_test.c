@@ -335,15 +335,14 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
  */
 U_PORT_TEST_FUNCTION("[network]", "networkSock")
 {
-    uNetworkTestCfg_t *pNetworkCfg = NULL;
-    uDeviceHandle_t devHandle = NULL;
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t devHandle;
     uSockDescriptor_t descriptor;
     uSockAddress_t address;
     char buffer[32];
     int32_t y;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
-    int32_t errorCode;
 
     // Make sure we start fresh for this test case
     uNetworkTestCleanUp();
@@ -357,16 +356,15 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add the devices that support sockets
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type) &&
-            uNetworkTestDeviceValidForOpen(x)) {
-            uPortLog("U_NETWORK_TEST: adding device for network %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
-                                    &gUNetworkTestCfg[x].devHandle);
-            U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
+    // Get a list of things that support sockets
+    pList = pUNetworkTestListAlloc(uNetworkTestHasSock);
+    // Open the devices that are not already open
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle == NULL) {
+            uPortLog("U_NETWORK_TEST: adding device %s for network %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
 
@@ -380,98 +378,101 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     // back to up again
     for (size_t a = 0; a < 2; a++) {
         // Bring up each network configuration
-        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-            if (gUNetworkTestCfg[x].devHandle != NULL) {
-                pNetworkCfg = &(gUNetworkTestCfg[x]);
-                devHandle = pNetworkCfg->devHandle;
+        for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+            devHandle = *pTmp->pDevHandle;
 
-                uPortLog("U_NETWORK_TEST: bringing up %s...\n",
-                         gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
-                                                       pNetworkCfg->type,
-                                                       pNetworkCfg->pNetworkCfg) == 0);
+            uPortLog("U_NETWORK_TEST: bringing up %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                   pTmp->networkType,
+                                                   pTmp->pNetworkCfg) == 0);
 
-                uPortLog("U_NETWORK_TEST: looking up echo server \"%s\"...\n",
-                         U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
-                // Look up the address of the server we use for UDP echo
-                // The first call to a sockets API needs to
-                // initialise the underlying sockets layer; take
-                // account of that initialisation heap cost here.
-                heapSockInitLoss += uPortGetHeapFree();
-                // Look up the address of the server we use for UDP echo
-                U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
-                                                      U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                                                      &(address.ipAddress)) == 0);
-                heapSockInitLoss -= uPortGetHeapFree();
+            uPortLog("U_NETWORK_TEST: looking up echo server \"%s\"...\n",
+                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
+            // Look up the address of the server we use for UDP echo
+            // The first call to a sockets API needs to
+            // initialise the underlying sockets layer; take
+            // account of that initialisation heap cost here.
+            heapSockInitLoss += uPortGetHeapFree();
+            // Look up the address of the server we use for UDP echo
+            U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                                  U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                                                  &(address.ipAddress)) == 0);
+            heapSockInitLoss -= uPortGetHeapFree();
 
-                // Add the port number we will use
-                address.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
+            // Add the port number we will use
+            address.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
-                // Create a UDP socket
-                descriptor = uSockCreate(devHandle, U_SOCK_TYPE_DGRAM,
-                                         U_SOCK_PROTOCOL_UDP);
-                U_PORT_TEST_ASSERT(descriptor >= 0);
+            // Create a UDP socket
+            descriptor = uSockCreate(devHandle, U_SOCK_TYPE_DGRAM,
+                                     U_SOCK_PROTOCOL_UDP);
+            U_PORT_TEST_ASSERT(descriptor >= 0);
 
-                // Send and wait for the UDP echo data, trying a few
-                // times to reduce the chance of internet loss getting
-                // in the way
-                uPortLog("U_NETWORK_TEST: sending %d byte(s) to %s:%d over"
-                         " %s...\n", sizeof(gTestString) - 1,
-                         U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                         U_SOCK_TEST_ECHO_UDP_SERVER_PORT,
-                         gpUNetworkTestTypeName[pNetworkCfg->type]);
-                y = 0;
-                memset(buffer, 0, sizeof(buffer));
-                for (size_t z = 0; (z < U_SOCK_TEST_UDP_RETRIES) &&
-                     (y != sizeof(gTestString) - 1); z++) {
-                    y = uSockSendTo(descriptor, &address, gTestString,
-                                    sizeof(gTestString) - 1);
-                    if (y == sizeof(gTestString) - 1) {
-                        // Wait for the answer
-                        y = 0;
-                        for (size_t w = 10; (w > 0) &&
-                             (y != sizeof(gTestString) - 1); w--) {
-                            y = uSockReceiveFrom(descriptor, NULL,
-                                                 buffer, sizeof(buffer));
-                            if (y <= 0) {
-                                uPortTaskBlock(1000);
-                            }
+            // Send and wait for the UDP echo data, trying a few
+            // times to reduce the chance of internet loss getting
+            // in the way
+            uPortLog("U_NETWORK_TEST: sending %d byte(s) to %s:%d over"
+                     " %s...\n", sizeof(gTestString) - 1,
+                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                     U_SOCK_TEST_ECHO_UDP_SERVER_PORT,
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            y = 0;
+            memset(buffer, 0, sizeof(buffer));
+            for (size_t z = 0; (z < U_SOCK_TEST_UDP_RETRIES) &&
+                 (y != sizeof(gTestString) - 1); z++) {
+                y = uSockSendTo(descriptor, &address, gTestString,
+                                sizeof(gTestString) - 1);
+                if (y == sizeof(gTestString) - 1) {
+                    // Wait for the answer
+                    y = 0;
+                    for (size_t w = 10; (w > 0) &&
+                         (y != sizeof(gTestString) - 1); w--) {
+                        y = uSockReceiveFrom(descriptor, NULL,
+                                             buffer, sizeof(buffer));
+                        if (y <= 0) {
+                            uPortTaskBlock(1000);
                         }
-                        if (y != sizeof(gTestString) - 1) {
-                            uPortLog("U_NETWORK_TEST: failed to receive UDP echo"
-                                     " on try %d.\n", z + 1);
-                        }
-                    } else {
-                        uPortLog("U_NETWORK_TEST: failed to send UDP data on"
-                                 " try %d.\n", z + 1);
                     }
+                    if (y != sizeof(gTestString) - 1) {
+                        uPortLog("U_NETWORK_TEST: failed to receive UDP echo"
+                                 " on try %d.\n", z + 1);
+                    }
+                } else {
+                    uPortLog("U_NETWORK_TEST: failed to send UDP data on"
+                             " try %d.\n", z + 1);
                 }
-                uPortLog("U_NETWORK_TEST: %d byte(s) echoed over UDP on %s.\n",
-                         y, gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(y == sizeof(gTestString) - 1);
-                U_PORT_TEST_ASSERT(strcmp(buffer, gTestString) == 0);
-
-                // Close the socket
-                U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
-
-                // Clean up to ensure no memory leaks
-                uSockCleanUp();
             }
+            uPortLog("U_NETWORK_TEST: %d byte(s) echoed over UDP on %s.\n",
+                     y, gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(y == sizeof(gTestString) - 1);
+            U_PORT_TEST_ASSERT(strcmp(buffer, gTestString) == 0);
+
+            // Close the socket
+            U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+
+            // Clean up to ensure no memory leaks
+            uSockCleanUp();
         }
 
-        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-            if (gUNetworkTestCfg[x].devHandle != NULL) {
-                uPortLog("U_NETWORK_TEST: taking down %s...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
-                                                         gUNetworkTestCfg[x].type) == 0);
-            }
+        for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+            uPortLog("U_NETWORK_TEST: taking down %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                     pTmp->networkType) == 0);
         }
     }
 
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        U_PORT_TEST_ASSERT(uNetworkTestDeviceClose(x) == 0);
+    // Close the devices once more and free the list
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle != NULL) {
+            uPortLog("U_NETWORK_TEST: closing device %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
+            *pTmp->pDevHandle = NULL;
+        }
     }
+    uNetworkTestListFree();
+
     uDeviceDeinit();
     uPortDeinit();
 
@@ -505,11 +506,11 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
  */
 U_PORT_TEST_FUNCTION("[network]", "networkBle")
 {
-    uNetworkTestCfg_t *pNetworkCfg = NULL;
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t devHandle;
     int32_t heapUsed;
     int32_t heapSockInitLoss = 0;
     int32_t timeoutCount;
-    int32_t errorCode;
     uBleSpsHandles_t spsHandles;
 
     // In case a previous test failed
@@ -524,147 +525,152 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add a BLE device, if it was not already there
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
-            (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_BLE) &&
-            uNetworkTestDeviceValidForOpen(x)) {
-            uPortLog("U_NETWORK_TEST: adding device for network %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
-                                    &gUNetworkTestCfg[x].devHandle);
-            U_PORT_TEST_ASSERT(errorCode == 0);
+    // Get a list of things that support BLE
+    pList = pUNetworkTestListAlloc(uNetworkTestIsBle);
+    if (pList == NULL) {
+        uPortLog("U_NETWORK_TEST: *** WARNING *** nothing to do.\n");
+    }
+    // Open the devices that are not already open
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle == NULL) {
+            uPortLog("U_NETWORK_TEST: adding device %s for network %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
+
     // Do this twice to prove that we can go from down
     // back to up again
     for (size_t a = 0; a < 2; a++) {
         // Bring up the BLE network
-        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-            if (gUNetworkTestCfg[x].devHandle != NULL) {
-                pNetworkCfg = &(gUNetworkTestCfg[x]);
+        for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+            devHandle = *pTmp->pDevHandle;
 
-                uPortLog("U_NETWORK_TEST: bringing up %s...\n",
-                         gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(gUNetworkTestCfg[x].devHandle,
-                                                       pNetworkCfg->type,
-                                                       pNetworkCfg->pNetworkCfg) == 0);
+            uPortLog("U_NETWORK_TEST: bringing up %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                   pTmp->networkType,
+                                                   pTmp->pNetworkCfg) == 0);
 
-                memset(&spsHandles, 0x00, sizeof spsHandles);
+            memset(&spsHandles, 0x00, sizeof spsHandles);
 
-                gConnHandle = -1;
-                gBytesSent = 0;
-                gBytesReceived = 0;
-                U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gBleConnectionSem, 0, 1) == 0);
+            gConnHandle = -1;
+            gBytesSent = 0;
+            gBytesReceived = 0;
+            U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gBleConnectionSem, 0, 1) == 0);
 
-                uBleSpsSetCallbackConnectionStatus(gUNetworkTestCfg[x].devHandle,
-                                                   connectionCallback,
-                                                   &gUNetworkTestCfg[x].devHandle);
-                uBleSpsSetDataAvailableCallback(gUNetworkTestCfg[x].devHandle, bleSpsCallback,
-                                                &gUNetworkTestCfg[x].devHandle);
-                gBleHandle = gUNetworkTestCfg[x].devHandle;
+            uBleSpsSetCallbackConnectionStatus(devHandle,
+                                               connectionCallback,
+                                               &devHandle);
+            uBleSpsSetDataAvailableCallback(devHandle, bleSpsCallback,
+                                            &devHandle);
+            gBleHandle = devHandle;
 
-                for (int32_t i = 0; i < 3; i++) {
-                    if (i > 0) {
-                        if (uBleSpsPresetSpsServerHandles(gUNetworkTestCfg[x].devHandle, &spsHandles) ==
-                            U_ERROR_COMMON_NOT_IMPLEMENTED) {
-                            continue;
-                        }
+            for (int32_t i = 0; i < 3; i++) {
+                if (i > 0) {
+                    if (uBleSpsPresetSpsServerHandles(devHandle, &spsHandles) ==
+                        U_ERROR_COMMON_NOT_IMPLEMENTED) {
+                        continue;
                     }
-                    if (i > 1) {
-                        if (uBleSpsDisableFlowCtrlOnNext(gUNetworkTestCfg[x].devHandle) ==
-                            U_ERROR_COMMON_NOT_IMPLEMENTED) {
-                            continue;
-                        }
+                }
+                if (i > 1) {
+                    if (uBleSpsDisableFlowCtrlOnNext(devHandle) ==
+                        U_ERROR_COMMON_NOT_IMPLEMENTED) {
+                        continue;
                     }
-                    for (size_t tries = 0; tries < 3; tries++) {
-                        int32_t result;
-                        // Use first testrun(up/down) to test default connection parameters
-                        // and the second for using non-default.
-                        if (a == 0) {
-                            uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
-                            result = uBleSpsConnectSps(gUNetworkTestCfg[x].devHandle,
-                                                       gRemoteSpsAddress,
-                                                       NULL);
-                        } else {
-                            uBleSpsConnParams_t connParams;
-                            connParams.scanInterval = 64;
-                            connParams.scanWindow = 64;
-                            connParams.createConnectionTmo = 5000;
-                            connParams.connIntervalMin = 28;
-                            connParams.connIntervalMax = 34;
-                            connParams.connLatency = 0;
-                            connParams.linkLossTimeout = 2000;
-                            uPortLog("U_NETWORK_TEST: Connecting SPS with conn params: %s\n", gRemoteSpsAddress);
-                            result = uBleSpsConnectSps(gUNetworkTestCfg[x].devHandle,
-                                                       gRemoteSpsAddress, &connParams);
-                        }
-
-                        if (result == 0) {
-                            // Wait for connection
-                            uPortSemaphoreTryTake(gBleConnectionSem, 10000);
-                            if (gConnHandle != -1) {
-                                break;
-                            }
-                        } else {
-                            // Just wait a bit and try again...
-                            uPortTaskBlock(5000);
-                        }
+                }
+                for (size_t tries = 0; tries < 3; tries++) {
+                    int32_t result;
+                    // Use first testrun(up/down) to test default connection parameters
+                    // and the second for using non-default.
+                    if (a == 0) {
+                        uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
+                        result = uBleSpsConnectSps(devHandle,
+                                                   gRemoteSpsAddress,
+                                                   NULL);
+                    } else {
+                        uBleSpsConnParams_t connParams;
+                        connParams.scanInterval = 64;
+                        connParams.scanWindow = 64;
+                        connParams.createConnectionTmo = 5000;
+                        connParams.connIntervalMin = 28;
+                        connParams.connIntervalMax = 34;
+                        connParams.connLatency = 0;
+                        connParams.linkLossTimeout = 2000;
+                        uPortLog("U_NETWORK_TEST: Connecting SPS with conn params: %s\n", gRemoteSpsAddress);
+                        result = uBleSpsConnectSps(devHandle,
+                                                   gRemoteSpsAddress, &connParams);
                     }
 
-                    if (gConnHandle == -1) {
-                        uPortLog("U_NETWORK_TEST: All SPS connection attempts failed!\n");
-                        U_PORT_TEST_ASSERT(false);
-                    }
-                    if (i == 0) {
-                        uBleSpsGetSpsServerHandles(gUNetworkTestCfg[x].devHandle, gChannel, &spsHandles);
-                    }
-
-                    uBleSpsSetSendTimeout(gUNetworkTestCfg[x].devHandle, gChannel, 100);
-                    uPortTaskBlock(100);
-                    timeoutCount = 0;
-                    sendBleSps(gUNetworkTestCfg[x].devHandle);
-                    while (gBytesReceived < gBytesSent) {
-                        uPortTaskBlock(10);
-                        if (timeoutCount++ > 100) {
+                    if (result == 0) {
+                        // Wait for connection
+                        uPortSemaphoreTryTake(gBleConnectionSem, 10000);
+                        if (gConnHandle != -1) {
                             break;
                         }
+                    } else {
+                        // Just wait a bit and try again...
+                        uPortTaskBlock(5000);
                     }
-                    U_PORT_TEST_ASSERT(gBytesSent == gTotalBytes);
-                    U_PORT_TEST_ASSERT(gBytesSent == gBytesReceived);
-                    U_PORT_TEST_ASSERT(gErrors == 0);
-                    // Disconnect
-                    U_PORT_TEST_ASSERT(uBleSpsDisconnect(gUNetworkTestCfg[x].devHandle, gConnHandle) == 0);
-                    for (int32_t i = 0; (i < 40) && (gConnHandle != -1); i++) {
-                        uPortTaskBlock(100);
-                    }
-                    gBytesSent = 0;
-                    gBytesReceived = 0;
-                    U_PORT_TEST_ASSERT(gConnHandle == -1);
                 }
 
-                uBleSpsSetDataAvailableCallback(gUNetworkTestCfg[x].devHandle, NULL, NULL);
-                uBleSpsSetCallbackConnectionStatus(gUNetworkTestCfg[x].devHandle, NULL, NULL);
+                if (gConnHandle == -1) {
+                    uPortLog("U_NETWORK_TEST: All SPS connection attempts failed!\n");
+                    U_PORT_TEST_ASSERT(false);
+                }
+                if (i == 0) {
+                    uBleSpsGetSpsServerHandles(devHandle, gChannel, &spsHandles);
+                }
 
-                U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gBleConnectionSem) == 0);
-                gBleConnectionSem = NULL;
+                uBleSpsSetSendTimeout(devHandle, gChannel, 100);
+                uPortTaskBlock(100);
+                timeoutCount = 0;
+                sendBleSps(devHandle);
+                while (gBytesReceived < gBytesSent) {
+                    uPortTaskBlock(10);
+                    if (timeoutCount++ > 100) {
+                        break;
+                    }
+                }
+                U_PORT_TEST_ASSERT(gBytesSent == gTotalBytes);
+                U_PORT_TEST_ASSERT(gBytesSent == gBytesReceived);
+                U_PORT_TEST_ASSERT(gErrors == 0);
+                // Disconnect
+                U_PORT_TEST_ASSERT(uBleSpsDisconnect(devHandle, gConnHandle) == 0);
+                for (int32_t i = 0; (i < 40) && (gConnHandle != -1); i++) {
+                    uPortTaskBlock(100);
+                }
+                gBytesSent = 0;
+                gBytesReceived = 0;
+                U_PORT_TEST_ASSERT(gConnHandle == -1);
             }
+
+            uBleSpsSetDataAvailableCallback(devHandle, NULL, NULL);
+            uBleSpsSetCallbackConnectionStatus(devHandle, NULL, NULL);
+
+            U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gBleConnectionSem) == 0);
+            gBleConnectionSem = NULL;
         }
 
         // Remove the BLE network
-        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-            if (gUNetworkTestCfg[x].devHandle != NULL) {
-                uPortLog("U_NETWORK_TEST: taking down %s...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
-                                                         gUNetworkTestCfg[x].type) == 0);
-            }
+        for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+            uPortLog("U_NETWORK_TEST: taking down %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                     pTmp->networkType) == 0);
         }
     }
 
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        U_PORT_TEST_ASSERT(uNetworkTestDeviceClose(x) == 0);
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle != NULL) {
+            uPortLog("U_NETWORK_TEST: closing device %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
+            *pTmp->pDevHandle = NULL;
+        }
     }
+    uNetworkTestListFree();
 
     uDeviceDeinit();
     uPortDeinit();
@@ -699,14 +705,13 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
  */
 U_PORT_TEST_FUNCTION("[network]", "networkLoc")
 {
-    uNetworkTestCfg_t *pNetworkCfg = NULL;
-    uDeviceHandle_t devHandle = NULL;
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t devHandle;
     const uLocationTestCfg_t *pLocationCfg;
     int32_t y;
     uLocation_t location;
     int64_t startTime;
     int32_t heapUsed;
-    int32_t errorCode;
 
     // In case a previous test failed
     uNetworkTestCleanUp();
@@ -720,29 +725,15 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add the devices for the network types that
-    // support location
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
-            U_NETWORK_TEST_TYPE_HAS_LOCATION(gUNetworkTestCfg[x].type) &&
-            uNetworkTestDeviceValidForOpen(x)) {
-            uPortLog("U_NETWORK_TEST: adding device for network %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-#if (U_CFG_APP_GNSS_UART < 0)
-            // If there is no GNSS UART then any GNSS chip must
-            // be connected via the cellular module's AT interface
-            // hence we capture the cellular network handle here and
-            // modify the GNSS configuration to use it before we add
-            // the GNSS network
-            uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
-#endif
-            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
-                                    &gUNetworkTestCfg[x].devHandle);
-            U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
-        }
-        if (gUNetworkTestCfg[x].pDeviceCfg->deviceType == U_DEVICE_TYPE_CELL) {
-            devHandle = gUNetworkTestCfg[x].devHandle;
-            (void)devHandle; // Will be unused when U_CFG_APP_GNSS_UART > 0
+    // Get a list of all things
+    pList = pUNetworkTestListAlloc(NULL);
+    // Open the devices that are not already open
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle == NULL) {
+            uPortLog("U_NETWORK_TEST: adding device %s for network %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
 
@@ -750,77 +741,77 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     // back to up again
     for (size_t a = 0; a < 2; a++) {
         // Bring up each network type
-        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-            if (gUNetworkTestCfg[x].devHandle != NULL) {
-                pNetworkCfg = &(gUNetworkTestCfg[x]);
-                devHandle = pNetworkCfg->devHandle;
+        for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+            devHandle = *pTmp->pDevHandle;
 
-                uPortLog("U_NETWORK_TEST: bringing up %s...\n",
-                         gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
-                                                       pNetworkCfg->type,
-                                                       pNetworkCfg->pNetworkCfg) == 0);
-                if (gpULocationTestCfg[gUNetworkTestCfg[x].type]->numEntries > 0) {
-                    // Just take the first one, we don't care which as this
-                    // is a network test not a location test
-                    pLocationCfg = gpULocationTestCfg[gUNetworkTestCfg[x].type]->pCfgData[0];
-                    startTime = uPortGetTickTimeMs();
-                    gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
-                    uLocationTestResetLocation(&location);
-                    uPortLog("U_NETWORK_TEST: getting location using %s.\n",
-                             gpULocationTestTypeStr[pLocationCfg->locationType]);
-                    gDevHandle = devHandle;
-                    y = uLocationGet(devHandle, pLocationCfg->locationType,
-                                     pLocationCfg->pLocationAssist,
-                                     pLocationCfg->pAuthenticationTokenStr,
-                                     &location, keepGoingCallback);
-                    if (y == 0) {
-                        uPortLog("U_NETWORK_TEST: location establishment took %d second(s).\n",
-                                 (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
-                    }
-                    // If we are running on a local cellular network we won't get position but
-                    // we should always get time
-                    if ((location.radiusMillimetres > 0) &&
-                        (location.radiusMillimetres <= U_LOCATION_TEST_MAX_RADIUS_MILLIMETRES)) {
-                        uLocationTestPrintLocation(&location);
-                        U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
-                        U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
-                        // Don't check altitude as we might only have a 2D fix
-                        U_PORT_TEST_ASSERT(location.radiusMillimetres > INT_MIN);
-                        if (pLocationCfg->locationType == U_LOCATION_TYPE_GNSS) {
-                            // Only get these for GNSS
-                            U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond > INT_MIN);
-                            U_PORT_TEST_ASSERT(location.svs > 0);
-                        }
-                    } else {
-                        uPortLog("U_NETWORK_TEST: only able to get time (%d).\n",
-                                 (int32_t) location.timeUtc);
-                    }
-                    U_PORT_TEST_ASSERT(location.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
-                } else {
-                    uPortLog("U_NETWORK_TEST: not testing %s for location as we have"
-                             " no location configuration information for it.\n",
-                             gpUNetworkTestTypeName[pNetworkCfg->type]);
+            uPortLog("U_NETWORK_TEST: bringing up %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                   pTmp->networkType,
+                                                   pTmp->pNetworkCfg) == 0);
+            if (gpULocationTestCfg[pTmp->networkType]->numEntries > 0) {
+                // Just take the first one, we don't care which as this
+                // is a network test not a location test
+                pLocationCfg = gpULocationTestCfg[pTmp->networkType]->pCfgData[0];
+                startTime = uPortGetTickTimeMs();
+                gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
+                uLocationTestResetLocation(&location);
+                uPortLog("U_NETWORK_TEST: getting location using %s.\n",
+                         gpULocationTestTypeStr[pLocationCfg->locationType]);
+                gDevHandle = devHandle;
+                y = uLocationGet(devHandle, pLocationCfg->locationType,
+                                 pLocationCfg->pLocationAssist,
+                                 pLocationCfg->pAuthenticationTokenStr,
+                                 &location, keepGoingCallback);
+                if (y == 0) {
+                    uPortLog("U_NETWORK_TEST: location establishment took %d second(s).\n",
+                             (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
                 }
+                // If we are running on a local cellular network we won't get position but
+                // we should always get time
+                if ((location.radiusMillimetres > 0) &&
+                    (location.radiusMillimetres <= U_LOCATION_TEST_MAX_RADIUS_MILLIMETRES)) {
+                    uLocationTestPrintLocation(&location);
+                    U_PORT_TEST_ASSERT(location.latitudeX1e7 > INT_MIN);
+                    U_PORT_TEST_ASSERT(location.longitudeX1e7 > INT_MIN);
+                    // Don't check altitude as we might only have a 2D fix
+                    U_PORT_TEST_ASSERT(location.radiusMillimetres > INT_MIN);
+                    if (pLocationCfg->locationType == U_LOCATION_TYPE_GNSS) {
+                        // Only get these for GNSS
+                        U_PORT_TEST_ASSERT(location.speedMillimetresPerSecond > INT_MIN);
+                        U_PORT_TEST_ASSERT(location.svs > 0);
+                    }
+                } else {
+                    uPortLog("U_NETWORK_TEST: only able to get time (%d).\n",
+                             (int32_t) location.timeUtc);
+                }
+                U_PORT_TEST_ASSERT(location.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
+            } else {
+                uPortLog("U_NETWORK_TEST: not testing %s for location as we have"
+                         " no location configuration information for it.\n",
+                         gpUNetworkTestTypeName[pTmp->networkType]);
             }
         }
 
-        // Remove each network type, in reverse order so
-        // that GNSS (which might be connected via a cellular
-        // module) is taken down before cellular
-        for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
-            if (gUNetworkTestCfg[x].devHandle != NULL) {
-                uPortLog("U_NETWORK_TEST: taking down %s...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
-                                                         gUNetworkTestCfg[x].type) == 0);
-            }
+        // Remove each network type
+        for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+            uPortLog("U_NETWORK_TEST: taking down %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                     pTmp->networkType) == 0);
         }
     }
 
-    for (int32_t x = (int32_t)gUNetworkTestCfgSize - 1; x >= 0; x--) {
-        U_PORT_TEST_ASSERT(uNetworkTestDeviceClose(x) == 0);
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle != NULL) {
+            uPortLog("U_NETWORK_TEST: closing device %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
+            *pTmp->pDevHandle = NULL;
+        }
     }
+    uNetworkTestListFree();
+
     uDeviceDeinit();
     uPortDeinit();
 
@@ -849,10 +840,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
  */
 U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
 {
-    uNetworkTestCfg_t *pNetworkCfg = NULL;
-    uDeviceHandle_t devHandle = NULL;
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t devHandle;
     int32_t heapUsed;
-    int32_t errorCode;
 
     // In case a previous test failed
     uNetworkTestCleanUp();
@@ -866,46 +856,47 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Open the configurations that are short-range devices
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
-            U_NETWORK_TEST_DEVICE_IS_SHORT_RANGE(gUNetworkTestCfg[x].pDeviceCfg->deviceType) &&
-            uNetworkTestDeviceValidForOpen(x)) {
-            uPortLog("U_NETWORK_TEST: adding device for network %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
-                                    &gUNetworkTestCfg[x].devHandle);
-            U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, errorCode);
+    // Get a list of configurations that are short-range devices
+    pList = pUNetworkTestListAlloc(uNetworkTestIsDeviceShortRange);
+    // Open the devices that are not already open
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle == NULL) {
+            uPortLog("U_NETWORK_TEST: adding device %s for network %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
 
     for (size_t a = 0; a < 2; a++) {
         // Bring up and down each short-range network type
         // in turn
-        for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-            if ((gUNetworkTestCfg[x].devHandle != NULL) &&
-                U_NETWORK_TEST_DEVICE_IS_SHORT_RANGE(gUNetworkTestCfg[x].pDeviceCfg->deviceType)) {
-                pNetworkCfg = &(gUNetworkTestCfg[x]);
-                devHandle = pNetworkCfg->devHandle;
+        for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+            devHandle = *pTmp->pDevHandle;
 
-                uPortLog("U_NETWORK_TEST: bringing up %s...\n",
-                         gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
-                                                       pNetworkCfg->type,
-                                                       pNetworkCfg->pNetworkCfg) == 0);
+            uPortLog("U_NETWORK_TEST: bringing up %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                   pTmp->networkType,
+                                                   pTmp->pNetworkCfg) == 0);
 
-
-                uPortLog("U_NETWORK_TEST: taking down %s...\n",
-                         gpUNetworkTestTypeName[pNetworkCfg->type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
-                                                         pNetworkCfg->type) == 0);
-            }
+            uPortLog("U_NETWORK_TEST: taking down %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
+                                                     pTmp->networkType) == 0);
         }
     }
 
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        U_PORT_TEST_ASSERT(uNetworkTestDeviceClose(x) == 0);
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle != NULL) {
+            uPortLog("U_NETWORK_TEST: closing device %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
+            *pTmp->pDevHandle = NULL;
+        }
     }
+    uNetworkTestListFree();
+
     uDeviceDeinit();
     uPortDeinit();
 

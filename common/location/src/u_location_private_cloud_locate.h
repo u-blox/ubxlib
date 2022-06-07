@@ -50,9 +50,14 @@ extern "C" {
  *                                      providing the MQTT
  *                                      connection (e.g. the cellular
  *                                      or Wi-Fi module).
- * @param gnssHandle                    the handle of the GNSS device
+ * @param gnssDevHandle                 the handle of the device
  *                                      that will provide the RRLP
- *                                      data for Cloud Locate.
+ *                                      data for Cloud Locate; set
+ *                                      this to the same value as
+ *                                      devHandle if, for instance,
+ *                                      the GNSS module is inside the
+ *                                      cellular module that you are
+ *                                      using for the MQTT connection.
  * @param pMqttClientContext            the context of an MQTT client
  *                                      that can be used to communicate
  *                                      with the Cloud Locate service;
@@ -118,7 +123,7 @@ extern "C" {
  *                                      parameter is the network handle.
  */
 int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
-                                    uDeviceHandle_t gnssHandle,
+                                    uDeviceHandle_t gnssDevHandle,
                                     uMqttClientContext_t *pMqttClientContext,
                                     int32_t svsThreshold,
                                     int32_t cNoThreshold,

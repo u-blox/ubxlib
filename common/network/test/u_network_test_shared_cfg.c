@@ -31,9 +31,11 @@
 # include "u_cfg_override.h" // For a customer's configuration override
 #endif
 
-#include "stddef.h"    // NULL, size_t etc.
-#include "stdint.h"    // int32_t etc.
+#include "stdlib.h"   // malloc()/free()
+#include "stddef.h"   // NULL, size_t etc.
+#include "stdint.h"   // int32_t etc.
 #include "stdbool.h"
+#include "string.h"   // memset()
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
@@ -84,13 +86,29 @@
  * TYPES
  * -------------------------------------------------------------- */
 
+/** A network configuration.
+ */
+typedef struct {
+    uNetworkType_t type;
+    const void *pCfg;
+} uNetworkTestNetwork_t;
+
+/** Network configurations with the underlying device configuration
+ * plus room for the device handle to be stored.
+ */
+typedef struct {
+    uDeviceHandle_t devHandle;
+    const uDeviceCfg_t *pCfg;
+    uNetworkTestNetwork_t network[U_NETWORK_TEST_NETWORKS_MAX_NUM];
+} uNetworkTestDevice_t;
+
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
 
 /** Cellular device configuration used during testing.
  */
-static uDeviceCfg_t gDeviceCfgCell = {
+static const uDeviceCfg_t gDeviceCfgCell = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
     .deviceType = U_DEVICE_TYPE_CELL,
@@ -121,7 +139,7 @@ static uDeviceCfg_t gDeviceCfgCell = {
 
 /** Cellular network configuration used during testing.
  */
-static uNetworkCfgCell_t gNetworkCfgCell = {
+static const uNetworkCfgCell_t gNetworkCfgCell = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
     .type = U_NETWORK_TYPE_CELL,
@@ -138,7 +156,7 @@ static uNetworkCfgCell_t gNetworkCfgCell = {
 
 /** Short range device configuration used during testing.
  */
-static uDeviceCfg_t gDeviceCfgShortRange = {
+static const uDeviceCfg_t gDeviceCfgShortRange = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
     .deviceType = U_DEVICE_TYPE_SHORT_RANGE,
@@ -165,7 +183,7 @@ static uDeviceCfg_t gDeviceCfgShortRange = {
 
 /** Wifi network configuration used during testing.
  */
-static uNetworkCfgWifi_t gNetworkCfgWifi = {
+static const uNetworkCfgWifi_t gNetworkCfgWifi = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #if U_SHORT_RANGE_TEST_WIFI()
     .type = U_NETWORK_TYPE_WIFI,
@@ -179,7 +197,7 @@ static uNetworkCfgWifi_t gNetworkCfgWifi = {
 
 /** BLE network configuration used during testing.
  */
-static uNetworkCfgBle_t gNetworkCfgBle = {
+static const uNetworkCfgBle_t gNetworkCfgBle = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #if U_SHORT_RANGE_TEST_BLE()
     .type = U_NETWORK_TYPE_BLE,
@@ -192,17 +210,16 @@ static uNetworkCfgBle_t gNetworkCfgBle = {
 
 /** GNSS device configuration used during testing.
  */
-static uDeviceCfg_t gDeviceCfgGnss = {
+static const uDeviceCfg_t gDeviceCfgGnss = {
     // Deliberately don't set version to test that the compiler zeroes the field
-#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && !defined(U_CFG_TEST_GNSS_OVER_AT)
     .deviceType = U_DEVICE_TYPE_GNSS,
     .deviceCfg = {
         .cfgGnss = {
             .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
-            .transportType = U_GNSS_TRANSPORT_NMEA_UART,
-            .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-            .gnssAtPinPwr = U_CFG_APP_CELL_PIN_GNSS_POWER,
-            .gnssAtPinDataReady = U_CFG_APP_CELL_PIN_GNSS_DATA_READY
+            .pinEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
+            .pinDataReady = -1,
+            .includeNmea = true
         }
     },
     .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
@@ -223,48 +240,62 @@ static uDeviceCfg_t gDeviceCfgGnss = {
 
 /** GNSS network configuration used during testing.
  */
-static uNetworkCfgGnss_t gNetworkCfgGnss = {
+static const uNetworkCfgGnss_t gNetworkCfgGnss = {
     // Deliberately don't set version to test that the compiler zeroes the field
 #ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-    .type = U_NETWORK_TYPE_GNSS
+    .type = U_NETWORK_TYPE_GNSS,
+    .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
+    .devicePinPwr = U_CFG_APP_CELL_PIN_GNSS_POWER,
+    .devicePinDataReady = U_CFG_APP_CELL_PIN_GNSS_DATA_READY
 #else
     .type = U_NETWORK_TYPE_NONE
 #endif
 };
 
-/* ----------------------------------------------------------------
- * VARIABLES
- * -------------------------------------------------------------- */
-
 /** All of the information for the underlying network
- * types as an array.  Order is important: CELL must come before
- * GNSS so that the cellular handle can be passed on to GNSS.
+ * types as an array.
  */
-uNetworkTestCfg_t gUNetworkTestCfg[] = {
+static uNetworkTestDevice_t gUNetworkTest[] = {
     {
-        NULL, U_NETWORK_TYPE_BLE, &gDeviceCfgShortRange,
-        (void *) &gNetworkCfgBle
+        .devHandle = NULL,
+        .pCfg = &gDeviceCfgShortRange,
+        .network =
+        {
+            {.type = U_NETWORK_TYPE_BLE, .pCfg = (const void *) &gNetworkCfgBle},
+            {.type = U_NETWORK_TYPE_WIFI, .pCfg = (const void *) &gNetworkCfgWifi}
+        }
     },
     {
-        NULL, U_NETWORK_TYPE_CELL, &gDeviceCfgCell,
-        (void *) &gNetworkCfgCell
+        .devHandle = NULL,
+        .pCfg = &gDeviceCfgCell,
+        .network =
+        {
+            {.type = U_NETWORK_TYPE_CELL, .pCfg = (const void *) &gNetworkCfgCell},
+#ifdef U_CFG_TEST_GNSS_OVER_AT
+            {.type = U_NETWORK_TYPE_GNSS, .pCfg = (const void *) &gNetworkCfgGnss}
+#else
+            {.type = U_NETWORK_TYPE_NONE, .pCfg = NULL}
+#endif
+        }
     },
     {
-        NULL, U_NETWORK_TYPE_WIFI, &gDeviceCfgShortRange,
-        (void *) &gNetworkCfgWifi
-    },
-    {
-        NULL, U_NETWORK_TYPE_GNSS, &gDeviceCfgGnss,
-        (void *) &gNetworkCfgGnss
+        .devHandle = NULL,
+        .pCfg = &gDeviceCfgGnss,
+        .network =
+        {
+            {.type = U_NETWORK_TYPE_GNSS, .pCfg = (const void *) &gNetworkCfgGnss},
+            {.type = U_NETWORK_TYPE_NONE, .pCfg = NULL}
+        }
     }
 };
 
-/** Number of items in the gNetwork array, has to be
- * done in this file and externed or GCC complains about asking
- * for the size of a partially defined type.
+/** The root for a list of test networks.
  */
-const size_t gUNetworkTestCfgSize = sizeof (gUNetworkTestCfg) /
-                                    sizeof (gUNetworkTestCfg[0]);
+static uNetworkTestList_t *gpNetworkTestList = NULL;
+
+/* ----------------------------------------------------------------
+ * VARIABLES
+ * -------------------------------------------------------------- */
 
 #if U_CFG_ENABLE_LOGGING
 /** Return a name for a network type.
@@ -296,160 +327,256 @@ const char *gpUNetworkTestDeviceTypeName[] = {"none",               // U_DEVICE_
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-static bool validNetwork(int32_t index)
+// Return the network type from the uNetworkTestNetwork_t structure.
+static uNetworkType_t getNetworkType(uNetworkTestNetwork_t *pNetwork)
 {
-    bool isOk;
-    switch (gUNetworkTestCfg[index].type) {
-        case U_NETWORK_TYPE_BLE:
-            isOk = gNetworkCfgBle.type != U_NETWORK_TYPE_NONE;
-            break;
-        case U_NETWORK_TYPE_CELL:
-            isOk = gNetworkCfgCell.type != U_NETWORK_TYPE_NONE;
-            break;
-        case U_NETWORK_TYPE_WIFI:
-            isOk = gNetworkCfgWifi.type != U_NETWORK_TYPE_NONE;
-            break;
-        case U_NETWORK_TYPE_GNSS:
-            isOk = gNetworkCfgGnss.type != U_NETWORK_TYPE_NONE;
-            break;
-        default:
-            isOk = false;
-            break;
+    uNetworkType_t networkType = U_NETWORK_TYPE_NONE;
+
+    // Note: can't rely on the type from the pNetwork
+    // structure as conditional compilation may mean that there
+    // isn't actually a network of that type; need to go find
+    // the type in the config structure itself, which will
+    // reflect conditional compilation correctly
+    if (pNetwork->pCfg != NULL) {
+        switch (pNetwork->type) {
+            case U_NETWORK_TYPE_BLE:
+                networkType = ((uNetworkCfgBle_t *) pNetwork->pCfg)->type;
+                break;
+            case U_NETWORK_TYPE_CELL:
+                networkType = ((uNetworkCfgCell_t *) pNetwork->pCfg)->type;
+                break;
+            case U_NETWORK_TYPE_WIFI:
+                networkType = ((uNetworkCfgWifi_t *) pNetwork->pCfg)->type;
+                break;
+            case U_NETWORK_TYPE_GNSS:
+                networkType = ((uNetworkCfgGnss_t *) pNetwork->pCfg)->type;
+                break;
+            default:
+                break;
+        }
     }
-    return isOk;
+
+    return networkType;
 }
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-// Update a GNSS network configuration for use with the CELL AT interface.
-void uNetworkTestGnssAtCfg(uDeviceHandle_t devHandleAt, uDeviceCfg_t *pUDeviceCfg)
+// Allocate a list of devices/networks to operate on for a test.
+uNetworkTestList_t *pUNetworkTestListAlloc(uNetworkTestValidFunction_t pValidFunction)
 {
-#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-    if ((devHandleAt != NULL) &&
-        (pUDeviceCfg->deviceType == U_DEVICE_TYPE_GNSS)) {
-        pUDeviceCfg->transportType = U_DEVICE_TRANSPORT_TYPE_NONE;
-        pUDeviceCfg->deviceCfg.cfgGnss.transportType = U_GNSS_TRANSPORT_UBX_AT;
-        pUDeviceCfg->deviceCfg.cfgGnss.devHandleAt = devHandleAt;
-    }
-#else
-    (void)devHandleAt;
-    (void)pUDeviceCfg;
-#endif
-}
+    uNetworkTestList_t *pList;
+    uNetworkTestDevice_t *pDevice = gUNetworkTest;
+    uNetworkTestNetwork_t *pNetwork;
+    uNetworkType_t networkType;
+    int32_t moduleType;
 
-bool uNetworkTestDeviceValidForOpen(int32_t index)
-{
-    bool isOk = gUNetworkTestCfg[index].pDeviceCfg->deviceType != U_DEVICE_TYPE_NONE &&
-                validNetwork(index);
-    if (isOk) {
-        // Check if this device is already open
-        for (size_t i = 0; isOk && i < gUNetworkTestCfgSize; i++) {
-            if ((i != index) &&
-                (gUNetworkTestCfg[index].pDeviceCfg == gUNetworkTestCfg[i].pDeviceCfg) &&
-                (gUNetworkTestCfg[i].devHandle != NULL)) {
-                // Was already open, copy the handle in if the current
-                // one is not populated
-                if (gUNetworkTestCfg[index].devHandle == NULL) {
-                    gUNetworkTestCfg[index].devHandle = gUNetworkTestCfg[i].devHandle;
+    if (gpNetworkTestList != NULL) {
+        // Make sure any previous list is free'ed.
+        uNetworkTestListFree();
+    }
+    // For each device that is populated...
+    for (size_t x = 0; x < sizeof(gUNetworkTest) / sizeof(gUNetworkTest[0]); x++, pDevice++) {
+        if ((pDevice->pCfg != NULL) && (pDevice->pCfg->deviceType != U_DEVICE_TYPE_NONE)) {
+            moduleType = -1;
+            switch (pDevice->pCfg->deviceType) {
+                case U_DEVICE_TYPE_CELL:
+                    moduleType = (int32_t) pDevice->pCfg->deviceCfg.cfgCell.moduleType;
+                    break;
+                case U_DEVICE_TYPE_GNSS:
+                    moduleType = (int32_t) pDevice->pCfg->deviceCfg.cfgGnss.moduleType;
+                    break;
+                case U_DEVICE_TYPE_SHORT_RANGE:
+                case U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU:
+                    moduleType = (int32_t) pDevice->pCfg->deviceCfg.cfgSho.moduleType;
+                    break;
+                default:
+                    break;
+            }
+            if (moduleType >= 0) {
+                pNetwork = pDevice->network;
+                // For each network that is populated on that device...
+                for (size_t y = 0; y < sizeof(gUNetworkTest[x].network) /
+                     sizeof(gUNetworkTest[x].network[0]); y++, pNetwork++) {
+                    networkType = getNetworkType(pNetwork);
+                    if ((networkType != U_NETWORK_TYPE_NONE) &&
+                        ((pValidFunction == NULL) ||
+                         pValidFunction(pDevice->pCfg->deviceType,
+                                        networkType,
+                                        moduleType))) {
+                        // The device/network/module is valid for the test,
+                        // so allocate memory for it and add it to the
+                        // front of the list
+                        pList = (uNetworkTestList_t *) malloc(sizeof(*pList));
+                        if (pList != NULL) {
+                            memset(pList, 0, sizeof(*pList));
+                            pList->pDevHandle = &(pDevice->devHandle);
+                            pList->pDeviceCfg = pDevice->pCfg;
+                            pList->networkType = networkType;
+                            pList->pNetworkCfg = pNetwork->pCfg;
+                            pList->pNext = gpNetworkTestList;
+                            gpNetworkTestList = pList;
+                        }
+                    }
                 }
-                uPortLog("U_NETWORK_TEST: configuration %d: %s device was already open"
-                         " for configuration %d [%s network].\n", index,
-                         gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType],
-                         i, gpUNetworkTestTypeName[gUNetworkTestCfg[i].type]);
-                isOk = false;
             }
         }
     }
 
-    if (isOk) {
-        uPortLog("U_NETWORK_TEST: configuration %d [%s device] is OK to open.\n",
-                 index, gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType]);
-    }
-
-    return isOk;
+    return gpNetworkTestList;
 }
 
-int32_t uNetworkTestDeviceClose(int32_t index)
+// Free a list of networks that was created with
+// pUNetworkTestListAlloc().
+void uNetworkTestListFree(void)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-    bool okToClose = true;
+    uNetworkTestList_t *pTmp;
 
-    // Close the device at the specified index if it
-    // is not in use elsewhere
-    if (gUNetworkTestCfg[index].devHandle != NULL) {
-        uPortLog("U_NETWORK_TEST: asked to close %s device on configuration %d"
-                 " [%s network].\n",
-                 gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType],
-                 index,
-                 gpUNetworkTestTypeName[gUNetworkTestCfg[index].type]);
-        for (size_t i = 0; okToClose && (i < gUNetworkTestCfgSize); i++) {
-            if ((i != index) &&
-                (gUNetworkTestCfg[index].pDeviceCfg == gUNetworkTestCfg[i].pDeviceCfg) &&
-                (gUNetworkTestCfg[i].devHandle != NULL)) {
-                uPortLog("U_NETWORK_TEST: can't close %s device on configuration %d"
-                         " since configuration %d [%s network] still needs it.\n",
-                         gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType],
-                         index, i,
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[i].type]);
-                okToClose = false;
-            }
-        }
-        if (okToClose) {
-            // Note that we don't power the device off in order to speed up testing
-            errorCode = uDeviceClose(gUNetworkTestCfg[index].devHandle, false);
-            if (errorCode == 0) {
-                uPortLog("U_NETWORK_TEST: closed %s device on configuration %d.\n",
-                         gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[index].pDeviceCfg->deviceType],
-                         index);
-            }
-        }
-        // Clear the handle for this entry in all cases
-        gUNetworkTestCfg[index].devHandle = NULL;
+    while (gpNetworkTestList != NULL) {
+        pTmp = gpNetworkTestList->pNext;
+        free(gpNetworkTestList);
+        gpNetworkTestList = pTmp;
     }
-    return errorCode;
 }
 
+// Clean up the devices.
 void uNetworkTestCleanUp(void)
 {
-    uPortLog("U_NETWORK_TEST: running cleanup.\n");
-    // Do this in reverse order in case there is a GNSS
-    // device that needs the cellular device to still be
-    // there
-    for (int32_t x = (int32_t) gUNetworkTestCfgSize - 1; x >= 0; x--) {
-        if ((gUNetworkTestCfg[x].devHandle != NULL) &&
-            (uNetworkTestDeviceClose(x) != 0)) {
-            uPortLog("U_NETWORK_TEST: *** WARNING *** unable to close "
-                     " configuration %d [%s device, %s network].\n",  x,
-                     gpUNetworkTestDeviceTypeName[gUNetworkTestCfg[x].pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+    bool closeDevice;
+    uNetworkTestDevice_t *pDevice = gUNetworkTest;
+    uNetworkTestNetwork_t *pNetwork;
+    uNetworkType_t networkType;
+
+    uPortLog("U_NETWORK_TEST_SHARED: running cleanup...\n");
+    for (size_t x = 0; x < sizeof(gUNetworkTest) / sizeof(gUNetworkTest[0]); x++, pDevice++) {
+        if (pDevice->devHandle != NULL) {
+            // Bring down the networks; it is always safe to do this,
+            // even if they were never brought up
+            closeDevice = true;
+            pNetwork = pDevice->network;
+            for (size_t y = 0; y < sizeof(gUNetworkTest[x].network) /
+                 sizeof(gUNetworkTest[x].network[0]); y++, pNetwork++) {
+                networkType = getNetworkType(pNetwork);
+                if ((networkType != U_NETWORK_TYPE_NONE) &&
+                    (uNetworkInterfaceDown(pDevice->devHandle, networkType) != 0)) {
+                    closeDevice = false;
+                    uPortLog("U_NETWORK_TEST_SHARED: *** WARNING *** can't bring down %s network"
+                             " on %s device.\n",
+                             gpUNetworkTestTypeName[pNetwork->type],
+                             gpUNetworkTestDeviceTypeName[pDevice->pCfg->deviceType]);
+                }
+            }
+            // Close the device, without powering it off
+            if (closeDevice) {
+                if (uDeviceClose(pDevice->devHandle, false) == 0) {
+                    pDevice->devHandle = NULL;
+                } else {
+                    uPortLog("U_NETWORK_TEST_SHARED: *** WARNING *** unable to close %s device.\n",
+                             gpUNetworkTestDeviceTypeName[pDevice->pCfg->deviceType]);
+                }
+            } else {
+                uPortLog("U_NETWORK_TEST_SHARED: not closing %s device.\n",
+                         gpUNetworkTestDeviceTypeName[pDevice->pCfg->deviceType]);
+            }
         }
     }
+    uPortLog("U_NETWORK_TEST_SHARED: cleanup complete.\n");
 }
 
-
-int32_t uNetworkTestGetModuleType(int32_t index)
+// Return true if the configuration supports sockets.
+bool uNetworkTestHasSock(uDeviceType_t deviceType,
+                         uNetworkType_t networkType,
+                         int32_t moduleType)
 {
-    int32_t type = 0;
-    switch (gUNetworkTestCfg[index].pDeviceCfg->deviceType) {
-        case U_DEVICE_TYPE_CELL:
-            type = gUNetworkTestCfg[index].pDeviceCfg->deviceCfg.cfgCell.moduleType;
-            break;
+    (void) deviceType;
+    (void) moduleType;
+    return (networkType == U_NETWORK_TYPE_CELL) ||
+           (networkType == U_NETWORK_TYPE_WIFI);
+}
 
-        case U_DEVICE_TYPE_GNSS:
-            type = gUNetworkTestCfg[index].pDeviceCfg->deviceCfg.cfgGnss.moduleType;
-            break;
+// Return true if the configuration supports secure sockets.
+bool uNetworkTestHasSecureSock(uDeviceType_t deviceType,
+                               uNetworkType_t networkType,
+                               int32_t moduleType)
+{
+    (void) deviceType;
+    (void) moduleType;
+    return (networkType == U_NETWORK_TYPE_CELL);
+}
 
-        case U_DEVICE_TYPE_SHORT_RANGE:
-            type = gUNetworkTestCfg[index].pDeviceCfg->deviceCfg.cfgSho.moduleType;
-            break;
+// Return true if the combination supports u-blox security.
+bool uNetworkTestHasSecurity(uDeviceType_t deviceType,
+                             uNetworkType_t networkType,
+                             int32_t moduleType)
+{
+    (void) deviceType;
+    (void) moduleType;
+    return (networkType == U_NETWORK_TYPE_CELL);
+}
 
-        default:
-            type = (int32_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL;
-            break;
-    }
-    return type;
+// Return true if the configuration supports MQTT.
+bool uNetworkTestHasMqtt(uDeviceType_t deviceType,
+                         uNetworkType_t networkType,
+                         int32_t moduleType)
+{
+    (void) deviceType;
+    (void) moduleType;
+    // TODO: add Wifi
+    return (networkType == U_NETWORK_TYPE_CELL);
+}
+
+// Return true if the configuration supports MQTT-SN.
+bool uNetworkTestHasMqttSn(uDeviceType_t deviceType,
+                           uNetworkType_t networkType,
+                           int32_t moduleType)
+{
+    (void) deviceType;
+    (void) moduleType;
+    return (networkType == U_NETWORK_TYPE_CELL);
+}
+
+// Return true if the configuration supports credential storage.
+bool uNetworkTestHasCredentialStorage(uDeviceType_t deviceType,
+                                      uNetworkType_t networkType,
+                                      int32_t moduleType)
+{
+    (void) deviceType;
+    return ((networkType == U_NETWORK_TYPE_CELL) ||
+            (networkType == U_NETWORK_TYPE_WIFI) ||
+            ((networkType == U_NETWORK_TYPE_BLE) &&
+             (moduleType != (int32_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL)));
+}
+
+// Return true if the configuration is short-range.
+bool uNetworkTestIsDeviceShortRange(uDeviceType_t deviceType,
+                                    uNetworkType_t networkType,
+                                    int32_t moduleType)
+{
+    (void) networkType;
+    (void) moduleType;
+    return (deviceType == U_DEVICE_TYPE_SHORT_RANGE) ||
+           (deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU);
+}
+
+// Return true if the configuration is cellular.
+bool uNetworkTestIsDeviceCell(uDeviceType_t deviceType,
+                              uNetworkType_t networkType,
+                              int32_t moduleType)
+{
+    (void) networkType;
+    (void) moduleType;
+    return (deviceType == U_DEVICE_TYPE_CELL);
+}
+
+// Return true if the configuration is a BLE one.
+bool uNetworkTestIsBle(uDeviceType_t deviceType,
+                       uNetworkType_t networkType,
+                       int32_t moduleType)
+{
+    (void) deviceType;
+    (void) moduleType;
+    return (networkType == U_NETWORK_TYPE_BLE);
 }
 
 // End of file

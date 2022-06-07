@@ -112,6 +112,7 @@ list(APPEND UBXLIB_PRIVATE_INC
 
 # Device and network require special care since they contains stub & optional files
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/network/src/u_network.c)
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/network/src/u_network_shared.c)
 list(APPEND UBXLIB_INC ${UBXLIB_BASE}/common/network/api)
 list(APPEND UBXLIB_PRIVATE_INC ${UBXLIB_BASE}/common/network/src)
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device.c)

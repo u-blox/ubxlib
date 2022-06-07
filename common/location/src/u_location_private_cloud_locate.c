@@ -331,7 +331,7 @@ static int32_t parseLocation(char *pStr, uLocation_t *pLocation)
 
 // Run Cloud Locate.
 int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
-                                    uDeviceHandle_t gnssHandle,
+                                    uDeviceHandle_t gnssDevHandle,
                                     uMqttClientContext_t *pMqttClientContext,
                                     int32_t svsThreshold,
                                     int32_t cNoThreshold,
@@ -350,7 +350,7 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
     bool subscribed = false;
     size_t z;
 
-    if ((gnssHandle != NULL) && (pMqttClientContext != NULL) &&
+    if ((gnssDevHandle != NULL) && (pMqttClientContext != NULL) &&
         ((pLocation == NULL) || (pClientIdStr != NULL))) {
         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         // Allocate memory to store the RRLP information
@@ -372,7 +372,7 @@ int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
 
             if (errorCode >= 0) { // >= 0 since uMqttClientSubscribe() returns QoS
                 // Get the RRLP data from the GNSS chip
-                errorCode = uGnssPosGetRrlp(gnssHandle, pBuffer,
+                errorCode = uGnssPosGetRrlp(gnssDevHandle, pBuffer,
                                             U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES,
                                             svsThreshold, cNoThreshold, multipathIndexLimit,
                                             pseudorangeRmsErrorIndexLimit,

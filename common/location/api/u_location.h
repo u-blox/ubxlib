@@ -80,7 +80,7 @@ extern "C" {
 #ifndef U_LOCATION_ASSIST_DEFAULTS
 /** Default values for uLocationAssist_t.
  */
-# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false, NULL,                                       \
+# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false,                                             \
                                      U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD,                     \
                                      U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD,                    \
                                      U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,             \
@@ -140,12 +140,6 @@ typedef struct {
 
     /* The following fields are [currently] ONLY used by U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE. */
 
-    uDeviceHandle_t devHandleAssist; /**< the network handle to use for
-                                      assistance information, currently only used
-                                      by the Cloud Locate service,
-                                      U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE.  For this
-                                      service the handle of the GNSS network MUST
-                                      be copied into this field.*/
     int32_t svsThreshold; /**< the number of space vehicles (AKA satellites)
                                that must be visible, only currently used by
                                U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE; use -1
@@ -285,25 +279,23 @@ typedef enum {
  *                                            For the Cell Locate service pAuthenticationTokenStr
  *                                            must be populated with a valid Cell
  *                                            Locate authentication token.  For
- *                                            the Cloud Locate service pLocationAssist
- *                                            fields networkHandleAssist and
- *                                            pMqttClientContext MUST be populated, and
- *                                            the MQTT login to the Thingstream
- *                                            server MUST already have been performed;
- *                                            the field pClientIdStr should be populated
- *                                            if you want the location to be returned
- *                                            by this function (as well as being available
- *                                            in the cloud).
+ *                                            the Cloud Locate service the
+ *                                            pLocationAssist field pMqttClientContext
+ *                                            MUST be populated, and the MQTT login
+ *                                            to the Thingstream server MUST already
+ *                                            have been performed; the field pClientIdStr
+ *                                            should be populated if you want the
+ *                                            location to be returned by this function
+ *                                            (as well as being available in the cloud).
  *                                - Wi-Fi:    only U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is
- *                                            currently supported, for which pLocationAssist
- *                                            fields networkHandleAssist and
- *                                            pMqttClientContext MUST be populated, and
- *                                            the MQTT login to the Thingstream
- *                                            server MUST already have been performed;
- *                                            the field pClientIdStr should be populated
- *                                            if you want the location to be returned
- *                                            by this function (as well as being available
- *                                            in the cloud).
+ *                                            currently supported, for which the
+ *                                            pLocationAssist field pMqttClientContext
+ *                                            MUST be populated, and the MQTT login to
+ *                                            the Thingstream server MUST already have
+ *                                            been performed; the field pClientIdStr
+ *                                            should be populated if you want the location
+ *                                            to be returned by this function (as well
+ *                                            as being available in the cloud).
  *                                - BLE:      no form of BLE location is currently
  *                                            supported.
  * @param pLocationAssist         additional information for the location

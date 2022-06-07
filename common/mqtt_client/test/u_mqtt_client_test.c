@@ -164,41 +164,31 @@ static bool keepGoingCallback(void)
 }
 
 // Do this before every test to ensure there is a usable network.
-static void stdPreamble()
+static uNetworkTestList_t *pStdPreamble(bool mqttSn)
 {
-    int32_t errorCode;
-#if (U_CFG_APP_GNSS_UART < 0)
-    uDeviceHandle_t devHandle = NULL;
-#endif
+    uNetworkTestList_t *pList;
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
     // Add the device for each network configuration
     // if not already added
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
-            U_NETWORK_TEST_TYPE_HAS_MQTT(gUNetworkTestCfg[x].type) &&
-            uNetworkTestDeviceValidForOpen(x)) {
-            uPortLog("U_MQTT_CLIENT_TEST: adding device for network %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-#if (U_CFG_APP_GNSS_UART < 0)
-            // If there is no GNSS UART then any GNSS chip must
-            // be connected via the cellular module's AT interface
-            // hence we capture the cellular network handle here and
-            // modify the GNSS configuration to use it before we add
-            // the GNSS network
-            uNetworkTestGnssAtCfg(devHandle, gUNetworkTestCfg[x].pDeviceCfg);
-#endif
-            errorCode = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
-                                    &gUNetworkTestCfg[x].devHandle);
-            U_PORT_TEST_ASSERT_EQUAL((int32_t)U_ERROR_COMMON_SUCCESS, errorCode);
+    if (mqttSn) {
+        pList = pUNetworkTestListAlloc(uNetworkTestHasMqttSn);
+    } else {
+        pList = pUNetworkTestListAlloc(uNetworkTestHasMqtt);
+    }
+    if (pList == NULL) {
+        uPortLog("U_MQTT_CLIENT_TEST: *** WARNING *** nothing to do.\n");
+    }
+    // Open the devices that are not already open
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle == NULL) {
+            uPortLog("U_MQTT_CLIENT_TEST: adding device %s for network %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
-#if (U_CFG_APP_GNSS_UART < 0)
-        if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-            devHandle = gUNetworkTestCfg[x].devHandle;
-        }
-#endif
     }
 
     // It is possible for MQTT client closure in an
@@ -209,6 +199,8 @@ static void stdPreamble()
         uMqttClientClose(gpMqttContextA);
         gpMqttContextA = NULL;
     }
+
+    return pList;
 }
 
 // Callback for unread message indications
@@ -253,6 +245,7 @@ static void disconnectCallback(int32_t errorCode, void *pParam)
  */
 U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
 {
+    uNetworkTestList_t *pList;
     uDeviceHandle_t devHandle;
     int32_t heapUsed;
     int32_t heapXxxSecurityInitLoss = 0;
@@ -275,297 +268,309 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
     // only adds the networks, doesn't bring them up,
     // since SARA-R4 will not connect with a different
     // security mode without being taken down first
-    stdPreamble();
+    pList = pStdPreamble(false);
 
     // Repeat for all bearers
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
 
-        devHandle = gUNetworkTestCfg[x].devHandle;
-        if (devHandle != NULL) {
-            // Get the initial-ish heap
-            heapUsed = uPortGetHeapFree();
+        // Get a unique number we can use to stop parallel
+        // tests colliding at the MQTT broker
+        U_PORT_TEST_ASSERT(uSecurityGetSerialNumber(devHandle,
+                                                    gSerialNumber) > 0);
 
-            // Get a unique number we can use to stop parallel
-            // tests colliding at the MQTT broker
-            U_PORT_TEST_ASSERT(uSecurityGetSerialNumber(devHandle,
-                                                        gSerialNumber) > 0);
+        // Malloc space to read messages and topics into
+        pTopicOut = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+        U_PORT_TEST_ASSERT(pTopicOut != NULL);
+        pTopicIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
+        U_PORT_TEST_ASSERT(pTopicIn != NULL);
+        pMessageOut = (char *) malloc(U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES);
+        U_PORT_TEST_ASSERT(pMessageOut != NULL);
+        //lint -esym(613, pMessageOut) Suppress possible use of NULL pointer in future
+        pMessageIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
+        U_PORT_TEST_ASSERT(pMessageIn != NULL);
 
-            // Malloc space to read messages and topics into
-            pTopicOut = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
-            U_PORT_TEST_ASSERT(pTopicOut != NULL);
-            pTopicIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
-            U_PORT_TEST_ASSERT(pTopicIn != NULL);
-            pMessageOut = (char *) malloc(U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES);
-            U_PORT_TEST_ASSERT(pMessageOut != NULL);
-            //lint -esym(613, pMessageOut) Suppress possible use of NULL pointer in future
-            pMessageIn = (char *) malloc(U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES);
-            U_PORT_TEST_ASSERT(pMessageIn != NULL);
+        // Do the entire sequence twice, once without TLS security
+        // and once with TLS security, taking the network down between
+        // attempts because SARA-R4 cellular modules do not support
+        // changing security mode without power-cycling the module
+        for (size_t run = 0; run < 2; run++) {
+            uPortLog("U_MQTT_CLIENT_TEST: bringing up %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                   pTmp->networkType,
+                                                   pTmp->pNetworkCfg) == 0);
+            // Make a unique topic name to stop different boards colliding
+            snprintf(pTopicOut, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
+                     "ubx_test/%s", gSerialNumber);
+            gNumUnread = 0;
+            // Open an MQTT client
+            if (run == 0) {
+                uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client...\n");
+                gpMqttContextA = pUMqttClientOpen(devHandle, NULL);
+            } else {
+                uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client, now with a"
+                         " TLS connection...\n");
+                // Creating a secure connection may use heap in the underlying
+                // network layer which will be reclaimed when the
+                // network layer is closed but we don't do that here
+                // to save time so need to allow for it in the heap loss
+                // calculation
+                heapXxxSecurityInitLoss += uPortGetHeapFree();
+                gpMqttContextA = pUMqttClientOpen(devHandle, &tlsSettings);
+                heapXxxSecurityInitLoss -= uPortGetHeapFree();
+            }
 
-            // Do the entire sequence twice, once without TLS security
-            // and once with TLS security, taking the network down between
-            // attempts because SARA-R4 cellular modules do not support
-            // changing security mode without power-cycling the module
-            for (size_t run = 0; run < 2; run++) {
-                uPortLog("U_MQTT_CLIENT_TEST: bringing up %s...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
-                                                       gUNetworkTestCfg[x].type,
-                                                       gUNetworkTestCfg[x].pNetworkCfg) == 0);
-                // Make a unique topic name to stop different boards colliding
-                snprintf(pTopicOut, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
-                         "ubx_test/%s", gSerialNumber);
-                gNumUnread = 0;
-                // Open an MQTT client
+            if (gpMqttContextA != NULL) {
+                y = uMqttClientOpenResetLastError();
+                uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client"
+                         " returned %d.\n", y);
+                U_PORT_TEST_ASSERT(y == 0);
+                // Set a disconnect callback
+                gDisconnectCallbackCalled = false;
+                uMqttClientSetDisconnectCallback(gpMqttContextA, disconnectCallback, NULL);
+                U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
+
+                U_PORT_TEST_ASSERT(!uMqttClientIsConnected(gpMqttContextA));
+
                 if (run == 0) {
-                    uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client...\n");
-                    gpMqttContextA = pUMqttClientOpen(devHandle, NULL);
-                } else {
-                    uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client, now with a"
-                             " TLS connection...\n");
-                    // Creating a secure connection may use heap in the underlying
-                    // network layer which will be reclaimed when the
-                    // network layer is closed but we don't do that here
-                    // to save time so need to allow for it in the heap loss
-                    // calculation
-                    heapXxxSecurityInitLoss += uPortGetHeapFree();
-                    gpMqttContextA = pUMqttClientOpen(devHandle, &tlsSettings);
-                    heapXxxSecurityInitLoss -= uPortGetHeapFree();
-                }
-
-                if (gpMqttContextA != NULL) {
-                    y = uMqttClientOpenResetLastError();
-                    uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client"
-                             " returned %d.\n", y);
-                    U_PORT_TEST_ASSERT(y == 0);
-                    // Set a disconnect callback
-                    gDisconnectCallbackCalled = false;
-                    uMqttClientSetDisconnectCallback(gpMqttContextA, disconnectCallback, NULL);
-                    U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
-
-                    U_PORT_TEST_ASSERT(!uMqttClientIsConnected(gpMqttContextA));
-
-                    if (run == 0) {
-                        connection.pBrokerNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_BROKER_URL);
+                    connection.pBrokerNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_BROKER_URL);
 #ifdef U_MQTT_CLIENT_TEST_MQTT_USERNAME
-                        connection.pUserNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_USERNAME),
+                    connection.pUserNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_USERNAME),
 #endif
 #ifdef U_MQTT_CLIENT_TEST_MQTT_PASSWORD
-                        connection.pPasswordStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_PASSWORD),
+                    connection.pPasswordStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_PASSWORD),
 #endif
-                    } else {
-                        connection.pBrokerNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL);
+                } else {
+                    connection.pBrokerNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_SECURE_BROKER_URL);
 #ifdef U_MQTT_CLIENT_TEST_MQTT_SECURE_USERNAME
-                        connection.pUserNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_SECURE_USERNAME),
+                    connection.pUserNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_SECURE_USERNAME),
 #endif
 #ifdef U_MQTT_CLIENT_TEST_MQTT_SECURE_PASSWORD
-                        connection.pPasswordStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_SECURE_PASSWORD),
+                    connection.pPasswordStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_SECURE_PASSWORD),
 #endif
-                    }
-                    connection.pKeepGoingCallback = keepGoingCallback;
+                }
+                connection.pKeepGoingCallback = keepGoingCallback;
 
-                    // Connect it
-                    uPortLog("U_MQTT_CLIENT_TEST: connecting to \"%s\"...\n",
-                             connection.pBrokerNameStr);
+                // Connect it
+                uPortLog("U_MQTT_CLIENT_TEST: connecting to \"%s\"...\n",
+                         connection.pBrokerNameStr);
+                startTimeMs = uPortGetTickTimeMs();
+                gStopTimeMs = startTimeMs +
+                              (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                y = uMqttClientConnect(gpMqttContextA, &connection);
+                z = uMqttClientOpenResetLastError();
+                if (y == 0) {
+                    uPortLog("U_MQTT_CLIENT_TEST: connect successful after %d ms.\n",
+                             (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                    U_PORT_TEST_ASSERT(z == 0);
+                    // Note: can't check the return value here as it is
+                    // utterly module specific, only really checking that it
+                    // doesn't bring the roof down
+                    uMqttClientGetLastErrorCode(gpMqttContextA);
+                    U_PORT_TEST_ASSERT(uMqttClientIsConnected(gpMqttContextA));
+                    U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
+
+                    // Set the message indication callback
+                    U_PORT_TEST_ASSERT(uMqttClientSetMessageCallback(gpMqttContextA,
+                                                                     messageIndicationCallback,
+                                                                     &gNumUnread) == 0);
+
+                    uPortLog("U_MQTT_CLIENT_TEST: subscribing to topic \"%s\"...\n", pTopicOut);
                     startTimeMs = uPortGetTickTimeMs();
                     gStopTimeMs = startTimeMs +
                                   (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                    y = uMqttClientConnect(gpMqttContextA, &connection);
-                    z = uMqttClientOpenResetLastError();
-                    if (y == 0) {
-                        uPortLog("U_MQTT_CLIENT_TEST: connect successful after %d ms.\n",
-                                 (int32_t) (uPortGetTickTimeMs() - startTimeMs));
-                        U_PORT_TEST_ASSERT(z == 0);
-                        // Note: can't check the return value here as it is
-                        // utterly module specific, only really checking that it
-                        // doesn't bring the roof down
-                        uMqttClientGetLastErrorCode(gpMqttContextA);
-                        U_PORT_TEST_ASSERT(uMqttClientIsConnected(gpMqttContextA));
-                        U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
+                    y = uMqttClientSubscribe(gpMqttContextA, pTopicOut, U_MQTT_QOS_EXACTLY_ONCE);
+                    if (y >= 0) {
+                        uPortLog("U_MQTT_CLIENT_TEST: subscribe successful after %d ms, QoS %d.\n",
+                                 (int32_t) (uPortGetTickTimeMs() - startTimeMs), y);
+                    } else {
+                        uPortLog("U_MQTT_CLIENT_TEST: subscribe returned error %d after %d ms,"
+                                 " module error %d.\n",
+                                 y, (int32_t) (uPortGetTickTimeMs() - startTimeMs),
+                                 uMqttClientGetLastErrorCode(gpMqttContextA));
+                        //lint -e(506, 774) Suppress constant value Boolean
+                        U_PORT_TEST_ASSERT(false);
+                    }
 
-                        // Set the message indication callback
-                        U_PORT_TEST_ASSERT(uMqttClientSetMessageCallback(gpMqttContextA,
-                                                                         messageIndicationCallback,
-                                                                         &gNumUnread) == 0);
-
-                        uPortLog("U_MQTT_CLIENT_TEST: subscribing to topic \"%s\"...\n", pTopicOut);
-                        startTimeMs = uPortGetTickTimeMs();
-                        gStopTimeMs = startTimeMs +
-                                      (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                        y = uMqttClientSubscribe(gpMqttContextA, pTopicOut, U_MQTT_QOS_EXACTLY_ONCE);
-                        if (y >= 0) {
-                            uPortLog("U_MQTT_CLIENT_TEST: subscribe successful after %d ms, QoS %d.\n",
-                                     (int32_t) (uPortGetTickTimeMs() - startTimeMs), y);
-                        } else {
-                            uPortLog("U_MQTT_CLIENT_TEST: subscribe returned error %d after %d ms,"
-                                     " module error %d.\n",
-                                     y, (int32_t) (uPortGetTickTimeMs() - startTimeMs),
-                                     uMqttClientGetLastErrorCode(gpMqttContextA));
-                            //lint -e(506, 774) Suppress constant value Boolean
-                            U_PORT_TEST_ASSERT(false);
-                        }
-
-                        // There may be unread messages sitting on the server from a previous test run,
-                        // read them off here.
-                        z = uMqttClientGetUnread(gpMqttContextA);
-                        while ((y = uMqttClientGetUnread(gpMqttContextA)) > 0) {
-                            uPortLog("U_MQTT_CLIENT_TEST: reading existing unread message %d of %d.\n",
-                                     y, z);
-                            U_PORT_TEST_ASSERT(uMqttClientMessageRead(gpMqttContextA,
-                                                                      pTopicIn,
-                                                                      U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
-                                                                      pMessageIn, &s,
-                                                                      NULL) == 0);
-                            //lint -e(668) Suppress possible use of NULL pointers,
-                            // they are checked above
-                            U_PORT_TEST_ASSERT(strcmp(pTopicIn, pTopicOut) == 0);
-                        }
-
-                        U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
-
-                        uPortLog("U_MQTT_CLIENT_TEST: publishing %d byte(s) to topic \"%s\"...\n",
-                                 U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES, pTopicOut);
-                        startTimeMs = uPortGetTickTimeMs();
-                        gStopTimeMs = startTimeMs +
-                                      (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                        // Fill in the outgoing message buffer with all possible things
-                        s = 0;
-                        y = U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES;
-                        while (y > 0) {
-                            z = sizeof(gSendData) - 1; // -1 to remove the terminator
-                            if (z > y) {
-                                z = y;
-                            }
-                            memcpy(pMessageOut + s, gSendData, z);
-                            y -= z;
-                            s += z;
-                        }
-                        y = uMqttClientPublish(gpMqttContextA, pTopicOut, pMessageOut,
-                                               U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES,
-                                               U_MQTT_QOS_EXACTLY_ONCE, false);
-                        if (y == 0) {
-                            uPortLog("U_MQTT_CLIENT_TEST: publish successful after %d ms.\n",
-                                     (int32_t) (uPortGetTickTimeMs() - startTimeMs));
-                            // We've just sent a message
-                            U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(gpMqttContextA) > 0);
-                        } else {
-                            uPortLog("U_MQTT_CLIENT_TEST: publish returned error %d after %d ms, module"
-                                     " error %d.\n",
-                                     y, (int32_t) (uPortGetTickTimeMs() - startTimeMs),
-                                     uMqttClientGetLastErrorCode(gpMqttContextA));
-                            //lint -e(506, 774) Suppress constant value Boolean
-                            U_PORT_TEST_ASSERT(false);
-                        }
-
-                        uPortLog("U_MQTT_CLIENT_TEST: waiting for an unread message indication...\n");
-                        startTimeMs = uPortGetTickTimeMs();
-                        while ((gNumUnread == 0) &&
-                               (uPortGetTickTimeMs() < startTimeMs +
-                                (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000))) {
-                            uPortTaskBlock(1000);
-                        }
-
-                        if (gNumUnread > 0) {
-                            uPortLog("U_MQTT_CLIENT_TEST: %d message(s) unread.\n", gNumUnread);
-                        } else {
-                            uPortLog("U_MQTT_CLIENT_TEST: no messages unread after %d ms.\n",
-                                     (int32_t) (uPortGetTickTimeMs() - startTimeMs));
-                            //lint -e(506, 774) Suppress constant value Boolean
-                            U_PORT_TEST_ASSERT(false);
-                        }
-
-                        U_PORT_TEST_ASSERT(gNumUnread == 1);
-                        U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == gNumUnread);
-
-                        uPortLog("U_MQTT_CLIENT_TEST: reading the message...\n");
-                        qos = U_MQTT_QOS_MAX_NUM;
-                        s = U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES;
+                    // There may be unread messages sitting on the server from a previous test run,
+                    // read them off here.
+                    z = uMqttClientGetUnread(gpMqttContextA);
+                    while ((y = uMqttClientGetUnread(gpMqttContextA)) > 0) {
+                        uPortLog("U_MQTT_CLIENT_TEST: reading existing unread message %d of %d.\n",
+                                 y, z);
                         U_PORT_TEST_ASSERT(uMqttClientMessageRead(gpMqttContextA,
                                                                   pTopicIn,
                                                                   U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                                                                   pMessageIn, &s,
-                                                                  &qos) == 0);
-                        uPortLog("U_MQTT_CLIENT_TEST: read %d byte(s).\n", s);
-                        U_PORT_TEST_ASSERT(qos == U_MQTT_QOS_EXACTLY_ONCE);
-                        //lint -e(802) Suppress possible use of NULL pointers,
+                                                                  NULL) == 0);
+                        //lint -e(668) Suppress possible use of NULL pointers,
                         // they are checked above
                         U_PORT_TEST_ASSERT(strcmp(pTopicIn, pTopicOut) == 0);
-                        U_PORT_TEST_ASSERT(s == U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES);
-                        // Total message received must be non-zero
-                        U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesReceived(gpMqttContextA) > 0);
-                        //lint -e(668, 802) Suppress possible use of NULL pointers,
-                        // they are checked above
-                        U_PORT_TEST_ASSERT(memcmp(pMessageIn, pMessageOut, s) == 0);
-
-                        U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
-
-                        // Cancel the subscribe
-                        uPortLog("U_MQTT_CLIENT_TEST: unsubscribing from topic \"%s\"...\n",
-                                 pTopicOut);
-                        gStopTimeMs = uPortGetTickTimeMs() +
-                                      (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
-                        U_PORT_TEST_ASSERT(uMqttClientUnsubscribe(gpMqttContextA, pTopicOut) == 0);
-
-                        // Remove the callback
-                        U_PORT_TEST_ASSERT(uMqttClientSetMessageCallback(gpMqttContextA,
-                                                                         NULL, NULL) == 0);
-
-                        // Disconnect MQTT
-                        uPortLog("U_MQTT_CLIENT_TEST: disconnecting from \"%s\"...\n",
-                                 connection.pBrokerNameStr);
-                        U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
-                        U_PORT_TEST_ASSERT(uMqttClientDisconnect(gpMqttContextA) == 0);
-                        U_PORT_TEST_ASSERT(!uMqttClientIsConnected(gpMqttContextA));
-                        uPortTaskBlock(U_CFG_OS_YIELD_MS);
-                        U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
-                    } else {
-                        if (run == 0) {
-                            uPortLog("U_MQTT_CLIENT_TEST: connection failed after %d ms,"
-                                     " with error %d, module error %d.\n",
-                                     (int32_t) (uPortGetTickTimeMs() - startTimeMs), z,
-                                     uMqttClientGetLastErrorCode(gpMqttContextA));
-                            //lint -e(506, 774) Suppress constant value Boolean
-                            U_PORT_TEST_ASSERT(false);
-                        } else {
-                            uPortLog("U_MQTT_CLIENT_TEST: MQTT security not supported.\n");
-                        }
                     }
 
-                    // Close the entire context
-                    uMqttClientClose(gpMqttContextA);
-                    gpMqttContextA = NULL;
+                    U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
+
+                    uPortLog("U_MQTT_CLIENT_TEST: publishing %d byte(s) to topic \"%s\"...\n",
+                             U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES, pTopicOut);
+                    startTimeMs = uPortGetTickTimeMs();
+                    gStopTimeMs = startTimeMs +
+                                  (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                    // Fill in the outgoing message buffer with all possible things
+                    s = 0;
+                    y = U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES;
+                    while (y > 0) {
+                        z = sizeof(gSendData) - 1; // -1 to remove the terminator
+                        if (z > y) {
+                            z = y;
+                        }
+                        memcpy(pMessageOut + s, gSendData, z);
+                        y -= z;
+                        s += z;
+                    }
+                    y = uMqttClientPublish(gpMqttContextA, pTopicOut, pMessageOut,
+                                           U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES,
+                                           U_MQTT_QOS_EXACTLY_ONCE, false);
+                    if (y == 0) {
+                        uPortLog("U_MQTT_CLIENT_TEST: publish successful after %d ms.\n",
+                                 (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                        // We've just sent a message
+                        U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesSent(gpMqttContextA) > 0);
+                    } else {
+                        uPortLog("U_MQTT_CLIENT_TEST: publish returned error %d after %d ms, module"
+                                 " error %d.\n",
+                                 y, (int32_t) (uPortGetTickTimeMs() - startTimeMs),
+                                 uMqttClientGetLastErrorCode(gpMqttContextA));
+                        //lint -e(506, 774) Suppress constant value Boolean
+                        U_PORT_TEST_ASSERT(false);
+                    }
+
+                    uPortLog("U_MQTT_CLIENT_TEST: waiting for an unread message indication...\n");
+                    startTimeMs = uPortGetTickTimeMs();
+                    while ((gNumUnread == 0) &&
+                           (uPortGetTickTimeMs() < startTimeMs +
+                            (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000))) {
+                        uPortTaskBlock(1000);
+                    }
+
+                    if (gNumUnread > 0) {
+                        uPortLog("U_MQTT_CLIENT_TEST: %d message(s) unread.\n", gNumUnread);
+                    } else {
+                        uPortLog("U_MQTT_CLIENT_TEST: no messages unread after %d ms.\n",
+                                 (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                        //lint -e(506, 774) Suppress constant value Boolean
+                        U_PORT_TEST_ASSERT(false);
+                    }
+
+                    U_PORT_TEST_ASSERT(gNumUnread == 1);
+                    U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == gNumUnread);
+
+                    uPortLog("U_MQTT_CLIENT_TEST: reading the message...\n");
+                    qos = U_MQTT_QOS_MAX_NUM;
+                    s = U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES;
+                    U_PORT_TEST_ASSERT(uMqttClientMessageRead(gpMqttContextA,
+                                                              pTopicIn,
+                                                              U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
+                                                              pMessageIn, &s,
+                                                              &qos) == 0);
+                    uPortLog("U_MQTT_CLIENT_TEST: read %d byte(s).\n", s);
+                    if (pTmp->networkType != U_NETWORK_TYPE_WIFI) {
+                        // Wifi doesn't support the qos parameter on read
+                        U_PORT_TEST_ASSERT(qos == U_MQTT_QOS_EXACTLY_ONCE);
+                    }
+                    //lint -e(802) Suppress possible use of NULL pointers,
+                    // they are checked above
+                    U_PORT_TEST_ASSERT(strcmp(pTopicIn, pTopicOut) == 0);
+                    U_PORT_TEST_ASSERT(s == U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES);
+                    // Total message received must be non-zero
+                    U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesReceived(gpMqttContextA) > 0);
+                    //lint -e(668, 802) Suppress possible use of NULL pointers,
+                    // they are checked above
+                    U_PORT_TEST_ASSERT(memcmp(pMessageIn, pMessageOut, s) == 0);
+
+                    U_PORT_TEST_ASSERT(uMqttClientGetUnread(gpMqttContextA) == 0);
+
+                    // Cancel the subscribe
+                    uPortLog("U_MQTT_CLIENT_TEST: unsubscribing from topic \"%s\"...\n",
+                             pTopicOut);
+                    gStopTimeMs = uPortGetTickTimeMs() +
+                                  (U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS * 1000);
+                    U_PORT_TEST_ASSERT(uMqttClientUnsubscribe(gpMqttContextA, pTopicOut) == 0);
+
+                    // Remove the callback
+                    U_PORT_TEST_ASSERT(uMqttClientSetMessageCallback(gpMqttContextA,
+                                                                     NULL, NULL) == 0);
+
+                    // Disconnect MQTT
+                    uPortLog("U_MQTT_CLIENT_TEST: disconnecting from \"%s\"...\n",
+                             connection.pBrokerNameStr);
+                    U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
+                    U_PORT_TEST_ASSERT(uMqttClientDisconnect(gpMqttContextA) == 0);
+                    U_PORT_TEST_ASSERT(!uMqttClientIsConnected(gpMqttContextA));
+                    uPortTaskBlock(U_CFG_OS_YIELD_MS);
+                    if (pTmp->networkType != U_NETWORK_TYPE_CELL) {
+                        // Cellular only calls the disconnect callback when
+                        // dropped unexpectedly
+                        U_PORT_TEST_ASSERT(gDisconnectCallbackCalled);
+                    }
+                } else {
+                    if (run == 0) {
+                        uPortLog("U_MQTT_CLIENT_TEST: connection failed after %d ms,"
+                                 " with error %d, module error %d.\n",
+                                 (int32_t) (uPortGetTickTimeMs() - startTimeMs), z,
+                                 uMqttClientGetLastErrorCode(gpMqttContextA));
+                        //lint -e(506, 774) Suppress constant value Boolean
+                        U_PORT_TEST_ASSERT(false);
+                    } else {
+                        uPortLog("U_MQTT_CLIENT_TEST: MQTT security not supported.\n");
+                    }
                 }
-                uPortLog("U_MQTT_CLIENT_TEST: taking down %s...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(gUNetworkTestCfg[x].devHandle,
-                                                         gUNetworkTestCfg[x].type) == 0);
+
+                // Close the entire context
+                uMqttClientClose(gpMqttContextA);
+                gpMqttContextA = NULL;
             }
+            uPortLog("U_MQTT_CLIENT_TEST: taking down %s...\n",
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
+                                                     pTmp->networkType) == 0);
+        }
 
-            // Free memory
-            free(pMessageIn);
-            free(pMessageOut);
-            free(pTopicIn);
-            free(pTopicOut);
+        // Free memory
+        free(pMessageIn);
+        free(pMessageOut);
+        free(pTopicIn);
+        free(pTopicOut);
 
-            // Check for memory leaks
-            heapUsed -= uPortGetHeapFree();
-            uPortLog("U_MQTT_CLIENT_TEST: %d byte(s) were lost to security"
-                     " initialisation; we have leaked %d byte(s).\n",
-                     heapXxxSecurityInitLoss,
-                     heapUsed - heapXxxSecurityInitLoss);
-            U_PORT_TEST_ASSERT(heapUsed <= heapXxxSecurityInitLoss);
-        } else {
-            uPortLog("U_MQTT_CLIENT_TEST: MQTT not supported on %s,"
-                     " skipping...\n", gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+        // Check for memory leaks
+        heapUsed -= uPortGetHeapFree();
+        uPortLog("U_MQTT_CLIENT_TEST: %d byte(s) were lost to security"
+                 " initialisation; we have leaked %d byte(s).\n",
+                 heapXxxSecurityInitLoss,
+                 heapUsed - heapXxxSecurityInitLoss);
+        U_PORT_TEST_ASSERT(heapUsed <= heapXxxSecurityInitLoss);
+    }
+
+    // Close the devices once more and free the list
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle != NULL) {
+            uPortLog("U_MQTT_CLIENT_TEST: closing device %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
+            *pTmp->pDevHandle = NULL;
         }
     }
+    uNetworkTestListFree();
 }
 
 /** Test MQTT-SN connectivity.
  */
 U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
 {
+    uNetworkTestList_t *pList;
     uDeviceHandle_t devHandle = NULL;
-    size_t devIndex = 0;
     int32_t heapUsed;
     uMqttClientConnection_t connection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
     int32_t y;
@@ -588,30 +593,20 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
 
     connection.mqttSn = true;
 
-    // Since only cellular supports MQTT-SN we only bring up that configuration
-    for (size_t x = 0; (x < gUNetworkTestCfgSize) && (devHandle == NULL); x++) {
-        if ((gUNetworkTestCfg[x].devHandle == NULL) &&
-            (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) &&
-            uNetworkTestDeviceValidForOpen(x)) {
-            uPortLog("U_MQTTSN_CLIENT_TEST: adding device for network %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            y = uDeviceOpen(gUNetworkTestCfg[x].pDeviceCfg,
-                            &gUNetworkTestCfg[x].devHandle);
-            U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, y);
-            U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].devHandle != NULL);
-        }
-        devHandle = gUNetworkTestCfg[x].devHandle;
-        devIndex = x;
-    }
+    // Bring up devices supporting MQTT-SN
+    pList = pStdPreamble(true);
 
-    if (devHandle != NULL) {
+    // Repeat for all bearers
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
         // Get the initial-ish heap
         heapUsed = uPortGetHeapFree();
 
-        uPortLog("U_MQTTSN_CLIENT_TEST: bringing up cellular network...\n");
+        uPortLog("U_MQTTSN_CLIENT_TEST: bringing up %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
         U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
-                                               gUNetworkTestCfg[devIndex].type,
-                                               gUNetworkTestCfg[devIndex].pNetworkCfg) == 0);
+                                               pTmp->networkType,
+                                               pTmp->pNetworkCfg) == 0);
 
         // Get a unique number we can use to stop parallel
         // tests colliding at the MQTT-SN broker
@@ -874,7 +869,11 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
                 U_PORT_TEST_ASSERT(uMqttClientDisconnect(gpMqttContextA) == 0);
                 U_PORT_TEST_ASSERT(!uMqttClientIsConnected(gpMqttContextA));
                 uPortTaskBlock(U_CFG_OS_YIELD_MS);
-                U_PORT_TEST_ASSERT(!gDisconnectCallbackCalled);
+                if (pTmp->networkType != U_NETWORK_TYPE_CELL) {
+                    // Cellular only calls the disconnect callback when
+                    // dropped unexpectedly
+                    U_PORT_TEST_ASSERT(gDisconnectCallbackCalled);
+                }
             } else {
                 uPortLog("U_MQTTSN_CLIENT_TEST: connection failed after %d ms,"
                          " with error %d, module error %d.\n",
@@ -902,13 +901,24 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClientSn")
 
         uPortLog("U_MQTTSN_CLIENT_TEST: taking down cellular network...\n");
         U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
-                                                 gUNetworkTestCfg[devIndex].type) == 0);
+                                                 pTmp->networkType) == 0);
 
         // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
         uPortLog("U_MQTTSN_CLIENT_TEST:  we have leaked %d byte(s).\n", heapUsed);
         U_PORT_TEST_ASSERT(heapUsed <= 0);
     }
+
+    // Close the devices once more and free the list
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle != NULL) {
+            uPortLog("U_MQTTSN_CLIENT_TEST: closing device %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
+            *pTmp->pDevHandle = NULL;
+        }
+    }
+    uNetworkTestListFree();
 }
 
 /** Clean-up to be run at the end of this round of tests, just

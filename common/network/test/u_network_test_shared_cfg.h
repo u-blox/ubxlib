@@ -21,6 +21,7 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
 
 /** @file
@@ -37,67 +38,48 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** Determine if the given network type supports sockets operations.
+#ifndef U_NETWORK_TEST_NETWORKS_MAX_NUM
+/** The maximum number of networks supported by a given device.
  */
-#define U_NETWORK_TEST_TYPE_HAS_SOCK(type) ((type == U_NETWORK_TYPE_CELL) || \
-                                            (type == U_NETWORK_TYPE_WIFI))
-
-/** Determine if the given network type supports secure sockets operations.
- */
-#define U_NETWORK_TEST_TYPE_HAS_SECURE_SOCK(type) (type == U_NETWORK_TYPE_CELL)
-
-/** Determine if the given network type supports MQTT operations.
- */
-#define U_NETWORK_TEST_TYPE_HAS_MQTT(type) (type == U_NETWORK_TYPE_CELL)
+# define U_NETWORK_TEST_NETWORKS_MAX_NUM 2
+#endif
 
 /** Determine if the given network type supports location operations.
  */
 #define U_NETWORK_TEST_TYPE_HAS_LOCATION(type) ((type == U_NETWORK_TYPE_CELL) || \
                                                 (type == U_NETWORK_TYPE_GNSS))
 
-/** Determine if the given network and module combination supports
- * credential storage.
- */
-#define U_NETWORK_TEST_TYPE_HAS_CREDENTIAL_STORAGE(type, module) ((type == U_NETWORK_TYPE_CELL) || \
-                                                                  (type == U_NETWORK_TYPE_WIFI) || \
-                                                                  ((type == U_NETWORK_TYPE_BLE) && \
-                                                                   (module != (int32_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL)))
-
-/** Determine if the given device is a short range module.
- */
-#define U_NETWORK_TEST_DEVICE_IS_SHORT_RANGE(deviceType) ((deviceType == U_DEVICE_TYPE_SHORT_RANGE) || \
-                                                          (deviceType == U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU))
-
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
-/** Network test configuration information with a type indicator,
- * a pointer to the configuration information and room for the
- * handle to be stored.
- * Note: order is important, this is statically initialsed.
+/** A device/network, intended to be used in a list of device/network
+ * configurations that a test is to be conducted on.
  */
-typedef struct {
-    uDeviceHandle_t devHandle;
-    uNetworkType_t type;
-    uDeviceCfg_t *pDeviceCfg;
-    void *pNetworkCfg;
-} uNetworkTestCfg_t;
+typedef struct uNetworkList_t {
+    uDeviceHandle_t *pDevHandle; /**< a pointer to a place to store the device handle. */
+    const uDeviceCfg_t *pDeviceCfg; /**< a pointer to the device configuration. */
+    uNetworkType_t networkType; /**< the network type. */
+    const void *pNetworkCfg; /**< a pointer to the network configuration. */
+    struct uNetworkList_t *pNext; /**< the next entry in the list. */
+} uNetworkTestList_t;
+
+/** A function that can be called to check if a given device/network/
+ * module combination is valid for a given test.
+ *
+ * @param deviceType  the device type (cellular, short-range, GNSS).
+ * @param networkType the network type (BLE, W-Fi, cellular, GNSS).
+ * @param moduleType  the module type (NINA-W15, SARA-R5, etc.).
+ * @return            true if the combination is valid for the named
+ *                    feature, else false.
+ */
+typedef bool (*uNetworkTestValidFunction_t) (uDeviceType_t deviceType,
+                                             uNetworkType_t networkType,
+                                             int32_t moduleType);
 
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
-
-/** All of the information for the underlying network
- * types as an array.
- */
-extern uNetworkTestCfg_t gUNetworkTestCfg[];
-
-/** Number of items in the gNetworkTestCfg array, has to be
- * done in this file and externed or GCC complains about asking
- * for the size of a partially defined type.
- */
-extern const size_t gUNetworkTestCfgSize;
 
 #if U_CFG_ENABLE_LOGGING
 /** Return a name for a network type.
@@ -123,46 +105,135 @@ extern const char *gpUNetworkTestDeviceTypeName[];
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Update a GNSS device configuration for use with the AT
- * interface of a another device.
+/** Allocate a list of devices/networks to operate on for a test.
+ * When done the list must be free'ed with a call to
+ * uNetworkTestListFree().  Note that there is a single list, this
+ * function is NOT thread-safe.
  *
- * @param devHandleAt          the device handle providing the
- *                             AT interface (e.g. cellular).  NOT the
- *                             AT client handle, the handle of the device.
- * @param[inout] pUDeviceCfg   a pointer to a possible GNSS device
- *                             configuration.
+ * @param pValidFunction a function which should return true if
+ *                       the given device/network/module combination
+ *                       is valid for the purpose of a test; use
+ *                       NULL to get everything.
+ * @return               a pointer to a test list, a linked list of
+ *                       devices/networks to operate on, or NULL if
+ *                       there is no such list.
  */
-void uNetworkTestGnssAtCfg(uDeviceHandle_t devHandleAt,
-                           uDeviceCfg_t *pUDeviceCfg);
+uNetworkTestList_t *pUNetworkTestListAlloc(uNetworkTestValidFunction_t pValidFunction);
 
-/** Check if a specified test configuration is valid within the
- * current set of defines and that it hasn't been opened already.
- * If it has been opened already the existing device handle is
- * copied into the given test configuration.
- *
- * @param index  test configuration index.
- * @return       true or false.
+/** Free a list of devices/networks that was created with
+ * pUNetworkTestListAlloc().  This does not close etc. the
+ * devices/networks, it simply frees the allocated memory.
  */
-bool uNetworkTestDeviceValidForOpen(int32_t index);
+void uNetworkTestListFree(void);
 
-/** Close the device for the test configuration at the specified index,
- * but only if it isn't required by another network.
- *
- * @param index  test configuration index.
- * @return       zero on success else negative error code.
- */
-int32_t uNetworkTestDeviceClose(int32_t index);
-
-/** Close all networks and devices in the list.
+/** Close all of the devices, bringing down their networks.
  */
 void uNetworkTestCleanUp(void);
 
-/** Get the module type of a specified test configuration
+/** Return true if the combination supports sockets.
  *
- * @param index  test configuration index.
- * @return       module type.
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if sockets is supported, else false.
  */
-int32_t uNetworkTestGetModuleType(int32_t index);
+bool uNetworkTestHasSock(uDeviceType_t deviceType,
+                         uNetworkType_t networkType,
+                         int32_t moduleType);
+
+/** Return true if the combination supports secure sockets.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if secure sockets is supported,
+ *                    else false.
+ */
+bool uNetworkTestHasSecureSock(uDeviceType_t deviceType,
+                               uNetworkType_t networkType,
+                               int32_t moduleType);
+
+/** Return true if the combination supports u-blox security.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if secure sockets is supported,
+ *                    else false.
+ */
+bool uNetworkTestHasSecurity(uDeviceType_t deviceType,
+                             uNetworkType_t networkType,
+                             int32_t moduleType);
+
+/** Return true if the combination supports MQTT.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if MQTT is supported, else false.
+ */
+bool uNetworkTestHasMqtt(uDeviceType_t deviceType,
+                         uNetworkType_t networkType,
+                         int32_t moduleType);
+
+/** Return true if the combination supports MQTT-SN.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if MQTT-SN is supported, else false.
+ */
+bool uNetworkTestHasMqttSn(uDeviceType_t deviceType,
+                           uNetworkType_t networkType,
+                           int32_t moduleType);
+
+/** Return true if the combination supports credential storage.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if credential storage is supported,
+ *                    else false.
+ */
+bool uNetworkTestHasCredentialStorage(uDeviceType_t deviceType,
+                                      uNetworkType_t networkType,
+                                      int32_t moduleType);
+
+/** Return true if the device is a short-range one.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if this is a short-range configuration,
+ *                    else false.
+ */
+bool uNetworkTestIsDeviceShortRange(uDeviceType_t deviceType,
+                                    uNetworkType_t networkType,
+                                    int32_t moduleType);
+
+/** Return true if the device is a cellular one.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if this is a cellular configuration,
+ *                    else false.
+ */
+bool uNetworkTestIsDeviceCell(uDeviceType_t deviceType,
+                              uNetworkType_t networkType,
+                              int32_t moduleType);
+
+/** Return true if the combination is a BLE one.
+ *
+ * @param deviceType  the device type.
+ * @param networkType the network type.
+ * @param moduleType  the module type.
+ * @return            true if this is a BLE configuration,
+ *                    else false.
+ */
+bool uNetworkTestIsBle(uDeviceType_t deviceType,
+                       uNetworkType_t networkType,
+                       int32_t moduleType);
 
 #endif // _U_NETWORK_TEST_CFG_H_
 

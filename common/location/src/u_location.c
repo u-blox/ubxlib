@@ -47,6 +47,9 @@
 #include "u_mqtt_common.h"  // Needed by
 #include "u_mqtt_client.h"  // u_location_private_cloud_locate.h
 
+#include "u_network.h"
+#include "u_network_shared.h"
+
 #include "u_location.h"
 #include "u_location_shared.h"
 
@@ -195,6 +198,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uLocation_t location;
+    uDeviceHandle_t gnssDeviceHandle;
 
     if (gULocationMutex != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -227,11 +231,12 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                 }
             } else if (location.type == U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE) {
                 errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-                // For Cloud Locate the GNSS network handle must be passed
-                // in via pLocationAssist, as must the MQTT client handle
-                if (pLocationAssist != NULL) {
-                    errorCode = uLocationPrivateCloudLocate(devHandle,
-                                                            pLocationAssist->devHandleAssist,
+                // For Cloud Locate the GNSS network handle is attached to
+                // the network data associated with the device handle (and
+                // the MQTT client handle is passed in via pLocationAssist)
+                gnssDeviceHandle = uNetworkGetDeviceHandle(devHandle, U_NETWORK_TYPE_GNSS);
+                if ((pLocationAssist != NULL) && (gnssDeviceHandle != NULL)) {
+                    errorCode = uLocationPrivateCloudLocate(devHandle, gnssDeviceHandle,
                                                             (uMqttClientContext_t *) pLocationAssist->pMqttClientContext,
                                                             pLocationAssist->svsThreshold,
                                                             pLocationAssist->cNoThreshold,
@@ -243,11 +248,25 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                         *pLocation = location;
                     }
                 }
+            } else if (location.type == U_LOCATION_TYPE_GNSS) {
+                // A GNSS device inside or connected-via a cellular device
+                errorCode = uGnssPosGet(devHandle,
+                                        &(location.latitudeX1e7),
+                                        &(location.longitudeX1e7),
+                                        &(location.altitudeMillimetres),
+                                        &(location.radiusMillimetres),
+                                        &(location.speedMillimetresPerSecond),
+                                        &(location.svs),
+                                        &(location.timeUtc),
+                                        pKeepGoingCallback);
+                if (pLocation != NULL) {
+                    pLocation->type = U_LOCATION_TYPE_GNSS;
+                    *pLocation = location;
+                }
             }
         } else if (devType == (int32_t) U_DEVICE_TYPE_GNSS) {
             // type, pLocationAssist and pAuthenticationTokenStr are
             // irrelevant in this case, we just ask GNSS
-            pLocation->type = U_LOCATION_TYPE_GNSS;
             errorCode = uGnssPosGet(devHandle,
                                     &(location.latitudeX1e7),
                                     &(location.longitudeX1e7),
@@ -258,6 +277,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                                     &(location.timeUtc),
                                     pKeepGoingCallback);
             if (pLocation != NULL) {
+                pLocation->type = U_LOCATION_TYPE_GNSS;
                 *pLocation = location;
             }
         }

@@ -85,6 +85,10 @@ static int32_t networkInterfaceChangeState(uDeviceHandle_t devHandle,
                     errorCode = uNetworkPrivateChangeStateCell(devHandle,
                                                                (const uNetworkCfgCell_t *) pNetworkCfg,
                                                                upNotDown);
+                } else if (netType == U_NETWORK_TYPE_GNSS) {
+                    errorCode = uNetworkPrivateChangeStateGnss(devHandle,
+                                                               (const uNetworkCfgGnss_t *) pNetworkCfg,
+                                                               upNotDown);
                 }
             }
             break;

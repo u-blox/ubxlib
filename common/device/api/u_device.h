@@ -182,39 +182,30 @@ typedef struct {
                                       compiler to initialise this to zero
                                       unless otherwise specified below. */
     int32_t moduleType;          /**< The module type that is connected,
-                                      see uGnssModuleType_t in u_gnss_module_type.h. */
-    int32_t transportType;       /**< The transport type to use,
-                                      chosen from uGnssTransportType_t
-                                      in gnss.h. */
-    int32_t pinGnssEnablePower;  /**< The output pin that is used to power-on
-                                      the GNSS module; use -1 if there is no
-                                      such connection. */
-    uDeviceHandle_t devHandleAt; /**< If transportType is set to
-                                      U_GNSS_TRANSPORT_UBX_AT, set
-                                      this to the handle of the
-                                      network which provides the
-                                      AT interface, i.e. the module
-                                      through which the GNSS module is
-                                      connected; ignored if transportType
-                                      is set to anything else. */
-    int32_t gnssAtPinPwr;        /**< Only relevant if transportType
-                                      is set to U_GNSS_TRANSPORT_UBX_AT:
-                                      set this to the pin of the intermediate
-                                      (e.g. cellular) module that powers
-                                      the GNSS chip.  For instance, in the
-                                      case of a cellular module, GPIO2
-                                      is module pin 23 and hence 23 would be
-                                      used here. If there is no such
-                                      functionality then use -1. */
-    int32_t gnssAtPinDataReady;  /**< Only relevant if transportType is set
-                                      to U_GNSS_TRANSPORT_UBX_AT: set this to
-                                      the pin of the intermediate (e.g. cellular
-                                      module that is connected to the Data Ready
-                                      pin of the GNSS chip.  For instance, in
-                                      the case of cellular, GPIO3 is cellular
-                                      module pin 24 and hence 24 would be used here.
-                                      If no Data Ready signalling is required then
-                                      specify -1. */
+                                      see uGnssModuleType_t in
+                                      u_gnss_module_type.h. */
+    int32_t pinEnablePower;      /**< The output pin that is used to control
+                                      power to the GNSS module; use -1 if
+                                      there is no such connection, or if the
+                                      connection is via an intermediate
+                                      (e.g. cellular) module that does the
+                                      controlling (in which case the
+                                      gnssAtPinPwr field of the network
+                                      configuration structure for GNSS,
+                                      uNetworkCfgGnss_t, should be
+                                      populated instead). */
+    int32_t pinDataReady;        /**< The input pin that is used to receive
+                                      the Data Ready state of the GNSS module;
+                                      this field is present for
+                                      forwards-compatibility only; it is
+                                      currently ignored. */
+    bool includeNmea;            /**< Set this to true if you are using the
+                                      GNSS interface directly and want to be
+                                      able to read NMEA commands; ubxlib
+                                      does not use NMEA commands (it uses only
+                                      ubx protocol commands), and hence this
+                                      should normally be left to false to
+                                      reduce noise on the interface. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and

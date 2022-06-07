@@ -75,8 +75,8 @@ static uLocationAssist_t gLocationAssistCellLocate = {500000, // desiredAccuracy
                                                       60,     // desiredTimeoutSeconds
                                                       true,   // disable GNSS for Cell Locate so that
                                                       // a GNSS network can use it
-                                                      NULL, -1, -1, -1, -1, NULL, NULL
-                                                     };
+                                                      -1, -1, -1, -1, NULL, NULL
+                                                      };
 
 /** Location configuration for Cell Locate.
  */
@@ -95,7 +95,6 @@ static uLocationAssist_t gLocationAssistCloudLocate = {-1,   // desiredAccuracyM
                                                        -1,   // desiredTimeoutSeconds are irrelevant
                                                        true, // disable GNSS for Cell Locate so that Cloud Locate
                                                        // can ask the GNSS chip for RRLP information
-                                                       NULL,   // GNSS handle must be filled in later
                                                        U_LOCATION_TEST_CLOUD_LOCATE_SVS_THRESHOLD,
                                                        U_LOCATION_TEST_CLOUD_LOCATE_C_NO_THRESHOLD,
                                                        U_LOCATION_TEST_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,

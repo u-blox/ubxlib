@@ -78,28 +78,17 @@ static int32_t removeDevice(uDeviceHandle_t devHandle, bool powerOff)
 
     if (pContext != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-        if (powerOff &&
-            (pContext->transportType != (int32_t) U_GNSS_TRANSPORT_UBX_AT)) {
-            // If the GNSS chip is connected directly, power it off.
+        if (powerOff) {
             errorCode = uGnssPwrOff(devHandle);
-        }
-        if (errorCode == 0) {
-            // This will destroy the instance
-            uGnssRemove(devHandle);
-            switch (pContext->transportType) {
-                case U_GNSS_TRANSPORT_UBX_UART:
-                //lint -fallthrough
-                case U_GNSS_TRANSPORT_NMEA_UART:
-                    if (pContext->transportHandle.uart >= 0) {
-                        uPortUartClose(pContext->transportHandle.uart);
-                    }
-                    break;
-                case U_GNSS_TRANSPORT_UBX_AT:
-                    // Nothing to do
-                    break;
-                default:
-                    break;
+            if (errorCode == 0) {
+                // This will destroy the instance
+                uGnssRemove(devHandle);
+                if (pContext->transportHandle >= 0) {
+                    uPortUartClose(pContext->transportHandle);
+                }
+                free(pContext);
             }
+        } else {
             free(pContext);
         }
     }
@@ -113,82 +102,34 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
                          uDeviceHandle_t *pDeviceHandle)
 {
     int32_t errorCodeOrHandle = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+    uGnssTransportHandle_t gnssTransportHandle;
+    uGnssTransportType_t gnssTransportType = U_GNSS_TRANSPORT_UBX_UART;
     uDeviceGnssInstance_t *pContext;
-    int32_t atDevType = uDeviceGetDeviceType(pCfgGnss->devHandleAt);
+
+    if (pCfgGnss->includeNmea) {
+        gnssTransportType = U_GNSS_TRANSPORT_NMEA_UART;
+    }
 
     pContext = (uDeviceGnssInstance_t *) malloc(sizeof(uDeviceGnssInstance_t));
     if (pContext != NULL) {
-        errorCodeOrHandle = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        pContext->transportHandle.uart = -1;
-        switch (pCfgGnss->transportType) {
-            case U_GNSS_TRANSPORT_UBX_UART:
-            //lint -fallthrough
-            case U_GNSS_TRANSPORT_NMEA_UART:
-                // Open a UART with the recommended buffer length
-                // and default baud rate.
-                errorCodeOrHandle = uPortUartOpen(pCfgUart->uart,
-                                                  pCfgUart->baudRate, NULL,
-                                                  U_GNSS_UART_BUFFER_LENGTH_BYTES,
-                                                  pCfgUart->pinTxd,
-                                                  pCfgUart->pinRxd,
-                                                  pCfgUart->pinCts,
-                                                  pCfgUart->pinRts);
-                if (errorCodeOrHandle >= 0) {
-                    pContext->transportHandle.uart = errorCodeOrHandle;
-                }
-                break;
-            case U_GNSS_TRANSPORT_UBX_AT:
-                // Get the AT devHandle from the network instance we are
-                // attached through
-                if (atDevType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
-                    errorCodeOrHandle = uShortRangeAtClientHandleGet(pCfgGnss->devHandleAt,
-                                                                     //lint -e(181) Suppress unusual pointer cast
-                                                                     (uAtClientHandle_t *) &(pContext->transportHandle.pAt)); // *NOPAD*
-                } else if (atDevType == (int32_t) U_DEVICE_TYPE_CELL) {
-                    errorCodeOrHandle = uCellAtClientHandleGet(pCfgGnss->devHandleAt,
-                                                               //lint -e(181) Suppress unusual pointer cast
-                                                               (uAtClientHandle_t *) &(pContext->transportHandle.pAt)); // *NOPAD*
-                }
-                break;
-            default:
-                break;
-        }
-
+        // Open a UART with the recommended buffer length
+        // and default baud rate.
+        errorCodeOrHandle = uPortUartOpen(pCfgUart->uart,
+                                          pCfgUart->baudRate, NULL,
+                                          U_GNSS_UART_BUFFER_LENGTH_BYTES,
+                                          pCfgUart->pinTxd,
+                                          pCfgUart->pinRxd,
+                                          pCfgUart->pinCts,
+                                          pCfgUart->pinRts);
         if (errorCodeOrHandle >= 0) {
-            pContext->transportType = (uGnssTransportType_t) pCfgGnss->transportType;
+            pContext->transportHandle = errorCodeOrHandle;
+            gnssTransportHandle.uart = errorCodeOrHandle;
             // Add the GNSS instance, which actually creates pDeviceHandle
             errorCodeOrHandle = uGnssAdd((uGnssModuleType_t) pCfgGnss->moduleType,
-                                         (uGnssTransportType_t) pContext->transportType,
-                                         pContext->transportHandle,
-                                         pCfgGnss->pinGnssEnablePower, false,
+                                         gnssTransportType, gnssTransportHandle,
+                                         pCfgGnss->pinEnablePower, false,
                                          pDeviceHandle);
             if (errorCodeOrHandle == 0) {
-                if (pContext->transportType == (int32_t) U_GNSS_TRANSPORT_UBX_AT) {
-                    // If specified, and if the GNSS chip is not inside the
-                    // intervening module, set the pins of the AT module that
-                    // control power to and see Data Ready from the GNSS chip
-                    // Note: if we put GNSS chips inside non-cellular modules
-                    // then this will need to be extended
-                    if ((atDevType == (int32_t) U_DEVICE_TYPE_CELL) &&
-                        !uCellLocGnssInsideCell(pCfgGnss->devHandleAt)) {
-                        if (pCfgGnss->gnssAtPinPwr >= 0) {
-                            uGnssSetAtPinPwr(*pDeviceHandle,
-                                             pCfgGnss->gnssAtPinPwr);
-                            // Do it for the Cell Locate API as well in case the
-                            // user wants to use that
-                            uCellLocSetPinGnssPwr(pCfgGnss->devHandleAt,
-                                                  pCfgGnss->gnssAtPinPwr);
-                        }
-                        if (pCfgGnss->gnssAtPinDataReady >= 0) {
-                            uGnssSetAtPinDataReady(*pDeviceHandle,
-                                                   pCfgGnss->gnssAtPinDataReady);
-                            // Do it for the Cell Locate API as well in case the
-                            // user wants to use that
-                            uCellLocSetPinGnssDataReady(pCfgGnss->devHandleAt,
-                                                        pCfgGnss->gnssAtPinDataReady);
-                        }
-                    }
-                }
 #if !U_CFG_OS_CLIB_LEAKS
                 // Set printing of commands sent to the GNSS chip,
                 // which can be useful while debugging, but
@@ -197,22 +138,16 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
 #endif
                 // Attach the context
                 U_DEVICE_INSTANCE(*pDeviceHandle)->pContext = pContext;
-                if (pContext->transportType != (int32_t) U_GNSS_TRANSPORT_UBX_AT) {
-                    // Power on the GNSS chip but only if it's not used
-                    // over an AT interface: if it is used over an AT interface
-                    // then we leave the GNSS chip powered off so that Cell Locate
-                    // can use it.  If the GNSS chip is to be used directly then
-                    // uNetworkInterfaceUpGnss() will power it up and "claim" it.
-                    errorCodeOrHandle = uGnssPwrOn(*pDeviceHandle);
-                    if (errorCodeOrHandle != 0) {
-                        // If we failed to power on, clean up
-                        removeDevice(*pDeviceHandle, false);
-                    }
+                // Power on the GNSS chip
+                errorCodeOrHandle = uGnssPwrOn(*pDeviceHandle);
+                if (errorCodeOrHandle != 0) {
+                    // If we failed to power on, clean up
+                    removeDevice(*pDeviceHandle, false);
                 }
             } else {
-                if (pContext->transportHandle.uart >= 0) {
+                if (pContext->transportHandle >= 0) {
                     // If we failed to add, close the UART again
-                    uPortUartClose(pContext->transportHandle.uart);
+                    uPortUartClose(pContext->transportHandle);
                 }
                 free(pContext);
             }
@@ -252,13 +187,9 @@ int32_t uDevicePrivateGnssAdd(const uDeviceCfg_t *pDevCfg,
     if ((pDevCfg != NULL) && (pDeviceHandle != NULL)) {
         pCfgUart = &(pDevCfg->transportCfg.cfgUart);
         pCfgGnss = &(pDevCfg->deviceCfg.cfgGnss);
-        // Either a GNSS chip that is inside another [e.g. cellular]
-        // module is being accessed over an AT interface, or we must
-        // (currently) have a UART transport talking to the
-        // directly-connected GNSS chip
+        // Only UART transport supported at the moment
         if ((pCfgGnss->version == 0) &&
-            ((pCfgGnss->transportType == U_GNSS_TRANSPORT_UBX_AT) ||
-             (pDevCfg->transportType == U_DEVICE_TRANSPORT_TYPE_UART))) {
+            (pDevCfg->transportType == U_DEVICE_TRANSPORT_TYPE_UART)) {
             errorCode = addDevice(pCfgUart, pCfgGnss, pDeviceHandle);
         }
     }

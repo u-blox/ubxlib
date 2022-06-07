@@ -82,10 +82,10 @@
 // for the module is likely different that from the MCU: check
 // the data sheet for the module to determine the mapping.
 
-#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_TEST_GNSS_MODULE_TYPE)
 // DEVICE i.e. module/chip configuration: in this case a cellular
 // module connected via UART
-static const uDeviceCfg_t gDeviceCfgCell = {
+static const uDeviceCfg_t gDeviceCfg = {
     .deviceType = U_DEVICE_TYPE_CELL,
     .deviceCfg = {
         .cfgCell = {
@@ -114,42 +114,18 @@ static const uNetworkCfgCell_t gNetworkCfgCell = {
     .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
     .timeoutSeconds = 240 /* Connection timeout in seconds */
 };
-#else
-static const uDeviceCfg_t gDeviceCfgCell = {.deviceType = U_DEVICE_TYPE_NONE};
-static const uNetworkCfgCell_t gNetworkCfgCell = {.type = U_NETWORK_TYPE_NONE};
-#endif
-
-
-// GNSS configuration.
-// Set U_CFG_TEST_GNSS_MODULE_TYPE to your module type,
-// chosen from the values in gnss/api/u_gnss_module_type.h
-
-#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-// DEVICE i.e. module/chip configuration: in this case a GNSS
-// module connected via the AT interface of a cellular module
-static uDeviceCfg_t gDeviceCfgGnss = {
-    .deviceType = U_DEVICE_TYPE_GNSS,
-    .deviceCfg = {
-        .cfgGnss = {
-            .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
-            .transportType = U_GNSS_TRANSPORT_UBX_AT, // Connection via cellular module's AT interface
-            .pinGnssEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-            .devHandleAt = NULL, // Handle of the cellular interface, will be filled-in later
-            .gnssAtPinPwr = U_CFG_APP_CELL_PIN_GNSS_POWER, // The pins of the *cellular* *module* that are connected
-            .gnssAtPinDataReady = U_CFG_APP_CELL_PIN_GNSS_DATA_READY // to the GNSS chip's power and Data Ready lines
-        },
-    },
-    .transportType = U_DEVICE_TRANSPORT_TYPE_NONE
-};
-// NETWORK configuration for GNSS; nothing to do but the type
+// NETWORK configuration for GNSS
 static const uNetworkCfgGnss_t gNetworkCfgGnss = {
-    .type = U_NETWORK_TYPE_GNSS
+    .type = U_NETWORK_TYPE_GNSS,
+    .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
+    .devicePinPwr = U_CFG_APP_CELL_PIN_GNSS_POWER, // The pins of the *cellular* *module* that are connected
+    .devicePinDataReady = U_CFG_APP_CELL_PIN_GNSS_DATA_READY // to the GNSS chip's power and Data Ready lines
 };
 #else
-static uDeviceCfg_t gDeviceCfgGnss = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgCell_t gNetworkCfgCell = {.type = U_NETWORK_TYPE_NONE};
 static const uNetworkCfgGnss_t gNetworkCfgGnss = {.type = U_NETWORK_TYPE_NONE};
 #endif
-
 
 #if !defined(U_CFG_APP_CLOUD_LOCATE_MQTT_CLIENT_ID) || !defined(U_CFG_TEST_CLOUD_LOCATE)
 const char *gpMyThingstreamClientId = MY_THINGSTREAM_CLIENT_ID;
@@ -233,8 +209,7 @@ static void printLocation(int32_t latitudeX1e7, int32_t longitudeX1e7)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 {
-    uDeviceHandle_t devHandleCell = NULL;
-    uDeviceHandle_t devHandleGnss = NULL;
+    uDeviceHandle_t devHandle = NULL;
     uLocationAssist_t locationAssist = U_LOCATION_ASSIST_DEFAULTS;
     uMqttClientConnection_t mqttConnection = U_MQTT_CLIENT_CONNECTION_DEFAULT;
     uLocation_t location;
@@ -248,25 +223,15 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
     uDeviceInit();
 
     // Open the cellular device
-    returnCode = uDeviceOpen(&gDeviceCfgCell, &devHandleCell);
+    returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     uPortLog("Opened cellular device with return code %d.\n", returnCode);
 
-    // In this example we assume the GNSS module is inside the
-    // cellular module (e.g. SARA-R510M8S or SARA-R422M8S) and so
-    // we need to copy the cellular handle into the GNSS configuration
-    // in order that it knows to use it
-    gDeviceCfgGnss.deviceCfg.cfgGnss.devHandleAt = devHandleCell;
-
-    // Open the GNSS device
-    returnCode = uDeviceOpen(&gDeviceCfgGnss, &devHandleGnss);
-    uPortLog("Opened GNSS device with return code %d.\n", returnCode);
-
-    // You may configure the networks as required
-    // here using any of the GNSS or cell API calls.
+    // You may configure the cellular device as required
+    // here using any of the cell API calls.
 
     // Bring up the cellular network layer
     uPortLog("Bringing up cellular...\n");
-    if (uNetworkInterfaceUp(devHandleCell, U_NETWORK_TYPE_CELL,
+    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
                             &gNetworkCfgCell) == 0) {
 
         // You may use the cellular network, as normal,
@@ -275,27 +240,24 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 
         // Bring up the GNSS network layer
         uPortLog("Bringing up GNSS...\n");
-        if (uNetworkInterfaceUp(devHandleGnss, U_NETWORK_TYPE_GNSS,
+        if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
                                 &gNetworkCfgGnss) == 0) {
 
-            // Here you may use the GNSS API with the network handle
+            // Here you may use the GNSS API with the device handle
             // if you wish to configure the GNSS chip etc.
 
             // To use Cloud Locate we need to populate the
             // locationAssist structure passed to the location
             // API to tell it what to do.
 
-            // First, give it the network handle for the GNSS chip
-            // to be used with the Cloud Locate service
-            locationAssist.devHandleAssist = devHandleGnss;
-            // Then set the number of satellites that GNSS must be
-            // able to see before it is worth including that measurement
+            // Set the number of satellites that GNSS must be able
+            // to see before it is worth including that measurement
             // in the estimate
             locationAssist.svsThreshold = SATELLITES_MIN;
             // Cloud Locate requires an MQTT Now connection to a thing
             // in your Thingstream account that is enabled for the
             // u-blox Cloud Locate service
-            locationAssist.pMqttClientContext = pUMqttClientOpen(devHandleCell, NULL);
+            locationAssist.pMqttClientContext = pUMqttClientOpen(devHandle, NULL);
             if (locationAssist.pMqttClientContext != NULL) {
                 // Populate the MQTT connection structure with the
                 // credentials of your thing
@@ -320,7 +282,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 
                     // Now put the lot together by running the Cloud Locate service,
                     // giving it the location assist structure
-                    if (uLocationGet(devHandleCell,
+                    if (uLocationGet(devHandle,
                                      U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
                                      &locationAssist, NULL,
                                      &location, NULL) == 0) {
@@ -343,25 +305,24 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnssCloudLocate")
 
             // When finished with the GNSS network layer
             uPortLog("Taking down GNSS...\n");
-            uNetworkInterfaceDown(devHandleGnss, U_NETWORK_TYPE_GNSS);
+            uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
         } else {
             uPortLog("Unable to bring up GNSS!\n");
         }
 
         // When finished with the cellular network layer
         uPortLog("Taking down cellular network...\n");
-        uNetworkInterfaceDown(devHandleCell, U_NETWORK_TYPE_CELL);
+        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
 
     } else {
         uPortLog("Unable to bring up the cellular network!\n");
     }
 
-    // Close the devices
+    // Close the device
     // Note: we don't power the device down here in order
     // to speed up testing; you may prefer to power it off
     // by setting the second parameter to true.
-    uDeviceClose(devHandleGnss, false);
-    uDeviceClose(devHandleCell, false);
+    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();
