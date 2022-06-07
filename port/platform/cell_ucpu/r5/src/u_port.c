@@ -29,6 +29,7 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include <stdarg.h>    // For va_x().
 
 #include "u_error_common.h"
 #include "u_port_debug.h"
@@ -37,6 +38,9 @@
 #include "u_port_uart.h"
 #include "u_port_event_queue_private.h"
 #include "u_port_private.h"
+#include "u_assert.h"
+
+#include "ucpu_sdk_debug.h"
 
 /* --------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -113,9 +117,13 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 // Initialise the porting layer.
 int32_t uPortInit()
 {
-    static bool poolInitialised = false; // Flag to keep track of memory pool initalization
+    // Flag to keep track of memory pool initialization.
+    static bool poolInitialised = false; 
     int32_t errorCode = U_ERROR_COMMON_SUCCESS;
     int32_t result = -1;
+
+    // Register an assertFailed() callback.
+    uAssertHookSet(ucpu_sdk_assert);
 
     if (!gInitialised) {
         errorCode = uPortEventQueuePrivateInit();

@@ -40,7 +40,6 @@
 
 #include "u_runner.h"
 
-#include "u_assert.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -82,21 +81,10 @@ void testFail(void)
     // Nothing to do
 }
 
-// Function to be called when assertion occurs.
-void r5Assert(const char *pFileStr, int32_t line)
-{
-    uPortLog("*** ASSERT OCCURRED at %s:%d ***\n", pFileStr, line);
-    while (1) {
-        uPortTaskBlock(1000);
-    }
-}
-
 // Entry point
 void appMain(uint32_t id)
 {
     uPortInit();
-
-    uAssertHookSet(r5Assert);
 
     uPortLog("\n\nU_APP: application task started.\n");
 
