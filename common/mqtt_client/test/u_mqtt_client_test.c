@@ -306,8 +306,9 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
             snprintf(pTopicOut, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
                      "ubx_test/%s", gSerialNumber);
             gNumUnread = 0;
+            bool noTls = (run == 0) || (pTmp->networkType == U_NETWORK_TYPE_WIFI);
             // Open an MQTT client
-            if (run == 0) {
+            if (noTls) {
                 uPortLog("U_MQTT_CLIENT_TEST: opening MQTT client...\n");
                 gpMqttContextA = pUMqttClientOpen(devHandle, NULL);
             } else {
@@ -335,7 +336,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
 
                 U_PORT_TEST_ASSERT(!uMqttClientIsConnected(gpMqttContextA));
 
-                if (run == 0) {
+                if (noTls) {
                     connection.pBrokerNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_BROKER_URL);
 #ifdef U_MQTT_CLIENT_TEST_MQTT_USERNAME
                     connection.pUserNameStr = U_PORT_STRINGIFY_QUOTED(U_MQTT_CLIENT_TEST_MQTT_USERNAME),
@@ -516,7 +517,7 @@ U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
                         U_PORT_TEST_ASSERT(gDisconnectCallbackCalled);
                     }
                 } else {
-                    if (run == 0) {
+                    if (noTls) {
                         uPortLog("U_MQTT_CLIENT_TEST: connection failed after %d ms,"
                                  " with error %d, module error %d.\n",
                                  (int32_t) (uPortGetTickTimeMs() - startTimeMs), z,

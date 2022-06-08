@@ -522,8 +522,8 @@ bool uNetworkTestHasMqtt(uDeviceType_t deviceType,
 {
     (void) deviceType;
     (void) moduleType;
-    // TODO: add Wifi
-    return (networkType == U_NETWORK_TYPE_CELL);
+    return ((networkType == U_NETWORK_TYPE_CELL) ||
+            (networkType == U_NETWORK_TYPE_WIFI));
 }
 
 // Return true if the configuration supports MQTT-SN.

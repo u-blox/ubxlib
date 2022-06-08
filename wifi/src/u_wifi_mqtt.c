@@ -301,21 +301,24 @@ static int32_t establishMqttConnectionToBroker(const uMqttClientContext_t *pCont
     uShortRangeSecTlsContext_t *pMqttTlsContext;
 
     memset(url, 0, sizeof(url));
+    // Add the default unsecure mqtt port number if no port is specified
+    char port[10] = {0};
+    if (!strstr(pMqttSession->pBrokerNameStr, ":")) {
+        snprintf(port, sizeof(port), ":%d", (int)pMqttSession->localPort);
+    }
 
     if (isPublish) {
-
-        len = snprintf(url, sizeof(url), "mqtt://%s:%d/?pt=%s&retain=%d&qos=%d",
+        len = snprintf(url, sizeof(url), "mqtt://%s%s/?pt=%s&retain=%d&qos=%d",
                        pMqttSession->pBrokerNameStr,
-                       (int)pMqttSession->localPort,
+                       port,
                        pTopic->pTopicStr,
                        pTopic->retain,
                        pTopic->qos);
 
     } else {
-
-        len = snprintf(url, sizeof(url), "mqtt://%s:%d/?st=%s&qos=%d",
+        len = snprintf(url, sizeof(url), "mqtt://%s%s/?st=%s&qos=%d",
                        pMqttSession->pBrokerNameStr,
-                       (int)pMqttSession->localPort,
+                       port,
                        pTopic->pTopicStr,
                        pTopic->qos);
     }
