@@ -58,6 +58,7 @@ common/at_client/test/u_at_client_test.c
 common/at_client/test/u_at_client_test_data.c
 common/ubx_protocol/test/u_ubx_protocol_test.c
 common/short_range/test/u_short_range_test.c
+common/short_range/test/u_short_range_test_preamble.c
 common/short_range/test/u_short_range_test_private.c
 common/mqtt_client/test/u_mqtt_client_test.c
 port/test/u_port_test.c
