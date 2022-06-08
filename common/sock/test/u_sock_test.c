@@ -1071,7 +1071,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
         }
     }
 
-    // To speed things up, close nothing
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
     uNetworkTestListFree();
 }
 
@@ -1308,7 +1316,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
         U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
 
-    // To speed things up, close nothing
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
     uNetworkTestListFree();
 }
 
@@ -1450,7 +1466,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
         U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
 
-    // To speed things up, close nothing
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
     uNetworkTestListFree();
 }
 
@@ -1592,7 +1616,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
         U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
 
-    // To speed things up, close nothing
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
     uNetworkTestListFree();
 }
 
@@ -1816,7 +1848,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
         U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
 
-    // To speed things up, close nothing
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
     uNetworkTestListFree();
 }
 
@@ -2024,7 +2064,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
         U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
 
-    // To speed things up, close nothing
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
     uNetworkTestListFree();
 }
 
@@ -2274,7 +2322,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
 #endif
     }
 
-    // To speed things up, close nothing
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
     uNetworkTestListFree();
 }
 
@@ -2519,7 +2575,15 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
 #endif
     }
 
-    // To speed things up, close nothing
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
     uNetworkTestListFree();
 }
 
