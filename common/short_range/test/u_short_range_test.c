@@ -62,10 +62,11 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
-#ifndef U_CFG_APP_PIN_SHORT_RANGE_DTR
-/** The GPIO ID to use when testing.
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS
+/** The GPIO pin to use in the shortRangeResetToDefaultSettings()
+ * test.
  */
-# define U_CFG_APP_PIN_SHORT_RANGE_DTR -1
+# define U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS -1
 #endif
 #endif
 /* ----------------------------------------------------------------
@@ -230,6 +231,8 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
     uPortLog("U_SHORT_RANGE_TEST: shortRangeUartSetBaudrate succeded.\n");
 }
 
+#if defined(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS) && (U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0)
+
 /** Short range reset to default UART settings test.
  */
 U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
@@ -244,44 +247,45 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
                                      .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
                                      .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
                                    };
-    if (U_CFG_APP_PIN_SHORT_RANGE_DTR >= 0) {
-        uPortDeinit();
+    uPortDeinit();
 
-        U_PORT_TEST_ASSERT(uPortInit() == 0);
-        U_PORT_TEST_ASSERT(uAtClientInit() == 0);
-        U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
-        U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                          &uart,
-                                                          &gHandles) == 0);
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                      &uart,
+                                                      &gHandles) == 0);
 
-        U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
-        uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
-        U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
-        pInstance = pUShortRangePrivateGetInstance(gHandles.devHandle);
-        /* port is now opened at default speed, set other speed for test */
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+    uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
+    U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+    pInstance = pUShortRangePrivateGetInstance(gHandles.devHandle);
+    /* port is now opened at default speed, set other speed for test */
 
-        uart.baudRate = 19200;
-        uPortLog("U_SHORT_RANGE_TEST: Setting baudrate on host and target to %d\n", uart.baudRate);
-        U_PORT_TEST_ASSERT(uShortRangeSetBaudrate(&gHandles.devHandle, &uart) == 0); // set to 19200
-        U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0); // should get valid respons
+    uart.baudRate = 19200;
+    uPortLog("U_SHORT_RANGE_TEST: Setting baudrate on host and target to %d\n", uart.baudRate);
+    U_PORT_TEST_ASSERT(uShortRangeSetBaudrate(&gHandles.devHandle, &uart) == 0); // set to 19200
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0); // should get valid respons
 
-        uPortLog("U_SHORT_RANGE_TEST: Restoring to default settings via DTR pin...\n");
-        uShortRangeResetToDefaultSettings(U_CFG_APP_PIN_SHORT_RANGE_DTR); // restore to default 115200
+    uPortLog("U_SHORT_RANGE_TEST: Restoring to default settings via GPIO pin...\n");
+    // restore to default 115200
+    uShortRangeResetToDefaultSettings(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS);
 
-        uPortLog("U_SHORT_RANGE_TEST: Comm. should now fail due to different baudrates.");
-        U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) != 0); // should not get valid respons
+    uPortLog("U_SHORT_RANGE_TEST: Comm. should now fail due to different baudrates.");
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) != 0); // should not get valid respons
 
-        moduleType = pInstance->pModule->moduleType;
-        uart.baudRate = 115200;
-        uShortRangeClose(gHandles.devHandle);
-        uPortLog("U_SHORT_RANGE_TEST: Setting baudrate on host to %d\n", uart.baudRate);
-        U_PORT_TEST_ASSERT(uShortRangeOpenUart(moduleType, &uart, false,
-                                               &gHandles.devHandle) == 0); // target should already be at 115200 due to DTR reset
-        uShortRangeTestPrivateCleanup(&gHandles);
+    moduleType = pInstance->pModule->moduleType;
+    uart.baudRate = 115200;
+    uShortRangeClose(gHandles.devHandle);
+    uPortLog("U_SHORT_RANGE_TEST: Setting baudrate on host to %d\n", uart.baudRate);
+    U_PORT_TEST_ASSERT(uShortRangeOpenUart(moduleType, &uart, false,
+                                           &gHandles.devHandle) == 0); // target should already be at 115200 due to reset
+    uShortRangeTestPrivateCleanup(&gHandles);
 
-        uPortLog("U_SHORT_RANGE_TEST: shortRangeResetToDefaultSettings succeded.\n");
-    }
+    uPortLog("U_SHORT_RANGE_TEST: shortRangeResetToDefaultSettings succeded.\n");
 }
+
+#endif // #if U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0
 
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
