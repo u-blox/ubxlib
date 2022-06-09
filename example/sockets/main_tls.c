@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,51 +23,23 @@
  * instructions.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
+// Bring in all of the ubxlib public header files
+#include "ubxlib.h"
 
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-#include "string.h"
-
-// Required by ubxlib
-#include "u_port.h"
-
-// The next two lines will cause uPortLog() output
-// to be sent to ubxlib's chosen trace output.
-// Comment them out to send the uPortLog() output
-// to print() instead.
-#include "u_cfg_sw.h"
-#include "u_port_debug.h"
-
-// For default values for U_CFG_APP_xxx
+// Bring in the application settings
 #include "u_cfg_app_platform_specific.h"
 
-// For the cellular module types
-#include "u_cell_module_type.h"
-
-// For the network API
-#include "u_network.h"
-#include "u_network_config_cell.h"
-#include "u_network_config_wifi.h"
-
-// For the (secure) sockets API
-#include "u_sock.h"
-#include "u_sock_security.h"
-
-// For the security credential storage API
-#include "u_security_credential.h"
-
-// The specific credentials provided for use with this example
+// The specific credentials provided for use with this example,
+// must use quoted includes to pick up the local file without it
+// having to be on the include path
 #include "credentials_tls.h"
 
 #ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
 # include "u_cfg_test_platform_specific.h"
 #endif
+
+#include <string.h> // For memcmp() and strlen()
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -76,10 +48,6 @@
 // Echo server URL and port number
 #define MY_SERVER_NAME "ubxlib.it-sgn.u-blox.com"
 #define MY_SERVER_PORT 5065
-
-#ifndef U_CFG_ENABLE_LOGGING
-# define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
-#endif
 
 // For u-blox internal testing only
 #ifdef U_PORT_TEST_ASSERT
@@ -100,38 +68,54 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// Cellular network configuration:
+// Cellular configuration.
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                        U_CFG_TEST_CELL_MODULE_TYPE,
-                                                        NULL, /* SIM pin */
-                                                        NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-                                                        240, /* Connection timeout in seconds */
-                                                        U_CFG_APP_CELL_UART,
-                                                        /* Note that the pin numbers
-                                                           that follow are those of the MCU:
-                                                           if you are using an MCU inside
-                                                           a u-blox module the IO pin numbering
-                                                           for the module is likely different
-                                                           to that from the MCU: check the data
-                                                           sheet for the module to determine
-                                                           the mapping. */
-                                                        U_CFG_APP_PIN_CELL_TXD,
-                                                        U_CFG_APP_PIN_CELL_RXD,
-                                                        U_CFG_APP_PIN_CELL_CTS,
-                                                        U_CFG_APP_PIN_CELL_RTS,
-                                                        U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                        U_CFG_APP_PIN_CELL_PWR_ON,
-                                                        U_CFG_APP_PIN_CELL_VINT
-                                                       };
+// DEVICE i.e. module/chip configuration: in this case a cellular
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pSimPinCode = NULL, /* SIM pin */
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        },
+    },
+};
+// NETWORK configuration for cellular
+static const uNetworkCfgCell_t gNetworkCfg = {
+    .type = U_NETWORK_TYPE_CELL,
+    .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
+    .timeoutSeconds = 240 /* Connection timeout in seconds */
+};
 #else
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+// No module available - set some dummy values to make test system happy
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgCell_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
 // TODO: Wifi network configuration.
-// static const uNetworkConfigurationWifi_t gConfigWifi = {U_NETWORK_TYPE_NONE};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -187,21 +171,21 @@ static void printAddress(const uSockAddress_t *pAddress,
 }
 
 // Check that the credentials have been loaded.
-static void checkCredentials(int32_t networkHandle,
+static void checkCredentials(uDeviceHandle_t devHandle,
                              uSecurityTlsSettings_t *pSettings)
 {
     char hash[U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES];
 
     // Check if the client certificate is already
     // stored on the module
-    if ((uSecurityCredentialGetHash(networkHandle,
+    if ((uSecurityCredentialGetHash(devHandle,
                                     U_SECURITY_CREDENTIAL_CLIENT_X509,
                                     "ubxlib_test_client_cert",
                                     hash) != 0) ||
         (memcmp(hash, gUEchoServerClientCertHash, sizeof(hash)) != 0)) {
         // Either it is not there or the wrong hash has been
         // reported, load the client certificate into the module
-        uSecurityCredentialStore(networkHandle,
+        uSecurityCredentialStore(devHandle,
                                  U_SECURITY_CREDENTIAL_CLIENT_X509,
                                  "ubxlib_test_client_cert",
                                  gpUEchoServerClientCertPem,
@@ -211,14 +195,14 @@ static void checkCredentials(int32_t networkHandle,
     pSettings->pClientCertificateName = "ubxlib_test_client_cert";
 
     // Check if the client key is already stored on the module
-    if ((uSecurityCredentialGetHash(networkHandle,
+    if ((uSecurityCredentialGetHash(devHandle,
                                     U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                     "ubxlib_test_client_key",
                                     hash) != 0) ||
         (memcmp(hash, gUEchoServerClientKeyHash, sizeof(hash)) != 0)) {
         // Either it is not there or the wrong hash has been
         // reported, load the client key into the module
-        uSecurityCredentialStore(networkHandle,
+        uSecurityCredentialStore(devHandle,
                                  U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                  "ubxlib_test_client_key",
                                  gpUEchoServerClientKeyPem,
@@ -229,7 +213,7 @@ static void checkCredentials(int32_t networkHandle,
 
     // Check if the server certificate is already
     // stored on the module
-    if ((uSecurityCredentialGetHash(networkHandle,
+    if ((uSecurityCredentialGetHash(devHandle,
                                     U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                     "ubxlib_test_server_cert",
                                     hash) != 0) ||
@@ -244,7 +228,7 @@ static void checkCredentials(int32_t networkHandle,
         // any chain of trust
         uPortLog("U_SECURITY_TLS_TEST: storing server certificate"
                  " for the secure echo server...\n");
-        uSecurityCredentialStore(networkHandle,
+        uSecurityCredentialStore(devHandle,
                                  U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                  "ubxlib_test_server_cert",
                                  gpUEchoServerServerCertPem,
@@ -263,7 +247,7 @@ static void checkCredentials(int32_t networkHandle,
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     int32_t sock;
     int32_t x = 0;
     uSockAddress_t address;
@@ -271,6 +255,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
     size_t txSize = sizeof(message);
     char buffer[64];
     size_t rxSize = 0;
+    int32_t returnCode;
     uSecurityTlsSettings_t settings = U_SECURITY_TLS_SETTINGS_DEFAULT;
 
     // Add certificate checking to the security settings
@@ -278,18 +263,16 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a network instance, in this case of type cell
-    // since that's what we have configuration information
-    // for above.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    // Open the device
+    returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
+    uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // Bring up the network layer
+    // Bring up the network interface
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                            &gNetworkCfg) == 0) {
 
         // Do things using the network, for
         // example connect and send data to
@@ -299,7 +282,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
         // Get the server's IP address using
         // the network's DNS resolution facility
         uPortLog("Looking up server address...\n");
-        uSockGetHostByName(networkHandle, MY_SERVER_NAME,
+        uSockGetHostByName(devHandle, MY_SERVER_NAME,
                            &(address.ipAddress));
         uPortLog("Address is: ");
         printAddress(&address, false);
@@ -308,11 +291,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
 
         // Check that the relevant credentials
         // have been loaded
-        checkCredentials(networkHandle, &settings);
+        checkCredentials(devHandle, &settings);
 
         // Create the socket on the network
         uPortLog("Creating socket...\n");
-        sock = uSockCreate(networkHandle,
+        sock = uSockCreate(devHandle,
                            U_SOCK_TYPE_STREAM,
                            U_SOCK_PROTOCOL_TCP);
 
@@ -354,7 +337,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
                 uPortLog("Unable to connect to server!\n");
             }
 
-            // Note: since networkHandle is a cellular
+            // Note: since devHandle is a cellular
             // handle any of the `cell` API calls
             // could be made here using it.
             // If the configuration used were Wifi
@@ -369,7 +352,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
 
             // When finished with the network layer
             uPortLog("Taking down network...\n");
-            uNetworkDown(networkHandle);
+            uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
         } else {
             uPortLog("Unable to secure socket!\n");
         }
@@ -377,8 +360,14 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSocketsTls")
         uPortLog("Unable to bring up the network!\n");
     }
 
-    // Calling these will also deallocate the network handle
-    uNetworkDeinit();
+    // Close the device
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandle, false);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("Done.\n");

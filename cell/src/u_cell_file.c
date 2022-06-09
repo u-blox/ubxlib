@@ -121,7 +121,7 @@ static void uCellFileListClear()
  * -------------------------------------------------------------- */
 
 // Set the tagged area of the file system that future calls will use.
-int32_t uCellFileSetTag(int32_t cellHandle, const char *pTag)
+int32_t uCellFileSetTag(uDeviceHandle_t cellHandle, const char *pTag)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -148,7 +148,7 @@ int32_t uCellFileSetTag(int32_t cellHandle, const char *pTag)
 }
 
 // Get the file system tag that is currently in use.
-const char *pUCellFileGetTag(int32_t cellHandle)
+const char *pUCellFileGetTag(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance;
     const char *pFileSystemTag = NULL;
@@ -169,7 +169,7 @@ const char *pUCellFileGetTag(int32_t cellHandle)
 }
 
 // Write data into the file.
-int32_t uCellFileWrite(int32_t cellHandle,
+int32_t uCellFileWrite(uDeviceHandle_t cellHandle,
                        const char *pFileName,
                        const char *pData,
                        size_t dataSize)
@@ -231,7 +231,7 @@ int32_t uCellFileWrite(int32_t cellHandle,
 }
 
 // Read data from file.
-int32_t uCellFileRead(int32_t cellHandle,
+int32_t uCellFileRead(uDeviceHandle_t cellHandle,
                       const char *pFileName,
                       char *pData,
                       size_t dataSize)
@@ -312,7 +312,7 @@ int32_t uCellFileRead(int32_t cellHandle,
 }
 
 // Read block of data from file.
-int32_t uCellFileBlockRead(int32_t cellHandle,
+int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
                            const char *pFileName,
                            char *pData,
                            size_t offset,
@@ -399,7 +399,7 @@ int32_t uCellFileBlockRead(int32_t cellHandle,
 }
 
 // Read file size.
-int32_t uCellFileSize(int32_t cellHandle,
+int32_t uCellFileSize(uDeviceHandle_t cellHandle,
                       const char *pFileName)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -447,7 +447,7 @@ int32_t uCellFileSize(int32_t cellHandle,
 }
 
 // Delete file on file system.
-int32_t uCellFileDelete(int32_t cellHandle,
+int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
                         const char *pFileName)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -489,7 +489,7 @@ int32_t uCellFileDelete(int32_t cellHandle,
 }
 
 // Get the name of the first file stored on file system.
-int32_t uCellFileListFirst(int32_t cellHandle,
+int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
                            char *pFileName)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -572,7 +572,7 @@ int32_t uCellFileListFirst(int32_t cellHandle,
 }
 
 // Return subsequent file name in the list.
-int32_t uCellFileListNext(int32_t cellHandle,
+int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
                           char *pFileName)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -602,7 +602,7 @@ int32_t uCellFileListNext(int32_t cellHandle,
 }
 
 // Free memory from list.
-void uCellFileListLast(int32_t cellHandle)
+void uCellFileListLast(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;

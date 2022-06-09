@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,23 @@
  * limitations under the License.
  */
 
-/* Only #includes of u_* and the C standard library are allowed here,
- * no platform stuff and no OS stuff.  Anything required from
- * the platform/OS must be brought in through u_port* to maintain
- * portability.
- */
-
 /** @file
- * @brief Private wifi functions.
+ * @brief Stub of the cellular portion of the device API.
+ * Build this instead of u_device_private_cell.c if you want to
+ * avoid linking cellular features into your application.
  */
 
 #ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
+# include "u_cfg_override.h"  // For a customer's configuration override
 #endif
 
-#include "string.h"
+#include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 
-#include "u_wifi_private.h"
-
-#include "u_network_handle.h"
+#include "u_error_common.h"
+#include "u_device.h"
+#include "u_device_shared.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -42,10 +38,6 @@
 
 /* ----------------------------------------------------------------
  * TYPES
- * -------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * PROTOTYPES
  * -------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
@@ -60,22 +52,29 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uWifiToShoHandle(int32_t wifiHandle)
+int32_t uDevicePrivateCellInit()
 {
-    if ((wifiHandle < (int32_t)U_NETWORK_HANDLE_WIFI_MIN) ||
-        (wifiHandle > (int32_t)U_NETWORK_HANDLE_WIFI_MAX)) {
-        return -1;
-    }
-    return wifiHandle - (int32_t)U_NETWORK_HANDLE_WIFI_MIN;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
-int32_t uShoToWifiHandle(int32_t shortRangeHandle)
+void uDevicePrivateCellDeinit()
 {
-    if ((shortRangeHandle < 0) ||
-        (shortRangeHandle >= (int32_t)U_NETWORK_HANDLE_RANGE)) {
-        return -1;
-    }
-    return shortRangeHandle + (int32_t)U_NETWORK_HANDLE_WIFI_MIN;
+}
+
+int32_t uDevicePrivateCellAdd(const uDeviceCfg_t *pDevCfg,
+                              uDeviceHandle_t *pDeviceHandle)
+{
+    (void) pDevCfg;
+    (void) pDeviceHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
+}
+
+int32_t uDevicePrivateCellRemove(uDeviceHandle_t devHandle,
+                                 bool powerOff)
+{
+    (void) devHandle;
+    (void) powerOff;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;;
 }
 
 // End of file

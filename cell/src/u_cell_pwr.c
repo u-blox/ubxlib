@@ -99,16 +99,16 @@ typedef enum {
 /** All the parameters for a wake-up-from-deep sleep callback.
  */
 typedef struct {
-    int32_t handle;
-    void (*pCallback) (int32_t, void *);
+    uDeviceHandle_t cellHandle;
+    void (*pCallback) (uDeviceHandle_t, void *);
     void *pCallbackParam;
 } uCellPwrDeepSleepWakeUpCallback_t;
 
 /** All the parameters for an E-DRX URC callback.
  */
 typedef struct {
-    int32_t handle;
-    void (*pCallback) (int32_t, uCellNetRat_t, bool, int32_t, int32_t, int32_t, void *);
+    uDeviceHandle_t cellHandle;
+    void (*pCallback) (uDeviceHandle_t, uCellNetRat_t, bool, int32_t, int32_t, int32_t, void *);
     uCellNetRat_t rat;
     bool onNotOff;
     int32_t eDrxSecondsRequested;
@@ -656,7 +656,7 @@ static void eDrxCallback(uAtClientHandle_t atHandle, void *pParameter)
     (void) atHandle;
 
     if (pCallback != NULL) {
-        pCallback->pCallback(pCallback->handle,
+        pCallback->pCallback(pCallback->cellHandle,
                              pCallback->rat,
                              pCallback->onNotOff,
                              pCallback->eDrxSecondsRequested,
@@ -726,7 +726,7 @@ static void CEDRXP_urc(uAtClientHandle_t atHandle, void *pParameter)
         //lint -esym(593, pCallback) Suppress pCallback not being free()ed here
         pCallback = (uCellPwrEDrxCallback_t *) malloc(sizeof(*pCallback));
         if (pCallback != NULL) {
-            pCallback->handle = pInstance->handle;
+            pCallback->cellHandle = pInstance->cellHandle;
             pCallback->pCallback = pInstance->pSleepContext->pEDrxCallback;
             pCallback->rat = rat;
             pCallback->onNotOff = (eDrxSecondsAssigned >= 0);
@@ -820,7 +820,7 @@ static void deepSleepWakeUpCallback(uAtClientHandle_t atHandle, void *pParameter
     (void) atHandle;
 
     if (pCallback != NULL) {
-        pCallback->pCallback(pCallback->handle, pCallback->pCallbackParam);
+        pCallback->pCallback(pCallback->cellHandle, pCallback->pCallbackParam);
         free(pCallback);
     }
 }
@@ -1101,7 +1101,7 @@ static int32_t moduleConfigure(uCellPrivateInstance_t *pInstance,
 
 // Wait for power off to complete
 static void waitForPowerOff(uCellPrivateInstance_t *pInstance,
-                            bool (*pKeepGoingCallback) (int32_t))
+                            bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     uAtClientHandle_t atHandle = pInstance->atHandle;
     bool moduleIsOff = false;
@@ -1109,7 +1109,7 @@ static void waitForPowerOff(uCellPrivateInstance_t *pInstance,
                         (((int64_t) pInstance->pModule->powerDownWaitSeconds) * 1000);
 
     while (!moduleIsOff && (uPortGetTickTimeMs() < endTimeMs) &&
-           ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->handle))) {
+           ((pKeepGoingCallback == NULL) || pKeepGoingCallback(pInstance->cellHandle))) {
         if (pInstance->pinVInt >= 0) {
             // If we have a VInt pin then wait until that
             // goes to the off state
@@ -1138,7 +1138,7 @@ static void waitForPowerOff(uCellPrivateInstance_t *pInstance,
 // Power the cellular module off.
 // Note: gUCellPrivateMutex must be locked before this is called
 static int32_t powerOff(uCellPrivateInstance_t *pInstance,
-                        bool (*pKeepGoingCallback) (int32_t))
+                        bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode;
     uAtClientHandle_t atHandle = pInstance->atHandle;
@@ -1187,7 +1187,7 @@ static int32_t powerOff(uCellPrivateInstance_t *pInstance,
 // to be entered at a power cycle
 // Note: gUCellPrivateMutex must be locked before this is called
 static void quickPowerOff(uCellPrivateInstance_t *pInstance,
-                          bool (*pKeepGoingCallback) (int32_t))
+                          bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     if (pInstance->pinPwrOn >= 0) {
         // Sleep is no longer available
@@ -1224,14 +1224,14 @@ static void quickPowerOff(uCellPrivateInstance_t *pInstance,
 // deep sleep, which would lead to a lock-up if that's what this
 // function was called to do.
 int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
-                          bool (*pKeepGoingCallback) (int32_t),
+                          bool (*pKeepGoingCallback) (uDeviceHandle_t),
                           bool allowPrinting)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
     int32_t platformError = 0;
     int32_t enablePowerAtStart = 1;
     bool asleepAtStart = (pInstance->deepSleepState == U_CELL_PRIVATE_DEEP_SLEEP_STATE_ASLEEP);
-    int32_t handle = pInstance->handle;
+    uDeviceHandle_t cellHandle = pInstance->cellHandle;
     uCellPrivateSleep_t *pSleepContext = pInstance->pSleepContext;
     uCellPwrDeepSleepWakeUpCallback_t *pCallback;
 
@@ -1277,7 +1277,7 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
     // Two goes at this, 'cos I've seen some module types
     // fail during initial configuration.
     for (size_t x = 2; (x > 0) && (errorCode != 0) && (platformError == 0) &&
-         ((pKeepGoingCallback == NULL) || pKeepGoingCallback(handle)); x--) {
+         ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle)); x--) {
         if (allowPrinting) {
             uPortLog("U_CELL_PWR: powering on.\n");
         }
@@ -1314,7 +1314,7 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
             // and, if so, configure it
             for (size_t y = U_CELL_PWR_IS_ALIVE_ATTEMPTS_POWER_ON;
                  (y > 0) && (errorCode != 0) &&
-                 ((pKeepGoingCallback == NULL) || pKeepGoingCallback(handle));
+                 ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle));
                  y--) {
                 errorCode = moduleIsAlive(pInstance, 1);
             }
@@ -1359,7 +1359,7 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
         //lint -esym(593, pCallback) Suppress pCallback not being free()ed here
         pCallback = (uCellPwrDeepSleepWakeUpCallback_t *) malloc(sizeof(*pCallback));
         if (pCallback != NULL) {
-            pCallback->handle = pInstance->handle;
+            pCallback->cellHandle = pInstance->cellHandle;
             pCallback->pCallback = pSleepContext->pWakeUpCallback;
             pCallback->pCallbackParam = pSleepContext->pWakeUpCallbackParam;
             uAtClientCallback(pInstance->atHandle, deepSleepWakeUpCallback, pCallback);
@@ -1661,7 +1661,7 @@ int32_t uCellPwrPrivateGetEDrx(const uCellPrivateInstance_t *pInstance,
  * -------------------------------------------------------------- */
 
 // Determine if the cellular module has power.
-bool uCellPwrIsPowered(int32_t cellHandle)
+bool uCellPwrIsPowered(uDeviceHandle_t cellHandle)
 {
     bool isPowered = false;
     uCellPrivateInstance_t *pInstance;
@@ -1687,7 +1687,7 @@ bool uCellPwrIsPowered(int32_t cellHandle)
 }
 
 // Determine if the module is responsive.
-bool uCellPwrIsAlive(int32_t cellHandle)
+bool uCellPwrIsAlive(uDeviceHandle_t cellHandle)
 {
     bool isAlive = false;
     uCellPrivateInstance_t *pInstance;
@@ -1708,8 +1708,8 @@ bool uCellPwrIsAlive(int32_t cellHandle)
 }
 
 // Power the cellular module on.
-int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
-                   bool (*pKeepGoingCallback) (int32_t))
+int32_t uCellPwrOn(uDeviceHandle_t cellHandle, const char *pSimPinCode,
+                   bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1722,7 +1722,7 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
             errorCode = (int32_t) U_CELL_ERROR_PIN_ENTRY_NOT_SUPPORTED;
-            if (pPin == NULL) {
+            if (pSimPinCode == NULL) {
                 errorCode = uCellPwrPrivateOn(pInstance, pKeepGoingCallback, true);
             } else {
                 uPortLog("U_CELL_PWR: a SIM PIN has been set but PIN entry is"
@@ -1737,8 +1737,8 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
 }
 
 // Power the cellular module off.
-int32_t uCellPwrOff(int32_t cellHandle,
-                    bool (*pKeepGoingCallback) (int32_t))
+int32_t uCellPwrOff(uDeviceHandle_t cellHandle,
+                    bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1761,8 +1761,8 @@ int32_t uCellPwrOff(int32_t cellHandle,
 }
 
 // Remove power to the cellular module using HW lines.
-int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
-                        bool (*pKeepGoingCallback) (int32_t))
+int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
+                        bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1832,7 +1832,7 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
 
 // Determine if the cellular module needs to be
 // rebooted.
-bool uCellPwrRebootIsRequired(int32_t cellHandle)
+bool uCellPwrRebootIsRequired(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance;
     bool rebootIsRequired = false;
@@ -1854,8 +1854,8 @@ bool uCellPwrRebootIsRequired(int32_t cellHandle)
 
 
 // Re-boot the cellular module.
-int32_t uCellPwrReboot(int32_t cellHandle,
-                       bool (*pKeepGoingCallback) (int32_t))
+int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
+                       bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -1977,7 +1977,7 @@ int32_t uCellPwrReboot(int32_t cellHandle,
 }
 
 // Perform a hard reset of the cellular module.
-int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset)
+int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2081,7 +2081,7 @@ int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset)
 }
 
 // Set the DTR power-saving pin.
-int32_t uCellPwrSetDtrPowerSavingPin(int32_t cellHandle, int32_t pin)
+int32_t uCellPwrSetDtrPowerSavingPin(uDeviceHandle_t cellHandle, int32_t pin)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2133,7 +2133,7 @@ int32_t uCellPwrSetDtrPowerSavingPin(int32_t cellHandle, int32_t pin)
 }
 
 // Get the DTR power-saving pin.
-int32_t uCellPwrGetDtrPowerSavingPin(int32_t cellHandle)
+int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrPin = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2158,7 +2158,7 @@ int32_t uCellPwrGetDtrPowerSavingPin(int32_t cellHandle)
 }
 
 // Set the requested 3GPP power saving parameters.
-int32_t  uCellPwrSetRequested3gppPowerSaving(int32_t cellHandle,
+int32_t  uCellPwrSetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
                                              uCellNetRat_t rat,
                                              bool onNotOff,
                                              int32_t activeTimeSeconds,
@@ -2262,7 +2262,7 @@ int32_t  uCellPwrSetRequested3gppPowerSaving(int32_t cellHandle,
 }
 
 // Get the requested 3GPP power saving parameters.
-int32_t uCellPwrGetRequested3gppPowerSaving(int32_t cellHandle,
+int32_t uCellPwrGetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
                                             bool *pOnNotOff,
                                             int32_t *pActiveTimeSeconds,
                                             int32_t *pPeriodicWakeupSeconds)
@@ -2311,7 +2311,7 @@ int32_t uCellPwrGetRequested3gppPowerSaving(int32_t cellHandle,
 }
 
 // Get the 3GPP power saving parameters as agreed with the network.
-int32_t uCellPwrGet3gppPowerSaving(int32_t cellHandle,
+int32_t uCellPwrGet3gppPowerSaving(uDeviceHandle_t cellHandle,
                                    bool *pOnNotOff,
                                    int32_t *pActiveTimeSeconds,
                                    int32_t *pPeriodicWakeupSeconds)
@@ -2361,8 +2361,8 @@ int32_t uCellPwrGet3gppPowerSaving(int32_t cellHandle,
 
 // Set a callback which will be called when the 3GPP power saving
 // parameters are indicated by the network.
-int32_t uCellPwrSet3gppPowerSavingCallback(int32_t cellHandle,
-                                           void (*pCallback) (int32_t cellHandle,
+int32_t uCellPwrSet3gppPowerSavingCallback(uDeviceHandle_t cellHandle,
+                                           void (*pCallback) (uDeviceHandle_t cellHandle,
                                                               bool onNotOff,
                                                               int32_t activeTimeSeconds,
                                                               int32_t periodicWakeupSeconds,
@@ -2400,7 +2400,7 @@ int32_t uCellPwrSet3gppPowerSavingCallback(int32_t cellHandle,
 }
 
 // Set the requested E-DRX parameters.
-int32_t uCellPwrSetRequestedEDrx(int32_t cellHandle,
+int32_t uCellPwrSetRequestedEDrx(uDeviceHandle_t cellHandle,
                                  uCellNetRat_t rat,
                                  bool onNotOff,
                                  int32_t eDrxSeconds,
@@ -2516,7 +2516,7 @@ int32_t uCellPwrSetRequestedEDrx(int32_t cellHandle,
 }
 
 // Get the requested E-DRX parameters.
-int32_t uCellPwrGetRequestedEDrx(int32_t cellHandle,
+int32_t uCellPwrGetRequestedEDrx(uDeviceHandle_t cellHandle,
                                  uCellNetRat_t rat,
                                  bool *pOnNotOff,
                                  int32_t *pEDrxSeconds,
@@ -2544,7 +2544,7 @@ int32_t uCellPwrGetRequestedEDrx(int32_t cellHandle,
 }
 
 // Get the current E-DRX parameters as agreed with the network.
-int32_t uCellPwrGetEDrx(int32_t cellHandle,
+int32_t uCellPwrGetEDrx(uDeviceHandle_t cellHandle,
                         uCellNetRat_t rat,
                         bool *pOnNotOff,
                         int32_t *pEDrxSeconds,
@@ -2572,8 +2572,8 @@ int32_t uCellPwrGetEDrx(int32_t cellHandle,
 }
 
 // Set a callback which will be called when the EDRX parameters change.
-int32_t uCellPwrSetEDrxCallback(int32_t cellHandle,
-                                void (*pCallback) (int32_t cellHandle,
+int32_t uCellPwrSetEDrxCallback(uDeviceHandle_t cellHandle,
+                                void (*pCallback) (uDeviceHandle_t cellHandle,
                                                    uCellNetRat_t rat,
                                                    bool onNotOff,
                                                    int32_t eDrxSecondsRequested,
@@ -2620,8 +2620,8 @@ int32_t uCellPwrSetEDrxCallback(int32_t cellHandle,
 }
 
 // Set callback for wake-up from deep sleep.
-int32_t uCellPwrSetDeepSleepWakeUpCallback(int32_t cellHandle,
-                                           void (*pCallback) (int32_t cellHandle,
+int32_t uCellPwrSetDeepSleepWakeUpCallback(uDeviceHandle_t cellHandle,
+                                           void (*pCallback) (uDeviceHandle_t cellHandle,
                                                               void *pCallbackParam),
                                            void *pCallbackParam)
 {
@@ -2662,7 +2662,7 @@ int32_t uCellPwrSetDeepSleepWakeUpCallback(int32_t cellHandle,
 }
 
 // Get whether deep sleep is currently active or not.
-int32_t uCellPwrGetDeepSleepActive(int32_t cellHandle, bool *pSleepActive)
+int32_t uCellPwrGetDeepSleepActive(uDeviceHandle_t cellHandle, bool *pSleepActive)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2691,14 +2691,14 @@ int32_t uCellPwrGetDeepSleepActive(int32_t cellHandle, bool *pSleepActive)
 }
 
 // Wake the module from deep sleep.
-int32_t uCellPwrWakeUpFromDeepSleep(int32_t cellHandle,
-                                    bool (*pKeepGoingCallback) (int32_t))
+int32_t uCellPwrWakeUpFromDeepSleep(uDeviceHandle_t cellHandle,
+                                    bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     return uCellPwrOn(cellHandle, NULL, pKeepGoingCallback);
 }
 
 // Disable 32 kHz sleep.
-int32_t uCellPwrDisableUartSleep(int32_t cellHandle)
+int32_t uCellPwrDisableUartSleep(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2753,7 +2753,7 @@ int32_t uCellPwrDisableUartSleep(int32_t cellHandle)
 }
 
 // Enable 32 kHz sleep.
-int32_t uCellPwrEnableUartSleep(int32_t cellHandle)
+int32_t uCellPwrEnableUartSleep(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -2815,7 +2815,7 @@ int32_t uCellPwrEnableUartSleep(int32_t cellHandle)
 
 
 // Determine whether UART, AKA 32 kHz, sleep is enabled or not.
-bool uCellPwrUartSleepIsEnabled(int32_t cellHandle)
+bool uCellPwrUartSleepIsEnabled(uDeviceHandle_t cellHandle)
 {
     bool isEnabled = false;
     uCellPrivateInstance_t *pInstance;

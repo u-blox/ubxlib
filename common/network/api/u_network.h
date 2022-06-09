@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,35 +17,48 @@
 #ifndef _U_NETWORK_H_
 #define _U_NETWORK_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+
+/** @brief Functions for bringing up and down a network interface
+ * on a device.  These functions are thread-safe.
+ */
+
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the network API. These functions are
  * thread-safe.
  *
- * The functions here should be used in the following sequence; think
- * of it as "ready, steady, go ... off".
+ * The functions here should be used in conjunction with those in the
+ * uDevice API in the following sequence.
  *
- * uNetworkInit():   call this at start of day in order to make this API
- *                   available. READY.
- * uNetworkAdd():    call this when you would like to begin using the
- *                   network: when it returns the module is powered-up
- *                   and ready for configuration. STEADY.
- * uNetworkUp():     call this when you would like the network to connect;
- *                   after this is called you can send and receive stuff
- *                   over the network. GO.
- * uNetworkDown():   disconnect and shut-down the network; once this has
- *                   returned the module may enter a lower-power or
- *                   powered-off state: you must call uNetworkUp() to
- *                   talk with it again. OFF.
- * uNetworkRemove(): call this to clear up any resources belonging to
- *                   the network; once this is called uNetworkAdd()
- *                   must be called once more to re-instantiate the
- *                   network.
- * uNetworkDeinit(): call this at end of day in order to clear up any
- *                   resources owned by this API.  This internally calls
- *                   uNetworkRemove() for any networks that haven't already
- *                   been cleaned-up.
+ * uDeviceInit():           call this at start of day in order to make
+ *                          the device API available.
+ * uDeviceOpen():           call this with a pointer to a const structure
+ *                          containing the physical configuration for the
+ *                          device (module type, physical interface (UART
+ *                          etc.), pins used, etc.): when the function
+ *                          returns the module is powered-up and ready to
+ *                          support a network.
+ * uNetworkInterfaceUp():   call this with the device handle and a pointer
+ *                          to a const structure containing the network
+ *                          configuration (e.g. SSID in the case of Wifi,
+ *                          APN in the case of cellular, etc.) when you
+ *                          would like the network to connect; after this
+ *                          is called you can send and receive stuff over
+ *                          the network.
+ * uNetworkInterfaceDown(): disconnect the network; the nework remains
+ *                          powered-up and may be reconfigured etc.: you
+ *                          must call uNetworkInterfaceUp() to talk with
+ *                          it again.
+ * uDeviceClose():          call this to power the device down and clear
+ *                          up any resources belonging to it; uDeviceOpen()
+ *                          must be called re-instantiate the device.
+ * uDeviceDeinit():         call this at end of day in order to clear up any
+ *                          resources owned by the device API.
  */
 
 #ifdef __cplusplus
@@ -74,30 +87,31 @@ typedef enum {
     U_NETWORK_TYPE_MAX_NUM
 } uNetworkType_t;
 
+/** A version number for the network configuration structure. In
+ * general you should allow the compiler to initialise any variable
+ * of this type to zero and ignore it.  It is only set to a value
+ * other than zero when variables in a new and extended version of
+ * the structure it is a part of are being used, the version number
+ * being employed by this code to detect that and, more importantly,
+ * to adopt default values for any new elements when the version
+ * number is STILL ZERO, maintaining backwards compatibility with
+ * existing application code.  The structure this is a part of will
+ * include instructions as to when a non-zero version number should
+ * be set.
+ */
+typedef int32_t uNetworkCfgVersion_t;
+
 /* ----------------------------------------------------------------
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Initialise the network API.  If the network API has already
- * been initialised this function returns success without doing
- * anything.
+/** Bring up the given network interface on a device. If the network
+ * is already up the implementation should return success without
+ * doing anything.
  *
- * @return  zero on success else negative error code.
- */
-int32_t uNetworkInit();
-
-/** Deinitialise the network API.  Any network instances will
- * be removed internally with a call to uNetworkRemove().
- */
-void uNetworkDeinit();
-
-/** Add a network instance. When this returns successfully
- * the module is powered up and available for configuration but
- * is not yet connected to anything.
- *
- * @param type             the type of network to create,
- *                         Wifi (in future BLE), cellular, etc.
- * @param pConfiguration   a pointer to the configuration
+ * @param devHandle        the handle of the device to bring up.
+ * @param netType          which of the module interfaces.
+ * @param[in] pCfg         a pointer to the configuration
  *                         information for the given network
  *                         type.  This must be stored
  *                         statically, a true constant: the
@@ -111,50 +125,27 @@ void uNetworkDeinit();
  *                         Ble or Wifi.  The configuration
  *                         is passed transparently through to
  *                         the given API, hence the use of
- *                         void * here. The first entry in
+ *                         void * here. The second entry in
  *                         all of these structures is of type
  *                         uNetworkType_t to indicate the
  *                         type and allow cross-checking.
- * @return                 on success the handle of the
- *                         network instance, else negative
- *                         error code.  This handle may also
- *                         be used with the underlying sho/cell
- *                         API to perform operations that
- *                         cannot be carried out through
- *                         this network API.
+ *                         Can be set to NULL on subsequent calls
+ *                         if the configuration is unchanged.
+ * @return                 zero on success else negative error code.
  */
-int32_t uNetworkAdd(uNetworkType_t type,
-                    const void *pConfiguration);
+int32_t uNetworkInterfaceUp(uDeviceHandle_t devHandle, uNetworkType_t netType,
+                            const void *pCfg);
 
-/** Remove a network instance.  It is up to the caller to ensure
- * that the network in question is disconnected and/or powered
- * down etc.; all this function does is remove the logical
- * instance, clearing up resources.
- *
- * @param handle  the handle of the network instance to remove.
- * @return        zero on success else negative error code.
- */
-int32_t uNetworkRemove(int32_t handle);
-
-/** Bring up the given network instance, connecting it as defined
- * in the configuration passed to uNetworkAdd().  If the network
- * is already up the implementation should return success without
- * doing anything.
- *
- * @param handle the handle of the instance to bring up.
- * @return       zero on success else negative error code.
- */
-int32_t uNetworkUp(int32_t handle);
-
-/** Take down the given network instance, disconnecting
+/** Take down the given network interface on a device, disconnecting
  * it from any peer entity.  After this function returns
- * uNetworkUp() must be called once more to ensure that the
+ * uNetworkInterfaceUp() must be called once more to ensure that the
  * module is brought back to a responsive state.
  *
- * @param handle the handle of the instance to take down.
- * @return       zero on success else negative error code.
+ * @param devHandle the handle of the device to take down.
+ * @param netType   which of the module interfaces.
+ * @return          zero on success else negative error code.
  */
-int32_t uNetworkDown(int32_t handle);
+int32_t uNetworkInterfaceDown(uDeviceHandle_t devHandle, uNetworkType_t netType);
 
 #ifdef __cplusplus
 }

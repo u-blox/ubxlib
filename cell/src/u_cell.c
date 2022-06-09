@@ -43,13 +43,12 @@
 #include "u_port_gpio.h"
 
 #include "u_at_client.h"
+#include "u_device_shared.h"
 
 #include "u_cell_module_type.h"
 #include "u_cell.h"         // Order is
 #include "u_cell_net.h"     // important here
 #include "u_cell_private.h" // don't change it
-
-#include "u_network_handle.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -62,10 +61,6 @@
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
-
-/** The next instance handle to use.
- */
-static int32_t gNextInstanceHandle = (int32_t) U_NETWORK_HANDLE_CELL_MIN;
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -117,6 +112,8 @@ static void removeCellInstance(const uCellPrivateInstance_t *pInstance)
             pCurrent = pPrev->pNext;
         }
     }
+
+    uDeviceDestroyInstance(U_DEVICE_INSTANCE(pInstance->cellHandle));
 }
 
 /* ----------------------------------------------------------------
@@ -175,7 +172,8 @@ void uCellDeinit()
 int32_t uCellAdd(uCellModuleType_t moduleType,
                  uAtClientHandle_t atHandle,
                  int32_t pinEnablePower, int32_t pinPwrOn,
-                 int32_t pinVInt, bool leavePowerAlone)
+                 int32_t pinVInt, bool leavePowerAlone,
+                 uDeviceHandle_t *pCellHandle)
 {
     int32_t handleOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     int32_t platformError = 0;
@@ -212,188 +210,192 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
 #endif
 
     if (gUCellPrivateMutex != NULL) {
+        uDeviceInstance_t *pDevInstance;
 
-        U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+        handleOrErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+        pDevInstance = pUDeviceCreateInstance(U_DEVICE_TYPE_CELL);
+        if (pDevInstance != NULL) {
 
-        // Check parameters
-        handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-        if (((size_t) moduleType < gUCellPrivateModuleListSize) &&
-            (atHandle != NULL) &&
-            (pGetCellInstanceAtHandle(atHandle) == NULL)) {
-            handleOrErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
-            // Allocate memory for the instance
-            pInstance = (uCellPrivateInstance_t *) malloc(sizeof(uCellPrivateInstance_t));
-            if (pInstance != NULL) {
-                handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
-                // Fill the values in
-                memset(pInstance, 0, sizeof(*pInstance));
-                // Set the pin states so that we can use them elsewhere
-                if (pinEnablePowerOnState != 0) {
-                    pInstance->pinStates |= 1 << U_CELL_PRIVATE_ENABLE_POWER_PIN_BIT_ON_STATE;
-                }
-                if (pinPwrOnPinToggleToState != 0) {
-                    pInstance->pinStates |= 1 << U_CELL_PRIVATE_PWR_ON_PIN_BIT_TOGGLE_TO_STATE;
-                }
-                if (pinVIntOnState != 0) {
-                    pInstance->pinStates |= 1 << U_CELL_PRIVATE_VINT_PIN_BIT_ON_STATE;
-                }
-                // Find a free handle
-                do {
-                    pInstance->handle = gNextInstanceHandle;
-                    gNextInstanceHandle++;
-                    if (gNextInstanceHandle > (int32_t) U_NETWORK_HANDLE_CELL_MAX) {
-                        gNextInstanceHandle = (int32_t) U_NETWORK_HANDLE_CELL_MIN;
+            U_PORT_MUTEX_LOCK(gUCellPrivateMutex);
+
+            // Check parameters
+            handleOrErrorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
+            if (((size_t) moduleType < gUCellPrivateModuleListSize) &&
+                (atHandle != NULL) &&
+                (pGetCellInstanceAtHandle(atHandle) == NULL)) {
+                handleOrErrorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
+                // Allocate memory for the instance
+                pInstance = (uCellPrivateInstance_t *) malloc(sizeof(uCellPrivateInstance_t));
+                if (pInstance != NULL) {
+                    handleOrErrorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                    // Fill the values in
+                    memset(pInstance, 0, sizeof(*pInstance));
+                    // Set the pin states so that we can use them elsewhere
+                    if (pinEnablePowerOnState != 0) {
+                        pInstance->pinStates |= 1 << U_CELL_PRIVATE_ENABLE_POWER_PIN_BIT_ON_STATE;
                     }
-                } while (pUCellPrivateGetInstance(pInstance->handle) != NULL);
-                pInstance->atHandle = atHandle;
-                pInstance->pinEnablePower = pinEnablePower;
-                pInstance->pinPwrOn = pinPwrOn;
-                pInstance->pinVInt = pinVInt;
-                pInstance->pinDtrPowerSaving = -1;
-                for (size_t x = 0;
-                     x < sizeof(pInstance->networkStatus) / sizeof(pInstance->networkStatus[0]);
-                     x++) {
-                    pInstance->networkStatus[x] = U_CELL_NET_STATUS_UNKNOWN;
-                }
-                uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
-                pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
-                pInstance->pSecurityC2cContext = NULL;
-                pInstance->pMqttContext = NULL;
-                pInstance->pLocContext = NULL;
-                pInstance->socketsHexMode = false;
-                pInstance->pFileSystemTag = NULL;
-                pInstance->inWakeUpCallback = false;
-                pInstance->pSleepContext = NULL;
-                pInstance->pNext = NULL;
-
-                // Now set up the pins
-                uPortLog("U_CELL: initialising with enable power pin ");
-                if (pinEnablePower >= 0) {
-                    uPortLog("%d (0x%02x) (where %d is on), ", pinEnablePower,
-                             pinEnablePower, pinEnablePowerOnState);
-                } else {
-                    uPortLog("not connected, ");
-                }
-                uPortLog("PWR_ON pin ", pinPwrOn, pinPwrOn);
-                if (pinPwrOn >= 0) {
-                    uPortLog("%d (0x%02x) (and is toggled from %d to %d)",
-                             pinPwrOn, pinPwrOn,
-                             (int32_t) !pinPwrOnPinToggleToState, pinPwrOnPinToggleToState);
-                } else {
-                    uPortLog("not connected");
-                }
-                if (leavePowerAlone) {
-                    uPortLog(", leaving the level of both those pins alone");
-                }
-                uPortLog(" and VInt pin ");
-                if (pinVInt >= 0) {
-                    uPortLog("%d (0x%02x) (and is %d when module is on).\n",
-                             pinVInt, pinVInt, pinVIntOnState);
-                } else {
-                    uPortLog("not connected.\n");
-                }
-                // Sort PWR_ON pin if there is one
-                if (pinPwrOn >= 0) {
-                    if (!leavePowerAlone) {
-                        // Set PWR_ON to its steady state so that we can pull it
-                        // the other way
-                        platformError = uPortGpioSet(pinPwrOn,
-                                                     (int32_t) !pinPwrOnPinToggleToState);
+                    if (pinPwrOnPinToggleToState != 0) {
+                        pInstance->pinStates |= 1 << U_CELL_PRIVATE_PWR_ON_PIN_BIT_TOGGLE_TO_STATE;
                     }
-                    if (platformError == 0) {
-                        U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
-                        gpioConfig.pin = pinPwrOn;
-                        if (pinPwrOnPinToggleToState == 0) {
-                            // TODO: the u-blox C030-R412M board requires a pull-up here.
-                            gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_PULL_UP;
+                    if (pinVIntOnState != 0) {
+                        pInstance->pinStates |= 1 << U_CELL_PRIVATE_VINT_PIN_BIT_ON_STATE;
+                    }
+                    pInstance->cellHandle = (uDeviceHandle_t)pDevInstance;
+                    pInstance->atHandle = atHandle;
+                    pInstance->pinEnablePower = pinEnablePower;
+                    pInstance->pinPwrOn = pinPwrOn;
+                    pInstance->pinVInt = pinVInt;
+                    pInstance->pinDtrPowerSaving = -1;
+                    for (size_t x = 0;
+                         x < sizeof(pInstance->networkStatus) / sizeof(pInstance->networkStatus[0]);
+                         x++) {
+                        pInstance->networkStatus[x] = U_CELL_NET_STATUS_UNKNOWN;
+                    }
+                    uCellPrivateClearRadioParameters(&(pInstance->radioParameters));
+                    pInstance->pModule = &(gUCellPrivateModuleList[moduleType]);
+                    pInstance->pSecurityC2cContext = NULL;
+                    pInstance->pMqttContext = NULL;
+                    pInstance->pLocContext = NULL;
+                    pInstance->socketsHexMode = false;
+                    pInstance->pFileSystemTag = NULL;
+                    pInstance->inWakeUpCallback = false;
+                    pInstance->pSleepContext = NULL;
+                    pInstance->pNext = NULL;
+
+                    // Now set up the pins
+                    uPortLog("U_CELL: initialising with enable power pin ");
+                    if (pinEnablePower >= 0) {
+                        uPortLog("%d (0x%02x) (where %d is on), ", pinEnablePower,
+                                 pinEnablePower, pinEnablePowerOnState);
+                    } else {
+                        uPortLog("not connected, ");
+                    }
+                    uPortLog("PWR_ON pin ", pinPwrOn, pinPwrOn);
+                    if (pinPwrOn >= 0) {
+                        uPortLog("%d (0x%02x) (and is toggled from %d to %d)",
+                                 pinPwrOn, pinPwrOn,
+                                 (int32_t) !pinPwrOnPinToggleToState, pinPwrOnPinToggleToState);
+                    } else {
+                        uPortLog("not connected");
+                    }
+                    if (leavePowerAlone) {
+                        uPortLog(", leaving the level of both those pins alone");
+                    }
+                    uPortLog(" and VInt pin ");
+                    if (pinVInt >= 0) {
+                        uPortLog("%d (0x%02x) (and is %d when module is on).\n",
+                                 pinVInt, pinVInt, pinVIntOnState);
+                    } else {
+                        uPortLog("not connected.\n");
+                    }
+                    // Sort PWR_ON pin if there is one
+                    if (pinPwrOn >= 0) {
+                        if (!leavePowerAlone) {
+                            // Set PWR_ON to its steady state so that we can pull it
+                            // the other way
+                            platformError = uPortGpioSet(pinPwrOn,
+                                                         (int32_t) !pinPwrOnPinToggleToState);
                         }
-                        gpioConfig.driveMode = pinPwrOnDriveMode;
-                        gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
-                        platformError = uPortGpioConfig(&gpioConfig);
-                        if (platformError != 0) {
-                            uPortLog("U_CELL: uPortGpioConfig() for PWR_ON pin %d"
-                                     " (0x%02x) returned error code %d.\n",
+                        if (platformError == 0) {
+                            U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
+                            gpioConfig.pin = pinPwrOn;
+                            if (pinPwrOnPinToggleToState == 0) {
+                                // TODO: the u-blox C030-R412M board requires a pull-up here.
+                                gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_PULL_UP;
+                            }
+                            gpioConfig.driveMode = pinPwrOnDriveMode;
+                            gpioConfig.direction = U_PORT_GPIO_DIRECTION_OUTPUT;
+                            platformError = uPortGpioConfig(&gpioConfig);
+                            if (platformError != 0) {
+                                uPortLog("U_CELL: uPortGpioConfig() for PWR_ON pin %d"
+                                         " (0x%02x) returned error code %d.\n",
+                                         pinPwrOn, pinPwrOn, platformError);
+                            }
+                        } else {
+                            uPortLog("U_CELL: uPortGpioSet() for PWR_ON pin %d (0x%02x)"
+                                     " returned error code %d.\n",
                                      pinPwrOn, pinPwrOn, platformError);
                         }
-                    } else {
-                        uPortLog("U_CELL: uPortGpioSet() for PWR_ON pin %d (0x%02x)"
-                                 " returned error code %d.\n",
-                                 pinPwrOn, pinPwrOn, platformError);
                     }
-                }
-                // Sort the enable power pin, if there is one
-                if ((platformError == 0) && (pinEnablePower >= 0)) {
-                    U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
-                    gpioConfig.pin = pinEnablePower;
-                    gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_NONE;
-                    // Input/output so we can read it as well
-                    gpioConfig.direction = U_PORT_GPIO_DIRECTION_INPUT_OUTPUT;
-                    platformError = uPortGpioConfig(&gpioConfig);
-                    if (platformError == 0) {
-                        enablePowerAtStart = uPortGpioGet(pinEnablePower);
-                        if (!leavePowerAlone) {
-                            // Make sure the default is off.
-                            enablePowerAtStart = !pinEnablePowerOnState;
-                        }
-                        platformError = uPortGpioSet(pinEnablePower, enablePowerAtStart);
-                        if (platformError != 0) {
-                            uPortLog("U_CELL: uPortGpioSet() for enable power pin %d"
+                    // Sort the enable power pin, if there is one
+                    if ((platformError == 0) && (pinEnablePower >= 0)) {
+                        U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
+                        gpioConfig.pin = pinEnablePower;
+                        gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_NONE;
+                        // Input/output so we can read it as well
+                        gpioConfig.direction = U_PORT_GPIO_DIRECTION_INPUT_OUTPUT;
+                        platformError = uPortGpioConfig(&gpioConfig);
+                        if (platformError == 0) {
+                            enablePowerAtStart = uPortGpioGet(pinEnablePower);
+                            if (!leavePowerAlone) {
+                                // Make sure the default is off.
+                                enablePowerAtStart = !pinEnablePowerOnState;
+                            }
+                            platformError = uPortGpioSet(pinEnablePower, enablePowerAtStart);
+                            if (platformError != 0) {
+                                uPortLog("U_CELL: uPortGpioSet() for enable power pin %d"
+                                         " (0x%02x) returned error code %d.\n",
+                                         pinEnablePower, pinEnablePower, platformError);
+                            }
+                        } else {
+                            uPortLog("U_CELL: uPortGpioConfig() for enable power pin %d"
                                      " (0x%02x) returned error code %d.\n",
                                      pinEnablePower, pinEnablePower, platformError);
                         }
-                    } else {
-                        uPortLog("U_CELL: uPortGpioConfig() for enable power pin %d"
-                                 " (0x%02x) returned error code %d.\n",
-                                 pinEnablePower, pinEnablePower, platformError);
                     }
-                }
-                // Finally, sort the VINT pin if there is one
-                if ((platformError == 0) && (pinVInt >= 0)) {
-                    // Set pin that monitors VINT as input
-                    U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
-                    gpioConfig.pin = pinVInt;
-                    gpioConfig.direction = U_PORT_GPIO_DIRECTION_INPUT;
-                    platformError = uPortGpioConfig(&gpioConfig);
-                    if (platformError != 0) {
-                        uPortLog("U_CELL: uPortGpioConfig() for VInt pin %d"
-                                 " (0x%02x) returned error code %d.\n",
-                                 pinVInt, pinVInt, platformError);
+                    // Finally, sort the VINT pin if there is one
+                    if ((platformError == 0) && (pinVInt >= 0)) {
+                        // Set pin that monitors VINT as input
+                        U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
+                        gpioConfig.pin = pinVInt;
+                        gpioConfig.direction = U_PORT_GPIO_DIRECTION_INPUT;
+                        platformError = uPortGpioConfig(&gpioConfig);
+                        if (platformError != 0) {
+                            uPortLog("U_CELL: uPortGpioConfig() for VInt pin %d"
+                                     " (0x%02x) returned error code %d.\n",
+                                     pinVInt, pinVInt, platformError);
+                        }
                     }
-                }
-                // With that done, set up the AT client for this module
-                if (platformError == 0) {
-                    uAtClientTimeoutSet(atHandle,
-                                        pInstance->pModule->atTimeoutSeconds * 1000);
-                    uAtClientDelaySet(atHandle,
-                                      pInstance->pModule->commandDelayMs);
+                    // With that done, set up the AT client for this module
+                    if (platformError == 0) {
+                        uAtClientTimeoutSet(atHandle,
+                                            pInstance->pModule->atTimeoutSeconds * 1000);
+                        uAtClientDelaySet(atHandle,
+                                          pInstance->pModule->commandDelayMs);
 #ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
-                    // Here we set the power-saving wake-up handler but note
-                    // that this might be _removed_ during the power-on
-                    // process if it turns out that the configuration of
-                    // flow control lines is such that such power saving
-                    // cannot be supported
-                    uAtClientSetWakeUpHandler(atHandle, uCellPrivateWakeUpCallback, pInstance,
-                                              (U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000) -
-                                              U_CELL_POWER_SAVING_UART_WAKEUP_MARGIN_MILLISECONDS);
+                        // Here we set the power-saving wake-up handler but note
+                        // that this might be _removed_ during the power-on
+                        // process if it turns out that the configuration of
+                        // flow control lines is such that such power saving
+                        // cannot be supported
+                        uAtClientSetWakeUpHandler(atHandle, uCellPrivateWakeUpCallback, pInstance,
+                                                  (U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS * 1000) -
+                                                  U_CELL_POWER_SAVING_UART_WAKEUP_MARGIN_MILLISECONDS);
 #endif
-                    // ...and finally add it to the list
-                    addCellInstance(pInstance);
-                    handleOrErrorCode = pInstance->handle;
-                } else {
-                    // If we hit a platform error, free memory again
-                    free(pInstance);
+                        // ...and finally add it to the list
+                        addCellInstance(pInstance);
+                        handleOrErrorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
+                        *pCellHandle = pInstance->cellHandle;
+                    } else {
+                        // If we hit a platform error, free memory again
+                        free(pInstance);
+                    }
                 }
             }
-        }
+            if (handleOrErrorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
+                // Don't forget to deallocate device instance on failure
+                uDeviceDestroyInstance(pDevInstance);
+            }
 
-        U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+            U_PORT_MUTEX_UNLOCK(gUCellPrivateMutex);
+        }
     }
 
     return (int32_t) handleOrErrorCode;
 }
 
 // Remove a cellular instance.
-void uCellRemove(int32_t cellHandle)
+void uCellRemove(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance;
 
@@ -424,7 +426,7 @@ void uCellRemove(int32_t cellHandle)
 }
 
 // Get the handle of the AT client.
-int32_t uCellAtClientHandleGet(int32_t cellHandle,
+int32_t uCellAtClientHandleGet(uDeviceHandle_t cellHandle,
                                uAtClientHandle_t *pAtHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;

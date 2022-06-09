@@ -64,14 +64,14 @@
 #include "u_port_uart.h"
 
 #include "u_at_client.h"
-
+#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 #include "u_ble.h"
 
 #include "u_short_range_test_selector.h"
 
-#include "u_ble_data.h"
+#include "u_ble_sps.h"
 #include "u_ble_test_private.h"
 
 /* ----------------------------------------------------------------
@@ -86,7 +86,7 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-static uBleTestPrivate_t gHandles = { -1, -1, NULL, -1 };
+static uBleTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -116,48 +116,57 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t type,
 }
 
 
-U_PORT_TEST_FUNCTION("[bleData]", "bleData")
+U_PORT_TEST_FUNCTION("[bleSps]", "bleSps")
 {
     int32_t heapUsed;
     heapUsed = uPortGetHeapFree();
 
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                               &uart,
                                                &gHandles) == 0);
 #elif U_CFG_BLE_MODULE_INTERNAL
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble(U_BLE_MODULE_TYPE_INTERNAL,
+                                               NULL,
                                                &gHandles) == 0);
 #else
 #error "Either U_CFG_TEST_SHORT_RANGE_MODULE_TYPE or U_CFG_BLE_MODULE_INTERNAL must be defined"
 #endif
 
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
-                                                           connectionCallback,
-                                                           NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
+                                                          connectionCallback,
+                                                          NULL) == 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
-                                                           connectionCallback,
-                                                           NULL) != 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
+                                                          connectionCallback,
+                                                          NULL) != 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
-                                                           NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
+                                                          NULL, NULL) == 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
-                                                           connectionCallback,
-                                                           NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
+                                                          connectionCallback,
+                                                          NULL) == 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetCallbackConnectionStatus(gHandles.bleHandle,
-                                                           NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
+                                                          NULL, NULL) == 0);
 
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
-                                                        NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
-                                                        NULL) != 0);
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, dataAvailableCallback,
-                                                        NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleDataSetDataAvailableCallback(gHandles.bleHandle, NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, dataAvailableCallback,
+                                                       NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, dataAvailableCallback,
+                                                       NULL) != 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, NULL, NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, dataAvailableCallback,
+                                                       NULL) == 0);
+    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, NULL, NULL) == 0);
 
     uBleTestPrivatePostamble(&gHandles);
 
@@ -183,7 +192,7 @@ U_PORT_TEST_FUNCTION("[bleData]", "bleData")
  * in case there were test failures which would have resulted
  * in the deinitialisation being skipped.
  */
-U_PORT_TEST_FUNCTION("[bleData]", "bleDataCleanUp")
+U_PORT_TEST_FUNCTION("[bleSps]", "bleSpsCleanUp")
 {
     int32_t x;
 

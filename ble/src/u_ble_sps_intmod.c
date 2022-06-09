@@ -40,6 +40,8 @@
 
 #include "u_error_common.h"
 
+#include "u_device_shared.h"
+
 #include "u_cfg_sw.h"
 #include "u_port.h"
 #include "u_port_os.h"
@@ -48,7 +50,7 @@
 #include "u_cfg_os_platform_specific.h"
 #include "u_ringbuffer.h"
 
-#include "u_ble_data.h"
+#include "u_ble_sps.h"
 #include "u_ble_private.h"
 
 /* ----------------------------------------------------------------
@@ -103,7 +105,7 @@ typedef struct {
     char         remoteAddr[14]; // 12 (mac) + 1 (p/r) + 1 ("\0")
     union {
         struct {
-            uBleDataSpsHandles_t       attHandle;
+            uBleSpsHandles_t       attHandle;
             uPortGattSubscribeParams_t creditSubscripe;
             uPortGattSubscribeParams_t fifoSubscripe;
         } client;
@@ -117,7 +119,7 @@ typedef struct {
     spsState_t             spsState;
     uint16_t               mtu;
     uPortSemaphoreHandle_t txCreditsSemaphore;
-    char                   rxData[U_BLE_DATA_BUFFER_SIZE];
+    char                   rxData[U_BLE_SPS_BUFFER_SIZE];
     uRingBuffer_t          rxRingBuffer;
     uint32_t               dataSendTimeoutMs;
     spsRole_t              localSpsRole;
@@ -171,7 +173,7 @@ static uPortGattIter_t onFifoCharDiscovery(int32_t gapConnHandle, uPortGattUuid_
                                            uint8_t properties);
 static uPortGattIter_t onSpsServiceDiscovery(int32_t gapConnHandle, uPortGattUuid_t *pUuid,
                                              uint16_t attrHandle, uint16_t endHandle);
-static void onBleDataEvent(void *pParam, size_t eventSize);
+static void onBleSpsEvent(void *pParam, size_t eventSize);
 
 /** SPS Server specific functions */
 static bool write16BitValue(const void *buf, uint16_t len, uint16_t offset, uint16_t *pVal);
@@ -192,14 +194,14 @@ static int32_t addrStringToArray(const char *pAddrIn, uint8_t *pAddrOut,
 /* ----------------------------------------------------------------
  * STATIC VARIABLES
  * -------------------------------------------------------------- */
-static uPortMutexHandle_t gBleDataMutex = NULL;
+static uPortMutexHandle_t gBleSpsMutex = NULL;
 static int32_t gSpsEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
-static uBleDataConnectionStatusCallback_t gpSpsConnStatusCallback;
+static uBleSpsConnectionStatusCallback_t gpSpsConnStatusCallback;
 static void *gpSpsConnStatusCallbackParam;
-static uBleDataAvailableCallback_t gpSpsDataAvailableCallback;
+static uBleSpsAvailableCallback_t gpSpsDataAvailableCallback;
 static void *gpSpsDataAvailableCallbackParam;
-static spsConnection_t *gpSpsConnections[U_BLE_DATA_MAX_CONNECTIONS];
-static uBleDataSpsHandles_t gNextConnServerHandles;
+static spsConnection_t *gpSpsConnections[U_BLE_SPS_MAX_CONNECTIONS];
+static uBleSpsHandles_t gNextConnServerHandles;
 static bool gFlowCtrlOnNext = true;
 
 static uPortGattUuid128_t gSpsCreditsCharUuid = {
@@ -261,14 +263,14 @@ static const uPortGattCharacteristic_t gSpsFifoChar = {
     .pNextChar = &gSpsCreditsChar,
 };
 
-static const uBleDataConnParams_t gConnParamsDefault = {
-    U_BLE_DATA_CONN_PARAM_SCAN_INT_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_SCAN_WIN_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_TMO_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_CONN_INT_MIN_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_CONN_INT_MAX_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_CONN_LATENCY_DEFAULT,
-    U_BLE_DATA_CONN_PARAM_LINK_LOSS_TMO_DEFAULT
+static const uBleSpsConnParams_t gConnParamsDefault = {
+    U_BLE_SPS_CONN_PARAM_SCAN_INT_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_SCAN_WIN_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_TMO_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_CONN_INT_MIN_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_CONN_INT_MAX_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_CONN_LATENCY_DEFAULT,
+    U_BLE_SPS_CONN_PARAM_LINK_LOSS_TMO_DEFAULT
 };
 
 /* ----------------------------------------------------------------
@@ -285,9 +287,9 @@ uPortGattService_t const gSpsService = {
 static int32_t findSpsConnHandle(int32_t gapConnHandle)
 {
     int32_t i;
-    int32_t spsConnHandle = U_BLE_DATA_INVALID_HANDLE;
+    int32_t spsConnHandle = U_BLE_SPS_INVALID_HANDLE;
 
-    for (i = 0; i < U_BLE_DATA_MAX_CONNECTIONS; i++) {
+    for (i = 0; i < U_BLE_SPS_MAX_CONNECTIONS; i++) {
         if ((gpSpsConnections[i] != NULL) &&
             (gpSpsConnections[i]->gapConnHandle) == gapConnHandle) {
             spsConnHandle = i;
@@ -301,7 +303,7 @@ static spsConnection_t *pGetSpsConn(int32_t spsConnHandle)
 {
     spsConnection_t *pSpsConn = NULL;
 
-    if ((spsConnHandle >= 0) && (spsConnHandle < U_BLE_DATA_MAX_CONNECTIONS)) {
+    if ((spsConnHandle >= 0) && (spsConnHandle < U_BLE_SPS_MAX_CONNECTIONS)) {
         pSpsConn = gpSpsConnections[spsConnHandle];
     }
 
@@ -311,9 +313,9 @@ static spsConnection_t *pGetSpsConn(int32_t spsConnHandle)
 static int32_t findFreeSpsConnHandle(void)
 {
     int32_t i;
-    int32_t spsConnHandle = U_BLE_DATA_INVALID_HANDLE;
+    int32_t spsConnHandle = U_BLE_SPS_INVALID_HANDLE;
 
-    for (i = 0; i < U_BLE_DATA_MAX_CONNECTIONS; i++) {
+    for (i = 0; i < U_BLE_SPS_MAX_CONNECTIONS; i++) {
         if (gpSpsConnections[i] == NULL) {
             spsConnHandle = i;
             break;
@@ -336,7 +338,7 @@ static void freeSpsConnection(int32_t spsConnHandle)
 static bool validSpsConnHandle(int32_t spsConnHandle)
 {
     if ((spsConnHandle >= 0) &&
-        (spsConnHandle < U_BLE_DATA_MAX_CONNECTIONS) &&
+        (spsConnHandle < U_BLE_SPS_MAX_CONNECTIONS) &&
         (gpSpsConnections[spsConnHandle] != NULL)) {
         return true;
     }
@@ -346,7 +348,7 @@ static bool validSpsConnHandle(int32_t spsConnHandle)
 static spsConnection_t *initSpsConnection(int32_t spsConnHandle, int32_t gapConnHandle,
                                           spsRole_t localSpsRole)
 {
-    if ((spsConnHandle < 0) || (spsConnHandle >= U_BLE_DATA_MAX_CONNECTIONS)) {
+    if ((spsConnHandle < 0) || (spsConnHandle >= U_BLE_SPS_MAX_CONNECTIONS)) {
         return NULL;
     }
 
@@ -371,7 +373,7 @@ static spsConnection_t *initSpsConnection(int32_t spsConnHandle, int32_t gapConn
         uPortSemaphoreCreate(&(pSpsConn->txCreditsSemaphore), 0, 1);
         uRingBufferCreate(&pSpsConn->rxRingBuffer, pSpsConn->rxData, sizeof(pSpsConn->rxData));
         uRingBufferReset(&pSpsConn->rxRingBuffer);
-        pSpsConn->dataSendTimeoutMs = U_BLE_DATA_DEFAULT_SEND_TIMEOUT_MS;
+        pSpsConn->dataSendTimeoutMs = U_BLE_SPS_DEFAULT_SEND_TIMEOUT_MS;
         pSpsConn->localSpsRole = localSpsRole;
         pSpsConn->flowCtrlEnabled = true;
     }
@@ -386,14 +388,14 @@ static void addLocalTxCredits(int32_t spsConnHandle, uint8_t credits)
     if (credits != 0xff) {
         pSpsConn->txCredits += credits;
         if (pSpsConn->txCredits > 0) {
-            uPortLog("U_BLE_DATA: TX credits = %d\n", pSpsConn->txCredits);
+            uPortLog("U_BLE_SPS: TX credits = %d\n", pSpsConn->txCredits);
             // We have received more credits, dataSend function might
             // be waiting for the semaphore indicating the we now have TX credits
             uPortSemaphoreGive(pSpsConn->txCreditsSemaphore);
         }
         if ((pSpsConn->spsState == SPS_STATE_DISCONNECTED) && pSpsConn->flowCtrlEnabled) {
             pSpsConn->spsState = SPS_STATE_CONNECTED;
-            uPortLog("U_BLE_DATA: Connected as SPS server. Handle %d, remote addr: %s\n",
+            uPortLog("U_BLE_SPS: Connected as SPS server. Handle %d, remote addr: %s\n",
                      spsConnHandle, pSpsConn->remoteAddr);
             updateRxCreditsOnRemote(pSpsConn);
             if (gpSpsConnStatusCallback != NULL) {
@@ -410,7 +412,7 @@ static void addLocalTxCredits(int32_t spsConnHandle, uint8_t credits)
 
 static void addReceivedDataToBuffer(int32_t spsConnHandle, const void *pData, uint16_t length)
 {
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
         bool bufferWasEmpty = (uRingBufferDataSize(&(pSpsConn->rxRingBuffer)) == 0);
 
@@ -419,7 +421,7 @@ static void addReceivedDataToBuffer(int32_t spsConnHandle, const void *pData, ui
             pSpsConn->rxCreditsOnRemote--;
         } else {
             if (pSpsConn->flowCtrlEnabled) {
-                uPortLog("U_BLE_DATA: Remote sent %d bytes without credits!\n", length);
+                uPortLog("U_BLE_SPS: Remote sent %d bytes without credits!\n", length);
             }
         }
 
@@ -432,7 +434,7 @@ static void addReceivedDataToBuffer(int32_t spsConnHandle, const void *pData, ui
             }
         } else {
             // This should not happen if credits are sent and regarded properly
-            uPortLog("U_BLE_DATA: Received data could not be stored, dropping data!\n");
+            uPortLog("U_BLE_SPS: Received data could not be stored, dropping data!\n");
         }
     }
 }
@@ -491,7 +493,7 @@ static void updateRxCreditsOnRemote(spsConnection_t *pSpsConn)
         }
 
         if (success) {
-            uPortLog("U_BLE_DATA: Sent %d credits\n", rxCreditsWeCanSend);
+            uPortLog("U_BLE_SPS: Sent %d credits\n", rxCreditsWeCanSend);
             pSpsConn->rxCreditsOnRemote += (uint8_t)rxCreditsWeCanSend;
         }
     }
@@ -504,11 +506,11 @@ static void gapConnectionEvent(int32_t gapConnHandle, uPortGattGapConnStatus_t s
     int32_t spsConnHandle;
     (void)pParameter;
 
-    U_PORT_MUTEX_LOCK(gBleDataMutex);
+    U_PORT_MUTEX_LOCK(gBleSpsMutex);
 
     spsConnHandle = findSpsConnHandle(gapConnHandle);
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
         switch (status) {
             case U_PORT_GATT_GAP_CONNECTED: {
@@ -519,23 +521,23 @@ static void gapConnectionEvent(int32_t gapConnHandle, uPortGattGapConnStatus_t s
                 event.type = EVENT_GAP_CONNECTED;
                 event.spsConnHandle = spsConnHandle;
                 uPortEventQueueSend(gSpsEventQueue, &event, sizeof(event));
-                uPortLog("U_BLE_DATA: Connecting SPS, conn handle: %d\n", spsConnHandle);
+                uPortLog("U_BLE_SPS: Connecting SPS, conn handle: %d\n", spsConnHandle);
                 break;
             }
 
             case U_PORT_GATT_GAP_DISCONNECTED:
                 if (pSpsConn->spsState != SPS_STATE_DISCONNECTED) {
-                    uPortLog("U_BLE_DATA: Disconnected SPS, conn handle: %d\n", spsConnHandle);
+                    uPortLog("U_BLE_SPS: Disconnected SPS, conn handle: %d\n", spsConnHandle);
                     pSpsConn->spsState = SPS_STATE_DISCONNECTED;
                 } else {
-                    uPortLog("U_BLE_DATA: SPS connection failed!\n");
+                    uPortLog("U_BLE_SPS: SPS connection failed!\n");
                     // If a connection attempt failed we have not yet
                     // communicated the connection handle to the upper layer
                     // We still report the failed connection attempt but with
                     // invalid connection handle, but first we need to free
                     // the allocated slot
                     freeSpsConnection(spsConnHandle);
-                    spsConnHandle = U_BLE_DATA_INVALID_HANDLE;
+                    spsConnHandle = U_BLE_SPS_INVALID_HANDLE;
                 }
                 if (gpSpsConnStatusCallback != NULL) {
                     gpSpsConnStatusCallback(spsConnHandle,
@@ -545,7 +547,7 @@ static void gapConnectionEvent(int32_t gapConnHandle, uPortGattGapConnStatus_t s
                                             pSpsConn->mtu,
                                             gpSpsConnStatusCallbackParam);
                 }
-                if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+                if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
                     freeSpsConnection(spsConnHandle);
                 }
                 break;
@@ -557,15 +559,15 @@ static void gapConnectionEvent(int32_t gapConnHandle, uPortGattGapConnStatus_t s
                 // it means the remoted side initiated the connection and we are
                 // SPS server.  In this case we initiate the SPS connection here.
                 spsConnHandle = findFreeSpsConnHandle();
-                if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+                if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
                     uint8_t addr[6];
                     uPortBtLeAddressType_t addrType;
                     spsConnection_t *pSpsConn = initSpsConnection(spsConnHandle, gapConnHandle, SPS_SERVER);
                     uPortGattGetRemoteAddress(gapConnHandle, addr, &addrType);
                     addrArrayToString(addr, addrType, true, pSpsConn->remoteAddr);
-                    uPortLog("U_BLE_DATA: Remote GAP connected, SPS conn handle: %d\n", spsConnHandle);
+                    uPortLog("U_BLE_SPS: Remote GAP connected, SPS conn handle: %d\n", spsConnHandle);
                 } else {
-                    uPortLog("U_BLE_DATA: We already have maximum nbr of allowed SPS connections!\n", spsConnHandle);
+                    uPortLog("U_BLE_SPS: We already have maximum nbr of allowed SPS connections!\n", spsConnHandle);
                     uPortGattDisconnectGap(gapConnHandle);
                 }
                 break;
@@ -576,7 +578,7 @@ static void gapConnectionEvent(int32_t gapConnHandle, uPortGattGapConnStatus_t s
         }
     }
 
-    U_PORT_MUTEX_UNLOCK(gBleDataMutex);
+    U_PORT_MUTEX_UNLOCK(gBleSpsMutex);
 }
 
 //lint -esym(818, pParams)
@@ -588,7 +590,7 @@ static uPortGattIter_t onCreditsNotified(int32_t gapConnHandle,
     (void)pParams;
     (void)length;
 
-    if ((spsConnHandle != U_BLE_DATA_INVALID_HANDLE) && pData && (length > 0)) {
+    if ((spsConnHandle != U_BLE_SPS_INVALID_HANDLE) && pData && (length > 0)) {
         addLocalTxCredits(spsConnHandle, *(const uint8_t *)pData);
     }
 
@@ -612,14 +614,14 @@ static void onFifoSubscribed(int32_t gapConnHandle, uint8_t err)
 {
     int32_t spsConnHandle = findSpsConnHandle(gapConnHandle);
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsEvent_t event;
 
         event.spsConnHandle = spsConnHandle;
         if (err == 0) {
             event.type = EVENT_SPS_FIFO_SUBSCRIBED;
         } else {
-            uPortLog("U_BLE_DATA: FIFO subscription failed!\n");
+            uPortLog("U_BLE_SPS: FIFO subscription failed!\n");
             event.type = EVENT_SPS_CONNECTING_FAILED;
         }
         uPortEventQueueSend(gSpsEventQueue, &event, sizeof(event));
@@ -630,14 +632,14 @@ static void onCreditsSubscribed(int32_t gapConnHandle, uint8_t err)
 {
     int32_t spsConnHandle = findSpsConnHandle(gapConnHandle);
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsEvent_t event;
 
         event.spsConnHandle = spsConnHandle;
         if (err == 0) {
             event.type = EVENT_SPS_CREDITS_SUBSCRIBED;
         } else {
-            uPortLog("U_BLE_DATA: Credits subscription failed!\n");
+            uPortLog("U_BLE_SPS: Credits subscription failed!\n");
             event.type = EVENT_SPS_CONNECTING_FAILED;
         }
         uPortEventQueueSend(gSpsEventQueue, &event, sizeof(event));
@@ -671,7 +673,7 @@ static void mtuXchangeResp(int32_t gapConnHandle, uint8_t err)
     int32_t spsConnHandle = findSpsConnHandle(gapConnHandle);
     (void)err;
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
         spsEvent_t event;
         int32_t mtu;
@@ -680,7 +682,7 @@ static void mtuXchangeResp(int32_t gapConnHandle, uint8_t err)
         mtu = uPortGattGetMtu(gapConnHandle);
         if (mtu > 0) {
             pSpsConn->mtu = (uint16_t)mtu;
-            uPortLog("U_BLE_DATA: MTU = %d\n", pSpsConn->mtu);
+            uPortLog("U_BLE_SPS: MTU = %d\n", pSpsConn->mtu);
             event.type = EVENT_SPS_MTU_EXCHANGED;
         } else {
             event.type = EVENT_SPS_CONNECTING_FAILED;
@@ -696,7 +698,7 @@ static uPortGattIter_t onCccDiscovery(int32_t gapConnHandle, uPortGattUuid_t *pU
     uPortGattIter_t returnValue = U_PORT_GATT_ITER_STOP;
     int32_t spsConnHandle = findSpsConnHandle(gapConnHandle);
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
         spsEvent_t event;
 
@@ -717,7 +719,7 @@ static uPortGattIter_t onCccDiscovery(int32_t gapConnHandle, uPortGattUuid_t *pU
                 event.type = EVENT_SPS_CCCS_DISCOVERED;
             }
         } else {
-            uPortLog("U_BLE_DATA: CCC Discovery failed!\n");
+            uPortLog("U_BLE_SPS: CCC Discovery failed!\n");
             event.type = EVENT_SPS_CONNECTING_FAILED;
         }
 
@@ -738,7 +740,7 @@ static uPortGattIter_t onCreditCharDiscovery(int32_t gapConnHandle, uPortGattUui
     (void)attrHandle;
     (void)properties;
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsEvent_t event;
 
         event.spsConnHandle = spsConnHandle;
@@ -746,7 +748,7 @@ static uPortGattIter_t onCreditCharDiscovery(int32_t gapConnHandle, uPortGattUui
             pGetSpsConn(spsConnHandle)->client.attHandle.creditsValue = valueHandle;
             event.type = EVENT_SPS_CREDIT_CHAR_DISCOVERED;
         } else {
-            uPortLog("U_BLE_DATA: SPS Credit Char Discovery failed\n");
+            uPortLog("U_BLE_SPS: SPS Credit Char Discovery failed\n");
             event.type = EVENT_SPS_CONNECTING_FAILED;
         }
         uPortEventQueueSend(gSpsEventQueue, &event, sizeof(event));
@@ -763,7 +765,7 @@ static uPortGattIter_t onFifoCharDiscovery(int32_t gapConnHandle, uPortGattUuid_
     (void)attrHandle;
     (void)properties;
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsEvent_t event;
 
         event.spsConnHandle = spsConnHandle;
@@ -771,7 +773,7 @@ static uPortGattIter_t onFifoCharDiscovery(int32_t gapConnHandle, uPortGattUuid_
             pGetSpsConn(spsConnHandle)->client.attHandle.fifoValue = valueHandle;
             event.type = EVENT_SPS_FIFO_CHAR_DISCOVERED;
         } else {
-            uPortLog("U_BLE_DATA: SPS FIFO Char Discovery failed\n");
+            uPortLog("U_BLE_SPS: SPS FIFO Char Discovery failed\n");
             event.type = EVENT_SPS_CONNECTING_FAILED;
         }
         uPortEventQueueSend(gSpsEventQueue, &event, sizeof(event));
@@ -786,7 +788,7 @@ static uPortGattIter_t onSpsServiceDiscovery(int32_t gapConnHandle, uPortGattUui
     int32_t spsConnHandle = findSpsConnHandle(gapConnHandle);
     (void)endHandle;
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsEvent_t event;
 
         event.spsConnHandle = spsConnHandle;
@@ -794,7 +796,7 @@ static uPortGattIter_t onSpsServiceDiscovery(int32_t gapConnHandle, uPortGattUui
             pGetSpsConn(spsConnHandle)->client.attHandle.service = attrHandle;
             event.type = EVENT_SPS_SERVICE_DISCOVERED;
         } else {
-            uPortLog("U_BLE_DATA: SPS Service Discovery failed!\n");
+            uPortLog("U_BLE_SPS: SPS Service Discovery failed!\n");
             event.type = EVENT_SPS_CONNECTING_FAILED;
         }
         uPortEventQueueSend(gSpsEventQueue, &event, sizeof(event));
@@ -803,7 +805,7 @@ static uPortGattIter_t onSpsServiceDiscovery(int32_t gapConnHandle, uPortGattUui
     return U_PORT_GATT_ITER_STOP;
 }
 
-static void onBleDataEvent(void *pParam, size_t eventSize)
+static void onBleSpsEvent(void *pParam, size_t eventSize)
 {
     spsEvent_t *pEvent = (spsEvent_t *)pParam;
     spsConnection_t *pSpsConn;
@@ -894,7 +896,7 @@ static void onBleDataEvent(void *pParam, size_t eventSize)
 
         case EVENT_SPS_FIFO_SUBSCRIBED:
             // FIFO subscribed, we can now receive data from server
-            uPortLog("U_BLE_DATA: Connected as SPS client. Handle %d, remote addr: %s\n",
+            uPortLog("U_BLE_SPS: Connected as SPS client. Handle %d, remote addr: %s\n",
                      pEvent->spsConnHandle, pSpsConn->remoteAddr);
             pSpsConn->spsState = SPS_STATE_CONNECTED;
             if (gpSpsConnStatusCallback != NULL) {
@@ -945,7 +947,7 @@ static int32_t remoteWritesFifoCcc(int32_t gapConnHandle, const void *buf, uint1
     int32_t returnValue = -1;
     (void)flags;
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
         if (write16BitValue(buf, len, offset, &(pSpsConn->server.fifoClientConf))) {
             if ((pSpsConn->server.fifoClientConf & 1) &&
@@ -954,7 +956,7 @@ static int32_t remoteWritesFifoCcc(int32_t gapConnHandle, const void *buf, uint1
                 // Credits notification, indicating a credit less SPS connection
                 pSpsConn->flowCtrlEnabled = false;
                 pSpsConn->spsState = SPS_STATE_CONNECTED;
-                uPortLog("U_BLE_DATA: Connected as SPS server. Handle %d, remote addr: %s\n",
+                uPortLog("U_BLE_SPS: Connected as SPS server. Handle %d, remote addr: %s\n",
                          spsConnHandle, pSpsConn->remoteAddr);
                 if (gpSpsConnStatusCallback != NULL) {
                     gpSpsConnStatusCallback(spsConnHandle,
@@ -980,7 +982,7 @@ static int32_t remoteWritesCreditCcc(int32_t gapConnHandle, const void *buf, uin
     (void)flags;
     (void)offset;
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
         if (write16BitValue(buf, len, offset, &(pSpsConn->server.creditsClientConf))) {
             returnValue = len;
@@ -1011,7 +1013,7 @@ static int32_t remoteWritesCreditChar(int32_t gapConnHandle, const void *buf, ui
     (void)offset;
     (void)flags;
 
-    if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+    if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
         uint8_t receivedCredits = *(const uint8_t *)buf;
         addLocalTxCredits(spsConnHandle, receivedCredits);
 
@@ -1079,25 +1081,25 @@ static int32_t addrStringToArray(const char *pAddrIn, uint8_t *pAddrOut,
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-void uBleDataPrivateInit(void)
+void uBleSpsPrivateInit(void)
 {
     if (gSpsEventQueue == (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
-        uPortMutexCreate(&gBleDataMutex);
+        uPortMutexCreate(&gBleSpsMutex);
         uPortGattSetGapConnStatusCallback(gapConnectionEvent, NULL);
 
-        gSpsEventQueue = uPortEventQueueOpen(onBleDataEvent,
-                                             "uBleDataEventQueue", sizeof(spsEvent_t),
+        gSpsEventQueue = uPortEventQueueOpen(onBleSpsEvent,
+                                             "uBleSpsEventQueue", sizeof(spsEvent_t),
                                              U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES,
-                                             U_CFG_OS_APP_TASK_PRIORITY + 1, 2 * U_BLE_DATA_MAX_CONNECTIONS);
+                                             U_CFG_OS_APP_TASK_PRIORITY + 1, 2 * U_BLE_SPS_MAX_CONNECTIONS);
     }
 }
 
-void uBleDataPrivateDeinit(void)
+void uBleSpsPrivateDeinit(void)
 {
     if (gSpsEventQueue != (int32_t)U_ERROR_COMMON_NOT_INITIALISED) {
         uPortGattSetGapConnStatusCallback(NULL, NULL);
 
-        for (int32_t i = 0; i < U_BLE_DATA_MAX_CONNECTIONS; i++) {
+        for (int32_t i = 0; i < U_BLE_SPS_MAX_CONNECTIONS; i++) {
             if (validSpsConnHandle(i)) {
                 spsConnection_t *pSpsConn = pGetSpsConn(i);
                 uPortGattDisconnectGap(pSpsConn->gapConnHandle);
@@ -1107,19 +1109,21 @@ void uBleDataPrivateDeinit(void)
 
         uPortEventQueueClose(gSpsEventQueue);
         gSpsEventQueue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
-        uPortMutexDelete(gBleDataMutex);
-        gBleDataMutex = NULL;
+        uPortMutexDelete(gBleSpsMutex);
+        gBleSpsMutex = NULL;
     }
 }
 
-int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
-                                            uBleDataConnectionStatusCallback_t pCallback,
-                                            void *pCallbackParameter)
+int32_t uBleSpsSetCallbackConnectionStatus(uDeviceHandle_t devHandle,
+                                           uBleSpsConnectionStatusCallback_t pCallback,
+                                           void *pCallbackParameter)
 {
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
 
-    if (bleHandle == 0 &&
-        (((gpSpsConnStatusCallback == NULL) && (pCallback != NULL)) ||
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    if ((((gpSpsConnStatusCallback == NULL) && (pCallback != NULL)) ||
          ((gpSpsConnStatusCallback != NULL) && (pCallback == NULL)))) {
 
         gpSpsConnStatusCallback = pCallback;
@@ -1130,23 +1134,22 @@ int32_t uBleDataSetCallbackConnectionStatus(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleDataConnectSps(int32_t bleHandle,
-                           const char *pAddress,
-                           const uBleDataConnParams_t *pConnParams)
+int32_t uBleSpsConnectSps(uDeviceHandle_t devHandle,
+                          const char *pAddress,
+                          const uBleSpsConnParams_t *pConnParams)
 {
-    int32_t errorCode;
     uint8_t address[6];
     uPortBtLeAddressType_t addrType;
     int32_t gapConnHandle = U_PORT_GATT_GAP_INVALID_CONNHANDLE;
-    int32_t spsConnHandle = U_BLE_DATA_INVALID_HANDLE;
+    int32_t spsConnHandle = U_BLE_SPS_INVALID_HANDLE;
 
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    errorCode = addrStringToArray(pAddress, address, &addrType);
+    int32_t errorCode = addrStringToArray(pAddress, address, &addrType);
 
-    U_PORT_MUTEX_LOCK(gBleDataMutex);
+    U_PORT_MUTEX_LOCK(gBleSpsMutex);
 
     if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
         if (pConnParams == NULL) {
@@ -1164,13 +1167,13 @@ int32_t uBleDataConnectSps(int32_t bleHandle,
                 errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
                 spsConnHandle = findFreeSpsConnHandle();
 
-                if (spsConnHandle != U_BLE_DATA_INVALID_HANDLE) {
+                if (spsConnHandle != U_BLE_SPS_INVALID_HANDLE) {
                     spsConnection_t *pSpsConn = initSpsConnection(spsConnHandle, gapConnHandle, SPS_CLIENT);
                     if (pSpsConn != NULL) {
                         memcpy(pSpsConn->remoteAddr, pAddress, sizeof(pSpsConn->remoteAddr) - 1);
                         // Preset server handles (if they are not preset gNextConnServerHandles
                         // is all zero, which will trigger discovery later)
-                        memcpy(&(pSpsConn->client.attHandle), &gNextConnServerHandles, sizeof(uBleDataSpsHandles_t));
+                        memcpy(&(pSpsConn->client.attHandle), &gNextConnServerHandles, sizeof(uBleSpsHandles_t));
                         // Maybe disable flow control
                         pSpsConn->flowCtrlEnabled = gFlowCtrlOnNext;
                         gFlowCtrlOnNext = true;
@@ -1183,108 +1186,106 @@ int32_t uBleDataConnectSps(int32_t bleHandle,
         memset(&gNextConnServerHandles, 0x00, sizeof(gNextConnServerHandles));
     }
 
-    U_PORT_MUTEX_UNLOCK(gBleDataMutex);
+    U_PORT_MUTEX_UNLOCK(gBleSpsMutex);
 
     return errorCode;
 }
 
-int32_t uBleDataDisconnect(int32_t bleHandle, int32_t spsConnHandle)
+int32_t uBleSpsDisconnect(uDeviceHandle_t devHandle, int32_t spsConnHandle)
 {
-    int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
+    if (!validSpsConnHandle(spsConnHandle)) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    if (validSpsConnHandle(spsConnHandle)) {
-        uPortGattDisconnectGap(pGetSpsConn(spsConnHandle)->gapConnHandle);
-        errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
-    }
-
-    return errorCode;
+    return uPortGattDisconnectGap(pGetSpsConn(spsConnHandle)->gapConnHandle);
 }
 
-int32_t uBleDataSetSendTimeout(int32_t bleHandle, int32_t channel, uint32_t timeout)
+int32_t uBleSpsSetSendTimeout(uDeviceHandle_t devHandle, int32_t channel, uint32_t timeout)
 {
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     int32_t spsConnHandle = channel;
 
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    if (validSpsConnHandle(spsConnHandle)) {
-        pGetSpsConn(spsConnHandle)->dataSendTimeoutMs = timeout;
-        errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+    if (!validSpsConnHandle(spsConnHandle)) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    return errorCode;
+    pGetSpsConn(spsConnHandle)->dataSendTimeoutMs = timeout;
+
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
 }
 
-int32_t uBleDataSend(int32_t bleHandle, int32_t channel, const char *pData, int32_t length)
+int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pData, int32_t length)
 {
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
     int32_t spsConnHandle = channel;
     int32_t bytesLeftToSend = length;
-    int64_t startTime;
 
-    if ((bleHandle != 0) || (pData == NULL) || (length < 0)) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    startTime = uPortGetTickTimeMs();
+    if ((pData == NULL) || (length < 0)) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
 
-    if (validSpsConnHandle(spsConnHandle)) {
-        spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
-        if (pSpsConn->spsState == SPS_STATE_CONNECTED) {
-            uint32_t timeout = pSpsConn->dataSendTimeoutMs;
-            int64_t time = startTime;
+    if (!validSpsConnHandle(spsConnHandle)) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
 
-            while ((bytesLeftToSend > 0) && (time - startTime < timeout)) {
-                int32_t bytesToSendNow = bytesLeftToSend;
-                int32_t maxDataLength = pSpsConn->mtu - U_BLE_PDU_HEADER_SIZE;
+    int64_t startTime = uPortGetTickTimeMs();
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
+    spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
+    if (pSpsConn->spsState == SPS_STATE_CONNECTED) {
+        uint32_t timeout = pSpsConn->dataSendTimeoutMs;
+        int64_t time = startTime;
 
-                if (bytesToSendNow > maxDataLength) {
-                    bytesToSendNow = maxDataLength;
-                }
-                if (pSpsConn->flowCtrlEnabled) {
-                    // If flow control is enabled we first have to make sure we have TX credits
-                    // before sending
-                    // If the semaphore is already given we first have to take it, so it can be given
-                    // again later if we are out of credits.
-                    (void)uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, 0);
-                    if (pSpsConn->txCredits == 0) {
-                        int32_t timeoutLeft = (int32_t)timeout - (int32_t)(time - startTime);
-                        if (timeoutLeft < 0) {
-                            timeoutLeft = 0;
-                        }
-                        // We are out of credits, wait for more
-                        if (uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, timeoutLeft) != 0) {
-                            uPortLog("U_BLE_DATA: SPS Timed out waiting for new TX credits!\n");
-                            break;
-                        }
+        while ((bytesLeftToSend > 0) && (time - startTime < timeout)) {
+            int32_t bytesToSendNow = bytesLeftToSend;
+            int32_t maxDataLength = pSpsConn->mtu - U_BLE_PDU_HEADER_SIZE;
+
+            if (bytesToSendNow > maxDataLength) {
+                bytesToSendNow = maxDataLength;
+            }
+            if (pSpsConn->flowCtrlEnabled) {
+                // If flow control is enabled we first have to make sure we have TX credits
+                // before sending
+                // If the semaphore is already given we first have to take it, so it can be given
+                // again later if we are out of credits.
+                (void)uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, 0);
+                if (pSpsConn->txCredits == 0) {
+                    int32_t timeoutLeft = (int32_t)timeout - (int32_t)(time - startTime);
+                    if (timeoutLeft < 0) {
+                        timeoutLeft = 0;
                     }
-                }
-                if (!pSpsConn->flowCtrlEnabled || (pSpsConn->txCredits > 0)) {
-                    if (sendDataToRemoteFifo(pSpsConn, pData, (uint16_t)bytesToSendNow)) {
-                        pData += bytesToSendNow;
-                        bytesLeftToSend -= bytesToSendNow;
-                        pSpsConn->txCredits--;
+                    // We are out of credits, wait for more
+                    if (uPortSemaphoreTryTake(pSpsConn->txCreditsSemaphore, timeoutLeft) != 0) {
+                        uPortLog("U_BLE_SPS: SPS Timed out waiting for new TX credits!\n");
+                        break;
                     }
-                } else {
-                    // We have flow control enabled, we didn't time out waiting
-                    // for TX credits above, but we anyway don't have any TX credits.
-                    // Something is very wrong.
-                    errorCode = (int32_t)U_ERROR_COMMON_UNKNOWN;
-                    break;
-                }
-                if (bytesLeftToSend > 0) {
-                    time = uPortGetTickTimeMs();
                 }
             }
+            if (!pSpsConn->flowCtrlEnabled || (pSpsConn->txCredits > 0)) {
+                if (sendDataToRemoteFifo(pSpsConn, pData, (uint16_t)bytesToSendNow)) {
+                    pData += bytesToSendNow;
+                    bytesLeftToSend -= bytesToSendNow;
+                    pSpsConn->txCredits--;
+                }
+            } else {
+                // We have flow control enabled, we didn't time out waiting
+                // for TX credits above, but we anyway don't have any TX credits.
+                // Something is very wrong.
+                errorCode = (int32_t)U_ERROR_COMMON_UNKNOWN;
+                break;
+            }
+            if (bytesLeftToSend > 0) {
+                time = uPortGetTickTimeMs();
+            }
         }
-    } else {
-        errorCode = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     }
 
     if (errorCode < 0) {
@@ -1294,14 +1295,16 @@ int32_t uBleDataSend(int32_t bleHandle, int32_t channel, const char *pData, int3
     }
 }
 
-int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
-                                         uBleDataAvailableCallback_t pCallback,
-                                         void *pCallbackParameter)
+int32_t uBleSpsSetDataAvailableCallback(uDeviceHandle_t devHandle,
+                                        uBleSpsAvailableCallback_t pCallback,
+                                        void *pCallbackParameter)
 {
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
+        return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    }
 
-    if (bleHandle == 0 &&
-        (((gpSpsDataAvailableCallback == NULL) && (pCallback != NULL)) ||
+    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
+    if ((((gpSpsDataAvailableCallback == NULL) && (pCallback != NULL)) ||
          ((gpSpsDataAvailableCallback != NULL) && (pCallback == NULL)))) {
 
         gpSpsDataAvailableCallback = pCallback;
@@ -1312,12 +1315,12 @@ int32_t uBleDataSetDataAvailableCallback(int32_t bleHandle,
     return errorCode;
 }
 
-int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t length)
+int32_t uBleSpsReceive(uDeviceHandle_t devHandle, int32_t channel, char *pData, int32_t length)
 {
     int32_t spsConnHandle = channel;
     int32_t sizeOrErrorCode;
 
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
@@ -1334,22 +1337,22 @@ int32_t uBleDataReceive(int32_t bleHandle, int32_t channel, char *pData, int32_t
     return sizeOrErrorCode;
 }
 
-int32_t uBleDataGetSpsServerHandles(int32_t bleHandle, int32_t channel,
-                                    uBleDataSpsHandles_t *pHandles)
+int32_t uBleSpsGetSpsServerHandles(uDeviceHandle_t devHandle, int32_t channel,
+                                   uBleSpsHandles_t *pHandles)
 {
     int32_t spsConnHandle = channel;
-    int32_t returnValue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
 
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
+    int32_t returnValue = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
     if (validSpsConnHandle(spsConnHandle)) {
         spsConnection_t *pSpsConn = pGetSpsConn(spsConnHandle);
         if  ((pSpsConn->localSpsRole == SPS_CLIENT) &&
              (pSpsConn->spsState == SPS_STATE_CONNECTED) &&
              pSpsConn->flowCtrlEnabled) {
-            memcpy(pHandles, &(pSpsConn->client.attHandle), sizeof(uBleDataSpsHandles_t));
+            memcpy(pHandles, &(pSpsConn->client.attHandle), sizeof(uBleSpsHandles_t));
             returnValue = (int32_t)U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -1357,20 +1360,20 @@ int32_t uBleDataGetSpsServerHandles(int32_t bleHandle, int32_t channel,
     return returnValue;
 }
 
-int32_t uBleDataPresetSpsServerHandles(int32_t bleHandle, const uBleDataSpsHandles_t *pHandles)
+int32_t uBleSpsPresetSpsServerHandles(uDeviceHandle_t devHandle, const uBleSpsHandles_t *pHandles)
 {
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    memcpy(&gNextConnServerHandles, pHandles, sizeof(uBleDataSpsHandles_t));
+    memcpy(&gNextConnServerHandles, pHandles, sizeof(uBleSpsHandles_t));
 
     return (int32_t)U_ERROR_COMMON_SUCCESS;
 }
 
-int32_t uBleDataDisableFlowCtrlOnNext(int32_t bleHandle)
+int32_t uBleSpsDisableFlowCtrlOnNext(uDeviceHandle_t devHandle)
 {
-    if (bleHandle != 0) {
+    if (uDeviceGetDeviceType(devHandle) != (int32_t)U_DEVICE_TYPE_SHORT_RANGE_OPEN_CPU) {
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 

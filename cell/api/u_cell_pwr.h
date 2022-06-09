@@ -17,7 +17,10 @@
 #ifndef _U_CELL_PWR_H_
 #define _U_CELL_PWR_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines the APIs that initialse and
@@ -187,7 +190,7 @@ extern "C" {
  * @return            true if power is enabled to the module else
  *                    false.
  */
-bool uCellPwrIsPowered(int32_t cellHandle);
+bool uCellPwrIsPowered(uDeviceHandle_t cellHandle);
 
 /** Determine if the module is responsive.  It may happen that power
  * saving mode or some such gets out of sync, in which case this
@@ -202,7 +205,7 @@ bool uCellPwrIsPowered(int32_t cellHandle);
  * @param cellHandle  the handle of the cellular instance.
  * @return            true if the module is responsive, else false.
  */
-bool uCellPwrIsAlive(int32_t cellHandle);
+bool uCellPwrIsAlive(uDeviceHandle_t cellHandle);
 
 /** Power the cellular module on.  If this function returns
  * success then the cellular module is ready to receive configuration
@@ -217,7 +220,7 @@ bool uCellPwrIsAlive(int32_t cellHandle);
  * with this driver.
  *
  * @param cellHandle         the handle of the cellular instance.
- * @param pPin               pointer to a string giving the PIN of
+ * @param pSimPinCode        pointer to a string giving the PIN of
  *                           the SIM. It is module dependent as to
  *                           whether this can be non-NULL; if it is
  *                           non-NULL and the module does not support
@@ -253,8 +256,9 @@ bool uCellPwrIsAlive(int32_t cellHandle);
  * @return                   zero on success or negative error
  *                           code on failure.
  */
-int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
-                   bool (*pKeepGoingCallback) (int32_t));
+int32_t uCellPwrOn(uDeviceHandle_t cellHandle,
+                   const char *pSimPinCode,
+                   bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Power the cellular module off.
  *
@@ -280,8 +284,8 @@ int32_t uCellPwrOn(int32_t cellHandle, const char *pPin,
  * @return                   zero on success or negative error
  *                           code on failure.
  */
-int32_t uCellPwrOff(int32_t cellHandle,
-                    bool (*pKeepGoingCallback) (int32_t));
+int32_t uCellPwrOff(uDeviceHandle_t cellHandle,
+                    bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Remove power to the cellular module using HW lines.
  * If both the pinPwrOn and pinEnablePower parameters to
@@ -323,8 +327,8 @@ int32_t uCellPwrOff(int32_t cellHandle,
  * @return                   zero on success or negative error
  *                           code on failure.
  */
-int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
-                        bool (*pKeepGoingCallback) (int32_t));
+int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
+                        bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 
 /** If a reboot of the cellular instance is required, e.g.
@@ -334,7 +338,7 @@ int32_t uCellPwrOffHard(int32_t cellHandle, bool trulyHard,
  *
  * @param cellHandle  the handle of the cellular instance.
  */
-bool uCellPwrRebootIsRequired(int32_t cellHandle);
+bool uCellPwrRebootIsRequired(uDeviceHandle_t cellHandle);
 
 /** Re-boot the cellular module.  The module will be reset after
  * a proper detach from the network and any NV parameters will
@@ -371,8 +375,8 @@ bool uCellPwrRebootIsRequired(int32_t cellHandle);
  * @return                   zero on success or negative error
  *                           code on failure.
  */
-int32_t uCellPwrReboot(int32_t cellHandle,
-                       bool (*pKeepGoingCallback) (int32_t));
+int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
+                       bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Reset the cellular module using the given MCU pin, which should
  * be connected to the reset pin of the cellular module, e.g.
@@ -394,7 +398,7 @@ int32_t uCellPwrReboot(int32_t cellHandle,
  * @return           zero on success or negative error
  *                   code on failure.
  */
-int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset);
+int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
 
 /** Set the DTR power-saving pin.  "UPSV" or UART power saving is
  * normally handled automatically, using activity on the UART transmit
@@ -433,7 +437,7 @@ int32_t uCellPwrResetHard(int32_t cellHandle, int32_t pinReset);
  * @return            zero on success or negative error
  *                    code on failure.
  */
-int32_t uCellPwrSetDtrPowerSavingPin(int32_t cellHandle, int32_t pin);
+int32_t uCellPwrSetDtrPowerSavingPin(uDeviceHandle_t cellHandle, int32_t pin);
 
 /** Get the DTR power-saving pin.
  *
@@ -443,7 +447,7 @@ int32_t uCellPwrSetDtrPowerSavingPin(int32_t cellHandle, int32_t pin);
  *                    as set by uCellPwrSetDtrPowerSavingPin(),
  *                    or negative error code.
  */
-int32_t uCellPwrGetDtrPowerSavingPin(int32_t cellHandle);
+int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
 
 /** Set the parameters for 3GPP power saving, only valid when in
  * Cat-M1/NB1 mode and only effective when the module is connected
@@ -517,7 +521,7 @@ int32_t uCellPwrGetDtrPowerSavingPin(int32_t cellHandle);
  * @return                      zero on success or negative
  *                              error code on failure.
  */
-int32_t  uCellPwrSetRequested3gppPowerSaving(int32_t cellHandle,
+int32_t  uCellPwrSetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
                                              uCellNetRat_t rat,
                                              bool onNotOff,
                                              int32_t activeTimeSeconds,
@@ -542,7 +546,7 @@ int32_t  uCellPwrSetRequested3gppPowerSaving(int32_t cellHandle,
  * @return                       zero on success or negative
  *                               error code on failure.
  */
-int32_t uCellPwrGetRequested3gppPowerSaving(int32_t cellHandle,
+int32_t uCellPwrGetRequested3gppPowerSaving(uDeviceHandle_t cellHandle,
                                             bool *pOnNotOff,
                                             int32_t *pActiveTimeSeconds,
                                             int32_t *pPeriodicWakeupSeconds);
@@ -566,7 +570,7 @@ int32_t uCellPwrGetRequested3gppPowerSaving(int32_t cellHandle,
  * @return                       zero on success or negative
  *                               error code on failure.
  */
-int32_t uCellPwrGet3gppPowerSaving(int32_t cellHandle,
+int32_t uCellPwrGet3gppPowerSaving(uDeviceHandle_t cellHandle,
                                    bool *pOnNotOff,
                                    int32_t *pActiveTimeSeconds,
                                    int32_t *pPeriodicWakeupSeconds);
@@ -598,8 +602,8 @@ int32_t uCellPwrGet3gppPowerSaving(int32_t cellHandle,
  * @return                    zero on success or negative error
  *                            code on failure.
  */
-int32_t uCellPwrSet3gppPowerSavingCallback(int32_t cellHandle,
-                                           void (*pCallback) (int32_t cellHandle,
+int32_t uCellPwrSet3gppPowerSavingCallback(uDeviceHandle_t cellHandle,
+                                           void (*pCallback) (uDeviceHandle_t cellHandle,
                                                               bool onNotOff,
                                                               int32_t activeTimeSeconds,
                                                               int32_t periodicWakeupSeconds,
@@ -684,7 +688,7 @@ int32_t uCellPwrSet3gppPowerSavingCallback(int32_t cellHandle,
  * @return                      zero on success or negative
  *                              error code on failure.
  */
-int32_t uCellPwrSetRequestedEDrx(int32_t cellHandle,
+int32_t uCellPwrSetRequestedEDrx(uDeviceHandle_t cellHandle,
                                  uCellNetRat_t rat,
                                  bool onNotOff,
                                  int32_t eDrxSeconds,
@@ -716,7 +720,7 @@ int32_t uCellPwrSetRequestedEDrx(int32_t cellHandle,
  * @return                       zero on success or negative
  *                               error code on failure.
  */
-int32_t uCellPwrGetRequestedEDrx(int32_t cellHandle,
+int32_t uCellPwrGetRequestedEDrx(uDeviceHandle_t cellHandle,
                                  uCellNetRat_t rat,
                                  bool *pOnNotOff,
                                  int32_t *pEDrxSeconds,
@@ -743,7 +747,7 @@ int32_t uCellPwrGetRequestedEDrx(int32_t cellHandle,
  * @return                       zero on success or negative error
  *                               code on failure.
  */
-int32_t uCellPwrGetEDrx(int32_t cellHandle,
+int32_t uCellPwrGetEDrx(uDeviceHandle_t cellHandle,
                         uCellNetRat_t rat,
                         bool *pOnNotOff,
                         int32_t *pEDrxSeconds,
@@ -780,8 +784,8 @@ int32_t uCellPwrGetEDrx(int32_t cellHandle,
  * @return                    zero on success or negative error
  *                            code on failure.
  */
-int32_t uCellPwrSetEDrxCallback(int32_t cellHandle,
-                                void (*pCallback) (int32_t cellHandle,
+int32_t uCellPwrSetEDrxCallback(uDeviceHandle_t cellHandle,
+                                void (*pCallback) (uDeviceHandle_t cellHandle,
                                                    uCellNetRat_t rat,
                                                    bool onNotOff,
                                                    int32_t eDrxSecondsRequested,
@@ -816,8 +820,8 @@ int32_t uCellPwrSetEDrxCallback(int32_t cellHandle,
  * @return                     zero on success or negative error
  *                             code on failure.
  */
-int32_t uCellPwrSetDeepSleepWakeUpCallback(int32_t cellHandle,
-                                           void (*pCallback) (int32_t cellHandle,
+int32_t uCellPwrSetDeepSleepWakeUpCallback(uDeviceHandle_t cellHandle,
+                                           void (*pCallback) (uDeviceHandle_t cellHandle,
                                                               void *pCallbackParam),
                                            void *pCallbackParam);
 
@@ -836,7 +840,7 @@ int32_t uCellPwrSetDeepSleepWakeUpCallback(int32_t cellHandle,
  *                     if the module does not support indicating
  *                     its sleep state.
  */
-int32_t uCellPwrGetDeepSleepActive(int32_t cellHandle,
+int32_t uCellPwrGetDeepSleepActive(uDeviceHandle_t cellHandle,
                                    bool *pSleepActive);
 
 /** Wake the module from deep sleep.  THERE SHOULD BE NO NEED
@@ -872,8 +876,8 @@ int32_t uCellPwrGetDeepSleepActive(int32_t cellHandle,
  * @return                   zero on success or negative error
  *                           code on failure.
  */
-int32_t uCellPwrWakeUpFromDeepSleep(int32_t cellHandle,
-                                    bool (*pKeepGoingCallback) (int32_t));
+int32_t uCellPwrWakeUpFromDeepSleep(uDeviceHandle_t cellHandle,
+                                    bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Disable UART, AKA 32 kHz, sleep.
  * 32 kHz sleep is always enabled where supported by the module;
@@ -883,7 +887,7 @@ int32_t uCellPwrWakeUpFromDeepSleep(int32_t cellHandle,
  * @return            zero on success or negative error code on
  *                    failure.
  */
-int32_t uCellPwrDisableUartSleep(int32_t cellHandle);
+int32_t uCellPwrDisableUartSleep(uDeviceHandle_t cellHandle);
 
 /** Enable UART, AKA 32 kHz sleep.  32 kHz sleep is always enabled
  * where supported - you only need to call this if you have
@@ -893,14 +897,14 @@ int32_t uCellPwrDisableUartSleep(int32_t cellHandle);
  * @return            zero on success or negative error code on
  *                    failure.
  */
-int32_t uCellPwrEnableUartSleep(int32_t cellHandle);
+int32_t uCellPwrEnableUartSleep(uDeviceHandle_t cellHandle);
 
 /** Determine whether UART, AKA 32 kHz, sleep is enabled or not.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            true if UART sleep is enabled, else false.
  */
-bool uCellPwrUartSleepIsEnabled(int32_t cellHandle);
+bool uCellPwrUartSleepIsEnabled(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }

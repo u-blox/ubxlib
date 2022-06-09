@@ -49,13 +49,11 @@
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #if (U_CFG_TEST_UART_A >= 0) || defined(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE)
-#include "u_port_uart.h"
 #include "u_port_debug.h"
-#include "u_short_range_edm_stream.h"
 #endif
 
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
-#include "u_ble_data.h"
+#include "u_ble_sps.h"
 #include "u_short_range_private.h"
 #endif
 #include "u_short_range_test_private.h"
@@ -63,7 +61,14 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+#ifndef U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS
+/** The GPIO pin to use in the shortRangeResetToDefaultSettings()
+ * test.
+ */
+# define U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS -1
+#endif
+#endif
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -72,7 +77,8 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-static uShortRangeTestPrivate_t gHandles = {-1, -1, NULL, -1};
+//lint -esym(551, gHandles) Suppress symbols not accessed
+static uShortRangeTestPrivate_t gHandles = {-1, -1, NULL, NULL};
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -82,7 +88,7 @@ static void resetGlobals()
     gHandles.uartHandle = -1;
     gHandles.edmStreamHandle = -1;
     gHandles.atClientHandle = NULL;
-    gHandles.shortRangeHandle = -1;
+    gHandles.devHandle = NULL;
 }
 
 /* ----------------------------------------------------------------
@@ -106,219 +112,180 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeInitialisation")
     resetGlobals();
 }
 
-#if (U_CFG_TEST_UART_A >= 0)
-/** Add a ShortRange instance and remove it again using an uart stream.
- * Note: no short range operations are actually carried out and
- * hence this test can be run wherever any UART is defined.
- */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddUart")
-{
-    U_PORT_TEST_ASSERT(uPortInit() == 0);
-    gHandles.uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
-                                        U_CFG_TEST_BAUD_RATE,
-                                        NULL,
-                                        U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                        U_CFG_TEST_PIN_UART_A_TXD,
-                                        U_CFG_TEST_PIN_UART_A_RXD,
-                                        U_CFG_TEST_PIN_UART_A_CTS,
-                                        U_CFG_TEST_PIN_UART_A_RTS);
-    U_PORT_TEST_ASSERT(gHandles.uartHandle >= 0);
-
-    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
-
-    U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
-
-    uPortLog("U_SHORT_RANGE_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_A);
-    gHandles.atClientHandle = uAtClientAdd(gHandles.uartHandle, U_AT_CLIENT_STREAM_TYPE_UART,
-                                           NULL, U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
-    U_PORT_TEST_ASSERT(gHandles.atClientHandle != NULL);
-
-    uPortLog("U_SHORT_RANGE_TEST: adding a short range instance on that AT client...\n");
-    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
-                                               gHandles.atClientHandle);
-    U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
-
-    uPortLog("U_SHORT_RANGE_TEST: adding another instance on the same AT client,"
-             " should return same handle...\n");
-    U_PORT_TEST_ASSERT_EQUAL(uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1, gHandles.atClientHandle),
-                             gHandles.shortRangeHandle);
-
-    uPortLog("U_SHORT_RANGE_TEST: removing the two short range instances...\n");
-    uShortRangeRemove(gHandles.shortRangeHandle);
-    uShortRangeRemove(gHandles.shortRangeHandle);
-
-    uPortLog("U_SHORT_RANGE_TEST: adding it again...\n");
-    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
-                                               gHandles.atClientHandle);
-    U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
-    uShortRangeRemove(gHandles.shortRangeHandle);
-
-    uPortLog("U_SHORT_RANGE_TEST: deinitialising short range API...\n");
-    uShortRangeDeinit();
-
-    uPortLog("U_SHORT_RANGE_TEST: removing AT client...\n");
-    uAtClientRemove(gHandles.atClientHandle);
-    uAtClientDeinit();
-
-    uPortUartClose(gHandles.uartHandle);
-    gHandles.uartHandle = -1;
-
-    uPortDeinit();
-    resetGlobals();
-}
-
-/** Add a ShortRange instance and remove it again using an edm stream.
- * Note: no short range operations are actually carried out and
- * hence this test can be run wherever any UART is defined.
- */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddEdm")
-{
-    uPortDeinit();
-    U_PORT_TEST_ASSERT(uPortInit() == 0);
-    gHandles.uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
-                                        U_CFG_TEST_BAUD_RATE,
-                                        NULL,
-                                        U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
-                                        U_CFG_TEST_PIN_UART_A_TXD,
-                                        U_CFG_TEST_PIN_UART_A_RXD,
-                                        U_CFG_TEST_PIN_UART_A_CTS,
-                                        U_CFG_TEST_PIN_UART_A_RTS);
-    U_PORT_TEST_ASSERT(gHandles.uartHandle >= 0);
-
-    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
-
-    U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
-
-    U_PORT_TEST_ASSERT(uShortRangeEdmStreamInit() == 0);
-
-    uPortLog("U_SHORT_RANGE_TEST: open edm stream...\n");
-    gHandles.edmStreamHandle = uShortRangeEdmStreamOpen(gHandles.uartHandle);
-    U_PORT_TEST_ASSERT(gHandles.edmStreamHandle >= 0);
-
-    uPortLog("U_SHORT_RANGE_TEST: adding an AT client on edm stream...\n");
-    gHandles.atClientHandle = uAtClientAdd(gHandles.edmStreamHandle, U_AT_CLIENT_STREAM_TYPE_EDM,
-                                           NULL, U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
-    U_PORT_TEST_ASSERT(gHandles.atClientHandle != NULL);
-
-    uPortLog("U_SHORT_RANGE_TEST: adding a short range instance on that AT client...\n");
-    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
-                                               gHandles.atClientHandle);
-    U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
-
-    uPortLog("U_SHORT_RANGE_TEST: adding another instance on the same AT client,"
-             " should fail...\n");
-    U_PORT_TEST_ASSERT(uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1, gHandles.atClientHandle));
-
-    uPortLog("U_SHORT_RANGE_TEST: removing first short range instance...\n");
-    uShortRangeRemove(gHandles.shortRangeHandle);
-
-    uPortLog("U_SHORT_RANGE_TEST: adding it again...\n");
-    gHandles.shortRangeHandle = uShortRangeAdd(U_SHORT_RANGE_MODULE_TYPE_NINA_B1,
-                                               gHandles.atClientHandle);
-    U_PORT_TEST_ASSERT(gHandles.shortRangeHandle >= 0);
-
-    uPortLog("U_SHORT_RANGE_TEST: deinitialising short range API...\n");
-    uShortRangeRemove(gHandles.shortRangeHandle);
-    uShortRangeDeinit();
-
-    uShortRangeEdmStreamClose(gHandles.edmStreamHandle);
-    uShortRangeEdmStreamDeinit();
-
-    uPortLog("U_SHORT_RANGE_TEST: removing AT client...\n");
-    uAtClientRemove(gHandles.atClientHandle);
-    uAtClientDeinit();
-
-    uPortUartClose(gHandles.uartHandle);
-    gHandles.uartHandle = -1;
-
-    uPortDeinit();
-    resetGlobals();
-}
-#endif
-
 #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 
-/** Short range edm stream add and sent attention command.
+/** Short range open UART test.
  */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeAddAndDetect")
+U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeOpenUart")
 {
+    int32_t heapUsed;
+    uAtClientHandle_t atClient = NULL;
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
     uPortDeinit();
-    // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                      &gHandles) == 0);
-    uShortRangeTestPrivatePostamble(&gHandles);
-}
 
-/** Short range mode change.
- */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeModeChange")
-{
-    uPortDeinit();
-    // Do the standard preamble
+    heapUsed = uPortGetHeapFree();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
     U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                      U_AT_CLIENT_STREAM_TYPE_UART,
+                                                      &uart,
                                                       &gHandles) == 0);
 
-    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.shortRangeHandle) == 0);
-    U_PORT_TEST_ASSERT(uShortRangeDataMode(gHandles.shortRangeHandle) == 0);
-    // should fail
-    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.shortRangeHandle) != 0);
-    U_PORT_TEST_ASSERT(uShortRangeCommandMode(gHandles.shortRangeHandle,
-                                              &gHandles.atClientHandle) == 0);
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(gHandles.devHandle) ==
+                       gHandles.edmStreamHandle);
+    uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
+    U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 
-    uShortRangeTestPrivatePostamble(&gHandles);
-    resetGlobals();
-}
-
-/** Short range mode change.
- */
-U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeRecover")
-{
-    uPortDeinit();
-    // Do the standard preamble
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                      &gHandles) == 0);
-    uShortRangeTestPrivatePostamble(&gHandles);
-
-    // Module in EDM, start up in command mode
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                      U_AT_CLIENT_STREAM_TYPE_UART,
-                                                      &gHandles) == 0);
-
-    uShortRangeDataMode(gHandles.shortRangeHandle);
-    gHandles.atClientHandle = NULL;
+    uPortLog("U_SHORT_RANGE: calling uShortRangeOpenUart with same arg twice,"
+             " should fail...\n");
+    uDeviceHandle_t devHandle;
+    U_PORT_TEST_ASSERT(uShortRangeOpenUart(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE, &uart,
+                                           true, &devHandle) < 0);
 
     uShortRangeTestPrivatePostamble(&gHandles);
 
-    // Module in data mode, start up in EDM mode
+    uPortLog("U_SHORT_RANGE: calling uShortRangeOpenUart with NULL uart arg,"
+             " should fail...\n");
     U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                      &gHandles) == 0);
-
-    uShortRangeTestPrivatePostamble(&gHandles);
-
+                                                      NULL,
+                                                      &gHandles) < 0);
+    uPortLog("U_SHORT_RANGE: calling uShortRangeOpenUart with wrong module type,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
+                                                      &uart,
+                                                      &gHandles) < 0);
+    uart.uartPort = -1;
+    uPortLog("U_SHORT_RANGE: calling uShortRangeOpenUart with invalid uart arg,"
+             " should fail...\n");
     U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                      U_AT_CLIENT_STREAM_TYPE_UART,
-                                                      &gHandles) == 0);
+                                                      &uart,
+                                                      &gHandles) < 0);
 
-    uShortRangeDataMode(gHandles.shortRangeHandle);
-    gHandles.atClientHandle = NULL;
-
-    uShortRangeTestPrivatePostamble(&gHandles);
-
-    // Module in data mode, start up in command mode
-    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                      U_AT_CLIENT_STREAM_TYPE_EDM,
-                                                      &gHandles) == 0);
-
-    uShortRangeTestPrivatePostamble(&gHandles);
-    resetGlobals();
-}
-
+    uShortRangeTestPrivateCleanup(&gHandles);
+#ifndef __XTENSA__
+    // Check for memory leaks
+    // TODO: this if'ed out for ESP32 (xtensa compiler) at
+    // the moment as there is an issue with ESP32 hanging
+    // on to memory in the UART drivers that can't easily be
+    // accounted for.
+    heapUsed -= uPortGetHeapFree();
+    uPortLog("U_SHORT_RANGE_TEST: we have leaked %d byte(s).\n", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+#else
+    (void) heapUsed;
 #endif
+}
+
+/** Short range set baudrate UART test.
+ */
+U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeUartSetBaudrate")
+{
+    uAtClientHandle_t atClient = NULL;
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
+
+    int32_t testBaudrates[] = { 19200,
+                                38400,
+                                57600,
+                                230400,
+                                //460800, TODO: Enable this when instance 12 uses flow control
+                                115200
+                              };
+    uPortDeinit();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                      &uart,
+                                                      &gHandles) == 0);
+
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+    uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
+    U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+    /* port is now opened at default speed */
+
+    for (int32_t count = 0; count < (sizeof(testBaudrates) / sizeof(int32_t)); count++) {
+        uPortLog("U_SHORT_RANGE_TEST: setting baudrate %d\n", testBaudrates[count]);
+        uart.baudRate = testBaudrates[count];
+        U_PORT_TEST_ASSERT(uShortRangeSetBaudrate(&gHandles.devHandle, &uart) == 0);
+        U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
+    }
+    uShortRangeTestPrivateCleanup(&gHandles);
+    uPortLog("U_SHORT_RANGE_TEST: shortRangeUartSetBaudrate succeded.\n");
+}
+
+#if defined(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS) && (U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0)
+
+/** Short range reset to default UART settings test.
+ */
+U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
+{
+    uAtClientHandle_t atClient = NULL;
+    uShortRangePrivateInstance_t *pInstance;
+    uShortRangeModuleType_t moduleType;
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
+    uPortDeinit();
+
+    U_PORT_TEST_ASSERT(uPortInit() == 0);
+    U_PORT_TEST_ASSERT(uAtClientInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeInit() == 0);
+    U_PORT_TEST_ASSERT(uShortRangeTestPrivatePreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                      &uart,
+                                                      &gHandles) == 0);
+
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+    uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
+    U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+    pInstance = pUShortRangePrivateGetInstance(gHandles.devHandle);
+    /* port is now opened at default speed, set other speed for test */
+
+    uart.baudRate = 19200;
+    uPortLog("U_SHORT_RANGE_TEST: Setting baudrate on host and target to %d\n", uart.baudRate);
+    U_PORT_TEST_ASSERT(uShortRangeSetBaudrate(&gHandles.devHandle, &uart) == 0); // set to 19200
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0); // should get valid respons
+
+    uPortLog("U_SHORT_RANGE_TEST: Restoring to default settings via GPIO pin...\n");
+    // restore to default 115200
+    uShortRangeResetToDefaultSettings(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS);
+
+    uPortLog("U_SHORT_RANGE_TEST: Comm. should now fail due to different baudrates.");
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) != 0); // should not get valid respons
+
+    moduleType = pInstance->pModule->moduleType;
+    uart.baudRate = 115200;
+    uShortRangeClose(gHandles.devHandle);
+    uPortLog("U_SHORT_RANGE_TEST: Setting baudrate on host to %d\n", uart.baudRate);
+    U_PORT_TEST_ASSERT(uShortRangeOpenUart(moduleType, &uart, false,
+                                           &gHandles.devHandle) == 0); // target should already be at 115200 due to reset
+    uShortRangeTestPrivateCleanup(&gHandles);
+
+    uPortLog("U_SHORT_RANGE_TEST: shortRangeResetToDefaultSettings succeded.\n");
+}
+
+#endif // #if U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0
 
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted
@@ -328,5 +295,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeCleanUp")
 {
     uShortRangeTestPrivateCleanup(&gHandles);
 }
+
+#endif
 
 // End of file

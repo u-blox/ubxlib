@@ -228,6 +228,8 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 
 [scripts/u_run_pylint.py](./scripts/u_run_pylint.py): run Pylint on all of these Python automation scripts; called by `automation.test` PyInvoke task.
 
+[scripts/u_run_check_ubxlib_h.py](./scripts/u_run_check_ubxlib_h.py): check that no API header files have been missed out of `ubxlib.h`.
+
 [scripts/u_run_windows.py](./scripts/u_run_windows.py): build and run on Windows; called by `automation.test` PyInvoke task.
 
 [scripts/u_run_linux.py](./scripts/u_run_linux.py): build and run on Linux; called by `automation.test` PyInvoke task.  In particular, if you install the Linux `socat` utility this script will automatically handle mapping of the `/dev/pts/x` UARTs of the `ubxlib` Linux application to real Linux devices.  For instance, to make `UART_0` the `U_CFG_TEST_UART_A` loop-back UART, used by the porting tests, then simply pass the #define `U_CFG_TEST_UART_A=0` into the build. Similarly, to make `UART_1` the `U_CFG_TEST_UART_B` loop-back UART (used for the scenario in the AT command and chip-to-chip security tests where `U_CFG_TEST_UART_A` is looped back to `U_CFG_TEST_UART_B`) then you would also pass #define `U_CFG_TEST_UART_B=1` into the build.  And finally, if you have a real module connected to a real device on Linux, let's say a cellular module on `/dev/tty/5`, and you want to connect it to `ubxlib` as `UART_1`, then as well as passing the #define `U_CFG_APP_CELL_UART=1` into the build you would also pass `U_CFG_APP_CELL_UART_DEV=/dev/tty/5`.  The #defines `U_CFG_APP_GNSS_UART` and `U_CFG_APP_SHORT_RANGE_UART` can be used similarly.

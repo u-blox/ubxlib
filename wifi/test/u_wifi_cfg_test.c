@@ -55,6 +55,7 @@
 #include "u_port_uart.h"
 
 #include "u_at_client.h"
+#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 #include "u_wifi.h"
@@ -74,7 +75,7 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-static uWifiTestPrivate_t gHandles = { -1, -1, NULL, -1 };
+static uWifiTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -88,12 +89,21 @@ U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgConfigureModule")
 {
     int32_t heapUsed;
     uWifiCfg_t cfg;
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
+
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &uart,
                                                 &gHandles) == 0);
     cfg.notUsed = false;
-    U_PORT_TEST_ASSERT(uWifiCfgConfigure(gHandles.wifiHandle, &cfg) == 0);
+    U_PORT_TEST_ASSERT(uWifiCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
 
     uWifiTestPrivatePostamble(&gHandles);
@@ -122,21 +132,13 @@ U_PORT_TEST_FUNCTION("[wifiCfg]", "wifiCfgCleanUp")
 {
     int32_t x;
 
-    uWifiDeinit();
-    if (gHandles.uartHandle >= 0) {
-        uPortUartClose(gHandles.uartHandle);
-    }
-    if (gHandles.edmStreamHandle >= 0) {
-        uShortRangeEdmStreamClose(gHandles.edmStreamHandle);
-    }
-    uAtClientDeinit();
+    uWifiTestPrivateCleanup(&gHandles);
+
 
     x = uPortTaskStackMinFree(NULL);
     uPortLog("U_WIFI_CFG_TEST: main task stack had a minimum of %d"
              " byte(s) free at the end of these tests.\n", x);
     U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-
-    uPortDeinit();
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {

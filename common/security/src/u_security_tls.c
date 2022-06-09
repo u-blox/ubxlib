@@ -41,7 +41,7 @@
 
 #include "u_port_os.h"
 
-#include "u_network_handle.h"
+#include "u_device_shared.h"
 
 #include "u_security_credential.h"
 #include "u_security_tls.h"
@@ -123,7 +123,7 @@ static bool checkConfig(const uSecurityTlsSettings_t *pSettings)
  * -------------------------------------------------------------- */
 
 // Set up a TLS security context.
-uSecurityTlsContext_t *pUSecurityTlsAdd(int32_t networkHandle,
+uSecurityTlsContext_t *pUSecurityTlsAdd(uDeviceHandle_t devHandle,
                                         const uSecurityTlsSettings_t *pSettings)
 {
     int32_t errorCode = init();
@@ -142,9 +142,9 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(int32_t networkHandle,
         U_PORT_MUTEX_LOCK(gMutex);
 
         if ((pSettings == NULL) || checkConfig(pSettings)) {
+            int32_t devType = uDeviceGetDeviceType(devHandle);
             errorCode = (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-            if (U_NETWORK_HANDLE_IS_BLE(networkHandle) ||
-                U_NETWORK_HANDLE_IS_WIFI(networkHandle)) {
+            if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 // Short range TLS security context setup
                 if (pSettings != NULL) {
@@ -173,11 +173,11 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(int32_t networkHandle,
                         errorCode = uShortRangeSecTlsResetLastError();
                     }
                 }
-            } else if (U_NETWORK_HANDLE_IS_CELL(networkHandle)) {
+            } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 // Allocate a cellular security context with
                 // default settings
-                pNetworkSpecific = (void *) pUCellSecSecTlsAdd(networkHandle);
+                pNetworkSpecific = (void *) pUCellSecSecTlsAdd(devHandle);
                 if (pNetworkSpecific == NULL) {
                     errorCode = uCellSecTlsResetLastError();
                 } else {
@@ -247,6 +247,8 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(int32_t networkHandle,
                         }
                     }
                 }
+            } else if (devType < 0) {
+                errorCode = devType;
             }
         }
 
@@ -256,7 +258,7 @@ uSecurityTlsContext_t *pUSecurityTlsAdd(int32_t networkHandle,
     // Finally, set the values in the returned context
     if (pContext != NULL) {
         pContext->errorCode = errorCode;
-        pContext->networkHandle = networkHandle;
+        pContext->devHandle = devHandle;
         pContext->pNetworkSpecific = pNetworkSpecific;
     }
 
@@ -270,10 +272,10 @@ void uSecurityTlsRemove(uSecurityTlsContext_t *pContext)
 
         U_PORT_MUTEX_LOCK(gMutex);
 
-        if (U_NETWORK_HANDLE_IS_BLE(pContext->networkHandle) ||
-            U_NETWORK_HANDLE_IS_WIFI(pContext->networkHandle)) {
+        int32_t devType = uDeviceGetDeviceType(pContext->devHandle);
+        if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
             uShortRangeSecTlsRemove((uShortRangeSecTlsContext_t *) pContext->pNetworkSpecific);
-        } else if (U_NETWORK_HANDLE_IS_CELL(pContext->networkHandle)) {
+        } else if (devType == (int32_t) U_DEVICE_TYPE_CELL) {
             uCellSecTlsRemove((uCellSecTlsContext_t *) pContext->pNetworkSpecific);
         }
         free(pContext);

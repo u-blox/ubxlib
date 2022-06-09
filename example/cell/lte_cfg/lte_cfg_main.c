@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,47 +22,11 @@
  * instructions.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
+// Bring in all of the ubxlib public header files
+#include "ubxlib.h"
 
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-
-// Required by ubxlib
-#include "u_port.h"
-
-// The next two lines will cause uPortLog() output
-// to be sent to ubxlib's chosen trace output.
-// Comment them out to send the uPortLog() output
-// to print() instead.
-#include "u_cfg_sw.h"
-#include "u_port_debug.h"
-
-// For default values for U_CFG_APP_xxx
+// Bring in the application settings
 #include "u_cfg_app_platform_specific.h"
-
-// For the cellular module types
-#include "u_cell_module_type.h"
-
-// For the network API
-#include "u_network.h"
-#include "u_network_config_cell.h"
-#include "u_network_config_wifi.h"
-
-// For the RAT types
-#include "u_cell_net.h"
-
-// For the cellular configuration functions
-#include "u_cell_cfg.h"
-
-// For the cellular module reboot function
-#include "u_cell_pwr.h"
-
-// For the sockets API, just to do a DNS look-up
-#include "u_sock.h"
 
 #ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
@@ -129,10 +93,6 @@
 # define MY_NB1_BANDMASK2   U_CELL_CFG_BAND_MASK_2_EUROPE_NB1_DEFAULT
 #endif
 
-#ifndef U_CFG_ENABLE_LOGGING
-# define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
-#endif
-
 // For u-blox internal testing only
 #ifdef U_PORT_TEST_ASSERT
 # define EXAMPLE_FINAL_STATE(x) U_PORT_TEST_ASSERT(x);
@@ -155,34 +115,50 @@
 // The RATs as an array.
 uCellNetRat_t gMyRatList[] = {MY_RAT0, MY_RAT1, MY_RAT2};
 
-// Cellular network configuration:
+// Cellular configuration.
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                        U_CFG_TEST_CELL_MODULE_TYPE,
-                                                        NULL, /* SIM pin */
-                                                        NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-                                                        240, /* Connection timeout in seconds */
-                                                        U_CFG_APP_CELL_UART,
-                                                        /* Note that the pin numbers
-                                                           that follow are those of the MCU:
-                                                           if you are using an MCU inside
-                                                           a u-blox module the IO pin numbering
-                                                           for the module is likely different
-                                                           to that from the MCU: check the data
-                                                           sheet for the module to determine
-                                                           the mapping. */
-                                                        U_CFG_APP_PIN_CELL_TXD,
-                                                        U_CFG_APP_PIN_CELL_RXD,
-                                                        U_CFG_APP_PIN_CELL_CTS,
-                                                        U_CFG_APP_PIN_CELL_RTS,
-                                                        U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                        U_CFG_APP_PIN_CELL_PWR_ON,
-                                                        U_CFG_APP_PIN_CELL_VINT
-                                                       };
+// DEVICE i.e. module/chip configuration: in this case a cellular
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pSimPinCode = NULL, /* SIM pin */
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        },
+    },
+};
+// NETWORK configuration for cellular
+static const uNetworkCfgCell_t gNetworkCfg = {
+    .type = U_NETWORK_TYPE_CELL,
+    .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
+    .timeoutSeconds = 240 /* Connection timeout in seconds */
+};
 #else
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgCell_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
 // The names for each RAT, for debug purposes
@@ -254,14 +230,14 @@ static void printAddress(const uSockAddress_t *pAddress,
 }
 
 // Read and then set the band mask for a given RAT.
-static void readAndSetBand(int32_t networkHandle, uCellNetRat_t rat,
+static void readAndSetBand(uDeviceHandle_t devHandle, uCellNetRat_t rat,
                            uint64_t bandMask1, uint64_t bandMask2)
 {
     uint64_t readBandMask1;
     uint64_t readBandMask2;
 
     // Read the current band mask for information
-    if (uCellCfgGetBandMask(networkHandle, rat,
+    if (uCellCfgGetBandMask(devHandle, rat,
                             &readBandMask1, &readBandMask2) == 0) {
         uPortLog("### Band mask for RAT %s is 0x%08x%08x %08x%08x.\n", gpRatStr[rat],
                  (uint32_t) (readBandMask2 >> 32), (uint32_t) readBandMask2,
@@ -272,7 +248,7 @@ static void readAndSetBand(int32_t networkHandle, uCellNetRat_t rat,
                      gpRatStr[rat],
                      (uint32_t) (bandMask2 >> 32), (uint32_t) (bandMask2),
                      (uint32_t) (bandMask1 >> 32), (uint32_t) (bandMask1));
-            if (uCellCfgSetBandMask(networkHandle, rat,
+            if (uCellCfgSetBandMask(devHandle, rat,
                                     bandMask1, bandMask2) != 0) {
                 uPortLog("### Unable to change band mask for RAT %s, it is"
                          " likely your module does not support one of those"
@@ -293,7 +269,7 @@ static void readAndSetBand(int32_t networkHandle, uCellNetRat_t rat,
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     uSockAddress_t address;
     int32_t x;
     char buffer[32];
@@ -305,12 +281,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a cellular network instance.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("### Added network with handle %d.\n", networkHandle);
+    // Open the device
+    x = uDeviceOpen(&gDeviceCfg, &devHandle);
+    uPortLog("## Opened device with return code %d.\n", x);
 
     //---------------- CONFIGURATION BEGINS -----------------
 
@@ -321,10 +296,10 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
     // Configure the MNO profile, do this first as it can alter
     // the RF band settings which we may want to change
     // ourselves later
-    x = uCellCfgGetMnoProfile(networkHandle);
+    x = uCellCfgGetMnoProfile(devHandle);
     if (x >= 0) {
         if (x != MY_MNO_PROFILE) {
-            if (uCellCfgSetMnoProfile(networkHandle,
+            if (uCellCfgSetMnoProfile(devHandle,
                                       MY_MNO_PROFILE) == 0) {
                 uPortLog("### MNO profile has been changed from %d to %d.\n",
                          x, MY_MNO_PROFILE);
@@ -336,16 +311,16 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
         uPortLog("### This module does not support setting an MNO profile.\n");
     }
     // Reboot the module if required
-    if (uCellPwrRebootIsRequired(networkHandle)) {
+    if (uCellPwrRebootIsRequired(devHandle)) {
         uPortLog("### Re-booting the module to apply MNO profile change...\n");
-        uCellPwrReboot(networkHandle, NULL);
+        uCellPwrReboot(devHandle, NULL);
     }
 
     //------------------------- RAT -------------------------
     // Read out the existing RAT list and set the new ones
     for (x = 0; x < 3; x++) {
         // Get the RAT at rank x
-        rat[x] = uCellCfgGetRat(networkHandle, x);
+        rat[x] = uCellCfgGetRat(devHandle, x);
         if (rat[x] >= 0) {
             uPortLog("### RAT[%d] is %s.\n", x, gpRatStr[rat[x]]);
             // The effect of this code is to set MY_RAT0
@@ -359,7 +334,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
                 // so set it
                 uPortLog("### Setting RAT[%d] to %s...\n", x,
                          gpRatStr[gMyRatList[x]]);
-                if (uCellCfgSetRatRank(networkHandle, gMyRatList[x], x) != 0) {
+                if (uCellCfgSetRatRank(devHandle, gMyRatList[x], x) != 0) {
                     uPortLog("### Unable to set RAT[%d] to %s.\n", x,
                              gpRatStr[gMyRatList[x]]);
                 }
@@ -367,9 +342,9 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
         }
     }
     // Reboot the module if required
-    if (uCellPwrRebootIsRequired(networkHandle)) {
+    if (uCellPwrRebootIsRequired(devHandle)) {
         uPortLog("### Re-booting the module to apply RAT changes...\n");
-        uCellPwrReboot(networkHandle, NULL);
+        uCellPwrReboot(devHandle, NULL);
     }
 
     //----------------------- RF BANDS ----------------------
@@ -377,24 +352,24 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
     // RF bands as required
     for (x = 0; x < 3; x++) {
         if (gMyRatList[x] == U_CELL_NET_RAT_CATM1) {
-            readAndSetBand(networkHandle, gMyRatList[x],
+            readAndSetBand(devHandle, gMyRatList[x],
                            MY_CATM1_BANDMASK1, MY_CATM1_BANDMASK2);
         } else if (gMyRatList[x] == U_CELL_NET_RAT_NB1) {
-            readAndSetBand(networkHandle, gMyRatList[x],
+            readAndSetBand(devHandle, gMyRatList[x],
                            MY_NB1_BANDMASK1, MY_NB1_BANDMASK2);
         }
     }
     // Reboot the module if required
-    if (uCellPwrRebootIsRequired(networkHandle)) {
+    if (uCellPwrRebootIsRequired(devHandle)) {
         uPortLog("### Re-booting the module to apply RF band changes...\n");
-        uCellPwrReboot(networkHandle, NULL);
+        uCellPwrReboot(devHandle, NULL);
     }
 
     //------------------ CONFIGURATION ENDS -----------------
 
     uint64_t readBandMask1;
     uint64_t readBandMask2;
-    if (uCellCfgGetBandMask(networkHandle, U_CELL_NET_RAT_CATM1,
+    if (uCellCfgGetBandMask(devHandle, U_CELL_NET_RAT_CATM1,
                             &readBandMask1, &readBandMask2) == 0) {
         uPortLog("### Band mask for RAT %s is 0x%08x%08x %08x%08x.\n",
                  gpRatStr[U_CELL_NET_RAT_CATM1],
@@ -403,19 +378,19 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
     } else {
         uPortLog("### unable to read bandmask!\n");
     }
-    for (x = uCellNetScanGetFirst(networkHandle, NULL, 0,
+    for (x = uCellNetScanGetFirst(devHandle, NULL, 0,
                                   buffer, NULL, NULL);
          x >= 0;
-         x = uCellNetScanGetNext(networkHandle, NULL, 0, buffer, NULL)) {
+         x = uCellNetScanGetNext(devHandle, NULL, 0, buffer, NULL)) {
         uPortLog("### %d: network: %s\n", x, buffer);
     }
 
     // Now that the module is configured, bring up the network
-    uPortLog("### Bringing up the network...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                            &gNetworkCfg) == 0) {
 
         // Read the APN we have ended up with
-        x = uCellNetGetApnStr(networkHandle, buffer, sizeof(buffer));
+        x = uCellNetGetApnStr(devHandle, buffer, sizeof(buffer));
         if (x >= 0) {
             uPortLog("### The APN is \"%.*s\".\n", x, buffer);
         } else {
@@ -425,7 +400,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
         // Prove that we have a data connection
         // by performing a DNS look-up
         uPortLog("### Looking up server address...\n");
-        if (uSockGetHostByName(networkHandle, "www.google.com",
+        if (uSockGetHostByName(devHandle, "www.google.com",
                                &(address.ipAddress)) == 0) {
             uPortLog("### www.google.com is: ");
             printAddress(&address, false);
@@ -436,13 +411,19 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellLteCfg")
 
         // When finished with the network layer
         uPortLog("### Taking down network...\n");
-        uNetworkDown(networkHandle);
+        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
     } else {
         uPortLog("### Unable to bring up the network!\n");
     }
 
-    // Calling these will also deallocate the network handle
-    uNetworkDeinit();
+    // Close the device
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandle, false);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("### Done.\n");

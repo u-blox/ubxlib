@@ -17,7 +17,10 @@
 #ifndef _U_SHORT_RANGE_EDM_STREAM_H_
 #define _U_SHORT_RANGE_EDM_STREAM_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief EDM (extended data mode) stream API for short range modules.
@@ -31,16 +34,8 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef U_EDM_STREAM_TASK_STACK_SIZE_BYTES
-#define U_EDM_STREAM_TASK_STACK_SIZE_BYTES  1536
-#endif
-
 #ifndef U_EDM_STREAM_EVENT_QUEUE_SIZE
 #define U_EDM_STREAM_EVENT_QUEUE_SIZE 3
-#endif
-
-#ifndef U_EDM_STREAM_TASK_PRIORITY
-# define U_EDM_STREAM_TASK_PRIORITY (U_CFG_OS_PRIORITY_MAX - 4)
 #endif
 
 /* ----------------------------------------------------------------
@@ -65,8 +60,7 @@ typedef void (*uEdmBtConnectionStatusCallback_t)(int32_t edmStreamHandle,
 
 typedef void (*uEdmDataEventCallback_t)(int32_t edmStreamHandle,
                                         int32_t edmChannel,
-                                        int32_t length,
-                                        char *pData,
+                                        uShortRangePbufList_t *pBufList,
                                         void *pCallbackParameter);
 
 /* ----------------------------------------------------------------

@@ -17,7 +17,10 @@
 #ifndef _U_PORT_OS_H_
 #define _U_PORT_OS_H_
 
-/* No #includes allowed here _except_, under special circumstances,
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. _except_, under special circumstances,
  * if we want to sneak mutex debug in under-cover, see the section
  * under U_CFG_MUTEX_DEBUG that is snuck in at the very end of this
  * file.
@@ -51,6 +54,16 @@ extern "C" {
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
+
+/* Note: see here:
+ * https://stackoverflow.com/questions/72415062/c-compiler-checking-of-a-typedefed-void
+ * for a discussion of why we should never have used void * for the
+ * type definitions below.
+ * However, we did, so please just note that it is up to the user
+ * to pass the correct handle type into each of the uPortOsXxx()
+ * functions, the compiler will not emit an error, or a warning,
+ * if the wrong handle type is passed.
+ */
 
 /** Mutex handle.
  */

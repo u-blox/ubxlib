@@ -18,7 +18,7 @@ example/cell/power_saving/cell_power_saving_3gpp_main.c
 example/cell/power_saving/cell_power_saving_e_drx_main.c
 ble/test/u_ble_test.c
 ble/test/u_ble_cfg_test.c
-ble/test/u_ble_data_test.c
+ble/test/u_ble_sps_test.c
 ble/test/u_ble_test_private.c
 cell/test/u_cell_test.c
 cell/test/u_cell_pwr_test.c
@@ -43,7 +43,6 @@ gnss/test/u_gnss_util_test.c
 gnss/test/u_gnss_test_private.c
 wifi/test/u_wifi_test.c
 wifi/test/u_wifi_cfg_test.c
-wifi/test/u_wifi_net_test.c
 wifi/test/u_wifi_sock_test.c
 wifi/test/u_wifi_test_private.c
 common/network/test/u_network_test.c
@@ -59,6 +58,7 @@ common/at_client/test/u_at_client_test.c
 common/at_client/test/u_at_client_test_data.c
 common/ubx_protocol/test/u_ubx_protocol_test.c
 common/short_range/test/u_short_range_test.c
+common/short_range/test/u_short_range_test_preamble.c
 common/short_range/test/u_short_range_test_private.c
 common/mqtt_client/test/u_mqtt_client_test.c
 port/test/u_port_test.c

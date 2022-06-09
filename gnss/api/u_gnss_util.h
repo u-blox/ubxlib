@@ -17,7 +17,10 @@
 #ifndef _U_GNSS_UTIL_H_
 #define _U_GNSS_UTIL_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines the utility functions of the GNSS API.
@@ -72,7 +75,7 @@ extern "C" {
  *                               into pResponse (zero if pResponse is
  *                               NULL), else negative error code.
  */
-int32_t uGnssUtilUbxTransparentSendReceive(int32_t gnssHandle,
+int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
                                            const char *pCommand,
                                            size_t commandLengthBytes,
                                            char *pResponse,

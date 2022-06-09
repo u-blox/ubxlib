@@ -122,7 +122,7 @@ typedef enum {
 /** Structure in which to store a position fix.
  */
 typedef struct {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     int32_t errorCode;
     int32_t latitudeX1e7;
     int32_t longitudeX1e7;
@@ -137,7 +137,7 @@ typedef struct {
  */
 typedef union {
     volatile uCellLocFixDataStorageBlock_t *pBlock;
-    void (*pCallback) (int32_t cellHandle,
+    void (*pCallback) (uDeviceHandle_t cellHandle,
                        int32_t errorCode,
                        int32_t latitudeX1e7,
                        int32_t longitudeX1e7,
@@ -412,7 +412,7 @@ static void UULOC_urc(uAtClientHandle_t atHandle, void *pParam)
                 pFixDataStorageBlock->speedMillimetresPerSecond = speedMillimetresPerSecond;
                 pFixDataStorageBlock->svs = svs;
                 pFixDataStorageBlock->timeUtc = timeUtc;
-                pFixDataStorageBlock->cellHandle = pInstance->handle;
+                pFixDataStorageBlock->cellHandle = pInstance->cellHandle;
                 pFixDataStorageBlock->errorCode = (int32_t) U_ERROR_COMMON_NOT_FOUND;
                 if (timeUtc > U_CELL_LOC_MIN_UTC_TIME) {
                     pFixDataStorageBlock->errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -520,7 +520,7 @@ static int32_t ensureContext(uCellPrivateInstance_t *pInstance)
 // at the start of every API function; use the helper macro
 // U_CELL_LOC_ENTRY_FUNCTION to be sure of this, rather than
 // calling this function directly.
-static void entryFunction(int32_t cellHandle,
+static void entryFunction(uDeviceHandle_t cellHandle,
                           uCellPrivateInstance_t **ppInstance,
                           int32_t *pErrorCode)
 {
@@ -630,7 +630,7 @@ static int32_t beginLocationFix(const uCellPrivateInstance_t *pInstance)
  * -------------------------------------------------------------- */
 
 // Free memory used by this API.
-void uCellLocCleanUp(int32_t cellHandle)
+void uCellLocCleanUp(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -649,7 +649,7 @@ void uCellLocCleanUp(int32_t cellHandle)
  * -------------------------------------------------------------- */
 
 // Set the desired location accuracy.
-void uCellLocSetDesiredAccuracy(int32_t cellHandle,
+void uCellLocSetDesiredAccuracy(uDeviceHandle_t cellHandle,
                                 int32_t accuracyMillimetres)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -665,7 +665,7 @@ void uCellLocSetDesiredAccuracy(int32_t cellHandle,
 }
 
 // Get the desired location accuracy.
-int32_t uCellLocGetDesiredAccuracy(int32_t cellHandle)
+int32_t uCellLocGetDesiredAccuracy(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrAccuracy = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -682,7 +682,7 @@ int32_t uCellLocGetDesiredAccuracy(int32_t cellHandle)
 }
 
 // Set the desired location fix time-out.
-void uCellLocSetDesiredFixTimeout(int32_t cellHandle,
+void uCellLocSetDesiredFixTimeout(uDeviceHandle_t cellHandle,
                                   int32_t fixTimeoutSeconds)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -698,7 +698,7 @@ void uCellLocSetDesiredFixTimeout(int32_t cellHandle,
 }
 
 // Get the desired location fix time-out.
-int32_t uCellLocGetDesiredFixTimeout(int32_t cellHandle)
+int32_t uCellLocGetDesiredFixTimeout(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrFixTimeout = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -715,7 +715,7 @@ int32_t uCellLocGetDesiredFixTimeout(int32_t cellHandle)
 }
 
 // Set whether a GNSS chip is used or not.
-void uCellLocSetGnssEnable(int32_t cellHandle, bool onNotOff)
+void uCellLocSetGnssEnable(uDeviceHandle_t cellHandle, bool onNotOff)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -730,7 +730,7 @@ void uCellLocSetGnssEnable(int32_t cellHandle, bool onNotOff)
 }
 
 // Get whether GNSS is employed in the location fix or not.
-bool uCellLocGetGnssEnable(int32_t cellHandle)
+bool uCellLocGetGnssEnable(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrGnssEnable = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -747,7 +747,7 @@ bool uCellLocGetGnssEnable(int32_t cellHandle)
 }
 
 // Set the module pin that enables power to the GNSS chip.
-int32_t uCellLocSetPinGnssPwr(int32_t cellHandle, int32_t pin)
+int32_t uCellLocSetPinGnssPwr(uDeviceHandle_t cellHandle, int32_t pin)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -784,7 +784,7 @@ int32_t uCellLocSetPinGnssPwr(int32_t cellHandle, int32_t pin)
 }
 
 // Set the module pin connected to Data Ready of the GNSS chip.
-int32_t uCellLocSetPinGnssDataReady(int32_t cellHandle, int32_t pin)
+int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -802,7 +802,7 @@ int32_t uCellLocSetPinGnssDataReady(int32_t cellHandle, int32_t pin)
 }
 
 // Configure the Cell Locate server parameters.
-int32_t uCellLocSetServer(int32_t cellHandle,
+int32_t uCellLocSetServer(uDeviceHandle_t cellHandle,
                           const char *pAuthenticationTokenStr,
                           const char *pPrimaryServerStr,
                           const char *pSecondaryServerStr)
@@ -883,7 +883,7 @@ int32_t uCellLocSetServer(int32_t cellHandle,
 }
 
 // Check whether a GNSS chip is present.
-bool uCellLocIsGnssPresent(int32_t cellHandle)
+bool uCellLocIsGnssPresent(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -944,7 +944,7 @@ bool uCellLocIsGnssPresent(int32_t cellHandle)
 }
 
 // Check whether there is a GNSS chip on-board the cellular module.
-bool uCellLocGnssInsideCell(int32_t cellHandle)
+bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle)
 {
     uCellPrivateInstance_t *pInstance;
     bool isInside = false;
@@ -988,13 +988,13 @@ bool uCellLocGnssInsideCell(int32_t cellHandle)
  * -------------------------------------------------------------- */
 
 // Get the current location, blocking version.
-int32_t uCellLocGet(int32_t cellHandle,
+int32_t uCellLocGet(uDeviceHandle_t cellHandle,
                     int32_t *pLatitudeX1e7, int32_t *pLongitudeX1e7,
                     int32_t *pAltitudeMillimetres, int32_t *pRadiusMillimetres,
                     int32_t *pSpeedMillimetresPerSecond,
                     int32_t *pSvs,
                     int64_t *pTimeUtc,
-                    bool (*pKeepGoingCallback) (int32_t))
+                    bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -1103,8 +1103,8 @@ int32_t uCellLocGet(int32_t cellHandle,
 }
 
 // Get the current location, non-blocking version.
-int32_t uCellLocGetStart(int32_t cellHandle,
-                         void (*pCallback) (int32_t cellHandle,
+int32_t uCellLocGetStart(uDeviceHandle_t cellHandle,
+                         void (*pCallback) (uDeviceHandle_t cellHandle,
                                             int32_t errorCode,
                                             int32_t latitudeX1e7,
                                             int32_t longitudeX1e7,
@@ -1163,7 +1163,7 @@ int32_t uCellLocGetStart(int32_t cellHandle,
 }
 
 // Get the last status of a location fix attempt.
-int32_t uCellLocGetStatus(int32_t cellHandle)
+int32_t uCellLocGetStatus(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrStatus = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;
@@ -1241,7 +1241,7 @@ int32_t uCellLocGetStatus(int32_t cellHandle)
 }
 
 // Cancel a uCellLocGetStart().
-void uCellLocGetStop(int32_t cellHandle)
+void uCellLocGetStop(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance = NULL;

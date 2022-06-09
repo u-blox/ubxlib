@@ -17,11 +17,12 @@
 #ifndef _U_SECURITY_TLS_H_
 #define _U_SECURITY_TLS_H_
 
-/* No #includes allowed here.  Also, note that this header file
+#include "u_device.h" // uDeviceHandle_t
+/* No other #includes allowed here.  Also, note that this header file
  * is allowed to be include inside other API header files which
  * hide it (e.g. u_sock_security.h) and hence it is important
  * that this fle is self-contained, must not drag in any
- * types aside from the primitive ones.
+ * types aside from the primitive ones except uDeviceHandle_t.
  */
 
 /** @file
@@ -394,7 +395,7 @@ typedef struct {
 typedef struct uSecurityTlsContext_t {
     int32_t errorCode;      /**< zero if this is a valid security context,
                                  else negative error code. */
-    int32_t networkHandle;  /**< the network handle with which this security
+    uDeviceHandle_t devHandle;  /**< the network handle with which this security
                                  context is associated. */
     void *pNetworkSpecific; /**< pointer to a network-specific context structure
                                  which will be passed to the BLE/Cellular/Wifi
@@ -416,9 +417,9 @@ typedef struct uSecurityTlsContext_t {
  * hence uSecurityTlsRemove() must ALWAYS be called afterwards to
  * clean this up, even on failure.
  *
- * @param networkHandle the handle of the network with which the
+ * @param devHandle     the handle of the device which the
  *                      TLS security context is associated, e.g.
- *                      as returned by uNetworkAdd().
+ *                      obtained using uDeviceOpen().
  * @param pSettings     a pointer to the TLS security settings
  *                      to use.  May be NULL in which case default
  *                      settings are applied; consult the security
@@ -432,7 +433,7 @@ typedef struct uSecurityTlsContext_t {
  *                      returned structure will be zero, else it
  *                      will be a negative error code.
  */
-uSecurityTlsContext_t *pUSecurityTlsAdd(int32_t networkHandle,
+uSecurityTlsContext_t *pUSecurityTlsAdd(uDeviceHandle_t devHandle,
                                         const uSecurityTlsSettings_t *pSettings);
 
 /** Free the given security context.  This function is thread-safe.

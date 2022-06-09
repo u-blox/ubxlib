@@ -17,10 +17,13 @@
 #ifndef _U_CELL_MQTT_H_
 #define _U_CELL_MQTT_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
- * @brief This header file defines the MQTT client API for cellular
+ * @brief This header file defines the MQTT/MQTT-SN client API for cellular
  * modules.  These functions are NOT thread-safe and are NOT intended to be
  * called directly.  Instead, please use the common/mqtt_client API which
  * wraps the functions exposed here to handle error checking and
@@ -88,21 +91,67 @@ extern "C" {
 # define U_CELL_MQTT_WILL_MESSAGE_MAX_LENGTH_BYTES 256
 #endif
 
+#ifndef U_CELL_MQTT_RETRIES_DEFAULT
+/** The number of times to retry an MQTT operation if the
+ * failure is due to radio conditions.
+ */
+# define U_CELL_MQTT_RETRIES_DEFAULT 2
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
-/** MQTT QoS.  The values here should match those in uCellMqttQos_t.
+/** MQTT QoS.  The values here should match those in uMqttQos_t.
  */
 typedef enum {
     U_CELL_MQTT_QOS_AT_MOST_ONCE = 0,
     U_CELL_MQTT_QOS_AT_LEAST_ONCE = 1,
     U_CELL_MQTT_QOS_EXACTLY_ONCE = 2,
-    U_CELL_MQTT_QOS_MAX_NUM
+    U_CELL_MQTT_QOS_MAX_NUM,
+    U_CELL_MQTT_QOS_SEND_AND_FORGET = 3, /**< valid for MQTT-SN publish messages only. */
+    U_CELL_MQTT_QOS_SN_PUBLISH_MAX_NUM
 } uCellMqttQos_t;
 
+/** The type of MQTT-SN topic name.  The values here
+ * should match those in uMqttSnTopicNameType_t.
+ */
+typedef enum {
+    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL = 0, /**< a two-byte ID, e.g. 0x0001, referring to a normal MQTT topic, e.g. "thing/this". */
+    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED = 1, /**< a pre-agreed two byte ID, e.g. 0x0100. */
+    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT = 2,  /**< two alpha-numeric characters, e.g. "ab". */
+    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_MAX_NUM
+} uCellMqttSnTopicNameType_t;
+
+/** This type holds the two sorts of MQTT-SN topic name; a uint16_t
+ * ID (i.e. 0 to 65535) or a two-character name (e.g. "ab"). The
+ * structure here MUST match uMqttSnTopicName_t.
+ */
+typedef struct {
+// *INDENT-OFF* (otherwise AStyle makes a mess of this)
+    union {
+        uint16_t id; /**< Populate this for the types U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL
+                          or U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED. */
+        // nameShort MUST be of length 2, as defined by the MQTT-SN specifications; the
+        // code is written such that no terminating 0 is required in the storage here.
+        char nameShort[2]; /**< Populate this for U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT;
+                                nameShort must contain two ASCII characters, no terminator
+                                is required. */
+    } name;
+    uCellMqttSnTopicNameType_t type; /**< If the id field is populated and was obtained
+                                          through uCellMqttSnRegisterNormalTopic()
+                                          or uCellMqttSnSubscribeNormalTopic() then set this to
+                                          U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL.  If the id field
+                                          is populated and is a predefined topic ID then set
+                                          this to U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED.  If the
+                                          nameShort field is populated, set this to
+                                          U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT. */
+// *INDENT-ON*
+} uCellMqttSnTopicName_t;
+
+
 /* ----------------------------------------------------------------
- * FUNCTIONS
+ * FUNCTIONS: MQTT AND MQTT-SN
  * -------------------------------------------------------------- */
 
 /** Initialise the cellular MQTT client.  If the client is already
@@ -112,75 +161,77 @@ typedef enum {
  * function you will lose all settings and must call uCellMqttDeinit()
  * followed by uCellMqttInit() to put them back again.
  *
- * @param cellHandle         the handle of the cellular instance
- *                           to be used.
- * @param pBrokerNameStr     the null-terminated string that gives
- *                           the name of the broker for this MQTT
- *                           session.  This may be a domain name,
- *                           or an IP address and may include a port
- *                           number.  NOTE: if a domain name is used
- *                           the module may immediately try to perform
- *                           a DNS look-up to establish the IP address
- *                           of the broker and hence you should ensure
- *                           that the module is connected beforehand.
- * @param pClientIdStr       the null-terminated string that
- *                           will be the client ID for this
- *                           MQTT session.  May be NULL, in
- *                           which case the driver will provide
- *                           a name.
- * @param pUserNameStr       the null-terminated string that is the
- *                           user name required by the MQTT broker.
- * @param pPasswordStr       the null-terminated string that is the
- *                           password required by the MQTT broker.
- * @param pKeepGoingCallback certain of the MQTT API functions
- *                           need to wait for the broker to respond
- *                           and this may take some time.  Specify
- *                           a callback function here which will be
- *                           called while the API is waiting.  While
- *                           the callback function returns true the
- *                           API will continue to wait until success
- *                           or U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS
- *                           is reached.  If the callback function
- *                           returns false then the API will return.
- *                           Note that the thing the API was waiting for
- *                           may still succeed, this does not cancel
- *                           the operation, it simply stops waiting
- *                           for the response.  The callback function
- *                           may also be used to feed any application
- *                           watchdog timer that may be running.
- *                           May be NULL, in which case the
- *                           APIs will continue to wait until success
- *                           or U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS.
- * @param futureExpansion    in this version of this API this field
- *                           is ignored.
- * @return                   zero on success or negative error code on
- *                           failure.
+ * @param cellHandle             the handle of the cellular instance
+ *                               to be used.
+ * @param[in] pBrokerNameStr     the null-terminated string that gives
+ *                               the name of the broker for this MQTT
+ *                               session.  This may be a domain name,
+ *                               or an IP address and may include a port
+ *                               number.  NOTE: if a domain name is used
+ *                               the module may immediately try to perform
+ *                               a DNS look-up to establish the IP address
+ *                               of the broker and hence you should ensure
+ *                               that the module is connected beforehand.
+ * @param[in] pClientIdStr       the null-terminated string that
+ *                               will be the client ID for this
+ *                               MQTT session.  May be NULL, in
+ *                               which case the driver will provide
+ *                               a name.
+ * @param[in] pUserNameStr       the null-terminated string that is the
+ *                               user name required by the MQTT broker;
+ *                               ignored for MQTT-SN.
+ * @param[in] pPasswordStr       the null-terminated string that is the
+ *                               password required by the MQTT broker;
+ *                               ignored for MQTT-SN.
+ * @param[in] pKeepGoingCallback certain of the MQTT API functions
+ *                               need to wait for the broker to respond
+ *                               and this may take some time.  Specify
+ *                               a callback function here which will be
+ *                               called while the API is waiting.  While
+ *                               the callback function returns true the
+ *                               API will continue to wait until success
+ *                               or U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS
+ *                               is reached.  If the callback function
+ *                               returns false then the API will return.
+ *                               Note that the thing the API was waiting for
+ *                               may still succeed, this does not cancel
+ *                               the operation, it simply stops waiting
+ *                               for the response.  The callback function
+ *                               may also be used to feed any application
+ *                               watchdog timer that may be running.
+ *                               May be NULL, in which case the
+ *                               APIs will continue to wait until success
+ *                               or U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS.
+ * @param mqttSn                 set to true if the connection is an MQTT-SN
+ *                               connection to an MQTT-SN broker.
+ * @return                       zero on success or negative error code on
+ *                               failure.
  */
-int32_t uCellMqttInit(int32_t cellHandle, const char *pBrokerNameStr,
+int32_t uCellMqttInit(uDeviceHandle_t cellHandle, const char *pBrokerNameStr,
                       const char *pClientIdStr, const char *pUserNameStr,
                       const char *pPasswordStr,
                       bool (*pKeepGoingCallback)(void),
-                      bool futureExpansion);
+                      bool mqttSn);
 
 /** Shut-down the given cellular MQTT client.
  *
  * @param cellHandle  the handle of the cellular instance to be used.
  */
-void uCellMqttDeinit(int32_t cellHandle);
+void uCellMqttDeinit(uDeviceHandle_t cellHandle);
 
 /** Get the current cellular MQTT client ID.
  *
- * @param cellHandle       the handle of the cellular instance to be used.
- * @param pClientIdStr     pointer to a place to put the client ID,
- *                         which will be null-terminated. Can only be
- *                         NULL if sizeBytes is zero.
- * @param sizeBytes        size of the storage at pClientIdStr,
- *                         including the terminator.
- * @return                 the number of bytes written to pClientIdStr,
- *                         not including the terminator (i.e. what
- *                         strlen() would return), or negative error code.
+ * @param cellHandle         the handle of the cellular instance to be used.
+ * @param[out] pClientIdStr  pointer to a place to put the client ID,
+ *                           which will be null-terminated. Can only be
+ *                           NULL if sizeBytes is zero.
+ * @param sizeBytes          size of the storage at pClientIdStr,
+ *                           including the terminator.
+ * @return                   the number of bytes written to pClientIdStr,
+ *                           not including the terminator (i.e. what
+ *                           strlen() would return), or negative error code.
  */
-int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
+int32_t uCellMqttGetClientId(uDeviceHandle_t cellHandle, char *pClientIdStr,
                              size_t sizeBytes);
 
 /** Set the local port to use for the MQTT client.
@@ -191,7 +242,7 @@ int32_t uCellMqttGetClientId(int32_t cellHandle, char *pClientIdStr,
  * @param port       the port number.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetLocalPort(int32_t cellHandle, uint16_t port);
+int32_t uCellMqttSetLocalPort(uDeviceHandle_t cellHandle, uint16_t port);
 
 /** Get the local port used by the MQTT client.
  * Note that only SARA-R412M-02B supports setting the local port and,
@@ -201,7 +252,7 @@ int32_t uCellMqttSetLocalPort(int32_t cellHandle, uint16_t port);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           the port number on success or negative error code.
  */
-int32_t uCellMqttGetLocalPort(int32_t cellHandle);
+int32_t uCellMqttGetLocalPort(uDeviceHandle_t cellHandle);
 
 /** Set the inactivity timeout used by the MQTT client.  If this
  * is not called then no inactivity timeout is used.  An inactivity
@@ -218,7 +269,7 @@ int32_t uCellMqttGetLocalPort(int32_t cellHandle);
  * @param seconds     the inactivity timeout in seconds.
  * @return            zero on success or negative error code.
  */
-int32_t uCellMqttSetInactivityTimeout(int32_t cellHandle,
+int32_t uCellMqttSetInactivityTimeout(uDeviceHandle_t cellHandle,
                                       size_t seconds);
 
 /** Get the inactivity timeout used by the MQTT client.  Note that
@@ -228,7 +279,7 @@ int32_t uCellMqttSetInactivityTimeout(int32_t cellHandle,
  * @return           the inactivity timeout in seconds on success
  *                   or negative error code.
  */
-int32_t uCellMqttGetInactivityTimeout(int32_t cellHandle);
+int32_t uCellMqttGetInactivityTimeout(uDeviceHandle_t cellHandle);
 
 /** Switch MQTT ping or "keep alive" on.  This will send an
  * MQTT ping message to the broker near the end of the
@@ -244,7 +295,7 @@ int32_t uCellMqttGetInactivityTimeout(int32_t cellHandle);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetKeepAliveOn(int32_t cellHandle);
+int32_t uCellMqttSetKeepAliveOn(uDeviceHandle_t cellHandle);
 
 /** Switch MQTT ping or "keep alive" off. See
  * uMqttSetKeepAliveOn() for more details.
@@ -252,7 +303,7 @@ int32_t uCellMqttSetKeepAliveOn(int32_t cellHandle);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetKeepAliveOff(int32_t cellHandle);
+int32_t uCellMqttSetKeepAliveOff(uDeviceHandle_t cellHandle);
 
 /** Determine whether MQTT ping or "keep alive" is on or off.
  *
@@ -260,7 +311,7 @@ int32_t uCellMqttSetKeepAliveOff(int32_t cellHandle);
  * @return           true if MQTT ping or "keep alive" is on, else
  *                   false.
  */
-bool uCellMqttIsKeptAlive(int32_t cellHandle);
+bool uCellMqttIsKeptAlive(uDeviceHandle_t cellHandle);
 
 /** If this function returns successfully then
  * the topic subscriptions and message queue status
@@ -271,7 +322,7 @@ bool uCellMqttIsKeptAlive(int32_t cellHandle);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetRetainOn(int32_t cellHandle);
+int32_t uCellMqttSetRetainOn(uDeviceHandle_t cellHandle);
 
 /** Switch MQTT session retention off. See
  * uMqttSetSessionRetainOn() for more details.
@@ -282,19 +333,19 @@ int32_t uCellMqttSetRetainOn(int32_t cellHandle);
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetRetainOff(int32_t cellHandle);
+int32_t uCellMqttSetRetainOff(uDeviceHandle_t cellHandle);
 
 /** Determine whether MQTT session retention is on or off.
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           true if MQTT session retention is on else false.
  */
-bool uCellMqttIsRetained(int32_t cellHandle);
+bool uCellMqttIsRetained(uDeviceHandle_t cellHandle);
 
-/** Switch MQTT TLS security on.  By default MQTT TLS
- * security is off.  If you intend to switch security on don't
- * forget to specify the secure broker port number in the call
- * to uCellMqttInit() e.g. "mybroker.com:8883".
+/** Switch MQTT [D]TLS security on.  By default MQTT TLS security
+ * (DTLS security for MQTT-SN) is off.  If you intend to switch
+ * security on don't forget to specify the secure broker port number
+ * in the call to uCellMqttInit() e.g. "mybroker.com:8883".
  * IMPORTANT: a re-boot of the module will lose your
  * setting.
  * Note that SARA-R4 modules do not support changing MQTT
@@ -305,17 +356,17 @@ bool uCellMqttIsRetained(int32_t cellHandle);
  * @param cellHandle        the handle of the cellular instance
  *                          to be used.
  * @param securityProfileId the security profile ID
- *                          containing the TLS security
+ *                          containing the [D]TLS security
  *                          parameters.  Specify -1
  *                          to let this be chosen
  *                          automatically.
  * @return                  zero on success or negative
  *                          error code.
  */
-int32_t uCellMqttSetSecurityOn(int32_t cellHandle,
+int32_t uCellMqttSetSecurityOn(uDeviceHandle_t cellHandle,
                                int32_t securityProfileId);
 
-/** Switch MQTT TLS security off.
+/** Switch MQTT [D]TLS security off.
  * Note that SARA-R4 modules do not support switching
  * MQTT TLS security off again once it has been switched on
  * for an MQTT session without powering the module down and
@@ -324,20 +375,20 @@ int32_t uCellMqttSetSecurityOn(int32_t cellHandle,
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttSetSecurityOff(int32_t cellHandle);
+int32_t uCellMqttSetSecurityOff(uDeviceHandle_t cellHandle);
 
-/** Determine whether MQTT TLS security is on or off.
+/** Determine whether MQTT [D]TLS security is on or off.
  *
- * @param cellHandle         the handle of the cellular instance
- *                           to be used.
- * @param pSecurityProfileId a pointer to a place to put
- *                           the security profile ID that
- *                           is being used for MQTT TLS
- *                           security; may be NULL.
- * @return                   true if MQTT TLS security is
- *                           on else false.
+ * @param cellHandle              the handle of the cellular instance
+ *                                to be used.
+ * @param[out] pSecurityProfileId a pointer to a place to put
+ *                                the security profile ID that
+ *                                is being used for MQTT [D]TLS
+ *                                security; may be NULL.
+ * @return                        true if MQTT [D]TLS security is
+ *                                on else false.
  */
-bool uCellMqttIsSecured(int32_t cellHandle,
+bool uCellMqttIsSecured(uDeviceHandle_t cellHandle,
                         int32_t *pSecurityProfileId);
 
 /** Set the MQTT "will" message that will be sent
@@ -346,34 +397,38 @@ bool uCellMqttIsSecured(int32_t cellHandle,
  * IMPORTANT: a re-boot of the module will lose your
  * setting.
  *
- * @param cellHandle       the handle of the cellular instance to
- *                         be used.
- * @param pTopicNameStr    the null-terminated topic string
- *                         for the "will" message; may be NULL,
- *                         in which case the topic name string
- *                         will not be modified.
- * @param pMessage         a pointer to the "will" message;
- *                         the "will" message is not restricted
- *                         to ASCII values.  May be NULL,
- *                         in which case the message will not be
- *                         modified.
- * @param messageSizeBytes since pMessage may include binary
- *                         content, including NULLs, this
- *                         parameter specifies the length of
- *                         pMessage. If pMessage happens to
- *                         be an ASCII string this parameter
- *                         should be set to strlen(pMessage).
- *                         Ignored if pMessage is NULL.
- * @param qos              the MQTT QoS to use for the
- *                         "will" message.
- * @param retain           if true the "will" message will
- *                         be kept by the broker across
- *                         MQTT disconnects/connects, else
- *                         it will be cleared.
- * @return                 zero on success else negative error
- *                         code.
+ * @param cellHandle         the handle of the cellular instance to
+ *                           be used.
+ * @param[in] pTopicNameStr  the null-terminated topic string
+ *                           for the "will" message; may be NULL,
+ *                           in which case the topic name string
+ *                           will not be modified.
+ * @param[in] pMessage       a pointer to the "will" message.  For
+ *                           MQTT the "will" message is not
+ *                           restricted to ASCII values while for
+ *                           MQTT-SN.it must be a null-terminated
+ *                           ASCII string containing only printable
+ *                           characters (i.e. isprint() returns true)
+ *                           and no double quotation marks ("). May
+ *                           be NULL, in which case the message will
+ *                           not be modified.
+ * @param messageSizeBytes   since pMessage may include binary
+ *                           content, including NULLs, this
+ *                           parameter specifies the length of
+ *                           pMessage. If pMessage happens to
+ *                           be an ASCII string this parameter
+ *                           should be set to strlen(pMessage).
+ *                           Ignored if pMessage is NULL.
+ * @param qos                the MQTT QoS to use for the
+ *                           "will" message.
+ * @param retain             if true the "will" message will
+ *                           be kept by the broker across
+ *                           MQTT disconnects/connects, else
+ *                           it will be cleared.
+ * @return                   zero on success else negative error
+ *                           code.
  */
-int32_t uCellMqttSetWill(int32_t cellHandle,
+int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                          const char *pTopicNameStr,
                          const char *pMessage,
                          size_t messageSizeBytes,
@@ -383,32 +438,32 @@ int32_t uCellMqttSetWill(int32_t cellHandle,
  * by the broker on an uncommanded disconnect of the MQTT
  * client.  Note that SARA-R4 does not support "will"s.
  *
- * @param cellHandle          the handle of the cellular instance
- *                            to be used.
- * @param pTopicNameStr       a place to put the null-terminated
- *                            topic string used with the "will"
- *                            message; may be NULL.
- * @param topicNameSizeBytes  the number of bytes of storage
- *                            at pTopicNameStr.  Ignored if
- *                            pTopicNameStr is NULL.
- * @param pMessage            a place to put the "will" message;
- *                            may be NULL.
- * @param pMessageSizeBytes   on entry this should point to the
- *                            number of bytes of storage at
- *                            pMessage. On return, if pMessage
- *                            is not NULL, this will be updated
- *                            to the number of bytes written
- *                            to pMessage.  Must be non-NULL if
- *                            pMessage is not NULL.
- * @param pQos                a place to put the MQTT QoS that is
- *                            used for the "will" message. May
- *                            be NULL.
- * @param pRetain             a place to put the status of "will"
- *                            message retention. May be NULL.
- * @return                    zero on success else negative error
- *                            code.
+ * @param cellHandle               the handle of the cellular instance
+ *                                 to be used.
+ * @param[out] pTopicNameStr       a place to put the null-terminated
+ *                                 topic string used with the "will"
+ *                                 message; may be NULL.
+ * @param topicNameSizeBytes       the number of bytes of storage
+ *                                 at pTopicNameStr.  Ignored if
+ *                                 pTopicNameStr is NULL.
+ * @param[out] pMessage            a place to put the "will" message;
+ *                                 may be NULL.
+ * @param[inout] pMessageSizeBytes on entry this should point to the
+ *                                 number of bytes of storage at
+ *                                 pMessage. On return, if pMessage
+ *                                 is not NULL, this will be updated
+ *                                 to the number of bytes written
+ *                                 to pMessage.  Must be non-NULL if
+ *                                 pMessage is not NULL.
+ * @param[out] pQos                a place to put the MQTT QoS that is
+ *                                 used for the "will" message. May
+ *                                 be NULL.
+ * @param pRetain                  a place to put the status of "will"
+ *                                 message retention. May be NULL.
+ * @return                         zero on success else negative error
+ *                                 code.
  */
-int32_t uCellMqttGetWill(int32_t cellHandle, char *pTopicNameStr,
+int32_t uCellMqttGetWill(uDeviceHandle_t cellHandle, char *pTopicNameStr,
                          size_t topicNameSizeBytes,
                          char *pMessage,
                          size_t *pMessageSizeBytes,
@@ -422,116 +477,39 @@ int32_t uCellMqttGetWill(int32_t cellHandle, char *pTopicNameStr,
  *                      be used.
  * @return              zero on success or negative error code.
  */
-int32_t uCellMqttConnect(int32_t cellHandle);
+int32_t uCellMqttConnect(uDeviceHandle_t cellHandle);
 
 /** Stop an MQTT session.
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
  */
-int32_t uCellMqttDisconnect(int32_t cellHandle);
+int32_t uCellMqttDisconnect(uDeviceHandle_t cellHandle);
 
 /** Determine whether an MQTT session is active or not.
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           true if an MQTT session is active else false.
  */
-bool uCellMqttIsConnected(int32_t cellHandle);
-
-/** Publish an MQTT message. The pKeepGoingCallback()
- * function set during initialisation will be called while
- * this function is waiting for publish to complete.
- *
- * @param cellHandle       the handle of the cellular instance to
- *                         be used.
- * @param pTopicNameStr    the null-terminated topic string
- *                         for the message; cannot be NULL.
- * @param pMessage         a pointer to the message; the message
- *                         is not restricted to ASCII values.
- *                         Cannot be NULL.
- * @param messageSizeBytes since pMessage may include binary
- *                         content, including NULLs, this
- *                         parameter specifies the length of
- *                         pMessage. If pMessage happens to
- *                         be an ASCII string this parameter
- *                         should be set to strlen(pMessage).
- *                         The maximum message size varies with
- *                         module type: if binary entry is supported
- *                         or pMessage contains purely ASCII
- *                         printable characters (i.e. isprint()
- *                         returns true) then it is usually 1024
- *                         characters, else it will likely be
- *                         512 characters to allow for hex coding;
- *                         however on some modules (e.g. SARA_R410M_03B)
- *                         it can be as low as 256 characters.
- * @param qos              the MQTT QoS to use for this message.
- * @param retain           if true the message will be retained
- *                         by the broker across MQTT disconnects/
- *                         connects.
- * @return                 zero on success else negative error
- *                         code.
- */
-int32_t uCellMqttPublish(int32_t cellHandle, const char *pTopicNameStr,
-                         const char *pMessage,
-                         size_t messageSizeBytes,
-                         uCellMqttQos_t qos, bool retain);
-
-/** Subscribe to an MQTT topic. The pKeepGoingCallback()
- * function set during initialisation will be called while
- * this function is waiting for a subscription to complete.
- *
- * @param cellHandle       the handle of the cellular instance
- *                         to be used.
- * @param pTopicFilterStr  the null-terminated topic string
- *                         to subscribe to; the wildcard '+'
- *                         may be used to specify "all"
- *                         at any one topic level and the
- *                         wildcard '#' may be used at the end
- *                         of the string to indicate "everything
- *                         from here on".  Cannot be NULL.
- * @param maxQos           the maximum MQTT message QoS to
- *                         for this subscription.
- * @return                 the QoS of the subscription else
- *                         negative error code.
- */
-int32_t uCellMqttSubscribe(int32_t cellHandle,
-                           const char *pTopicFilterStr,
-                           uCellMqttQos_t maxQos);
-
-/** Unsubscribe from an MQTT topic.
- *
- * @param cellHandle       the handle of the cellular instance to
- *                         be used.
- * @param pTopicFilterStr  the null-terminated topic string
- *                         to unsubscribe from; the wildcard '+'
- *                         may be used to specify "all"
- *                         at any one topic level and the
- *                         wildcard '#' may be used at the end
- *                         of the string to indicate "everything
- *                         from here on".  Cannot be NULL.
- * @return                 zero on success else negative error
- *                         code.
- */
-int32_t uCellMqttUnsubscribe(int32_t cellHandle,
-                             const char *pTopicFilterStr);
+bool uCellMqttIsConnected(uDeviceHandle_t cellHandle);
 
 /** Set a callback to be called when new messages are
  * available to be read.
  *
- * @param cellHandle      the handle of the cellular instance to
- *                        be used.
- * @param pCallback       the callback. The first parameter to
- *                        the callback will be filled in with
- *                        the number of messages available to
- *                        be read. The second parameter will be
- *                        pCallbackParam. Use NULL to deregister
- *                        a previous callback.
- * @param pCallbackParam  this value will be passed to pCallback
- *                        as the second parameter.
- * @return                zero on success else negative error
- *                        code.
+ * @param cellHandle          the handle of the cellular instance to
+ *                            be used.
+ * @param[in] pCallback       the callback. The first parameter to
+ *                            the callback will be filled in with
+ *                            the number of messages available to
+ *                            be read. The second parameter will be
+ *                            pCallbackParam. Use NULL to deregister
+ *                            a previous callback.
+ * @param[in] pCallbackParam  this value will be passed to pCallback
+ *                            as the second parameter.
+ * @return                    zero on success else negative error
+ *                            code.
  */
-int32_t uCellMqttSetMessageCallback(int32_t cellHandle,
+int32_t uCellMqttSetMessageCallback(uDeviceHandle_t cellHandle,
                                     void (*pCallback) (int32_t, void *),
                                     void *pCallbackParam);
 
@@ -541,33 +519,7 @@ int32_t uCellMqttSetMessageCallback(int32_t cellHandle,
  * @return           the number of unread messages or negative
  *                   error code.
  */
-int32_t uCellMqttGetUnread(int32_t cellHandle);
-
-/** Read an MQTT message.
- *
- * @param cellHandle          the handle of the cellular instance to
- *                            be used.
- * @param pTopicNameStr       a place to put the null-terminated
- *                            topic string of the message; cannot
- *                            be NULL.
- * @param topicNameSizeBytes  the number of bytes of storage
- *                            at pTopicNameStr.
- * @param pMessage            a place to put the message; may be NULL.
- * @param pMessageSizeBytes   on entry this should point to the
- *                            number of bytes of storage at
- *                            pMessage. On return, this will be
- *                            updated to the number of bytes written
- *                            to pMessage.  Ignored if pMessage is
- *                            NULL.
- * @param pQos                a place to put the QoS of the message;
- *                            may be NULL.
- * @return                    zero on success else negative error
- *                            code.
- */
-int32_t uCellMqttMessageRead(int32_t cellHandle, char *pTopicNameStr,
-                             size_t topicNameSizeBytes,
-                             char *pMessage, size_t *pMessageSizeBytes,
-                             uCellMqttQos_t *pQos);
+int32_t uCellMqttGetUnread(uDeviceHandle_t cellHandle);
 
 /** Get the last MQTT error code.
  *
@@ -575,32 +527,379 @@ int32_t uCellMqttMessageRead(int32_t cellHandle, char *pTopicNameStr,
  * @return           an error code, the meaning of which is
  *                   utterly module specific.
  */
-int32_t uCellMqttGetLastErrorCode(int32_t cellHandle);
-
-/** Determine if MQTT is supported by the given cellHandle.
- *
- * @param cellHandle  the handle of the cellular instance to be used.
- */
-bool uCellMqttIsSupported(int32_t cellHandle);
+int32_t uCellMqttGetLastErrorCode(uDeviceHandle_t cellHandle);
 
 /** Set a callback to be called if the MQTT connection
  * is disconnected, either locally or by the broker.
  *
- * @param cellHandle     the handle of the cellular instance
- *                       to be used.
- * @param pCallback      the callback. The first parameter is the
- *                       error code, as would be returned by
- *                       uCellMqttGetLastErrorCode(), the second
- *                       parameter is pCallbackParam. Use NULL to
- *                       deregister a previous callback.
- * @param pCallbackParam this value will be passed to pCallback
- *                       as the second parameter.
- * @return               zero on success else negative error
- *                       code.
+ * @param cellHandle         the handle of the cellular instance
+ *                           to be used.
+ * @param[in] pCallback      the callback. The first parameter is the
+ *                           error code, as would be returned by
+ *                           uCellMqttGetLastErrorCode(), the second
+ *                           parameter is pCallbackParam. Use NULL to
+ *                           deregister a previous callback.
+ * @param[in] pCallbackParam this value will be passed to pCallback
+ *                           as the second parameter.
+ * @return                   zero on success else negative error
+ *                           code.
  */
-int32_t uCellMqttSetDisconnectCallback(int32_t cellHandle,
+int32_t uCellMqttSetDisconnectCallback(uDeviceHandle_t cellHandle,
                                        void (*pCallback) (int32_t, void *),
                                        void *pCallbackParam);
+
+/** Set the number of retries that the MQTT client will make for any
+ * operation that fails due to the radio interface.  If this function
+ * is not called U_CELL_MQTT_RETRIES_DEFAULT will apply.
+ *
+ * @param cellHandle  the handle of the cellular instance to be used.
+ * @param numRetries  the number of retries.
+ */
+void uCellMqttSetRetries(uDeviceHandle_t cellHandle, size_t numRetries);
+
+/** Get the number of retries that the MQTT client will make for any
+ * operation that fails due to the radio interface.
+ *
+ * @param cellHandle the handle of the cellular instance to be used.
+ * @return           on success, the number of retries, else negative
+ *                   error code.
+ */
+int32_t uCellMqttGetRetries(uDeviceHandle_t cellHandle);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: MQTT ONLY
+ * -------------------------------------------------------------- */
+
+/** Determine if MQTT is supported by the given cellHandle.
+ *
+ * @param cellHandle  the handle of the cellular instance to be used.
+ * @return            true if MQTT is supported, else false.
+ */
+bool uCellMqttIsSupported(uDeviceHandle_t cellHandle);
+
+/** Publish an MQTT message. The pKeepGoingCallback()
+ * function set during initialisation will be called while
+ * this function is waiting for publish to complete.
+ *
+ * @param cellHandle        the handle of the cellular instance to
+ *                          be used.
+ * @param[in] pTopicNameStr the null-terminated topic string
+ *                          for the message; cannot be NULL.
+ * @param[in] pMessage      a pointer to the message; the message
+ *                          is not restricted to ASCII values.
+ *                          Cannot be NULL.
+ * @param messageSizeBytes  since pMessage may include binary
+ *                          content, including NULLs, this
+ *                          parameter specifies the length of
+ *                          pMessage. If pMessage happens to
+ *                          be an ASCII string this parameter
+ *                          should be set to strlen(pMessage).
+ *                          The maximum message size varies with
+ *                          module type: if binary entry is supported
+ *                          or pMessage contains purely ASCII
+ *                          printable characters (i.e. isprint()
+ *                          returns true) then it is usually 1024
+ *                          characters, else it will likely be
+ *                          512 characters to allow for hex coding;
+ *                          however on some modules (e.g. SARA_R410M_03B)
+ *                          it can be as low as 256 characters.
+ * @param qos               the MQTT QoS to use for this message.
+ * @param retain            if true the message will be retained
+ *                          by the broker across MQTT disconnects/
+ *                          connects.
+ * @return                  zero on success else negative error
+ *                          code.
+ */
+int32_t uCellMqttPublish(uDeviceHandle_t cellHandle, const char *pTopicNameStr,
+                         const char *pMessage,
+                         size_t messageSizeBytes,
+                         uCellMqttQos_t qos, bool retain);
+
+/** Subscribe to an MQTT topic. The pKeepGoingCallback()
+ * function set during initialisation will be called while
+ * this function is waiting for a subscription to complete.
+ *
+ * @param cellHandle           the handle of the cellular instance
+ *                             to be used.
+ * @param[in] pTopicFilterStr  the null-terminated topic string
+ *                             to subscribe to; the wildcard '+'
+ *                             may be used to specify "all"
+ *                             at any one topic level and the
+ *                             wildcard '#' may be used at the end
+ *                             of the string to indicate "everything
+ *                             from here on".  Cannot be NULL.
+ * @param maxQos               the maximum MQTT message QoS to
+ *                             for this subscription.
+ * @return                     the QoS of the subscription else
+ *                             negative error code.
+ */
+int32_t uCellMqttSubscribe(uDeviceHandle_t cellHandle,
+                           const char *pTopicFilterStr,
+                           uCellMqttQos_t maxQos);
+
+/** Unsubscribe from an MQTT topic.
+ *
+ * @param cellHandle           the handle of the cellular instance to
+ *                             be used.
+ * @param[in] pTopicFilterStr  the null-terminated topic string
+ *                             to unsubscribe from; the wildcard '+'
+ *                             may be used to specify "all"
+ *                             at any one topic level and the
+ *                             wildcard '#' may be used at the end
+ *                             of the string to indicate "everything
+ *                             from here on".  Cannot be NULL.
+ * @return                     zero on success else negative error
+ *                             code.
+ */
+int32_t uCellMqttUnsubscribe(uDeviceHandle_t cellHandle,
+                             const char *pTopicFilterStr);
+
+/** Read an MQTT message.
+ *
+ * @param cellHandle                 the handle of the cellular instance to
+ *                                   be used.
+ * @param[out] pTopicNameStr         a place to put the null-terminated
+ *                                   topic string of the message; cannot
+ *                                   be NULL.
+ * @param topicNameSizeBytes         the number of bytes of storage
+ *                                   at pTopicNameStr.
+ * @param[out] pMessage              a place to put the message; may be NULL.
+ * @param[inout] pMessageSizeBytes   on entry this should point to the
+ *                                   number of bytes of storage at
+ *                                   pMessage. On return, this will be
+ *                                   updated to the number of bytes written
+ *                                   to pMessage.  Ignored if pMessage is
+ *                                   NULL.
+ * @param[out] pQos                  a place to put the QoS of the message;
+ *                                   may be NULL.
+ * @return                           zero on success else negative error
+ *                                   code.
+ */
+int32_t uCellMqttMessageRead(uDeviceHandle_t cellHandle, char *pTopicNameStr,
+                             size_t topicNameSizeBytes,
+                             char *pMessage, size_t *pMessageSizeBytes,
+                             uCellMqttQos_t *pQos);
+
+/* ----------------------------------------------------------------
+ * FUNCTIONS: MQTT-SN ONLY
+ * -------------------------------------------------------------- */
+
+/** Determine if MQTT-SN is supported by the given cellHandle.
+ *
+ * @param cellHandle  the handle of the cellular instance to be used.
+ * @return            true if MQTT-SN is supported, else false.
+ */
+bool uCellMqttSnIsSupported(uDeviceHandle_t cellHandle);
+
+/** MQTT-SN only: ask the MQTT-SN broker for an MQTT-SN topic name
+ * for the given normal MQTT topic name; if you wish to publish to
+ * a normal MQTT topic, e.g. "thing/this", using MQTT-SN, which
+ * only transports a 16-bit topic ID, then you must register the
+ * normal MQTT topic to obtain an MQTT-SN topic name for it.
+ * Note: if you intend to subscribe to an MQTT topic as well as
+ * publish to an MQTT topic you do NOT need to use this function:
+ * instead use the pTopicName returned by
+ * uCellMqttSnSubscribeNormalTopic().  This function does not need
+ * to be used for MQTT-SN short topic names (e.g. "xy") because they
+ * already fit into 16-bits.
+ * Note that this does NOT subscribe to the topic, it just gets you
+ * an ID, you need to call uCellMqttSnSubscribe() to do the subscribing.
+ * Must be connected to an MQTT-SN broker for this to work.
+
+ *
+ * @param cellHandle         the handle of the cellular instance to
+ *                           be used.
+ * @param[in] pTopicNameStr  the null-terminated topic name string;
+ *                           cannot be NULL.
+ * @param[out] pTopicName    a place to put the MQTT-SN topic name;
+ *                           cannot be NULL.
+ * @return                   zero on success, else negative error code.
+ */
+int32_t uCellMqttSnRegisterNormalTopic(uDeviceHandle_t cellHandle,
+                                       const char *pTopicNameStr,
+                                       uCellMqttSnTopicName_t *pTopicName);
+
+/** MQTT-SN only: publish a message; this differs from uCellMqttPublish()
+ * in that it uses an MQTT-SN topic name, which will be a predefined ID
+ * or a short name or as returned by uCellMqttSnRegisterNormalTopic()/
+ * uCellMqttSnSubscribeNormalTopic()).
+ * Must be connected to an MQTT-SN broker for this to work.
+ *
+ * @param cellHandle          the handle of the cellular instance to
+ *                            be used.
+ * @param[in] pTopicName      the MQTT-SN topic name; cannot be NULL.
+ * @param[in] pMessage        a pointer to the message; the message
+ *                            is not restricted to ASCII values.
+ *                            Cannot be NULL.
+ * @param messageSizeBytes    since pMessage may include binary
+ *                            content, including NULLs, this
+ *                            parameter specifies the length of
+ *                            pMessage. If pMessage happens to
+ *                            be an ASCII string this parameter
+ *                            should be set to strlen(pMessage).
+ * @param qos                 the MQTT QoS to use for this message.
+ * @param retain              if true the message will be kept
+ *                            by the broker across MQTT disconnects/
+ *                            connects, else it will be cleared.
+ * @return                    zero on success else negative error code.
+ */
+int32_t uCellMqttSnPublish(uDeviceHandle_t cellHandle,
+                           const uCellMqttSnTopicName_t *pTopicName,
+                           const char *pMessage,
+                           size_t messageSizeBytes,
+                           uCellMqttQos_t qos, bool retain);
+
+/** MQTT-SN only: subscribe to an MQTT-SN topic; this differs from
+ * uMqttClientSubscribe() in that it takes an MQTT-SN topic name,
+ * instead of a filter string, as the topic parameter.  Must be
+ * connected to an MQTT-SN broker for this to work.
+ *
+ * @param cellHandle              the handle of the cellular instance
+ *                                to be used.
+ * @param[in] pTopicName          the MQTT topic name to subscribe to;
+ *                                cannot be NULL.
+ * @param maxQos                  the maximum QoS for this subscription.
+ * @return                        the QoS of the subscription else
+ *                                negative error code.
+ */
+int32_t uCellMqttSnSubscribe(uDeviceHandle_t cellHandle,
+                             const uCellMqttSnTopicName_t *pTopicName,
+                             uCellMqttQos_t maxQos);
+
+/** MQTT-SN only: subscribe to a normal MQTT topic; this differs
+ * from uCellMqttSubscribe() in that it can return pTopicName,
+ * allowing MQTT-SN publish/read operations to be carried out on
+ * a normal MQTT topic.  Must be connected to an MQTT-SN broker
+ * for this to work.
+ *
+ * @param cellHandle              the handle of the cellular instance
+ *                                to be used.
+ * @param[in] pTopicFilterStr     the null-terminated topic string to
+ *                                subscribe to; cannot be NULL.  The
+ *                                 wildcard '+' may be used to specify
+ *                                "all" at any one topic level and the
+ *                                wildcard '#' may be used at the end
+ *                                of the string to indicate "everything
+ *                                from here on", but note that pTopicName
+ *                                cannot not be populated if wild-cards
+ *                                are used.
+ * @param maxQos                  the maximum MQTT message QoS for this
+ *                                subscription.
+ * @param[out] pTopicName         a place to put the MQTT-SN topic ID that
+ *                                can be used for publishing to this topic;
+ *                                may be NULL.
+ * @return                        the QoS of the subscription else negative
+ *                                error code.
+ */
+int32_t uCellMqttSnSubscribeNormalTopic(uDeviceHandle_t cellHandle,
+                                        const char *pTopicFilterStr,
+                                        uCellMqttQos_t maxQos,
+                                        uCellMqttSnTopicName_t *pTopicName);
+
+/** MQTT-SN only: unsubscribe from an MQTT-SN topic; this differs from
+ * uCellMqtttUnsubscribe() in that it takes an MQTT-SN topic name,
+ * instead of a filter string, as the topic parameter.  Must be
+ * connected to an MQTT-SN broker for this to work.
+ *
+ * @param cellHandle           the handle of the cellular instance to
+ *                             be used.
+ * @param[in] pTopicName       the MQTT-SN topic name to unsubscribe from;
+ *                             cannot be NULL.
+ * @return                     zero on success else negative error
+ *                             code.
+ */
+int32_t uCellMqttSnUnsubscribe(uDeviceHandle_t cellHandle,
+                               const uCellMqttSnTopicName_t *pTopicName);
+
+/** MQTT-SN only: unsubscribe from a normal MQTT topic.  Must be
+ * connected to an MQTT-SN broker for this to work.
+ *
+ * @param cellHandle           the handle of the cellular instance to
+ *                             be used.
+ * @param[in] pTopicFilterStr  the null-terminated topic string
+ *                             to unsubscribe from. The wildcard '+' may
+ *                             be used to specify "all" at any one topic
+ *                             level and the wildcard '#' may be used
+ *                             at the end of the string to indicate
+ *                             "everything from here on".  Cannot be NULL.
+ * @return                     zero on success else negative error code.
+ */
+int32_t uCellMqttSnUnsubscribeNormalTopic(uDeviceHandle_t cellHandle,
+                                          const char *pTopicFilterStr);
+
+/** MQTT-SN only: read a message, must be used to read messages when an
+ * MQTT-SN connection is in place; it differs from uCellMqttMessageRead()
+ * in that it uses an MQTT-SN topic name; if the message is actually an
+ * MQTT message then the topic name will be populated with the MQTT-SN
+ * topic name that you received when you called
+ * uCellMqttSnSubscribeNormalTopic().
+ * Must be connected to an MQTT-SN broker for this to work.
+ *
+ * @param cellHandle                the handle of the cellular instance to
+ *                                  be used.
+ * @param[out] pTopicName           a place to put the MQTT-SN topic name;
+ *                                  cannot be NULL.
+ * @param[out] pMessage             a place to put the message; may be NULL.
+ * @param[inout] pMessageSizeBytes  on entry this should point to the
+ *                                  number of bytes of storage at
+ *                                  pMessage. On return, this will be
+ *                                  updated to the number of bytes written
+ *                                  to pMessage.  Ignored if pMessage is
+ *                                  NULL.
+ * @param[out] pQos                 a place to put the QoS of the message;
+ *                                  may be NULL.
+ * @return                          zero on success else negative error
+ *                                  code.
+ */
+int32_t uCellMqttSnMessageRead(uDeviceHandle_t cellHandle,
+                               uCellMqttSnTopicName_t *pTopicName,
+                               char *pMessage, size_t *pMessageSizeBytes,
+                               uCellMqttQos_t *pQos);
+
+/** MQTT-SN only: update an existing MQTT "will" message that will
+ * be sent by the broker on an uncommanded disconnect of the MQTT
+ * client.  Note that while the form of this API requires a message
+ * size for forward compatibility, the underlying AT interface for
+ * this command ONLY works if pMessage is a null-terminated string
+ * containing only printable characters (i.e. isprint() returns true)
+ * and no double quotation marks (").
+ * IMPORTANT: a re-boot of the module will lose your setting.
+ *
+ * @param cellHandle       the handle of the cellular instance to
+ *                         be used.
+ * @param[in] pMessage     a pointer to the "will" message;
+ *                         must be a null terminated string, cannot
+ *                         be NULL must contain only printable
+ *                         characters (i.e. isprint() returns true)
+ *                         and no double quotation marks (").
+ * @param messageSizeBytes provided for future compatiblity only,
+ *                         please use strlen(pMessage).
+ * @return                 zero on success else negative error
+ *                         code.
+ */
+int32_t uCellMqttSnSetWillMessaage(uDeviceHandle_t cellHandle,
+                                   const char *pMessage,
+                                   size_t messageSizeBytes);
+
+/** MQTT-SN only: update the parameters for an existing MQTT "will".
+ * IMPORTANT: a re-boot of the module will lose your setting.
+ *
+ * @param cellHandle        the handle of the cellular instance to
+ *                          be used.
+ * @param[in] pTopicNameStr the null-terminated topic string
+ *                          for the "will" message; cannot be NULL.
+ * @param qos               the MQTT QoS to use for the "will"
+ *                          message.
+ * @param retain            if true the "will" message will be
+ *                          kept by the broker across
+ *                          MQTT disconnects/connects, else it
+ *                          will be cleared.
+ * @return                  zero on success else negative error
+ *                          code.
+ */
+int32_t uCellMqttSnSetWillParameters(uDeviceHandle_t cellHandle,
+                                     const char *pTopicNameStr,
+                                     uCellMqttQos_t qos, bool retain);
 
 #ifdef __cplusplus
 }

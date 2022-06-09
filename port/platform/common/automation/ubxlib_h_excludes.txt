@@ -1,0 +1,10 @@
+# Place in this file the names of any .h files that appear in an API directory but are NOT
+# meant to be included in ubxlib.h.  This list is read by the script u_run_check_ubxlib_h.py
+# which does a relatively trivial check that nothing obvious has been left out ubxlib.h but
+# there are some header files in public API directories which we deliberately do NOT want
+# included.  Only file names should be listed.
+
+# Example only
+u_lib.h
+u_lib_internal.h
+lib_fibonacci.h

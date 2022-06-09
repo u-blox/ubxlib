@@ -17,7 +17,10 @@
 #ifndef _U_WIFI_H_
 #define _U_WIFI_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines the general wifi APIs,
@@ -35,6 +38,40 @@ extern "C" {
 #define U_WIFI_BSSID_SIZE 6        /**< Binary BSSID size*/
 #define U_WIFI_SSID_SIZE (32 + 1)  /**< Null terminated SSID string size*/
 
+/** Wifi connection status codes used by uWifiConnectionStatusCallback_t */
+#define U_WIFI_CON_STATUS_DISCONNECTED 0
+#define U_WIFI_CON_STATUS_CONNECTED    1
+
+/** Wifi disconnect reason codes used by uWifiConnectionStatusCallback_t */
+#define U_WIFI_REASON_UNKNOWN          0
+#define U_WIFI_REASON_REMOTE_CLOSE     1
+#define U_WIFI_REASON_OUT_OF_RANGE     2
+#define U_WIFI_REASON_ROAMING          3
+#define U_WIFI_REASON_SECURITY_PROBLEM 4
+#define U_WIFI_REASON_NETWORK_DISABLED 5
+
+/** Status bits used by uWifiIpStatusCallback_t */
+#define U_WIFI_STATUS_MASK_IPV4_UP     (1 << 0) /**< When this bit is set IPv4 network is up */
+#define U_WIFI_STATUS_MASK_IPV6_UP     (1 << 1) /**< When this bit is set IPv6 network is up */
+
+/** uWifiScanResult_t values for .opMode */
+#define U_WIFI_OP_MODE_INFRASTRUCTURE  1
+#define U_WIFI_OP_MODE_ADHOC           2
+
+/** uWifiScanResult_t values for .authSuiteBitmask */
+#define U_WIFI_AUTH_MASK_SHARED_SECRET (1 << 0)
+#define U_WIFI_AUTH_MASK_PSK           (1 << 1)
+#define U_WIFI_AUTH_MASK_EAP           (1 << 2)
+#define U_WIFI_AUTH_MASK_WPA           (1 << 3)
+#define U_WIFI_AUTH_MASK_WPA2          (1 << 4)
+#define U_WIFI_AUTH_MASK_WPA3          (1 << 5)
+
+/** uWifiScanResult_t values for .uniCipherBitmask and .grpCipherBitmask */
+#define U_WIFI_CIPHER_MASK_WEP64       (1 << 0)
+#define U_WIFI_CIPHER_MASK_WEP128      (1 << 1)
+#define U_WIFI_CIPHER_MASK_TKIP        (1 << 2)
+#define U_WIFI_CIPHER_MASK_AES_CCMP    (1 << 3)
+#define U_WIFI_CIPHER_MASK_UNKNOWN     0xFF /**< This will be the value for modules that doesn't support cipher masks */
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -55,7 +92,69 @@ typedef enum {
     U_WIFI_ERROR_ALREADY_DISCONNECTED = U_ERROR_WIFI_MAX - 7  /**< -505 if U_ERROR_BASE is 0. */
 } uWifiErrorCode_t;
 
+typedef enum {
+    U_WIFI_AUTH_OPEN = 1, /**< No authentication mode */
+    U_WIFI_AUTH_WPA_PSK = 2, /**< WPA/WPA2/WPA3 psk authentication mode. */
+} uWifiAuth_t;
 
+typedef struct {
+    uint8_t bssid[U_WIFI_BSSID_SIZE]; /**< BSSID of the AP in binary format */
+    char ssid[U_WIFI_SSID_SIZE];      /**< Null terminated SSID string */
+    int32_t channel;            /**< WiFi channel number */
+    int32_t opMode;             /**< Operation mode, see U_WIFI_OP_MODE_xxx defines for values */
+    int32_t rssi;               /**< Received signal strength indication */
+    uint32_t authSuiteBitmask;  /**< Authentication bitmask, see U_WIFI_AUTH_MASK_xx defines for values */
+    uint8_t uniCipherBitmask;   /**< Unicast cipher bitmask, see U_WIFI_CIPHER_MASK_xx defines for values */
+    uint8_t grpCipherBitmask;   /**< Group cipher bitmask, see U_WIFI_CIPHER_MASK_xx defines for values */
+} uWifiScanResult_t;
+
+
+/** Scan result callback type
+ *
+ * This callback will be called once for each entry found.
+ *
+ * @param devHandle          the handle of the wifi instance.
+ * @param pResult            the scan result.
+ * @param pCallbackParameter parameter pointer set when registering callback.
+ */
+typedef void (*uWifiScanResultCallback_t) (uDeviceHandle_t devHandle,
+                                           uWifiScanResult_t *pResult);
+
+
+/** Connection status callback type
+ *
+ * @param devHandle          the handle of the wifi instance.
+ * @param connId             connection ID.
+ * @param status             new status of connection. Please see U_WIFI_CON_STATUS_xx.
+ * @param channel            wifi channel.
+ *                           Note: Only valid for U_WIFI_STATUS_CONNECTED otherwise set to 0.
+ * @param pBssid             remote AP BSSID as null terminated string.
+ *                           Note: Only valid for U_WIFI_STATUS_CONNECTED otherwise set to NULL.
+ * @param disconnectReason   disconnect reason. Please see U_WIFI_REASON_xx.
+ *                           Note: Only valid for U_WIFI_STATUS_DISCONNECTED otherwise set to 0.
+ * @param pCallbackParameter parameter pointer set when registering callback.
+ */
+typedef void (*uWifiConnectionStatusCallback_t) (uDeviceHandle_t devHandle,
+                                                 int32_t connId,
+                                                 int32_t status,
+                                                 int32_t channel,
+                                                 char *pBssid,
+                                                 int32_t disconnectReason,
+                                                 void *pCallbackParameter);
+
+
+/** Network status callback type
+ *
+ * @param devHandle          the handle of the wifi instance.
+ * @param interfaceType      interface type. Only 1: Wifi Station supported at the moment.
+ * @param statusMask         bitmask indicating the new status. Please see defined bits
+ *                           U_WIFI_STATUS_MASK_xx.
+ * @param pCallbackParameter Parameter pointer set when registering callback.
+ */
+typedef void (*uWifiworkStatusCallback_t) (uDeviceHandle_t devHandle,
+                                           int32_t interfaceType,
+                                           uint32_t statusMask,
+                                           void *pCallbackParameter);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -73,52 +172,67 @@ int32_t uWifiInit();
  */
 void uWifiDeinit();
 
-/** Add a wifi instance.
+/** Connect to a Wifi access point
  *
- * @param moduleType       the short range module type.
- * @param atHandle         the handle of the AT client to use.  This must
- *                         already have been created by the caller with
- *                         a buffer of size U_BLE_AT_BUFFER_LENGTH_BYTES.
- *                         If a wifi instance has already been added
- *                         for this atHandle an error will be returned.
- * @return                 on success the handle of the wifi instance,
- *                         else negative error code.
+ * @param devHandle        the handle of the wifi instance.
+ * @param pSsid            the Service Set Identifier
+ * @param authentication   the authentication type
+ * @param[in] pPassPhrase  the Passphrase (8-63ASCII characters as a string) for WPA/WPA2/WPA3
+ * @return                 zero on successful, else negative error code.
+ *                         Note: There is no actual connection until the Wifi callback reports
+ *                         connected.
  */
-int32_t uWifiAdd(uWifiModuleType_t moduleType,
-                 uAtClientHandle_t atHandle);
+int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
+                            uWifiAuth_t authentication, const char *pPassPhrase);
 
-/** Remove a wifi instance.  It is up to the caller to ensure
- * that the short range module for the given instance has been disconnected
- * and/or powered down etc.; all this function does is remove the logical
- * instance.
+/** Disconnect from Wifi access point
  *
- * @param wifiHandle  the handle of the wifi instance to remove.
+ * @param devHandle   the handle of the wifi instance.
+ * @return            zero on successful, else negative error code.
+ *                    Note: The disconnection is not completed until the Wifi callback
+ *                    reports disconnected.
  */
-void uWifiRemove(int32_t wifiHandle);
+int32_t uWifiStationDisconnect(uDeviceHandle_t devHandle);
 
-/** Detect the module connected to the handle. Will attempt to change the mode on
- * the module to communicate with it. No change to UART configuration is done,
- * so even if this fails with U_WIFI_MODULE_TYPE_INVALID, as last attempt to recover,
- * it could work to re-init the UART on a different baud rate. This should recover
- * that module if another rate than the default one has been used.
- * If the response is U_WIFI_MODULE_TYPE_UNSUPPORTED, the module repondes as expected but
- * does not support wifi.
- *
- * @param wifiHandle   the handle of the wifi instance.
- * @return             Module on success, U_WIFI_MODULE_TYPE_INVALID or U_WIFI_MODULE_TYPE_UNSUPPORTED
- *                     on failure.
+/** Set a callback for Wifi connection status.
+  *
+ * @param devHandle              the handle of the short range instance.
+ * @param[in] pCallback          callback function.
+ * @param[in] pCallbackParameter parameter included with the callback.
+ * @return                       zero on success or negative error code
+ *                               on failure.
  */
-uWifiModuleType_t uWifiDetectModule(int32_t wifiHandle);
+int32_t uWifiSetConnectionStatusCallback(uDeviceHandle_t devHandle,
+                                         uWifiConnectionStatusCallback_t pCallback,
+                                         void *pCallbackParameter);
+/** Set a callback for network status.
+ *
+ * @param devHandle              the handle of the short range instance.
+ * @param[in] pCallback          callback function.
+ * @param[in] pCallbackParameter parameter included with the callback.
+ * @return                       zero on success or negative error code
+ *                               on failure.
+ */
+int32_t uWifiSetNetworkStatusCallback(uDeviceHandle_t devHandle,
+                                      uWifiworkStatusCallback_t pCallback,
+                                      void *pCallbackParameter);
 
-/** Get the handle of the AT client used by the given
- * wifi instance.
+
+/** Scan for SSIDs
  *
- * @param wifiHandle      the handle of the wifi instance.
- * @param[out] pAtHandle  a place to put the AT client handle.
- * @return                zero on success else negative error code.
+ * Please note that this function will block until the scan process is completed.
+ * During this time pCallback will be called for each scan result entry found.
+ *
+ * @param devHandle        the handle of the wifi instance.
+ * @param[in] pSsid        optional SSID to search for. Set to NULL to search for any SSID.
+ * @param[in] pCallback    callback for handling a scan result entry.
+ *                         IMPORTANT: The callback will be called while the AT lock is held.
+ *                                    This means that you are not allowed to call other u-blox
+ *                                    module APIs directly from this callback.
+ * @return                 zero on successful, else negative error code.
  */
-int32_t uWifiAtClientHandleGet(int32_t wifiHandle,
-                               uAtClientHandle_t *pAtHandle);
+int32_t uWifiStationScan(uDeviceHandle_t devHandle, const char *pSsid,
+                         uWifiScanResultCallback_t pCallback);
 
 #ifdef __cplusplus
 }

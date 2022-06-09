@@ -107,7 +107,7 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
  */
 U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
 {
-    int32_t gnssHandle;
+    uDeviceHandle_t gnssHandle;
     int32_t heapUsed;
     char *pBuffer;
     int32_t y;
@@ -222,7 +222,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
  */
 U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
 {
-    int32_t gnssHandle;
+    uDeviceHandle_t gnssHandle;
     int32_t heapUsed;
     int64_t y = -1;
     int64_t startTimeMs;

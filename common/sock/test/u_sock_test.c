@@ -419,39 +419,26 @@ static size_t fix(size_t size, size_t limit)
 }
 
 // Do this before every test to ensure there is a usable network.
-static void stdPreamble()
+static uNetworkTestList_t *pStdPreamble()
 {
-#if (U_CFG_APP_GNSS_UART < 0)
-    int32_t networkHandle = -1;
-#endif
+    uNetworkTestList_t *pList;
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add each network type if its not already been added
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (gUNetworkTestCfg[x].handle < 0) {
-            if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
-                uPortLog("U_SOCK_TEST: adding %s network...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-#if (U_CFG_APP_GNSS_UART < 0)
-                // If there is no GNSS UART then any GNSS chip must
-                // be connected via the cellular module's AT interface
-                // hence we capture the cellular network handle here and
-                // modify the GNSS configuration to use it before we add
-                // the GNSS network
-                uNetworkTestGnssAtConfiguration(networkHandle,
-                                                gUNetworkTestCfg[x].pConfiguration);
-#endif
-                gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                                         gUNetworkTestCfg[x].pConfiguration);
-                U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
-#if (U_CFG_APP_GNSS_UART < 0)
-                if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                    networkHandle = gUNetworkTestCfg[x].handle;
-                }
-#endif
-            }
+    // Add the device for each network configuration
+    // if not already added
+    pList = pUNetworkTestListAlloc(uNetworkTestHasSock);
+    if (pList == NULL) {
+        uPortLog("U_SOCK_TEST: *** WARNING *** nothing to do.\n");
+    }
+    // Open the devices that are not already open
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle == NULL) {
+            uPortLog("U_SOCK_TEST: adding device %s for network %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
 
@@ -462,16 +449,18 @@ static void stdPreamble()
     uSockDeinit();
 
     // Bring up each network type
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (gUNetworkTestCfg[x].handle >= 0) {
-            uPortLog("U_SOCK_TEST: bringing up %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkUp(gUNetworkTestCfg[x].handle) == 0);
-        }
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: bringing up %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceUp(*pTmp->pDevHandle,
+                                               pTmp->networkType,
+                                               pTmp->pNetworkCfg) == 0);
     }
 
     // Reset errno at the start
     errno = 0;
+
+    return pList;
 }
 
 // Check a buffer of what was sent against
@@ -697,7 +686,7 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
 }
 
 // Open a socket and use it; currently only UDP is supported.
-static uSockDescriptor_t openSocketAndUseIt(int32_t networkHandle,
+static uSockDescriptor_t openSocketAndUseIt(uDeviceHandle_t devHandle,
                                             const uSockAddress_t *pRemoteAddress,
                                             uSockType_t type,
                                             uSockProtocol_t protocol,
@@ -712,7 +701,7 @@ static uSockDescriptor_t openSocketAndUseIt(int32_t networkHandle,
     // to save time so need to allow for it in the heap loss
     // calculation
     *pHeapXxxSockInitLoss += uPortGetHeapFree();
-    descriptor = uSockCreate(networkHandle, type, protocol);
+    descriptor = uSockCreate(devHandle, type, protocol);
     *pHeapXxxSockInitLoss -= uPortGetHeapFree();
     uPortLog("U_SOCK_TEST: socket descriptor %d, errno %d.\n",
              descriptor, errno);
@@ -910,8 +899,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAddressStrings")
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
 {
+    uNetworkTestList_t *pList;
     int32_t errorCode;
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle;
     uSockAddress_t remoteAddress;
     uSockAddress_t address;
     uSockDescriptor_t descriptor;
@@ -922,13 +912,16 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
     int32_t heapSockInitLoss = 0;
     int32_t heapXxxSockInitLoss = 0;
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Call clean up to release OS resources that may
     // have been left hanging by a previous failed test
     osCleanup();
 
     // Do the standard preamble to make sure there is
     // a network underneath us
-    stdPreamble();
+    pList = pStdPreamble();
 
     // The first time rand() is called the C library may
     // allocate memory, not something we can do anything
@@ -937,157 +930,166 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicUdp")
     rand();
 
     // Repeat for all bearers
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if ((networkHandle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
-            // Get the initial-ish heap
-            heapUsed = uPortGetHeapFree();
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
 
-            uPortLog("U_SOCK_TEST: doing basic UDP test on %s.\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
-            // Look up the address of the server we use for UDP echo
-            // The first call to a sockets API needs to
-            // initialise the underlying sockets layer; take
-            // account of that initialisation heap cost here.
-            heapSockInitLoss = uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                  U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                                                  &(remoteAddress.ipAddress)) == 0);
-            heapSockInitLoss -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: doing basic UDP test on %s.\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
+                 U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
+        // Look up the address of the server we use for UDP echo
+        // The first call to a sockets API needs to
+        // initialise the underlying sockets layer; take
+        // account of that initialisation heap cost here.
+        heapSockInitLoss = uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                              U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                                              &(remoteAddress.ipAddress)) == 0);
+        heapSockInitLoss -= uPortGetHeapFree();
 
-            // Add the port number we will use
-            remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
+        // Add the port number we will use
+        remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
-            // Quite often nothing at all comes back so retry this
-            // if that is the case
-            for (size_t retries = 2; !success && (retries > 0); retries--) {
-                success = true;
-                // Create a UDP socket
-                // Creating a socket may use heap in the underlying
-                // network layer which will be reclaimed when the
-                // network layer is closed but we don't do that here
-                // to save time so need to allow for it in the heap loss
-                // calculation
-                heapXxxSockInitLoss += uPortGetHeapFree();
-                descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
-                                         U_SOCK_PROTOCOL_UDP);
-                heapXxxSockInitLoss -= uPortGetHeapFree();
-                U_PORT_TEST_ASSERT(descriptor >= 0);
-                U_PORT_TEST_ASSERT(errno == 0);
+        // Quite often nothing at all comes back so retry this
+        // if that is the case
+        for (size_t retries = 2; !success && (retries > 0); retries--) {
+            success = true;
+            // Create a UDP socket
+            // Creating a socket may use heap in the underlying
+            // network layer which will be reclaimed when the
+            // network layer is closed but we don't do that here
+            // to save time so need to allow for it in the heap loss
+            // calculation
+            heapXxxSockInitLoss += uPortGetHeapFree();
+            descriptor = uSockCreate(devHandle, U_SOCK_TYPE_DGRAM,
+                                     U_SOCK_PROTOCOL_UDP);
+            heapXxxSockInitLoss -= uPortGetHeapFree();
+            U_PORT_TEST_ASSERT(descriptor >= 0);
+            U_PORT_TEST_ASSERT(errno == 0);
 
-                uPortLog("U_SOCK_TEST: get local address...\n");
-                U_PORT_TEST_ASSERT(uSockGetLocalAddress(descriptor,
-                                                        &address) == 0);
-                uPortLog("U_SOCK_TEST: local address is: ");
-                printAddress(&address, true);
-                uPortLog(".\n");
+            uPortLog("U_SOCK_TEST: get local address...\n");
+            U_PORT_TEST_ASSERT(uSockGetLocalAddress(descriptor,
+                                                    &address) == 0);
+            uPortLog("U_SOCK_TEST: local address is: ");
+            printAddress(&address, true);
+            uPortLog(".\n");
 
-                // Set up the data callback
-                dataCallbackCalled = false;
-                uSockRegisterCallbackData(descriptor, setBoolCallback,
-                                          &dataCallbackCalled);
-                U_PORT_TEST_ASSERT(!dataCallbackCalled);
+            // Set up the data callback
+            dataCallbackCalled = false;
+            uSockRegisterCallbackData(descriptor, setBoolCallback,
+                                      &dataCallbackCalled);
+            U_PORT_TEST_ASSERT(!dataCallbackCalled);
 
-                uPortLog("U_SOCK_TEST: first test run without connect(),"
-                         " sending to address ");
-                printAddress(&remoteAddress, true);
-                uPortLog("...\n");
-                // Test min size
-                if (doUdpEchoBasic(descriptor, &remoteAddress,
-                                   gSendData, 1) != 1) {
-                    success = false;
-                }
+            uPortLog("U_SOCK_TEST: first test run without connect(),"
+                     " sending to address ");
+            printAddress(&remoteAddress, true);
+            uPortLog("...\n");
+            // Test min size
+            if (doUdpEchoBasic(descriptor, &remoteAddress,
+                               gSendData, 1) != 1) {
+                success = false;
+            }
 
-                if (!dataCallbackCalled) {
-                    success = false;
-                }
-                dataCallbackCalled = false;
-                // Remove the data callback
-                uSockRegisterCallbackData(descriptor, NULL, NULL);
+            if (!dataCallbackCalled) {
+                success = false;
+            }
+            dataCallbackCalled = false;
+            // Remove the data callback
+            uSockRegisterCallbackData(descriptor, NULL, NULL);
 
+            // Test max size
+            if (doUdpEchoBasic(descriptor, &remoteAddress,
+                               gSendData,
+                               U_SOCK_TEST_MAX_UDP_PACKET_SIZE) != U_SOCK_TEST_MAX_UDP_PACKET_SIZE) {
+                success = false;
+            }
+
+            // Test some random sizes in-between
+            for (size_t y = 0; (y < 10) && success; y++) {
+                sizeBytes = (rand() % U_SOCK_TEST_MAX_UDP_PACKET_SIZE) + 1;
+                sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_UDP_PACKET_SIZE);
                 // Test max size
                 if (doUdpEchoBasic(descriptor, &remoteAddress,
-                                   gSendData,
-                                   U_SOCK_TEST_MAX_UDP_PACKET_SIZE) != U_SOCK_TEST_MAX_UDP_PACKET_SIZE) {
+                                   gSendData, sizeBytes) != sizeBytes) {
                     success = false;
                 }
-
-                // Test some random sizes in-between
-                for (size_t y = 0; (y < 10) && success; y++) {
-                    sizeBytes = (rand() % U_SOCK_TEST_MAX_UDP_PACKET_SIZE) + 1;
-                    sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_UDP_PACKET_SIZE);
-                    // Test max size
-                    if (doUdpEchoBasic(descriptor, &remoteAddress,
-                                       gSendData, sizeBytes) != sizeBytes) {
-                        success = false;
-                    }
-                }
-
-                uPortLog("U_SOCK_TEST: check that uSockGetRemoteAddress()"
-                         " fails...\n");
-                U_PORT_TEST_ASSERT(uSockGetRemoteAddress(descriptor,
-                                                         &address) < 0);
-                U_PORT_TEST_ASSERT(errno > 0);
-                errno = 0;
-
-                uPortLog("U_SOCK_TEST: now connect socket to \"%s:%d\"...\n",
-                         U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                         U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
-                // Connections can fail so allow this a few goes
-                errorCode = -1;
-                for (size_t y = 2; (y > 0) && (errorCode < 0); y--) {
-                    errorCode = uSockConnect(descriptor, &remoteAddress);
-                    uPortLog("U_SOCK_TEST: uSockConnect() returned %d, errno %d.\n",
-                             errorCode, errno);
-                    if (errorCode < 0) {
-                        U_PORT_TEST_ASSERT(errno != 0);
-                        errno = 0;
-                    }
-                }
-                U_PORT_TEST_ASSERT(errorCode == 0);
-
-                uPortLog("U_SOCK_TEST: check that uSockGetRemoteAddress()"
-                         " works...\n");
-                U_PORT_TEST_ASSERT(uSockGetRemoteAddress(descriptor,
-                                                         &address) == 0);
-                addressAssert(&remoteAddress, &address, true);
-                U_PORT_TEST_ASSERT(errno == 0);
-
-                // Note: we used to test here that datagrams
-                // could be sent over a connected socket however
-                // some modules (e.g. SARA-R422) have a bug which
-                // prevents that and hence it is no longer tested
-
-                // Show how many bytes are sent during the UDP test
-                U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) > 0);
-                uPortLog("U_SOCK_TEST: Total bytes sent during the test are: %d\n",
-                         uSockGetTotalBytesSent(descriptor));
-                // Close the socket
-                U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
-                uSockCleanUp();
-
-                // Check for memory leaks
-                heapUsed -= uPortGetHeapFree();
-                uPortLog("U_SOCK_TEST: during this part of the test %d"
-                         " byte(s) were lost to sockets initialisation;"
-                         " we have leaked %d byte(s).\n",
-                         heapSockInitLoss + heapXxxSockInitLoss,
-                         heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-                U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
             }
+
+            uPortLog("U_SOCK_TEST: check that uSockGetRemoteAddress()"
+                     " fails...\n");
+            U_PORT_TEST_ASSERT(uSockGetRemoteAddress(descriptor,
+                                                     &address) < 0);
+            U_PORT_TEST_ASSERT(errno > 0);
+            errno = 0;
+
+            uPortLog("U_SOCK_TEST: now connect socket to \"%s:%d\"...\n",
+                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                     U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
+            // Connections can fail so allow this a few goes
+            errorCode = -1;
+            for (size_t y = 2; (y > 0) && (errorCode < 0); y--) {
+                errorCode = uSockConnect(descriptor, &remoteAddress);
+                uPortLog("U_SOCK_TEST: uSockConnect() returned %d, errno %d.\n",
+                         errorCode, errno);
+                if (errorCode < 0) {
+                    U_PORT_TEST_ASSERT(errno != 0);
+                    errno = 0;
+                }
+            }
+            U_PORT_TEST_ASSERT(errorCode == 0);
+
+            uPortLog("U_SOCK_TEST: check that uSockGetRemoteAddress()"
+                     " works...\n");
+            U_PORT_TEST_ASSERT(uSockGetRemoteAddress(descriptor,
+                                                     &address) == 0);
+            addressAssert(&remoteAddress, &address, true);
+            U_PORT_TEST_ASSERT(errno == 0);
+
+            // Note: we used to test here that datagrams
+            // could be sent over a connected socket however
+            // some modules (e.g. SARA-R422) have a bug which
+            // prevents that and hence it is no longer tested
+
+            // Show how many bytes are sent during the UDP test
+            U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) > 0);
+            uPortLog("U_SOCK_TEST: Total bytes sent during the test are: %d\n",
+                     uSockGetTotalBytesSent(descriptor));
+            // Close the socket
+            U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+            uSockCleanUp();
+
+            // Check for memory leaks
+            heapUsed -= uPortGetHeapFree();
+            uPortLog("U_SOCK_TEST: during this part of the test %d"
+                     " byte(s) were lost to sockets initialisation;"
+                     " we have leaked %d byte(s).\n",
+                     heapSockInitLoss + heapXxxSockInitLoss,
+                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
         }
     }
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
+    uNetworkTestListFree();
 }
 
 /** Basic TCP test.
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
 {
+    uNetworkTestList_t *pList;
     int32_t errorCode;
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle;
     uSockAddress_t remoteAddress;
     uSockAddress_t address;
     uSockDescriptor_t descriptor;
@@ -1108,7 +1110,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
 
     // Do the standard preamble to make sure there is
     // a network underneath us
-    stdPreamble();
+    pList = pStdPreamble();
 
     // The first time rand() is called the C library may
     // allocate memory, not something we can do anything
@@ -1117,205 +1119,213 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
     rand();
 
     // Repeat for all bearers
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if ((networkHandle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
-            // Get the initial-ish heap
-            heapUsed = uPortGetHeapFree();
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
 
-            uPortLog("U_SOCK_TEST: doing basic TCP test on %s.\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
+        uPortLog("U_SOCK_TEST: doing basic TCP test on %s.\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
+                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
 
-            // Look up the address of the server we use for TCP echo
-            // The first call to a sockets API needs to
-            // initialise the underlying sockets layer; take
-            // account of that initialisation heap cost here.
-            heapSockInitLoss = uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                  U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                                                  &(remoteAddress.ipAddress)) == 0);
-            heapSockInitLoss -= uPortGetHeapFree();
+        // Look up the address of the server we use for TCP echo
+        // The first call to a sockets API needs to
+        // initialise the underlying sockets layer; take
+        // account of that initialisation heap cost here.
+        heapSockInitLoss = uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                              U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                                              &(remoteAddress.ipAddress)) == 0);
+        heapSockInitLoss -= uPortGetHeapFree();
 
-            // Add the port number we will use
-            remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
+        // Add the port number we will use
+        remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
 
-            // Create a TCP socket
-            // Creating a socket may use heap in the underlying
-            // network layer which will be reclaimed when the
-            // network layer is closed but we don't do that here
-            // to save time so need to allow for it in the heap loss
-            // calculation
-            heapXxxSockInitLoss += uPortGetHeapFree();
-            descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_STREAM,
-                                     U_SOCK_PROTOCOL_TCP);
-            heapXxxSockInitLoss -= uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(descriptor >= 0);
-            U_PORT_TEST_ASSERT(errno == 0);
+        // Create a TCP socket
+        // Creating a socket may use heap in the underlying
+        // network layer which will be reclaimed when the
+        // network layer is closed but we don't do that here
+        // to save time so need to allow for it in the heap loss
+        // calculation
+        heapXxxSockInitLoss += uPortGetHeapFree();
+        descriptor = uSockCreate(devHandle, U_SOCK_TYPE_STREAM,
+                                 U_SOCK_PROTOCOL_TCP);
+        heapXxxSockInitLoss -= uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(descriptor >= 0);
+        U_PORT_TEST_ASSERT(errno == 0);
 
-            uPortLog("U_SOCK_TEST: get local address...\n");
-            U_PORT_TEST_ASSERT(uSockGetLocalAddress(descriptor,
-                                                    &address) == 0);
-            uPortLog("U_SOCK_TEST: local address is: ");
-            printAddress(&address, true);
-            uPortLog(".\n");
+        uPortLog("U_SOCK_TEST: get local address...\n");
+        U_PORT_TEST_ASSERT(uSockGetLocalAddress(descriptor,
+                                                &address) == 0);
+        uPortLog("U_SOCK_TEST: local address is: ");
+        printAddress(&address, true);
+        uPortLog(".\n");
 
-            // Set up the data callback
-            dataCallbackCalled = false;
-            uSockRegisterCallbackData(descriptor, setBoolCallback,
-                                      &dataCallbackCalled);
-            U_PORT_TEST_ASSERT(!dataCallbackCalled);
+        // Set up the data callback
+        dataCallbackCalled = false;
+        uSockRegisterCallbackData(descriptor, setBoolCallback,
+                                  &dataCallbackCalled);
+        U_PORT_TEST_ASSERT(!dataCallbackCalled);
 
-            // Set up the closed callback
-            closedCallbackCalled = false;
-            uSockRegisterCallbackClosed(descriptor, setBoolCallback,
-                                        &closedCallbackCalled);
-            U_PORT_TEST_ASSERT(!closedCallbackCalled);
+        // Set up the closed callback
+        closedCallbackCalled = false;
+        uSockRegisterCallbackClosed(descriptor, setBoolCallback,
+                                    &closedCallbackCalled);
+        U_PORT_TEST_ASSERT(!closedCallbackCalled);
 
-            // Connect the socket
-            uPortLog("U_SOCK_TEST: connect socket to \"%s:%d\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                     U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
-            // Connections can fail so allow this a few goes
-            errorCode = -1;
-            for (y = 2; (y > 0) && (errorCode < 0); y--) {
-                errorCode = uSockConnect(descriptor, &remoteAddress);
-                if (errorCode < 0) {
-                    U_PORT_TEST_ASSERT(errno != 0);
-                    errno = 0;
-                }
+        // Connect the socket
+        uPortLog("U_SOCK_TEST: connect socket to \"%s:%d\"...\n",
+                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                 U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+        // Connections can fail so allow this a few goes
+        errorCode = -1;
+        for (y = 2; (y > 0) && (errorCode < 0); y--) {
+            errorCode = uSockConnect(descriptor, &remoteAddress);
+            if (errorCode < 0) {
+                U_PORT_TEST_ASSERT(errno != 0);
+                errno = 0;
             }
-            U_PORT_TEST_ASSERT(errorCode == 0);
-
-            uPortLog("U_SOCK_TEST: check that uSockGetRemoteAddress()"
-                     " works...\n");
-            U_PORT_TEST_ASSERT(uSockGetRemoteAddress(descriptor,
-                                                     &address) == 0);
-            addressAssert(&remoteAddress, &address, true);
-            U_PORT_TEST_ASSERT(errno == 0);
-
-            uPortLog("U_SOCK_TEST: sending/receiving data over a"
-                     " TCP socket...\n");
-
-            // Throw random sized TCP segments up...
-            offset = 0;
-            y = 0;
-            while (offset < sizeof(gSendData) - 1) {
-                sizeBytes = (rand() % U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE) + 1;
-                sizeBytes = fix(sizeBytes,
-                                U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE);
-                if (offset + sizeBytes > sizeof(gSendData) - 1) {
-                    sizeBytes = (sizeof(gSendData) - 1) - offset;
-                }
-                if (sendTcp(descriptor, gSendData + offset,
-                            sizeBytes) == sizeBytes) {
-                    offset += sizeBytes;
-                }
-                y++;
-            }
-            sizeBytes = offset;
-            uPortLog("U_SOCK_TEST: %d byte(s) sent via TCP @%d ms,"
-                     " now receiving...\n", sizeBytes,
-                     (int32_t) uPortGetTickTimeMs());
-
-            // Check if the uSockTotalBytesSent() matches value of sizeBytes
-            U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) == sizeBytes);
-
-            // ...and capture them all again afterwards
-            pDataReceived = (char *) malloc((sizeof(gSendData) - 1) +
-                                            (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
-            U_PORT_TEST_ASSERT(pDataReceived != NULL);
-            //lint -e(668) Suppress possible use of NULL pointer
-            // for pDataReceived
-            memset(pDataReceived,
-                   U_SOCK_TEST_FILL_CHARACTER,
-                   (sizeof(gSendData) - 1) + (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
-            startTimeMs = uPortGetTickTimeMs();
-            offset = 0;
-            //lint -e{441} Suppress loop variable not found in
-            // condition: we're using time instead
-            for (y = 0; (offset < sizeof(gSendData) - 1) &&
-                 (uPortGetTickTimeMs() - startTimeMs < 20000); y++) {
-                sizeBytes = uSockRead(descriptor,
-                                      pDataReceived + offset +
-                                      U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
-                                      (sizeof(gSendData) - 1) - offset);
-                if (sizeBytes > 0) {
-                    uPortLog("U_SOCK_TEST: received %d byte(s) on TCP socket.\n",
-                             sizeBytes);
-                    offset += sizeBytes;
-                }
-            }
-            sizeBytes = offset;
-            if (sizeBytes < sizeof(gSendData) - 1) {
-                uPortLog("U_SOCK_TEST: only %d byte(s) received after %d ms.\n",
-                         sizeBytes,
-                         (int32_t) (uPortGetTickTimeMs() - startTimeMs));
-            } else {
-                uPortLog("U_SOCK_TEST: all %d byte(s) received back after"
-                         " %d ms, checking if they were as expected...\n",
-                         sizeBytes,
-                         (int32_t) (uPortGetTickTimeMs() - startTimeMs));
-            }
-
-            // Check that we reassembled everything correctly
-            U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,
-                                                    sizeof(gSendData) - 1,
-                                                    pDataReceived,
-                                                    sizeBytes));
-
-            uPortLog("U_SOCK_TEST: shutting down socket for read...\n");
-            errorCode = uSockShutdown(descriptor,
-                                      U_SOCK_SHUTDOWN_READ);
-            uPortLog("U_SOCK_TEST: uSockShutdown() returned %d, errno %d.\n",
-                     errorCode, errno);
-            U_PORT_TEST_ASSERT(errorCode >= 0);
-            U_PORT_TEST_ASSERT(errno == 0);
-            U_PORT_TEST_ASSERT(uSockRead(descriptor,
-                                         pDataReceived +
-                                         U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
-                                         sizeof(gSendData) - 1) < 0);
-            U_PORT_TEST_ASSERT(errno > 0);
-            errno = 0;
-
-            uPortLog("U_SOCK_TEST: shutting down socket for write...\n");
-            errorCode = uSockShutdown(descriptor,
-                                      U_SOCK_SHUTDOWN_WRITE);
-            uPortLog("U_SOCK_TEST: uSockShutdown() returned %d, errno %d.\n",
-                     errorCode, errno);
-            U_PORT_TEST_ASSERT(errorCode >= 0);
-            U_PORT_TEST_ASSERT(errno == 0);
-            U_PORT_TEST_ASSERT(uSockWrite(descriptor, gSendData,
-                                          sizeof(gSendData) - 1) < 0);
-            U_PORT_TEST_ASSERT(errno > 0);
-            errno = 0;
-
-            // Close the socket
-            U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
-            uPortLog("U_SOCK_TEST: waiting up to %d second(s) for TCP"
-                     " socket to close...\n",
-                     U_SOCK_TEST_TCP_CLOSE_SECONDS);
-            for (y = 0; (y < U_SOCK_TEST_TCP_CLOSE_SECONDS) &&
-                 !closedCallbackCalled; y++) {
-                uPortTaskBlock(1000);
-            }
-            U_PORT_TEST_ASSERT(closedCallbackCalled);
-            uSockCleanUp();
-
-            free(pDataReceived);
-
-            // Check for memory leaks
-            heapUsed -= uPortGetHeapFree();
-            uPortLog("U_SOCK_TEST: during this part of the test %d"
-                     " byte(s) were lost to sockets initialisation;"
-                     " we have leaked %d byte(s).\n",
-                     heapSockInitLoss + heapXxxSockInitLoss,
-                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
         }
+        U_PORT_TEST_ASSERT(errorCode == 0);
+
+        uPortLog("U_SOCK_TEST: check that uSockGetRemoteAddress()"
+                 " works...\n");
+        U_PORT_TEST_ASSERT(uSockGetRemoteAddress(descriptor,
+                                                 &address) == 0);
+        addressAssert(&remoteAddress, &address, true);
+        U_PORT_TEST_ASSERT(errno == 0);
+
+        uPortLog("U_SOCK_TEST: sending/receiving data over a"
+                 " TCP socket...\n");
+
+        // Throw random sized TCP segments up...
+        offset = 0;
+        y = 0;
+        while (offset < sizeof(gSendData) - 1) {
+            sizeBytes = (rand() % U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE) + 1;
+            sizeBytes = fix(sizeBytes,
+                            U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE);
+            if (offset + sizeBytes > sizeof(gSendData) - 1) {
+                sizeBytes = (sizeof(gSendData) - 1) - offset;
+            }
+            if (sendTcp(descriptor, gSendData + offset,
+                        sizeBytes) == sizeBytes) {
+                offset += sizeBytes;
+            }
+            y++;
+        }
+        sizeBytes = offset;
+        uPortLog("U_SOCK_TEST: %d byte(s) sent via TCP @%d ms,"
+                 " now receiving...\n", sizeBytes,
+                 (int32_t) uPortGetTickTimeMs());
+
+        // Check if the uSockTotalBytesSent() matches value of sizeBytes
+        U_PORT_TEST_ASSERT(uSockGetTotalBytesSent(descriptor) == sizeBytes);
+
+        // ...and capture them all again afterwards
+        pDataReceived = (char *) malloc((sizeof(gSendData) - 1) +
+                                        (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+        U_PORT_TEST_ASSERT(pDataReceived != NULL);
+        //lint -e(668) Suppress possible use of NULL pointer
+        // for pDataReceived
+        memset(pDataReceived,
+               U_SOCK_TEST_FILL_CHARACTER,
+               (sizeof(gSendData) - 1) + (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+        startTimeMs = uPortGetTickTimeMs();
+        offset = 0;
+        //lint -e{441} Suppress loop variable not found in
+        // condition: we're using time instead
+        for (y = 0; (offset < sizeof(gSendData) - 1) &&
+             (uPortGetTickTimeMs() - startTimeMs < 20000); y++) {
+            sizeBytes = uSockRead(descriptor,
+                                  pDataReceived + offset +
+                                  U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
+                                  (sizeof(gSendData) - 1) - offset);
+            if (sizeBytes > 0) {
+                uPortLog("U_SOCK_TEST: received %d byte(s) on TCP socket.\n",
+                         sizeBytes);
+                offset += sizeBytes;
+            }
+        }
+        sizeBytes = offset;
+        if (sizeBytes < sizeof(gSendData) - 1) {
+            uPortLog("U_SOCK_TEST: only %d byte(s) received after %d ms.\n",
+                     sizeBytes,
+                     (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+        } else {
+            uPortLog("U_SOCK_TEST: all %d byte(s) received back after"
+                     " %d ms, checking if they were as expected...\n",
+                     sizeBytes,
+                     (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+        }
+
+        // Check that we reassembled everything correctly
+        U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,
+                                                sizeof(gSendData) - 1,
+                                                pDataReceived,
+                                                sizeBytes));
+
+        uPortLog("U_SOCK_TEST: shutting down socket for read...\n");
+        errorCode = uSockShutdown(descriptor,
+                                  U_SOCK_SHUTDOWN_READ);
+        uPortLog("U_SOCK_TEST: uSockShutdown() returned %d, errno %d.\n",
+                 errorCode, errno);
+        U_PORT_TEST_ASSERT(errorCode >= 0);
+        U_PORT_TEST_ASSERT(errno == 0);
+        U_PORT_TEST_ASSERT(uSockRead(descriptor,
+                                     pDataReceived +
+                                     U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
+                                     sizeof(gSendData) - 1) < 0);
+        U_PORT_TEST_ASSERT(errno > 0);
+        errno = 0;
+
+        uPortLog("U_SOCK_TEST: shutting down socket for write...\n");
+        errorCode = uSockShutdown(descriptor,
+                                  U_SOCK_SHUTDOWN_WRITE);
+        uPortLog("U_SOCK_TEST: uSockShutdown() returned %d, errno %d.\n",
+                 errorCode, errno);
+        U_PORT_TEST_ASSERT(errorCode >= 0);
+        U_PORT_TEST_ASSERT(errno == 0);
+        U_PORT_TEST_ASSERT(uSockWrite(descriptor, gSendData,
+                                      sizeof(gSendData) - 1) < 0);
+        U_PORT_TEST_ASSERT(errno > 0);
+        errno = 0;
+
+        // Close the socket
+        U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+        uPortLog("U_SOCK_TEST: waiting up to %d second(s) for TCP"
+                 " socket to close...\n",
+                 U_SOCK_TEST_TCP_CLOSE_SECONDS);
+        for (y = 0; (y < U_SOCK_TEST_TCP_CLOSE_SECONDS) &&
+             !closedCallbackCalled; y++) {
+            uPortTaskBlock(1000);
+        }
+        U_PORT_TEST_ASSERT(closedCallbackCalled);
+        uSockCleanUp();
+
+        free(pDataReceived);
+
+        // Check for memory leaks
+        heapUsed -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: during this part of the test %d"
+                 " byte(s) were lost to sockets initialisation;"
+                 " we have leaked %d byte(s).\n",
+                 heapSockInitLoss + heapXxxSockInitLoss,
+                 heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+        U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
+    uNetworkTestListFree();
 }
 
 /** Test maximum number of sockets.
@@ -1325,8 +1335,9 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
 {
+    uNetworkTestList_t *pList;
     int32_t errorCode;
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle;
     uSockAddress_t remoteAddress;
     uSockDescriptor_t descriptor[U_SOCK_MAX_NUM_SOCKETS + 1];
     int32_t heapUsed;
@@ -1339,124 +1350,132 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
 
     // Do the standard preamble to make sure there is
     // a network underneath us
-    stdPreamble();
+    pList = pStdPreamble();
 
     // Repeat for all bearers
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if ((networkHandle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
-            // Get the initial-ish heap
-            heapUsed = uPortGetHeapFree();
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
 
-            uPortLog("U_SOCK_TEST: testing max num sockets on %s.\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
-            // Look up the address of the server we use for UDP echo
-            // The first call to a sockets API needs to
-            // initialise the underlying sockets layer; take
-            // account of that initialisation heap cost here.
-            heapSockInitLoss = uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                  U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                                                  &(remoteAddress.ipAddress)) == 0);
-            heapSockInitLoss -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: testing max num sockets on %s.\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
+                 U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
+        // Look up the address of the server we use for UDP echo
+        // The first call to a sockets API needs to
+        // initialise the underlying sockets layer; take
+        // account of that initialisation heap cost here.
+        heapSockInitLoss = uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                              U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                                              &(remoteAddress.ipAddress)) == 0);
+        heapSockInitLoss -= uPortGetHeapFree();
 
-            // Add the port number we will use
-            remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
+        // Add the port number we will use
+        remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
-            // Open as many sockets as we are allowed to simultaneously
-            // and use each one of them
-            uPortLog("U_SOCK_TEST: opening %d socket(s) at the same time.\n",
-                     (sizeof(descriptor) / sizeof(descriptor[0])) - 1);
-            for (size_t y = 0; y < (sizeof(descriptor) /
-                                    sizeof(descriptor[0])) - 1; y++) {
-                uPortLog("U_SOCK_TEST: socket %d.\n", y + 1);
-                descriptor[y] = openSocketAndUseIt(networkHandle,
-                                                   &remoteAddress,
-                                                   U_SOCK_TYPE_DGRAM,
-                                                   U_SOCK_PROTOCOL_UDP,
-                                                   &heapXxxSockInitLoss);
-                U_PORT_TEST_ASSERT(descriptor[y] >= 0);
-                U_PORT_TEST_ASSERT(errno == 0);
-            }
-
-            // Now try to open one more and it should fail
-            uPortLog("U_SOCK_TEST: opening one more, should fail.\n");
-            descriptor[(sizeof(descriptor) /
-                                            sizeof(descriptor[0])) - 1] = openSocketAndUseIt(networkHandle,
-                                                                         &remoteAddress,
-                                                                         U_SOCK_TYPE_DGRAM,
-                                                                         U_SOCK_PROTOCOL_UDP,
-                                                                         &heapXxxSockInitLoss);
-            U_PORT_TEST_ASSERT(descriptor[(sizeof(descriptor) /
-                                                               sizeof(descriptor[0])) - 1] < 0);
-            U_PORT_TEST_ASSERT(errno > 0);
-            errno = 0;
-
-            // Close one and should be able to open another
-            uPortLog("U_SOCK_TEST: closing socket %d (may take"
-                     " some time).\n", descriptor[0]);
-            errorCode = uSockClose(descriptor[0]);
-            uPortLog("U_SOCK_TEST: uSockClose() returned %d, errno %d.\n",
-                     errorCode, errno);
-            U_PORT_TEST_ASSERT(errorCode == 0);
-            U_PORT_TEST_ASSERT(errno == 0);
-            // Give the socket closure time to propagate
-            uPortTaskBlock(100);
-            uPortLog("U_SOCK_TEST: opening one more, should succeed.\n");
-            descriptor[0] = openSocketAndUseIt(networkHandle,
+        // Open as many sockets as we are allowed to simultaneously
+        // and use each one of them
+        uPortLog("U_SOCK_TEST: opening %d socket(s) at the same time.\n",
+                 (sizeof(descriptor) / sizeof(descriptor[0])) - 1);
+        for (size_t y = 0; y < (sizeof(descriptor) /
+                                sizeof(descriptor[0])) - 1; y++) {
+            uPortLog("U_SOCK_TEST: socket %d.\n", y + 1);
+            descriptor[y] = openSocketAndUseIt(devHandle,
                                                &remoteAddress,
                                                U_SOCK_TYPE_DGRAM,
                                                U_SOCK_PROTOCOL_UDP,
                                                &heapXxxSockInitLoss);
-            U_PORT_TEST_ASSERT(descriptor[0] >= 0);
+            U_PORT_TEST_ASSERT(descriptor[y] >= 0);
             U_PORT_TEST_ASSERT(errno == 0);
-
-            // Now close the lot
-            uPortLog("U_SOCK_TEST: closing them all.\n");
-            for (size_t y = 0; y < (sizeof(descriptor) /
-                                    sizeof(descriptor[0])) - 1; y++) {
-                uPortLog("U_SOCK_TEST: closing socket %d.\n", y + 1);
-                errorCode = uSockClose(descriptor[y]);
-                U_PORT_TEST_ASSERT(errorCode == 0);
-                U_PORT_TEST_ASSERT(errno == 0);
-            }
-
-            uPortLog("U_SOCK_TEST: \"test\" clean up...\n");
-            uSockCleanUp();
-
-            // Make sure that we can still open one and use it
-            uPortLog("U_SOCK_TEST: check that we can still open,"
-                     " use and close a socket...\n");
-            descriptor[0] = openSocketAndUseIt(networkHandle,
-                                               &remoteAddress,
-                                               U_SOCK_TYPE_DGRAM,
-                                               U_SOCK_PROTOCOL_UDP,
-                                               &heapXxxSockInitLoss);
-            U_PORT_TEST_ASSERT(descriptor[0] >= 0);
-            U_PORT_TEST_ASSERT(errno == 0);
-            uPortLog("U_SOCK_TEST: closing socket %d again.\n",
-                     descriptor[0]);
-            errorCode = uSockClose(descriptor[0]);
-            U_PORT_TEST_ASSERT(errorCode == 0);
-            U_PORT_TEST_ASSERT(errno == 0);
-
-            uPortLog("U_SOCK_TEST: cleaning up properly...\n");
-            uSockCleanUp();
-
-            // Check for memory leaks
-            heapUsed -= uPortGetHeapFree();
-            uPortLog("U_SOCK_TEST: during this part of the test"
-                     " 0 byte(s) of heap were lost to the C library"
-                     " and %d byte(s) were lost to sockets initialisation;"
-                     " we have leaked %d byte(s).\n",
-                     heapSockInitLoss + heapXxxSockInitLoss,
-                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
         }
+
+        // Now try to open one more and it should fail
+        uPortLog("U_SOCK_TEST: opening one more, should fail.\n");
+        descriptor[(sizeof(descriptor) /
+                                        sizeof(descriptor[0])) - 1] = openSocketAndUseIt(devHandle,
+                                                                     &remoteAddress,
+                                                                     U_SOCK_TYPE_DGRAM,
+                                                                     U_SOCK_PROTOCOL_UDP,
+                                                                     &heapXxxSockInitLoss);
+        U_PORT_TEST_ASSERT(descriptor[(sizeof(descriptor) /
+                                                           sizeof(descriptor[0])) - 1] < 0);
+        U_PORT_TEST_ASSERT(errno > 0);
+        errno = 0;
+
+        // Close one and should be able to open another
+        uPortLog("U_SOCK_TEST: closing socket %d (may take"
+                 " some time).\n", descriptor[0]);
+        errorCode = uSockClose(descriptor[0]);
+        uPortLog("U_SOCK_TEST: uSockClose() returned %d, errno %d.\n",
+                 errorCode, errno);
+        U_PORT_TEST_ASSERT(errorCode == 0);
+        U_PORT_TEST_ASSERT(errno == 0);
+        // Give the socket closure time to propagate
+        uPortTaskBlock(100);
+        uPortLog("U_SOCK_TEST: opening one more, should succeed.\n");
+        descriptor[0] = openSocketAndUseIt(devHandle,
+                                           &remoteAddress,
+                                           U_SOCK_TYPE_DGRAM,
+                                           U_SOCK_PROTOCOL_UDP,
+                                           &heapXxxSockInitLoss);
+        U_PORT_TEST_ASSERT(descriptor[0] >= 0);
+        U_PORT_TEST_ASSERT(errno == 0);
+
+        // Now close the lot
+        uPortLog("U_SOCK_TEST: closing them all.\n");
+        for (size_t y = 0; y < (sizeof(descriptor) /
+                                sizeof(descriptor[0])) - 1; y++) {
+            uPortLog("U_SOCK_TEST: closing socket %d.\n", y + 1);
+            errorCode = uSockClose(descriptor[y]);
+            U_PORT_TEST_ASSERT(errorCode == 0);
+            U_PORT_TEST_ASSERT(errno == 0);
+        }
+
+        uPortLog("U_SOCK_TEST: \"test\" clean up...\n");
+        uSockCleanUp();
+
+        // Make sure that we can still open one and use it
+        uPortLog("U_SOCK_TEST: check that we can still open,"
+                 " use and close a socket...\n");
+        descriptor[0] = openSocketAndUseIt(devHandle,
+                                           &remoteAddress,
+                                           U_SOCK_TYPE_DGRAM,
+                                           U_SOCK_PROTOCOL_UDP,
+                                           &heapXxxSockInitLoss);
+        U_PORT_TEST_ASSERT(descriptor[0] >= 0);
+        U_PORT_TEST_ASSERT(errno == 0);
+        uPortLog("U_SOCK_TEST: closing socket %d again.\n",
+                 descriptor[0]);
+        errorCode = uSockClose(descriptor[0]);
+        U_PORT_TEST_ASSERT(errorCode == 0);
+        U_PORT_TEST_ASSERT(errno == 0);
+
+        uPortLog("U_SOCK_TEST: cleaning up properly...\n");
+        uSockCleanUp();
+
+        // Check for memory leaks
+        heapUsed -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: during this part of the test"
+                 " 0 byte(s) of heap were lost to the C library"
+                 " and %d byte(s) were lost to sockets initialisation;"
+                 " we have leaked %d byte(s).\n",
+                 heapSockInitLoss + heapXxxSockInitLoss,
+                 heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+        U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
+    uNetworkTestListFree();
 }
 
 /** Test socket options (actually only timeout since
@@ -1464,7 +1483,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
 {
-    int32_t networkHandle;
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t devHandle;
     uSockAddress_t remoteAddress;
     uSockDescriptor_t descriptor;
     size_t length = 0;
@@ -1484,128 +1504,137 @@ U_PORT_TEST_FUNCTION("[sock]", "sockOptionsSetGet")
 
     // Do the standard preamble to make sure there is
     // a network underneath us
-    stdPreamble();
+    pList = pStdPreamble();
 
     // Repeat for all bearers
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if ((networkHandle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
-            // Get the initial-ish heap
-            heapUsed = uPortGetHeapFree();
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
 
-            uPortLog("U_SOCK_TEST: doing socket options test on %s.\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
-            // Look up the address of the server we use for UDP echo
-            // The first call to a sockets API needs to
-            // initialise the underlying sockets layer; take
-            // account of that initialisation heap cost here.
-            heapSockInitLoss = uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                  U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                                                  &(remoteAddress.ipAddress)) == 0);
-            heapSockInitLoss -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: doing socket options test on %s.\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
+                 U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
+        // Look up the address of the server we use for UDP echo
+        // The first call to a sockets API needs to
+        // initialise the underlying sockets layer; take
+        // account of that initialisation heap cost here.
+        heapSockInitLoss = uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                              U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                                              &(remoteAddress.ipAddress)) == 0);
+        heapSockInitLoss -= uPortGetHeapFree();
 
-            // Add the port number we will use
-            remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
+        // Add the port number we will use
+        remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
-            // Create a UDP socket, which is sufficient
-            // for the options we can test here and doesn't
-            // require a potentially long uSockClose() time.
-            // Creating a socket may use heap in the underlying
-            // network layer which will be reclaimed when the
-            // network layer is closed but we don't do that here
-            // to save time so need to allow for it in the heap loss
-            // calculation
-            heapXxxSockInitLoss += uPortGetHeapFree();
-            descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
-                                     U_SOCK_PROTOCOL_UDP);
-            heapXxxSockInitLoss -= uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(descriptor >= 0);
-            U_PORT_TEST_ASSERT(errno == 0);
+        // Create a UDP socket, which is sufficient
+        // for the options we can test here and doesn't
+        // require a potentially long uSockClose() time.
+        // Creating a socket may use heap in the underlying
+        // network layer which will be reclaimed when the
+        // network layer is closed but we don't do that here
+        // to save time so need to allow for it in the heap loss
+        // calculation
+        heapXxxSockInitLoss += uPortGetHeapFree();
+        descriptor = uSockCreate(devHandle, U_SOCK_TYPE_DGRAM,
+                                 U_SOCK_PROTOCOL_UDP);
+        heapXxxSockInitLoss -= uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(descriptor >= 0);
+        U_PORT_TEST_ASSERT(errno == 0);
 
-            // This is a workaround for short range modules that requires
-            // calling uSockSendTo before uSockReceiveFrom can be used
-            pData[0] = 0;
-            uSockSendTo(descriptor, &remoteAddress, pData, 1);
-            uSockReceiveFrom(descriptor, NULL, pData, sizeof(pData));
+        // This is a workaround for short range modules that requires
+        // calling uSockSendTo before uSockReceiveFrom can be used
+        pData[0] = 0;
+        uSockSendTo(descriptor, &remoteAddress, pData, 1);
+        uSockReceiveFrom(descriptor, NULL, pData, sizeof(pData));
 
-            // Test that setting the socket receive timeout
-            // option has an effect
-            uPortLog("U_SOCK_TEST: check that receive timeout has an effect"
-                     " (please wait for %d second(s))...\n",
-                     U_SOCK_RECEIVE_TIMEOUT_DEFAULT_MS / 1000);
-            length = sizeof(timeout);
-            pLength = &length;
-            U_PORT_TEST_ASSERT(uSockOptionGet(descriptor,
-                                              U_SOCK_OPT_LEVEL_SOCK,
-                                              U_SOCK_OPT_RCVTIMEO,
-                                              (void *) &timeout,
-                                              pLength) == 0);
-            timeoutMs = ((int64_t) timeout.tv_sec) * 1000 + timeout.tv_usec / 1000;
-            U_PORT_TEST_ASSERT(timeoutMs == U_SOCK_RECEIVE_TIMEOUT_DEFAULT_MS);
-            startTimeMs = uPortGetTickTimeMs();
-            U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL,
-                                                pData, sizeof(pData)) < 0);
-            elapsedMs = uPortGetTickTimeMs() - startTimeMs;
-            U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
-            errno = 0;
-            uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing took"
-                     " %d millisecond(s)...\n", (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
-                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
-                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
-            timeout.tv_sec = 0;
-            timeout.tv_usec = 500000;
-            timeoutMs = (((int64_t) timeout.tv_sec) * 1000) +
-                        (timeout.tv_usec / 1000);
-            uPortLog("U_SOCK_TEST: setting timeout to %d"
-                     " millisecond(s)...\n", (int32_t) timeoutMs);
-            U_PORT_TEST_ASSERT(uSockOptionSet(descriptor,
-                                              U_SOCK_OPT_LEVEL_SOCK,
-                                              U_SOCK_OPT_RCVTIMEO,
-                                              (void *) &timeout,
-                                              sizeof(timeout)) == 0);
-            startTimeMs = uPortGetTickTimeMs();
-            U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL,
-                                                pData,
-                                                sizeof(pData)) < 0);
-            elapsedMs = uPortGetTickTimeMs() - startTimeMs;
-            U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
-            errno = 0;
-            uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing took"
-                     " %d millisecond(s)...\n", (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
-                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
-                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
+        // Test that setting the socket receive timeout
+        // option has an effect
+        uPortLog("U_SOCK_TEST: check that receive timeout has an effect"
+                 " (please wait for %d second(s))...\n",
+                 U_SOCK_RECEIVE_TIMEOUT_DEFAULT_MS / 1000);
+        length = sizeof(timeout);
+        pLength = &length;
+        U_PORT_TEST_ASSERT(uSockOptionGet(descriptor,
+                                          U_SOCK_OPT_LEVEL_SOCK,
+                                          U_SOCK_OPT_RCVTIMEO,
+                                          (void *) &timeout,
+                                          pLength) == 0);
+        timeoutMs = ((int64_t) timeout.tv_sec) * 1000 + timeout.tv_usec / 1000;
+        U_PORT_TEST_ASSERT(timeoutMs == U_SOCK_RECEIVE_TIMEOUT_DEFAULT_MS);
+        startTimeMs = uPortGetTickTimeMs();
+        U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL,
+                                            pData, sizeof(pData)) < 0);
+        elapsedMs = uPortGetTickTimeMs() - startTimeMs;
+        U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
+        errno = 0;
+        uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing took"
+                 " %d millisecond(s)...\n", (int32_t) elapsedMs);
+        U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                           U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+        U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                           U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 500000;
+        timeoutMs = (((int64_t) timeout.tv_sec) * 1000) +
+                    (timeout.tv_usec / 1000);
+        uPortLog("U_SOCK_TEST: setting timeout to %d"
+                 " millisecond(s)...\n", (int32_t) timeoutMs);
+        U_PORT_TEST_ASSERT(uSockOptionSet(descriptor,
+                                          U_SOCK_OPT_LEVEL_SOCK,
+                                          U_SOCK_OPT_RCVTIMEO,
+                                          (void *) &timeout,
+                                          sizeof(timeout)) == 0);
+        startTimeMs = uPortGetTickTimeMs();
+        U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL,
+                                            pData,
+                                            sizeof(pData)) < 0);
+        elapsedMs = uPortGetTickTimeMs() - startTimeMs;
+        U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
+        errno = 0;
+        uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing took"
+                 " %d millisecond(s)...\n", (int32_t) elapsedMs);
+        U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                           U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+        U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                           U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
 
-            // Close the UDP socket
-            U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
-            uSockCleanUp();
+        // Close the UDP socket
+        U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+        uSockCleanUp();
 
-            // Check for memory leaks
-            heapUsed -= uPortGetHeapFree();
-            uPortLog("U_SOCK_TEST: during this part of the test"
-                     " 0 byte(s) of heap were lost to the C library"
-                     " and %d byte(s) were lost to sockets initialisation;"
-                     " we have leaked %d byte(s).\n",
-                     heapSockInitLoss + heapXxxSockInitLoss,
-                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
-        }
+        // Check for memory leaks
+        heapUsed -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: during this part of the test"
+                 " 0 byte(s) of heap were lost to the C library"
+                 " and %d byte(s) were lost to sockets initialisation;"
+                 " we have leaked %d byte(s).\n",
+                 heapSockInitLoss + heapXxxSockInitLoss,
+                 heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+        U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
+    uNetworkTestListFree();
 }
 
 /** Test setting non-blocking and blocking.
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
 {
+    uNetworkTestList_t *pList;
     int32_t errorCode = -1;
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle;
     uSockAddress_t remoteAddress;
     uSockDescriptor_t descriptor;
     bool closedCallbackCalled;
@@ -1625,202 +1654,210 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
 
     // Do the standard preamble to make sure there is
     // a network underneath us
-    stdPreamble();
+    pList = pStdPreamble();
 
     // Repeat for all bearers
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if ((networkHandle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
-            // Get the initial-ish heap
-            heapUsed = uPortGetHeapFree();
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
 
-            uPortLog("U_SOCK_TEST: doing non-blocking test on %s.\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
-            // Look up the address of the server we use for TCP echo
-            // The first call to a sockets API needs to
-            // initialise the underlying sockets layer; take
-            // account of that initialisation heap cost here.
-            heapSockInitLoss = uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                  U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                                                  &(remoteAddress.ipAddress)) == 0);
-            heapSockInitLoss -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: doing non-blocking test on %s.\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
+                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
+        // Look up the address of the server we use for TCP echo
+        // The first call to a sockets API needs to
+        // initialise the underlying sockets layer; take
+        // account of that initialisation heap cost here.
+        heapSockInitLoss = uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                              U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                                              &(remoteAddress.ipAddress)) == 0);
+        heapSockInitLoss -= uPortGetHeapFree();
 
-            // Add the port number we will use
-            remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
+        // Add the port number we will use
+        remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
 
-            // Create the TCP socket
-            // Creating a socket may use heap in the underlying
-            // network layer which will be reclaimed when the
-            // network layer is closed but we don't do that here
-            // to save time so need to allow for it in the heap loss
-            // calculation
-            heapXxxSockInitLoss += uPortGetHeapFree();
-            descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_STREAM,
-                                     U_SOCK_PROTOCOL_TCP);
-            heapXxxSockInitLoss -= uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(descriptor >= 0);
-            U_PORT_TEST_ASSERT(errno == 0);
+        // Create the TCP socket
+        // Creating a socket may use heap in the underlying
+        // network layer which will be reclaimed when the
+        // network layer is closed but we don't do that here
+        // to save time so need to allow for it in the heap loss
+        // calculation
+        heapXxxSockInitLoss += uPortGetHeapFree();
+        descriptor = uSockCreate(devHandle, U_SOCK_TYPE_STREAM,
+                                 U_SOCK_PROTOCOL_TCP);
+        heapXxxSockInitLoss -= uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(descriptor >= 0);
+        U_PORT_TEST_ASSERT(errno == 0);
 
-            // Set up the closed callback
-            closedCallbackCalled = false;
-            uSockRegisterCallbackClosed(descriptor, setBoolCallback,
-                                        &closedCallbackCalled);
-            U_PORT_TEST_ASSERT(!closedCallbackCalled);
+        // Set up the closed callback
+        closedCallbackCalled = false;
+        uSockRegisterCallbackClosed(descriptor, setBoolCallback,
+                                    &closedCallbackCalled);
+        U_PORT_TEST_ASSERT(!closedCallbackCalled);
 
-            uPortLog("U_SOCK_TEST: connect socket to \"%s:%d\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                     U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
-            // Connections can fail so allow this a few goes
-            errorCode = -1;
-            for (int32_t y = 2; (y > 0) && (errorCode < 0); y--) {
-                errorCode = uSockConnect(descriptor, &remoteAddress);
-                uPortLog("U_SOCK_TEST: uSockConnect() returned %d,"
-                         " errno %d.\n", errorCode, errno);
-                if (errorCode < 0) {
-                    U_PORT_TEST_ASSERT(errno != 0);
-                    errno = 0;
-                    if (y > 1) {
-                        // Give us something to search for in the log
-                        uPortLog("U_SOCK_TEST: *** WARNING *** RETRY CONNECTION.\n");
-                    }
+        uPortLog("U_SOCK_TEST: connect socket to \"%s:%d\"...\n",
+                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                 U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+        // Connections can fail so allow this a few goes
+        errorCode = -1;
+        for (int32_t y = 2; (y > 0) && (errorCode < 0); y--) {
+            errorCode = uSockConnect(descriptor, &remoteAddress);
+            uPortLog("U_SOCK_TEST: uSockConnect() returned %d,"
+                     " errno %d.\n", errorCode, errno);
+            if (errorCode < 0) {
+                U_PORT_TEST_ASSERT(errno != 0);
+                errno = 0;
+                if (y > 1) {
+                    // Give us something to search for in the log
+                    uPortLog("U_SOCK_TEST: *** WARNING *** RETRY CONNECTION.\n");
                 }
             }
-            U_PORT_TEST_ASSERT(errorCode == 0);
-
-            // Set a short time-out so that we're not hanging around
-            // Not setting it so short, though, that the margins we
-            // allow could overlap (i.e. a lot less than
-            // U_SOCK_TEST_TIME_MARGIN_PLUS_MS)
-            uPortLog("U_SOCK_TEST: setting a short socket timeout to save time...\n");
-            timeout.tv_sec = 2;
-            timeout.tv_usec = 0;
-            timeoutMs = ((int64_t) timeout.tv_sec) * 1000 + timeout.tv_usec / 1000;
-            U_PORT_TEST_ASSERT(uSockOptionSet(descriptor,
-                                              U_SOCK_OPT_LEVEL_SOCK,
-                                              U_SOCK_OPT_RCVTIMEO,
-                                              (void *) &timeout,
-                                              sizeof(timeout)) == 0);
-            startTimeMs = uPortGetTickTimeMs();
-            U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL,
-                                                pData, sizeof(pData)) < 0);
-            U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
-            errno = 0;
-            elapsedMs = uPortGetTickTimeMs() - startTimeMs;
-            uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing"
-                     " took %d millisecond(s)...\n", (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
-                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
-                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
-            startTimeMs = uPortGetTickTimeMs();
-            U_PORT_TEST_ASSERT(uSockRead(descriptor, pData,
-                                         sizeof(pData)) < 0);
-            U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
-            errno = 0;
-            elapsedMs = uPortGetTickTimeMs() - startTimeMs;
-            uPortLog("U_SOCK_TEST: uSockRead() of nothing took %d "
-                     " millisecond(s)...\n", (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
-                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
-                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
-
-            uPortLog("U_SOCK_TEST: get current non-blocking state...\n");
-            isBlocking = uSockBlockingGet(descriptor);
-            uPortLog("U_SOCK_TEST: blocking is currently %s.\n",
-                     isBlocking ? "on" : "off");
-            // Should be true
-            U_PORT_TEST_ASSERT(isBlocking);
-            U_PORT_TEST_ASSERT(errno == 0);
-
-            uPortLog("U_SOCK_TEST: set non-blocking...\n");
-            uSockBlockingSet(descriptor, false);
-            U_PORT_TEST_ASSERT(!uSockBlockingGet(descriptor));
-
-            uPortLog("U_SOCK_TEST: check that it has worked for"
-                     " receive...\n");
-            startTimeMs = uPortGetTickTimeMs();
-            U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL, pData,
-                                                sizeof(pData)) < 0);
-            elapsedMs = uPortGetTickTimeMs() - startTimeMs;
-            U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
-            errno = 0;
-            uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing with"
-                     " blocking off took %d millisecond(s)...\n",
-                     (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs < U_SOCK_TEST_NON_BLOCKING_TIME_MS +
-                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
-            startTimeMs = uPortGetTickTimeMs();
-            U_PORT_TEST_ASSERT(uSockRead(descriptor, pData,
-                                         sizeof(pData)) < 0);
-            elapsedMs = uPortGetTickTimeMs() - startTimeMs;
-            U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
-            errno = 0;
-            uPortLog("U_SOCK_TEST: uSockRead() of nothing with"
-                     " blocking off took %d millisecond(s)...\n",
-                     (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs < U_SOCK_TEST_NON_BLOCKING_TIME_MS +
-                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
-
-            uPortLog("U_SOCK_TEST: set blocking again...\n");
-            uSockBlockingSet(descriptor, true);
-            U_PORT_TEST_ASSERT(uSockBlockingGet(descriptor));
-
-            uPortLog("U_SOCK_TEST: check that we're blocking again...\n");
-            startTimeMs = uPortGetTickTimeMs();
-            U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL, pData,
-                                                sizeof(pData)) < 0);
-            elapsedMs = uPortGetTickTimeMs() - startTimeMs;
-            U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
-            errno = 0;
-            uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing with"
-                     " blocking on took %d millisecond(s)...\n",
-                     (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
-                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
-                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
-            startTimeMs = uPortGetTickTimeMs();
-            U_PORT_TEST_ASSERT(uSockRead(descriptor, pData,
-                                         sizeof(pData)) < 0);
-            elapsedMs = uPortGetTickTimeMs() - startTimeMs;
-            U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
-            errno = 0;
-            uPortLog("U_SOCK_TEST: uSockRead() of nothing with"
-                     " blocking on took %d millisecond(s)...\n",
-                     (int32_t) elapsedMs);
-            U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
-                               U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
-            U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
-                               U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
-
-            // Close the socket
-            U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
-            uPortLog("U_CELL_TEST: waiting up to %d second(s) for TCP"
-                     " socket to close...\n",
-                     U_SOCK_TEST_TCP_CLOSE_SECONDS);
-            for (size_t y = 0; (y < U_SOCK_TEST_TCP_CLOSE_SECONDS) &&
-                 !closedCallbackCalled; y++) {
-                uPortTaskBlock(1000);
-            }
-            U_PORT_TEST_ASSERT(closedCallbackCalled);
-            uSockCleanUp();
-
-            // Check for memory leaks
-            heapUsed -= uPortGetHeapFree();
-            uPortLog("U_SOCK_TEST: during this part of the test"
-                     " 0 byte(s) of heap were lost to the C library"
-                     " and %d byte(s) were lost to sockets initialisation;"
-                     " we have leaked %d byte(s).\n",
-                     heapSockInitLoss + heapXxxSockInitLoss,
-                     heapUsed - (heapSockInitLoss + heapSockInitLoss));
-            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
         }
+        U_PORT_TEST_ASSERT(errorCode == 0);
+
+        // Set a short time-out so that we're not hanging around
+        // Not setting it so short, though, that the margins we
+        // allow could overlap (i.e. a lot less than
+        // U_SOCK_TEST_TIME_MARGIN_PLUS_MS)
+        uPortLog("U_SOCK_TEST: setting a short socket timeout to save time...\n");
+        timeout.tv_sec = 2;
+        timeout.tv_usec = 0;
+        timeoutMs = ((int64_t) timeout.tv_sec) * 1000 + timeout.tv_usec / 1000;
+        U_PORT_TEST_ASSERT(uSockOptionSet(descriptor,
+                                          U_SOCK_OPT_LEVEL_SOCK,
+                                          U_SOCK_OPT_RCVTIMEO,
+                                          (void *) &timeout,
+                                          sizeof(timeout)) == 0);
+        startTimeMs = uPortGetTickTimeMs();
+        U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL,
+                                            pData, sizeof(pData)) < 0);
+        U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
+        errno = 0;
+        elapsedMs = uPortGetTickTimeMs() - startTimeMs;
+        uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing"
+                 " took %d millisecond(s)...\n", (int32_t) elapsedMs);
+        U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                           U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+        U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                           U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
+        startTimeMs = uPortGetTickTimeMs();
+        U_PORT_TEST_ASSERT(uSockRead(descriptor, pData,
+                                     sizeof(pData)) < 0);
+        U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
+        errno = 0;
+        elapsedMs = uPortGetTickTimeMs() - startTimeMs;
+        uPortLog("U_SOCK_TEST: uSockRead() of nothing took %d "
+                 " millisecond(s)...\n", (int32_t) elapsedMs);
+        U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                           U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+        U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                           U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
+
+        uPortLog("U_SOCK_TEST: get current non-blocking state...\n");
+        isBlocking = uSockBlockingGet(descriptor);
+        uPortLog("U_SOCK_TEST: blocking is currently %s.\n",
+                 isBlocking ? "on" : "off");
+        // Should be true
+        U_PORT_TEST_ASSERT(isBlocking);
+        U_PORT_TEST_ASSERT(errno == 0);
+
+        uPortLog("U_SOCK_TEST: set non-blocking...\n");
+        uSockBlockingSet(descriptor, false);
+        U_PORT_TEST_ASSERT(!uSockBlockingGet(descriptor));
+
+        uPortLog("U_SOCK_TEST: check that it has worked for"
+                 " receive...\n");
+        startTimeMs = uPortGetTickTimeMs();
+        U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL, pData,
+                                            sizeof(pData)) < 0);
+        elapsedMs = uPortGetTickTimeMs() - startTimeMs;
+        U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
+        errno = 0;
+        uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing with"
+                 " blocking off took %d millisecond(s)...\n",
+                 (int32_t) elapsedMs);
+        U_PORT_TEST_ASSERT(elapsedMs < U_SOCK_TEST_NON_BLOCKING_TIME_MS +
+                           U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
+        startTimeMs = uPortGetTickTimeMs();
+        U_PORT_TEST_ASSERT(uSockRead(descriptor, pData,
+                                     sizeof(pData)) < 0);
+        elapsedMs = uPortGetTickTimeMs() - startTimeMs;
+        U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
+        errno = 0;
+        uPortLog("U_SOCK_TEST: uSockRead() of nothing with"
+                 " blocking off took %d millisecond(s)...\n",
+                 (int32_t) elapsedMs);
+        U_PORT_TEST_ASSERT(elapsedMs < U_SOCK_TEST_NON_BLOCKING_TIME_MS +
+                           U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
+
+        uPortLog("U_SOCK_TEST: set blocking again...\n");
+        uSockBlockingSet(descriptor, true);
+        U_PORT_TEST_ASSERT(uSockBlockingGet(descriptor));
+
+        uPortLog("U_SOCK_TEST: check that we're blocking again...\n");
+        startTimeMs = uPortGetTickTimeMs();
+        U_PORT_TEST_ASSERT(uSockReceiveFrom(descriptor, NULL, pData,
+                                            sizeof(pData)) < 0);
+        elapsedMs = uPortGetTickTimeMs() - startTimeMs;
+        U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
+        errno = 0;
+        uPortLog("U_SOCK_TEST: uSockReceiveFrom() of nothing with"
+                 " blocking on took %d millisecond(s)...\n",
+                 (int32_t) elapsedMs);
+        U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                           U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+        U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                           U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
+        startTimeMs = uPortGetTickTimeMs();
+        U_PORT_TEST_ASSERT(uSockRead(descriptor, pData,
+                                     sizeof(pData)) < 0);
+        elapsedMs = uPortGetTickTimeMs() - startTimeMs;
+        U_PORT_TEST_ASSERT(errno == U_SOCK_EWOULDBLOCK);
+        errno = 0;
+        uPortLog("U_SOCK_TEST: uSockRead() of nothing with"
+                 " blocking on took %d millisecond(s)...\n",
+                 (int32_t) elapsedMs);
+        U_PORT_TEST_ASSERT(elapsedMs > timeoutMs -
+                           U_SOCK_TEST_TIME_MARGIN_MINUS_MS);
+        U_PORT_TEST_ASSERT(elapsedMs < timeoutMs +
+                           U_SOCK_TEST_TIME_MARGIN_PLUS_MS);
+
+        // Close the socket
+        U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+        uPortLog("U_CELL_TEST: waiting up to %d second(s) for TCP"
+                 " socket to close...\n",
+                 U_SOCK_TEST_TCP_CLOSE_SECONDS);
+        for (size_t y = 0; (y < U_SOCK_TEST_TCP_CLOSE_SECONDS) &&
+             !closedCallbackCalled; y++) {
+            uPortTaskBlock(1000);
+        }
+        U_PORT_TEST_ASSERT(closedCallbackCalled);
+        uSockCleanUp();
+
+        // Check for memory leaks
+        heapUsed -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: during this part of the test"
+                 " 0 byte(s) of heap were lost to the C library"
+                 " and %d byte(s) were lost to sockets initialisation;"
+                 " we have leaked %d byte(s).\n",
+                 heapSockInitLoss + heapXxxSockInitLoss,
+                 heapUsed - (heapSockInitLoss + heapSockInitLoss));
+        U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
+    uNetworkTestListFree();
 }
 
 /** UDP echo test that throws up multiple packets
@@ -1828,7 +1865,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockNonBlocking")
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
 {
-    int32_t networkHandle;
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t devHandle;
     uSockAddress_t remoteAddress;
     uSockDescriptor_t descriptor;
     bool dataCallbackCalled = false;
@@ -1851,187 +1889,199 @@ U_PORT_TEST_FUNCTION("[sock]", "sockUdpEchoNonPingPong")
     // have been left hanging by a previous failed test
     osCleanup();
 
-    // Do the standard preamble to make sure there is
-    // a network underneath us
-    stdPreamble();
-
     // The first time rand() is called the C library may
     // allocate memory, not something we can do anything
     // about, so call it once here to move that number
     // out of our sums.
     rand();
 
+    // Do the standard preamble to make sure there is
+    // a network underneath us
+    pList = pStdPreamble();
+
     // Repeat for all bearers
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if ((networkHandle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
-            // Get the initial-ish heap
-            heapUsed = uPortGetHeapFree();
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
 
-            uPortLog("U_SOCK_TEST: doing UDP non-ping-pong test on %s.\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
-            // Look up the address of the server we use for UDP echo
-            // The first call to a sockets API needs to
-            // initialise the underlying sockets layer; take
-            // account of that initialisation heap cost here.
-            heapSockInitLoss = uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                  U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                                                  &(remoteAddress.ipAddress)) == 0);
-            heapSockInitLoss -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: doing UDP non-ping-pong test on %s.\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
+                 U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
+        // Look up the address of the server we use for UDP echo
+        // The first call to a sockets API needs to
+        // initialise the underlying sockets layer; take
+        // account of that initialisation heap cost here.
+        heapSockInitLoss = uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                              U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                                              &(remoteAddress.ipAddress)) == 0);
+        heapSockInitLoss -= uPortGetHeapFree();
 
-            // Add the port number we will use
-            remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
+        // Add the port number we will use
+        remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
-            // Quite often nothing at all comes back so retry this
-            // if that is the case
-            for (size_t retries = 2; (sizeBytes == 0) &&  (retries > 0); retries--) {
-                // Create the UDP socket
-                // Creating a socket may use heap in the underlying
-                // network layer which will be reclaimed when the
-                // network layer is closed but we don't do that here
-                // to save time so need to allow for it in the heap loss
-                // calculation
-                heapXxxSockInitLoss += uPortGetHeapFree();
-                descriptor = uSockCreate(networkHandle, U_SOCK_TYPE_DGRAM,
-                                         U_SOCK_PROTOCOL_UDP);
-                heapXxxSockInitLoss -= uPortGetHeapFree();
-                U_PORT_TEST_ASSERT(descriptor >= 0);
-                U_PORT_TEST_ASSERT(errno == 0);
+        // Quite often nothing at all comes back so retry this
+        // if that is the case
+        for (size_t retries = 2; (sizeBytes == 0) &&  (retries > 0); retries--) {
+            // Create the UDP socket
+            // Creating a socket may use heap in the underlying
+            // network layer which will be reclaimed when the
+            // network layer is closed but we don't do that here
+            // to save time so need to allow for it in the heap loss
+            // calculation
+            heapXxxSockInitLoss += uPortGetHeapFree();
+            descriptor = uSockCreate(devHandle, U_SOCK_TYPE_DGRAM,
+                                     U_SOCK_PROTOCOL_UDP);
+            heapXxxSockInitLoss -= uPortGetHeapFree();
+            U_PORT_TEST_ASSERT(descriptor >= 0);
+            U_PORT_TEST_ASSERT(errno == 0);
 
-                // Set up the data callback
-                dataCallbackCalled = false;
-                uSockRegisterCallbackData(descriptor, setBoolCallback,
-                                          &dataCallbackCalled);
-                U_PORT_TEST_ASSERT(!dataCallbackCalled);
+            // Set up the data callback
+            dataCallbackCalled = false;
+            uSockRegisterCallbackData(descriptor, setBoolCallback,
+                                      &dataCallbackCalled);
+            U_PORT_TEST_ASSERT(!dataCallbackCalled);
 
-                uPortLog("U_SOCK_TEST: sending to address ");
-                printAddress(&remoteAddress, true);
-                uPortLog("...\n");
+            uPortLog("U_SOCK_TEST: sending to address ");
+            printAddress(&remoteAddress, true);
+            uPortLog("...\n");
 
-                do {
-                    // Reset errno 'cos we might retry and subsequent
-                    // things might be upset by it
-                    errno = 0;
-                    // Throw random sized UDP packets up...
-                    offset = 0;
-                    y = 0;
-                    while (offset < sizeof(gSendData) - 1) {
-                        sizeBytes = (rand() % U_SOCK_TEST_MAX_UDP_PACKET_SIZE) + 1;
-                        sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_UDP_PACKET_SIZE);
-                        if (offset + sizeBytes > sizeof(gSendData) - 1) {
-                            sizeBytes = (sizeof(gSendData) - 1) - offset;
-                        }
-                        success = false;
-                        for (z = 0; !success &&
-                             (z < U_SOCK_TEST_UDP_RETRIES); z++) {
-                            uPortLog("U_SOCK_TEST: sending UDP packet number %d,"
-                                     " size %d byte(s), send try %d.\n", y + 1,
-                                     sizeBytes, z + 1);
-                            if (uSockSendTo(descriptor, &remoteAddress,
-                                            gSendData + offset, sizeBytes) == sizeBytes) {
-                                success = true;
-                                offset += sizeBytes;
-                            } else {
-                                // Reset errno 'cos we're going to retry and subsequent
-                                // things might be upset by it
-                                errno = 0;
-                            }
-                        }
-                        y++;
-                        U_PORT_TEST_ASSERT(success);
+            do {
+                // Reset errno 'cos we might retry and subsequent
+                // things might be upset by it
+                errno = 0;
+                // Throw random sized UDP packets up...
+                offset = 0;
+                y = 0;
+                while (offset < sizeof(gSendData) - 1) {
+                    sizeBytes = (rand() % U_SOCK_TEST_MAX_UDP_PACKET_SIZE) + 1;
+                    sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_UDP_PACKET_SIZE);
+                    if (offset + sizeBytes > sizeof(gSendData) - 1) {
+                        sizeBytes = (sizeof(gSendData) - 1) - offset;
                     }
-                    uPortLog("U_SOCK_TEST: a total of %d UDP packet(s) sent, now"
-                             " receiving...\n", y + 1);
-
-                    // ...and capture them all again afterwards
-                    pDataReceived = (char *) malloc((sizeof(gSendData) - 1) +
-                                                    (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
-                    U_PORT_TEST_ASSERT(pDataReceived != NULL);
-                    //lint -e(668) Suppress possible use of NULL pointer
-                    // for pDataReceived (it is checked above)
-                    memset(pDataReceived, U_SOCK_TEST_FILL_CHARACTER,
-                           (sizeof(gSendData) - 1) + (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
-                    startTimeMs = uPortGetTickTimeMs();
-                    offset = 0;
-                    //lint -e{441} Suppress loop variable not found in
-                    // condition: we're using time instead
-                    for (y = 0; (offset < sizeof(gSendData) - 1) &&
-                         (uPortGetTickTimeMs() - startTimeMs < 15000); y++) {
-                        z = uSockReceiveFrom(descriptor, NULL,
-                                             pDataReceived + offset +
-                                             U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
-                                             (sizeof(gSendData) - 1) - offset);
-                        if (z > 0) {
-                            uPortLog("U_SOCK_TEST: received UDP packet number %d,"
-                                     " size %d byte(s).\n", y + 1, z);
-                            offset += z;
+                    success = false;
+                    for (z = 0; !success &&
+                         (z < U_SOCK_TEST_UDP_RETRIES); z++) {
+                        uPortLog("U_SOCK_TEST: sending UDP packet number %d,"
+                                 " size %d byte(s), send try %d.\n", y + 1,
+                                 sizeBytes, z + 1);
+                        if (uSockSendTo(descriptor, &remoteAddress,
+                                        gSendData + offset, sizeBytes) == sizeBytes) {
+                            success = true;
+                            offset += sizeBytes;
+                        } else {
+                            // Reset errno 'cos we're going to retry and subsequent
+                            // things might be upset by it
+                            errno = 0;
                         }
                     }
-                    sizeBytes = offset;
-                    uPortLog("U_SOCK_TEST: either received everything back"
-                             " or timed out waiting.\n");
-
-                    // Check that we reassembled everything correctly
-                    allPacketsReceived = checkAgainstSentData(gSendData,
-                                                              sizeof(gSendData) - 1,
-                                                              pDataReceived,
-                                                              sizeBytes);
-                    free(pDataReceived);
-                    tries++;
-                } while (!allPacketsReceived && (tries < U_SOCK_TEST_UDP_RETRIES));
-
-                // Close the socket
-                U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
-                uSockCleanUp();
-
-                if (!allPacketsReceived) {
-                    // If we're going to try again, take the
-                    // network down and up again and reset errno
-                    uPortLog("U_SOCK_TEST: failed to get everything, back"
-                             " cycling network layer before trying again...\n");
-                    // Give us something to search for in the log
-                    uPortLog("U_SOCK_TEST: *** WARNING *** RETRY UDP.\n");
-                    U_PORT_TEST_ASSERT(uNetworkDown(networkHandle) == 0);
-                    U_PORT_TEST_ASSERT(uNetworkUp(networkHandle) == 0);
-                    errno = 0;
+                    y++;
+                    U_PORT_TEST_ASSERT(success);
                 }
-            }
+                uPortLog("U_SOCK_TEST: a total of %d UDP packet(s) sent, now"
+                         " receiving...\n", y + 1);
 
-            U_PORT_TEST_ASSERT(allPacketsReceived);
-            if (!dataCallbackCalled) {
-                // Only print a warning if the data callback wasn't
-                // called: in the cellular implementation the callback
-                // isn't called if the uSockReceiveFrom() or uSockRead()
-                // call is active when the data arrives (to avoid recursion)
-                // and this can, statistically, happen in this test since
-                // it calls uSockReceiveFrom() blindly without waiting for
-                // the data callback to be called.
-                uPortLog("U_SOCK_TEST: *** WARNING *** the data callback"
-                         " wasn't called; this might be legitimate but if"
-                         " it happens frequently it is worth checking.\n");
-            }
+                // ...and capture them all again afterwards
+                pDataReceived = (char *) malloc((sizeof(gSendData) - 1) +
+                                                (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+                U_PORT_TEST_ASSERT(pDataReceived != NULL);
+                //lint -e(668) Suppress possible use of NULL pointer
+                // for pDataReceived (it is checked above)
+                memset(pDataReceived, U_SOCK_TEST_FILL_CHARACTER,
+                       (sizeof(gSendData) - 1) + (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2));
+                startTimeMs = uPortGetTickTimeMs();
+                offset = 0;
+                //lint -e{441} Suppress loop variable not found in
+                // condition: we're using time instead
+                for (y = 0; (offset < sizeof(gSendData) - 1) &&
+                     (uPortGetTickTimeMs() - startTimeMs < 15000); y++) {
+                    z = uSockReceiveFrom(descriptor, NULL,
+                                         pDataReceived + offset +
+                                         U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES,
+                                         (sizeof(gSendData) - 1) - offset);
+                    if (z > 0) {
+                        uPortLog("U_SOCK_TEST: received UDP packet number %d,"
+                                 " size %d byte(s).\n", y + 1, z);
+                        offset += z;
+                    }
+                }
+                sizeBytes = offset;
+                uPortLog("U_SOCK_TEST: either received everything back"
+                         " or timed out waiting.\n");
 
-            // Check for memory leaks
-            heapUsed -= uPortGetHeapFree();
-            uPortLog("U_SOCK_TEST: during this part of the test %d"
-                     " byte(s) were lost to sockets initialisation;"
-                     " we have leaked %d byte(s).\n",
-                     heapSockInitLoss + heapXxxSockInitLoss,
-                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+                // Check that we reassembled everything correctly
+                allPacketsReceived = checkAgainstSentData(gSendData,
+                                                          sizeof(gSendData) - 1,
+                                                          pDataReceived,
+                                                          sizeBytes);
+                free(pDataReceived);
+                tries++;
+            } while (!allPacketsReceived && (tries < U_SOCK_TEST_UDP_RETRIES));
+
+            // Close the socket
+            U_PORT_TEST_ASSERT(uSockClose(descriptor) == 0);
+            uSockCleanUp();
+
+            if (!allPacketsReceived) {
+                // If we're going to try again, take the
+                // network down and up again and reset errno
+                uPortLog("U_SOCK_TEST: failed to get everything, back"
+                         " cycling network layer before trying again...\n");
+                // Give us something to search for in the log
+                uPortLog("U_SOCK_TEST: *** WARNING *** RETRY UDP.\n");
+                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
+                                                         pTmp->networkType) == 0);
+                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                       pTmp->networkType,
+                                                       pTmp->pNetworkCfg) == 0);
+                errno = 0;
+            }
         }
+
+        U_PORT_TEST_ASSERT(allPacketsReceived);
+        if (!dataCallbackCalled) {
+            // Only print a warning if the data callback wasn't
+            // called: in the cellular implementation the callback
+            // isn't called if the uSockReceiveFrom() or uSockRead()
+            // call is active when the data arrives (to avoid recursion)
+            // and this can, statistically, happen in this test since
+            // it calls uSockReceiveFrom() blindly without waiting for
+            // the data callback to be called.
+            uPortLog("U_SOCK_TEST: *** WARNING *** the data callback"
+                     " wasn't called; this might be legitimate but if"
+                     " it happens frequently it is worth checking.\n");
+        }
+
+        // Check for memory leaks
+        heapUsed -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: during this part of the test %d"
+                 " byte(s) were lost to sockets initialisation;"
+                 " we have leaked %d byte(s).\n",
+                 heapSockInitLoss + heapXxxSockInitLoss,
+                 heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+        U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
     }
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
+    uNetworkTestListFree();
 }
 
 /** UDP echo test that does asynchronous receive.
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss")
 {
-    int32_t networkHandle;
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t devHandle;
     uSockAddress_t remoteAddress;
     bool success;
     size_t sizeBytes = 0;
@@ -2048,7 +2098,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
 
     // Do the standard preamble to make sure there is
     // a network underneath us
-    stdPreamble();
+    pList = pStdPreamble();
 
     // The first time rand() is called the C library may
     // allocate memory, not something we can do anything
@@ -2057,302 +2107,58 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncUdpEchoMayFailDueToInternetDatagramLoss
     rand();
 
     // Repeat for all bearers
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if ((networkHandle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
-            // Get the initial-ish heap
-            heapUsed = uPortGetHeapFree();
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
 
-            uPortLog("U_SOCK_TEST: doing UDP asynchronous"
-                     " receive test on %s.\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+        uPortLog("U_SOCK_TEST: doing UDP asynchronous"
+                 " receive test on %s.\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
 
-            memset(&gTestConfig, 0, sizeof(gTestConfig));
+        memset(&gTestConfig, 0, sizeof(gTestConfig));
 
-            uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
+        uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
+                 U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
 
-            // Look up the address of the server we use for UDP echo
-            // The first call to a sockets API needs to
-            // initialise the underlying sockets layer; take
-            // account of that initialisation heap cost here.
-            heapSockInitLoss = uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                  U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                                                  &(remoteAddress.ipAddress)) == 0);
-            heapSockInitLoss -= uPortGetHeapFree();
+        // Look up the address of the server we use for UDP echo
+        // The first call to a sockets API needs to
+        // initialise the underlying sockets layer; take
+        // account of that initialisation heap cost here.
+        heapSockInitLoss = uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                              U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                                              &(remoteAddress.ipAddress)) == 0);
+        heapSockInitLoss -= uPortGetHeapFree();
 
-            // Add the port number we will use
-            remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
+        // Add the port number we will use
+        remoteAddress.port = U_SOCK_TEST_ECHO_UDP_SERVER_PORT;
 
-            // Quite often nothing at all comes back so retry this
-            // if that is the case
-            for (size_t retries = 2; (gTestConfig.packetsReceived == 0) &&
-                 (retries > 0); retries--) {
-                gTestConfig.bytesReceived = 0;
-                // Create the UDP socket
-                // Creating a socket may use heap in the underlying
-                // network layer which will be reclaimed when the
-                // network layer is closed but we don't do that here
-                // to save time so need to allow for it in the heap loss
-                // calculation
-                heapXxxSockInitLoss += uPortGetHeapFree();
-                gTestConfig.descriptor = uSockCreate(networkHandle,
-                                                     U_SOCK_TYPE_DGRAM,
-                                                     U_SOCK_PROTOCOL_UDP);
-                heapXxxSockInitLoss -= uPortGetHeapFree();
-                U_PORT_TEST_ASSERT(gTestConfig.descriptor >= 0);
-                U_PORT_TEST_ASSERT(errno == 0);
-                gTestConfig.isTcp = false;
-
-                // We're sending all of gSendData except the
-                // null terminator on the end
-                gTestConfig.bytesToSend = sizeof(gSendData) - 1;
-
-                // Malloc a buffer to receive UDP packets into
-                // and put the fill value into it
-                gTestConfig.bufferLength = gTestConfig.bytesToSend +
-                                           (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2);
-                gTestConfig.pBuffer = (char *) malloc(gTestConfig.bufferLength);
-                U_PORT_TEST_ASSERT(gTestConfig.pBuffer != NULL);
-                //lint -e(668) Suppress possible use of NULL pointer
-                // for gTestConfig.pBuffer (it is checked above)
-                memset(gTestConfig.pBuffer, U_SOCK_TEST_FILL_CHARACTER,
-                       gTestConfig.bufferLength);
-
-                // Create the event queue with, at the end of it,
-                // a task that will handle the received UDP packets.
-                // The thing it gets sent on the event queue is a pointer
-                // to gTestConfig
-                gTestConfig.eventQueueHandle = uPortEventQueueOpen(rxAsyncEventTask,
-                                                                   "testTaskRxData",
-                                                                   //lint -e(866) Suppress unusual
-                                                                   // use of & in sizeof()
-                                                                   sizeof(&gTestConfig), // NOLINT(bugprone-sizeof-expression)
-                                                                   U_SOCK_TEST_TASK_STACK_SIZE_BYTES,
-                                                                   U_SOCK_TEST_TASK_PRIORITY,
-                                                                   U_SOCK_TEST_RECEIVE_QUEUE_LENGTH);
-                U_PORT_TEST_ASSERT(gTestConfig.eventQueueHandle >= 0);
-
-                // Ask the sockets API for a pointer to gTestConfig
-                // to be sent to our trampoline function,
-                // sendToEventQueue(), whenever UDP data arrives.
-                // sendToEventQueue() will then forward the
-                // pointer to the event queue and hence to
-                // rxAsyncEventTask()
-                uSockRegisterCallbackData(gTestConfig.descriptor,
-                                          sendToEventQueue,
-                                          &gTestConfig);
-
-                // Set the port to be non-blocking; we will pick up
-                // the UDP packet that we have been called-back to
-                // say has arrived and then if we ask again we want
-                // to know that there is nothing more to receive
-                // without hanging about so that we can leave the
-                // event handler toot-sweet.
-                uSockBlockingSet(gTestConfig.descriptor, false);
-
-                uPortLog("U_SOCK_TEST: sending UDP packets to echo server ");
-                printAddress(&remoteAddress, true);
-                uPortLog("...\n");
-
-                // Throw random sized UDP packets up...
-                offset = 0;
-                y = 0;
-                while (offset < gTestConfig.bytesToSend) {
-                    sizeBytes = (rand() % U_SOCK_TEST_MAX_UDP_PACKET_SIZE) + 1;
-                    sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_UDP_PACKET_SIZE);
-                    if (offset + sizeBytes > gTestConfig.bytesToSend) {
-                        sizeBytes = gTestConfig.bytesToSend - offset;
-                    }
-                    success = false;
-                    for (size_t z = 0; !success &&
-                         (z < U_SOCK_TEST_UDP_RETRIES); z++) {
-                        uPortLog("U_SOCK_TEST: sending UDP packet number %d, size"
-                                 " %d byte(s), send try %d.\n", y + 1,
-                                 sizeBytes, z + 1);
-                        if (uSockSendTo(gTestConfig.descriptor,
-                                        &remoteAddress, gSendData + offset,
-                                        sizeBytes) == sizeBytes) {
-                            success = true;
-                            offset += sizeBytes;
-                            y++;
-                        } else {
-                            // Reset errno 'cos we're going to retry and
-                            // subsequent things might be upset by it
-                            errno = 0;
-                        }
-                    }
-                    U_PORT_TEST_ASSERT(success);
-                }
-                uPortLog("U_SOCK_TEST: a total of %d UDP packet(s) sent,"
-                         " %d byte(s).\n", y, offset);
-
-                // Give the data time to come back
-                for (size_t z = 15; (z > 0) &&
-                     (gTestConfig.bytesReceived < gTestConfig.bytesToSend); z--) {
-                    uPortTaskBlock(1000);
-                }
-
-                uPortLog("U_SOCK_TEST: UDP async data task received"
-                         " %d packet(s) totalling %d byte(s).\n",
-                         gTestConfig.packetsReceived,
-                         gTestConfig.bytesReceived);
-
-                if (gTestConfig.packetsReceived == y) {
-                    // Check that we reassembled everything
-                    U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,
-                                                            gTestConfig.bytesToSend,
-                                                            gTestConfig.pBuffer,
-                                                            gTestConfig.bytesReceived));
-                } else {
-                    // Only print a warning if a packet went missing
-                    // as the chances of failure due to datagram
-                    // loss across an RF link is too high
-                    uPortLog("U_SOCK_TEST: *** WARNING *** %d UDP packet(s)"
-                             " were lost.\n", y - gTestConfig.packetsReceived);
-                }
-
-                // As a sanity check, make sure that
-                // U_SOCK_TEST_TASK_STACK_SIZE_BYTES
-                // was big enough
-                stackMinFreeBytes = uPortEventQueueStackMinFree(gTestConfig.eventQueueHandle);
-                uPortLog("U_SOCK_TEST: event queue task had %d byte(s)"
-                         " free at a minimum.\n", stackMinFreeBytes);
-                U_PORT_TEST_ASSERT((stackMinFreeBytes > 0) ||
-                                   (stackMinFreeBytes == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
-
-                // Close the socket
-                U_PORT_TEST_ASSERT(uSockClose(gTestConfig.descriptor) == 0);
-                uSockCleanUp();
-
-                // Close the event queue
-                U_PORT_TEST_ASSERT(uPortEventQueueClose(gTestConfig.eventQueueHandle) == 0);
-                gTestConfig.eventQueueHandle = -1;
-
-                // Free memory
-                free(gTestConfig.pBuffer);
-
-                if (gTestConfig.packetsReceived == 0) {
-                    // If we're going to try again, take the
-                    // network down and up again and reset errno
-                    uPortLog("U_SOCK_TEST: nothing came back, cycling"
-                             " network layer before trying again...\n");
-                    // Give us something to search for in the log
-                    uPortLog("U_SOCK_TEST: *** WARNING *** RETRY UDP.\n");
-                    U_PORT_TEST_ASSERT(uNetworkDown(networkHandle) == 0);
-                    U_PORT_TEST_ASSERT(uNetworkUp(networkHandle) == 0);
-                    errno = 0;
-                }
-            }
-
-            U_PORT_TEST_ASSERT(gTestConfig.packetsReceived > 0);
-
-#if !U_CFG_OS_CLIB_LEAKS
-            // Check for memory leaks but only
-            // if we don't have a leaky C library:
-            // if we do there's no telling what
-            // it might have left hanging after
-            // the creation and deletion of the
-            // tasks above.
-            heapUsed -= uPortGetHeapFree();
-            uPortLog("U_SOCK_TEST: during this part of the test %d"
-                     " byte(s) of heap were lost to the C library"
-                     " and %d byte(s) were lost to sockets initialisation;"
-                     " we have leaked %d byte(s).\n",
-                     heapSockInitLoss + heapXxxSockInitLoss,
-                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
-#else
-            (void) heapUsed;
-            (void) heapSockInitLoss;
-            (void) heapXxxSockInitLoss;
-#endif
-        }
-    }
-}
-
-/** TCP async echo test
- */
-U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
-{
-    int32_t networkHandle;
-    uSockAddress_t remoteAddress;
-    bool closedCallbackCalled;
-    size_t sizeBytes = 0;
-    size_t offset;
-    int32_t y;
-    int32_t z;
-    int32_t stackMinFreeBytes;
-    int32_t heapUsed;
-    int32_t heapSockInitLoss = 0;
-    int32_t heapXxxSockInitLoss = 0;
-
-    // Call clean up to release OS resources that may
-    // have been left hanging by a previous failed test
-    osCleanup();
-
-    // Do the standard preamble to make sure there is
-    // a network underneath us
-    stdPreamble();
-
-    // The first time rand() is called the C library may
-    // allocate memory, not something we can do anything
-    // about, so call it once here to move that number
-    // out of our sums.
-    rand();
-
-    // Repeat for all bearers
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if ((networkHandle >= 0) &&
-            U_NETWORK_TEST_TYPE_HAS_SOCK(gUNetworkTestCfg[x].type)) {
-            // Get the initial-ish heap
-            heapUsed = uPortGetHeapFree();
-
-            uPortLog("U_SOCK_TEST: doing TCP asynchronous"
-                     " receive test on %s.\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-
-            memset(&gTestConfig, 0, sizeof(gTestConfig));
-
-            uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
-
-            // Look up the address of the server we use for TCP echo
-            // The first call to a sockets API needs to
-            // initialise the underlying sockets layer; take
-            // account of that initialisation heap cost here.
-            heapSockInitLoss = uPortGetHeapFree();
-            U_PORT_TEST_ASSERT(uSockGetHostByName(networkHandle,
-                                                  U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                                                  &(remoteAddress.ipAddress)) == 0);
-            heapSockInitLoss -= uPortGetHeapFree();
-
-            // Add the port number we will use
-            remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
-
-            // Create the TCP socket
+        // Quite often nothing at all comes back so retry this
+        // if that is the case
+        for (size_t retries = 2; (gTestConfig.packetsReceived == 0) &&
+             (retries > 0); retries--) {
+            gTestConfig.bytesReceived = 0;
+            // Create the UDP socket
             // Creating a socket may use heap in the underlying
             // network layer which will be reclaimed when the
             // network layer is closed but we don't do that here
             // to save time so need to allow for it in the heap loss
             // calculation
             heapXxxSockInitLoss += uPortGetHeapFree();
-            gTestConfig.descriptor = uSockCreate(networkHandle,
-                                                 U_SOCK_TYPE_STREAM,
-                                                 U_SOCK_PROTOCOL_TCP);
+            gTestConfig.descriptor = uSockCreate(devHandle,
+                                                 U_SOCK_TYPE_DGRAM,
+                                                 U_SOCK_PROTOCOL_UDP);
             heapXxxSockInitLoss -= uPortGetHeapFree();
             U_PORT_TEST_ASSERT(gTestConfig.descriptor >= 0);
             U_PORT_TEST_ASSERT(errno == 0);
-            gTestConfig.isTcp = true;
+            gTestConfig.isTcp = false;
 
             // We're sending all of gSendData except the
             // null terminator on the end
             gTestConfig.bytesToSend = sizeof(gSendData) - 1;
 
-            // Malloc a buffer to receive TCP packets into
+            // Malloc a buffer to receive UDP packets into
             // and put the fill value into it
             gTestConfig.bufferLength = gTestConfig.bytesToSend +
                                        (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2);
@@ -2364,7 +2170,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
                    gTestConfig.bufferLength);
 
             // Create the event queue with, at the end of it,
-            // a task that will handle the received TCP packets.
+            // a task that will handle the received UDP packets.
             // The thing it gets sent on the event queue is a pointer
             // to gTestConfig
             gTestConfig.eventQueueHandle = uPortEventQueueOpen(rxAsyncEventTask,
@@ -2388,82 +2194,73 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
                                       &gTestConfig);
 
             // Set the port to be non-blocking; we will pick up
-            // the TCP data that we have been called-back to
+            // the UDP packet that we have been called-back to
             // say has arrived and then if we ask again we want
             // to know that there is nothing more to receive
             // without hanging about so that we can leave the
             // event handler toot-sweet.
             uSockBlockingSet(gTestConfig.descriptor, false);
 
-            // Set up the closed callback
-            closedCallbackCalled = false;
-            uSockRegisterCallbackClosed(gTestConfig.descriptor,
-                                        setBoolCallback,
-                                        &closedCallbackCalled);
-            U_PORT_TEST_ASSERT(!closedCallbackCalled);
-
-            // Connect the socket
-            uPortLog("U_SOCK_TEST: connect socket to \"%s:%d\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                     U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
-            // Connections can fail so allow this a few goes
-            z = -1;
-            for (y = 2; (y > 0) && (z < 0); y--) {
-                z = uSockConnect(gTestConfig.descriptor,
-                                 &remoteAddress);
-                if (z < 0) {
-                    U_PORT_TEST_ASSERT(errno != 0);
-                    errno = 0;
-                    if (y > 1) {
-                        // Give us something to search for in the log
-                        uPortLog("U_SOCK_TEST: *** WARNING *** RETRY CONNECTION.\n");
-                    }
-                }
-            }
-            U_PORT_TEST_ASSERT(z == 0);
-
-            uPortLog("U_SOCK_TEST: sending TCP data to echo server ");
+            uPortLog("U_SOCK_TEST: sending UDP packets to echo server ");
             printAddress(&remoteAddress, true);
             uPortLog("...\n");
 
-            // Throw random sized segments up...
+            // Throw random sized UDP packets up...
             offset = 0;
             y = 0;
             while (offset < gTestConfig.bytesToSend) {
-                sizeBytes = (rand() % U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE) + 1;
-                sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE);
-                if (sizeBytes < U_SOCK_TEST_MIN_TCP_READ_WRITE_SIZE) {
-                    sizeBytes = U_SOCK_TEST_MIN_TCP_READ_WRITE_SIZE;
-                }
+                sizeBytes = (rand() % U_SOCK_TEST_MAX_UDP_PACKET_SIZE) + 1;
+                sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_UDP_PACKET_SIZE);
                 if (offset + sizeBytes > gTestConfig.bytesToSend) {
                     sizeBytes = gTestConfig.bytesToSend - offset;
                 }
-                uPortLog("U_SOCK_TEST: write number %d.\n", y + 1);
-                U_PORT_TEST_ASSERT(sendTcp(gTestConfig.descriptor,
-                                           gSendData + offset,
-                                           sizeBytes) == sizeBytes);
-                offset += sizeBytes;
-                y++;
+                success = false;
+                for (size_t z = 0; !success &&
+                     (z < U_SOCK_TEST_UDP_RETRIES); z++) {
+                    uPortLog("U_SOCK_TEST: sending UDP packet number %d, size"
+                             " %d byte(s), send try %d.\n", y + 1,
+                             sizeBytes, z + 1);
+                    if (uSockSendTo(gTestConfig.descriptor,
+                                    &remoteAddress, gSendData + offset,
+                                    sizeBytes) == sizeBytes) {
+                        success = true;
+                        offset += sizeBytes;
+                        y++;
+                    } else {
+                        // Reset errno 'cos we're going to retry and
+                        // subsequent things might be upset by it
+                        errno = 0;
+                    }
+                }
+                U_PORT_TEST_ASSERT(success);
             }
-            uPortLog("U_SOCK_TEST: a total of %d byte(s) sent in"
-                     " %d write(s).\n", offset, y);
+            uPortLog("U_SOCK_TEST: a total of %d UDP packet(s) sent,"
+                     " %d byte(s).\n", y, offset);
 
             // Give the data time to come back
-            for (z = 10; (z > 0) &&
+            for (size_t z = 15; (z > 0) &&
                  (gTestConfig.bytesReceived < gTestConfig.bytesToSend); z--) {
                 uPortTaskBlock(1000);
             }
 
-            uPortLog("U_SOCK_TEST: TCP async data task received"
-                     " %d segment(s) totalling %d byte(s).\n",
+            uPortLog("U_SOCK_TEST: UDP async data task received"
+                     " %d packet(s) totalling %d byte(s).\n",
                      gTestConfig.packetsReceived,
                      gTestConfig.bytesReceived);
 
-            // Check that we reassembled everything correctly
-            U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,
-                                                    gTestConfig.bytesToSend,
-                                                    gTestConfig.pBuffer,
-                                                    gTestConfig.bytesReceived));
+            if (gTestConfig.packetsReceived == y) {
+                // Check that we reassembled everything
+                U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,
+                                                        gTestConfig.bytesToSend,
+                                                        gTestConfig.pBuffer,
+                                                        gTestConfig.bytesReceived));
+            } else {
+                // Only print a warning if a packet went missing
+                // as the chances of failure due to datagram
+                // loss across an RF link is too high
+                uPortLog("U_SOCK_TEST: *** WARNING *** %d UDP packet(s)"
+                         " were lost.\n", y - gTestConfig.packetsReceived);
+            }
 
             // As a sanity check, make sure that
             // U_SOCK_TEST_TASK_STACK_SIZE_BYTES
@@ -2475,16 +2272,7 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
                                (stackMinFreeBytes == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
 
             // Close the socket
-            U_PORT_TEST_ASSERT(!closedCallbackCalled);
             U_PORT_TEST_ASSERT(uSockClose(gTestConfig.descriptor) == 0);
-            uPortLog("U_CELL_TEST: waiting up to %d second(s) for TCP"
-                     " socket to close...\n",
-                     U_SOCK_TEST_TCP_CLOSE_SECONDS);
-            for (y = 0; (y < U_SOCK_TEST_TCP_CLOSE_SECONDS) &&
-                 !closedCallbackCalled; y++) {
-                uPortTaskBlock(1000);
-            }
-            U_PORT_TEST_ASSERT(closedCallbackCalled);
             uSockCleanUp();
 
             // Close the event queue
@@ -2494,27 +2282,309 @@ U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
             // Free memory
             free(gTestConfig.pBuffer);
 
-#if !U_CFG_OS_CLIB_LEAKS
-            // Check for memory leaks but only
-            // if we don't have a leaky C library:
-            // if we do there's no telling what
-            // it might have left hanging after
-            // the creation and deletion of the
-            // tasks above.
-            heapUsed -= uPortGetHeapFree();
-            uPortLog("U_SOCK_TEST: during this part of the test %d"
-                     " byte(s) were lost to sockets initialisation;"
-                     " we have leaked %d byte(s).\n",
-                     heapSockInitLoss + heapXxxSockInitLoss,
-                     heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
-            U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
-#else
-            (void) heapUsed;
-            (void) heapSockInitLoss;
-            (void) heapXxxSockInitLoss;
-#endif
+            if (gTestConfig.packetsReceived == 0) {
+                // If we're going to try again, take the
+                // network down and up again and reset errno
+                uPortLog("U_SOCK_TEST: nothing came back, cycling"
+                         " network layer before trying again...\n");
+                // Give us something to search for in the log
+                uPortLog("U_SOCK_TEST: *** WARNING *** RETRY UDP.\n");
+                U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
+                                                         pTmp->networkType) == 0);
+                U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
+                                                       pTmp->networkType,
+                                                       pTmp->pNetworkCfg) == 0);
+                errno = 0;
+            }
         }
+
+        U_PORT_TEST_ASSERT(gTestConfig.packetsReceived > 0);
+
+#if !U_CFG_OS_CLIB_LEAKS
+        // Check for memory leaks but only
+        // if we don't have a leaky C library:
+        // if we do there's no telling what
+        // it might have left hanging after
+        // the creation and deletion of the
+        // tasks above.
+        heapUsed -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: during this part of the test %d"
+                 " byte(s) of heap were lost to the C library"
+                 " and %d byte(s) were lost to sockets initialisation;"
+                 " we have leaked %d byte(s).\n",
+                 heapSockInitLoss + heapXxxSockInitLoss,
+                 heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+        U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+#else
+        (void) heapUsed;
+        (void) heapSockInitLoss;
+        (void) heapXxxSockInitLoss;
+#endif
     }
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
+    uNetworkTestListFree();
+}
+
+/** TCP async echo test
+ */
+U_PORT_TEST_FUNCTION("[sock]", "sockAsyncTcpEcho")
+{
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t devHandle;
+    uSockAddress_t remoteAddress;
+    bool closedCallbackCalled;
+    size_t sizeBytes = 0;
+    size_t offset;
+    int32_t y;
+    int32_t z;
+    int32_t stackMinFreeBytes;
+    int32_t heapUsed;
+    int32_t heapSockInitLoss = 0;
+    int32_t heapXxxSockInitLoss = 0;
+
+    // Call clean up to release OS resources that may
+    // have been left hanging by a previous failed test
+    osCleanup();
+
+    // Do the standard preamble to make sure there is
+    // a network underneath us
+    pList = pStdPreamble();
+
+    // The first time rand() is called the C library may
+    // allocate memory, not something we can do anything
+    // about, so call it once here to move that number
+    // out of our sums.
+    rand();
+
+    // Repeat for all bearers
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        // Get the initial-ish heap
+        heapUsed = uPortGetHeapFree();
+
+        uPortLog("U_SOCK_TEST: doing TCP asynchronous"
+                 " receive test on %s.\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+
+        memset(&gTestConfig, 0, sizeof(gTestConfig));
+
+        uPortLog("U_SOCK_TEST: looking up echo server \"%s\"...\n",
+                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
+
+        // Look up the address of the server we use for TCP echo
+        // The first call to a sockets API needs to
+        // initialise the underlying sockets layer; take
+        // account of that initialisation heap cost here.
+        heapSockInitLoss = uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(uSockGetHostByName(devHandle,
+                                              U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                                              &(remoteAddress.ipAddress)) == 0);
+        heapSockInitLoss -= uPortGetHeapFree();
+
+        // Add the port number we will use
+        remoteAddress.port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
+
+        // Create the TCP socket
+        // Creating a socket may use heap in the underlying
+        // network layer which will be reclaimed when the
+        // network layer is closed but we don't do that here
+        // to save time so need to allow for it in the heap loss
+        // calculation
+        heapXxxSockInitLoss += uPortGetHeapFree();
+        gTestConfig.descriptor = uSockCreate(devHandle,
+                                             U_SOCK_TYPE_STREAM,
+                                             U_SOCK_PROTOCOL_TCP);
+        heapXxxSockInitLoss -= uPortGetHeapFree();
+        U_PORT_TEST_ASSERT(gTestConfig.descriptor >= 0);
+        U_PORT_TEST_ASSERT(errno == 0);
+        gTestConfig.isTcp = true;
+
+        // We're sending all of gSendData except the
+        // null terminator on the end
+        gTestConfig.bytesToSend = sizeof(gSendData) - 1;
+
+        // Malloc a buffer to receive TCP packets into
+        // and put the fill value into it
+        gTestConfig.bufferLength = gTestConfig.bytesToSend +
+                                   (U_SOCK_TEST_GUARD_LENGTH_SIZE_BYTES * 2);
+        gTestConfig.pBuffer = (char *) malloc(gTestConfig.bufferLength);
+        U_PORT_TEST_ASSERT(gTestConfig.pBuffer != NULL);
+        //lint -e(668) Suppress possible use of NULL pointer
+        // for gTestConfig.pBuffer (it is checked above)
+        memset(gTestConfig.pBuffer, U_SOCK_TEST_FILL_CHARACTER,
+               gTestConfig.bufferLength);
+
+        // Create the event queue with, at the end of it,
+        // a task that will handle the received TCP packets.
+        // The thing it gets sent on the event queue is a pointer
+        // to gTestConfig
+        gTestConfig.eventQueueHandle = uPortEventQueueOpen(rxAsyncEventTask,
+                                                           "testTaskRxData",
+                                                           //lint -e(866) Suppress unusual
+                                                           // use of & in sizeof()
+                                                           sizeof(&gTestConfig), // NOLINT(bugprone-sizeof-expression)
+                                                           U_SOCK_TEST_TASK_STACK_SIZE_BYTES,
+                                                           U_SOCK_TEST_TASK_PRIORITY,
+                                                           U_SOCK_TEST_RECEIVE_QUEUE_LENGTH);
+        U_PORT_TEST_ASSERT(gTestConfig.eventQueueHandle >= 0);
+
+        // Ask the sockets API for a pointer to gTestConfig
+        // to be sent to our trampoline function,
+        // sendToEventQueue(), whenever UDP data arrives.
+        // sendToEventQueue() will then forward the
+        // pointer to the event queue and hence to
+        // rxAsyncEventTask()
+        uSockRegisterCallbackData(gTestConfig.descriptor,
+                                  sendToEventQueue,
+                                  &gTestConfig);
+
+        // Set the port to be non-blocking; we will pick up
+        // the TCP data that we have been called-back to
+        // say has arrived and then if we ask again we want
+        // to know that there is nothing more to receive
+        // without hanging about so that we can leave the
+        // event handler toot-sweet.
+        uSockBlockingSet(gTestConfig.descriptor, false);
+
+        // Set up the closed callback
+        closedCallbackCalled = false;
+        uSockRegisterCallbackClosed(gTestConfig.descriptor,
+                                    setBoolCallback,
+                                    &closedCallbackCalled);
+        U_PORT_TEST_ASSERT(!closedCallbackCalled);
+
+        // Connect the socket
+        uPortLog("U_SOCK_TEST: connect socket to \"%s:%d\"...\n",
+                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                 U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+        // Connections can fail so allow this a few goes
+        z = -1;
+        for (y = 2; (y > 0) && (z < 0); y--) {
+            z = uSockConnect(gTestConfig.descriptor,
+                             &remoteAddress);
+            if (z < 0) {
+                U_PORT_TEST_ASSERT(errno != 0);
+                errno = 0;
+                if (y > 1) {
+                    // Give us something to search for in the log
+                    uPortLog("U_SOCK_TEST: *** WARNING *** RETRY CONNECTION.\n");
+                }
+            }
+        }
+        U_PORT_TEST_ASSERT(z == 0);
+
+        uPortLog("U_SOCK_TEST: sending TCP data to echo server ");
+        printAddress(&remoteAddress, true);
+        uPortLog("...\n");
+
+        // Throw random sized segments up...
+        offset = 0;
+        y = 0;
+        while (offset < gTestConfig.bytesToSend) {
+            sizeBytes = (rand() % U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE) + 1;
+            sizeBytes = fix(sizeBytes, U_SOCK_TEST_MAX_TCP_READ_WRITE_SIZE);
+            if (sizeBytes < U_SOCK_TEST_MIN_TCP_READ_WRITE_SIZE) {
+                sizeBytes = U_SOCK_TEST_MIN_TCP_READ_WRITE_SIZE;
+            }
+            if (offset + sizeBytes > gTestConfig.bytesToSend) {
+                sizeBytes = gTestConfig.bytesToSend - offset;
+            }
+            uPortLog("U_SOCK_TEST: write number %d.\n", y + 1);
+            U_PORT_TEST_ASSERT(sendTcp(gTestConfig.descriptor,
+                                       gSendData + offset,
+                                       sizeBytes) == sizeBytes);
+            offset += sizeBytes;
+            y++;
+        }
+        uPortLog("U_SOCK_TEST: a total of %d byte(s) sent in"
+                 " %d write(s).\n", offset, y);
+
+        // Give the data time to come back
+        for (z = 10; (z > 0) &&
+             (gTestConfig.bytesReceived < gTestConfig.bytesToSend); z--) {
+            uPortTaskBlock(1000);
+        }
+
+        uPortLog("U_SOCK_TEST: TCP async data task received"
+                 " %d segment(s) totalling %d byte(s).\n",
+                 gTestConfig.packetsReceived,
+                 gTestConfig.bytesReceived);
+
+        // Check that we reassembled everything correctly
+        U_PORT_TEST_ASSERT(checkAgainstSentData(gSendData,
+                                                gTestConfig.bytesToSend,
+                                                gTestConfig.pBuffer,
+                                                gTestConfig.bytesReceived));
+
+        // As a sanity check, make sure that
+        // U_SOCK_TEST_TASK_STACK_SIZE_BYTES
+        // was big enough
+        stackMinFreeBytes = uPortEventQueueStackMinFree(gTestConfig.eventQueueHandle);
+        uPortLog("U_SOCK_TEST: event queue task had %d byte(s)"
+                 " free at a minimum.\n", stackMinFreeBytes);
+        U_PORT_TEST_ASSERT((stackMinFreeBytes > 0) ||
+                           (stackMinFreeBytes == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
+
+        // Close the socket
+        U_PORT_TEST_ASSERT(!closedCallbackCalled);
+        U_PORT_TEST_ASSERT(uSockClose(gTestConfig.descriptor) == 0);
+        uPortLog("U_CELL_TEST: waiting up to %d second(s) for TCP"
+                 " socket to close...\n",
+                 U_SOCK_TEST_TCP_CLOSE_SECONDS);
+        for (y = 0; (y < U_SOCK_TEST_TCP_CLOSE_SECONDS) &&
+             !closedCallbackCalled; y++) {
+            uPortTaskBlock(1000);
+        }
+        U_PORT_TEST_ASSERT(closedCallbackCalled);
+        uSockCleanUp();
+
+        // Close the event queue
+        U_PORT_TEST_ASSERT(uPortEventQueueClose(gTestConfig.eventQueueHandle) == 0);
+        gTestConfig.eventQueueHandle = -1;
+
+        // Free memory
+        free(gTestConfig.pBuffer);
+
+#if !U_CFG_OS_CLIB_LEAKS
+        // Check for memory leaks but only
+        // if we don't have a leaky C library:
+        // if we do there's no telling what
+        // it might have left hanging after
+        // the creation and deletion of the
+        // tasks above.
+        heapUsed -= uPortGetHeapFree();
+        uPortLog("U_SOCK_TEST: during this part of the test %d"
+                 " byte(s) were lost to sockets initialisation;"
+                 " we have leaked %d byte(s).\n",
+                 heapSockInitLoss + heapXxxSockInitLoss,
+                 heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+        U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
+#else
+        (void) heapUsed;
+        (void) heapSockInitLoss;
+        (void) heapXxxSockInitLoss;
+#endif
+    }
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_SOCK_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // To speed things up, do not close the device
+    uNetworkTestListFree();
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -2531,10 +2601,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockCleanUp")
     // the network, sockets, security and location tests
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        gUNetworkTestCfg[x].handle = -1;
-    }
-    uNetworkDeinit();
+    uNetworkTestCleanUp();
+    uDeviceDeinit();
 
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {

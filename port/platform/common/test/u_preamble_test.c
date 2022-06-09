@@ -55,8 +55,13 @@
 #include "u_port_crypto.h"
 
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
-#include "u_cell_module_type.h"
-#include "u_cell_test_preamble.h"
+# include "u_cell_module_type.h"
+# include "u_cell_test_preamble.h"
+#endif
+
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+# include "u_short_range_module_type.h"
+# include "u_short_range_test_preamble.h"
 #endif
 
 /* ----------------------------------------------------------------
@@ -210,6 +215,15 @@ U_PORT_TEST_FUNCTION("[preamble]", "preambleCell")
     uCellTestPreamble(U_CFG_TEST_CELL_MODULE_TYPE);
 }
 #endif // #ifdef U_CFG_TEST_CELL_MODULE_TYPE
+
+#ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
+/** Set short-range straight.
+ */
+U_PORT_TEST_FUNCTION("[preamble]", "preambleShortRange")
+{
+    uShortRangeTestPreamble(U_CFG_TEST_SHORT_RANGE_MODULE_TYPE);
+}
+#endif // #ifdef U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 
 /** Clean-up to be run at the end of this round of tests, just
  * in case there were test failures which would have resulted

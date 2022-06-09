@@ -17,7 +17,10 @@
 #ifndef _U_GNSS_PWR_H_
 #define _U_GNSS_PWR_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines the GNSS APIs to control the power
@@ -80,7 +83,7 @@ extern "C" {
 
 /** Power a GNSS chip on.  If the transport type for the given GNSS
  * instance is U_GNSS_TRANSPORT_UBX_AT then you must have powered
- * the associated cellular module up (e.g. with a call to uNetworkAdd()
+ * the associated cellular module up (e.g. with a call to uDeviceOpen()
  * or uCellPwrOn()) before calling this function.  Also powering up
  * a GNSS module which is attached via a cellular module will "claim"
  * the GNSS module for this GNSS interface and so if you use the cellLoc
@@ -92,19 +95,19 @@ extern "C" {
  *
  * @param gnssHandle  the handle of the GNSS instance to power on.
  */
-int32_t uGnssPwrOn(int32_t gnssHandle);
+int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle);
 
 /** Check that a GNSS chip is responsive.
  *
  * @param gnssHandle  the handle of the GNSS instance.
  */
-bool uGnssPwrIsAlive(int32_t gnssHandle);
+bool uGnssPwrIsAlive(uDeviceHandle_t gnssHandle);
 
 /** Power a GNSS chip off
  *
  * @param gnssHandle  the handle of the GNSS instance to power off.
  */
-int32_t uGnssPwrOff(int32_t gnssHandle);
+int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle);
 
 #ifdef __cplusplus
 }

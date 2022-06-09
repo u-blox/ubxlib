@@ -387,7 +387,7 @@ static bool waitForEvt(gattEvtId_t id, gattEvt_t *evt, int32_t timeoutMs)
     return (evt->id == id);
 }
 
-// TODO This function was copied from u_ble_data_intmod.c. Make it common?
+// TODO This function was copied from u_ble_sps_intmod.c. Make it common?
 static int32_t hexToInt(const char *pIn, uint8_t *pOut)
 {
     uint32_t i;
@@ -417,7 +417,7 @@ static int32_t hexToInt(const char *pIn, uint8_t *pOut)
     return errorCode;
 }
 
-// TODO This function was copied from u_ble_data_intmod.c. Make it common?
+// TODO This function was copied from u_ble_sps_intmod.c. Make it common?
 static int32_t addrStringToArray(const char *pAddrIn, uint8_t *pAddrOut,
                                  uPortBtLeAddressType_t *pType)
 {
@@ -1491,7 +1491,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattServerConf")
         U_PORT_TEST_ASSERT_EQUAL(evt.conn.connHandle, connHandle);
 
         spsWriteEvt_t *spsWrite = &evt.spsWrite;
-        uint16_t cccValue;
+        uint16_t cccValue = 0;
         uPortLog("U_PORT_TEST: wait for Credit CCC write\n");
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_SPS_WRITE_CREDIT_CCC, &evt, CONNECTION_SETUP_TIMEOUT));
         U_PORT_TEST_ASSERT(parseSpsCccWriteData(spsWrite, &cccValue));

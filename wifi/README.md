@@ -25,23 +25,10 @@ The [api](api) directory contains the files that define the Wi-Fi APIs, each API
 HOWEVER for Wi-Fi connection and data transfer the recommendation is to use the [common/network](/common/network) API, along with the [common/sock](/common/sock) API. The handle returned by `uNetworkAdd()` can still be used with the `wifi` API for configuration etc. Please see the [socket example](/example/sockets) for details.
 
 ## Example
-Below is a simple example that will setup a Wi-Fi connection using the [common/network](/common/network) API:
+Below is a simple example that will setup a Wi-Fi connection using the [common/device](/common/device) and [common/network](/common/network) APIs:
 
 ```c
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
-
-#include "u_cfg_sw.h"
-#include "u_cfg_os_platform_specific.h"
-
-#include "u_port.h"
-#include "u_port_debug.h"
-#include "u_port_os.h"
-
-#include "u_short_range_module_type.h"
-#include "u_network.h"
-#include "u_network_config_wifi.h"
+#include <ubxlib.h>
 
 #define VERIFY(cond, fail_msg) \
     if (!(cond)) {\
@@ -56,35 +43,50 @@ static void failed(const char *msg)
 
 int main(void)
 {
-    int32_t netHandle;
+    uDeviceHandle_t devHandle = NULL;
 
-    static const uNetworkConfigurationWifi_t wifiConfig = {
+    static const uDeviceCfg_t gDeviceCfg = {
+        .deviceType = U_DEVICE_TYPE_SHORT_RANGE,
+        .deviceCfg = {
+            .cfgSho = {
+                .moduleType = U_SHORT_RANGE_MODULE_TYPE_NINA_W15
+            }
+        },
+        .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+        .transportCfg = {
+            .cfgUart = {
+                .uart = 1,
+                .baudRate = 115200,
+                .pinTxd = -1,
+                .pinRxd = -1,
+                .pinCts = -1,
+                .pinRts = -1
+            }
+        }
+    };
+
+    static const uNetworkCfgWifi_t gNetworkCfg = {
         .type = U_NETWORK_TYPE_WIFI,
-        .module = U_SHORT_RANGE_MODULE_TYPE_NINA_W15,
-        .uart = 1,
-        .pinTxd = -1,
-        .pinRxd = -1,
-        .pinCts = -1,
-        .pinRts = -1,
         .pSsid = "MySSID",
-        .authentication = 2 /* WPA/WPA2/WPA3 - see wifi/api/u_wifi_net.h */,
+        .authentication = 2 /* WPA/WPA2/WPA3 - see wifi/api/u_wifi.h */,
         .pPassPhrase = "MyPassphrase"
     };
 
     VERIFY(uPortInit() == 0, "uPortInit failed\n");
-    VERIFY(uNetworkInit() == 0, "uNetworkInit failed\n");
+    VERIFY(uDeviceInit() == 0, "uDeviceInit failed\n");
 
-    netHandle = uNetworkAdd(U_NETWORK_TYPE_WIFI, &wifiConfig);
+    VERIFY(uDeviceOpen(&gDeviceCfg, &devHandle) == 0, "uDeviceOpen failed\n");
     uPortLog("Bring up Wi-Fi\n");
-    VERIFY(uNetworkUp(netHandle) == 0, "uNetworkUp failed\n");
+    VERIFY(uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_WIFI, &gNetworkCfg) == 0, "uNetworkInterfaceUp failed\n");
 
     uPortLog("Wi-Fi connected\n");
     // Just sleep for 10 sec
     uPortTaskBlock(10*1000);
 
     // Cleanup
-    uNetworkDown(netHandle);
-    uNetworkDeinit();
+    uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_WIFI);
+    uDeviceClose(devHandle);
+    uDeviceDeinit();
     uPortDeinit();
 
     while(true);

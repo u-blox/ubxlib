@@ -17,7 +17,10 @@
 #ifndef _U_LOCATION_PRIVATE_CLOUD_LOCATE_H_
 #define _U_LOCATION_PRIVATE_CLOUD_LOCATE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines functions that do not form part,
@@ -43,13 +46,18 @@ extern "C" {
 
 /** Run Cloud Locate.
  *
- * @param networkHandle                 the handle of the thing
+ * @param devHandle                     the handle of the thing
  *                                      providing the MQTT
  *                                      connection (e.g. the cellular
  *                                      or Wi-Fi module).
- * @param gnssHandle                    the handle of the GNSS device
+ * @param gnssDevHandle                 the handle of the device
  *                                      that will provide the RRLP
- *                                      data for Cloud Locate.
+ *                                      data for Cloud Locate; set
+ *                                      this to the same value as
+ *                                      devHandle if, for instance,
+ *                                      the GNSS module is inside the
+ *                                      cellular module that you are
+ *                                      using for the MQTT connection.
  * @param pMqttClientContext            the context of an MQTT client
  *                                      that can be used to communicate
  *                                      with the Cloud Locate service;
@@ -114,8 +122,8 @@ extern "C" {
  *                                      elapsed.  The single int32_t
  *                                      parameter is the network handle.
  */
-int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
-                                    int32_t gnssHandle,
+int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
+                                    uDeviceHandle_t gnssDevHandle,
                                     uMqttClientContext_t *pMqttClientContext,
                                     int32_t svsThreshold,
                                     int32_t cNoThreshold,
@@ -123,7 +131,7 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
                                     int32_t pseudorangeRmsErrorIndexLimit,
                                     const char *pClientIdStr,
                                     uLocation_t *pLocation,
-                                    bool (*pKeepGoingCallback) (int32_t));
+                                    bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 #ifdef __cplusplus
 }

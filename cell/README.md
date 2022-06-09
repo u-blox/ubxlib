@@ -29,27 +29,8 @@ A simple usage example is given below.  Note that, before calling `app_start()` 
 Throughout the `cell` API, in functions which can take more than a few seconds to complete, you will find a `keepGoingCallback()` parameter.  This parameter is intended for situations where the application needs control of the timeout of the API call or needs to feed a watchdog timer.  The callback will be called approximately once a second while the API function is operating and, if it returns `false`, the API function will be terminated.  Set the parameter to `NULL` if no specific timeout is required, or no watchdog needs to be fed.
 
 ```
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-
-#include "u_cfg_sw.h"
+#include "ubxlb.h"
 #include "u_cfg_app_platform_specific.h"
-
-#include "u_error_common.h"
-
-#include "u_port.h"
-#include "u_port_debug.h"
-#include "u_port_uart.h"
-
-#include "u_at_client.h"
-
-#include "u_sock.h"
-
-#include "u_cell.h"
-#include "u_cell_net.h"
-#include "u_cell_pwr.h"
 
 // The entry point: before this is called the system
 // clocks must have been started and the RTOS must be running;
@@ -57,7 +38,7 @@ Throughout the `cell` API, in functions which can take more than a few seconds t
 int app_start() {
     int32_t uartHandle;
     uAtClientHandle_t atHandle;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle = NULL;
     char buffer[U_CELL_NET_IP_ADDRESS_SIZE];
     int32_t mcc;
     int32_t mnc;
@@ -84,25 +65,26 @@ int app_start() {
 
     // Add an AT client on the UART with the recommended
     // default buffer size.
-    atClientHandle = uAtClientAdd(uartHandle,
-                                  U_AT_CLIENT_STREAM_TYPE_UART,
-                                  NULL,
-                                  U_CELL_AT_BUFFER_LENGTH_BYTES);
+    atHandle = uAtClientAdd(uartHandle,
+                            U_AT_CLIENT_STREAM_TYPE_UART,
+                            NULL,
+                            U_CELL_AT_BUFFER_LENGTH_BYTES);
 
     // Set printing of AT commands by the cellular driver,
     // which can be useful while debugging.
-    uAtClientPrintAtSet(atClientHandle, true);
+    uAtClientPrintAtSet(atHandle, true);
 
     // Add a cell instance, in this case a SARA-R5 module,
     // giving it the AT client handle and the pins where
     // the cellular module's control interface is 
     // connected to your MCU: you need to know these for
     // your hardware; again use -1 for "not connected".
-    cellHandle = uCellAdd(U_CELL_MODULE_TYPE_SARA_R5,
-                          atClientHandle,
-                          U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                          U_CFG_APP_PIN_CELL_PWR_ON,
-                          U_CFG_APP_PIN_CELL_VINT, false);
+    uCellAdd(U_CELL_MODULE_TYPE_SARA_R5,
+             atHandle,
+             U_CFG_APP_PIN_CELL_ENABLE_POWER,
+             U_CFG_APP_PIN_CELL_PWR_ON,
+             U_CFG_APP_PIN_CELL_VINT, false,
+             &cellHandle);
 
     // Power up the cellular module
     if (uCellPwrOn(cellHandle, NULL, NULL) == 0) {

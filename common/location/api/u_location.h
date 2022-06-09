@@ -17,14 +17,18 @@
 #ifndef _U_LOCATION_H_
 #define _U_LOCATION_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the location API, which is designed
  * to determine location using any u-blox module and potentially a
  * cloud service.  These functions are thread-safe with the exception
  * that the network layer should not be deactivated (i.e. with
- * uNetworkDeinit()) while an asynchronous location request is
+ * uDeviceDeinit()) while an asynchronous location request is
  * outstanding.
  */
 
@@ -76,7 +80,7 @@ extern "C" {
 #ifndef U_LOCATION_ASSIST_DEFAULTS
 /** Default values for uLocationAssist_t.
  */
-# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false, -1,                                         \
+# define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false,                                             \
                                      U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD,                     \
                                      U_LOCATION_CLOUD_LOCATE_C_NO_THRESHOLD,                    \
                                      U_LOCATION_CLOUD_LOCATE_MULTIPATH_INDEX_LIMIT,             \
@@ -136,12 +140,6 @@ typedef struct {
 
     /* The following fields are [currently] ONLY used by U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE. */
 
-    int32_t networkHandleAssist; /**< the network handle to use for
-                                      assistance information, currently only used
-                                      by the Cloud Locate service,
-                                      U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE.  For this
-                                      service the handle of the GNSS network MUST
-                                      be copied into this field.*/
     int32_t svsThreshold; /**< the number of space vehicles (AKA satellites)
                                that must be visible, only currently used by
                                U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE; use -1
@@ -246,9 +244,9 @@ typedef enum {
  * -------------------------------------------------------------- */
 
 /** Get the current location, returning on success or when
- * pKeepGoingCallback returns false.  uNetworkUp() (see the network
- * API) must have been called on the given networkHandle for this
- * function to work.
+ * pKeepGoingCallback returns false.  uNetworkInterfaceUp() (see the
+ * network API) must have been called on the given networkHandle for
+ * this function to work.
  * Note that if you have a GNSS chip inside your cellular module
  * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
  * location call on the cell network will use that GNSS chip, there
@@ -263,8 +261,7 @@ typedef enum {
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
- * @param networkHandle           the handle of the network instance
- *                                to use.
+ * @param devHandle               the device handle to use.
  * @param type                    the type of location fix to perform;
  *                                how this can be used depends upon the
  *                                type of networkHandle:
@@ -282,25 +279,23 @@ typedef enum {
  *                                            For the Cell Locate service pAuthenticationTokenStr
  *                                            must be populated with a valid Cell
  *                                            Locate authentication token.  For
- *                                            the Cloud Locate service pLocationAssist
- *                                            fields networkHandleAssist and
- *                                            pMqttClientContext MUST be populated, and
- *                                            the MQTT login to the Thingstream
- *                                            server MUST already have been performed;
- *                                            the field pClientIdStr should be populated
- *                                            if you want the location to be returned
- *                                            by this function (as well as being available
- *                                            in the cloud).
+ *                                            the Cloud Locate service the
+ *                                            pLocationAssist field pMqttClientContext
+ *                                            MUST be populated, and the MQTT login
+ *                                            to the Thingstream server MUST already
+ *                                            have been performed; the field pClientIdStr
+ *                                            should be populated if you want the
+ *                                            location to be returned by this function
+ *                                            (as well as being available in the cloud).
  *                                - Wi-Fi:    only U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is
- *                                            currently supported, for which pLocationAssist
- *                                            fields networkHandleAssist and
- *                                            pMqttClientContext MUST be populated, and
- *                                            the MQTT login to the Thingstream
- *                                            server MUST already have been performed;
- *                                            the field pClientIdStr should be populated
- *                                            if you want the location to be returned
- *                                            by this function (as well as being available
- *                                            in the cloud).
+ *                                            currently supported, for which the
+ *                                            pLocationAssist field pMqttClientContext
+ *                                            MUST be populated, and the MQTT login to
+ *                                            the Thingstream server MUST already have
+ *                                            been performed; the field pClientIdStr
+ *                                            should be populated if you want the location
+ *                                            to be returned by this function (as well
+ *                                            as being available in the cloud).
  *                                - BLE:      no form of BLE location is currently
  *                                            supported.
  * @param pLocationAssist         additional information for the location
@@ -339,15 +334,15 @@ typedef enum {
  * @return                        zero on success or negative error code
  *                                on failure.
  */
-int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
+int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
                      const uLocationAssist_t *pLocationAssist,
                      const char *pAuthenticationTokenStr,
                      uLocation_t *pLocation,
-                     bool (*pKeepGoingCallback) (int32_t));
+                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
-/** Get the current location, non-blocking version.  uNetworkUp() (see
- * the network API) must have been called on the given networkHandle for
- * this function to work.
+/** Get the current location, non-blocking version.  uNetworkInterfaceUp()
+ * (see the network API) must have been called on the given networkHandle
+ * for this function to work.
  * Note that if you have a GNSS chip inside your cellular module
  * (e.g. you have a SARA-R510M8S or SARA-R422M8S) then making a
  * location call on the cell network will use that GNSS chip, there is
@@ -361,7 +356,7 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
  * cellular network handle (as once it is "claimed" by Cell Locate it
  * won't be available for GNSS calls until the module is power cycled).
  *
- * @param networkHandle           the handle of the network instance to use.
+ * @param devHandle               the device handle to use.
  * @param type                    the type of location fix to perform; the
  *                                comments concerning which types can be
  *                                used for the uLocationGet() API apply.
@@ -388,27 +383,27 @@ int32_t uLocationGet(int32_t networkHandle, uLocationType_t type,
  * @return                        zero on success or negative error code on
  *                                failure.
  */
-int32_t uLocationGetStart(int32_t networkHandle, uLocationType_t type,
+int32_t uLocationGetStart(uDeviceHandle_t devHandle, uLocationType_t type,
                           const uLocationAssist_t *pLocationAssist,
                           const char *pAuthenticationTokenStr,
-                          void (*pCallback) (int32_t networkHandle,
+                          void (*pCallback) (uDeviceHandle_t devHandle,
                                              int32_t errorCode,
                                              const uLocation_t *pLocation));
 
 /** Get the current status of a location establishment attempt.
  *
- * @param networkHandle  the handle of the network instance.
+ * @param devHandle      the device handle to use.
  * @return               the status or negative error code.
  */
-int32_t uLocationGetStatus(int32_t networkHandle);
+int32_t uLocationGetStatus(uDeviceHandle_t devHandle);
 
 /** Cancel a uLocationGetStart(); after calling this function the
  * callback passed to uLocationGetStart() will not be called until
  * another uLocationGetStart() is begun.
  *
- * @param networkHandle  the handle of the network instance.
+ * @param devHandle  the device handle to use.
  */
-void uLocationGetStop(int32_t networkHandle);
+void uLocationGetStop(uDeviceHandle_t devHandle);
 
 #ifdef __cplusplus
 }

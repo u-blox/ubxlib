@@ -17,7 +17,12 @@
 #ifndef _U_SHORT_RANGE_PRIVATE_H_
 #define _U_SHORT_RANGE_PRIVATE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+
+#include "u_device_shared.h"
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -43,9 +48,7 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 typedef enum {
-    U_SHORT_RANGE_MODE_COMMAND = 0,
-    U_SHORT_RANGE_MODE_DATA = 1,
-    U_SHORT_RANGE_MODE_EDM = 2
+    U_SHORT_RANGE_MODE_EDM = 0
 } uShortRangeModes_t;
 
 /** The characteristics that may differ between short range modules.
@@ -93,12 +96,9 @@ typedef struct uShortRangePrivateConnection_t {
 //lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallback) Suppress not reference, it is
 //lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallbackParameter) Suppress not reference, it is
 typedef struct uShortRangePrivateInstance_t {
-    int32_t handle; /**< The handle for this instance. */
-    int32_t refCounter; /**< Reference counter.
-                             Each time uShortRangeAdd() is called with the same atHandle this counter is incremented.
-                             When user then call uShortRangeRemove() this counter will be decremented and when it reaches 0
-                             the short range instance will be deallocated */
+    uDeviceHandle_t devHandle; /**< Handle for corresponding device */
     uShortRangeModes_t mode;
+    int32_t uartHandle;
     const uShortRangePrivateModule_t *pModule; /**< Pointer to the module type. */
     uAtClientHandle_t atHandle; /**< The AT client handle to use. */
     int32_t streamHandle; /**< Handle to the underlaying stream. */
@@ -109,13 +109,14 @@ typedef struct uShortRangePrivateInstance_t {
     uShortRangePrivateConnection_t connections[U_SHORT_RANGE_MAX_CONNECTIONS];
     uShortRangeBtConnectionStatusCallback_t pBtConnectionStatusCallback;
     void *pBtConnectionStatusCallbackParameter;
-    void (*pWifiConnectionStatusCallback) (int32_t, int32_t, int32_t, int32_t, char *, int32_t, void *);
+    void (*pWifiConnectionStatusCallback) (uDeviceHandle_t, int32_t, int32_t, int32_t,
+                                           char *, int32_t, void *);
     void *pWifiConnectionStatusCallbackParameter;
     uShortRangeIpConnectionStatusCallback_t pIpConnectionStatusCallback;
     void *pIpConnectionStatusCallbackParameter;
     uShortRangeIpConnectionStatusCallback_t pMqttConnectionStatusCallback;
     void *pMqttConnectionStatusCallbackParameter;
-    void (*pNetworkStatusCallback) (int32_t, int32_t, uint32_t, void *);
+    void (*pNetworkStatusCallback) (uDeviceHandle_t, int32_t, uint32_t, void *);
     void *pNetworkStatusCallbackParameter;
     void (*pSpsConnectionCallback)(int32_t, char *, int32_t, int32_t, int32_t, void *);
     void *pSpsConnectionCallbackParameter;
@@ -124,9 +125,6 @@ typedef struct uShortRangePrivateInstance_t {
 //lint -esym(768, uShortRangePrivateInstance_t::pBtDataAvailableCallback)
     void (*pBtDataAvailableCallback)(int32_t, void *);
     void *pBtDataCallbackParameter;
-    void (*pDataCallback) (int32_t, size_t, char *, void *);
-    void *pDataCallbackParameter;
-    char *pBuffer;
     struct uShortRangePrivateInstance_t *pNext;
 } uShortRangePrivateInstance_t;
 
@@ -158,10 +156,10 @@ extern uPortMutexHandle_t gUShortRangePrivateMutex;
 /** Find a short range instance in the list by instance handle.
  * Note: gUShortRangePrivateMutex should be locked before this is called.
  *
- * @param handle  the instance handle.
- * @return        a pointer to the instance.
+ * @param devHandle  the short range device handle.
+ * @return           a pointer to the instance.
  */
-uShortRangePrivateInstance_t *pUShortRangePrivateGetInstance(int32_t handle);
+uShortRangePrivateInstance_t *pUShortRangePrivateGetInstance(uDeviceHandle_t devHandle);
 
 /** Get whether the given instance is registered with the network.
  * Note: gUShortRangePrivateMutex should be locked before this is called.
@@ -177,13 +175,13 @@ bool uShortRangePrivateIsRegistered(const uShortRangePrivateInstance_t *pInstanc
 
 /** Get the module characteristics for a given instance.
  *
- * @param handle  the instance handle.
- * @return        a pointer to the module characteristics.
+ * @param devHandle  the short range device handle.
+ * @return           a pointer to the module characteristics.
  */
 //lint -esym(714, pUShortRangePrivateGetModule) Suppress lack of a reference
 //lint -esym(759, pUShortRangePrivateGetModule) etc. since use of this function
 //lint -esym(765, pUShortRangePrivateGetModule) may be compiled-out in various ways
-const uShortRangePrivateModule_t *pUShortRangePrivateGetModule(int32_t handle);
+const uShortRangePrivateModule_t *pUShortRangePrivateGetModule(uDeviceHandle_t devHandle);
 
 #ifdef __cplusplus
 }

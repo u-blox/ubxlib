@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef _U_WIFI_PRIVATE_H_
-#define _U_WIFI_PRIVATE_H_
+#ifndef _U_SHORT_RANGE_TEST_PREAMBLE_H_
+#define _U_SHORT_RANGE_TEST_PREAMBLE_H_
+
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
- * @brief This header file defines types, functions and inclusions that
- * are common and private to the wifi API.
+ * @brief This header file defines functions that should be called
+ * before running any other short-range tests or examples.
  */
 
 #ifdef __cplusplus
@@ -42,27 +47,18 @@ extern "C" {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Convert a wifi handle to a short range handle
+/** The standard preamble that must be run before any short-range
+ * tests/examples.
  *
- * @param wifiHandle  the wifi handle to convert
- * @return           a short range handle on success,
- *                   on failure negative value.
+ * @param moduleType  the module type.
+ * @return            zero on success else negative error code.
  */
-int32_t uWifiToShoHandle(int32_t wifiHandle);
-
-/** Convert a short range handle to a wifi handle
- *
- * @param shortRangeHandle  the short range handle to convert
- * @return                  a wifi handle on success,
- *                          on failure negative value.
- */
-int32_t uShoToWifiHandle(int32_t shortRangeHandle);
-
+int32_t uShortRangeTestPreamble(uShortRangeModuleType_t moduleType);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // _U_WIFI_PRIVATE_H_
+#endif // _U_SHORT_RANGE_TEST_PREAMBLE_H_
 
 // End of file

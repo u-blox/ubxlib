@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,50 +22,11 @@
  * instructions.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
+// Bring in all of the ubxlib public header files
+#include "ubxlib.h"
 
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-
-// Required by ubxlib
-#include "u_port.h"
-
-// The next two lines will cause uPortLog() output
-// to be sent to ubxlib's chosen trace output.
-// Comment them out to send the uPortLog() output
-// to print() instead.
-#include "u_cfg_sw.h"
-#include "u_port_debug.h"
-
-// This header file is only required because we use an
-// internal ubxlib porting function, uPortTaskBlock(),
-// to wait around in the middle of the example for the
-// network to agree our 3GPP power saving request; it
-// would not normally be required.
-#include "u_port_os.h"
-
-// For default values for U_CFG_APP_xxx
+// Bring in the application settings
 #include "u_cfg_app_platform_specific.h"
-
-// For the cellular module types
-#include "u_cell_module_type.h"
-
-// For the network API
-#include "u_network.h"
-#include "u_network_config_cell.h"
-
-// For the RAT types
-#include "u_cell_net.h"
-
-// For the cellular configuration functions
-#include "u_cell_cfg.h"
-
-// For the cellular power saving functions
-#include "u_cell_pwr.h"
 
 #ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
@@ -104,10 +65,6 @@
 # define MY_RAT U_CELL_NET_RAT_CATM1
 #endif
 
-#ifndef U_CFG_ENABLE_LOGGING
-# define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
-#endif
-
 // For u-blox internal testing only
 #ifdef U_PORT_TEST_ASSERT
 # define EXAMPLE_FINAL_STATE(x) U_PORT_TEST_ASSERT(x);
@@ -127,34 +84,50 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// Cellular network configuration:
+// Cellular configuration.
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
-#if defined(U_CFG_TEST_CELL_MODULE_TYPE) && !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                        U_CFG_TEST_CELL_MODULE_TYPE,
-                                                        NULL, /* SIM pin */
-                                                        NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-                                                        240, /* Connection timeout in seconds */
-                                                        U_CFG_APP_CELL_UART,
-                                                        /* Note that the pin numbers
-                                                           that follow are those of the MCU:
-                                                           if you are using an MCU inside
-                                                           a u-blox module the IO pin numbering
-                                                           for the module is likely different
-                                                           to that from the MCU: check the data
-                                                           sheet for the module to determine
-                                                           the mapping. */
-                                                        U_CFG_APP_PIN_CELL_TXD,
-                                                        U_CFG_APP_PIN_CELL_RXD,
-                                                        U_CFG_APP_PIN_CELL_CTS,
-                                                        U_CFG_APP_PIN_CELL_RTS,
-                                                        U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                        U_CFG_APP_PIN_CELL_PWR_ON, // This pin MUST be connected
-                                                        U_CFG_APP_PIN_CELL_VINT    // This pin MUST be connected
-                                                       };
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
+#ifdef U_CFG_TEST_CELL_MODULE_TYPE
+// DEVICE i.e. module/chip configuration: in this case a cellular
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pSimPinCode = NULL, /* SIM pin */
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        },
+    },
+};
+// NETWORK configuration for cellular
+static const uNetworkCfgCell_t gNetworkCfg = {
+    .type = U_NETWORK_TYPE_CELL,
+    .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
+    .timeoutSeconds = 240 /* Connection timeout in seconds */
+};
 #else
-static const uNetworkConfigurationCell_t gConfigCell = { .type = U_NETWORK_TYPE_NONE };
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgCell_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
 // Flag that allows us to check if power saving has been set.
@@ -166,11 +139,11 @@ static volatile bool g3gppPowerSavingSet = false;
 
 // Callback that will be called when the network indicates what 3GPP
 // power saving settings have been applied
-static void callback(int32_t networkHandle, bool onNotOff,
+static void callback(uDeviceHandle_t devHandle, bool onNotOff,
                      int32_t activeTimeSeconds, int32_t periodicWakeupSeconds,
                      void *pParameter)
 {
-    (void)networkHandle;
+    (void)devHandle;
     (void)pParameter;
     uPortLog("## 3GPP power saving is %s, active time %d seconds,"
              " periodic wake-up %d seconds.\n", onNotOff ? "on" : "off",
@@ -194,26 +167,27 @@ static void callback(int32_t networkHandle, bool onNotOff,
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     bool onMyRat = true;
     int32_t x = -1;
+    int32_t returnCode;
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
     // Add a cellular network instance.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("### Added network with handle %d.\n", networkHandle);
+    // Open the device
+    returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
+    uPortLog("### Opened device with return code %d.\n", returnCode);
 
     // Set a callback for when the 3GPP power saving parameters are
     // agreed by the network
-    uCellPwrSet3gppPowerSavingCallback(networkHandle, callback, NULL);
+    uCellPwrSet3gppPowerSavingCallback(devHandle, callback, NULL);
 
     // Set the primary RAT to MY_RAT
-    if (uCellCfgGetRat(networkHandle, 0) != MY_RAT) {
-        if (uCellCfgSetRatRank(networkHandle, MY_RAT, 0) != 0) {
+    if (uCellCfgGetRat(devHandle, 0) != MY_RAT) {
+        if (uCellCfgSetRatRank(devHandle, MY_RAT, 0) != 0) {
             onMyRat = false;
         }
     }
@@ -223,18 +197,19 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
         uPortLog("## Requesting 3GPP power saving with active time"
                  " %d seconds, periodic wake-up %d seconds...\n",
                  ACTIVE_TIME_SECONDS, PERIODIC_WAKEUP_SECONDS);
-        x = uCellPwrSetRequested3gppPowerSaving(networkHandle, MY_RAT, true,
+        x = uCellPwrSetRequested3gppPowerSaving(devHandle, MY_RAT, true,
                                                 ACTIVE_TIME_SECONDS,
                                                 PERIODIC_WAKEUP_SECONDS);
         if (x == 0) {
             // Reboot the module, if required, to apply the settings
-            if (uCellPwrRebootIsRequired(networkHandle)) {
-                uCellPwrReboot(networkHandle, NULL);
+            if (uCellPwrRebootIsRequired(devHandle)) {
+                uCellPwrReboot(devHandle, NULL);
             }
 
             // Bring up the network
             uPortLog("### Bringing up the network...\n");
-            if (uNetworkUp(networkHandle) == 0) {
+            if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                                    &gNetworkCfg) == 0) {
 
                 // Here you would normally do useful stuff; for the
                 // purposes of this simple power-saving example,
@@ -253,7 +228,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
 
                 // When finished with the network layer
                 uPortLog("### Taking down network...\n");
-                uNetworkDown(networkHandle);
+                uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
             } else {
                 uPortLog("### Unable to bring up the network!\n");
             }
@@ -264,8 +239,14 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
         uPortLog("### Unable to set primary RAT to %d!\n", MY_RAT);
     }
 
-    // Calling these will also deallocate the network handle
-    uNetworkDeinit();
+    // Close the device
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandle, false);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("### Done.\n");
@@ -278,15 +259,20 @@ U_PORT_TEST_FUNCTION("[example]", "exampleCellPowerSaving3gpp")
     // we need the module to stay awake, so switch it off again here
     if (g3gppPowerSavingSet) {
         uPortInit();
-        uNetworkInit();
-        networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                    (void *) &gConfigCell);
-        uCellPwrSetRequested3gppPowerSaving(networkHandle, MY_RAT, false, -1, -1);
+        uDeviceInit();
+        returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
+        uPortLog("### Added network with return code %d.\n", returnCode);
+        uCellPwrSetRequested3gppPowerSaving(devHandle, MY_RAT, false, -1, -1);
         // Reboot the module, if required, to apply the settings
-        if (uCellPwrRebootIsRequired(networkHandle)) {
-            uCellPwrReboot(networkHandle, NULL);
+        if (uCellPwrRebootIsRequired(devHandle)) {
+            uCellPwrReboot(devHandle, NULL);
         }
-        uNetworkDeinit();
+        // Close the device
+        // Note: we don't power the device down here in order
+        // to speed up testing; you may prefer to power it off
+        // by setting the second parameter to true.
+        uDeviceClose(devHandle, false);
+        uDeviceDeinit();
         uPortDeinit();
     }
 # endif

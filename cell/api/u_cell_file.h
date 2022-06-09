@@ -17,7 +17,11 @@
 #ifndef _U_CELL_FILE_H_
 #define _U_CELL_FILE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the u-blox API for file system.
@@ -76,7 +80,7 @@ typedef struct uCellFileListContainer_t {
  *                   system will be addressed).
  * @return           zero on success or negative error code on failure.
  */
-int32_t uCellFileSetTag(int32_t cellHandle, const char *pTag);
+int32_t uCellFileSetTag(uDeviceHandle_t cellHandle, const char *pTag);
 
 /** Get the file system tag that is currently in use, see
  * uCellFileSetTag() for more information.  If NULL is returned then
@@ -87,7 +91,7 @@ int32_t uCellFileSetTag(int32_t cellHandle, const char *pTag);
  * @return           the null-terminated tag name currently in use or
  *                   NULL if no specific tag is in use.
  */
-const char *pUCellFileGetTag(int32_t cellHandle);
+const char *pUCellFileGetTag(uDeviceHandle_t cellHandle);
 
 /** Open file in write mode on file system and write stream of bytes
  * in it. If the file already exists, the data will be appended to
@@ -104,7 +108,7 @@ const char *pUCellFileGetTag(int32_t cellHandle);
  * @return           on success return number of bytes written into
  *                   the file or negative error code on failure.
  */
-int32_t uCellFileWrite(int32_t cellHandle,
+int32_t uCellFileWrite(uDeviceHandle_t cellHandle,
                        const char *pFileName,
                        const char *pData,
                        size_t dataSize);
@@ -122,7 +126,7 @@ int32_t uCellFileWrite(int32_t cellHandle,
  * @return           on success return number of bytes read from file
  *                   or negative error code on failure.
  */
-int32_t uCellFileRead(int32_t cellHandle,
+int32_t uCellFileRead(uDeviceHandle_t cellHandle,
                       const char *pFileName,
                       char *pData,
                       size_t dataSize);
@@ -145,7 +149,7 @@ int32_t uCellFileRead(int32_t cellHandle,
  * @return           on success return number of bytes read from file
  *                   or negative error code on failure.
  */
-int32_t uCellFileBlockRead(int32_t cellHandle,
+int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
                            const char *pFileName,
                            char *pData,
                            size_t offset,
@@ -161,7 +165,7 @@ int32_t uCellFileBlockRead(int32_t cellHandle,
  * @return           on success return file size or negative error
  *                   code on failure.
  */
-int32_t uCellFileSize(int32_t cellHandle,
+int32_t uCellFileSize(uDeviceHandle_t cellHandle,
                       const char *pFileName);
 
 /** Delete a file from file system. If the file does not exist,
@@ -173,7 +177,7 @@ int32_t uCellFileSize(int32_t cellHandle,
  *                   / * : % | " < > ?.
  * @return           zero on success or negative error code on failure.
  */
-int32_t uCellFileDelete(int32_t cellHandle,
+int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
                         const char *pFileName);
 
 /** Get the description of file stored on file system; uCellFileListNext()
@@ -203,7 +207,7 @@ int32_t uCellFileDelete(int32_t cellHandle,
  * @return           the total number of file names in the list
  *                   or negative error code.
  */
-int32_t uCellFileListFirst(int32_t cellHandle,
+int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
                            char *pFileName);
 
 /** Get the subsequent file names in the list. Use uCellFileListFirst()
@@ -226,7 +230,7 @@ int32_t uCellFileListFirst(int32_t cellHandle,
  *                   this one has been read or negative error
  *                   code.
  */
-int32_t uCellFileListNext(int32_t cellHandle,
+int32_t uCellFileListNext(uDeviceHandle_t cellHandle,
                           char *pFileName);
 
 /** It is good practice to call this to clear up memory from
@@ -235,7 +239,7 @@ int32_t uCellFileListNext(int32_t cellHandle,
  *
  * @param cellHandle the handle of the cellular instance.
  */
-void uCellFileListLast(int32_t cellHandle);
+void uCellFileListLast(uDeviceHandle_t cellHandle);
 
 #ifdef __cplusplus
 }

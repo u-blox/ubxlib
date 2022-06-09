@@ -120,7 +120,7 @@ static int64_t gStopTimeMs;
 
 /** Cell handle as seen by posCallback().
  */
-static int32_t gCellHandle = -1;
+static uDeviceHandle_t gCellHandle = NULL;
 
 /** Error code as seen by posCallback().
  */
@@ -162,7 +162,7 @@ static int64_t gTimeUtc = LONG_MIN;
 
 #ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
 // Callback function for the cellular connection process
-static bool keepGoingCallback(int32_t param)
+static bool keepGoingCallback(uDeviceHandle_t param)
 {
     bool keepGoing = true;
 
@@ -176,7 +176,7 @@ static bool keepGoingCallback(int32_t param)
 }
 
 // Callback function for non-blocking API.
-static void posCallback(int32_t cellHandle,
+static void posCallback(uDeviceHandle_t cellHandle,
                         int32_t errorCode,
                         int32_t latitudeX1e7,
                         int32_t longitudeX1e7,
@@ -242,7 +242,7 @@ static char latLongToBits(int32_t thingX1e7,
  */
 U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
 {
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     int32_t heapUsed;
     int32_t y;
     int32_t z;
@@ -348,7 +348,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
 U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
 {
 #ifdef U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     int32_t heapUsed;
     int64_t startTime;
     int32_t latitudeX1e7 = INT_MIN;

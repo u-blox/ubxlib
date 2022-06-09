@@ -40,11 +40,11 @@
 #include "u_port_uart.h"
 #include "u_port_debug.h"
 #include "u_at_client.h"
+#include "u_short_range_pbuf.h"
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 #include "u_short_range_edm.h"
-
 #include "string.h" // For memcpy()
 
 // To enable anonymous unions inclusion for
@@ -64,6 +64,14 @@
 // TODO: is this value correc?
 #define U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH 500
 #define U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS    9
+
+#ifndef U_EDM_STREAM_TASK_STACK_SIZE_BYTES
+#define U_EDM_STREAM_TASK_STACK_SIZE_BYTES  U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES
+#endif
+
+#ifndef U_EDM_STREAM_TASK_PRIORITY
+# define U_EDM_STREAM_TASK_PRIORITY U_AT_CLIENT_URC_TASK_PRIORITY
+#endif
 
 // Debug logging for EDM activity
 // You can activate debug log output for EDM activity with the defines below
@@ -139,8 +147,7 @@ typedef struct {
 
 typedef struct {
     int32_t channel;
-    char *pData;
-    int32_t length;
+    uShortRangePbufList_t *pBufList;
 } uShortRangeEdmStreamDataEvent_t;
 
 typedef struct {
@@ -167,6 +174,7 @@ typedef struct {
 } uShortRangeEdmStreamConnections_t;
 
 typedef struct uEdmStreamInstance_t {
+    bool ignoreUartCallback;
     int32_t handle;
     int32_t uartHandle;
     void *atHandle;
@@ -199,7 +207,6 @@ typedef struct uEdmStreamInstance_t {
 
 static uPortMutexHandle_t gMutex = NULL;
 static uShortRangeEdmStreamInstance_t gEdmStream;
-
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -227,6 +234,18 @@ static inline void dumpHexData(const uint8_t *pBuffer, size_t length)
 {
     for (int i = 0; i < length; i++) {
         uPortLog("%02x ", pBuffer[i]);
+    }
+}
+
+static inline void dumpPbufList(uShortRangePbufList_t *pPbufList)
+{
+    uShortRangePbuf_t *temp;
+
+    if (pPbufList != NULL) {
+        for (temp = pPbufList->pBufHead; temp != NULL; temp = temp->pNext) {
+
+            dumpHexData(temp->pData, temp->len);
+        }
     }
 }
 #endif
@@ -378,8 +397,8 @@ static void dataEventHandler(uShortRangeEdmStreamDataEvent_t *pDataEvent)
         // otherwise this may result in a deadlock
         uPortMutexUnlock(gMutex);
         //lint -e(1773) Suppress "attempt to cast away const"
-        pDataCallback(edmStreamHandle, pDataEvent->channel, pDataEvent->length,
-                      pDataEvent->pData, (void *)pCallbackParam);
+        pDataCallback(edmStreamHandle, pDataEvent->channel, pDataEvent->pBufList,
+                      (void *)pCallbackParam);
         uPortMutexLock(gMutex);
     }
 
@@ -427,12 +446,14 @@ static void eventHandler(void *pParam, size_t paramLength)
 static bool enqueueEdmAtEvent(uShortRangeEdmEvent_t *pEvent)
 {
     bool success = false;
-
     uShortRangeEdmStreamEvent_t event;
 
-    gEdmStream.atResponseLength = pEvent->params.atEvent.length;
+    uShortRangePbufList_t *pBufList = pEvent->params.atEvent.pBufList;
+    gEdmStream.atResponseLength = (int32_t)pBufList->totalLen;
     gEdmStream.atResponseRead = 0;
-    memcpy(gEdmStream.pAtResponseBuffer, pEvent->params.atEvent.pData, gEdmStream.atResponseLength);
+    uShortRangePbufListConsumeData(pBufList, gEdmStream.pAtResponseBuffer,
+                                   gEdmStream.atResponseLength);
+    uShortRangePbufListFree(pBufList);
 
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
     uEdmChLogStart(LOG_CH_AT_RX, "\"");
@@ -678,19 +699,20 @@ static bool enqueueEdmDataEvent(uShortRangeEdmEvent_t *pEvent)
     uShortRangeEdmStreamEvent_t event;
     event.type = U_SHORT_RANGE_EDM_STREAM_EVENT_DATA;
     event.data.channel = pEvent->params.dataEvent.channel;
-    event.data.pData = pEvent->params.dataEvent.pData;
-    event.data.length = pEvent->params.dataEvent.length;
+    event.data.pBufList = pEvent->params.dataEvent.pBufList;
+
+    if (event.data.pBufList != NULL) {
 
 #ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG
 # ifdef U_CFG_SHORT_RANGE_EDM_STREAM_DEBUG_DUMP_DATA
-    uEdmChLogStart(LOG_CH_DATA, "RX (%d bytes): ", event.data.length);
-    dumpHexData(event.data.pData, event.data.length);
-    uEdmChLogEnd("");
+        uEdmChLogStart(LOG_CH_DATA, "RX (%d bytes): ", (event.data.pBufList)->totalLen);
+        dumpPbufList(event.data.pBufList);
+        uEdmChLogEnd("");
 # else
-    uEdmChLogLine(LOG_CH_DATA, "RX (%d bytes)", event.data.length);
+        uEdmChLogLine(LOG_CH_DATA, "RX (%d bytes)", (event.data.pBufList)->totalLen);
 # endif
 #endif
-
+    }
     if (uPortEventQueueSend(gEdmStream.eventQueueHandle,
                             &event, sizeof(uShortRangeEdmStreamEvent_t)) == 0) {
         success = true;
@@ -748,8 +770,9 @@ static void uartCallback(int32_t uartHandle, uint32_t eventBitmask,
                          void *pParameters)
 {
     (void)pParameters;
-    if (gEdmStream.uartHandle == uartHandle &&
-        eventBitmask == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED) {
+    if ((gEdmStream.uartHandle == uartHandle) &&
+        !gEdmStream.ignoreUartCallback &&
+        (eventBitmask == U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED)) {
         bool uartEmpty = false;
         // We don't want to read one character at the time from the uart driver since that will be
         // quite an overhead when pumping a lot of data. Instead we read into a buffer
@@ -770,7 +793,14 @@ static void uartCallback(int32_t uartHandle, uint32_t eventBitmask,
             // Check if there are any existing characters in the buffer and parse them
             while (uShortRangeEdmParserReady() && (consumed < charsInBuffer)) {
                 //lint -esym(727, buffer)
-                uShortRangeEdmEvent_t *pEvent = uShortRangeEdmParse(buffer[consumed++]);
+                uShortRangeEdmEvent_t *pEvent = NULL;
+                // when there is no memory available in the pool to intake
+                // the data, this call would return false.In such
+                // cases hardware flow control will be triggered if
+                // UART H/W Rx FIFO is full.
+                if (uShortRangeEdmParse(buffer[consumed], &pEvent)) {
+                    consumed++;
+                }
                 if (pEvent != NULL) {
                     processEdmEvent(pEvent);
                 }
@@ -906,7 +936,12 @@ int32_t uShortRangeEdmStreamInit()
 
     if (gMutex == NULL) {
         errorCodeOrHandle = (uErrorCode_t)uPortMutexCreate(&gMutex);
+
+        if (errorCodeOrHandle == U_ERROR_COMMON_SUCCESS) {
+            errorCodeOrHandle = (uErrorCode_t)uShortRangeMemPoolInit();
+        }
         gEdmStream.handle = -1;
+        gEdmStream.ignoreUartCallback = false;
     }
 
     uShortRangeEdmResetParser();
@@ -921,6 +956,7 @@ void uShortRangeEdmStreamDeinit()
     if (gMutex != NULL) {
 
         U_PORT_MUTEX_LOCK(gMutex);
+        uShortRangeMemPoolDeInit();
 
         if (gEdmStream.eventQueueHandle >= 0) {
             uPortEventQueueClose(gEdmStream.eventQueueHandle);
@@ -1009,7 +1045,7 @@ int32_t uShortRangeEdmStreamOpen(int32_t uartHandle)
 void uShortRangeEdmStreamClose(int32_t handle)
 {
     if (gMutex != NULL) {
-
+        gEdmStream.ignoreUartCallback = true;
         uPortMutexLock(gMutex);
 
         if ((handle != -1) && (handle == gEdmStream.handle)) {
@@ -1019,14 +1055,7 @@ void uShortRangeEdmStreamClose(int32_t handle)
             }
             gEdmStream.uartHandle = -1;
             if (gEdmStream.eventQueueHandle >= 0) {
-                // Not so pretty workaround:
-                // Temporarily release the lock to prevent potential deadlock.
-                // This can happen if an URC is received at the same time EDM is closing down.
-                // URC will then try to lock gMutex while uPortEventQueueClose will try to take
-                // the queue lock for eventQueueHandle now held by URC handler.
-                uPortMutexUnlock(gMutex);
                 uPortEventQueueClose(gEdmStream.eventQueueHandle);
-                uPortMutexLock(gMutex);
             }
             gEdmStream.eventQueueHandle = -1;
             if (gEdmStream.atHandle != NULL) {
@@ -1059,6 +1088,7 @@ void uShortRangeEdmStreamClose(int32_t handle)
 
         uShortRangeEdmResetParser();
         uPortMutexUnlock(gMutex);
+        gEdmStream.ignoreUartCallback = false;
     }
 }
 

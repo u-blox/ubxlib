@@ -17,7 +17,10 @@
 #ifndef _U_BLE_H_
 #define _U_BLE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines the general ble APIs,
@@ -84,56 +87,6 @@ int32_t uBleInit(void);
  * with calls to uBleRemove().
  */
 void uBleDeinit(void);
-
-/** Add a ble instance.
- *
- * @param moduleType       the short range module type, if external module.
- *                         Otherwise just U_BLE_MODULE_TYPE_INTERNAL
- * @param atHandle         the handle of the AT client to use.  This must
- *                         already have been created by the caller with
- *                         a buffer of size U_BLE_AT_BUFFER_LENGTH_BYTES.
- *                         If a ble instance has already been added
- *                         for this atHandle an error will be returned.
- *                         In case of internal module:
- *                           just set the parameter to NULL.
- * @return                 on success the handle of the ble instance,
- *                         else negative error code.
- */
-int32_t uBleAdd(uBleModuleType_t moduleType,
-                uAtClientHandle_t atHandle);
-
-/** Remove a ble instance.  It is up to the caller to ensure
- * that the short range module for the given instance has been disconnected
- * and/or powered down etc.; all this function does is remove the logical
- * instance.
- *
- * @param bleHandle  the handle of the ble instance to remove.
- */
-void uBleRemove(int32_t bleHandle);
-
-/** Get the handle of the AT client used by the given
- * ble instance.
- *
- * @param bleHandle   the handle of the ble instance.
- * @param pAtHandle   a place to put the AT client handle.
- * @return            zero on success else negative error code.
- */
-int32_t uBleAtClientHandleGet(int32_t bleHandle,
-                              uAtClientHandle_t *pAtHandle);
-
-/** Detect the module connected to the handle. Will attempt to change the mode on
- * the module to communicate with it. No change to UART configuration is done,
- * so even if this fails with U_BLE_MODULE_TYPE_INVALID, as last attempt to recover,
- * it could work to re-init the UART on a different baud rate. This should recover
- * that module if another rate than the default one has been used.
- * If the response is U_BLE_MODULE_TYPE_UNSUPPORTED, the module repondes as expected but
- * does not support ble.
- *
- * @param bleHandle   the handle of the ble instance.
- * @return            Module on success, U_BLE_MODULE_TYPE_INVALID or U_BLE_MODULE_TYPE_UNSUPPORTED
- *                    on failure.
- */
-uBleModuleType_t uBleDetectModule(int32_t bleHandle);
 
 #ifdef __cplusplus
 }

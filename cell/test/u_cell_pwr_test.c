@@ -220,7 +220,7 @@ uCellPwrTest3gppPowerSavingParameters_t g3gppPowerSavingCallbackParameter = {0};
  * -------------------------------------------------------------- */
 
 // Callback function for the cellular power-down process
-static bool keepGoingCallback(int32_t cellHandle)
+static bool keepGoingCallback(uDeviceHandle_t cellHandle)
 {
     bool keepGoing = true;
 
@@ -241,8 +241,9 @@ static bool keepGoingCallback(int32_t cellHandle)
 static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                                int32_t pinVint)
 {
-    bool (*pKeepGoingCallback) (int32_t) = NULL;
-    int32_t cellHandle;
+    bool (*pKeepGoingCallback) (uDeviceHandle_t) = NULL;
+    uDeviceHandle_t cellHandle;
+    int32_t returnCode;
     bool trulyHardPowerOff = false;
     const uCellPrivateModule_t *pModule;
 #  if U_CFG_APP_PIN_CELL_VINT < 0
@@ -262,12 +263,13 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
     }
 
     uPortLog("U_CELL_PWR_TEST: adding a cellular instance on the AT client...\n");
-    pHandles->cellHandle = uCellAdd(U_CFG_TEST_CELL_MODULE_TYPE,
-                                    pHandles->atClientHandle,
-                                    U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                    U_CFG_APP_PIN_CELL_PWR_ON,
-                                    pinVint, false);
-    U_PORT_TEST_ASSERT(pHandles->cellHandle >= 0);
+    returnCode = uCellAdd(U_CFG_TEST_CELL_MODULE_TYPE,
+                          pHandles->atClientHandle,
+                          U_CFG_APP_PIN_CELL_ENABLE_POWER,
+                          U_CFG_APP_PIN_CELL_PWR_ON,
+                          pinVint, false,
+                          &pHandles->cellHandle);
+    U_PORT_TEST_ASSERT_EQUAL((int32_t) U_ERROR_COMMON_SUCCESS, returnCode);
     cellHandle = pHandles->cellHandle;
 
 #if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
@@ -410,7 +412,7 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
 # if (U_CFG_APP_PIN_CELL_VINT >= 0) && !defined(U_CFG_CELL_DISABLE_UART_POWER_SAVING)
 // Callback for when the 3GPP power saving parameters are indicated
 // by the network
-static void powerSaving3gppCallback(int32_t cellHandle, bool onNotOff,
+static void powerSaving3gppCallback(uDeviceHandle_t cellHandle, bool onNotOff,
                                     int32_t activeTimeSeconds,
                                     int32_t periodicWakeupSeconds,
                                     void *pParameter)
@@ -426,7 +428,7 @@ static void powerSaving3gppCallback(int32_t cellHandle, bool onNotOff,
 
 // 3GPP power saving wake-up callback where the second parameter is a pointer
 // to an int32_t.
-static void wakeCallback(int32_t cellHandle, void *pParam)
+static void wakeCallback(uDeviceHandle_t cellHandle, void *pParam)
 {
     U_PORT_TEST_ASSERT(cellHandle == gHandles.cellHandle);
     (*((int32_t *) pParam))++;
@@ -441,7 +443,7 @@ static void wakeCallback(int32_t cellHandle, void *pParam)
 
 # ifndef U_CFG_CELL_DISABLE_UART_POWER_SAVING
 // Connect to a cellular network.
-static int32_t connectNetwork(int32_t cellHandle)
+static int32_t connectNetwork(uDeviceHandle_t cellHandle)
 {
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
@@ -477,7 +479,7 @@ static void connectCallback(bool isConnected, void *pParameter)
 }
 
 // Connect to an echo server, so that we can exchange data during tests.
-static int32_t connectToEchoServer(int32_t cellHandle, uSockAddress_t *pEchoServerAddress)
+static int32_t connectToEchoServer(uDeviceHandle_t cellHandle, uSockAddress_t *pEchoServerAddress)
 {
     int32_t sockHandle = -1;
 
@@ -508,7 +510,7 @@ static int32_t connectToEchoServer(int32_t cellHandle, uSockAddress_t *pEchoServ
 }
 
 // Exchange some data with the echo server
-static int32_t echoData(int32_t cellHandle, int32_t sockHandle)
+static int32_t echoData(uDeviceHandle_t cellHandle, int32_t sockHandle)
 {
     int32_t y;
     int32_t z;
@@ -557,7 +559,7 @@ static int32_t echoData(int32_t cellHandle, int32_t sockHandle)
 }
 
 // Disconnect the given socket
-static void disconnectFromEchoServer(int32_t cellHandle,
+static void disconnectFromEchoServer(uDeviceHandle_t cellHandle,
                                      int32_t *pSockHandle)
 {
     // Close the socket
@@ -568,14 +570,14 @@ static void disconnectFromEchoServer(int32_t cellHandle,
 }
 
 // Calllback for when E-DRX parameters are changed.
-static void eDrxCallback(int32_t cellHandle, uCellNetRat_t rat,
+static void eDrxCallback(uDeviceHandle_t cellHandle, uCellNetRat_t rat,
                          bool onNotOff,
                          int32_t eDrxSecondsRequested,
                          int32_t eDrxSecondsAssigned,
                          int32_t pagingWindowSecondsAssigned,
                          void *pParameter)
 {
-    if (cellHandle != *((int32_t *) pParameter)) {
+    if (cellHandle != (uDeviceHandle_t)pParameter) {
         gCallbackErrorCode = 1;
     }
 
@@ -592,7 +594,7 @@ static void eDrxCallback(int32_t cellHandle, uCellNetRat_t rat,
 // of 7 seconds would be expected to end up as a requested
 // value of 10 seconds, since that's the nearest coded value.
 // On exit the values at the pointers will be the assigned values.
-static bool setEdrx(int32_t cellHandle, int32_t *pSockHandle,
+static bool setEdrx(uDeviceHandle_t cellHandle, int32_t *pSockHandle,
                     uSockAddress_t *pEchoServerAddress,
                     uCellNetRat_t rat, bool onNotOff,
                     int32_t eDrxSeconds, int32_t pagingWindowSeconds,
@@ -857,7 +859,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingUart")
 {
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
 
     // In case a previous test failed
     uCellTestPrivateCleanup(&gHandles);
@@ -916,7 +918,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
     const uCellPrivateModule_t *pModule;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     int32_t x;
     uCellNetRat_t rat;
     bool onNotOff3gppSleepSaved;
@@ -1312,7 +1314,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
 {
     int32_t heapUsed;
     int32_t heapClibLossOffset = (int32_t) gSystemHeapLost;
-    int32_t cellHandle;
+    uDeviceHandle_t cellHandle;
     int32_t x;
     uCellNetRat_t rat;
     bool onNotOffEDrxSaved;
@@ -1348,7 +1350,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
 
     // Set a callback for when E-DRX parameters are changed
     U_PORT_TEST_ASSERT(uCellPwrSetEDrxCallback(cellHandle, eDrxCallback,
-                                               (void *) &cellHandle) == 0);
+                                               cellHandle) == 0);
 
     // Use a callback to track our connectivity state, if we can
     //lint -e(1773) Suppress complaints about
@@ -1526,7 +1528,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrCleanUp")
     bool onNotOff = false;
 
     // Make completely sure 3GPP power saving is off as it can mess us up
-    if (gHandles.cellHandle >= 0) {
+    if (gHandles.cellHandle != NULL) {
         uCellPwrGetRequested3gppPowerSaving(gHandles.cellHandle,
                                             &onNotOff,
                                             NULL, NULL);

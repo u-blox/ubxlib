@@ -44,7 +44,6 @@
 #include "u_short_range_private.h"
 #include "u_wifi_module_type.h"
 #include "u_wifi_cfg.h"
-#include "u_wifi_private.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
@@ -120,13 +119,12 @@ static int32_t restart(const uAtClientHandle_t atHandle, bool store)
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
-int32_t uWifiCfgConfigure(int32_t wifiHandle,
+int32_t uWifiCfgConfigure(uDeviceHandle_t devHandle,
                           const uWifiCfg_t *pCfg)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uShortRangePrivateInstance_t *pInstance;
     uAtClientHandle_t atHandle;
-    int32_t shoHandle = uWifiToShoHandle(wifiHandle);
 
     if (gUShortRangePrivateMutex != NULL) {
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
@@ -134,7 +132,7 @@ int32_t uWifiCfgConfigure(int32_t wifiHandle,
 
             U_PORT_MUTEX_LOCK(gUShortRangePrivateMutex);
 
-            pInstance = pUShortRangePrivateGetInstance(shoHandle);
+            pInstance = pUShortRangePrivateGetInstance(devHandle);
             if (pInstance != NULL) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
                 bool restartNeeded = false;

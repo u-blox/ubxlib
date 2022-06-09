@@ -73,7 +73,8 @@ static int64_t gStopTimeMs;
 /** Keep track of the current network handle so that the
  * keepGoingCallback() can check it.
  */
-static int32_t gNetworkHandle = -1;
+//lint -esym(844, gDevHandle)
+static uDeviceHandle_t gDevHandle = NULL;
 
 /** A place to hook a writeable copy of a test location configuration.
  */
@@ -94,11 +95,11 @@ static int32_t gErrorCode;
  * -------------------------------------------------------------- */
 
 // Callback function for location establishment process.
-static bool keepGoingCallback(int32_t networkHandle)
+static bool keepGoingCallback(uDeviceHandle_t devHandle)
 {
     bool keepGoing = true;
 
-    U_PORT_TEST_ASSERT((gNetworkHandle < 0) || (networkHandle == gNetworkHandle));
+    U_PORT_TEST_ASSERT((gDevHandle == NULL) || (devHandle == gDevHandle));
     if (uPortGetTickTimeMs() > gStopTimeMs) {
         keepGoing = false;
     }
@@ -107,69 +108,39 @@ static bool keepGoingCallback(int32_t networkHandle)
 }
 
 // Standard preamble for the location test.
-static void stdPreamble()
+static uNetworkTestList_t *pStdPreamble()
 {
-#if (U_CFG_APP_GNSS_UART < 0)
-    int32_t networkHandle = -1;
-#endif
+    uNetworkTestList_t *pList;
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-    U_PORT_TEST_ASSERT(uNetworkInit() == 0);
+    U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    // Add each network type if its not already been added
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (gUNetworkTestCfg[x].handle < 0) {
-            if (*((const uNetworkType_t *) (gUNetworkTestCfg[x].pConfiguration)) != U_NETWORK_TYPE_NONE) {
-                uPortLog("U_LOCATION_TEST: adding %s network...\n",
-                         gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-#if (U_CFG_APP_GNSS_UART < 0)
-                // If there is no GNSS UART then any GNSS chip must
-                // be connected via the cellular module's AT interface
-                // hence we capture the cellular network handle here and
-                // modify the GNSS configuration to use it before we add
-                // the GNSS network
-                uNetworkTestGnssAtConfiguration(networkHandle,
-                                                gUNetworkTestCfg[x].pConfiguration);
-#endif
-                gUNetworkTestCfg[x].handle = uNetworkAdd(gUNetworkTestCfg[x].type,
-                                                         gUNetworkTestCfg[x].pConfiguration);
-                U_PORT_TEST_ASSERT(gUNetworkTestCfg[x].handle >= 0);
-#if (U_CFG_APP_GNSS_UART < 0)
-                if (gUNetworkTestCfg[x].type == U_NETWORK_TYPE_CELL) {
-                    networkHandle = gUNetworkTestCfg[x].handle;
-                }
-#endif
-            }
+    // Get all of the networks
+    pList = pUNetworkTestListAlloc(NULL);
+    // Open the devices that are not already open
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle == NULL) {
+            uPortLog("U_LOCATION_TEST: adding device %s for network %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
 
     // Bring up each network type
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        if (gUNetworkTestCfg[x].handle >= 0) {
-            uPortLog("U_LOCATION_TEST: bringing up %s...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
-            U_PORT_TEST_ASSERT(uNetworkUp(gUNetworkTestCfg[x].handle) == 0);
-        }
-    }
-}
-
-// Get the GNSS network handle from the set we have brought up.
-static int32_t getGnssNetworkHandle()
-{
-    int32_t gnssNetworkHandle = -1;
-
-    for (size_t x = 0; (x < gUNetworkTestCfgSize) && (gnssNetworkHandle < 0); x++) {
-        if ((gUNetworkTestCfg[x].type == U_NETWORK_TYPE_GNSS) &&
-            (gUNetworkTestCfg[x].handle >= 0)) {
-            gnssNetworkHandle = gUNetworkTestCfg[x].handle;
-        }
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_LOCATION_TEST: bringing up %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceUp(*pTmp->pDevHandle,
+                                               pTmp->networkType,
+                                               pTmp->pNetworkCfg) == 0);
     }
 
-    return gnssNetworkHandle;
+    return pList;
 }
 
 // Test the blocking location API.
-static void testBlocking(int32_t networkHandle,
+static void testBlocking(uDeviceHandle_t devHandle,
                          uNetworkType_t networkType,
                          uLocationType_t locationType,
                          const uLocationTestCfg_t *pLocationCfg)
@@ -179,14 +150,15 @@ static void testBlocking(int32_t networkHandle,
     const uLocationAssist_t *pLocationAssist = NULL;
     const char *pAuthenticationTokenStr = NULL;
 
-    gNetworkHandle = networkHandle;
+    gDevHandle = devHandle;
     if (pLocationCfg != NULL) {
         pAuthenticationTokenStr = pLocationCfg->pAuthenticationTokenStr;
         pLocationAssist = pLocationCfg->pLocationAssist;
-        if ((pLocationAssist != NULL) && (pLocationAssist->networkHandleAssist >= 0)) {
-            // If an assistance network handle is in play we can't
+        if ((pLocationAssist != NULL) &&
+            (locationType == U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE)) {
+            // If we're doing cloud locate then we can't
             // check the network handle in the callback
-            gNetworkHandle = -1;
+            gDevHandle = NULL;
         }
     }
     startTime = uPortGetTickTimeMs();
@@ -197,7 +169,7 @@ static void testBlocking(int32_t networkHandle,
         // The location type is supported (a GNSS network always
         // supports location, irrespective of the location type) so it
         // should work
-        U_PORT_TEST_ASSERT(uLocationGet(networkHandle, locationType,
+        U_PORT_TEST_ASSERT(uLocationGet(devHandle, locationType,
                                         pLocationAssist,
                                         pAuthenticationTokenStr,
                                         &location,
@@ -225,7 +197,7 @@ static void testBlocking(int32_t networkHandle,
         U_PORT_TEST_ASSERT(location.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
     } else {
         if (!U_NETWORK_TEST_TYPE_HAS_LOCATION(networkType)) {
-            U_PORT_TEST_ASSERT(uLocationGet(networkHandle, locationType,
+            U_PORT_TEST_ASSERT(uLocationGet(devHandle, locationType,
                                             pLocationAssist, pAuthenticationTokenStr,
                                             &location,
                                             keepGoingCallback) < 0);
@@ -243,11 +215,11 @@ static void testBlocking(int32_t networkHandle,
 }
 
 // Callback function for the non-blocking API.
-static void locationCallback(int32_t networkHandle,
+static void locationCallback(uDeviceHandle_t devHandle,
                              int32_t errorCode,
                              const uLocation_t *pLocation)
 {
-    gNetworkHandle = networkHandle,
+    gDevHandle = devHandle,
     gErrorCode = errorCode;
     if (pLocation != NULL) {
         gLocation.latitudeX1e7 = pLocation->latitudeX1e7;
@@ -261,7 +233,7 @@ static void locationCallback(int32_t networkHandle,
 }
 
 // Test the non-blocking location API.
-static void testNonBlocking(int32_t networkHandle,
+static void testNonBlocking(uDeviceHandle_t devHandle,
                             uNetworkType_t networkType,
                             uLocationType_t locationType,
                             const uLocationTestCfg_t *pLocationCfg)
@@ -284,10 +256,10 @@ static void testNonBlocking(int32_t networkHandle,
         // location again quickly after returning an answer
         for (int32_t x = 3; (x > 0) && (gErrorCode != 0); x--) {
             uPortLog("U_LOCATION_TEST: non-blocking API.\n");
-            gNetworkHandle = -1;
+            gDevHandle = NULL;
             gErrorCode = INT_MIN;
             uLocationTestResetLocation(&gLocation);
-            U_PORT_TEST_ASSERT(uLocationGetStart(networkHandle, locationType,
+            U_PORT_TEST_ASSERT(uLocationGetStart(devHandle, locationType,
                                                  pLocationAssist,
                                                  pAuthenticationTokenStr,
                                                  locationCallback) == 0);
@@ -295,7 +267,7 @@ static void testNonBlocking(int32_t networkHandle,
                      " non-blocking API...\n", U_LOCATION_TEST_CFG_TIMEOUT_SECONDS);
             while ((gErrorCode == INT_MIN) && (uPortGetTickTimeMs() < gStopTimeMs)) {
                 // Location establishment status is only supported for cell locate
-                y = uLocationGetStatus(networkHandle);
+                y = uLocationGetStatus(devHandle);
                 if (locationType == U_LOCATION_TYPE_CLOUD_CELL_LOCATE) {
                     U_PORT_TEST_ASSERT(y >= 0);
                 } else {
@@ -309,7 +281,7 @@ static void testNonBlocking(int32_t networkHandle,
                          (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
                 // If we are running on a cellular test network we might not
                 // get position but we should always get time
-                U_PORT_TEST_ASSERT(gNetworkHandle == networkHandle);
+                U_PORT_TEST_ASSERT(gDevHandle == devHandle);
                 if ((gLocation.radiusMillimetres > 0) &&
                     (gLocation.radiusMillimetres <= U_LOCATION_TEST_MAX_RADIUS_MILLIMETRES)) {
                     uLocationTestPrintLocation(&gLocation);
@@ -333,13 +305,13 @@ static void testNonBlocking(int32_t networkHandle,
         U_PORT_TEST_ASSERT(gErrorCode == 0);
     } else {
         if (!U_NETWORK_TEST_TYPE_HAS_LOCATION(networkType)) {
-            gNetworkHandle = -1;
+            gDevHandle = NULL;
             gErrorCode = INT_MIN;
             uLocationTestResetLocation(&gLocation);
-            U_PORT_TEST_ASSERT(uLocationGetStart(networkHandle, locationType,
+            U_PORT_TEST_ASSERT(uLocationGetStart(devHandle, locationType,
                                                  pLocationAssist, pAuthenticationTokenStr,
                                                  locationCallback) < 0);
-            U_PORT_TEST_ASSERT(gNetworkHandle == -1);
+            U_PORT_TEST_ASSERT(gDevHandle == NULL);
             U_PORT_TEST_ASSERT(gErrorCode == INT_MIN);
             U_PORT_TEST_ASSERT(gLocation.latitudeX1e7 == INT_MIN);
             U_PORT_TEST_ASSERT(gLocation.longitudeX1e7 == INT_MIN);
@@ -364,7 +336,8 @@ static void testNonBlocking(int32_t networkHandle,
  */
 U_PORT_TEST_FUNCTION("[location]", "locationBasic")
 {
-    int32_t networkHandle;
+    uNetworkTestList_t *pList;
+    uDeviceHandle_t devHandle;
     int32_t locationType;
     const uLocationTestCfgList_t *pLocationCfgList;
     int32_t heapUsed;
@@ -375,6 +348,9 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
         heapLossFirstCall[x] = INT_MIN;
     }
 
+    // In case a previous test failed
+    uNetworkTestCleanUp();
+
     // Whatever called us likely initialised the
     // port so deinitialise it here to obtain the
     // correct initial heap size
@@ -382,90 +358,86 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
 
     // Do the standard preamble to make sure there is
     // a network underneath us
-    stdPreamble();
+    pList = pStdPreamble();
+    if (pList == NULL) {
+        uPortLog("U_LOCATION_TEST: *** WARNING *** nothing to do.\n");
+    }
 
     // Get the initialish heap
     heapUsed = uPortGetHeapFree();
 
     // Repeat for all network types
-    for (size_t x = 0; x < gUNetworkTestCfgSize; x++) {
-        networkHandle = gUNetworkTestCfg[x].handle;
-        if (networkHandle >= 0) {
-            uPortLog("U_LOCATION_TEST: testing %s network...\n",
-                     gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        devHandle = *pTmp->pDevHandle;
+        uPortLog("U_LOCATION_TEST: testing %s network...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
 
-            // Do this for all location types
-            for (locationType = (int32_t) U_LOCATION_TYPE_GNSS;
-                 locationType < (int32_t) U_LOCATION_TYPE_MAX_NUM;
-                 locationType++) {
+        // Do this for all location types
+        for (locationType = (int32_t) U_LOCATION_TYPE_GNSS;
+             locationType < (int32_t) U_LOCATION_TYPE_MAX_NUM;
+             locationType++) {
 
-                // Check the location types supported by this network type
-                uPortLog("U_LOCATION_TEST: testing location type %s.\n",
-                         gpULocationTestTypeStr[locationType]);
-                pLocationCfgList = gpULocationTestCfg[gUNetworkTestCfg[x].type];
-                for (size_t y = 0;
-                     (y < pLocationCfgList->numEntries) && (gpLocationCfg == NULL);
-                     y++) {
-                    if (locationType == (int32_t) (pLocationCfgList->pCfgData[y]->locationType)) {
-                        // The location type is supported, make a copy
-                        // of the test configuration for it into something
-                        // writeable
-                        gpLocationCfg = pULocationTestCfgDeepCopyMalloc(pLocationCfgList->pCfgData[y]);
-                    }
+            // Check the location types supported by this network type
+            uPortLog("U_LOCATION_TEST: testing location type %s.\n",
+                     gpULocationTestTypeStr[locationType]);
+            pLocationCfgList = gpULocationTestCfg[pTmp->networkType];
+            for (size_t y = 0;
+                 (y < pLocationCfgList->numEntries) && (gpLocationCfg == NULL);
+                 y++) {
+                if (locationType == (int32_t) (pLocationCfgList->pCfgData[y]->locationType)) {
+                    // The location type is supported, make a copy
+                    // of the test configuration for it into something
+                    // writeable
+                    gpLocationCfg = pULocationTestCfgDeepCopyMalloc(pLocationCfgList->pCfgData[y]);
                 }
+            }
 
-                if (gpLocationCfg != NULL) {
-                    // The first time a given location type is called it may allocate
-                    // memory (e.g for mutexes) which are only released at deinitialisation
-                    // of the location API.  Track this so as to take account of it in
-                    // the heap check calculation.
-                    if (heapLossFirstCall[locationType] == INT_MIN) {
-                        heapLoss = uPortGetHeapFree();
-                    }
-                    if ((gpLocationCfg->pLocationAssist != NULL) &&
-                        (gpLocationCfg->pLocationAssist->pClientIdStr != NULL)) {
-                        // If we have a Client ID then we will need to log into the
-                        // MQTT broker first
-                        gpLocationCfg->pLocationAssist->pMqttClientContext = pULocationTestMqttLogin(networkHandle,
-                                                                                                     gpLocationCfg->pServerUrlStr,
-                                                                                                     gpLocationCfg->pUserNameStr,
-                                                                                                     gpLocationCfg->pPasswordStr,
-                                                                                                     gpLocationCfg->pLocationAssist->pClientIdStr);
-                        if (locationType == (int32_t) U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE) {
-                            // Cloud Locate requires the GNSS network handle
-                            // as its assistance network
-                            gpLocationCfg->pLocationAssist->networkHandleAssist = getGnssNetworkHandle();
-                        }
-                    }
-                } else {
-                    uPortLog("U_LOCATION_TEST: %s is not supported on a %s network.\n",
-                             gpULocationTestTypeStr[locationType],
-                             gpUNetworkTestTypeName[gUNetworkTestCfg[x].type]);
+            if (gpLocationCfg != NULL) {
+                // The first time a given location type is called it may allocate
+                // memory (e.g for mutexes) which are only released at deinitialisation
+                // of the location API.  Track this so as to take account of it in
+                // the heap check calculation.
+                if (heapLossFirstCall[locationType] == INT_MIN) {
+                    heapLoss = uPortGetHeapFree();
                 }
-
-                // Test the blocking location API (supported and non-supported cases)
-                testBlocking(networkHandle, gUNetworkTestCfg[x].type,
-                             (uLocationType_t) locationType, gpLocationCfg);
-
-                // Test the non-blocking location API (supported and non-supported cases)
-                testNonBlocking(networkHandle, gUNetworkTestCfg[x].type,
-                                (uLocationType_t) locationType, gpLocationCfg);
-
-                if (gpLocationCfg != NULL) {
-                    if ((gpLocationCfg->pLocationAssist != NULL) &&
-                        (gpLocationCfg->pLocationAssist->pMqttClientContext != NULL)) {
-                        // Log out of the MQTT broker again
-                        uLocationTestMqttLogout(gpLocationCfg->pLocationAssist->pMqttClientContext);
-                        gpLocationCfg->pLocationAssist->pMqttClientContext = NULL;
-                    }
-                    // Account for first-call heap usage
-                    if (heapLossFirstCall[locationType] == INT_MIN) {
-                        heapLossFirstCall[locationType] = heapLoss - uPortGetHeapFree();
-                    }
-                    // Free the memory from the location configuration copy
-                    uLocationTestCfgDeepCopyFree(gpLocationCfg);
-                    gpLocationCfg = NULL;
+                if ((gpLocationCfg->pLocationAssist != NULL) &&
+                    (gpLocationCfg->pLocationAssist->pClientIdStr != NULL)) {
+                    // If we have a Client ID then we will need to log into the
+                    // MQTT broker first
+                    gpLocationCfg->pLocationAssist->pMqttClientContext = pULocationTestMqttLogin(devHandle,
+                                                                                                 gpLocationCfg->pServerUrlStr,
+                                                                                                 gpLocationCfg->pUserNameStr,
+                                                                                                 gpLocationCfg->pPasswordStr,
+                                                                                                 gpLocationCfg->pLocationAssist->pClientIdStr);
                 }
+            } else {
+                uPortLog("U_LOCATION_TEST: %s is not supported on a %s network.\n",
+                         gpULocationTestTypeStr[locationType],
+                         gpUNetworkTestTypeName[pTmp->networkType]);
+            }
+
+            // Test the blocking location API (supported and non-supported cases)
+            testBlocking(devHandle, pTmp->networkType,
+                         (uLocationType_t) locationType, gpLocationCfg);
+
+            // Test the non-blocking location API (supported and non-supported cases)
+            testNonBlocking(devHandle, pTmp->networkType,
+                            (uLocationType_t) locationType, gpLocationCfg);
+
+            if (gpLocationCfg != NULL) {
+                if ((gpLocationCfg->pLocationAssist != NULL) &&
+                    (gpLocationCfg->pLocationAssist->pMqttClientContext != NULL)) {
+                    // Log out of the MQTT broker again
+                    uLocationTestMqttLogout(gpLocationCfg->pLocationAssist->pMqttClientContext);
+                    gpLocationCfg->pLocationAssist->pMqttClientContext = NULL;
+                }
+                // Account for first-call heap usage
+                if (heapLossFirstCall[locationType] == INT_MIN) {
+                    heapLossFirstCall[locationType] = heapLoss - uPortGetHeapFree();
+                }
+                // Free the memory from the location configuration copy
+                uLocationTestCfgDeepCopyFree(gpLocationCfg);
+                gpLocationCfg = NULL;
             }
         }
     }
@@ -483,6 +455,25 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
     // heapUsed <= heapLoss for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= heapLoss);
+
+    // Remove each network type
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        uPortLog("U_LOCATION_TEST: taking down %s...\n",
+                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
+                                                 pTmp->networkType) == 0);
+    }
+
+    // Close the devices and free the list
+    for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
+        if (*pTmp->pDevHandle != NULL) {
+            uPortLog("U_LOCATION_TEST: closing device %s...\n",
+                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
+            *pTmp->pDevHandle = NULL;
+        }
+    }
+    uNetworkTestListFree();
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -503,10 +494,8 @@ U_PORT_TEST_FUNCTION("[location]", "locationCleanUp")
     // the network, sockets, security and location tests
     // so must reset the handles here in case the
     // tests of one of the other APIs are coming next.
-    for (size_t y = 0; y < gUNetworkTestCfgSize; y++) {
-        gUNetworkTestCfg[y].handle = -1;
-    }
-    uNetworkDeinit();
+    uNetworkTestCleanUp();
+    uDeviceDeinit();
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {

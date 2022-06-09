@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,38 +22,11 @@
  * instructions.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
+// Bring in all of the ubxlib public header files
+#include "ubxlib.h"
 
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-#include "string.h"
-
-// Required by ubxlib
-#include "u_port.h"
-
-// The next two lines will cause uPortLog() output
-// to be sent to ubxlib's chosen trace output.
-// Comment them out to send the uPortLog() output
-// to print() instead.
-#include "u_cfg_sw.h"
-#include "u_port_debug.h"
-
-// For default values for U_CFG_APP_xxx
+// Bring in the application settings
 #include "u_cfg_app_platform_specific.h"
-
-// For the cellular module types
-#include "u_cell_module_type.h"
-
-// For the network API
-#include "u_network.h"
-#include "u_network_config_cell.h"
-
-// For the location API
-#include "u_location.h"
 
 #ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
@@ -87,34 +60,50 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// Cellular network configuration:
+// Cellular configuration.
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
 #if defined(U_CFG_TEST_CELL_MODULE_TYPE) && defined(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN)
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                        U_CFG_TEST_CELL_MODULE_TYPE,
-                                                        NULL, /* SIM pin */
-                                                        NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-                                                        240, /* Connection timeout in seconds */
-                                                        U_CFG_APP_CELL_UART,
-                                                        /* Note that the pin numbers
-                                                           that follow are those of the MCU:
-                                                           if you are using an MCU inside
-                                                           a u-blox module the IO pin numbering
-                                                           for the module is likely different
-                                                           to that from the MCU: check the data
-                                                           sheet for the module to determine
-                                                           the mapping. */
-                                                        U_CFG_APP_PIN_CELL_TXD,
-                                                        U_CFG_APP_PIN_CELL_RXD,
-                                                        U_CFG_APP_PIN_CELL_CTS,
-                                                        U_CFG_APP_PIN_CELL_RTS,
-                                                        U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                        U_CFG_APP_PIN_CELL_PWR_ON,
-                                                        U_CFG_APP_PIN_CELL_VINT
-                                                       };
+// DEVICE i.e. module/chip configuration: in this case a cellular
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pSimPinCode = NULL, /* SIM pin */
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        },
+    },
+};
+// NETWORK configuration for cellular
+static const uNetworkCfgCell_t gNetworkCfg = {
+    .type = U_NETWORK_TYPE_CELL,
+    .pApn = NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
+    .timeoutSeconds = 240 /* Connection timeout in seconds */
+};
 #else
-static const uNetworkConfigurationCell_t gConfigCell = { .type = U_NETWORK_TYPE_NONE };
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgCell_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
 /* ----------------------------------------------------------------
@@ -177,24 +166,25 @@ static void printLocation(int32_t latitudeX1e7, int32_t longitudeX1e7)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     uLocation_t location;
+    int32_t returnCode;
 
     // Set an out of range value so that we can test it later
     location.timeUtc = -1;
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add the network instance
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    // Open the device
+    returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
+    uPortLog("Opened device with return code %d.\n", returnCode);
 
-    // Bring up the network layer
+    // Bring up the network interface
     uPortLog("Bringing up the network...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                            &gNetworkCfg) == 0) {
 
         // You may use the network, as normal,
         // at any time, for example connect and
@@ -216,7 +206,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
         // (metres versus hundreds of metres).
 
         // Now get location using Cell Locate
-        if (uLocationGet(networkHandle, U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
+        if (uLocationGet(devHandle, U_LOCATION_TYPE_CLOUD_CELL_LOCATE,
                          NULL, U_PORT_STRINGIFY_QUOTED(U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN),
                          &location, NULL) == 0) {
             printLocation(location.latitudeX1e7, location.longitudeX1e7);
@@ -226,13 +216,19 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocCellLocate")
 
         // When finished with the network layer
         uPortLog("Taking down network...\n");
-        uNetworkDown(networkHandle);
+        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_CELL);
     } else {
         uPortLog("Unable to bring up the network!\n");
     }
 
-    // Calling these will also deallocate the network handle
-    uNetworkDeinit();
+    // Close the device
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandle, false);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("Done.\n");

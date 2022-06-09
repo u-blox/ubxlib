@@ -60,20 +60,6 @@
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-uBleModuleType_t shortRangeToBleModule(uShortRangeModuleType_t module)
-{
-    const uShortRangeModuleInfo_t *pModuleInfo;
-    pModuleInfo = uShortRangeGetModuleInfo(module);
-    //lint -e(568) Suppress value never being negative
-    if (!pModuleInfo) {
-        return U_BLE_MODULE_TYPE_INVALID;
-    }
-    if (!pModuleInfo->supportsBle) {
-        return U_BLE_MODULE_TYPE_UNSUPPORTED;
-    }
-    return (uBleModuleType_t)module;
-}
-
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -81,84 +67,15 @@ uBleModuleType_t shortRangeToBleModule(uShortRangeModuleType_t module)
 // Initialise the ble driver.
 int32_t uBleInit(void)
 {
-    uBleDataPrivateInit();
+    uBleSpsPrivateInit();
     return uShortRangeInit();
 }
 
 // Shut-down the ble driver.
 void uBleDeinit(void)
 {
-    uBleDataPrivateDeinit();
+    uBleSpsPrivateDeinit();
     uShortRangeDeinit();
-}
-
-// Add a ble instance.
-int32_t uBleAdd(uBleModuleType_t moduleType,
-                uAtClientHandle_t atHandle)
-{
-    int32_t errorCode;
-    // First make sure the moduleType value is really valid
-    // If not shortRangeToBleModule() will return a negative value
-    // that uShortRangeAdd() will reject
-    moduleType = shortRangeToBleModule((uShortRangeModuleType_t)moduleType);
-
-    errorCode = uShortRangeLock();
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        errorCode = uShortRangeAdd((uShortRangeModuleType_t) moduleType, atHandle);
-        uShortRangeUnlock();
-    }
-    if (errorCode >= 0) {
-        // If we successfully added the module we convert the sho handle to a BLE handle
-        errorCode = uShoToBleHandle(errorCode);
-    }
-
-    return errorCode;
-}
-
-// Remove a ble instance.
-void uBleRemove(int32_t bleHandle)
-{
-    int32_t errorCode;
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
-    errorCode = uShortRangeLock();
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        uShortRangeRemove(shoHandle);
-        uShortRangeUnlock();
-    }
-}
-
-// Get the handle of the AT client.
-int32_t uBleAtClientHandleGet(int32_t bleHandle,
-                              uAtClientHandle_t *pAtHandle)
-{
-    int32_t errorCode;
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
-    errorCode = uShortRangeLock();
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        errorCode = uShortRangeAtClientHandleGet(shoHandle, pAtHandle);
-        uShortRangeUnlock();
-    }
-
-    return errorCode;
-}
-
-uBleModuleType_t uBleDetectModule(int32_t bleHandle)
-{
-    int32_t errorCode;
-    int32_t shoHandle = uBleToShoHandle(bleHandle);
-    uBleModuleType_t bleModule = U_BLE_MODULE_TYPE_INVALID;
-    errorCode = uShortRangeLock();
-
-    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-        uShortRangeModuleType_t shortRangeModule = uShortRangeDetectModule(shoHandle);
-        bleModule = shortRangeToBleModule(shortRangeModule);
-        uShortRangeUnlock();
-    }
-
-    return bleModule;
 }
 
 #endif

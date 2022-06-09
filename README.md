@@ -23,19 +23,17 @@ The key APIs provided by this repo, and their relationships with each other, are
 
 ![APIs](/readme_images/apis.jpg)
 
-- If you wish to bring up a network and don't care about the details, use the common [network](/common/network) API, which can bring up cellular, BLE or Wi-Fi network(s) at your choosing.
+- If you wish to bring up a device/network and don't care about the details, use the common [device](/common/device) and [network](/common/network) APIs, which can bring up cellular, BLE/Wi-Fi or GNSS network(s) at your choosing.
 - If you wish to use a socket over that network, use the common [sock](/common/sock) API.
 - If you wish to use security, use the common [security](/common/security) API.
 - If you wish to contact an MQTT broker over that network, use the common [mqtt_client](/common/mqtt_client) API.
 - If you wish to get a location fix use the common [location](/common/location) API.
 - If you wish to take finer control of [cellular](/cell), [ble](/ble), [wifi](/wifi) or [gnss](/gnss), use the respective control API directly.
-- GNSS is used via the [gnss](/gnss) API.
+- GNSS may be used via the [gnss](/gnss) API.
 - The BLE and Wi-Fi APIs are internally common within u-blox and so they both use the common [short_range](/common/short_range) API.
 - The [at_client](/common/at_client) API is used by the cellular and short range APIs to talk to AT-based u-blox modules.
 - The [ubx_protocol](/common/ubx_protocol) API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
 - The [port](/port) API permits all of the above to run on different hosts; this API is not really intended for customer use - you can use it if you wish but it is quite restricted and is intended only to provide what `ubxlib` needs in the form that `ubxlib` needs it.
-
-
 
 # Supported `ubxlib` host platforms and APIs
 
@@ -48,36 +46,34 @@ Hosts run `ubxlib` and interact with an attached periperal. A host platform cont
 - [ESP32-DevKitC](https://www.espressif.com/en/products/devkits/esp32-devkitc/overview)
 - [u-blox NINA-W1 EVK](https://www.u-blox.com/en/product/evk-nina-w10)
 
-
-
 If your MCU is on the list but your board is not:
 - Just set the HW pins in the source file of the example to match how your MCU is wired to the u-blox peripheral.
 
 If your MCU is not on the list:
 - To port `ubxlib` to a new host platform follow the [DYI instructions](https://github.com/u-blox/ubxlib_priv/tree/master/port) for the port API.
 
-|`ubxlib` hosts |NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B1 series|C030 board|PC|PC|
+|`ubxlib` hosts |NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B1 series|C030 board|PC<sup>*|PC<sup>*|
 |-----------|-----------|--------------|-----|-----|------|------|
 |**MCU**|Espressif ESP32|Nordic nRF52|Nordic nRF53|ST-Micro STM32F4|x86 (win32)|x86 (32-bit Linux)|
 |**Toolchain**|ESP-IDF<br />Arduino-ESP32|GCC<br />nRF Connect|nRF Connect|Cube|MSVC|Zephyr|
 |**RTOS/SDK**|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|FreeRTOS|Windows|Zephyr|
-|**APIs provided by host**|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[ble](/ble "ble API")<br />[network](/common/network "network API")|[ble](/ble "ble API")<br />[network](/common/network "network API")| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>| N/A | N/A |
+|**APIs provided by host only**|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />| [cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location<sup>**](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>| N/A | N/A |
 
+<sup>* for development/test purposes
 
-# Supported modules as `ubxlib` periperhals and APIs
+# Supported modules as `ubxlib` peripherals and APIs
 
 Peripherals are u-blox modules which accept commands (e.g. AT-commands) over a serial interface and have no open MCU environment. To run the APIs they need to be attached to a host which runs `ubxlib`. For example in the [test farm](/port/platform/common/automation/DATABASE.md) combinations of hosts and peripherals are listed.
 
 |`ubxlib` peripherals |NINA-B41 series<br />NINA-B31 series<br />NINA-B1 series<br />ANNA-B1|NINA-W13|NINA-W15|SARA-U2 series|SARA-R4 series<br />SARA-R5 series<br />|SARA-R510M8S<br />SARA-R422M8S|M8 series|
 |-----------|-----------|--------------|-----|-----|------|------|------|
-|**APIs provided by host with peripheral attached**|[ble](/ble "ble API")<br />[network](/common/network "network API")|[wifi](/wifi)<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")| [cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>|[cell](/cell "cell API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[security](/common/security "security API")<br>[mqtt_client](/common/mqtt_client "MQTT client API")|All APIs of<br />SARA-R4,<br />SARA-R5 series&nbsp;+<br />[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|
+|**APIs provided by host with peripheral attached**|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")|[wifi](/wifi)<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location*](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>|[cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location<sup>**](/common/location "location API")<br />[security](/common/security "security API")<br>[mqtt_client](/common/mqtt_client "MQTT client API")|All APIs of<br />SARA-R4,<br />SARA-R5 series&nbsp;+<br />[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|[gnss](/gnss "GNSS API")<br />[location](/common/location "location API")|
 
 
-
-\* Through the u-blox [CellLocate](https://www.u-blox.com/en/product/celllocate) mobile network-based location service.
+<sup>** Through the u-blox [CellLocate](https://www.u-blox.com/en/product/celllocate) mobile network-based location service.
 
 # Structure of `ubxlib`
-The APIs for each type of u-blox module can be found in the relevant directory (e.g. [cell](/cell) for cellular modules and [ble](/ble)/[wifi](/wifi) for BLE/Wi-Fi modules).  The [common](/common) directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the [network](/common/network) API and the [sockets](/common/sockets) API.  All APIs are documented in the API header files.
+The APIs for each type of u-blox module can be found in the relevant directory (e.g. [cell](/cell) for cellular modules and [ble](/ble)/[wifi](/wifi) for BLE/Wi-Fi modules).  The [common](/common) directory contains APIs and 'helper' modules that are shared by u-blox modules, most importantly the [device](/common/device) API, the [network](/common/network) API and the [sockets](/common/sockets) API.  All APIs are documented in the API header files.
 
 Examples demonstrating the use of the APIs can be found in the [example](/example) directory.
 
@@ -91,10 +87,11 @@ In order for u-blox to support multiple platforms with this code there is also a
 +---example                    <-- examples that introduce the main features 
 +---cfg                        <-- global configuration header files
 +---common                     <-- APIs that are common across u-blox modules
-¦   +---network                <-- the simple network API for BLE, cell, Wi-Fi and GNSS
+¦   +---device                 <-- the simple device API for opening cell, short-range (i.e. BLE or Wi-Fi) and GNSS modules
 ¦   ¦   +---api                <-- all folders, in general, have an API directory
 ¦   ¦   +---src                    containing public headers, a source directory with
 ¦   ¦   +---test                   the implementation and a test directory with the tests
+¦   +---network                <-- the simple network API for BLE, cell, Wi-Fi and GNSS
 ¦   +---sock                   <-- the sockets API for cell, Wi-Fi (and in the future BLE)
 ¦   +---security               <-- common API for u-blox security and TLS security/credential storage
 ¦   +---mqtt_client            <-- common MQTT client API
@@ -145,15 +142,15 @@ Configuration information for the examples and the tests can be found in the `cf
 
 |  Technology  | Example |
 |--------------|----------|
-| Cellular     | The [sockets](/example/sockets "socket example") example brings up a TCP/UDP socket by using the [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
+| Cellular     | The [sockets](/example/sockets "socket example") example brings up a TCP/UDP socket by using the [device](/common/device "device API"), [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
 | Cellular     | The [end-to-end security](/example/security/e2e "E2E example") example using the [security](/common/security "security API") API. |
 | Cellular     | The [PSK generation](/example/security/psk "PSK example") example using the [security](/common/security "security API") API. |
 | Cellular     | The [chip-to-chip security](/example/security/c2c "C2C example") example using the [security](/common/security "security API") API. |
 | Cellular     | A [TLS-secured version](/example/sockets "TLS sockets example") of the sockets example. |
-| Cellular     | An [MQTT client](/example/mqtt_client "MQTT example") using the [MQTT client](/common/mqtt_client "MQTT client API") API.|
+| Cellular     | An [MQTT/MQTT-SN client](/example/mqtt_client "MQTT/MQTT-SN example") using the [MQTT/MQTT-SN client](/common/mqtt_client "MQTT/MQTT-SN client API") API.|
 | Cellular     | [CellLocate](/example/location "CellLocate example") example. | Q2 2021|
 | Bluetooth    | SPS (serial port service). |
-| Wi-Fi         | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
+| Wi-Fi        | The [sockets](/example/sockets "sockets example") example brings up a TCP/UDP socket by using the [device](/common/device "device API"), [network](/common/network "network API") and [sock](/common/sock "sock API") APIs.  |
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.|
 
 # Feature Request And Roadmap
@@ -170,7 +167,7 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 - The `go` echo servers in [common/sock/test/echo_server](/common/sock/test/echo_server) are based on those used in testing of [AWS FreeRTOS](https://github.com/aws/amazon-freertos).
 - The `setjmp()/longjmp()` implementation in [port/clib/u_port_setjmp.S](/port/clib/u_port_setjmp.S), used when testing the Zephyr platform, is copyright Nick Clifton, Cygnus Solutions and part of [newlib](https://sourceware.org/newlib/libc.html).
 - The `base64` implementation in [common/utils/src/base64.h](/common/utils/src/base64.h) is copyright [William Sherif](https://github.com/superwills/NibbleAndAHalf).
-- The ARM callstack iterator in [port/platform/common/debug_utils/src/arch/arm/u_stack_frame_cortex.c](/port/platform/common/debug_utils/src/arch/arm/u_print_callstack_cortex.c) is copyright Armink part of [CmBacktrace](https://github.com/armink/CmBacktrace).
-- The FreeRTOS additions [port/platform/common/debug_utils/src/freertos/additions](port/platform/common/debug_utils/src/freertos/additions) is copied from the Apache licensed [ESP-IDF](https://github.com/espressif/esp-idf).
+- The ARM callstack iterator in [port/platform/common/debug_utils/src/arch/arm/u_stack_frame_cortex.c](/port/platform/common/debug_utils/src/arch/arm/u_print_callstack_cortex.c) is copyright Armink, part of [CmBacktrace](https://github.com/armink/CmBacktrace).
+- The FreeRTOS additions [port/platform/common/debug_utils/src/freertos/additions](/port/platform/common/debug_utils/src/freertos/additions) are copied from the Apache licensed [ESP-IDF](https://github.com/espressif/esp-idf).
 
 In all cases copyright, and our thanks, remain with the original authors.

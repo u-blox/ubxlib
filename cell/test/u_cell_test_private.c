@@ -106,7 +106,8 @@ static const char *const pRatStr[] = {"unknown or not used",
  * -------------------------------------------------------------- */
 
 // Set the given context.
-static void contextSet(int32_t cellHandle, int32_t contextId,
+static void contextSet(uDeviceHandle_t cellHandle,
+                       int32_t contextId,
                        const char *pApn)
 {
     uCellPrivateInstance_t *pInstance;
@@ -179,7 +180,6 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                                  bool powerOn)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
-    int32_t cellHandle;
     const uCellPrivateModule_t *pModule;
     int32_t mnoProfile;
     uCellNetRat_t rat;
@@ -193,7 +193,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
     // Set some defaults
     pParameters->uartHandle = -1;
     pParameters->atClientHandle = NULL;
-    pParameters->cellHandle = -1;
+    pParameters->cellHandle = NULL;
 
     uPortLog("U_CELL_TEST_PRIVATE: test preamble start.\n");
 
@@ -229,16 +229,17 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
         if (uCellInit() == 0) {
             uPortLog("U_CELL_TEST_PRIVATE: adding a cellular instance on"
                      " the AT client...\n");
-            pParameters->cellHandle = uCellAdd(moduleType,
-                                               pParameters->atClientHandle,
-                                               U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                               U_CFG_APP_PIN_CELL_PWR_ON,
-                                               U_CFG_APP_PIN_CELL_VINT, false);
+            errorCode = uCellAdd(moduleType,
+                                 pParameters->atClientHandle,
+                                 U_CFG_APP_PIN_CELL_ENABLE_POWER,
+                                 U_CFG_APP_PIN_CELL_PWR_ON,
+                                 U_CFG_APP_PIN_CELL_VINT, false,
+                                 &pParameters->cellHandle);
         }
     }
 
-    if (pParameters->cellHandle >= 0) {
-        cellHandle = pParameters->cellHandle;
+    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        uDeviceHandle_t cellHandle = pParameters->cellHandle;
         if (powerOn) {
 #if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
             errorCode = uCellPwrSetDtrPowerSavingPin(cellHandle, U_CFG_APP_PIN_CELL_DTR);
@@ -426,7 +427,7 @@ void uCellTestPrivatePostamble(uCellTestPrivate_t *pParameters,
                                bool powerOff)
 {
 #if U_CFG_APP_PIN_CELL_PWR_ON >= 0
-    if (powerOff && (pParameters->cellHandle >= 0)) {
+    if (powerOff && (pParameters->cellHandle != NULL)) {
         uCellPwrOff(pParameters->cellHandle, NULL);
     }
 #endif
@@ -490,7 +491,7 @@ uCellNetRat_t uCellTestPrivateInitRatGet(uint32_t supportedRatsBitmap)
 }
 
 // Make sure the LWM2M client in the module is off.
-int32_t uCellTestPrivateLwm2mDisable(int32_t cellHandle)
+int32_t uCellTestPrivateLwm2mDisable(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;

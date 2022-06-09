@@ -17,7 +17,10 @@
 #ifndef _U_SHORT_RANGE_TEST_PRIVATE_H_
 #define _U_SHORT_RANGE_TEST_PRIVATE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file defines types, functions and inclusions that
@@ -39,10 +42,10 @@ extern "C" {
 /** Struct to contain all the stuff needed by the common functions.
  */
 typedef struct {
-    int32_t uartHandle; /**< The handle returned by uPortUartOpen(). */
-    int32_t edmStreamHandle; /**< The handle returned by uPorrEdmStreamOpen(). */
-    uAtClientHandle_t atClientHandle; /**< The handle returned by uAtClientAdd(). */
-    int32_t shortRangeHandle;  /**< The handle returned by uShortRangeAdd(). */
+    int32_t uartHandle; /**< The handle returned by uShortRangeGetUartHandle(). */
+    int32_t edmStreamHandle; /**< The handle returned by uShortRangeGetEdmStreamHandle(). */
+    uAtClientHandle_t atClientHandle; /**< The handle returned by uShortRangeAtClientHandleGet(). */
+    uDeviceHandle_t devHandle;  /**< The handle returned by uShortRangeOpenUart(). */
 } uShortRangeTestPrivate_t;
 
 /* ----------------------------------------------------------------
@@ -57,7 +60,7 @@ typedef struct {
  * instances
  *
  * @param moduleType  the module type.
- * @param streamType  the stream type.
+ * @param pUartConfig the uart config.
  * @param pParameters the place to put the parameters.
  * @return            zero on success else negative error code.
  */
@@ -67,7 +70,7 @@ typedef struct {
 //                                          U_CFG_TEST_SHORT_RANGE_MODULE_TYPE
 //                                          is not defined
 int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
-                                       uAtClientStream_t streamType,
+                                       const uShortRangeUartConfig_t *pUartConfig,
                                        uShortRangeTestPrivate_t *pParameters);
 
 /** The standard postamble for a short range test.

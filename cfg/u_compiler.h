@@ -17,7 +17,10 @@
 #ifndef _U_COMPILER_H_
 #define _U_COMPILER_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief Macros to help with compiler compatibilty.
@@ -66,6 +69,29 @@
 # define U_INLINE __attribute__ ((always_inline)) inline
 #endif
 
+
+/** U_PACKED_STRUCT: macro for creating packed structs
+ */
+#ifdef _MSC_VER
+/** Microsoft Visual C++ definition.
+ */
+# define U_PACKED_STRUCT(NAME) __pragma( pack(push, 1) ) struct NAME __pragma( pack(pop))
+#else
+/** Default (GCC) definition.
+ */
+# define U_PACKED_STRUCT(NAME) struct __attribute__((packed)) NAME
+#endif
+
 #endif // _U_COMPILER_H_
+
+
+/** U_CLANG_ANALYZER_NORETURN: attribute used for telling clang that
+ *  a function never returns. Typically functions such as assert handlers.
+ */
+#ifdef __clang_analyzer__
+# define U_CLANG_ANALYZER_NORETURN __attribute__((analyzer_noreturn))
+#else
+# define U_CLANG_ANALYZER_NORETURN
+#endif
 
 // End of file

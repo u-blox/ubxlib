@@ -54,13 +54,12 @@
 
 #include "u_mqtt_common.h"
 #include "u_mqtt_client.h"
-#include "u_wifi_private.h"
 #include "u_wifi_mqtt.h"
 #include "u_short_range_module_type.h"
+#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_private.h"
 #include "u_short_range_edm_stream.h"
-#include "u_ringbuffer.h"
 #include "u_short_range_sec_tls.h"
 
 /* ----------------------------------------------------------------
@@ -90,10 +89,9 @@ typedef struct uWifiMqttSession_t {
     char *pClientIdStr;
     char *pUserNameStr;
     char *pPasswordStr;
-    char *pRxBuffer;
     bool isConnected;
     bool keepAlive;
-    uRingBuffer_t rxRingBuffer;
+    uShortRangePktList_t rxPkt;
     uWifiMqttTopicList_t topicList;
     int32_t sessionHandle;
     uAtClientHandle_t atHandle;
@@ -303,21 +301,24 @@ static int32_t establishMqttConnectionToBroker(const uMqttClientContext_t *pCont
     uShortRangeSecTlsContext_t *pMqttTlsContext;
 
     memset(url, 0, sizeof(url));
+    // Add the default unsecure mqtt port number if no port is specified
+    char port[10] = {0};
+    if (!strstr(pMqttSession->pBrokerNameStr, ":")) {
+        snprintf(port, sizeof(port), ":%d", (int)pMqttSession->localPort);
+    }
 
     if (isPublish) {
-
-        len = snprintf(url, sizeof(url), "mqtt://%s:%d/?pt=%s&retain=%d&qos=%d",
+        len = snprintf(url, sizeof(url), "mqtt://%s%s/?pt=%s&retain=%d&qos=%d",
                        pMqttSession->pBrokerNameStr,
-                       (int)pMqttSession->localPort,
+                       port,
                        pTopic->pTopicStr,
                        pTopic->retain,
                        pTopic->qos);
 
     } else {
-
-        len = snprintf(url, sizeof(url), "mqtt://%s:%d/?st=%s&qos=%d",
+        len = snprintf(url, sizeof(url), "mqtt://%s%s/?st=%s&qos=%d",
                        pMqttSession->pBrokerNameStr,
-                       (int)pMqttSession->localPort,
+                       port,
                        pTopic->pTopicStr,
                        pTopic->qos);
     }
@@ -496,20 +497,14 @@ static void onCallbackEvent(void *pParam, size_t eventSize)
         pCbEvent->pDisconnectCb(pCbEvent->disconnStatus, pCbEvent->pCbParam);
     }
 }
-/**
- * EDM data callback to store the data in ringbuffer.
- * Data will be stored in the following format
- * (length of message(2 bytes) + edm channel id (1 byte) + original message)
- */
 
-static void edmMqttDataCallback(int32_t edmHandle, int32_t edmChannel, int32_t length,
-                                char *pData, void *pCallbackParameter)
+static void edmMqttDataCallback(int32_t edmHandle, int32_t edmChannel,
+                                uShortRangePbufList_t *pBufList,
+                                void *pCallbackParameter)
 {
     uWifiMqttSession_t *pMqttSession = NULL;
     uWifiMqttTopic_t *pTopic;
     int32_t i;
-    uint16_t len;
-    uint8_t edmChan;
     (void) edmHandle;
     (void)pCallbackParameter;
 
@@ -524,38 +519,24 @@ static void edmMqttDataCallback(int32_t edmHandle, int32_t edmChannel, int32_t l
             if ((pTopic->edmChannel == edmChannel) && (!pTopic->isTopicUnsubscribed)) {
 
                 uPortLog("U_WIFI_MQTT: EDM data event for channel %d\n", edmChannel);
-
-                len = (uint16_t)length;
-                edmChan = (uint8_t)edmChannel;
-
-                // We store the message in ringbuffer in a format (length of message(2 bytes) + edm channel id (1 byte) + original message)
-                // Check if we have enough room size to fit all of these.
-                //lint -save -e571
-                //lint -save -e776
-                if (uRingBufferAvailableSize(&pMqttSession->rxRingBuffer) > (size_t)(3 + length)) {
-
-                    uRingBufferAdd(&pMqttSession->rxRingBuffer, (const char *)&len, 2);
-                    uRingBufferAdd(&pMqttSession->rxRingBuffer, (const char *)&edmChan, 1);
-                    uRingBufferAdd(&pMqttSession->rxRingBuffer, pData, length);
-
-                    pMqttSession->unreadMsgsCount++;
+                if (uShortRangePktListAppend(&pMqttSession->rxPkt,
+                                             pBufList) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                    pMqttSession->unreadMsgsCount = pMqttSession->rxPkt.pktCount;
+                    // Schedule user data pDataCb
+                    if (pMqttSession->pDataCb) {
+                        //lint -save -e785
+                        uCallbackEvent_t event = {
+                            .pDataCb = pMqttSession->pDataCb,
+                            .pDisconnectCb = NULL,
+                            .pCbParam = pMqttSession->pCbParam,
+                            .pMqttSession = pMqttSession
+                        };
+                        //lint -restore
+                        uPortEventQueueSend(gCallbackQueue, &event, sizeof(event));
+                    }
                 } else {
-                    uPortLog("U_WIFI_MQTT: RX FIFO full, dropping %d bytes!\n", length);
-                }
-                //lint -restore
-                //lint -restore
-
-                // Schedule user data pDataCb
-                if (pMqttSession->pDataCb) {
-                    //lint -save -e785
-                    uCallbackEvent_t event = {
-                        .pDataCb = pMqttSession->pDataCb,
-                        .pDisconnectCb = NULL,
-                        .pCbParam = pMqttSession->pCbParam,
-                        .pMqttSession = pMqttSession
-                    };
-                    //lint -restore
-                    uPortEventQueueSend(gCallbackQueue, &event, sizeof(event));
+                    uPortLog("U_WIFI_MQTT: Pkt insert failed\n");
+                    uShortRangePbufListFree(pBufList);
                 }
             }
         }
@@ -588,7 +569,7 @@ static void edmIpConnectionCallback(int32_t edmHandle,
 
 }
 
-static void atMqttConnectionCallback(int32_t shortRangeHandle,
+static void atMqttConnectionCallback(uDeviceHandle_t devHandle,
                                      int32_t connHandle,
                                      uShortRangeConnectionEventType_t eventType,
                                      uShortRangeConnectDataIp_t *pConnectData,
@@ -598,7 +579,7 @@ static void atMqttConnectionCallback(int32_t shortRangeHandle,
     uWifiMqttTopic_t *pTopic;
     int32_t i;
     bool topicFound = false;
-    (void)shortRangeHandle;
+    (void)devHandle;
     (void)pConnectData;
     (void)pCallbackParameter;
 
@@ -656,14 +637,12 @@ static void atMqttConnectionCallback(int32_t shortRangeHandle,
     uPortSemaphoreGive(pMqttSession->semaphore);
 }
 
-static int32_t getInstance(int32_t wifiHandle, uShortRangePrivateInstance_t **ppInstance)
+static int32_t getInstance(uDeviceHandle_t devHandle, uShortRangePrivateInstance_t **ppInstance)
 {
-    int32_t shoHandle;
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
 
-    shoHandle = uWifiToShoHandle(wifiHandle);
     if (ppInstance != NULL) {
-        *ppInstance = pUShortRangePrivateGetInstance(shoHandle);
+        *ppInstance = pUShortRangePrivateGetInstance(devHandle);
         if (*ppInstance != NULL) {
             if ((*ppInstance)->mode == U_SHORT_RANGE_MODE_EDM) {
                 err = (int32_t)U_ERROR_COMMON_SUCCESS;
@@ -681,7 +660,7 @@ static int32_t getMqttInstance(const uMqttClientContext_t *pContext,
 {
     int32_t err;
 
-    err = getInstance(pContext->networkHandle, ppInstance);
+    err = getInstance(pContext->devHandle, ppInstance);
 
     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
@@ -722,11 +701,6 @@ static void freeMqttSession(uWifiMqttSession_t *pMqttSession)
             uPortSemaphoreDelete(pMqttSession->semaphore);
 
         }
-        if (pMqttSession->pRxBuffer) {
-            free(pMqttSession->pRxBuffer);
-            uRingBufferDelete(&pMqttSession->rxRingBuffer);
-        }
-
         if (pMqttSession->topicList.pHead) {
             freeAllMqttTopics(pMqttSession);
         }
@@ -756,7 +730,6 @@ static void freeMqtt(uMqttClientContext_t *pContext)
 {
     int32_t count = 0;
     uShortRangePrivateInstance_t *pInstance;
-    int32_t shoHandle;
 
     for (int32_t i = 0; i < U_WIFI_MQTT_MAX_NUM_CONNECTIONS; i++) {
         if (gMqttSessions[i].sessionHandle == -1) {
@@ -767,11 +740,9 @@ static void freeMqtt(uMqttClientContext_t *pContext)
     if (count == U_WIFI_MQTT_MAX_NUM_CONNECTIONS) {
         uPortMutexDelete(gMqttSessionMutex);
         gMqttSessionMutex = NULL;
-        if (getInstance(pContext->networkHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        if (getInstance(pContext->devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
-            shoHandle = uWifiToShoHandle(pContext->networkHandle);
-
-            uShortRangeSetMqttConnectionStatusCallback(shoHandle, NULL, NULL);
+            uShortRangeSetMqttConnectionStatusCallback(pContext->devHandle, NULL, NULL);
 
             uShortRangeEdmStreamMqttEventCallbackSet(pInstance->streamHandle, NULL, NULL);
 
@@ -839,15 +810,7 @@ static int32_t configureMqttSessionConnection(uWifiMqttSession_t *pMqttSession,
             pMqttSession->keepAlive = pConnection->keepAlive;
             err = uPortSemaphoreCreate(&(pMqttSession->semaphore), 0, 1);
         }
-        if (err == 0) {
-            pMqttSession->pRxBuffer = (char *)malloc(U_WIFI_MQTT_BUFFER_SIZE);
-            if (pMqttSession->pRxBuffer == NULL) {
-                err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
-            }
-        }
-        if (err == 0) {
-            uRingBufferCreate(&pMqttSession->rxRingBuffer, pMqttSession->pRxBuffer, U_WIFI_MQTT_BUFFER_SIZE);
-        }
+        memset((void *)(&pMqttSession->rxPkt), 0, sizeof(uShortRangePktList_t));
     }
 
     if (err != 0) {
@@ -862,9 +825,8 @@ static int32_t configureMqttSessionConnection(uWifiMqttSession_t *pMqttSession,
     return err;
 }
 
-int32_t uWifiMqttInit(int32_t wifiHandle, void **ppMqttSession)
+int32_t uWifiMqttInit(uDeviceHandle_t devHandle, void **ppMqttSession)
 {
-    int32_t shoHandle;
     uShortRangePrivateInstance_t *pInstance;
     int32_t err = (int32_t)U_ERROR_COMMON_NOT_INITIALISED;
 
@@ -874,11 +836,11 @@ int32_t uWifiMqttInit(int32_t wifiHandle, void **ppMqttSession)
 
             if (initMqttSessions() == (int32_t)U_ERROR_COMMON_SUCCESS) {
 
-                if (getInstance(wifiHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
-
-                    shoHandle = uWifiToShoHandle(wifiHandle);
-
-                    err = uShortRangeSetMqttConnectionStatusCallback(shoHandle,
+                if (getInstance(devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                    if (pInstance->devHandle == NULL) {
+                        pInstance->devHandle = devHandle;
+                    }
+                    err = uShortRangeSetMqttConnectionStatusCallback(devHandle,
                                                                      atMqttConnectionCallback,
                                                                      pInstance);
                     if (err == (int32_t)U_ERROR_COMMON_SUCCESS) {
@@ -935,7 +897,7 @@ int32_t uWifiMqttConnect(const uMqttClientContext_t *pContext,
     uWifiMqttSession_t *pMqttSession = (uWifiMqttSession_t *)pContext->pPriv;
 
     if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
-        if (getInstance(pContext->networkHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
+        if (getInstance(pContext->devHandle, &pInstance) == (int32_t)U_ERROR_COMMON_SUCCESS) {
             U_PORT_MUTEX_LOCK(gMqttSessionMutex);
             err = configureMqttSessionConnection(pMqttSession, pConnection);
 
@@ -1164,7 +1126,7 @@ int32_t uWifiMqttUnsubscribe(const uMqttClientContext_t *pContext,
             pTopic = findTopic(pMqttSession, pTopicFilterStr, false);
 
             if (pTopic != NULL) {
-                // By unsubscribing, we avoid buffering the data in to ringbuffer
+                // By unsubscribing, we avoid buffering the data
                 pTopic->isTopicUnsubscribed = true;
                 err = (int32_t)U_ERROR_COMMON_SUCCESS;
             } else {
@@ -1265,11 +1227,9 @@ int32_t uWifiMqttMessageRead(const uMqttClientContext_t *pContext,
     uWifiMqttSession_t *pMqttSession;
     uShortRangePrivateInstance_t *pInstance;
     int32_t err = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-    uint16_t msgLen = 0;
-    uint8_t edmChannel;
+    int32_t edmChannel;
     char *pFoundTopicStr;
     size_t foundTopicLen;
-    char ignoreMsg;
     (void) pQos;
 
     if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
@@ -1285,36 +1245,27 @@ int32_t uWifiMqttMessageRead(const uMqttClientContext_t *pContext,
 
                 memset(pMessage, 0, *pMessageSizeBytes);
                 memset(pTopicNameStr, 0, topicNameSizeBytes);
+                err = uShortRangePktListConsumePacket(&pMqttSession->rxPkt, pMessage, pMessageSizeBytes,
+                                                      &edmChannel);
 
-                // First 2 bytes represent length of the message content
-                uRingBufferRead(&pMqttSession->rxRingBuffer, (char *)&msgLen, 2);
-                // Next 1 byte represents edm channel used for the topic
-                uRingBufferRead(&pMqttSession->rxRingBuffer, (char *)&edmChannel, 1);
-                pFoundTopicStr = getTopicStrForEdmChannel(pMqttSession, (int32_t)edmChannel);
-                foundTopicLen = strlen(pFoundTopicStr);
+                pMqttSession->unreadMsgsCount = pMqttSession->rxPkt.pktCount;
+                if (err == 0) {
+                    err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
+                    pFoundTopicStr = getTopicStrForEdmChannel(pMqttSession, edmChannel);
 
-                // check if the message can be accomodated in the given buffer size
-                //lint -save -e774
-                if ((pFoundTopicStr != NULL) &&
-                    (msgLen <= *pMessageSizeBytes) &&
-                    ((foundTopicLen + 1) <= topicNameSizeBytes)) {
-                    strcpy(pTopicNameStr, pFoundTopicStr);
-                    uRingBufferRead(&pMqttSession->rxRingBuffer, pMessage, msgLen);
-                    *pMessageSizeBytes = msgLen;
-                    err = (int32_t)U_ERROR_COMMON_SUCCESS;
-
-                } else {
-
-                    // Drop the message if application provides buffer with lesser size
-
-                    for (uint16_t i = 0; i < msgLen; i++) {
-                        uRingBufferRead(&pMqttSession->rxRingBuffer, &ignoreMsg, 1);
+                    if (pFoundTopicStr != NULL) {
+                        foundTopicLen = strlen(pFoundTopicStr);
+                        if ((foundTopicLen + 1) <= topicNameSizeBytes) {
+                            strncpy(pTopicNameStr, pFoundTopicStr, foundTopicLen);
+                            err = (int32_t)U_ERROR_COMMON_SUCCESS;
+                        }
                     }
 
-                    err = (int32_t)U_ERROR_COMMON_NO_MEMORY;
                 }
-                //lint -restore
-                pMqttSession->unreadMsgsCount--;
+                if (err != 0) {
+                    // clear the partial message that was copied
+                    memset(pMessage, 0, *pMessageSizeBytes);
+                }
             }
             U_PORT_MUTEX_UNLOCK(gMqttSessionMutex);
         }

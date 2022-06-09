@@ -41,11 +41,13 @@
 #if U_SHORT_RANGE_TEST_WIFI()
 
 #include "stddef.h"    // NULL, size_t etc.
+#include "string.h"
 #include "stdbool.h"
 
 #include "u_cfg_sw.h"
 #include "u_cfg_app_platform_specific.h"
 #include "u_cfg_test_platform_specific.h"
+#include "u_cfg_os_platform_specific.h"  // For #define U_CFG_OS_CLIB_LEAKS
 
 #include "u_error_common.h"
 
@@ -55,7 +57,7 @@
 #include "u_port_uart.h"
 
 #include "u_at_client.h"
-
+#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 
@@ -67,6 +69,10 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+//lint -esym(767, LOG_TAG) Suppress LOG_TAG defined differently in another module
+//lint -esym(750, LOG_TAG) Suppress LOG_TAG not referenced
+#define LOG_TAG "U_SHORT_RANGE_TEST: "
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -77,12 +83,211 @@
 
 /** UART handle for one AT client.
  */
-static int32_t gUartHandle = -1;
-static int32_t gEdmStreamHandle = -1;
+static uWifiTestPrivate_t gHandles = { -1, -1, NULL, NULL };
+
+static const uint32_t gWifiStatusMaskAllUp = U_WIFI_STATUS_MASK_IPV4_UP |
+                                             U_WIFI_STATUS_MASK_IPV6_UP;
+
+static volatile int32_t gWifiConnected = 0;
+static volatile int32_t gWifiDisconnected = 0;
+static volatile uint32_t gWifiStatusMask = 0;
+static volatile int32_t gLookForDisconnectReasonBitMask = 0;
+static volatile int32_t gDisconnectReasonFound = 0;
+static uWifiScanResult_t gScanResult;
+static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                        .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                        .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                        .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                        .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                        .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                      };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+static void wifiConnectionCallback(uDeviceHandle_t devHandle,
+                                   int32_t connId,
+                                   int32_t status,
+                                   int32_t channel,
+                                   char *pBssid,
+                                   int32_t disconnectReason,
+                                   void *pCallbackParameter)
+{
+    (void)devHandle;
+    (void)pBssid;
+    (void)pCallbackParameter;
+    (void)channel;
+    (void)connId;
+    if (status == U_WIFI_CON_STATUS_CONNECTED) {
+#if !U_CFG_OS_CLIB_LEAKS
+        uPortLog(LOG_TAG "Connected Wifi connId: %d, bssid: %s, channel: %d\n",
+                 connId,
+                 pBssid,
+                 channel);
+#endif
+        gWifiConnected = 1;
+    } else {
+#if defined(U_CFG_ENABLE_LOGGING) && !U_CFG_OS_CLIB_LEAKS
+        //lint -esym(752, strDisconnectReason)
+        static const char strDisconnectReason[6][20] = {
+            "Unknown", "Remote Close", "Out of range",
+            "Roaming", "Security problems", "Network disabled"
+        };
+        if ((disconnectReason < 0) || (disconnectReason >= 6)) {
+            // For all other values use "Unknown"
+            disconnectReason = 0;
+        }
+        uPortLog(LOG_TAG "Wifi connection lost connId: %d, reason: %d (%s)\n",
+                 connId,
+                 disconnectReason,
+                 strDisconnectReason[disconnectReason]);
+#endif
+        gWifiConnected = 0;
+        gWifiDisconnected = 1;
+        if (((1ul << disconnectReason) & gLookForDisconnectReasonBitMask) > 0) {
+            gDisconnectReasonFound = 1;
+        }
+    }
+}
+
+static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
+                                      int32_t interfaceType,
+                                      uint32_t statusMask,
+                                      void *pCallbackParameter)
+{
+    (void)devHandle;
+    (void)interfaceType;
+    (void)statusMask;
+    (void)pCallbackParameter;
+#if !U_CFG_OS_CLIB_LEAKS
+    uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
+             ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+             ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+#endif
+
+    gWifiStatusMask = statusMask;
+}
+
+
+static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
+{
+    uWifiTestError_t testError = U_WIFI_TEST_ERROR_NONE;
+    uWifiTestError_t connectError = U_WIFI_TEST_ERROR_NONE;
+    uWifiTestError_t disconnectError = U_WIFI_TEST_ERROR_NONE;
+    int32_t waitCtr = 0;
+    gWifiStatusMask = 0;
+    gWifiConnected = 0;
+    gWifiDisconnected = 0;
+
+    // Do the standard preamble
+    if (0 != uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                      &uart,
+                                      &gHandles)) {
+        testError = U_WIFI_TEST_ERROR_PREAMBLE;
+    }
+
+    if (testError == U_WIFI_TEST_ERROR_NONE) {
+        // Add unsolicited response cb for connection status
+        uWifiSetConnectionStatusCallback(gHandles.devHandle,
+                                         wifiConnectionCallback, NULL);
+        // Add unsolicited response cb for IP status
+        uWifiSetNetworkStatusCallback(gHandles.devHandle,
+                                      wifiNetworkStatusCallback, NULL);
+        // Connect to wifi network
+        int32_t res = uWifiStationConnect(gHandles.devHandle,
+                                          pSsid,
+                                          U_WIFI_AUTH_WPA_PSK,
+                                          pPassPhrase);
+        if (res == 0) {
+            //Wait for connection and IP events.
+            //There could be multiple IP events depending on network configuration.
+            while (!connectError && (!gWifiConnected || (gWifiStatusMask != gWifiStatusMaskAllUp))) {
+                if (waitCtr >= 15) {
+                    if (!gWifiConnected) {
+                        uPortLog(LOG_TAG "Unable to connect to WifiNetwork\n");
+                        connectError = U_WIFI_TEST_ERROR_CONNECTED;
+                    } else {
+                        uPortLog(LOG_TAG "Unable to retrieve IP address\n");
+                        connectError = U_WIFI_TEST_ERROR_IPRECV;
+                    }
+                    break;
+                }
+
+                uPortTaskBlock(1000);
+                waitCtr++;
+            }
+        } else {
+            connectError = U_WIFI_TEST_ERROR_CONNECT;
+        }
+    }
+
+    if (testError == U_WIFI_TEST_ERROR_NONE) {
+        // Disconnect from wifi network (regardless of previous connectError)
+        if (uWifiStationDisconnect(gHandles.devHandle) == 0) {
+            waitCtr = 0;
+            while (!disconnectError && (!gWifiDisconnected || (gWifiStatusMask > 0))) {
+                if (waitCtr >= 5) {
+                    disconnectError = U_WIFI_TEST_ERROR_DISCONNECT;
+                    if (!gWifiDisconnected) {
+                        uPortLog(LOG_TAG "Unable to diconnect from WifiNetwork");
+                    } else {
+                        uPortLog(LOG_TAG "Network status is still up");
+                    }
+                    break;
+                }
+                uPortTaskBlock(1000);
+                waitCtr++;
+            }
+        } else {
+            disconnectError = U_WIFI_TEST_ERROR_DISCONNECT;
+        }
+    }
+
+    // Aggregate result
+    if (testError == U_WIFI_TEST_ERROR_NONE) {
+        if (connectError != U_WIFI_TEST_ERROR_NONE) {
+            testError = connectError;
+        } else {
+            testError = disconnectError;
+        }
+    }
+
+    // Cleanup
+    uWifiSetConnectionStatusCallback(gHandles.devHandle,
+                                     NULL, NULL);
+    uWifiSetNetworkStatusCallback(gHandles.devHandle,
+                                  NULL, NULL);
+    uWifiTestPrivatePostamble(&gHandles);
+    return testError;
+}
+
+static void uWifiScanResultCallback(uDeviceHandle_t devHandle, uWifiScanResult_t *pResult)
+{
+    (void)devHandle;
+    if (strcmp(pResult->ssid, U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID)) == 0) {
+        gScanResult = *pResult;
+    }
+}
+
+static bool validateScanResult(uWifiScanResult_t *pResult)
+{
+    if ((pResult->channel <= 0) || (pResult->channel > 185)) {
+        uPortLog(LOG_TAG "Invalid WiFi channel: %d\n", pResult->channel);
+        return false;
+    }
+    if (pResult->rssi > 0) {
+        uPortLog(LOG_TAG "Invalid RSSI value: %d\n", pResult->rssi);
+        return false;
+    }
+    if ((pResult->opMode != U_WIFI_OP_MODE_INFRASTRUCTURE) &&
+        (pResult->opMode != U_WIFI_OP_MODE_ADHOC)) {
+        uPortLog(LOG_TAG "Invalid opMode value: %d\n", pResult->rssi);
+        return false;
+    }
+
+    return true;
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -104,84 +309,58 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiInitialisation")
 
 /** Add a wifi instance and remove it again.
  */
-U_PORT_TEST_FUNCTION("[wifi]", "wifiAdd")
+U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
 {
-    int32_t wifiHandle;
-    uAtClientHandle_t atClientHandle;
-    uAtClientHandle_t atClientHandleCheck = (uAtClientHandle_t) -1;
     int32_t heapUsed;
-
-    // Whatever called us likely initialised the
-    // port so deinitialise it here to obtain the
-    // correct initial heap size
+    uAtClientHandle_t atClient = NULL;
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
     uPortDeinit();
+
     heapUsed = uPortGetHeapFree();
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
-
-    gUartHandle = uPortUartOpen(U_CFG_APP_SHORT_RANGE_UART,
-                                U_SHORT_RANGE_UART_BAUD_RATE,
-                                NULL,
-                                U_SHORT_RANGE_UART_BUFFER_LENGTH_BYTES,
-                                U_CFG_APP_PIN_SHORT_RANGE_TXD,
-                                U_CFG_APP_PIN_SHORT_RANGE_RXD,
-                                U_CFG_APP_PIN_SHORT_RANGE_CTS,
-                                U_CFG_APP_PIN_SHORT_RANGE_RTS);
-    U_PORT_TEST_ASSERT(gUartHandle >= 0);
-
-    U_PORT_TEST_ASSERT(uShortRangeEdmStreamInit() == 0);
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
-    U_PORT_TEST_ASSERT(uWifiInit() == 0);
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &uart,
+                                                &gHandles) == 0);
+    U_PORT_TEST_ASSERT(uShortRangeGetUartHandle(gHandles.devHandle) == gHandles.uartHandle);
+    U_PORT_TEST_ASSERT(uShortRangeGetEdmStreamHandle(gHandles.devHandle) == gHandles.edmStreamHandle);
+    uShortRangeAtClientHandleGet(gHandles.devHandle, &atClient);
+    U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
+    U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 
-    gEdmStreamHandle = uShortRangeEdmStreamOpen(gUartHandle);
-    U_PORT_TEST_ASSERT(gEdmStreamHandle >= 0);
-
-    uPortLog("U_WIFI_TEST: adding an AT client on UART %d...\n",
-             U_CFG_APP_SHORT_RANGE_UART);
-    atClientHandle = uAtClientAdd(gEdmStreamHandle, U_AT_CLIENT_STREAM_TYPE_EDM,
-                                  NULL, U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES);
-    U_PORT_TEST_ASSERT(atClientHandle != NULL);
-
-    uPortLog("U_WIFI_TEST: adding a wifi instance on that AT client...\n");
-    wifiHandle = uWifiAdd(U_WIFI_MODULE_TYPE_NINA_W15, atClientHandle);
-    U_PORT_TEST_ASSERT(wifiHandle >= 0);
-    U_PORT_TEST_ASSERT(uWifiAtClientHandleGet(wifiHandle,
-                                              &atClientHandleCheck) == 0);
-    U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
-
-    uPortLog("U_WIFI_TEST: adding another instance on the same AT client,"
+    uPortLog("U_WIFI: calling uShortRangeOpenUart with same arg twice,"
              " should fail...\n");
-    U_PORT_TEST_ASSERT(uWifiAdd(U_WIFI_MODULE_TYPE_NINA_W15, atClientHandle));
+    uDeviceHandle_t dummyHandle;
+    U_PORT_TEST_ASSERT(uShortRangeOpenUart((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                           &uart, true, &dummyHandle) < 0);
 
-    uPortLog("U_WIFI_TEST: removing wifi instance...\n");
-    uWifiRemove(wifiHandle);
+    uWifiTestPrivatePostamble(&gHandles);
 
-    uPortLog("U_WIFI_TEST: adding it again...\n");
-    wifiHandle = uWifiAdd(U_WIFI_MODULE_TYPE_NINA_W15, atClientHandle);
-    U_PORT_TEST_ASSERT(wifiHandle >= 0);
+    uPortLog("U_WIFI: calling uShortRangeOpenUart with NULL uart arg,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                NULL,
+                                                &gHandles) < 0);
+    uPortLog("U_WIFI: calling uShortRangeOpenUart with wrong module type,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
+                                                &uart,
+                                                &gHandles) < 0);
+    uart.uartPort = -1;
+    uPortLog("U_WIFI: calling uShortRangeOpenUart with invalid uart arg,"
+             " should fail...\n");
+    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                                &uart,
+                                                &gHandles) < 0);
 
-    atClientHandleCheck = (uAtClientHandle_t) -1;
-    U_PORT_TEST_ASSERT(uWifiAtClientHandleGet(wifiHandle,
-                                              &atClientHandleCheck) == 0);
-    U_PORT_TEST_ASSERT(atClientHandle == atClientHandleCheck);
-
-    uPortLog("U_WIFI_TEST: deinitialising wifi API...\n");
-    uWifiDeinit();
-
-    uShortRangeEdmStreamClose(gEdmStreamHandle);
-    gEdmStreamHandle = -1;
-    uShortRangeEdmStreamDeinit();
-
-    uPortLog("U_WIFI_TEST: removing AT client...\n");
-    uAtClientRemove(atClientHandle);
-
-    uAtClientDeinit();
-
-    uPortUartClose(gUartHandle);
-    gUartHandle = -1;
-
-    uPortDeinit();
-
+    uWifiTestPrivateCleanup(&gHandles);
 #ifndef __XTENSA__
     // Check for memory leaks
     // TODO: this if'ed out for ESP32 (xtensa compiler) at
@@ -198,32 +377,169 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiAdd")
 #endif
 }
 
-
-U_PORT_TEST_FUNCTION("[wifi]", "wifiDetect")
+U_PORT_TEST_FUNCTION("[wifi]", "wifiNetworkInitialisation")
 {
-    int32_t heapUsed;
-    uWifiTestPrivate_t handles;
-    heapUsed = uPortGetHeapFree();
+    int32_t waitCtr = 0;
+    int32_t errorCode = 0;
+    gWifiStatusMask = 0;
+    gWifiConnected = 0;
+    gWifiDisconnected = 0;
+    uWifiTestError_t testError = U_WIFI_TEST_ERROR_NONE;
 
-    U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
-                                                &handles) == 0);
+    // Previous test may have left wifi connected
+    // For this reason we start with making sure the wifi gets disconnected here
 
-    uWifiTestPrivatePostamble(&handles);
+    // Do the standard preamble
+    if (0 != uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                      &uart,
+                                      &gHandles)) {
+        testError = U_WIFI_TEST_ERROR_PREAMBLE;
+    }
 
-#ifndef __XTENSA__
-    // Check for memory leaks
-    // TODO: this if'ed out for ESP32 (xtensa compiler) at
-    // the moment as there is an issue with ESP32 hanging
-    // on to memory in the UART drivers that can't easily be
-    // accounted for.
-    heapUsed -= uPortGetHeapFree();
-    uPortLog("U_WIFI_TEST: we have leaked %d byte(s).\n", heapUsed);
-    // heapUsed < 0 for the Zephyr case where the heap can look
-    // like it increases (negative leak)
-    U_PORT_TEST_ASSERT(heapUsed <= 0);
-#else
-    (void) heapUsed;
-#endif
+    if (!testError) {
+        // Add unsolicited response cb for connection status
+        uWifiSetConnectionStatusCallback(gHandles.devHandle,
+                                         wifiConnectionCallback, NULL);
+        // Add unsolicited response cb for IP status
+        uWifiSetNetworkStatusCallback(gHandles.devHandle,
+                                      wifiNetworkStatusCallback, NULL);
+    }
+
+    if (!testError) {
+        errorCode = uWifiStationDisconnect(gHandles.devHandle);
+        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+            waitCtr = 0;
+            while (!testError && (!gWifiDisconnected || (gWifiStatusMask > 0))) {
+                if (waitCtr >= 5) {
+                    break;
+                }
+                uPortTaskBlock(1000);
+                waitCtr++;
+            }
+        } else if (errorCode != U_WIFI_ERROR_ALREADY_DISCONNECTED) {
+            testError = U_WIFI_TEST_ERROR_DISCONNECT;
+        }
+    }
+
+    // Cleanup
+    uWifiSetConnectionStatusCallback(gHandles.devHandle,
+                                     NULL, NULL);
+    uWifiSetNetworkStatusCallback(gHandles.devHandle,
+                                  NULL, NULL);
+    uWifiTestPrivatePostamble(&gHandles);
+
+    U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_NONE);
+}
+
+U_PORT_TEST_FUNCTION("[wifi]", "wifiStationConnect")
+{
+    uWifiTestError_t testError = runWifiTest(U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
+                                             U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
+    // Handle errors
+    U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_NONE);
+}
+
+U_PORT_TEST_FUNCTION("[wifi]", "wifiStationConnectWrongSSID")
+{
+    gLookForDisconnectReasonBitMask = (1 << U_WIFI_REASON_OUT_OF_RANGE); // (cant find SSID)
+    gDisconnectReasonFound = 0;
+    uWifiTestError_t testError = runWifiTest("DUMMYSSID",
+                                             U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_WPA2_PASSPHRASE));
+
+    // Handle errors
+    U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_CONNECTED);
+    U_PORT_TEST_ASSERT(gDisconnectReasonFound);
+}
+
+U_PORT_TEST_FUNCTION("[wifi]", "wifiStationConnectWrongPassphrase")
+{
+    // The expected disconnect reason is U_WIFI_REASON_SECURITY_PROBLEM.
+    // However, for some APs we will only get U_WIFI_REASON_UNKNOWN.
+    gLookForDisconnectReasonBitMask = (1 << U_WIFI_REASON_UNKNOWN) |
+                                      (1 << U_WIFI_REASON_SECURITY_PROBLEM);
+    gDisconnectReasonFound = 0;
+    uWifiTestError_t testError = runWifiTest(U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
+                                             "WRONGPASSWD");
+    // Handle errors
+    U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_CONNECTED);
+    U_PORT_TEST_ASSERT(gDisconnectReasonFound);
+}
+
+U_PORT_TEST_FUNCTION("[wifi]", "wifiScan")
+{
+    int32_t result;
+    uWifiTestError_t testError = U_WIFI_TEST_ERROR_NONE;
+
+    result = uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                      &uart,
+                                      &gHandles);
+    U_PORT_TEST_ASSERT(result == 0);
+
+    //----------------------------------------------------------
+    // Scan for all networks
+    //----------------------------------------------------------
+
+    // If an AP is found with SSID matching U_WIFI_TEST_CFG_SSID the scan result entry
+    // will be stored in gScanResult.
+    memset(&gScanResult, 0, sizeof(gScanResult));
+
+    // There is a risk that the AP is not included in the scan results even if it's present
+    // For this reason we use a retry loop
+    for (int32_t i = 0; i < 3; i++) {
+        result = uWifiStationScan(gHandles.devHandle,
+                                  NULL,
+                                  uWifiScanResultCallback);
+        U_PORT_TEST_ASSERT(result == 0);
+        if (gScanResult.channel != 0) {
+            // We found it
+            break;
+        }
+    }
+    // Make sure the AP was found
+    U_PORT_TEST_ASSERT(gScanResult.channel != 0);
+    // Basic validation of the result
+    U_PORT_TEST_ASSERT(validateScanResult(&gScanResult));
+
+    //----------------------------------------------------------
+    // Scan specifically for U_WIFI_TEST_CFG_SSID
+    //----------------------------------------------------------
+    memset(&gScanResult, 0, sizeof(gScanResult));
+    for (int32_t i = 0; i < 3; i++) {
+        result = uWifiStationScan(gHandles.devHandle,
+                                  U_PORT_STRINGIFY_QUOTED(U_WIFI_TEST_CFG_SSID),
+                                  uWifiScanResultCallback);
+        U_PORT_TEST_ASSERT(result == 0);
+        if (gScanResult.channel != 0) {
+            // We found it
+            break;
+        }
+    }
+    // Make sure the AP was found
+    U_PORT_TEST_ASSERT(gScanResult.channel != 0);
+    // Basic validation of the result
+    U_PORT_TEST_ASSERT(validateScanResult(&gScanResult));
+
+    //----------------------------------------------------------
+    // Scan for non existent SSID
+    //----------------------------------------------------------
+    memset(&gScanResult, 0, sizeof(gScanResult));
+    for (int32_t i = 0; i < 3; i++) {
+        result = uWifiStationScan(gHandles.devHandle,
+                                  "DUMMYSSID",
+                                  uWifiScanResultCallback);
+        U_PORT_TEST_ASSERT(result == 0);
+        if (gScanResult.channel != 0) {
+            // We found it
+            break;
+        }
+    }
+    // Make sure the AP was NOT found
+    U_PORT_TEST_ASSERT(gScanResult.channel == 0);
+
+    uWifiTestPrivatePostamble(&gHandles);
+
+    // Handle errors
+    U_PORT_TEST_ASSERT(testError == U_WIFI_TEST_ERROR_NONE);
 }
 
 /** Clean-up to be run at the end of this round of tests, just
@@ -232,32 +548,7 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiDetect")
  */
 U_PORT_TEST_FUNCTION("[wifi]", "wifiCleanUp")
 {
-    int32_t x;
-
-    uWifiDeinit();
-    if (gUartHandle >= 0) {
-        uPortUartClose(gUartHandle);
-    }
-    if (gEdmStreamHandle >= 0) {
-        uShortRangeEdmStreamClose(gEdmStreamHandle);
-    }
-    uAtClientDeinit();
-
-    x = uPortTaskStackMinFree(NULL);
-    if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_WIFI_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
-    }
-
-    uPortDeinit();
-
-    x = uPortGetHeapMinFree();
-    if (x >= 0) {
-        uPortLog("U_WIFI_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
-        U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
-    }
+    uWifiTestPrivateCleanup(&gHandles);
 }
 
 #endif // U_SHORT_RANGE_TEST_WIFI()

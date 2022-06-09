@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,11 @@
  * @brief certificates and keys for the sockets-over-TLS example.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
+// Bring in all of the ubxlib public header files
+#include "ubxlib.h"
 
-#include "stddef.h"    // NULL, size_t etc.
-#include "stdint.h"    // int32_t etc.
-
+// Must use quoted includes here to pick up the local file
+// without it having to be on the include path
 #include "credentials_tls.h"
 
 /* ----------------------------------------------------------------

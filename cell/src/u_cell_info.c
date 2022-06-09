@@ -324,7 +324,7 @@ static int32_t getRadioParamsUcged5(uAtClientHandle_t atHandle,
  * -------------------------------------------------------------- */
 
 // Refresh the RF status values;
-int32_t uCellInfoRefreshRadioParameters(int32_t cellHandle)
+int32_t uCellInfoRefreshRadioParameters(uDeviceHandle_t cellHandle)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -401,7 +401,7 @@ int32_t uCellInfoRefreshRadioParameters(int32_t cellHandle)
 }
 
 // Get the RSSI.
-int32_t uCellInfoGetRssiDbm(int32_t cellHandle)
+int32_t uCellInfoGetRssiDbm(uDeviceHandle_t cellHandle)
 {
     // Zero is the error code here as negative values are valid
     int32_t errorCodeOrValue = 0;
@@ -423,7 +423,7 @@ int32_t uCellInfoGetRssiDbm(int32_t cellHandle)
 }
 
 // Get the RSRP.
-int32_t uCellInfoGetRsrpDbm(int32_t cellHandle)
+int32_t uCellInfoGetRsrpDbm(uDeviceHandle_t cellHandle)
 {
     // Zero is the error code here as negative values are valid
     int32_t errorCodeOrValue = 0;
@@ -445,7 +445,7 @@ int32_t uCellInfoGetRsrpDbm(int32_t cellHandle)
 }
 
 // Get the RSRQ.
-int32_t uCellInfoGetRsrqDb(int32_t cellHandle)
+int32_t uCellInfoGetRsrqDb(uDeviceHandle_t cellHandle)
 {
     // 0x7FFFFFFF is the error code here as negative and small
     // positive values are valid
@@ -468,7 +468,7 @@ int32_t uCellInfoGetRsrqDb(int32_t cellHandle)
 }
 
 // Get the RxQual.
-int32_t uCellInfoGetRxQual(int32_t cellHandle)
+int32_t uCellInfoGetRxQual(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrValue = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -542,7 +542,7 @@ int32_t uCellInfoGetRxQual(int32_t cellHandle)
 //
 //     return 0;
 // }
-int32_t uCellInfoGetSnrDb(int32_t cellHandle, int32_t *pSnrDb)
+int32_t uCellInfoGetSnrDb(uDeviceHandle_t cellHandle, int32_t *pSnrDb)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -579,7 +579,7 @@ int32_t uCellInfoGetSnrDb(int32_t cellHandle, int32_t *pSnrDb)
 }
 
 // Get the cell ID.
-int32_t uCellInfoGetCellId(int32_t cellHandle)
+int32_t uCellInfoGetCellId(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrValue = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -601,7 +601,7 @@ int32_t uCellInfoGetCellId(int32_t cellHandle)
 }
 
 // Get the EARFCN.
-int32_t uCellInfoGetEarfcn(int32_t cellHandle)
+int32_t uCellInfoGetEarfcn(uDeviceHandle_t cellHandle)
 {
     int32_t errorCodeOrValue = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -623,7 +623,7 @@ int32_t uCellInfoGetEarfcn(int32_t cellHandle)
 }
 
 // Get the IMEI of the cellular module.
-int32_t uCellInfoGetImei(int32_t cellHandle,
+int32_t uCellInfoGetImei(uDeviceHandle_t cellHandle,
                          char *pImei)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -652,7 +652,7 @@ int32_t uCellInfoGetImei(int32_t cellHandle,
 }
 
 // Get the IMSI of the SIM in the cellular module.
-int32_t uCellInfoGetImsi(int32_t cellHandle,
+int32_t uCellInfoGetImsi(uDeviceHandle_t cellHandle,
                          char *pImsi)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -681,7 +681,7 @@ int32_t uCellInfoGetImsi(int32_t cellHandle,
 }
 
 // Get the ICCID string of the SIM in the cellular module.
-int32_t uCellInfoGetIccidStr(int32_t cellHandle,
+int32_t uCellInfoGetIccidStr(uDeviceHandle_t cellHandle,
                              char *pStr, size_t size)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -720,7 +720,7 @@ int32_t uCellInfoGetIccidStr(int32_t cellHandle,
 }
 
 // Get the manufacturer ID string from the cellular module.
-int32_t uCellInfoGetManufacturerStr(int32_t cellHandle,
+int32_t uCellInfoGetManufacturerStr(uDeviceHandle_t cellHandle,
                                     char *pStr, size_t size)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -744,7 +744,7 @@ int32_t uCellInfoGetManufacturerStr(int32_t cellHandle,
 }
 
 // Get the model identification string from the cellular module.
-int32_t uCellInfoGetModelStr(int32_t cellHandle,
+int32_t uCellInfoGetModelStr(uDeviceHandle_t cellHandle,
                              char *pStr, size_t size)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -768,7 +768,7 @@ int32_t uCellInfoGetModelStr(int32_t cellHandle,
 }
 
 // Get the firmware version string from the cellular module.
-int32_t uCellInfoGetFirmwareVersionStr(int32_t cellHandle,
+int32_t uCellInfoGetFirmwareVersionStr(uDeviceHandle_t cellHandle,
                                        char *pStr, size_t size)
 {
     int32_t errorCodeOrSize = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -793,7 +793,7 @@ int32_t uCellInfoGetFirmwareVersionStr(int32_t cellHandle,
 }
 
 // Get the UTC time according to cellular.
-int64_t uCellInfoGetTimeUtc(int32_t cellHandle)
+int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle)
 {
     int64_t errorCodeOrValue = (int64_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellPrivateInstance_t *pInstance;
@@ -879,7 +879,7 @@ int64_t uCellInfoGetTimeUtc(int32_t cellHandle)
 }
 
 /* Get the UTC time string according to cellular */
-int32_t uCellInfoGetTimeUtcStr(int32_t cellHandle, char *pStr, size_t size)
+int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle, char *pStr, size_t size)
 {
     int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
     uCellPrivateInstance_t *pInstance;
@@ -925,7 +925,7 @@ int32_t uCellInfoGetTimeUtcStr(int32_t cellHandle, char *pStr, size_t size)
 }
 
 // Determine if RTS flow control is enabled.
-bool uCellInfoIsRtsFlowControlEnabled(int32_t cellHandle)
+bool uCellInfoIsRtsFlowControlEnabled(uDeviceHandle_t cellHandle)
 {
     bool isEnabled = false;
     uCellPrivateInstance_t *pInstance;
@@ -951,7 +951,7 @@ bool uCellInfoIsRtsFlowControlEnabled(int32_t cellHandle)
 }
 
 // Determine if CTS flow control is enabled.
-bool uCellInfoIsCtsFlowControlEnabled(int32_t cellHandle)
+bool uCellInfoIsCtsFlowControlEnabled(uDeviceHandle_t cellHandle)
 {
     bool isEnabled = false;
     uCellPrivateInstance_t *pInstance;

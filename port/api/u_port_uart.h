@@ -17,7 +17,10 @@
 #ifndef _U_PORT_UART_H_
 #define _U_PORT_UART_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief Porting layer for UART access functions.  These functions
@@ -232,6 +235,15 @@ int32_t uPortUartEventCallbackSet(int32_t handle,
                                   int32_t priority);
 
 /** Remove a UART event callback.
+ *
+ * NOTE: under the hood, this function likely calls
+ * uPortEventQueueClose() - PLEASE READ THE NOTE against
+ * that function concerning the potential for mutex lock-ups
+ * in the design of your re-entrancy protection.  You might
+ * use the pParam context pointer that is passed to the event
+ * callback (see uPortUartEventCallbackSet()) to inform your
+ * callback when it is being shut-down, and hence avoid such
+ * mutex lock-up issues.
  *
  * @param handle  the handle of the UART instance for
  *                which the callback is to be removed.

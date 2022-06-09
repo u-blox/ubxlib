@@ -63,7 +63,7 @@
 
 // Get the contents of UBX-CFG-NAV5.
 // pBuffer must point to a buffer of length 36 bytes.
-static int32_t uGnssCfgGetUbxCfgNav5(int32_t gnssHandle,
+static int32_t uGnssCfgGetUbxCfgNav5(uDeviceHandle_t gnssHandle,
                                      char *pBuffer)
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
@@ -93,7 +93,7 @@ static int32_t uGnssCfgGetUbxCfgNav5(int32_t gnssHandle,
 }
 
 // Set the contents of UBX-CFG-NAV5.
-static int32_t uGnssCfgSetUbxCfgNav5(int32_t gnssHandle,
+static int32_t uGnssCfgSetUbxCfgNav5(uDeviceHandle_t gnssHandle,
                                      uint16_t mask,
                                      const char *pBuffer,
                                      size_t size,
@@ -133,7 +133,7 @@ static int32_t uGnssCfgSetUbxCfgNav5(int32_t gnssHandle,
  * -------------------------------------------------------------- */
 
 // Get the dynamic platform model from the GNSS chip.
-int32_t uGnssCfgGetDynamic(int32_t gnssHandle)
+int32_t uGnssCfgGetDynamic(uDeviceHandle_t gnssHandle)
 {
     int32_t errorCodeOrDynamic;
     // Enough room for the body of the UBX-CFG-NAV5 message
@@ -149,7 +149,7 @@ int32_t uGnssCfgGetDynamic(int32_t gnssHandle)
 }
 
 // Set the dynamic platform model of the GNSS chip.
-int32_t uGnssCfgSetDynamic(int32_t gnssHandle, uGnssDynamic_t dynamic)
+int32_t uGnssCfgSetDynamic(uDeviceHandle_t gnssHandle, uGnssDynamic_t dynamic)
 {
     return uGnssCfgSetUbxCfgNav5(gnssHandle,
                                  0x01, /* Mask for dynamic model */
@@ -158,7 +158,7 @@ int32_t uGnssCfgSetDynamic(int32_t gnssHandle, uGnssDynamic_t dynamic)
 }
 
 // Get the fix mode from the GNSS chip.
-int32_t uGnssCfgGetFixMode(int32_t gnssHandle)
+int32_t uGnssCfgGetFixMode(uDeviceHandle_t gnssHandle)
 {
     int32_t errorCodeOrFixMode;
     // Enough room for the body of the UBX-CFG-NAV5 message
@@ -174,7 +174,7 @@ int32_t uGnssCfgGetFixMode(int32_t gnssHandle)
 }
 
 // Set the fix mode of the GNSS chip.
-int32_t uGnssCfgSetFixMode(int32_t gnssHandle, uGnssFixMode_t fixMode)
+int32_t uGnssCfgSetFixMode(uDeviceHandle_t gnssHandle, uGnssFixMode_t fixMode)
 {
     return uGnssCfgSetUbxCfgNav5(gnssHandle,
                                  0x04, /* Mask for fix mode */

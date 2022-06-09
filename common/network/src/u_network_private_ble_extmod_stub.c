@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,40 +39,13 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uNetworkInitBle(void)
+int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
+                                      const uNetworkCfgBle_t *pCfg,
+                                      bool upNotDown)
 {
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-void uNetworkDeinitBle(void)
-{
-}
-
-int32_t uNetworkAddBle(const uNetworkConfigurationBle_t *pConfiguration)
-{
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkRemoveBle(int32_t handle)
-{
-    (void) handle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkUpBle(int32_t handle,
-                      const uNetworkConfigurationBle_t *pConfiguration)
-{
-    (void) handle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkDownBle(int32_t handle,
-                        const uNetworkConfigurationBle_t *pConfiguration)
-{
-    (void) handle;
-    (void) pConfiguration;
+    (void) devHandle;
+    (void) pCfg;
+    (void) upNotDown;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

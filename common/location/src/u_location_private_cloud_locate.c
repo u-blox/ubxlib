@@ -330,8 +330,8 @@ static int32_t parseLocation(char *pStr, uLocation_t *pLocation)
  * -------------------------------------------------------------- */
 
 // Run Cloud Locate.
-int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
-                                    int32_t gnssHandle,
+int32_t uLocationPrivateCloudLocate(uDeviceHandle_t devHandle,
+                                    uDeviceHandle_t gnssDevHandle,
                                     uMqttClientContext_t *pMqttClientContext,
                                     int32_t svsThreshold,
                                     int32_t cNoThreshold,
@@ -339,7 +339,7 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
                                     int32_t pseudorangeRmsErrorIndexLimit,
                                     const char *pClientIdStr,
                                     uLocation_t *pLocation,
-                                    bool (*pKeepGoingCallback) (int32_t))
+                                    bool (*pKeepGoingCallback) (uDeviceHandle_t))
 {
     int32_t errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
     char *pBuffer;
@@ -350,7 +350,7 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
     bool subscribed = false;
     size_t z;
 
-    if ((gnssHandle >= 0) && (pMqttClientContext != NULL) &&
+    if ((gnssDevHandle != NULL) && (pMqttClientContext != NULL) &&
         ((pLocation == NULL) || (pClientIdStr != NULL))) {
         errorCode = (int32_t) U_ERROR_COMMON_NO_MEMORY;
         // Allocate memory to store the RRLP information
@@ -372,7 +372,7 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
 
             if (errorCode >= 0) { // >= 0 since uMqttClientSubscribe() returns QoS
                 // Get the RRLP data from the GNSS chip
-                errorCode = uGnssPosGetRrlp(gnssHandle, pBuffer,
+                errorCode = uGnssPosGetRrlp(gnssDevHandle, pBuffer,
                                             U_LOCATION_PRIVATE_CLOUD_LOCATE_BUFFER_LENGTH_BYTES,
                                             svsThreshold, cNoThreshold, multipathIndexLimit,
                                             pseudorangeRmsErrorIndexLimit,
@@ -412,7 +412,7 @@ int32_t uLocationPrivateCloudLocate(int32_t networkHandle,
                         while ((errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) &&
                                (((pKeepGoingCallback == NULL) &&
                                  (uPortGetTickTimeMs() - startTimeMs) / 1000 < U_LOCATION_TIMEOUT_SECONDS) ||
-                                ((pKeepGoingCallback != NULL) && pKeepGoingCallback(networkHandle)))) {
+                                ((pKeepGoingCallback != NULL) && pKeepGoingCallback(devHandle)))) {
                             if (uMqttClientGetUnread(pMqttClientContext) > 0) {
                                 z = U_LOCATION_PRIVATE_CLOUD_LOCATE_READ_MESSAGE_LENGTH_BYTES;
                                 errorCode = uMqttClientMessageRead(pMqttClientContext,

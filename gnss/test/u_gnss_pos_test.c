@@ -128,7 +128,7 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
 
 /** GNSS handle as seen by posCallback().
  */
-static int32_t gGnssHandle = -1;
+static uDeviceHandle_t gGnssHandle = NULL;
 
 /** Error code as seen by posCallback().
  */
@@ -167,7 +167,7 @@ static int64_t gTimeUtc = LONG_MIN;
  * -------------------------------------------------------------- */
 
 // Callback function for the position establishment process.
-static bool keepGoingCallback(int32_t gnssHandle)
+static bool keepGoingCallback(uDeviceHandle_t gnssHandle)
 {
     bool keepGoing = true;
 
@@ -180,7 +180,7 @@ static bool keepGoingCallback(int32_t gnssHandle)
 }
 
 // Callback function for non-blocking API.
-static void posCallback(int32_t gnssHandle,
+static void posCallback(uDeviceHandle_t gnssHandle,
                         int32_t errorCode,
                         int32_t latitudeX1e7,
                         int32_t longitudeX1e7,
@@ -240,7 +240,7 @@ static char latLongToBits(int32_t thingX1e7,
  */
 U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
 {
-    int32_t gnssHandle;
+    uDeviceHandle_t gnssHandle;
     int32_t latitudeX1e7 = INT_MIN;
     int32_t longitudeX1e7 = INT_MIN;
     int32_t altitudeMillimetres = INT_MIN;
@@ -385,7 +385,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
  */
 U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
 {
-    int32_t gnssHandle;
+    uDeviceHandle_t gnssHandle;
     int32_t y;
     char *pBuffer;
     int64_t startTime;

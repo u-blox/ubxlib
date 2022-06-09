@@ -25,6 +25,7 @@ UBXLIB_SRC_DIRS += \
 
 # Additional include directories
 UBXLIB_INC += \
+	${UBXLIB_BASE} \
 	${UBXLIB_BASE}/cfg \
 	${UBXLIB_BASE}/port/api \
 
@@ -33,11 +34,15 @@ UBXLIB_PRIVATE_INC += \
 	${UBXLIB_BASE}/port/platform/common/mutex_debug \
 	${UBXLIB_BASE}/port/platform/common/debug_utils/src/freertos/additions
 
-# Network requires special care since it contains stub & optional files
+# Device and network require special care since they contain stub & optional files
 UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_shared.c
 UBXLIB_INC += ${UBXLIB_BASE}/common/network/api
 UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/network/src
-
+UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device.c
+UBXLIB_SRC += ${UBXLIB_BASE}/common/device/src/u_device_shared.c
+UBXLIB_INC += ${UBXLIB_BASE}/common/device/api
+UBXLIB_PRIVATE_INC += ${UBXLIB_BASE}/common/device/src
 
 # Optional short range related files and directories
 ifneq ($(filter short_range,$(UBXLIB_FEATURES)),)
@@ -50,19 +55,23 @@ UBXLIB_SRC += \
 	${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod.c \
 	${UBXLIB_BASE}/common/network/src/u_network_private_ble_intmod.c \
 	${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c \
-	${UBXLIB_BASE}/common/network/src/u_network_private_short_range.c
+	${UBXLIB_BASE}/common/device/src/u_device_private_short_range.c
 endif
 
 # Optional cell related files and directories
 ifneq ($(filter cell,$(UBXLIB_FEATURES)),)
 UBXLIB_MODULE_DIRS += ${UBXLIB_BASE}/cell
-UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_cell.c
+UBXLIB_SRC += \
+	${UBXLIB_BASE}/common/network/src/u_network_private_cell.c \
+	${UBXLIB_BASE}/common/device/src/u_device_private_cell.c
 endif
 
 # Optional GNSS related files and directories
 ifneq ($(filter gnss,$(UBXLIB_FEATURES)),)
 UBXLIB_MODULE_DIRS += ${UBXLIB_BASE}/gnss
-UBXLIB_SRC += ${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c
+UBXLIB_SRC += \
+	${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c \
+	${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c
 endif
 
 # lib_common

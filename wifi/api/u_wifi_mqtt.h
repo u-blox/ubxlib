@@ -17,7 +17,11 @@
 #ifndef _U_WIFI_MQTT_H_
 #define _U_WIFI_MQTT_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h"
 
 /** @file
  * @brief This header file defines the MQTT APIs for WiFi.
@@ -54,11 +58,11 @@ typedef enum {
 /** Initialise the WiFi MQTT client. If the client is already
  *  initialised then this function returns U_ERROR_COMMON_SUCCESS
  *
- *  @param wifiHandle    the handle of the wifi instance to be used.
+ *  @param devHandle     the handle of the wifi instance to be used.
  *  @param ppMqttSession pointer to MQTT session will be allocated and returned.
  *  @return              zero on success or negative error code
  */
-int32_t uWifiMqttInit(int32_t wifiHandle, void **ppMqttSession);
+int32_t uWifiMqttInit(uDeviceHandle_t devHandle, void **ppMqttSession);
 
 /** Allocate a new MQTT session
  *

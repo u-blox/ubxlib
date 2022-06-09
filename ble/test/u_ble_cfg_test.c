@@ -55,7 +55,7 @@
 #include "u_port_uart.h"
 
 #include "u_at_client.h"
-
+#include "u_short_range_pbuf.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
 #include "u_ble.h"
@@ -78,7 +78,7 @@
 
 //lint -esym(843, gHandles) Suppress could be const, which will be the case if
 // U_CFG_TEST_SHORT_RANGE_MODULE_TYPE is not defined
-static uBleTestPrivate_t gHandles = { -1, -1, NULL, -1 };
+static uBleTestPrivate_t gHandles = { -1, -1, NULL, NULL };
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -92,23 +92,32 @@ U_PORT_TEST_FUNCTION("[bleCfg]", "bleCfgConfigureModule")
 {
     int32_t heapUsed;
     uBleCfg_t cfg;
+    uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
+                                     .baudRate = U_SHORT_RANGE_UART_BAUD_RATE,
+                                     .pinTx = U_CFG_APP_PIN_SHORT_RANGE_TXD,
+                                     .pinRx = U_CFG_APP_PIN_SHORT_RANGE_RXD,
+                                     .pinCts = U_CFG_APP_PIN_SHORT_RANGE_CTS,
+                                     .pinRts = U_CFG_APP_PIN_SHORT_RANGE_RTS
+                                   };
     heapUsed = uPortGetHeapFree();
 
+
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
+                                               &uart,
                                                &gHandles) == 0);
 
 
     cfg.role = U_BLE_CFG_ROLE_PERIPHERAL;
     cfg.spsServer = true;
-    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.bleHandle, &cfg) == 0);
+    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
     cfg.role = U_BLE_CFG_ROLE_CENTRAL;
     cfg.spsServer = true;
-    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.bleHandle, &cfg) == 0);
+    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
     cfg.role = U_BLE_CFG_ROLE_PERIPHERAL;
     cfg.spsServer = true;
-    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.bleHandle, &cfg) == 0);
+    U_PORT_TEST_ASSERT(uBleCfgConfigure(gHandles.devHandle, &cfg) == 0);
 
     uBleTestPrivatePostamble(&gHandles);
 

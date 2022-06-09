@@ -198,8 +198,7 @@ def copy_files(source_list, include_list, ubxlib_dir, forced, include_files):
 
     return return_value
 
-# Create a header file which brings in all our disparate headers;
-# this is the best way to get things into Arduino
+# Create a common header file which brings in a set of headers
 def create_header_file(filename, comment_text, include_files):
     '''Create Arduino library header file'''
     return_value = -1

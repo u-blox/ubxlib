@@ -17,7 +17,10 @@
 #ifndef _U_RINGBUFFER_H_
 #define _U_RINGBUFFER_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief Ring buffer wrapper API for linear buffer.

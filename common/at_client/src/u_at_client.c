@@ -56,7 +56,7 @@
 #include "u_port_event_queue.h"
 
 #include "u_at_client.h"
-
+#include "u_short_range_pbuf.h"
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 #include "u_short_range_edm_stream.h"
@@ -1146,16 +1146,18 @@ static int32_t uartReadNoStutter(uAtClientInstance_t *pClient,
             if (blockState == U_AT_CLIENT_BLOCK_STATE_NOTHING_RECEIVED) {
                 // Got something: now wait for more
                 blockState = U_AT_CLIENT_BLOCK_STATE_WAIT_FOR_MORE;
+                uPortTaskBlock(U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
             }
         } else {
             if (blockState == U_AT_CLIENT_BLOCK_STATE_WAIT_FOR_MORE) {
                 // We were waiting for more but we have received nothing
                 // so stop blocking now
                 blockState = U_AT_CLIENT_BLOCK_STATE_DO_NOT_BLOCK;
+            } else {
+                uPortTaskBlock(U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
             }
+
         }
-        // Wait for a while.
-        uPortTaskBlock(U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
     } while ((bufferSize > 0) &&
              (blockState != U_AT_CLIENT_BLOCK_STATE_DO_NOT_BLOCK) &&
              (pollTimeRemaining(atTimeoutMs, pClient->lockTimeMs) > 0));
@@ -1423,6 +1425,7 @@ static bool bufferFill(uAtClientInstance_t *pClient,
         }
 
         LOG_BUFFER_FILL(14);
+        uPortTaskBlock(U_AT_CLIENT_STREAM_READ_RETRY_DELAY_MS);
     } while ((readLength == 0) &&
              (pollTimeRemaining(atTimeoutMs, pClient->lockTimeMs) > 0));
 

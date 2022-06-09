@@ -100,6 +100,7 @@ u_add_source_dir(base ${UBXLIB_BASE}/port/platform/common/mutex_debug)
 
 # Additional include directories
 list(APPEND UBXLIB_INC
+  ${UBXLIB_BASE}
   ${UBXLIB_BASE}/cfg
   ${UBXLIB_BASE}/port/api
 )
@@ -109,10 +110,15 @@ list(APPEND UBXLIB_PRIVATE_INC
   ${UBXLIB_BASE}/port/platform/common/mutex_debug
 )
 
-# Network requires special care since it contains stub & optional files
+# Device and network require special care since they contains stub & optional files
 list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/network/src/u_network.c)
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/network/src/u_network_shared.c)
 list(APPEND UBXLIB_INC ${UBXLIB_BASE}/common/network/api)
 list(APPEND UBXLIB_PRIVATE_INC ${UBXLIB_BASE}/common/network/src)
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device.c)
+list(APPEND UBXLIB_SRC ${UBXLIB_BASE}/common/device/src/u_device_shared.c)
+list(APPEND UBXLIB_INC ${UBXLIB_BASE}/common/device/api)
+list(APPEND UBXLIB_PRIVATE_INC ${UBXLIB_BASE}/common/device/src)
 
 # Optional features
 
@@ -123,13 +129,15 @@ u_add_module_dir(short_range ${UBXLIB_BASE}/wifi)
 u_add_source_file(short_range ${UBXLIB_BASE}/common/network/src/u_network_private_ble_extmod.c)
 u_add_source_file(short_range ${UBXLIB_BASE}/common/network/src/u_network_private_ble_intmod.c)
 u_add_source_file(short_range ${UBXLIB_BASE}/common/network/src/u_network_private_wifi.c)
-u_add_source_file(short_range ${UBXLIB_BASE}/common/network/src/u_network_private_short_range.c)
+u_add_source_file(short_range ${UBXLIB_BASE}/common/device/src/u_device_private_short_range.c)
 # cell
 u_add_module_dir(cell ${UBXLIB_BASE}/cell)
 u_add_source_file(cell ${UBXLIB_BASE}/common/network/src/u_network_private_cell.c)
+u_add_source_file(cell ${UBXLIB_BASE}/common/device/src/u_device_private_cell.c)
 # gnss
 u_add_module_dir(gnss ${UBXLIB_BASE}/gnss)
 u_add_source_file(gnss ${UBXLIB_BASE}/common/network/src/u_network_private_gnss.c)
+u_add_source_file(gnss ${UBXLIB_BASE}/common/device/src/u_device_private_gnss.c)
 # lib_common
 # We have a dependency issue with libfibonacci so lib_common/test needs to manually
 # included by the runner app instead at the moment. For this reason we just add the

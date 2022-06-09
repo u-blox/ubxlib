@@ -17,7 +17,13 @@
 #ifndef _U_SHORT_RANGE_H_
 #define _U_SHORT_RANGE_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+#include "u_device.h" // uDeviceHandle_t
+#include "u_at_client.h"
+#include "u_short_range_module_type.h"
 
 /** @file
  * @brief This header file defines the ShortRange APIs. These APIs are not
@@ -87,6 +93,10 @@ typedef enum {
     U_SHORT_RANGE_ERROR_INVALID_MODE = U_ERROR_SHORT_RANGE_MAX - 3, /**< -4099 if U_ERROR_BASE is 0. */
     U_SHORT_RANGE_ERROR_NOT_DETECTED = U_ERROR_SHORT_RANGE_MAX - 4, /**< -4100 if U_ERROR_BASE is 0. */
     U_SHORT_RANGE_ERROR_WRONG_TYPE = U_ERROR_SHORT_RANGE_MAX - 5, /**< -4101 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_UART = U_ERROR_SHORT_RANGE_MAX - 6, /**< -4102 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_EDM = U_ERROR_SHORT_RANGE_MAX - 7, /**< -4103 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_ATCLIENT = U_ERROR_SHORT_RANGE_MAX - 8, /**< -4104 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_INTERNAL = U_ERROR_SHORT_RANGE_MAX - 9, /**< -4105 if U_ERROR_BASE is 0. */
 } uShortRangeErrorCode_t;
 
 typedef enum {
@@ -162,13 +172,13 @@ typedef struct {
     uint16_t framesize;
 } uShortRangeConnectDataBt_t;
 
-typedef void (*uShortRangeBtConnectionStatusCallback_t)(int32_t shortRangeHandle,
+typedef void (*uShortRangeBtConnectionStatusCallback_t)(uDeviceHandle_t devHandle,
                                                         int32_t connHandle,
                                                         uShortRangeConnectionEventType_t eventType,
                                                         uShortRangeConnectDataBt_t *pConnectData,
                                                         void *pCallbackParameter);
 
-typedef void (*uShortRangeIpConnectionStatusCallback_t)(int32_t shortRangeHandle,
+typedef void (*uShortRangeIpConnectionStatusCallback_t)(uDeviceHandle_t devHandle,
                                                         int32_t connHandle,
                                                         uShortRangeConnectionEventType_t eventType,
                                                         uShortRangeConnectDataIp_t *pConnectData,
@@ -182,6 +192,15 @@ typedef struct {
     bool supportsBtClassic;
     bool supportsWifi;
 } uShortRangeModuleInfo_t;
+
+typedef struct {
+    int32_t uartPort;
+    int32_t baudRate;
+    int32_t pinTx;
+    int32_t pinRx;
+    int32_t pinCts;
+    int32_t pinRts;
+} uShortRangeUartConfig_t;
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -213,28 +232,25 @@ int32_t uShortRangeLock();
  */
 int32_t uShortRangeUnlock();
 
-/** Add a short range instance.
+/** Open UART for a short range module, reboots the module and configures it for EDM stream handling.
  *
  * @param moduleType       the short range module type.
- * @param atHandle         the handle of the AT client to use.  This must
- *                         already have been created by the caller with
- *                         a buffer of size U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES.
- *                         If a short range instance has already been added
- *                         for this atHandle an error will be returned.
- * @return                 on success the handle of the short range instance,
- *                         else negative error code.
+ * @param pUartConfig      the UART configuration to be used.
+ *                         if a short range instance has already been added
+ *                         for this pUartConfig an error will be returned.
+ * @param restart          if true - module is restarted.
+ * @param[out] pDevHandle  a pointer to the output handle. Will only be set on success.
+ * @return                 zero on success or negative error code on failure.
  */
-int32_t uShortRangeAdd(uShortRangeModuleType_t moduleType,
-                       uAtClientHandle_t atHandle);
+int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
+                            const uShortRangeUartConfig_t *pUartConfig,
+                            bool restart, uDeviceHandle_t *pDevHandle);
 
-/** Remove a short range instance.  It is up to the caller to ensure
- * that the short range module for the given instance has been disconnected
- * and/or powered down etc.; all this function does is remove the logical
- * instance.
+/** Closes and disconnects all associated handles, such as UART and EDM, for the short range instance
  *
- * @param shortRangeHandle  the handle of the short range instance to remove.
+ * @param devHandle     the short range device handle to close.
  */
-void uShortRangeRemove(int32_t shortRangeHandle);
+void uShortRangeClose(uDeviceHandle_t devHandle);
 
 /** Detect the module connected to the handle. Will attempt to change the mode on
  * the module to communicate with it. No change to UART configuration is done,
@@ -242,90 +258,65 @@ void uShortRangeRemove(int32_t shortRangeHandle);
  * the UART on a different baud rate. This sould recover that module if another
  * rate than the default one has been used.
  *
- * @param shortRangeHandle   the handle of the short range instance.
+ * @param devHandle          the short range device handle.
  * @return                   Module on success, U_SHORT_RANGE_MODULE_TYPE_INVALID
  *                           on failure.
  */
-uShortRangeModuleType_t uShortRangeDetectModule(int32_t shortRangeHandle);
+uShortRangeModuleType_t uShortRangeDetectModule(uDeviceHandle_t devHandle);
 
 /** Sends "AT" to the short range module on which it should repond with "OK"
  * but takes no action. This checks that the module is ready to respond to commands.
  *
- * @param shortRangeHandle  the handle of the short range instance.
+ * @param devHandle         the short range device handle.
  * @return                  zero on success or negative error code
  *                          on failure.
  */
-int32_t uShortRangeAttention(int32_t shortRangeHandle);
-
-/** Change to command mode by sending a escape sequence, can be used at
- * startup if uShortRangeAttention is unresponsive.
- *
- * @param shortRangeHandle  the handle of the short range instance.
- * @param pAtHandle         the place to put the new atHandle, cannot be NULL.
- * @return                  zero on success or negative error code
- *                          on failure.
- */
-int32_t uShortRangeCommandMode(int32_t shortRangeHandle, uAtClientHandle_t *pAtHandle);
-
-
-/** Change to data mode, no commands will be accepted in this mode and
- * the caller can send, and must handle the incoming, data directly on
- * the stream.
- *
- * @note: A delay of 50 ms is required before start of data transmission
- * @note: The original atHandle is no longer valid after this is called, at client is
- *        re-added when calling uShortRangeCommandMode.
- *
- * @param shortRangeHandle  the handle of the short range instance.
- * @return                  zero on success or negative error code
- *                          on failure.
- */
-int32_t uShortRangeDataMode(int32_t shortRangeHandle);
+int32_t uShortRangeAttention(uDeviceHandle_t devHandle);
 
 /** Set a callback for Bluetooth connection status.
 *
- * @param shortRangeHandle   the handle of the short range instance.
+ * @param devHandle          the short range device handle.
  * @param pCallback          callback function.
  * @param pCallbackParameter parameter included with the callback.
  * @return                   zero on success or negative error code
  *                           on failure.
  */
-int32_t uShortRangeSetBtConnectionStatusCallback(int32_t shortRangeHandle,
+int32_t uShortRangeSetBtConnectionStatusCallback(uDeviceHandle_t devHandle,
                                                  uShortRangeBtConnectionStatusCallback_t pCallback,
                                                  void *pCallbackParameter);
 
 /** Set a callback for IP connection status.
  *
- * @param shortRangeHandle   the handle of the short range instance.
+ * @param devHandle          the short range device handle.
  * @param pCallback          callback function.
  * @param pCallbackParameter parameter included with the callback.
  * @return                   zero on success or negative error code
  *                           on failure.
  */
-int32_t uShortRangeSetIpConnectionStatusCallback(int32_t shortRangeHandle,
+int32_t uShortRangeSetIpConnectionStatusCallback(uDeviceHandle_t devHandle,
                                                  uShortRangeIpConnectionStatusCallback_t pCallback,
                                                  void *pCallbackParameter);
 
 /** Set a callback for MQTT connection status.
  *
- * @param shortRangeHandle   the handle of the short range instance.
+ * @param devHandle          the short range device handle.
  * @param pCallback          callback function.
  * @param pCallbackParameter parameter included with the callback.
  * @return                   zero on success or negative error code
  *                           on failure.
  */
-int32_t uShortRangeSetMqttConnectionStatusCallback(int32_t shortRangeHandle,
+int32_t uShortRangeSetMqttConnectionStatusCallback(uDeviceHandle_t devHandle,
                                                    uShortRangeIpConnectionStatusCallback_t pCallback,
                                                    void *pCallbackParameter);
 
 /** Get the handle of the AT client used by the given
  * short range instance.
  *
- * @param shortRangeHandle  the handle of the short range instance.
+ * @param devHandle         the short range device handle.
  * @param pAtHandle         a place to put the AT client handle.
  * @return                  zero on success else negative error code.
  */
-int32_t uShortRangeAtClientHandleGet(int32_t shortRangeHandle,
+int32_t uShortRangeAtClientHandleGet(uDeviceHandle_t devHandle,
                                      uAtClientHandle_t *pAtHandle);
 
 
@@ -347,24 +338,74 @@ bool uShortRangeSupportsWifi(uShortRangeModuleType_t moduleType);
 
 /** Get the serial number of the module.
  *
- * @param shortRangeHandle   the instance handle.
+ * @param devHandle          the short range device handle.
  * @param[out] pSerialNumber a pointer to storage of atleast
  *                           U_SHORT_RANGE_SERIAL_NUMBER_LENGTH bytes
  *                           in which the product serial number will be stored;
  *                           cannot be NULL.
- * @return                   zero on success else negative error code.
+ * @return                   the length of the string copied into
+ *                           pSerialNumber (i.e. as strlen() would
+ *                           return) or negative error code.
  */
-int32_t uShortRangeGetSerialNumber(int32_t shortRangeHandle, char *pSerialNumber);
+int32_t uShortRangeGetSerialNumber(uDeviceHandle_t devHandle, char *pSerialNumber);
 
-/** Get the shortrange handle corresponding to network handle.
+/** Get the edm stream handle corresponding to short range handle.
  *
- * @param networkHandle     the network handle (i.e,BLE/Wifi handle)
- * @return                  a short range handle on success
+ * @param devHandle         the short range device handle.
+ * @return                  an edm stream handle on success
  *                          else negative error code.
  */
-int32_t uShortRangeGetShoHandle(int32_t networkHandle);
+int32_t uShortRangeGetEdmStreamHandle(uDeviceHandle_t devHandle);
 
+/** Get the UART handle corresponding to short range handle.
+ *
+ * @param devHandle         the short range device handle.
+ * @return                  an UART handle on success
+ *                          else negative error code.
+ */
+int32_t uShortRangeGetUartHandle(uDeviceHandle_t devHandle);
 
+/** Sets new UART baudrate for a short range module
+ *
+ * @param[in,out] pDevHandle  a pointer to a short range device handle that has been
+ *                            opened with uShortRangeOpenUart(). If the reconfiguration
+ *                            of the UART settings succeeds a new device handle will
+ *                            be allocated and returned via this parameter.
+ * @param pUartConfig         the new UART configuration to be used.
+ * @return                    0 on success or negative error code on failure.
+ */
+int32_t uShortRangeSetBaudrate(uDeviceHandle_t *pDevHandle,
+                               const uShortRangeUartConfig_t *pUartConfig);
+
+/** Configure a GPIO of a shortrange module.
+ *
+ * @param [in] devHandle    the handle of the shortrange device handle.
+ * @param gpioId            the GPIO ID to configure (often the same as pin number).
+ * @param isOutput          the direction, set to true for an output, false for
+ *                          an input.
+ * @param level             the initial level to set, only used if isOutput
+ *                          is true; 0 for low or non-zero for high.
+ * @return                  zero on success else negative error code.
+ */
+int32_t uShortRangeGpioConfig(uDeviceHandle_t devHandle, int32_t gpioId, bool isOutput,
+                              int32_t level);
+
+/** Set the state of a GPIO of a shortrange module.
+ *
+ * @param [in] devHandle    the handle of the shortrange device handle.
+ * @param gpioId            the GPIO ID to set (often the same as pin number).
+ * @param level             the level to set, 0 for low or non-zero for high.
+ * @return                  zero on success else negative error code.
+ */
+int32_t uShortRangeGpioSet(uDeviceHandle_t devHandle, int32_t gpioId, int32_t level);
+
+/** Resets the module settings to default values of a shortrange module.
+ *
+ * @param pinResetToDefaults the pin of this MCU that MUST BE CONNECTED TO
+ *                           the DSR pin of the module.
+ * @return                   zero on success else negative error code.
+ */
+int32_t uShortRangeResetToDefaultSettings(int32_t pinResetToDefaults);
 
 #ifdef __cplusplus
 }

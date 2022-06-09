@@ -17,7 +17,10 @@
 #ifndef _U_CFG_OS_PLATFORM_SPECIFIC_H_
 #define _U_CFG_OS_PLATFORM_SPECIFIC_H_
 
-/* No #includes allowed here */
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
 
 /** @file
  * @brief This header file contains OS configuration information for
@@ -49,10 +52,10 @@
 #endif
 
 #ifndef U_CFG_OS_PRIORITY_MAX
-/** The maximum task priority, should be less than or
- * equal to CONFIG_NUM_COOP_PRIORITIES  which default is set to 15 (16-1).
+/** The maximum task priority, default is set to 30 (31-1).
+ * Idletask is 0.
  */
-# define U_CFG_OS_PRIORITY_MAX  15
+# define U_CFG_OS_PRIORITY_MAX  30
 #endif
 
 #ifndef U_CFG_OS_YIELD_MS

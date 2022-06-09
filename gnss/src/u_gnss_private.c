@@ -51,6 +51,8 @@
 
 #include "u_ubx_protocol.h"
 
+#include "u_network_shared.h"
+
 #include "u_gnss_module_type.h"
 #include "u_gnss_type.h"
 #include "u_gnss.h"
@@ -453,11 +455,19 @@ static int32_t sendReceiveUbxMessage(const uGnssPrivateInstance_t *pInstance,
  * -------------------------------------------------------------- */
 
 // Find a GNSS instance in the list by instance handle.
-uGnssPrivateInstance_t *pUGnssPrivateGetInstance(int32_t handle)
+uGnssPrivateInstance_t *pUGnssPrivateGetInstance(uDeviceHandle_t handle)
 {
     uGnssPrivateInstance_t *pInstance = gpUGnssPrivateInstanceList;
+    uDeviceHandle_t gnssHandle = uNetworkGetDeviceHandle(handle,
+                                                         U_NETWORK_TYPE_GNSS);
 
-    while ((pInstance != NULL) && (pInstance->handle != handle)) {
+    if (gnssHandle == NULL) {
+        // If the network function returned nothing then the handle
+        // we were given wasn't obtained through the network API,
+        // just use what we were given
+        gnssHandle = handle;
+    }
+    while ((pInstance != NULL) && (pInstance->gnssHandle != gnssHandle)) {
         pInstance = pInstance->pNext;
     }
 
@@ -465,12 +475,12 @@ uGnssPrivateInstance_t *pUGnssPrivateGetInstance(int32_t handle)
 }
 
 // Get the module characteristics for a given instance.
-const uGnssPrivateModule_t *pUGnssPrivateGetModule(int32_t handle)
+const uGnssPrivateModule_t *pUGnssPrivateGetModule(uDeviceHandle_t gnssHandle)
 {
     uGnssPrivateInstance_t *pInstance = gpUGnssPrivateInstanceList;
     const uGnssPrivateModule_t *pModule = NULL;
 
-    while ((pInstance != NULL) && (pInstance->handle != handle)) {
+    while ((pInstance != NULL) && (pInstance->gnssHandle != gnssHandle)) {
         pInstance = pInstance->pNext;
     }
 

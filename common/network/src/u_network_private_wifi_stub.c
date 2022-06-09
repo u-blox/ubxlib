@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,40 +39,13 @@
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
-int32_t uNetworkInitWifi(void)
+int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
+                                       const uNetworkCfgWifi_t *pCfg,
+                                       bool upNotDown)
 {
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-void uNetworkDeinitWifi()
-{
-}
-
-int32_t uNetworkAddWifi(const uNetworkConfigurationWifi_t *pConfiguration)
-{
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkRemoveWifi(int32_t handle)
-{
-    (void) handle;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkUpWifi(int32_t handle,
-                       const uNetworkConfigurationWifi_t *pConfiguration)
-{
-    (void) handle;
-    (void) pConfiguration;
-    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
-}
-
-int32_t uNetworkDownWifi(int32_t handle,
-                         const uNetworkConfigurationWifi_t *pConfiguration)
-{
-    (void) handle;
-    (void) pConfiguration;
+    (void) devHandle;
+    (void) pCfg;
+    (void) upNotDown;
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 

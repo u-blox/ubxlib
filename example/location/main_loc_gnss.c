@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,46 +14,20 @@
  * limitations under the License.
  */
 
-/** @brief This example demonstrates how to bring up a GNSS network
- * and then perform a location fix.
+/** @brief This example demonstrates how to bring up a GNSS device
+ * that is directly connected to this MCU and then perform a location
+ * fix.
  *
  * The choice of module and the choice of platform on which this
  * code runs is made at build time, see the README.md for
  * instructions.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
+// Bring in all of the ubxlib public header files
+#include "ubxlib.h"
 
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-
-// Required by ubxlib
-#include "u_port.h"
-
-// The next two lines will cause uPortLog() output
-// to be sent to ubxlib's chosen trace output.
-// Comment them out to send the uPortLog() output
-// to print() instead.
-#include "u_cfg_sw.h"
-#include "u_port_debug.h"
-
-// For default values for U_CFG_APP_xxx
+// Bring in the application settings
 #include "u_cfg_app_platform_specific.h"
-
-// For the GNSS module and interface types
-#include "u_gnss_module_type.h"
-#include "u_gnss_type.h"
-
-// For the network API
-#include "u_network.h"
-#include "u_network_config_gnss.h"
-
-// For the location API
-#include "u_location.h"
 
 #ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
@@ -63,10 +37,6 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-#ifndef U_CFG_ENABLE_LOGGING
-# define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
-#endif
 
 // For u-blox internal testing only
 #ifdef U_PORT_TEST_ASSERT
@@ -87,32 +57,49 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// GNSS network configuration:
+// GNSS configuration.
 // Set U_CFG_TEST_GNSS_MODULE_TYPE to your module type,
 // chosen from the values in gnss/api/u_gnss_module_type.h
-#ifdef U_CFG_TEST_GNSS_MODULE_TYPE
-static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_GNSS,
-                                                    U_CFG_TEST_GNSS_MODULE_TYPE,
-                                                    /* Note that the pin numbers
-                                                       used here are those of the MCU:
-                                                       if you are using an MCU inside
-                                                       a u-blox module the IO pin numbering
-                                                       for the module is likely different
-                                                       to that from the MCU: check the data
-                                                       sheet for the module to determine
-                                                       the mapping. */
-                                                    U_CFG_APP_PIN_GNSS_ENABLE_POWER,
-                                                    /* Connecton is UART. */
-                                                    U_GNSS_TRANSPORT_UBX_UART,
-                                                    U_CFG_APP_GNSS_UART,
-                                                    U_CFG_APP_PIN_GNSS_TXD,
-                                                    U_CFG_APP_PIN_GNSS_RXD,
-                                                    U_CFG_APP_PIN_GNSS_CTS,
-                                                    U_CFG_APP_PIN_GNSS_RTS,
-                                                    0, -1, -1
-                                                   };
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
+#if defined(U_CFG_TEST_GNSS_MODULE_TYPE) && !defined(U_CFG_TEST_GNSS_OVER_AT)
+// DEVICE i.e. module/chip configuration: in this case a GNSS
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_GNSS,
+    .deviceCfg = {
+        .cfgGnss = {
+            .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
+            .pinEnablePower = U_CFG_APP_PIN_GNSS_ENABLE_POWER,
+            .pinDataReady = -1 // Not used
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_GNSS_UART,
+            .baudRate = U_GNSS_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_GNSS_TXD,
+            .pinRxd = U_CFG_APP_PIN_GNSS_RXD,
+            .pinCts = U_CFG_APP_PIN_GNSS_CTS,
+            .pinRts = U_CFG_APP_PIN_GNSS_RTS
+        },
+    },
+};
+// NETWORK configuration for GNSS
+static const uNetworkCfgGnss_t gNetworkCfg = {
+    .type = U_NETWORK_TYPE_GNSS,
+    .moduleType = U_CFG_TEST_GNSS_MODULE_TYPE,
+    .devicePinPwr = -1,
+    .devicePinDataReady = -1
+};
 #else
-static const uNetworkConfigurationGnss_t gConfig = {U_NETWORK_TYPE_NONE};
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
+static const uNetworkCfgGnss_t gNetworkCfg = {.type = U_NETWORK_TYPE_NONE};
 #endif
 
 /* ----------------------------------------------------------------
@@ -158,32 +145,33 @@ static char latLongToBits(int32_t thingX1e7,
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     uLocation_t location;
     int32_t whole = 0;
     int32_t fraction = 0;
+    int32_t returnCode;
 
     // Set an out of range value so that we can test it later
     location.timeUtc = -1;
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a network instance of type GNSS
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_GNSS,
-                                (void *) &gConfig);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    // Open the device
+    returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
+    uPortLog("Opened device with return code %d.\n", returnCode);
 
     // You may configure GNSS as required here
     // here using any of the GNSS API calls.
 
-    // Bring up the GNSS network layer
-    uPortLog("Bringing up GNSS...\n");
-    if (uNetworkUp(networkHandle) == 0) {
+    // Bring up the GNSS network interface
+    uPortLog("Bringing up the network...\n");
+    if (uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_GNSS,
+                            &gNetworkCfg) == 0) {
 
         // Get location
-        if (uLocationGet(networkHandle, U_LOCATION_TYPE_GNSS,
+        if (uLocationGet(devHandle, U_LOCATION_TYPE_GNSS,
                          NULL, NULL, &location, NULL) == 0) {
             uPortLog("I am here: https://maps.google.com/?q=%c%d.%07d/%c%d.%07d\n",
                      latLongToBits(location.latitudeX1e7, &whole, &fraction),
@@ -196,13 +184,19 @@ U_PORT_TEST_FUNCTION("[example]", "exampleLocGnss")
 
         // When finished with the GNSS network layer
         uPortLog("Taking down GNSS...\n");
-        uNetworkDown(networkHandle);
+        uNetworkInterfaceDown(devHandle, U_NETWORK_TYPE_GNSS);
     } else {
         uPortLog("Unable to bring up GNSS!\n");
     }
 
-    // Calling these will also deallocate the network handle
-    uNetworkDeinit();
+    // Close the device
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandle, false);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("Done.\n");

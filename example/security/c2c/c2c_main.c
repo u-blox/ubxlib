@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 u-blox
+ * Copyright 2022 u-blox
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-    http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,52 +53,24 @@
  * bootstrapped/sealed module.
  */
 
-#ifdef U_CFG_OVERRIDE
-# include "u_cfg_override.h" // For a customer's configuration override
-#endif
-
 #ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
 
-#include "stdio.h"
-#include "stddef.h"
-#include "stdint.h"
-#include "stdbool.h"
-#include "string.h"
+// Bring in all of the ubxlib public header files
+#include "ubxlib.h"
 
-// Required by ubxlib
-#include "u_port.h"
-
-// The next two lines will cause uPortLog() output
-// to be sent to ubxlib's chosen trace output.
-// Comment them out to send the uPortLog() output
-// to print() instead.
-#include "u_cfg_sw.h"
-#include "u_port_debug.h"
-
-// For default values for U_CFG_APP_xxx
+// Bring in the application settings
 #include "u_cfg_app_platform_specific.h"
-
-// For the cellular module types
-#include "u_cell_module_type.h"
-
-// For the network API
-#include "u_network.h"
-#include "u_network_config_cell.h"
-
-#include "u_security.h"
 
 #ifndef U_CFG_DISABLE_TEST_AUTOMATION
 // This purely for internal u-blox testing
 # include "u_cfg_test_platform_specific.h"
 #endif
 
+#include "string.h" // For memcmp()
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
-
-#ifndef U_CFG_ENABLE_LOGGING
-# define uPortLog(format, ...)  print(format, ##__VA_ARGS__)
-#endif
 
 // For u-blox internal testing only
 #ifdef U_PORT_TEST_ASSERT
@@ -119,34 +91,43 @@
  * VARIABLES
  * -------------------------------------------------------------- */
 
-// Cellular network configuration:
+// Cellular configuration.
 // Set U_CFG_TEST_CELL_MODULE_TYPE to your module type,
 // chosen from the values in cell/api/u_cell_module_type.h
+//
+// Note that the pin numbers are those of the MCU: if you
+// are using an MCU inside a u-blox module the IO pin numbering
+// for the module is likely different that from the MCU: check
+// the data sheet for the module to determine the mapping.
+
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_CELL,
-                                                        U_CFG_TEST_CELL_MODULE_TYPE,
-                                                        NULL, /* SIM pin */
-                                                        NULL, /* APN: NULL to accept default.  If using a Thingstream SIM enter "tsiot" here */
-                                                        240, /* Connection timeout in seconds */
-                                                        U_CFG_APP_CELL_UART,
-                                                        /* Note that the pin numbers
-                                                           that follow are those of the MCU:
-                                                           if you are using an MCU inside
-                                                           a u-blox module the IO pin numbering
-                                                           for the module is likely different
-                                                           to that from the MCU: check the data
-                                                           sheet for the module to determine
-                                                           the mapping. */
-                                                        U_CFG_APP_PIN_CELL_TXD,
-                                                        U_CFG_APP_PIN_CELL_RXD,
-                                                        U_CFG_APP_PIN_CELL_CTS,
-                                                        U_CFG_APP_PIN_CELL_RTS,
-                                                        U_CFG_APP_PIN_CELL_ENABLE_POWER,
-                                                        U_CFG_APP_PIN_CELL_PWR_ON,
-                                                        U_CFG_APP_PIN_CELL_VINT
-                                                       };
+// DEVICE i.e. module/chip configuration: in this case a cellular
+// module connected via UART
+static const uDeviceCfg_t gDeviceCfg = {
+    .deviceType = U_DEVICE_TYPE_CELL,
+    .deviceCfg = {
+        .cfgCell = {
+            .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
+            .pSimPinCode = NULL, /* SIM pin */
+            .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
+            .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+        },
+    },
+    .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
+    .transportCfg = {
+        .cfgUart = {
+            .uart = U_CFG_APP_CELL_UART,
+            .baudRate = U_CELL_UART_BAUD_RATE,
+            .pinTxd = U_CFG_APP_PIN_CELL_TXD,
+            .pinRxd = U_CFG_APP_PIN_CELL_RXD,
+            .pinCts = U_CFG_APP_PIN_CELL_CTS,
+            .pinRts = U_CFG_APP_PIN_CELL_RTS
+        },
+    },
+};
 #else
-static const uNetworkConfigurationCell_t gConfigCell = {U_NETWORK_TYPE_NONE};
+static const uDeviceCfg_t gDeviceCfg = {.deviceType = U_DEVICE_TYPE_NONE};
 #endif
 
 /* ----------------------------------------------------------------
@@ -173,7 +154,7 @@ static void printHex(const char *pStr, size_t length)
 // we are in task space.
 U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
 {
-    int32_t networkHandle;
+    uDeviceHandle_t devHandle = NULL;
     char rotUid[U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES];
     char key[U_SECURITY_C2C_ENCRYPTION_KEY_LENGTH_BYTES];
     char hmac[U_SECURITY_C2C_HMAC_TAG_LENGTH_BYTES];
@@ -185,33 +166,30 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
 
     // Initialise the APIs we will need
     uPortInit();
-    uNetworkInit();
+    uDeviceInit();
 
-    // Add a network instance, in this case of type cell
-    // since that's what we have configuration information
-    // for above.
-    networkHandle = uNetworkAdd(U_NETWORK_TYPE_CELL,
-                                (void *) &gConfigCell);
-    uPortLog("Added network with handle %d.\n", networkHandle);
+    // Open the device
+    x = uDeviceOpen(&gDeviceCfg, &devHandle);
+    uPortLog("Opened device with return code %d.\n", x);
 
     // Remember: at this point the module must NEVER have
     // been able to contact the u-blox security servers,
     // must never have been connected to cellular, hence
-    // no "uNetworkUp()" here.
+    // no "uNetworkInterfaceUp()" here.
 
-    if (uSecurityIsSupported(networkHandle)) {
+    if (uSecurityIsSupported(devHandle)) {
 
         // This simply a mechanism to ensure
         // that the module has had time to
         // wake-up the u-blox security features
         // completely, since there's no point in
         // wasting time checking for device status
-        uSecurityGetRootOfTrustUid(networkHandle, rotUid);
+        uSecurityGetRootOfTrustUid(devHandle, rotUid);
 
         // Your MCU or factory test system would have
         // generated the 16-byte U_CFG_TEST_SECURITY_C2C_TE_SECRET
         uPortLog("Performing C2c pairing...\n");
-        if (uSecurityC2cPair(networkHandle,
+        if (uSecurityC2cPair(devHandle,
                              U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                              key, hmac) == 0) {
             uPortLog("Pairing completed, the values:");
@@ -234,13 +212,13 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
 
             uPortLog("A C2C session is not yet open, the following"
                      " AT transaction will be in plain text.\n");
-            x = uSecurityGetSerialNumber(networkHandle, serialNumber1);
+            x = uSecurityGetSerialNumber(devHandle, serialNumber1);
             uPortLog("Module returned serial number %.*s.\n",
                      x, serialNumber1);
 
             uPortLog("Opening a secure session using the stored"
                      " keys...\n");
-            if (uSecurityC2cOpen(networkHandle,
+            if (uSecurityC2cOpen(devHandle,
                                  U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                  key, hmac) == 0) {
                 uPortLog("With a C2C session open AT comms are"
@@ -248,7 +226,7 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
                          " probe to the serial lines between"
                          " the MCU and the module to see the"
                          " effect.\n");
-                y = uSecurityGetSerialNumber(networkHandle, serialNumber2);
+                y = uSecurityGetSerialNumber(devHandle, serialNumber2);
                 uPortLog("Module returned serial number %.*s.\n",
                          y, serialNumber2);
                 same = memcmp(serialNumber1, serialNumber2, x) == 0;
@@ -261,11 +239,11 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
                 // C2C enabled.
 
                 uPortLog("Closing the C2C session...\n");
-                if (uSecurityC2cClose(networkHandle) == 0) {
+                if (uSecurityC2cClose(devHandle) == 0) {
                     uPortLog("With the C2C session closed AT"
                              " communications are in plain text"
                              " once more.\n");
-                    y = uSecurityGetSerialNumber(networkHandle, serialNumber2);
+                    y = uSecurityGetSerialNumber(devHandle, serialNumber2);
                     uPortLog("Module returned serial number %.*s.\n",
                              y, serialNumber2);
                 } else {
@@ -282,10 +260,16 @@ U_PORT_TEST_FUNCTION("[example]", "exampleSecC2c")
     }
 
     // For u-blox internal testing only
-    EXAMPLE_FINAL_STATE((same) || !uSecurityIsSupported(networkHandle));
+    EXAMPLE_FINAL_STATE((same) || !uSecurityIsSupported(devHandle));
 
-    // Calling these will also deallocate the network handle
-    uNetworkDeinit();
+    // Close the device
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandle, false);
+
+    // Tidy up
+    uDeviceDeinit();
     uPortDeinit();
 
     uPortLog("Done.\n");
