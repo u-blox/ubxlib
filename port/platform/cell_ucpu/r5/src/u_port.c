@@ -118,7 +118,7 @@ int32_t uPortPlatformStart(void (*pEntryPoint)(void *),
 int32_t uPortInit()
 {
     // Flag to keep track of memory pool initialization.
-    static bool poolInitialised = false; 
+    static bool poolInitialised = false;
     int32_t errorCode = U_ERROR_COMMON_SUCCESS;
     int32_t result = -1;
 
