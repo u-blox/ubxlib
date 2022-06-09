@@ -2286,20 +2286,23 @@ static int32_t uint64ToString(char *pBuffer, size_t length,
     return sizeOrError;
 }
 
-// Get the amount of stuff in the receive buffer for a stream.
-static int32_t getReceiveSize(const uAtClientInstance_t *pClient)
+// Get the amount of stuff in the receive buffer for the URC
+// (and so check processAsync() also).
+static int32_t getReceiveSizeForUrc(const uAtClientInstance_t *pClient)
 {
-    int32_t receiveSize = -1;
+    int32_t receiveSize = 0;
 
-    switch (pClient->streamType) {
-        case U_AT_CLIENT_STREAM_TYPE_UART:
-            receiveSize = uPortUartGetReceiveSize(pClient->streamHandle);
-            break;
-        case U_AT_CLIENT_STREAM_TYPE_EDM:
-            receiveSize = uShortRangeEdmStreamAtGetReceiveSize(pClient->streamHandle);
-            break;
-        default:
-            break;
+    if (processAsync(pClient->magicNumber)) {
+        switch (pClient->streamType) {
+            case U_AT_CLIENT_STREAM_TYPE_UART:
+                receiveSize = uPortUartGetReceiveSize(pClient->streamHandle);
+                break;
+            case U_AT_CLIENT_STREAM_TYPE_EDM:
+                receiveSize = uShortRangeEdmStreamAtGetReceiveSize(pClient->streamHandle);
+                break;
+            default:
+                break;
+        }
     }
 
     return receiveSize;
@@ -2329,7 +2332,7 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
         if (streamMutex != NULL) {
             // Loop until no received characters left to process
             pReceiveBuffer = pClient->pReceiveBuffer;
-            while (((sizeOrError = getReceiveSize(pClient)) > 0) ||
+            while (((sizeOrError = getReceiveSizeForUrc(pClient)) > 0) ||
                    (pReceiveBuffer->readIndex < pReceiveBuffer->length)) {
 #if !U_CFG_OS_CLIB_LEAKS
                 // Don't do this if CLIB is leaky on this platform since it's
@@ -2346,7 +2349,7 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
                     // Search through the URCs
                     if (bufferMatchOneUrc(pClient)) {
                         // If there's a bufferMatch, see if more data is available
-                        sizeOrError = getReceiveSize(pClient);
+                        sizeOrError = getReceiveSizeForUrc(pClient);
                         if ((sizeOrError <= 0) &&
                             (pReceiveBuffer->readIndex >=
                              pReceiveBuffer->dataBufferSize)) {
@@ -2364,7 +2367,7 @@ static void urcCallback(int32_t streamHandle, uint32_t eventBitmask,
                         // If no bufferMatch was found and there's no CR/LF to
                         // consume up to, bring in more data and we'll check
                         // it again
-                        if (bufferFill(pClient, true)) {
+                        if (processAsync(pClient->magicNumber) && bufferFill(pClient, true)) {
                             // Start the cycle again as if we'd just done
                             // uAtClientLock()
                             pClient->lockTimeMs = uPortGetTickTimeMs();
