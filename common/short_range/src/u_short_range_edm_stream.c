@@ -1495,7 +1495,7 @@ void uShortRangeEdmStreamAtCallbackRemove(int32_t handle)
 }
 
 
-int32_t uPortShortRangeEdmStremAtEventStackMinFree(int32_t handle)
+int32_t uShortRangeEdmStreamAtEventStackMinFree(int32_t handle)
 {
     int32_t sizeOrErrorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
 

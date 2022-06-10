@@ -299,7 +299,7 @@ int32_t uShortRangeEdmStreamAtEventSend(int32_t handle, uint32_t eventBitMap);
  *                lifetime of the task at the end of the event
  *                queue in bytes, else negative error code.
  */
-int32_t uPortShortRangeEdmStremAtEventStackMinFree(int32_t handle);
+int32_t uShortRangeEdmStreamAtEventStackMinFree(int32_t handle);
 
 /** Detect whether the task currently executing is the
  * event callback for this stream. Useful if you have code which

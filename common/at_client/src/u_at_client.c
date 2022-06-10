@@ -3564,7 +3564,7 @@ int32_t uAtClientUrcHandlerStackMinFree(uAtClientHandle_t atHandle)
             stackMinFree = uPortUartEventStackMinFree(pClient->streamHandle);
             break;
         case U_AT_CLIENT_STREAM_TYPE_EDM:
-            stackMinFree = uPortShortRangeEdmStremAtEventStackMinFree(pClient->streamHandle);
+            stackMinFree = uShortRangeEdmStreamAtEventStackMinFree(pClient->streamHandle);
             break;
         default:
             break;
