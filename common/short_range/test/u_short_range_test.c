@@ -271,7 +271,7 @@ U_PORT_TEST_FUNCTION("[shortRange]", "shortRangeResetToDefaultSettings")
     // restore to default 115200
     uShortRangeResetToDefaultSettings(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS);
 
-    uPortLog("U_SHORT_RANGE_TEST: Comm. should now fail due to different baudrates.");
+    uPortLog("U_SHORT_RANGE_TEST: Comm. should now fail due to different baudrates.\n");
     U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) != 0); // should not get valid respons
 
     moduleType = pInstance->pModule->moduleType;
