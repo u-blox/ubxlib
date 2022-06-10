@@ -33,7 +33,6 @@
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
 #include "stdlib.h"    // malloc(), free()
-#include "inttypes.h"  // PRIu32 etc
 
 // Must always be included before u_short_range_test_selector.h
 //lint -efile(766, u_wifi_module_type.h)
@@ -315,7 +314,7 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     topicId1 = rand();
     // Make a unique topic name to stop different boards colliding
     snprintf(pTopicOut1, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
-             "ubx_test/%"PRIu32"", topicId1);
+             "ubx_test/%u", (unsigned int) topicId1);
 
     mqttClientCtx = NULL;
 
@@ -461,12 +460,12 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
     topicId1 = rand();
     // Make a unique topic name to stop different boards colliding
     snprintf(pTopicOut1, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
-             "ubx_test/%"PRIu32"", topicId1);
+             "ubx_test/%u", (unsigned int) topicId1);
 
     topicId2 = rand();
     // Make a unique topic name to stop different boards colliding
     snprintf(pTopicOut2, U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES,
-             "ubx_test/%"PRIu32"", topicId2);
+             "ubx_test/%u", (unsigned int) topicId2);
 
     mqttClientCtx = NULL;
 

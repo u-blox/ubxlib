@@ -130,7 +130,17 @@ def build(clean, unity_dir, defines, env, reporter):
     # Clear the output folder if we're not just running
     if not clean or u_utils.deltree(output_dir, logger=U_LOG):
         # Set up the U_FLAGS environment variable
+        # Note: MSVC uses # as a way of passing = in such a
+        # flag, and so the first # that appears in the value
+        # of a flag will come out as = in the code
+        # i.e. -DTHING=1234# will appear to the code as
+        # #define THING 1234=.  Below we check if the value part
+        # includes a # and, if it does, we replace the = with
+        # a hash also; then, for example -DTHING#1234# will
+        # appear to the code as #define THING 1234#.
         for idx, define in enumerate(defines):
+            if "#" in define:
+                define = define.replace("=", "#", 1)
             if idx == 0:
                 defines_text += "-D" + define
             else:

@@ -224,7 +224,8 @@ int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
                        const void *pEventData);
 
 /** Send to the given queue from an interrupt.  If the queue is
- * full this function will return an error.
+ * full this function will return an error.  Note that not all
+ * platforms support this function (e.g. Windows doesn't).
  *
  * @param queueHandle  the handle of the queue.
  * @param pEventData   pointer to the data to send.  The data will
@@ -246,7 +247,8 @@ int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
 int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
                           void *pEventData);
 
-/** Receive from the given queue from ISR
+/** Receive from the given queue from ISR.  Note that not all
+ * platforms support this function (e.g. Windows doesn't).
  *
  * @param queueHandle the handle of the queue.
  * @param pEventData  pointer to a place to put incoming data.
@@ -384,7 +386,7 @@ int32_t uPortSemaphoreTryTake(const uPortSemaphoreHandle_t semaphoreHandle,
                               int32_t delayMs);
 
 /** Give a semaphore, unless the semaphore is already at its maximum permitted
- *  count.
+ * count.
  *
  * @param semaphoreHandle  the handle of the semaphore.
  * @return                 zero on success else negative error code.
@@ -392,7 +394,8 @@ int32_t uPortSemaphoreTryTake(const uPortSemaphoreHandle_t semaphoreHandle,
 int32_t uPortSemaphoreGive(const uPortSemaphoreHandle_t semaphoreHandle);
 
 /** Give a semaphore from interrupt, unless the semaphore is already at its
- *  maximum permitted count.
+ * maximum permitted count.  Note that not all platforms support this
+ * function (e.g. Windows doesn't).
  *
  * @param semaphoreHandle  the handle of the semaphore.
  * @return                 zero on success else negative error code.

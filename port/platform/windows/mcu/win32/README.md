@@ -35,6 +35,8 @@ You may override or provide conditional compilation flags without modifying the 
 
 `U_FLAGS=-DU_CFG_APP_CELL_UART=3 -DU_CFG_TEST_CELL_MODULE_TYPE=U_CELL_MODULE_TYPE_SARA_R5`
 
+Note: MSVC uses `#` as a way of passing `=` in the value of such a conditional compilation flag, so the first `#` that appears in the value of a flag will come out as `=` in the code, i.e. `-DTHING=1234#` will appear to the code as `#define THING 1234=`.  If the value of one of your conditional compilation flags happens to include a `#` then replace the `=` with a hash also; then, for example `-DTHING#1234#` will appear to the code as `#define THING 1234#`.
+
 You may now build the code at that command prompt; create a build directory for yourself and, for instance, to build the `runner` build, you would enter `cmake -G <generator> <path to the runner directory>` to create the build metadata with the `<generator>` of your choice (but see the section that follows for the easiest way to proceed).
 
 # Visual Studio Code

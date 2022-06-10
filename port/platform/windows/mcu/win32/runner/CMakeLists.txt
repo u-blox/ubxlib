@@ -40,6 +40,13 @@ message("UBXLIB_FEATURES will be \"${UBXLIB_FEATURES}\"")
 
 # Add any #defines specified by the environment variable U_FLAGS
 # For example "U_FLAGS=-DU_CFG_CELL_MODULE_TYPE=U_CELL_MODULE_TYPE_SARA_R5 -DU_CFG_CELL_UART=2"
+# Note: MSVC uses # as a way of passing = in the value of a define
+# passed to the compiler in this way, so the first # that appears in
+# the value of a define will come out as = in the code, i.e.
+# -DTHING=1234# will appear to the code as #define THING 1234=
+# If the value of one of your #defines happens to include a #
+# then replace the = with a hash also; then, for example
+# -DTHING#1234# will appear to the code as #define THING 1234#
 if (DEFINED ENV{U_FLAGS})
     separate_arguments(U_FLAGS NATIVE_COMMAND "$ENV{U_FLAGS}")
     add_compile_options(${U_FLAGS})

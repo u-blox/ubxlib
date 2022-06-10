@@ -159,20 +159,20 @@ static uPortUartData_t *pUartGetByName(const char *pNameStr)
 // gMutex should be locked before this is called.
 static uPortUartData_t *pUartAdd()
 {
-    uPortUartData_t *pTmp = gpUartListRoot;
+    uPortUartData_t *pTmp;
     bool success = true;
     int32_t x;
 
-    gpUartListRoot = (uPortUartData_t *) malloc(sizeof(uPortUartData_t));
-    if (gpUartListRoot != NULL) {
-        memset(gpUartListRoot, 0, sizeof(*gpUartListRoot));
-        gpUartListRoot->eventQueueHandle = -1;
-        gpUartListRoot->uartHandle = -1;
-        gpUartListRoot->windowsUartHandle = INVALID_HANDLE_VALUE;
-        gpUartListRoot->waitCommEventThreadHandle = INVALID_HANDLE_VALUE;
-        gpUartListRoot->waitCommEventThreadReadyHandle = INVALID_HANDLE_VALUE;
-        gpUartListRoot->waitCommEventThreadTerminateHandle = INVALID_HANDLE_VALUE;
-        gpUartListRoot->pNext = NULL;
+    pTmp = (uPortUartData_t *) malloc(sizeof(uPortUartData_t));
+    if (pTmp != NULL) {
+        memset(pTmp, 0, sizeof(*pTmp));
+        pTmp->eventQueueHandle = -1;
+        pTmp->uartHandle = -1;
+        pTmp->windowsUartHandle = INVALID_HANDLE_VALUE;
+        pTmp->waitCommEventThreadHandle = INVALID_HANDLE_VALUE;
+        pTmp->waitCommEventThreadReadyHandle = INVALID_HANDLE_VALUE;
+        pTmp->waitCommEventThreadTerminateHandle = INVALID_HANDLE_VALUE;
+        pTmp->pNext = NULL;
         // Get the next UART handle
         x = gUartHandleNext;
         while ((pUartGetByHandle(gUartHandleNext) != NULL) && success) {
@@ -186,19 +186,14 @@ static uPortUartData_t *pUartAdd()
             }
         }
         if (success) {
-            gpUartListRoot->uartHandle = gUartHandleNext;
-            gpUartListRoot->pNext = pTmp;
-            pTmp = gpUartListRoot;
-        } else {
-            // Clean up and put the root back
-            free(gpUartListRoot);
+            pTmp->uartHandle = gUartHandleNext;
+            pTmp->pNext = gpUartListRoot;
             gpUartListRoot = pTmp;
+        } else {
+            // Clean up
+            free(pTmp);
             pTmp = NULL;
         }
-    } else {
-        // No memory, put the root back
-        gpUartListRoot = pTmp;
-        pTmp = NULL;
     }
 
     return pTmp;
@@ -282,7 +277,7 @@ static void eventHandler(void *pParam, size_t paramLength)
 
 // Handle a UART event, called by waitCommEventThread().
 // Returns the system error code that the attempt to read the
-// UART results in, ueually either:
+// UART results in, usually either:
 // ERROR_SUCCESS (0)
 // ERROR_TIMEOUT (1460)
 static DWORD handleThreadUartEvent(uPortUartData_t *pUartData,
