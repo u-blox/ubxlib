@@ -148,21 +148,27 @@ typedef struct {
 /** Cellular device configuration.
 */
 typedef struct {
-    uDeviceVersion_t version; /**< Version of this structure; allow your
-                                   compiler to initialise this to zero
-                                   unless otherwise specified below. */
-    int32_t moduleType;       /**< The module type that is connected,
-                                   see uCellModuleType_t in u_cell_module_type.h. */
-    const char *pSimPinCode;  /**< The PIN of the SIM. */
-    int32_t pinEnablePower;   /**< The output pin that enables power
-                                   to the cellular module; use -1 if
-                                   there is no such connection. */
-    int32_t pinPwrOn;         /**< The output pin that is connected to the
+    uDeviceVersion_t version;  /**< Version of this structure; allow your
+                                    compiler to initialise this to zero
+                                    unless otherwise specified below. */
+    int32_t moduleType;        /**< The module type that is connected,
+                                    see uCellModuleType_t in u_cell_module_type.h. */
+    const char *pSimPinCode;   /**< The PIN of the SIM. */
+    int32_t pinEnablePower;    /**< The output pin that enables power
+                                    to the cellular module; use -1 if
+                                    there is no such connection. */
+    int32_t pinPwrOn;          /**< The output pin that is connected to the
                                    PWR_ON pin of the cellular module; use -1
-                                   if there is no such connection. */
-    int32_t pinVInt;          /**< The input pin that is connected to the
-                                   VINT pin of the cellular module; use -1
-                                   if there is no such connection. */
+                                    if there is no such connection. */
+    int32_t pinVInt;           /**< The input pin that is connected to the
+                                    VINT pin of the cellular module; use -1
+                                    if there is no such connection. */
+    int32_t pinDtrPowerSaving; /**< If you have a GPIO pin of this MCU
+                                    connected to the DTR pin of the cellular
+                                    module because you intend to use the DTR
+                                    pin to tell the module whether it can enter
+                                    power-saving or not then put that pin number
+                                    here, else set it to -1. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and

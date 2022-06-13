@@ -169,19 +169,15 @@ static int32_t addDevice(const uDeviceCfgUart_t *pCfgUart,
                     pContext->pinPwrOn = pCfgCell->pinPwrOn;
                     // Hook our context data off the device handle
                     U_DEVICE_INSTANCE(*pDeviceHandle)->pContext = (void *) pContext;
-#if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
-                    // For the special case of DTR power saving the DTR pin,
-                    // which is not in the configuration structure, is set
-                    // at compile time
-                    errorCode = uCellPwrSetDtrPowerSavingPin(*pDeviceHandle, U_CFG_APP_PIN_CELL_DTR);
+                    if (pCfgCell->pinDtrPowerSaving >= 0) {
+                        errorCode = uCellPwrSetDtrPowerSavingPin(*pDeviceHandle,
+                                                                 pCfgCell->pinDtrPowerSaving);
+                    }
                     if (errorCode == 0) {
-#endif
                         // Power on
                         errorCode = uCellPwrOn(*pDeviceHandle, pCfgCell->pSimPinCode,
                                                keepGoingCallback);
-#if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
                     }
-#endif
                     if (errorCode != 0) {
                         // If we failed to power on, clean up
                         removeDevice(*pDeviceHandle, false);

@@ -155,6 +155,15 @@
 # define U_CFG_APP_PIN_CELL_VINT              -1
 #endif
 
+#ifndef U_CFG_APP_PIN_CELL_DTR
+/** The NRF52 GPIO output that is connected to the DTR pin of the
+ * cellular module, only required if the application is to use the
+ * DTR pin to tell the module whether it is permitted to sleep.
+ * -1 should be used where there is no such connection.
+ */
+# define U_CFG_APP_PIN_CELL_DTR         -1
+#endif
+
 #ifndef U_CFG_APP_PIN_CELL_TXD
 /** The NRF52 GPIO output pin that sends UART data to the
  * cellular module.

@@ -40,6 +40,7 @@
 #define U_CFG_APP_PIN_CELL_PWR_ON           0
 #define U_CFG_APP_PIN_CELL_RESET            0
 #define U_CFG_APP_PIN_CELL_VINT             0
+#define U_CFG_APP_PIN_CELL_DTR              0
 #define U_CFG_APP_PIN_CELL_TXD              0
 #define U_CFG_APP_PIN_CELL_RXD              0
 #define U_CFG_APP_PIN_CELL_CTS              0

@@ -62,6 +62,13 @@
 # define U_CFG_APP_PIN_CELL_VINT         -1
 #endif
 
+#ifndef U_CFG_APP_PIN_CELL_DTR
+/** Required for compilation of ubxlib tests/examples but not
+ * relevant to SARAR5UCPU and hence set to -1.
+ */
+# define U_CFG_APP_PIN_CELL_DTR         -1
+#endif
+
 #ifndef U_CFG_APP_PIN_CELL_TXD
 /** Required for compilation of ubxlib tests/examples but not
  * relevant to SARAR5UCPU and hence set to -1.

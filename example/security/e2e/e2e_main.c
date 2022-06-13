@@ -89,7 +89,8 @@ static const uDeviceCfg_t gDeviceCfg = {
             .pSimPinCode = NULL, /* SIM pin */
             .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
             .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
-            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT,
+            .pinDtrPowerSaving = U_CFG_APP_PIN_CELL_DTR
         },
     },
     .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
