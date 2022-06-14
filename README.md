@@ -1,6 +1,6 @@
 ![u-blox logo](/readme_images/ublox-logo.png)
 
-[![important message](/readme_images/important_msg.svg)](/UPCOMING_CHANGES.md)
+[![important message](/readme_images/important_msg.svg)](/HOW_TO_UPGRADE.md)
 
 # Introduction to `ubxlib`
 
