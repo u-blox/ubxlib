@@ -1643,6 +1643,14 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
                                ((pContext->pKeepGoingCallback == NULL) ||
                                 pContext->pKeepGoingCallback())) {
                             uPortTaskBlock(1000);
+                            // When UART power saving is switched on some
+                            // modules (e.g. SARA-R422) can somteimes
+                            // withhold URCs so poke the module here to be
+                            // sure that it has not gone to sleep on us
+                            uAtClientLock(atHandle);
+                            uAtClientCommandStart(atHandle, "AT");
+                            uAtClientCommandStopReadResponse(atHandle);
+                            uAtClientUnlock(atHandle);
                         }
                         if ((pUrcStatus->flagsBitmap & (1 << U_CELL_MQTT_URC_FLAG_PUBLISH_SUCCESS)) != 0) {
                             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
