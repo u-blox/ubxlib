@@ -406,7 +406,7 @@ bool uCellMqttIsSecured(uDeviceHandle_t cellHandle,
  * @param[in] pMessage       a pointer to the "will" message.  For
  *                           MQTT the "will" message is not
  *                           restricted to ASCII values while for
- *                           MQTT-SN.it must be a null-terminated
+ *                           MQTT-SN it must be a null-terminated
  *                           ASCII string containing only printable
  *                           characters (i.e. isprint() returns true)
  *                           and no double quotation marks ("). May

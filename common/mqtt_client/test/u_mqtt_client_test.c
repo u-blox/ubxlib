@@ -94,15 +94,16 @@
 #ifndef U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES
 /** Maximum topic length for reading.
  */
-# define U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES 128
+# define U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES 126
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES
 /** Maximum length for publishing a message to the broker;
  * this number should be 512 or 1024 but the limit on
- * SARA_R412M_02B is lower, hence this choice.
+ * SARA_R412M_02B is lower (at least on FW version M0.11.01,A.02.17),
+ * hence this choice.
  */
-# define U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES 128
+# define U_MQTT_CLIENT_TEST_PUBLISH_MAX_LENGTH_BYTES 126
 #endif
 
 #ifndef U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES
@@ -132,10 +133,10 @@ static uMqttClientContext_t *gpMqttContextA = NULL;
  */
 static char gSerialNumber[U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES];
 
-/** Data to send over MQTT.
+/** Data to send over MQTT; all printable characters.
  */
-static const char gSendData[] =  "______000:0123456789012345678901234567890123456789"
-                                 "______050:0123456789012345678901234567890123456789";
+static const char gSendData[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                "0123456789\"!#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 
 /** Flag to indicate that the disconnect callback
  * has been called.

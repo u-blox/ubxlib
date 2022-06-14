@@ -1383,23 +1383,55 @@ static int32_t connect(const uCellPrivateInstance_t *pInstance,
     return errorCode;
 }
 
-// Return true if all of pBuffer is printable and contains no
-// quotation marks.
-static bool isPrintNoQuotes(const char *pBuffer, size_t bufferLength)
+// Return true if the given string is allowed
+// in a message for mqttSn.
+static bool isAllowedMqttSn(const char *pBuffer, size_t bufferLength)
 {
-    bool printableNoQuotes = false;
+    bool isAllowed = false;
 
     if (pBuffer != NULL) {
-        printableNoQuotes = true;
-        for (size_t x = 0; (x < bufferLength) && printableNoQuotes; x++) {
-            if (!isprint((int32_t) *pBuffer) || (*pBuffer == '"')) {
-                printableNoQuotes = false;
+        isAllowed = true;
+        // Must be printable and not contain a quotation mark
+        for (size_t x = 0; (x < bufferLength) && isAllowed; x++) {
+            if (!isprint((int32_t) *pBuffer) || (*pBuffer == '\"')) {
+                isAllowed = false;
             }
             pBuffer++;
         }
     }
 
-    return printableNoQuotes;
+    return isAllowed;
+}
+
+// Return true if the given string is allowed for
+// SARA-R41x modules
+static bool isAllowedMqttSaraR41x(const char *pBuffer, size_t bufferLength)
+{
+    bool isAllowed = false;
+    bool inQuotes = false;
+
+    if (pBuffer != NULL) {
+        isAllowed = true;
+        // Must be printable and not include a "," or a ";"
+        // character within a pair of quotation marks
+        // (outside quotation marks is fine)
+        for (size_t x = 0; (x < bufferLength) && isAllowed; x++) {
+            if (!isprint((int32_t) *pBuffer)) {
+                isAllowed = false;
+            } else {
+                if (*pBuffer == '\"') {
+                    inQuotes = !inQuotes;
+                }
+                if (inQuotes &&
+                    ((*pBuffer == ',') || (*pBuffer == ';'))) {
+                    isAllowed = false;
+                }
+            }
+            pBuffer++;
+        }
+    }
+
+    return isAllowed;
 }
 
 // For the given MQTT-SN topic name, fill in the right
@@ -1462,7 +1494,13 @@ static int32_t publish(const uCellPrivateInstance_t *pInstance,
     pContext = (volatile uCellMqttContext_t *) pInstance->pMqttContext;
     mqttSn = pContext->mqttSn;
     pUrcStatus = &(pContext->urcStatus);
-    isAscii = isPrintNoQuotes(pMessage, messageSizeBytes);
+    if (mqttSn) {
+        isAscii = isAllowedMqttSn(pMessage, messageSizeBytes);
+    } else {
+        // This will be ignored for module types that support binary
+        // publish, which eveything except SARA-R41x does
+        isAscii = isAllowedMqttSaraR41x(pMessage, messageSizeBytes);
+    }
     //lint -e(568) Suppress value never being negative, who knows
     // what warnings levels a customer might compile with
     if (((int32_t) qos >= 0) &&
@@ -2605,7 +2643,7 @@ int32_t uCellMqttSetWill(uDeviceHandle_t cellHandle,
                  (strlen(pTopicNameStr) <= U_CELL_MQTT_WRITE_TOPIC_MAX_LENGTH_BYTES)) &&
                 ((pMessage == NULL) ||
                  ((mqttSn && (strlen(pMessage) == messageSizeBytes) &&
-                   isPrintNoQuotes(pMessage, messageSizeBytes)) ||
+                   isAllowedMqttSn(pMessage, messageSizeBytes)) ||
                   (messageSizeBytes <= U_CELL_MQTT_WILL_MESSAGE_MAX_LENGTH_BYTES)))) {
                 atHandle = pInstance->atHandle;
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -3481,7 +3519,8 @@ int32_t uCellMqttSnSetWillMessaage(uDeviceHandle_t cellHandle,
                                U_CELL_PRIVATE_FEATURE_MQTTSN) &&
             pContext->mqttSn) {
             errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
-            if (messageSizeBytes == strlen(pMessage) && isPrintNoQuotes(pMessage, messageSizeBytes)) {
+            if (messageSizeBytes == strlen(pMessage) &&
+                isAllowedMqttSn(pMessage, messageSizeBytes)) {
                 errorCode = (int32_t) U_ERROR_COMMON_DEVICE_ERROR;
                 pUrcStatus = &(pContext->urcStatus);
                 atHandle = pInstance->atHandle;
