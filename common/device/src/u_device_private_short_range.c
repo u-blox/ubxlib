@@ -40,6 +40,7 @@
 #include "u_short_range_edm_stream.h"
 
 #include "u_ble_module_type.h"
+#include "u_ble.h"
 
 #include "u_device_shared_short_range.h"
 #include "u_device_private_short_range.h"
@@ -72,6 +73,9 @@ int32_t uDevicePrivateShortRangeInit()
         errorCode = uAtClientInit();
     }
     if (errorCode == 0) {
+        errorCode = uBleInit();
+    }
+    if (errorCode == 0) {
         errorCode = uShortRangeInit();
     }
     return errorCode;
@@ -81,6 +85,7 @@ int32_t uDevicePrivateShortRangeInit()
 void uDevicePrivateShortRangeDeinit()
 {
     uShortRangeDeinit();
+    uBleDeinit();
     uShortRangeEdmStreamDeinit();
     uAtClientDeinit();
 }
