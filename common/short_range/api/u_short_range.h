@@ -365,7 +365,18 @@ int32_t uShortRangeGetEdmStreamHandle(uDeviceHandle_t devHandle);
  */
 int32_t uShortRangeGetUartHandle(uDeviceHandle_t devHandle);
 
-/** Sets new UART baudrate for a short range module
+/** Sets new UART baudrate for a short range module.
+ *
+ * VERY IMPORTANT: this function internally calls uShortRangeClose()
+ * and then uShortRangeOpenUart(), which will result in any callbacks
+ * that have been configured with uShortRangeSetIpConnectionStatusCallback(),
+ * uShortRangeSetIpConnectionStatusCallback() or
+ * uShortRangeSetMqttConnectionStatusCallback() being forgotten and
+ * any handles returned by uShortRangeAtClientHandleGet() and
+ * uShortRangeGetUartHandle() becoming invalid.
+ * Since uShortRangeClose()/uShortRangeOpenUart() also open and close
+ * the EDM stream, any settings there, including the EDM stream handle,
+ * will also be re-created.
  *
  * @param[in,out] pDevHandle  a pointer to a short range device handle that has been
  *                            opened with uShortRangeOpenUart(). If the reconfiguration

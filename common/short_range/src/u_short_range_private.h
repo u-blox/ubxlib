@@ -154,7 +154,12 @@ extern uPortMutexHandle_t gUShortRangePrivateMutex;
  * -------------------------------------------------------------- */
 
 /** Find a short range instance in the list by instance handle.
- * Note: gUShortRangePrivateMutex should be locked before this is called.
+ * Note: gUShortRangePrivateMutex should be locked before this is
+ * called.
+ * Note: if uShortRangeSetBaudrate() is called then the short-range
+ * instance will be recreated and hence the instance pointer returned
+ * by this function will become invalid; this function MUST be
+ * called again to obtain the new handle.
  *
  * @param devHandle  the short range device handle.
  * @return           a pointer to the instance.
