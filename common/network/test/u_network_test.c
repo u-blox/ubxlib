@@ -628,7 +628,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                 timeoutCount = 0;
                 sendBleSps(devHandle);
                 while (gBytesReceived < gBytesSent) {
-                    uPortTaskBlock(10);
+                    uPortTaskBlock(100);
                     if (timeoutCount++ > 100) {
                         break;
                     }
