@@ -73,6 +73,25 @@ extern "C" {
 # define U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS 500
 #endif
 
+#ifndef U_GNSS_AT_POWER_ON_RETRIES
+/** When GNSS is connected via an intermediat module that
+ * intermediate module can sometimes already be talking to
+ * the GNSS module when we ask it to power the GNSS module
+ * on, resulting in the error response "+CME ERROR: Invalid
+ * operation with LOC running / GPS Busy".  In order to
+ * avoid that we retry a few times in case of error.
+ */
+# define U_GNSS_AT_POWER_ON_RETRIES 2
+#endif
+
+#ifndef U_GNSS_AT_POWER_ON_RETRY_INTERVAL_SECONDS
+/** How long to wait between power-on retries; only
+ * relevant if U_GNSS_AT_POWER_ON_RETRIES is greater than
+ * zero.
+ */
+# define U_GNSS_AT_POWER_ON_RETRY_INTERVAL_SECONDS 10
+#endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */

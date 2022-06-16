@@ -159,21 +159,28 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
                         }
                     }
                     if (errorCode == 0) {
-                        // Now ask the cellular module to switch GNSS on
-                        uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
-                        uAtClientLock(atHandle);
-                        uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_UP_TIME_SECONDS * 1000);
-                        uAtClientCommandStart(atHandle, "AT+UGPS=");
-                        uAtClientWriteInt(atHandle, 1);
-                        // If you change the aiding types and
-                        // GNSS system types below you may wish
-                        // to change them in u_cell_loc.c also.
-                        // All aiding types allowed
-                        uAtClientWriteInt(atHandle, U_GNSS_PWR_AIDING_TYPES);
-                        // All GNSS system types enabled
-                        uAtClientWriteInt(atHandle, U_GNSS_PWR_SYSTEM_TYPES);
-                        uAtClientCommandStopReadResponse(atHandle);
-                        errorCode = uAtClientUnlock(atHandle);
+                        errorCode = (int32_t) U_ERROR_COMMON_PLATFORM;
+                        for (size_t x = 0; (errorCode < 0) &&
+                             (x < U_GNSS_AT_POWER_ON_RETRIES + 1); x++) {
+                            // Now ask the cellular module to switch GNSS on
+                            uPortTaskBlock(U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS);
+                            uAtClientLock(atHandle);
+                            uAtClientTimeoutSet(atHandle, U_GNSS_AT_POWER_UP_TIME_SECONDS * 1000);
+                            uAtClientCommandStart(atHandle, "AT+UGPS=");
+                            uAtClientWriteInt(atHandle, 1);
+                            // If you change the aiding types and
+                            // GNSS system types below you may wish
+                            // to change them in u_cell_loc.c also.
+                            // All aiding types allowed
+                            uAtClientWriteInt(atHandle, U_GNSS_PWR_AIDING_TYPES);
+                            // All GNSS system types enabled
+                            uAtClientWriteInt(atHandle, U_GNSS_PWR_SYSTEM_TYPES);
+                            uAtClientCommandStopReadResponse(atHandle);
+                            errorCode = uAtClientUnlock(atHandle);
+                            if (errorCode < 0) {
+                                uPortTaskBlock(U_GNSS_AT_POWER_ON_RETRY_INTERVAL_SECONDS * 1000);
+                            }
+                        }
                     }
                 }
             }
