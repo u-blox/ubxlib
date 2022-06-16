@@ -80,10 +80,6 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef portMAX_DELAY
-#define portMAX_DELAY K_FOREVER
-#endif
-
 #ifndef CONFIG_ARCH_POSIX
 // Not supported on Linux/Posix
 static uint8_t __aligned(U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE)
@@ -380,16 +376,33 @@ int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle)
 int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
                        const void *pEventData)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
     if ((queueHandle != NULL) && (pEventData != NULL)) {
         errorCode = U_ERROR_COMMON_PLATFORM;
-        if (0 == k_msgq_put((struct k_msgq *)queueHandle, (void *)pEventData, portMAX_DELAY)) {
+#ifdef U_CFG_QUEUE_DEBUG
+        size_t x = 0;
+        do {
+            if (0 == k_msgq_put((struct k_msgq *)queueHandle, (void *)pEventData, K_NO_WAIT)) {
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else {
+                if (x % (1000 / U_CFG_OS_YIELD_MS) == 0) {
+                    // Print this roughly once a second
+                    uPortLog("U_PORT_OS_QUEUE_DEBUG: queue 0x%08x is full, retrying...\n",
+                             queueHandle);
+                }
+                x++;
+                uPortTaskBlock(U_CFG_OS_YIELD_MS);
+            }
+        } while (errorCode != U_ERROR_COMMON_SUCCESS);
+#else
+        if (0 == k_msgq_put((struct k_msgq *)queueHandle, (void *)pEventData, K_FOREVER)) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
+#endif
     }
 
-    return (int32_t) errorCode;
+    return errorCode;
 }
 // Send to the given queue from IRQ.
 int32_t uPortQueueSendIrq(const uPortQueueHandle_t queueHandle,
@@ -414,7 +427,7 @@ int32_t uPortQueueReceive(const uPortQueueHandle_t queueHandle,
 
     if ((queueHandle != NULL) && (pEventData != NULL)) {
         errorCode = U_ERROR_COMMON_PLATFORM;
-        if (0 == k_msgq_get((struct k_msgq *)queueHandle, pEventData, portMAX_DELAY)) {
+        if (0 == k_msgq_get((struct k_msgq *)queueHandle, pEventData, K_FOREVER)) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -528,8 +541,7 @@ int32_t MTX_FN(uPortMutexLock(const uPortMutexHandle_t mutexHandle))
     if (mutexHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
         if (( k_current_get() != (k_tid_t) kmutex->owner) &&
-            (k_mutex_lock((struct k_mutex *) mutexHandle,
-                          (k_timeout_t ) portMAX_DELAY) == 0)) {
+            (k_mutex_lock((struct k_mutex *) mutexHandle, K_FOREVER) == 0)) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -617,7 +629,7 @@ int32_t uPortSemaphoreTake(const uPortSemaphoreHandle_t semaphoreHandle)
 
     if (semaphoreHandle != NULL) {
         errorCode = U_ERROR_COMMON_PLATFORM;
-        if (k_sem_take(ksemaphore, (k_timeout_t ) portMAX_DELAY) == 0) {
+        if (k_sem_take(ksemaphore, K_FOREVER) == 0) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
     }

@@ -28,12 +28,14 @@
 
 #include "windows.h"
 
+#include "u_cfg_sw.h"
+#include "u_cfg_os_platform_specific.h"
 #include "u_error_common.h"
 #include "u_assert.h"
 #include "u_port.h"
+#include "u_port_debug.h"
 #include "u_port_os.h"
 #include "u_port_private.h"
-
 
 #ifdef U_CFG_MUTEX_DEBUG
 /** Grab the handle of the mutex watchdog task; this is so
@@ -45,6 +47,7 @@ extern uPortTaskHandle_t gMutexDebugWatchdogTaskHandle;
 #else
 uPortTaskHandle_t gMutexDebugWatchdogTaskHandle = NULL;
 #endif
+
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
@@ -422,6 +425,38 @@ static void timerCallback(LPVOID handle, DWORD dwTimerLowValue,
             pCallback((uPortTimerHandle_t) handle, pCallbackParam);
         }
     }
+}
+
+/* ----------------------------------------------------------------
+ * STATIC FUNCTIONS: MISC
+ * -------------------------------------------------------------- */
+
+// Wait on a semaphore for queue operation, optionally with debug.
+static int32_t semphoreTake(const uPortSemaphoreHandle_t semaphoreHandle,
+                            int32_t queueHandle)
+{
+    int32_t errorCode;
+
+#ifdef U_CFG_QUEUE_DEBUG
+    size_t x = 0;
+    do {
+        errorCode = uPortSemaphoreTryTake(semaphoreHandle, 0);
+        if (errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT) {
+            if (x % (1000 / U_CFG_OS_YIELD_MS) == 0) {
+                // Print this roughly once a second
+                uPortLog("U_PORT_OS_QUEUE_DEBUG: queue %d is full, retrying...\n",
+                         queueHandle);
+            }
+            x++;
+            uPortTaskBlock(U_CFG_OS_YIELD_MS);
+        }
+    } while (errorCode == (int32_t) U_ERROR_COMMON_TIMEOUT);
+#else
+    (void) queueHandle;
+    errorCode = uPortSemaphoreTake(semaphoreHandle);
+#endif
+
+    return errorCode;
 }
 
 /* ----------------------------------------------------------------
@@ -843,7 +878,7 @@ int32_t uPortPrivateQueueWrite(int32_t handle, const char *pData)
 
             if (errorCode == 0) {
                 // Wait for space to be available
-                errorCode = uPortSemaphoreTake(queue.writeSemaphore);
+                errorCode = semphoreTake(queue.writeSemaphore, handle);
                 if (errorCode == 0) {
                     // Space is available, wait for the access semaphore
                     // to read it

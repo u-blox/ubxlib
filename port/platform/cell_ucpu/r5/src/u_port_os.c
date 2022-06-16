@@ -203,9 +203,26 @@ int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
 
     if ((queueHandle != NULL) && (pEventData != NULL)) {
         errorCode = U_ERROR_COMMON_PLATFORM;
+#ifdef U_CFG_QUEUE_DEBUG
+        size_t x = 0;
+        do {
+            if (tx_queue_send((TX_QUEUE *)queueHandle, (void *)pEventData, TX_NO_WAIT) == 0) {
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else {
+                if (x % (1000 / U_CFG_OS_YIELD_MS) == 0) {
+                    // Print this roughly once a second
+                    uPortLog("U_PORT_OS_QUEUE_DEBUG: queue 0x%08x is full, retrying...\n",
+                             queueHandle);
+                }
+                x++;
+                uPortTaskBlock(U_CFG_OS_YIELD_MS);
+            }
+        } while (errorCode != U_ERROR_COMMON_SUCCESS);
+#else
         if (tx_queue_send((TX_QUEUE *)queueHandle, (void *)pEventData, TX_WAIT_FOREVER) == 0) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
+#endif
     }
 
     return errorCode;

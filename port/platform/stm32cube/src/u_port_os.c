@@ -252,18 +252,36 @@ int32_t uPortQueueDelete(const uPortQueueHandle_t queueHandle)
 int32_t uPortQueueSend(const uPortQueueHandle_t queueHandle,
                        const void *pEventData)
 {
-    uErrorCode_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
+    int32_t errorCode = U_ERROR_COMMON_INVALID_PARAMETER;
 
     if ((queueHandle != NULL) && (pEventData != NULL)) {
         errorCode = U_ERROR_COMMON_PLATFORM;
+#ifdef U_CFG_QUEUE_DEBUG
+        size_t x = 0;
+        do {
+            if (xQueueSend((QueueHandle_t) queueHandle,
+                           pEventData, 0) == pdTRUE) {
+                errorCode = U_ERROR_COMMON_SUCCESS;
+            } else {
+                if (x % (1000 / U_CFG_OS_YIELD_MS) == 0) {
+                    // Print this roughly once a second
+                    uPortLog("U_PORT_OS_QUEUE_DEBUG: queue 0x%08x is full, retrying...\n",
+                             queueHandle);
+                }
+                x++;
+                uPortTaskBlock(U_CFG_OS_YIELD_MS);
+            }
+        } while (errorCode != U_ERROR_COMMON_SUCCESS);
+#else
         if (xQueueSend((QueueHandle_t) queueHandle,
                        pEventData,
                        (portTickType) portMAX_DELAY) == pdTRUE) {
             errorCode = U_ERROR_COMMON_SUCCESS;
         }
+#endif
     }
 
-    return (int32_t) errorCode;
+    return errorCode;
 }
 
 // Send to the given queue from an interrupt.
