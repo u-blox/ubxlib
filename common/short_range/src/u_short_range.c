@@ -800,8 +800,10 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
         return (int32_t) U_SHORT_RANGE_ERROR_INIT_ATCLIENT;
     }
 
-    // Set printing of AT commands, which can be useful while debugging.
+    // Set printing/debugging of AT commands, the user
+    // can always switch printing off in u_cfg_sw.h.
     uAtClientPrintAtSet(atClientHandle, true);
+    uAtClientDebugSet(atClientHandle, true);
 
     handleOrErrorCode = uShortRangeAdd(moduleType,
                                        atClientHandle,

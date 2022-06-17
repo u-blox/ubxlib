@@ -365,7 +365,7 @@ static void networkStatusCallback(uAtClientHandle_t atHandle,
     int32_t ifaceType = -1;
     uint32_t statusMask = 0;
     int32_t errorCode = -1;
-    volatile uWifiworkStatusCallback_t pCallback = NULL;
+    volatile uWifiNetworkStatusCallback_t pCallback = NULL;
     volatile void *pCallbackParam = NULL;
     const uWifiworkEvent_t *pEvt = (uWifiworkEvent_t *) pParameter;
 
@@ -491,6 +491,8 @@ int32_t uWifiSetConnectionStatusCallback(uDeviceHandle_t devHandle,
 
     errorCode = getInstance(devHandle, &pInstance);
     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUWLE:");
+        uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUWLD:");
         if (pCallback != NULL) {
             pInstance->pWifiConnectionStatusCallback = pCallback;
             pInstance->pWifiConnectionStatusCallbackParameter = pCallbackParameter;
@@ -499,8 +501,6 @@ int32_t uWifiSetConnectionStatusCallback(uDeviceHandle_t devHandle,
             uAtClientSetUrcHandler(pInstance->atHandle, "+UUWLD:",
                                    UUWLD_urc, (void *)devHandle);
         } else {
-            uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUWLE:");
-            uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUWLD:");
             pInstance->pWifiConnectionStatusCallback = NULL;
         }
     }
@@ -511,7 +511,7 @@ int32_t uWifiSetConnectionStatusCallback(uDeviceHandle_t devHandle,
 }
 
 int32_t uWifiSetNetworkStatusCallback(uDeviceHandle_t devHandle,
-                                      uWifiworkStatusCallback_t pCallback,
+                                      uWifiNetworkStatusCallback_t pCallback,
                                       void *pCallbackParameter)
 {
     int32_t errorCode;
@@ -524,6 +524,8 @@ int32_t uWifiSetNetworkStatusCallback(uDeviceHandle_t devHandle,
 
     errorCode = getInstance(devHandle, &pInstance);
     if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUNU:");
+        uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUND:");
         if (pCallback != NULL) {
             pInstance->pNetworkStatusCallback = pCallback;
             pInstance->pNetworkStatusCallbackParameter = pCallbackParameter;
@@ -532,8 +534,6 @@ int32_t uWifiSetNetworkStatusCallback(uDeviceHandle_t devHandle,
             uAtClientSetUrcHandler(pInstance->atHandle, "+UUND:",
                                    UUND_urc, (void *)devHandle);
         } else {
-            uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUNU:");
-            uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUND:");
             pInstance->pNetworkStatusCallback = NULL;
         }
     }
@@ -587,7 +587,8 @@ int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
             // Set authentication
             errorCode = writeWifiStaCfgInt(atHandle, 0, 5, (int32_t)authentication);
         }
-        if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+        if ((errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) &&
+            (authentication != U_WIFI_AUTH_OPEN)) {
             // Set PSK/passphrase
             errorCode = writeWifiStaCfgStr(atHandle, 0, 8, pPassPhrase);
         }

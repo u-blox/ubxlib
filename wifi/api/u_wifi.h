@@ -151,10 +151,10 @@ typedef void (*uWifiConnectionStatusCallback_t) (uDeviceHandle_t devHandle,
  *                           U_WIFI_STATUS_MASK_xx.
  * @param pCallbackParameter Parameter pointer set when registering callback.
  */
-typedef void (*uWifiworkStatusCallback_t) (uDeviceHandle_t devHandle,
-                                           int32_t interfaceType,
-                                           uint32_t statusMask,
-                                           void *pCallbackParameter);
+typedef void (*uWifiNetworkStatusCallback_t) (uDeviceHandle_t devHandle,
+                                              int32_t interfaceType,
+                                              uint32_t statusMask,
+                                              void *pCallbackParameter);
 
 /* ----------------------------------------------------------------
  * FUNCTIONS
@@ -214,7 +214,7 @@ int32_t uWifiSetConnectionStatusCallback(uDeviceHandle_t devHandle,
  *                               on failure.
  */
 int32_t uWifiSetNetworkStatusCallback(uDeviceHandle_t devHandle,
-                                      uWifiworkStatusCallback_t pCallback,
+                                      uWifiNetworkStatusCallback_t pCallback,
                                       void *pCallbackParameter);
 
 
