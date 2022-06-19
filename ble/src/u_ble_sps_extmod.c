@@ -553,7 +553,10 @@ int32_t uBleSpsConnectSps(uDeviceHandle_t devHandle,
                     errorCode = setBleConfig(atHandle, 8, pConnParams->createConnectionTmo);
                 }
                 if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
-                    errorCode = setBleConfig(atHandle, 9, pConnParams->scanInterval);
+                    errorCode = setBleConfig(atHandle, 10, 16); // set to min to avoid errors
+                    if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                        errorCode = setBleConfig(atHandle, 9, pConnParams->scanInterval);
+                    }
                 }
                 if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
                     errorCode = setBleConfig(atHandle, 10, pConnParams->scanWindow);
