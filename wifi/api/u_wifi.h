@@ -127,11 +127,11 @@ typedef void (*uWifiScanResultCallback_t) (uDeviceHandle_t devHandle,
  * @param connId             connection ID.
  * @param status             new status of connection. Please see U_WIFI_CON_STATUS_xx.
  * @param channel            wifi channel.
- *                           Note: Only valid for U_WIFI_STATUS_CONNECTED otherwise set to 0.
+ *                           Note: Only valid for U_WIFI_CON_STATUS_CONNECTED otherwise set to 0.
  * @param pBssid             remote AP BSSID as null terminated string.
- *                           Note: Only valid for U_WIFI_STATUS_CONNECTED otherwise set to NULL.
+ *                           Note: Only valid for U_WIFI_CON_STATUS_CONNECTED otherwise set to NULL.
  * @param disconnectReason   disconnect reason. Please see U_WIFI_REASON_xx.
- *                           Note: Only valid for U_WIFI_STATUS_DISCONNECTED otherwise set to 0.
+ *                           Note: Only valid for U_WIFI_CON_STATUS_DISCONNECTED otherwise set to 0.
  * @param pCallbackParameter parameter pointer set when registering callback.
  */
 typedef void (*uWifiConnectionStatusCallback_t) (uDeviceHandle_t devHandle,
