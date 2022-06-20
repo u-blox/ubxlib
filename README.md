@@ -154,9 +154,7 @@ Configuration information for the examples and the tests can be found in the `cf
 | GNSS         | [location](/example/location "location example") example using a GNSS chip connected directly or via a cellular module.|
 
 # Quick Start Guide
-It is easy to get started with `ubxlib` using the [examples](/example) listed above and the build files in this repository as a basis.
-
-A step-by-step description of how to get started with an application based on `ubxlib` is given below:
+It is easy to get started with `ubxlib` using the [examples](/example) listed above and the build files in this repository as a basis.  A step-by-step description of how to get started with an application based on `ubxlib` is given below.
 - Copy the source files for the [example](/example) that is closest to your intended application to your project directory.
 - Remove all definitions and include files that are related purely to the `ubxlib` test system; for example you only need to include the [ubxlib.h](/ubxlib.h) file and you will want the entry point to be something like `int main()` rather than `U_PORT_TEST_FUNCTION(...)`.
 - Adapt the definitions needed for your example, see the include file `u_cfg_app_platform_specific.h` for your platform; some examples of definitions that need to be set are:
