@@ -36,6 +36,11 @@
 #include "stddef.h"    // NULL, size_t etc.
 #include "stdint.h"    // int32_t etc.
 #include "stdbool.h"
+#include "string.h"
+
+#include "u_cfg_sw.h"
+#include "u_port_os.h"
+#include "u_port_debug.h"
 
 #include "u_error_common.h"
 
@@ -98,9 +103,43 @@ int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
             if (errorCode >= 0) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
             }
+            if (errorCode == 0 && !upNotDown) {
+                // Make sure all possible remaining sps connection are terminated
+                uAtClientHandle_t atHandle;
+                if (uShortRangeLock() == (int32_t)U_ERROR_COMMON_SUCCESS) {
+                    if (uShortRangeAtClientHandleGet(devHandle, &atHandle) == 0) {
+                        uPortLog("U_SHORT_RANGE: Checking for SPS connections\n");
+                        uAtClientLock(atHandle);
+                        uAtClientCommandStart(atHandle, "AT+UDLP?");
+                        uAtClientCommandStop(atHandle);
+                        int32_t connHandles[5];
+                        size_t connHandleCnt = 0;
+                        while (uAtClientResponseStart(atHandle, "+UDLP:") == 0 &&
+                               connHandleCnt < (sizeof(connHandles) / sizeof(connHandles[0]))) {
+                            int32_t connHandle = uAtClientReadInt(atHandle);
+                            char protocol[10];
+                            if (uAtClientReadString(atHandle, protocol,
+                                                    sizeof(protocol), false) > 0 &&
+                                strstr(protocol, "sps")) {
+                                connHandles[connHandleCnt++] = connHandle;
+                            }
+                        }
+                        uAtClientResponseStop(atHandle);
+                        for (size_t i = 0; i < connHandleCnt; i++) {
+                            uPortLog("U_NETWORK: closing SPS connection: %d\n",
+                                     connHandles[i]);
+                            uAtClientCommandStart(atHandle, "AT+UDCPC=");
+                            uAtClientWriteInt(atHandle, connHandles[i]);
+                            uAtClientCommandStopReadResponse(atHandle);
+                        }
+                        errorCode = uAtClientUnlock(atHandle);
+                    }
+
+                    uShortRangeUnlock();
+                }
+            }
         }
     }
-
     return errorCode;
 }
 

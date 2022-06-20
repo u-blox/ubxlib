@@ -301,7 +301,7 @@ static int32_t establishMqttConnectionToBroker(const uMqttClientContext_t *pCont
     uShortRangeSecTlsContext_t *pMqttTlsContext;
 
     memset(url, 0, sizeof(url));
-    // Add the default unsecure mqtt port number if no port is specified
+    // Add the port number unless it is already present
     char port[10] = {0};
     if (!strstr(pMqttSession->pBrokerNameStr, ":")) {
         snprintf(port, sizeof(port), ":%d", (int)pMqttSession->localPort);
