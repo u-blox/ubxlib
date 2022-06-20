@@ -44,6 +44,8 @@
 
 #include "u_device_shared.h"
 
+#include "u_network_shared.h"
+
 #include "u_short_range_module_type.h"
 #include "u_short_range.h"
 
@@ -131,20 +133,53 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
                                    int32_t disconnectReason,
                                    void *pCallbackParameter)
 {
-    (void)devHandle;
-    (void)connId;
-    (void)channel;
-    (void)pBssid;
-    (void)pCallbackParameter;
+    uDeviceInstance_t *pInstance;
+    uDeviceNetworkData_t *pNetworkData;
+    uNetworkStatusCallbackData_t *pStatusCallbackData;
+    bool isUp;
+    uNetworkStatus_t networkStatus;
     uPortQueueHandle_t queueHandle = getQueueHandle(devHandle);
 
-    if (queueHandle != NULL) {
+    if ((pCallbackParameter != NULL) && (queueHandle != NULL)) {
+        // If pCallbackParameter is not NULL then we're in
+        // the bring-up phase and need to pass the information
+        // to the queue
         uStatusMessage_t msg = {
             .msgType = (status == U_WIFI_CON_STATUS_DISCONNECTED) ? U_MSG_WIFI_DISCONNECT : U_MSG_WIFI_CONNECT,
             .disconnectReason = disconnectReason,
             .netStatusMask = 0
         };
         uPortQueueSend(queueHandle, &msg);
+    }
+
+    // Note: can't lock the device API here since we may collide
+    // with a network up/down call that will have already locked
+    // it and then may, internally, be waiting on something to pass
+    // up the event queue that we are currently blocking (since
+    // the same event queue is used for most things).
+    // We rely on the fact that the various network down calls
+    // are well behaved and will not pull the rug out from under
+    // one of their callbacks.
+    if (uDeviceGetInstance(devHandle, &pInstance) == 0) {
+        pNetworkData = pUNetworkGetNetworkData(pInstance, U_NETWORK_TYPE_WIFI);
+        if (pNetworkData != NULL) {
+            pStatusCallbackData = (uNetworkStatusCallbackData_t *) pNetworkData->pStatusCallbackData;
+            if ((pStatusCallbackData != NULL) &&
+                (pStatusCallbackData->pCallback)) {
+                networkStatus.wifi.pBssid = NULL;
+                isUp = (status == (int32_t) U_WIFI_CON_STATUS_CONNECTED);
+                networkStatus.wifi.connId = connId;
+                networkStatus.wifi.status = status;
+                networkStatus.wifi.channel = channel;
+                if (isUp) {
+                    networkStatus.wifi.pBssid = pBssid;
+                }
+                networkStatus.wifi.disconnectReason = disconnectReason;
+                pStatusCallbackData->pCallback(devHandle, U_NETWORK_TYPE_WIFI,
+                                               isUp, &networkStatus,
+                                               pStatusCallbackData->pCallbackParameter);
+            }
+        }
     }
 
 #if defined(U_CFG_ENABLE_LOGGING) && !U_CFG_OS_CLIB_LEAKS
@@ -313,9 +348,16 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
             errorCode = uPortQueueCreate(2, sizeof(uStatusMessage_t), &queueHandle);
             if (errorCode == 0) {
                 setQueueHandle(devHandle, queueHandle);
-                errorCode = uWifiSetConnectionStatusCallback(devHandle, wifiConnectionCallback, NULL);
+                // We pass the devHandle as the parameter to pass to
+                // wifiConnectionCallback() as a kind of "flag" so that
+                // it knows it is in the bring-up phase
+                errorCode = uWifiSetConnectionStatusCallback(devHandle,
+                                                             wifiConnectionCallback,
+                                                             devHandle);
                 if (errorCode == 0) {
-                    errorCode = uWifiSetNetworkStatusCallback(devHandle, wifiNetworkStatusCallback, NULL);
+                    errorCode = uWifiSetNetworkStatusCallback(devHandle,
+                                                              wifiNetworkStatusCallback,
+                                                              NULL);
                 }
             }
         }
@@ -348,6 +390,10 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
                 // parameter is false and hence this line can not
                 // be reached in the call.
                 uNetworkPrivateChangeStateWifi(devHandle, pCfg, false);
+            } else {
+                // Set up the network status callback with a NULL parameter
+                // so that it knows it is outside the bring-up phase
+                uWifiSetConnectionStatusCallback(devHandle, wifiConnectionCallback, NULL);
             }
 
             uWifiSetNetworkStatusCallback(devHandle, NULL, NULL);
@@ -359,7 +405,16 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
         if (queueHandle) {
             statusQueueClear(queueHandle);
 
-            errorCode = uWifiStationDisconnect(devHandle);
+            // We pass the devHandle as the parameter to pass to
+            // wifiConnectionCallback() as a kind of "flag" so that
+            // it knows it is in the bring-up phase
+            errorCode = uWifiSetConnectionStatusCallback(devHandle,
+                                                         wifiConnectionCallback,
+                                                         devHandle);
+            if (errorCode == 0) {
+                errorCode = uWifiStationDisconnect(devHandle);
+                uPortLog("uWifiStationDisconnect: %d\n", errorCode);
+            }
 
             if (errorCode == 0) {
                 // Wait until the wifi have been disabled before return
@@ -382,4 +437,13 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
 
     return errorCode;
 }
+// Set a call-back to be called when the Wifi network status changes.
+int32_t uNetworkSetStatusCallbackWifi(uDeviceHandle_t devHandle)
+{
+    (void) devHandle;
+    // Nothing to do: since uWifiSetConnectionStatusCallback() gets the
+    // device handle it already has all it needs.
+    return (int32_t) U_ERROR_COMMON_SUCCESS;
+}
+
 // End of file

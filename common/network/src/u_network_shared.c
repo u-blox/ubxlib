@@ -118,4 +118,23 @@ uDeviceHandle_t uNetworkGetDeviceHandle(uDeviceHandle_t devHandle,
     return returnedDevHandle;
 }
 
+// Get the network data for the given network type.
+uDeviceNetworkData_t *pUNetworkGetNetworkData(uDeviceInstance_t *pInstance,
+                                              uNetworkType_t netType)
+{
+    uDeviceNetworkData_t *pNetworkData = NULL;
+
+    if (pInstance != NULL) {
+        for (size_t x = 0; (x < sizeof(pInstance->networkData) /
+                            sizeof(pInstance->networkData[0])); x++) {
+            if (pInstance->networkData[x].networkType == (int32_t) netType) {
+                pNetworkData = &(pInstance->networkData[x]);
+                break;
+            }
+        }
+    }
+
+    return pNetworkData;
+}
+
 // End of file

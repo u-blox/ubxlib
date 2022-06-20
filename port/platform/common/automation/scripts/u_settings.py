@@ -188,12 +188,11 @@ __DEFAULT_SETTINGS["RUN_GUARD_TIME_SECONDS"] = 60 * 60
 __DEFAULT_SETTINGS["RUN_INACTIVITY_TIME_SECONDS"] = 60 * 5
 __DEFAULT_SETTINGS["FILTER_MACRO_NAME"] = "U_CFG_APP_FILTER"
 __DEFAULT_SETTINGS["EXE_RUN_QUEUE_WAIT_SECONDS"] = 1
-# u_process_wrapper.py
-__DEFAULT_SETTINGS["PROCESS_CHECKER"] = "u_process_checker.py"
-__DEFAULT_SETTINGS["PROCESS_PORT"] = 50123
-__DEFAULT_SETTINGS["PROCESS_PYTHON"] = "python"
-# u_process_checker.py
-__DEFAULT_SETTINGS["PROCESS_WRAPPER"] = "u_process_wrapper.py"
+
+# Switches that can be controlled under automation
+__DEFAULT_SETTINGS["SWITCH_LIST" + __SETTINGS_POSTFIX_AGENT_SPECIFIC] =    \
+    [{"name":"RF_SWITCH_A", "ip":"10.20.4.169", "0":":SETA=0", "1":":SETA=1"},
+     {"name":"PWR_SWITCH_A", "ip":"10.20.4.143", "0":"FF0700", "1":"FF0701"}]
 
 # Other stuff
 __USER_INTERVENTION_REQUIRED = False

@@ -54,6 +54,19 @@
 uDeviceHandle_t uNetworkGetDeviceHandle(uDeviceHandle_t devHandle,
                                         uNetworkType_t netType);
 
+/** Get the network data for the given network type from the
+ * device instance. IMPORTANT: there is, of course, nothing
+ * to stop someone calling uDeviceClose() and vapourising the
+ * data you have a pointer to here, hence it is advisable to
+ * only call this between a uDeviceLock()/uDeviceUnlock() pair.
+ *
+ * @param pInstance the device instance.
+ * @param netType   the network type.
+ * @return          a pointer to the network data or NULL on failure.
+ */
+uDeviceNetworkData_t *pUNetworkGetNetworkData(uDeviceInstance_t *pInstance,
+                                              uNetworkType_t netType);
+
 #ifdef __cplusplus
 }
 #endif

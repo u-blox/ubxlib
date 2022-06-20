@@ -45,4 +45,10 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+int32_t uNetworkSetStatusCallbackCell(uDeviceHandle_t devHandle)
+{
+    (void) devHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+}
+
 // End of file

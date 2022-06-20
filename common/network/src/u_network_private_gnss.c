@@ -52,14 +52,14 @@
 #include "u_gnss.h"
 #include "u_gnss_pwr.h"
 
+#include "u_device.h"
+#include "u_device_shared.h"
+#include "u_device_shared_gnss.h"
+
 #include "u_network.h"
 #include "u_network_shared.h"
 #include "u_network_config_gnss.h"
 #include "u_network_private_gnss.h"
-
-#include "u_device.h"
-#include "u_device_shared.h"
-#include "u_device_shared_gnss.h"
 
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS

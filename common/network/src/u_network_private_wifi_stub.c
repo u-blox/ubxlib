@@ -49,4 +49,9 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
     return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
 }
 
+int32_t uNetworkSetStatusCallbackWifi(uDeviceHandle_t devHandle)
+{
+    (void) devHandle;
+    return (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED;
+}
 // End of file

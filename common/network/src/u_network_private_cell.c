@@ -46,6 +46,8 @@
 #include "u_device_shared.h"
 #include "u_device_shared_cell.h"
 
+#include "u_network_shared.h"
+
 #include "u_cell_module_type.h"
 #include "u_cell.h"
 #include "u_cell_net.h"
@@ -89,6 +91,44 @@ static bool keepGoingCallback(uDeviceHandle_t devHandle)
     return keepGoing;
 }
 
+// Call-back for status changes.
+//lint -esym(818, pParameter) Suppress "could be declared as pointing to const",
+// gotta follow function signature
+static void statusCallback(uCellNetRegDomain_t domain,
+                           uCellNetStatus_t status,
+                           void *pParameter)
+{
+    uDeviceInstance_t *pInstance = (uDeviceInstance_t *) pParameter;
+    uDeviceNetworkData_t *pNetworkData;
+    uNetworkStatusCallbackData_t *pStatusCallbackData;
+    bool isUp;
+    uNetworkStatus_t networkStatus;
+
+    // Note: can't lock the device API here since we may collide
+    // with a network up/down call that will have already locked
+    // it and then may, internally, be waiting on something to pass
+    // up the event queue that we are currently blocking (since
+    // the same event queue is used for most things).
+    // We rely on the fact that the various network down calls
+    // are well behaved and will not pull the rug out from under
+    // one of their callbacks.
+    if (uDeviceIsValidInstance(pInstance)) {
+        pNetworkData = pUNetworkGetNetworkData(pInstance, U_NETWORK_TYPE_CELL);
+        if (pNetworkData != NULL) {
+            pStatusCallbackData = (uNetworkStatusCallbackData_t *) pNetworkData->pStatusCallbackData;
+            if ((pStatusCallbackData != NULL) &&
+                (pStatusCallbackData->pCallback)) {
+                isUp = U_CELL_NET_STATUS_MEANS_REGISTERED(status);
+                networkStatus.cell.domain = (int32_t) domain;
+                networkStatus.cell.status = (int32_t) status;
+                pStatusCallbackData->pCallback((uDeviceHandle_t) pInstance,
+                                               U_NETWORK_TYPE_CELL, isUp, &networkStatus,
+                                               pStatusCallbackData->pCallbackParameter);
+            }
+        }
+    }
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -125,6 +165,14 @@ int32_t uNetworkPrivateChangeStateCell(uDeviceHandle_t devHandle,
     }
 
     return errorCode;
+}
+
+// Set a call-back to be called when the cellular network
+// status changes.
+int32_t uNetworkSetStatusCallbackCell(uDeviceHandle_t devHandle)
+{
+    return uCellNetSetRegistrationStatusCallback(devHandle, statusCallback,
+                                                 (void *) devHandle);
 }
 
 // End of file

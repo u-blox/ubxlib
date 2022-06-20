@@ -71,6 +71,7 @@ typedef struct {
     int32_t networkType; /**< the type for this network. */
     const void *pCfg; /**< constant network configuration provided by application. */
     void *pContext; /**< optional context data for this network interface. */
+    void *pStatusCallbackData; /**< optional status callback for this network interface. */
 } uDeviceNetworkData_t;
 
 /** Internal data structure that uDeviceHandle_t points at.

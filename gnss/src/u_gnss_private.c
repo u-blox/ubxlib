@@ -51,6 +51,8 @@
 
 #include "u_ubx_protocol.h"
 
+#include "u_device_shared.h"
+
 #include "u_network_shared.h"
 
 #include "u_gnss_module_type.h"

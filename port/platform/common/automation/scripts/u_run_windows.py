@@ -4,6 +4,7 @@
 import os                    # For sep(), getcwd(), listdir()
 from time import time
 from logging import Logger
+import requests
 from scripts import u_connection, u_monitor, u_report, u_utils, u_settings
 from scripts.u_logging import ULog
 
@@ -65,6 +66,27 @@ TOOLS_LIST = [{"which_string": "cl",
                        " or add it to the path.",
                "version_switch": ""}]
 
+# The prefix that all switch control thingies in the
+# list of defines should have; will be followed by XXX
+SWITCH_CONTROL_PREFIX = "U_CFG_TEST_NET_STATUS_"
+
+# The prefix that the target should emit before XXX
+# to control a switch
+SWITCH_TRIGGER_PREFIX = "AUTOMATION_SET_SWITCH"
+
+# Regex to capture a string of the form:
+#
+# AUTOMATION_SET_SWITCH XXX 1
+#
+# ...where it would return "XXX" in the first capture group and "1"
+# in the second capture group. This tested on https://regex101.com/ with
+# Python the selected regex flavour.
+# "XXX" should then match the "XXX" in "U_CFG_TEST_NET_STATUS_XXX"
+SWITCH_CONTROL_REGEX = r"(?:^" + SWITCH_TRIGGER_PREFIX + " (.*?) ([0-1]))$"
+
+# Switches to control RF
+SWITCH_LIST = u_settings.SWITCH_LIST
+
 def print_env(returned_env):
     '''Print a dictionary that contains the new environment'''
     U_LOG.info("environment will be:")
@@ -118,6 +140,88 @@ def set_up_environment(reporter):
                        u_report.EVENT_FAILED,
                        "{} failed".format(" ".join(MSVC_SETUP_BATCH_FILE)))
     return returned_env
+
+def switch_list_create(u_flags, logger):
+    '''Parse u_flags to look for switch control things'''
+    switch_list = []
+
+    # Parse u_flags to find values which begin with
+    # U_CFG_TEST_NET_STATUS_XXX and create a list of the values
+    # of XXX and what they equate to in the form:
+    #
+    # {"xxx": "XXX", "name": "RF_SWITCH_A"}
+    for flag in u_flags:
+        if flag.startswith(SWITCH_CONTROL_PREFIX):
+            parts1 = flag.split(SWITCH_CONTROL_PREFIX)
+            if parts1 and len(parts1) > 1:
+                item = {}
+                item["xxx"] = parts1[1]
+                message = "\"" + item["xxx"] + "\""
+                parts2 = parts1[1].split("=")
+                if parts2 and len(parts2) > 1:
+                    item["xxx"] = parts2[0]
+                    message = "\"" + item["xxx"] + "\""
+                    item["name"] = parts2[1]
+                    message += " will operate " + item["name"]
+                logger.info("control word " + message +
+                            ", trigger string will be \"" +
+                            SWITCH_TRIGGER_PREFIX +
+                            " " + item["xxx"] + " 0-1\"")
+                switch_list.append(item)
+
+    # Having made the list, check if we know of
+    # all of the required switches; if we do then
+    # add the switch information to the switch_list
+    # entry, else delete the entry.
+    delete_list = []
+    for idx, item in enumerate(switch_list):
+        if "name" in item and item["name"]:
+            found = False
+            for switch in SWITCH_LIST:
+                if switch["name"] == item["name"]:
+                    switch_list[idx].update(switch)
+                    found = True
+            if not found:
+                delete_list.append(idx)
+                logger.info("WARNING: don't know about a switch" +
+                            " named \"" + item["name"] + "\"")
+    # Remove the largest index items first so as not to change
+    # the order of the list as we go
+    delete_list.sort(reverse=True)
+    for item in delete_list:
+        switch_list.pop(item)
+
+    return switch_list
+
+def callback(match, switch_list, results, reporter):
+    '''Control a switch's state'''
+    url = None
+
+    del results
+
+    # match group 1 will contain the XXX from U_CFG_TEST_NET_STATUS_XXX
+    # and match group 2 will contain the desired state, e.g. "0" or "1"
+    xxx = match.group(1)
+    desired_state = match.group(2)
+    if xxx:
+        message = "script asked to switch \"" + xxx + "\""
+        if desired_state:
+            message += " to state \"" + desired_state + "\""
+            for switch in switch_list:
+                if switch["xxx"] == xxx and desired_state in switch and "ip" in switch:
+                    url = switch["ip"] + "/" + switch[desired_state]
+                    message += ", " + switch["name"] + ": " + url
+                    break
+        if url:
+            response = requests.post("http://" + url)
+            message += " [response " + str(response.status_code) + "]"
+        else:
+            message += ": DON'T KNOW HOW TO DO THAT!"
+        if reporter and message:
+            reporter.event(u_report.EVENT_TYPE_TEST,
+                           u_report.EVENT_INFORMATION,
+                           message)
+
 
 def build(clean, unity_dir, defines, env, reporter):
     '''Build using MSVC'''
@@ -203,6 +307,7 @@ def run(instance, toolchain, connection, connection_lock,
     return_value = -1
     exe_file = None
     instance_text = u_utils.get_instance_text(instance)
+    switch_list = None
 
     # "global" should be avoided, but we make an exception for the logger
     global U_LOG # pylint: disable=global-statement
@@ -263,6 +368,21 @@ def run(instance, toolchain, connection, connection_lock,
                                             logger=U_LOG
                                             ) as locked_connection:
                         if locked_connection:
+                            switch_list = switch_list_create(defines, logger=U_LOG)
+                            if switch_list:
+                                # Watch out for strings from the target which
+                                # ask us to control switches. Such strings are
+                                # of the form:
+                                #
+                                # AUTOMATION_SET_SWITCH XXX 0
+                                #
+                                # ...where XXX will match a define of the
+                                # form U_CFG_TEST_NET_STATUS_XXX in the
+                                # list passed to us from DATABASE.md and
+                                # the digit that follows is "0" for "off"
+                                # or "1" for "on".
+                                u_monitor.callback(callback, SWITCH_CONTROL_REGEX,
+                                                   switch_list)
                             # Start the .exe and monitor what it spits out
                             with u_utils.ExeRun([exe_file], logger=U_LOG) as process:
                                 return_value = u_monitor.main(process,

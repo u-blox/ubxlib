@@ -580,4 +580,15 @@ bool uNetworkTestIsBle(uDeviceType_t deviceType,
     return (networkType == U_NETWORK_TYPE_BLE);
 }
 
+// Return true if uNetworkSetStatusCallback() is supported.
+bool uNetworkTestHasStatusCallback(uDeviceType_t deviceType,
+                                   uNetworkType_t networkType,
+                                   int32_t moduleType)
+{
+    (void) deviceType;
+    (void) moduleType;
+    return (networkType == U_NETWORK_TYPE_BLE) || (networkType == U_NETWORK_TYPE_WIFI) ||
+           (networkType == U_NETWORK_TYPE_CELL);
+}
+
 // End of file

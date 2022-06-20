@@ -46,6 +46,8 @@
 
 #include "u_device_shared.h"
 
+#include "u_network_shared.h"
+
 #include "u_at_client.h"
 
 #include "u_short_range_module_type.h"
@@ -54,6 +56,7 @@
 #include "u_ble_module_type.h"
 #include "u_ble.h"
 #include "u_ble_cfg.h"
+#include "u_ble_sps.h"
 
 #include "u_network.h"
 #include "u_network_config_ble.h"
@@ -74,6 +77,51 @@
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+// Call-back for status changes.
+//lint -esym(818, pParameter) Suppress "could be declared as pointing to const",
+// gotta follow function signature
+static void statusCallback(int32_t connHandle, char *pAddress,
+                           int32_t status, int32_t channel, int32_t mtu,
+                           void *pParameter)
+{
+    uDeviceInstance_t *pInstance = (uDeviceInstance_t *) pParameter;
+    uDeviceNetworkData_t *pNetworkData;
+    uNetworkStatusCallbackData_t *pStatusCallbackData;
+    bool isUp;
+    uNetworkStatus_t networkStatus;
+
+    // Note: can't lock the device API here since we may collide
+    // with a network up/down call that will have already locked
+    // it and then may, internally, be waiting on something to pass
+    // up the event queue that we are currently blocking (since
+    // the same event queue is used for most things).
+    // We rely on the fact that the various network down calls
+    // are well behaved and will not pull the rug out from under
+    // one of their callbacks.
+    if (uDeviceIsValidInstance(pInstance)) {
+        pNetworkData = pUNetworkGetNetworkData(pInstance, U_NETWORK_TYPE_BLE);
+        if (pNetworkData != NULL) {
+            pStatusCallbackData = (uNetworkStatusCallbackData_t *) pNetworkData->pStatusCallbackData;
+            if ((pStatusCallbackData != NULL) &&
+                (pStatusCallbackData->pCallback)) {
+                networkStatus.ble.pAddress = NULL;
+                isUp = (status == (int32_t) U_SHORT_RANGE_EVENT_CONNECTED);
+                networkStatus.ble.connHandle = connHandle;
+                if (isUp) {
+                    networkStatus.ble.pAddress = pAddress;
+                }
+                networkStatus.ble.status = status;
+                networkStatus.ble.channel = channel;
+                networkStatus.ble.mtu = mtu;
+                pStatusCallbackData->pCallback((uDeviceHandle_t) pInstance,
+                                               U_NETWORK_TYPE_BLE, isUp,
+                                               &networkStatus,
+                                               pStatusCallbackData->pCallbackParameter);
+            }
+        }
+    }
+}
 
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
@@ -141,6 +189,16 @@ int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
         }
     }
     return errorCode;
+}
+
+// Set a call-back to be called when the BLE network status changes.
+int32_t uNetworkSetStatusCallbackBle(uDeviceHandle_t devHandle)
+{
+    // Need to remove an existing callback first
+    uBleSpsSetCallbackConnectionStatus(devHandle, NULL,
+                                       (void *) devHandle);
+    return uBleSpsSetCallbackConnectionStatus(devHandle, statusCallback,
+                                              (void *) devHandle);
 }
 
 #endif

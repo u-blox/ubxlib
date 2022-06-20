@@ -57,6 +57,13 @@ int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
                                       const uNetworkCfgBle_t *pCfg,
                                       bool upNotDown);
 
+/** Set a callback to be called when the BLE network status changes.
+ *
+ * @param devHandle             the handle of the instance.
+ * @return                      zero on success else negative error code.
+ */
+int32_t uNetworkSetStatusCallbackBle(uDeviceHandle_t devHandle);
+
 #ifdef __cplusplus
 }
 #endif

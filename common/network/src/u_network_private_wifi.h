@@ -57,6 +57,13 @@ int32_t uNetworkPrivateChangeStateWifi(uDeviceHandle_t devHandle,
                                        const uNetworkCfgWifi_t *pCfg,
                                        bool upNotDown);
 
+/** Set a callback to be called when the Wifi network status changes.
+ *
+ * @param devHandle             the handle of the instance.
+ * @return                      zero on success else negative error code.
+ */
+int32_t uNetworkSetStatusCallbackWifi(uDeviceHandle_t devHandle);
+
 #ifdef __cplusplus
 }
 #endif
