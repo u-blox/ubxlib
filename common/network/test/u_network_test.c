@@ -1153,7 +1153,10 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
 # endif
 
         uPortLog("U_NETWORK_TEST_%d: waiting for all network types to drop...\n", a);
-        uPortTaskBlock(15000);
+        // Note: BLE/Wi-Fi will drop within a few seconds but cellular is much
+        // more difficult to shake since it works down to near -140dBm these days;
+        // a screened box with high quality RF cables is barely enough
+        uPortTaskBlock(30000);
 
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
             pCallbackParameters = &(gNetworkStatusCallbackParameters[pTmp->networkType]);
@@ -1360,6 +1363,16 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
 U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
 {
     int32_t y;
+
+    // Make sure that the switches haven't been left in the
+    // "off" position
+#ifdef U_CFG_TEST_NET_STATUS_SHORT_RANGE
+    uPortLog("AUTOMATION_SET_SWITCH SHORT_RANGE 1\n");
+#endif
+#ifdef U_CFG_TEST_NET_STATUS_CELL
+    uPortLog("AUTOMATION_SET_SWITCH CELL 1\n");
+    uPortTaskBlock(1000);
+#endif
 
     // The network test configuration is shared between
     // the network, sockets, security and location tests
