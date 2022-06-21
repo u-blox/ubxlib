@@ -194,9 +194,6 @@ int32_t uNetworkPrivateChangeStateBle(uDeviceHandle_t devHandle,
 // Set a call-back to be called when the BLE network status changes.
 int32_t uNetworkSetStatusCallbackBle(uDeviceHandle_t devHandle)
 {
-    // Need to remove an existing callback first
-    uBleSpsSetCallbackConnectionStatus(devHandle, NULL,
-                                       (void *) devHandle);
     return uBleSpsSetCallbackConnectionStatus(devHandle, statusCallback,
                                               (void *) devHandle);
 }

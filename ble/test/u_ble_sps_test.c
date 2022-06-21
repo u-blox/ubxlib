@@ -145,28 +145,8 @@ U_PORT_TEST_FUNCTION("[bleSps]", "bleSps")
                                                           connectionCallback,
                                                           NULL) == 0);
 
-    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
-                                                          connectionCallback,
-                                                          NULL) != 0);
-
-    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
-                                                          NULL, NULL) == 0);
-
-    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
-                                                          connectionCallback,
-                                                          NULL) == 0);
-
-    U_PORT_TEST_ASSERT(uBleSpsSetCallbackConnectionStatus(gHandles.devHandle,
-                                                          NULL, NULL) == 0);
-
     U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, dataAvailableCallback,
                                                        NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, dataAvailableCallback,
-                                                       NULL) != 0);
-    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, NULL, NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, dataAvailableCallback,
-                                                       NULL) == 0);
-    U_PORT_TEST_ASSERT(uBleSpsSetDataAvailableCallback(gHandles.devHandle, NULL, NULL) == 0);
 
     uBleTestPrivatePostamble(&gHandles);
 

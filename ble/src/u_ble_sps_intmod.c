@@ -1122,16 +1122,10 @@ int32_t uBleSpsSetCallbackConnectionStatus(uDeviceHandle_t devHandle,
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-    if ((((gpSpsConnStatusCallback == NULL) && (pCallback != NULL)) ||
-         ((gpSpsConnStatusCallback != NULL) && (pCallback == NULL)))) {
+    gpSpsConnStatusCallback = pCallback;
+    gpSpsConnStatusCallbackParam = pCallbackParameter;
 
-        gpSpsConnStatusCallback = pCallback;
-        gpSpsConnStatusCallbackParam = pCallbackParameter;
-        errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
-    }
-
-    return errorCode;
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
 }
 
 int32_t uBleSpsConnectSps(uDeviceHandle_t devHandle,
@@ -1303,16 +1297,10 @@ int32_t uBleSpsSetDataAvailableCallback(uDeviceHandle_t devHandle,
         return (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
     }
 
-    int32_t errorCode = (int32_t)U_ERROR_COMMON_INVALID_PARAMETER;
-    if ((((gpSpsDataAvailableCallback == NULL) && (pCallback != NULL)) ||
-         ((gpSpsDataAvailableCallback != NULL) && (pCallback == NULL)))) {
+    gpSpsDataAvailableCallback = pCallback;
+    gpSpsDataAvailableCallbackParam = pCallbackParameter;
 
-        gpSpsDataAvailableCallback = pCallback;
-        gpSpsDataAvailableCallbackParam = pCallbackParameter;
-        errorCode = (int32_t)U_ERROR_COMMON_SUCCESS;
-    }
-
-    return errorCode;
+    return (int32_t)U_ERROR_COMMON_SUCCESS;
 }
 
 int32_t uBleSpsReceive(uDeviceHandle_t devHandle, int32_t channel, char *pData, int32_t length)

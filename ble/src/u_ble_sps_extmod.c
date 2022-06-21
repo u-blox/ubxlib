@@ -431,6 +431,17 @@ static void onBleSpsEvent(void *pParam, size_t eventSize)
     }
 }
 
+static void removeCallbacks(uDeviceHandle_t devHandle,
+                            uShortRangePrivateInstance_t *pInstance)
+{
+    uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLC:");
+    uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLD:");
+    uShortRangeSetBtConnectionStatusCallback(devHandle, NULL, NULL);
+    uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, NULL, NULL);
+    pInstance->pSpsConnectionCallback = NULL;
+    pInstance->pSpsConnectionCallbackParameter = NULL;
+}
+
 /* ----------------------------------------------------------------
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -446,15 +457,15 @@ int32_t uBleSpsSetCallbackConnectionStatus(uDeviceHandle_t devHandle,
         pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            bool cleanUp = false;
-            if (pCallback != NULL && pInstance->pSpsConnectionCallback == NULL) {
+            if (pCallback != NULL) {
+                removeCallbacks(devHandle, pInstance);
                 pInstance->pSpsConnectionCallback = pCallback;
                 pInstance->pSpsConnectionCallbackParameter = pCallbackParameter;
 
                 errorCode = uAtClientSetUrcHandler(pInstance->atHandle, "+UUBTACLC:",
                                                    UUBTACLC_urc, pInstance);
 
-                if (errorCode == (int32_t) U_ERROR_COMMON_SUCCESS) {
+                if (errorCode == (int32_t)U_ERROR_COMMON_SUCCESS) {
                     errorCode = uAtClientSetUrcHandler(pInstance->atHandle, "+UUBTACLD:",
                                                        UUBTACLD_urc, pInstance);
                 }
@@ -470,22 +481,14 @@ int32_t uBleSpsSetCallbackConnectionStatus(uDeviceHandle_t devHandle,
                 }
 
                 if (errorCode != (int32_t) U_ERROR_COMMON_SUCCESS) {
-                    cleanUp = true;
+                    removeCallbacks(devHandle, pInstance);
                 }
 
             } else if (pCallback == NULL && pInstance->pSpsConnectionCallback != NULL) {
                 errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
-                cleanUp = true;
+                removeCallbacks(devHandle, pInstance);
             }
 
-            if (cleanUp) {
-                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLC:");
-                uAtClientRemoveUrcHandler(pInstance->atHandle, "+UUBTACLD:");
-                uShortRangeSetBtConnectionStatusCallback(devHandle, NULL, NULL);
-                uShortRangeEdmStreamBtEventCallbackSet(pInstance->streamHandle, NULL, NULL);
-                pInstance->pSpsConnectionCallback = NULL;
-                pInstance->pSpsConnectionCallbackParameter = NULL;
-            }
         }
 
         uShortRangeUnlock();
@@ -690,7 +693,7 @@ int32_t uBleSpsSetDataAvailableCallback(uDeviceHandle_t devHandle,
         pInstance = pUShortRangePrivateGetInstance(devHandle);
         errorCode = (int32_t) U_ERROR_COMMON_INVALID_PARAMETER;
         if (pInstance != NULL) {
-            if (pInstance->pBtDataAvailableCallback == NULL && pCallback != NULL) {
+            if (pCallback != NULL) {
                 pInstance->pBtDataAvailableCallback = pCallback;
                 pInstance->pBtDataCallbackParameter = pCallbackParameter;
 
