@@ -49,6 +49,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_SHORT_RANGE_TEST_PREAMBLE: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -72,7 +80,7 @@ int32_t uShortRangeTestPreamble(uShortRangeModuleType_t moduleType)
 #if defined(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS) && (U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS >= 0)
     uPortGpioConfig_t gpioConfig;
 
-    uPortLog("U_SHORT_RANGE_TEST_PREAMBLE: start.\n");
+    U_TEST_PRINT_LINE("start.");
 
     // The only thing to do is, if a "reset to defaults" pin is
     // defined, then make sure that the pin is set to an output
@@ -85,7 +93,7 @@ int32_t uShortRangeTestPreamble(uShortRangeModuleType_t moduleType)
     errorCode = uPortGpioConfig(&gpioConfig);
     uPortGpioSet(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS, 0); //assert
 
-    uPortLog("U_SHORT_RANGE_TEST_PREAMBLE: complete.\n");
+    U_TEST_PRINT_LINE("complete.");
 #endif
 
     (void) moduleType;

@@ -58,6 +58,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_LOCATION_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -120,17 +128,17 @@ static uNetworkTestList_t *pStdPreamble()
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_LOCATION_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
 
     // Bring up each network type
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
-        uPortLog("U_LOCATION_TEST: bringing up %s...\n",
-                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_TEST_PRINT_LINE("bringing up %s...",
+                          gpUNetworkTestTypeName[pTmp->networkType]);
         U_PORT_TEST_ASSERT(uNetworkInterfaceUp(*pTmp->pDevHandle,
                                                pTmp->networkType,
                                                pTmp->pNetworkCfg) == 0);
@@ -165,7 +173,7 @@ static void testBlocking(uDeviceHandle_t devHandle,
     gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
     uLocationTestResetLocation(&location);
     if (pLocationCfg != NULL) {
-        uPortLog("U_LOCATION_TEST: blocking API.\n");
+        U_TEST_PRINT_LINE("U_LOCATION_TEST: blocking API.");
         // The location type is supported (a GNSS network always
         // supports location, irrespective of the location type) so it
         // should work
@@ -174,8 +182,8 @@ static void testBlocking(uDeviceHandle_t devHandle,
                                         pAuthenticationTokenStr,
                                         &location,
                                         keepGoingCallback) == 0);
-        uPortLog("U_LOCATION_TEST: location establishment took %d second(s).\n",
-                 (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+        U_TEST_PRINT_LINE("location establishment took %d second(s).",
+                          (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
         // If we are running on a test cellular network we won't get position but
         // we should always get time
         if ((location.radiusMillimetres > 0) &&
@@ -191,8 +199,7 @@ static void testBlocking(uDeviceHandle_t devHandle,
                 U_PORT_TEST_ASSERT(location.svs > 0);
             }
         } else {
-            uPortLog("U_LOCATION_TEST: only able to get time (%d).\n",
-                     (int32_t) location.timeUtc);
+            U_TEST_PRINT_LINE("only able to get time (%d).", (int32_t) location.timeUtc);
         }
         U_PORT_TEST_ASSERT(location.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
     } else {
@@ -255,7 +262,7 @@ static void testNonBlocking(uDeviceHandle_t devHandle,
         // (e.g. on SARA-R412M-02B) return "generic error" if asked to establish
         // location again quickly after returning an answer
         for (int32_t x = 3; (x > 0) && (gErrorCode != 0); x--) {
-            uPortLog("U_LOCATION_TEST: non-blocking API.\n");
+            U_TEST_PRINT_LINE("non-blocking API.");
             gDevHandle = NULL;
             gErrorCode = INT_MIN;
             uLocationTestResetLocation(&gLocation);
@@ -263,8 +270,9 @@ static void testNonBlocking(uDeviceHandle_t devHandle,
                                                  pLocationAssist,
                                                  pAuthenticationTokenStr,
                                                  locationCallback) == 0);
-            uPortLog("U_LOCATION_TEST: waiting up to %d second(s) for results from"
-                     " non-blocking API...\n", U_LOCATION_TEST_CFG_TIMEOUT_SECONDS);
+            U_TEST_PRINT_LINE("waiting up to %d second(s) for results from"
+                              " non-blocking API...",
+                              U_LOCATION_TEST_CFG_TIMEOUT_SECONDS);
             while ((gErrorCode == INT_MIN) && (uPortGetTickTimeMs() < gStopTimeMs)) {
                 // Location establishment status is only supported for cell locate
                 y = uLocationGetStatus(devHandle);
@@ -277,8 +285,8 @@ static void testNonBlocking(uDeviceHandle_t devHandle,
             }
 
             if (gErrorCode == 0) {
-                uPortLog("U_LOCATION_TEST: location establishment took %d second(s).\n",
-                         (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                U_TEST_PRINT_LINE("location establishment took %d second(s).",
+                                  (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
                 // If we are running on a cellular test network we might not
                 // get position but we should always get time
                 U_PORT_TEST_ASSERT(gDevHandle == devHandle);
@@ -292,13 +300,12 @@ static void testNonBlocking(uDeviceHandle_t devHandle,
                     U_PORT_TEST_ASSERT(gLocation.speedMillimetresPerSecond > INT_MIN);
                     U_PORT_TEST_ASSERT(gLocation.svs > INT_MIN);
                 } else {
-                    uPortLog("U_LOCATION_TEST: only able to get time (%d).\n",
-                             (int32_t) gLocation.timeUtc);
+                    U_TEST_PRINT_LINE("only able to get time (%d).", (int32_t) gLocation.timeUtc);
                 }
                 U_PORT_TEST_ASSERT(gLocation.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
             }
             if ((gErrorCode != 0) && (x >= 1)) {
-                uPortLog("U_LOCATION_TEST: failed to get an answer, will retry in 30 seconds...\n");
+                U_TEST_PRINT_LINE("failed to get an answer, will retry in 30 seconds...");
                 uPortTaskBlock(30000);
             }
         }
@@ -360,7 +367,7 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
     // a network underneath us
     pList = pStdPreamble();
     if (pList == NULL) {
-        uPortLog("U_LOCATION_TEST: *** WARNING *** nothing to do.\n");
+        U_TEST_PRINT_LINE("*** WARNING *** nothing to do.");
     }
 
     // Get the initialish heap
@@ -369,8 +376,8 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
     // Repeat for all network types
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         devHandle = *pTmp->pDevHandle;
-        uPortLog("U_LOCATION_TEST: testing %s network...\n",
-                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_TEST_PRINT_LINE("testing %s network...",
+                          gpUNetworkTestTypeName[pTmp->networkType]);
 
         // Do this for all location types
         for (locationType = (int32_t) U_LOCATION_TYPE_GNSS;
@@ -378,8 +385,8 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
              locationType++) {
 
             // Check the location types supported by this network type
-            uPortLog("U_LOCATION_TEST: testing location type %s.\n",
-                     gpULocationTestTypeStr[locationType]);
+            U_TEST_PRINT_LINE("testing location type %s.",
+                              gpULocationTestTypeStr[locationType]);
             pLocationCfgList = gpULocationTestCfg[pTmp->networkType];
             for (size_t y = 0;
                  (y < pLocationCfgList->numEntries) && (gpLocationCfg == NULL);
@@ -411,9 +418,9 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
                                                                                                  gpLocationCfg->pLocationAssist->pClientIdStr);
                 }
             } else {
-                uPortLog("U_LOCATION_TEST: %s is not supported on a %s network.\n",
-                         gpULocationTestTypeStr[locationType],
-                         gpUNetworkTestTypeName[pTmp->networkType]);
+                U_TEST_PRINT_LINE("%s is not supported on a %s network.",
+                                  gpULocationTestTypeStr[locationType],
+                                  gpUNetworkTestTypeName[pTmp->networkType]);
             }
 
             // Test the blocking location API (supported and non-supported cases)
@@ -450,16 +457,16 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
             heapLoss += heapLossFirstCall[x];
         }
     }
-    uPortLog("U_LOCATION_TEST: we have leaked %d byte(s) and lost %d byte(s)"
-             " to initialisation.\n", heapUsed - heapLoss, heapLoss);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s) and lost %d byte(s)"
+                      " to initialisation.", heapUsed - heapLoss, heapLoss);
     // heapUsed <= heapLoss for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= heapLoss);
 
     // Remove each network type
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
-        uPortLog("U_LOCATION_TEST: taking down %s...\n",
-                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_TEST_PRINT_LINE("taking down %s...",
+                          gpUNetworkTestTypeName[pTmp->networkType]);
         U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
                                                  pTmp->networkType) == 0);
     }
@@ -467,8 +474,8 @@ U_PORT_TEST_FUNCTION("[location]", "locationBasic")
     // Close the devices and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_LOCATION_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -499,8 +506,8 @@ U_PORT_TEST_FUNCTION("[location]", "locationCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_LOCATION_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -508,8 +515,8 @@ U_PORT_TEST_FUNCTION("[location]", "locationCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_LOCATION_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free at"
+                          " the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

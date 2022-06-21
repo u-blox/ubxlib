@@ -66,6 +66,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_SEC_TLS_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /** All the "name" strings used in this test are of the same form
  * ("test_name_x") and hence the same length and this is the length
  * (not including the null terminator).
@@ -153,7 +161,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     U_PORT_TEST_ASSERT(pModule != NULL);
 
     // Add a security context
-    uPortLog("U_CELL_SEC_TLS_TEST: adding a security context...\n");
+    U_TEST_PRINT_LINE("adding a security context...");
     pContext = pUCellSecSecTlsAdd(cellHandle);
     U_PORT_TEST_ASSERT(pContext != NULL);
 
@@ -161,7 +169,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     U_PORT_TEST_ASSERT(uCellSecTlsResetLastError() == 0);
 
     // Check for defaults
-    uPortLog("U_CELL_SEC_TLS_TEST: checking defaults...\n");
+    U_TEST_PRINT_LINE("checking defaults...");
     U_PORT_TEST_ASSERT(uCellSecTlsRootCaCertificateNameGet(pContext, pBuffer,
                                                            U_CELL_SEC_TLS_TEST_NAME_LENGTH_BYTES + 1) == 0);
     U_PORT_TEST_ASSERT(strcmp(pBuffer, "") == 0);
@@ -171,15 +179,15 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     U_PORT_TEST_ASSERT(uCellSecTlsClientPrivateKeyNameGet(pContext, pBuffer,
                                                           U_CELL_SEC_TLS_TEST_NAME_LENGTH_BYTES + 1) == 0);
     U_PORT_TEST_ASSERT(strcmp(pBuffer, "") == 0);
-    uPortLog("U_CELL_SEC_TLS_TEST: default ciphers are:\n");
+    U_TEST_PRINT_LINE("default ciphers are:");
     numCiphers = 0;
     for (int32_t x = uCellSecTlsCipherSuiteListFirst(pContext);
          x >= 0;
          x = uCellSecTlsCipherSuiteListNext(pContext)) {
         numCiphers++;
-        uPortLog("U_CELL_SEC_TLS_TEST:     0x%04x\n", x);
+        U_TEST_PRINT_LINE("    0x%04x", x);
     }
-    uPortLog("U_CELL_SEC_TLS_TEST: %d cipher(s) found.\n", numCiphers);
+    U_TEST_PRINT_LINE("%d cipher(s) found.", numCiphers);
     U_PORT_TEST_ASSERT(numCiphers == 0);
     // SARA-R5 and SARA-R422 have the default of 1.2
     U_PORT_TEST_ASSERT((uCellSecTlsVersionGet(pContext) == 0) ||
@@ -203,7 +211,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     }
 
     // Check that the root/CA certificate name can be set/got
-    uPortLog("U_CELL_SEC_TLS_TEST: checking root/CA certificate name...\n");
+    U_TEST_PRINT_LINE("checking root/CA certificate name...");
     U_PORT_TEST_ASSERT(uCellSecTlsRootCaCertificateNameSet(pContext,
                                                            "test_name_1") == 0);
     U_PORT_TEST_ASSERT(uCellSecTlsRootCaCertificateNameGet(pContext, pBuffer,
@@ -218,7 +226,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     U_PORT_TEST_ASSERT(strcmp(pBuffer, "test_name_x") == 0);
 
     // Check that the client certificate name can be set/got
-    uPortLog("U_CELL_SEC_TLS_TEST: checking client certificate name...\n");
+    U_TEST_PRINT_LINE("checking client certificate name...");
     U_PORT_TEST_ASSERT(uCellSecTlsClientCertificateNameSet(pContext,
                                                            "test_name_2") == 0);
     U_PORT_TEST_ASSERT(uCellSecTlsClientCertificateNameGet(pContext, pBuffer,
@@ -233,7 +241,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     U_PORT_TEST_ASSERT(strcmp(pBuffer, "test_name_x") == 0);
 
     // Check that the client private key name can be set/got
-    uPortLog("U_CELL_SEC_TLS_TEST: checking client private key name...\n");
+    U_TEST_PRINT_LINE("checking client private key name...");
     U_PORT_TEST_ASSERT(uCellSecTlsClientPrivateKeyNameSet(pContext,
                                                           "test_name_3",
                                                           NULL) == 0);
@@ -250,11 +258,11 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     U_PORT_TEST_ASSERT(strcmp(pBuffer, "test_name_x") == 0);
 
     // Check that the Psk/PskId can be set
-    uPortLog("U_CELL_SEC_TLS_TEST: checking PSK and PSK ID...\n");
+    U_TEST_PRINT_LINE("checking PSK and PSK ID...");
     U_PORT_TEST_ASSERT(uCellSecTlsClientPskSet(pContext, "this_is_a_password", 18,
                                                "this_is_the_id_for_the_password", 31,
                                                false) == 0);
-    uPortLog("U_CELL_SEC_TLS_TEST: checking fail cases...\n");
+    U_TEST_PRINT_LINE("checking fail cases...");
     // Try with ID missing
     U_PORT_TEST_ASSERT(uCellSecTlsClientPskSet(pContext, "this_is_a_password_again",
                                                24, NULL, 0, false) < 0);
@@ -269,7 +277,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
                                                37, false) < 0);
 
     // Check that the Psk/PskId can be set once more
-    uPortLog("U_CELL_SEC_TLS_TEST: checking PSK and PSK ID again...\n");
+    U_TEST_PRINT_LINE("checking PSK and PSK ID again...");
     U_PORT_TEST_ASSERT(uCellSecTlsClientPskSet(pContext, "this_is_a_password_final", 24,
                                                "this_is_the_id_for_the_password_final", 37,
                                                false) == 0);
@@ -282,7 +290,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     }
 
     // Check cipher management
-    uPortLog("U_CELL_SEC_TLS_TEST: checking manipulation of cipher list...\n");
+    U_TEST_PRINT_LINE("checking manipulation of cipher list...");
 
     if (U_CELL_PRIVATE_HAS(pModule,
                            U_CELL_PRIVATE_FEATURE_SECURITY_TLS_CIPHER_LIST)) {
@@ -351,14 +359,14 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     }
 
     // Check that all the TLS versions can be set
-    uPortLog("U_CELL_SEC_TLS_TEST: checking setting TLS version...\n");
+    U_TEST_PRINT_LINE("checking setting TLS version...");
     for (size_t x = 0; x < sizeof(gTlsVersions) / sizeof(gTlsVersions[0]); x++) {
         U_PORT_TEST_ASSERT(uCellSecTlsVersionSet(pContext, gTlsVersions[x]) == 0);
         U_PORT_TEST_ASSERT(uCellSecTlsVersionGet(pContext) == gTlsVersions[x]);
     }
 
     // Check that all the checking levels can be set
-    uPortLog("U_CELL_SEC_TLS_TEST: checking setting validation level...\n");
+    U_TEST_PRINT_LINE("checking setting validation level...");
     for (size_t x = 0; x < sizeof(gChecks) / sizeof(gChecks[0]); x++) {
         if (gChecks[x] < U_CELL_SEC_TLS_CERTIFICATE_CHECK_ROOT_CA_URL) {
             U_PORT_TEST_ASSERT(uCellSecTlsCertificateCheckSet(pContext, gChecks[x], NULL) == 0);
@@ -377,7 +385,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     if (U_CELL_PRIVATE_HAS(pModule,
                            U_CELL_PRIVATE_FEATURE_SECURITY_TLS_SERVER_NAME_INDICATION)) {
         // Check that SNI can be set
-        uPortLog("U_CELL_SEC_TLS_TEST: checking SNI...\n");
+        U_TEST_PRINT_LINE("checking SNI...");
         U_PORT_TEST_ASSERT(uCellSecTlsSniSet(pContext, "test_name_5") == 0);
         U_PORT_TEST_ASSERT(uCellSecTlsSniGet(pContext, pBuffer,
                                              U_CELL_SEC_TLS_TEST_NAME_LENGTH_BYTES + 1) ==
@@ -403,16 +411,16 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     // the module HW so that a later module FW can be used.
 
     // Remove the security context
-    uPortLog("U_CELL_SEC_TLS_TEST: removing security context...\n");
+    U_TEST_PRINT_LINE("removing security context...");
     uCellSecTlsRemove(pContext);
 
     // Add it again and re-check for defaults
-    uPortLog("U_CELL_SEC_TLS_TEST: re-adding security context...\n");
+    U_TEST_PRINT_LINE("re-adding security context...");
     pContext = pUCellSecSecTlsAdd(cellHandle);
     U_PORT_TEST_ASSERT(pContext != NULL);
 
     // Check for defaults
-    uPortLog("U_CELL_SEC_TLS_TEST: re-checking defaults...\n");
+    U_TEST_PRINT_LINE("re-checking defaults...");
     U_PORT_TEST_ASSERT(uCellSecTlsRootCaCertificateNameGet(pContext, pBuffer,
                                                            U_CELL_SEC_TLS_TEST_NAME_LENGTH_BYTES + 1) == 0);
     U_PORT_TEST_ASSERT(strcmp(pBuffer, "") == 0);
@@ -422,15 +430,15 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     U_PORT_TEST_ASSERT(uCellSecTlsClientPrivateKeyNameGet(pContext, pBuffer,
                                                           U_CELL_SEC_TLS_TEST_NAME_LENGTH_BYTES + 1) == 0);
     U_PORT_TEST_ASSERT(strcmp(pBuffer, "") == 0);
-    uPortLog("U_CELL_SEC_TLS_TEST: default ciphers are:\n");
+    U_TEST_PRINT_LINE("default ciphers are:");
     y = 0;
     for (int32_t x = uCellSecTlsCipherSuiteListFirst(pContext);
          x >= 0;
          x = uCellSecTlsCipherSuiteListNext(pContext)) {
         y++;
-        uPortLog("U_CELL_SEC_TLS_TEST:     0x%04x\n", x);
+        U_TEST_PRINT_LINE("    0x%04x", x);
     }
-    uPortLog("U_CELL_SEC_TLS_TEST: %d cipher(s) found.\n", y);
+    U_TEST_PRINT_LINE("%d cipher(s) found.", y);
     U_PORT_TEST_ASSERT(y == numCiphers);
     // SARA-R5 and SARA-R422 have the default of 1.2
     U_PORT_TEST_ASSERT((uCellSecTlsVersionGet(pContext) == 0) ||
@@ -454,7 +462,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
     }
 
     // Remove the security context again
-    uPortLog("U_CELL_SEC_TLS_TEST: removing security context again...\n");
+    U_TEST_PRINT_LINE("removing security context again...");
     uCellSecTlsRemove(pContext);
 
     // Do the standard postamble, leaving the module on for the next
@@ -466,7 +474,7 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsSettings")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_SEC_TLS_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -484,9 +492,8 @@ U_PORT_TEST_FUNCTION("[cellSecTls]", "cellSecTlsCleanUp")
 
     minFreeStackBytes = uPortTaskStackMinFree(NULL);
     if (minFreeStackBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_SEC_TLS_TEST: main task stack had a minimum of"
-                 " %d byte(s) free at the end of these tests.\n",
-                 minFreeStackBytes);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", minFreeStackBytes);
         U_PORT_TEST_ASSERT(minFreeStackBytes >=
                            U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }

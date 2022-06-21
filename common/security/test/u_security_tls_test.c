@@ -59,6 +59,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_SECURITY_TLS_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /** The hash of the client certificate when it is stored on the
  * module.
  */
@@ -182,8 +190,7 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
     size_t sentSizeBytes = 0;
     int64_t startTimeMs;
 
-    uPortLog("U_SECURITY_TLS_TEST: sending %d byte(s) of TCP data...\n",
-             sizeBytes);
+    U_TEST_PRINT_LINE("sending %d byte(s) of TCP data...", sizeBytes);
     startTimeMs = uPortGetTickTimeMs();
     while ((sentSizeBytes < sizeBytes) &&
            ((uPortGetTickTimeMs() - startTimeMs) < 10000)) {
@@ -191,8 +198,8 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
                        sizeBytes - sentSizeBytes);
         if (x > 0) {
             sentSizeBytes += x;
-            uPortLog("U_SECURITY_TLS_TEST: sent %d byte(s) of TCP data @%d ms.\n",
-                     sentSizeBytes, (int32_t) uPortGetTickTimeMs());
+            U_TEST_PRINT_LINE("sent %d byte(s) of TCP data @%d ms.",
+                              sentSizeBytes, (int32_t) uPortGetTickTimeMs());
         }
     }
 
@@ -257,14 +264,14 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     // Get a list of things that support secure sockets
     pList = pUNetworkTestListAlloc(uNetworkTestHasSecureSock);
     if (pList == NULL) {
-        uPortLog("U_SECURITY_TLS_TEST: *** WARNING *** nothing to do.\n");
+        U_TEST_PRINT_LINE("*** WARNING *** nothing to do.");
     }
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_SECURITY_TLS_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
@@ -279,8 +286,8 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         devHandle = *pTmp->pDevHandle;
 
-        uPortLog("U_SECURITY_TLS_TEST: bringing up %s...\n",
-                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_TEST_PRINT_LINE("bringing up %s...",
+                          gpUNetworkTestTypeName[pTmp->networkType]);
         U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
                                                pTmp->networkType,
                                                pTmp->pNetworkCfg) == 0);
@@ -293,8 +300,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                                         hash) != 0) ||
             (memcmp(hash, U_SECURITY_TLS_TEST_CLIENT_CERT_HASH, sizeof(hash)) != 0)) {
             // No: load the client certificate into the module
-            uPortLog("U_SECURITY_TLS_TEST: storing client certificate"
-                     " for the secure echo server...\n");
+            U_TEST_PRINT_LINE("storing client certificate for the secure echo server...");
             U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                         U_SECURITY_CREDENTIAL_CLIENT_X509,
                                                         "ubxlib_test_client_cert",
@@ -311,8 +317,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                                         hash) != 0) ||
             (memcmp(hash, U_SECURITY_TLS_TEST_CLIENT_KEY_HASH, sizeof(hash)) != 0)) {
             // No: load the client key into the module
-            uPortLog("U_SECURITY_TLS_TEST: storing client private key"
-                     " for the secure echo server...\n");
+            U_TEST_PRINT_LINE("storing client private key for the secure echo server...");
             U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                         U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                         "ubxlib_test_client_key",
@@ -331,8 +336,7 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                                         hash) != 0) ||
             (memcmp(hash, U_SECURITY_TLS_TEST_SERVER_CERT_HASH, sizeof(hash)) != 0)) {
             // No: load the server certificate into the module
-            uPortLog("U_SECURITY_TLS_TEST: storing server certificate"
-                     " for the secure echo server...\n");
+            U_TEST_PRINT_LINE("storing server certificate for the secure echo server...");
             U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                         U_SECURITY_CREDENTIAL_ROOT_CA_X509,
                                                         "ubxlib_test_server_cert",
@@ -342,8 +346,8 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         }
         settings.pRootCaCertificateName = "ubxlib_test_server_cert";
 
-        uPortLog("U_SECURITY_TLS_TEST: looking up secure TCP echo server \"%s\"...\n",
-                 U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME);
+        U_TEST_PRINT_LINE("looking up secure TCP echo server \"%s\"...",
+                          U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME);
 
         // Look up the remoteAddress of the server we use for TCP echo
         // The first call to a sockets API needs to
@@ -375,18 +379,17 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                                      U_SOCK_PROTOCOL_TCP);
 
             // Secure the socket
-            uPortLog("U_SECURITY_TLS_TEST: securing socket...\n");
+            U_TEST_PRINT_LINE("securing socket...");
             U_PORT_TEST_ASSERT(uSockSecurity(descriptor, &settings) == 0);
             heapXxxSockInitLoss -= uPortGetHeapFree();
 
             // Connect the socket
-            uPortLog("U_SECURITY_TLS_TEST: connect socket to \"%s:%d\"...\n",
-                     U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME,
-                     U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT);
+            U_TEST_PRINT_LINE("connect socket to \"%s:%d\"...",
+                              U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_DOMAIN_NAME,
+                              U_SOCK_TEST_ECHO_SECURE_TCP_SERVER_PORT);
             errorCode = uSockConnect(descriptor, &remoteAddress);
             if (errorCode < 0) {
-                uPortLog("U_SECURITY_TLS_TEST: *** WARNING *** failed"
-                         " to connect secured socket.\n");
+                U_TEST_PRINT_LINE("*** WARNING *** failed to connect secured socket.");
                 U_PORT_TEST_ASSERT(errno != 0);
                 closeSock(descriptor);
                 uPortTaskBlock(5000);
@@ -394,15 +397,13 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         }
         U_PORT_TEST_ASSERT(errorCode == 0);
 
-        uPortLog("U_SECURITY_TLS_TEST: sending/receiving data over a"
-                 " secure TCP socket...\n");
+        U_TEST_PRINT_LINE("sending/receiving data over a secure TCP socket...");
 
         // Throw everything we have up...
         U_PORT_TEST_ASSERT(sendTcp(descriptor, gData, sizeof(gData) - 1) == sizeof(gData) - 1);
 
-        uPortLog("U_SECURITY_TLS_TEST: %d byte(s) sent via TCP @%d ms,"
-                 " now receiving...\n", sizeof(gData) - 1,
-                 (int32_t) uPortGetTickTimeMs());
+        U_TEST_PRINT_LINE("%d byte(s) sent via TCP @%d ms, now receiving...",
+                          sizeof(gData) - 1, (int32_t) uPortGetTickTimeMs());
 
         // ...and capture them all again afterwards
         pDataReceived = (char *) malloc(sizeof(gData) - 1);
@@ -420,21 +421,18 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
                                   pDataReceived + offset,
                                   (sizeof(gData) - 1) - offset);
             if (sizeBytes > 0) {
-                uPortLog("U_SECURITY_TLS_TEST: received %d byte(s) on "
-                         " secure TCP socket.\n", sizeBytes);
+                U_TEST_PRINT_LINE("received %d byte(s) on secure TCP socket.", sizeBytes);
                 offset += sizeBytes;
             }
         }
         sizeBytes = offset;
         if (sizeBytes < sizeof(gData) - 1) {
-            uPortLog("U_SECURITY_TLS_TEST: only %d byte(s) received after %d ms.\n",
-                     sizeBytes,
-                     (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+            U_TEST_PRINT_LINE("only %d byte(s) received after %d ms.", sizeBytes,
+                              (int32_t) (uPortGetTickTimeMs() - startTimeMs));
         } else {
-            uPortLog("U_SECURITY_TLS_TEST: all %d byte(s) received back after"
-                     " %d ms, checking if they were as expected...\n",
-                     sizeBytes,
-                     (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+            U_TEST_PRINT_LINE("all %d byte(s) received back after %d ms, checking"
+                              " if they were as expected...", sizeBytes,
+                              (int32_t) (uPortGetTickTimeMs() - startTimeMs));
         }
 
         // Check that we reassembled everything correctly
@@ -446,15 +444,14 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
         if (!closeSock(descriptor)) {
             // Secure sockets sometimes fail to close with
             // the SARA-R412M-03B we have on the test system.
-            uPortLog("U_SECURITY_TLS_TEST: *** WARNING *** socket failed"
-                     " to close.\n");
+            U_TEST_PRINT_LINE("*** WARNING *** socket failed to close.");
         }
     }
 
     // Remove each network type
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
-        uPortLog("U_SECURITY_TLS_TEST: taking down %s...\n",
-                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_TEST_PRINT_LINE("taking down %s...",
+                          gpUNetworkTestTypeName[pTmp->networkType]);
         U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
                                                  pTmp->networkType) == 0);
     }
@@ -462,8 +459,8 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_TLS_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -480,10 +477,10 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsSock")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_SECURITY_TLS_TEST: %d byte(s) were lost to secure sockets"
-             " initialisation; we have leaked %d byte(s).\n",
-             heapSockInitLoss + heapXxxSockInitLoss,
-             heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+    U_TEST_PRINT_LINE("%d byte(s) were lost to secure sockets initialisation;"
+                      " we have leaked %d byte(s).",
+                      heapSockInitLoss + heapXxxSockInitLoss,
+                      heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
     U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
 #else
     (void) heapSockInitLoss;
@@ -509,8 +506,8 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
 
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_SECURITY_TLS_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", y);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", y);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -518,8 +515,8 @@ U_PORT_TEST_FUNCTION("[securityTls]", "securityTlsCleanUp")
 
     y = uPortGetHeapMinFree();
     if (y >= 0) {
-        uPortLog("U_SECURITY_TLS_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", y);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", y);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

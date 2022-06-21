@@ -63,6 +63,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_GNSS_CFG_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -111,8 +119,8 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
-        uPortLog("U_GNSS_CFG_TEST: testing on transport %s...\n",
-                 pGnssTestPrivateTransportTypeName(transportTypes[x]));
+        U_TEST_PRINT_LINE("testing on transport %s...",
+                          pGnssTestPrivateTransportTypeName(transportTypes[x]));
         U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
                                                     transportTypes[x], &gHandles, true,
                                                     U_CFG_APP_CELL_PIN_GNSS_POWER,
@@ -124,13 +132,13 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
 
         // Get the initial dynamic setting
         gDynamic = uGnssCfgGetDynamic(gnssHandle);
-        uPortLog("U_GNSS_CFG_TEST: initial dynamic setting is %d.\n", gDynamic);
+        U_TEST_PRINT_LINE("initial dynamic setting is %d.", gDynamic);
         U_PORT_TEST_ASSERT((gDynamic >= (int32_t) U_GNSS_DYNAMIC_PORTABLE) &&
                            (gDynamic <= (int32_t) U_GNSS_DYNAMIC_BIKE));
 
         // Get the initial fix mode
         gFixMode = uGnssCfgGetFixMode(gnssHandle);
-        uPortLog("U_GNSS_CFG_TEST: initial fix mode is %d.\n", gFixMode);
+        U_TEST_PRINT_LINE("initial fix mode is %d.", gFixMode);
         U_PORT_TEST_ASSERT((gFixMode >= (int32_t) U_GNSS_FIX_MODE_2D) &&
                            (gFixMode <= (int32_t) U_GNSS_FIX_MODE_AUTO));
 
@@ -138,10 +146,10 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
         // since that is only supported on a specific protocol version
         // which might not be on the chip we're using
         for (int32_t z = (int32_t) U_GNSS_DYNAMIC_PORTABLE; z <= (int32_t) U_GNSS_DYNAMIC_WRIST; z++) {
-            uPortLog("U_GNSS_CFG_TEST: setting dynamic %d.\n", z);
+            U_TEST_PRINT_LINE("setting dynamic %d.", z);
             U_PORT_TEST_ASSERT(uGnssCfgSetDynamic(gnssHandle, (uGnssDynamic_t) z) == 0);
             y = uGnssCfgGetDynamic(gnssHandle);
-            uPortLog("U_GNSS_CFG_TEST: dynamic setting is now %d.\n", y);
+            U_TEST_PRINT_LINE("dynamic setting is now %d.", y);
             U_PORT_TEST_ASSERT(y == z);
             // Check that the fix mode hasn't been changed
             U_PORT_TEST_ASSERT(uGnssCfgGetFixMode(gnssHandle) == gFixMode);
@@ -152,10 +160,10 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
 
         // Set all the fix modes
         for (int32_t z = (int32_t) U_GNSS_FIX_MODE_2D; z <= (int32_t) U_GNSS_FIX_MODE_AUTO; z++) {
-            uPortLog("U_GNSS_CFG_TEST: setting fix mode %d.\n", z);
+            U_TEST_PRINT_LINE("setting fix mode %d.", z);
             U_PORT_TEST_ASSERT(uGnssCfgSetFixMode(gnssHandle, (uGnssFixMode_t) z) == 0);
             y = uGnssCfgGetFixMode(gnssHandle);
-            uPortLog("U_GNSS_CFG_TEST: fix mode is now %d.\n", y);
+            U_TEST_PRINT_LINE("fix mode is now %d.", y);
             U_PORT_TEST_ASSERT(y == z);
             // Check that the dynamic setting hasn't been changed
             U_PORT_TEST_ASSERT(uGnssCfgGetDynamic(gnssHandle) == gDynamic);
@@ -175,7 +183,7 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_GNSS_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -203,8 +211,8 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_GNSS_CFG_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -212,8 +220,8 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_GNSS_CFG_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free at the"
+                          " end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

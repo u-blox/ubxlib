@@ -55,19 +55,21 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_SHORT_RANGE_PBUF_TEST: "
 
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
 
-
-
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
-
-
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -148,7 +150,7 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufInsertPayload")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_SHORT_RANGE_PBUF_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));
@@ -254,7 +256,7 @@ U_PORT_TEST_FUNCTION("[pbuf]", "pbufPktList")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_SHORT_RANGE_PBUF_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));

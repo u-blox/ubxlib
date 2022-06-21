@@ -67,6 +67,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_GNSS_TEST_PRIVATE: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -98,10 +106,9 @@ int32_t uGnssTestPrivateCellularOff()
     uAtClientHandle_t atClientHandle = NULL;
     uDeviceHandle_t cellHandle = NULL;
 
-    uPortLog("U_GNSS_TEST_PRIVATE: making sure cellular is off...\n");
+    U_TEST_PRINT_LINE("making sure cellular is off...");
 
-    uPortLog("U_GNSS_TEST_PRIVATE: opening UART %d...\n",
-             U_CFG_APP_CELL_UART);
+    U_TEST_PRINT_LINE("opening UART %d...", U_CFG_APP_CELL_UART);
     // Open a UART with the standard parameters
     errorCode = uPortUartOpen(U_CFG_APP_CELL_UART,
                               115200, NULL,
@@ -116,8 +123,8 @@ int32_t uGnssTestPrivateCellularOff()
         errorCode = uAtClientInit();
         if (errorCode == 0) {
             errorCode = (int32_t) U_ERROR_COMMON_UNKNOWN;
-            uPortLog("U_GNSS_TEST_PRIVATE: adding an AT client on UART %d...\n",
-                     U_CFG_APP_CELL_UART);
+            U_TEST_PRINT_LINE("adding an AT client on UART %d...",
+                              U_CFG_APP_CELL_UART);
             atClientHandle = uAtClientAdd(uartHandle,
                                           U_AT_CLIENT_STREAM_TYPE_UART,
                                           NULL,
@@ -128,8 +135,7 @@ int32_t uGnssTestPrivateCellularOff()
     if (atClientHandle != NULL) {
         errorCode = uCellInit();
         if (errorCode == 0) {
-            uPortLog("U_GNSS_TEST_PRIVATE: adding a cellular instance on"
-                     " the AT client...\n");
+            U_TEST_PRINT_LINE("adding a cellular instance on the AT client...");
             errorCode = uCellAdd(U_CFG_TEST_CELL_MODULE_TYPE,
                                  atClientHandle,
                                  U_CFG_APP_PIN_CELL_ENABLE_POWER,
@@ -148,11 +154,11 @@ int32_t uGnssTestPrivateCellularOff()
         if (uCellPwrIsPowered(cellHandle) && uCellPwrIsAlive(cellHandle)) {
             // Finally, power it off
 # if U_CFG_APP_PIN_CELL_PWR_ON >= 0
-            uPortLog("U_GNSS_TEST_PRIVATE: now we can power cellular off...\n");
+            U_TEST_PRINT_LINE("now we can power cellular off...");
             errorCode = uCellPwrOff(cellHandle, NULL);
 # endif
         } else {
-            uPortLog("U_GNSS_TEST_PRIVATE: cellular is already off.\n");
+            U_TEST_PRINT_LINE("cellular is already off.");
             errorCode = (int32_t) U_ERROR_COMMON_SUCCESS;
         }
     }
@@ -218,7 +224,7 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
     pParameters->cellHandle = NULL;
     pParameters->gnssHandle = NULL;
 
-    uPortLog("U_GNSS_TEST_PRIVATE: test preamble start.\n");
+    U_TEST_PRINT_LINE("test preamble start.");
 
     // Initialise the porting layer
     errorCode = uPortInit();
@@ -229,8 +235,7 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
             case U_GNSS_TRANSPORT_UBX_UART:
             //lint -fallthrough
             case U_GNSS_TRANSPORT_NMEA_UART:
-                uPortLog("U_GNSS_TEST_PRIVATE: opening GNSS UART %d...\n",
-                         U_CFG_APP_GNSS_UART);
+                U_TEST_PRINT_LINE("opening GNSS UART %d...", U_CFG_APP_GNSS_UART);
                 // Open a UART with the standard parameters
                 errorCode = uPortUartOpen(U_CFG_APP_GNSS_UART,
                                           U_GNSS_UART_BAUD_RATE, NULL,
@@ -259,8 +264,7 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
                 transportHandle.pAt = pParameters->pAtClientHandle;
             }
 #else
-            uPortLog("U_GNSS_TEST_PRIVATE: U_CFG_TEST_CELL_MODULE_TYPE is"
-                     " not defined, can't use AT.\n");
+            U_TEST_PRINT_LINE("U_CFG_TEST_CELL_MODULE_TYPE is not defined, can't use AT.");
 #endif
             break;
             default:
@@ -270,7 +274,7 @@ int32_t uGnssTestPrivatePreamble(uGnssModuleType_t moduleType,
         if (errorCode >= 0) {
             // Now add GNSS on the transport
             if (uGnssInit() == 0) {
-                uPortLog("U_GNSS_TEST_PRIVATE: adding a GNSS instance...\n");
+                U_TEST_PRINT_LINE("adding a GNSS instance...");
                 errorCode = uGnssAdd(moduleType,
                                      transportType,
                                      //lint -e(644) Suppress transportHandle might not be
@@ -312,7 +316,7 @@ void uGnssTestPrivatePostamble(uGnssTestPrivate_t *pParameters,
         uGnssPwrOff(pParameters->gnssHandle);
     }
 
-    uPortLog("U_GNSS_TEST_PRIVATE: deinitialising GNSS API...\n");
+    U_TEST_PRINT_LINE("deinitialising GNSS API...");
     // Let uGnssDeinit() remove the GNSS handle
     uGnssDeinit();
     pParameters->gnssHandle = NULL;

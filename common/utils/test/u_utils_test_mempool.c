@@ -54,6 +54,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_MEMPOOL_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #define TEST_BLOCK_COUNT 8
 #define TEST_BLOCK_SIZE  64
 
@@ -61,13 +69,9 @@
  * TYPES
  * -------------------------------------------------------------- */
 
-
-
 /* ----------------------------------------------------------------
  * VARIABLES
  * -------------------------------------------------------------- */
-
-
 
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
@@ -124,7 +128,7 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolBasic")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_MEMPOOL_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));
@@ -168,7 +172,7 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolFull")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_MEMPOOL_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));
@@ -187,7 +191,7 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolFreeAllMem")
     // correct initial heap size
     uPortDeinit();
     heapUsed = uPortGetHeapFree();
-    uPortLog("Heap used at start %d\n", heapUsed);
+    U_TEST_PRINT_LINE("heap used at start %d.", heapUsed);
 
     errCode = uMemPoolInit(&mempoolDesc, TEST_BLOCK_SIZE, TEST_BLOCK_COUNT);
     U_PORT_TEST_ASSERT(errCode == U_ERROR_COMMON_SUCCESS);
@@ -217,7 +221,7 @@ U_PORT_TEST_FUNCTION("[mempool]", "mempoolFreeAllMem")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_MEMPOOL_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed == 0) || (heapUsed == (int32_t)U_ERROR_COMMON_NOT_SUPPORTED));

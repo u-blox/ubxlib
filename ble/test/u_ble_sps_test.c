@@ -78,6 +78,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_BLE_SPS_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -157,7 +165,7 @@ U_PORT_TEST_FUNCTION("[bleSps]", "bleSps")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_BLE_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -187,8 +195,8 @@ U_PORT_TEST_FUNCTION("[bleSps]", "bleSpsCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_BLE_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -196,8 +204,8 @@ U_PORT_TEST_FUNCTION("[bleSps]", "bleSpsCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_BLE_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

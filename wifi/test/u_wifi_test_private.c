@@ -56,6 +56,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_WIFI_TEST_PRIVATE: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -89,8 +97,7 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
     // Initialise the porting layer and wifi
     if ((uPortInit() == 0) && (uWifiInit() == 0) && (uAtClientInit() == 0)) {
         uDeviceHandle_t devHandle = NULL;
-        uPortLog("U_WIFI_TEST_PRIVATE: opening UART %d...\n",
-                 U_CFG_APP_SHORT_RANGE_UART);
+        U_TEST_PRINT_LINE("opening UART %d...", U_CFG_APP_SHORT_RANGE_UART);
 
         errorCodeOrHandle = uShortRangeOpenUart((uShortRangeModuleType_t)moduleType, pUartConfig,
                                                 true, &devHandle);
@@ -122,13 +129,13 @@ int32_t uWifiTestPrivatePreamble(uWifiModuleType_t moduleType,
                 errorCodeOrHandle = (int32_t) U_ERROR_COMMON_UNKNOWN;
                 pModule = uShortRangeGetModuleInfo((uShortRangeModuleType_t)moduleType);
                 if (pModule != NULL) {
-                    uPortLog("U_WIFI_TEST_PRIVATE: Module: %d\n", pModule->moduleType);
+                    U_TEST_PRINT_LINE("module: %d.", pModule->moduleType);
                     errorCodeOrHandle = (int32_t) U_ERROR_COMMON_SUCCESS;
                 }
 
                 if (errorCodeOrHandle == 0) {
                     pParameters->devHandle = devHandle;
-                    uPortLog("U_WIFI_TEST_PRIVATE: module is powered-up and configured for testing.\n");
+                    U_TEST_PRINT_LINE("module is powered-up and configured for testing.");
                 }
             }
         }

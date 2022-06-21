@@ -73,6 +73,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_PWR_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #ifndef U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS
 /** The active time to use during 3GPP power saving testing,
  * a value known to work with the Nutaq test network we use in our
@@ -255,14 +263,14 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
     trulyHardPowerOff = true;
 #  endif
 
-    uPortLog("U_CELL_PWR_TEST: running power-on and alive tests");
+    uPortLog(U_TEST_PREFIX "running power-on and alive tests");
     if (pinVint >= 0) {
         uPortLog(" with VInt on pin %d.\n", pinVint);
     } else {
         uPortLog(" without VInt.\n");
     }
 
-    uPortLog("U_CELL_PWR_TEST: adding a cellular instance on the AT client...\n");
+    U_TEST_PRINT_LINE("adding a cellular instance on the AT client...");
     returnCode = uCellAdd(U_CFG_TEST_CELL_MODULE_TYPE,
                           pHandles->atClientHandle,
                           U_CFG_APP_PIN_CELL_ENABLE_POWER,
@@ -288,14 +296,14 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
 
     // If the module is on at the start, switch it off.
     if (uCellPwrIsAlive(cellHandle)) {
-        uPortLog("U_CELL_PWR_TEST: powering off to begin test.\n");
+        U_TEST_PRINT_LINE("powering off to begin test.");
         uCellPwrOff(cellHandle, NULL);
-        uPortLog("U_CELL_PWR_TEST: power off completed.\n");
+        U_TEST_PRINT_LINE("power off completed.");
 #  if U_CFG_APP_PIN_CELL_VINT < 0
-        uPortLog("U_CELL_PWR_TEST: waiting another %d second(s)"
-                 " to be sure of a clean power off as there's"
-                 " no VInt pin to tell us...\n",
-                 pModule->powerDownWaitSeconds);
+        U_TEST_PRINT_LINE("waiting another %d second(s) to be"
+                          " sure of a clean power off as there's"
+                          " no VInt pin to tell us...",
+                          pModule->powerDownWaitSeconds);
         uPortTaskBlock(pModule->powerDownWaitSeconds * 1000);
 #  endif
     }
@@ -303,7 +311,7 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
     // Do this twice so as to check transiting from
     // a call to uCellPwrOff() back to a call to uCellPwrOn().
     for (size_t x = 0; x < 2; x++) {
-        uPortLog("U_CELL_PWR_TEST: testing power-on and alive calls");
+        uPortLog(U_TEST_PREFIX "testing power-on and alive calls");
         if (x > 0) {
             uPortLog(" with a callback passed to uCellPwrOff(), and"
                      " a %d second power-off timer, iteration %d.\n",
@@ -318,14 +326,14 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
         // TODO Note: only use a NULL PIN as we don't support anything
         // else at least that's the case on SARA-R4 when you want to
         // have power saving
-        uPortLog("U_CELL_PWR_TEST: powering on...\n");
+        U_TEST_PRINT_LINE("powering on...");
         U_PORT_TEST_ASSERT(uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN,
                                       NULL) == 0);
-        uPortLog("U_CELL_PWR_TEST: checking that module is alive...\n");
+        U_TEST_PRINT_LINE("checking that module is alive...");
         U_PORT_TEST_ASSERT(uCellPwrIsAlive(cellHandle));
         // Give the module time to sort itself out
-        uPortLog("U_CELL_PWR_TEST: waiting %d second(s) before powering off...\n",
-                 pModule->minAwakeTimeSeconds);
+        U_TEST_PRINT_LINE("waiting %d second(s) before powering off...",
+                          pModule->minAwakeTimeSeconds);
         uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
         // Test with and without a keep-going callback
         if (x > 0) {
@@ -337,22 +345,22 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
                           (((int64_t) pModule->powerDownWaitSeconds) * 1000);
         }
         // Give the module time to sort itself out
-        uPortLog("U_CELL_PWR_TEST: waiting %d second(s) before powering off...\n",
-                 pModule->minAwakeTimeSeconds);
+        U_TEST_PRINT_LINE("waiting %d second(s) before powering off...",
+                          pModule->minAwakeTimeSeconds);
         uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
 #  if U_CFG_APP_PIN_CELL_VINT < 0
         timeMs = uPortGetTickTimeMs();
 #  endif
-        uPortLog("U_CELL_PWR_TEST: powering off...\n");
+        U_TEST_PRINT_LINE("powering off...");
         uCellPwrOff(cellHandle, pKeepGoingCallback);
-        uPortLog("U_CELL_PWR_TEST: power off completed.\n");
+        U_TEST_PRINT_LINE("power off completed.");
 #  if U_CFG_APP_PIN_CELL_VINT < 0
         timeMs = uPortGetTickTimeMs() - timeMs;
         if (timeMs < pModule->powerDownWaitSeconds * 1000) {
             timeMs = (pModule->powerDownWaitSeconds * 1000) - timeMs;
-            uPortLog("U_CELL_PWR_TEST: waiting another %d second(s) to be sure of a "
-                     "clean power off as there's no VInt pin to tell us...\n",
-                     (int32_t) ((timeMs / 1000) + 1));
+            U_TEST_PRINT_LINE("waiting another %d second(s) to be sure of a "
+                              "clean power off as there's no VInt pin to tell us...",
+                              (int32_t) ((timeMs / 1000) + 1));
             uPortTaskBlock(timeMs);
         }
 #  endif
@@ -362,7 +370,7 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
     // a call to uCellPwrOffHard() to a call to
     // uCellPwrOn().
     for (size_t x = 0; x < 2; x++) {
-        uPortLog("U_CELL_PWR_TEST: testing power-on and alive calls with "
+        uPortLog(U_TEST_PREFIX "testing power-on and alive calls with "
                  "uCellPwrOffHard()");
         if (trulyHardPowerOff) {
             uPortLog(" and truly hard power off");
@@ -372,40 +380,40 @@ static void testPowerAliveVInt(uCellTestPrivate_t *pHandles,
 #  if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
         U_PORT_TEST_ASSERT(!uCellPwrIsPowered(cellHandle));
 #  endif
-        uPortLog("U_CELL_PWR_TEST: powering on...\n");
+        U_TEST_PRINT_LINE("powering on...");
         U_PORT_TEST_ASSERT(uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN,
                                       NULL) == 0);
-        uPortLog("U_CELL_PWR_TEST: checking that module is alive...\n");
+        U_TEST_PRINT_LINE("checking that module is alive...");
         U_PORT_TEST_ASSERT(uCellPwrIsAlive(cellHandle));
         // Let the module sort itself out
-        uPortLog("U_CELL_PWR_TEST: waiting %d second(s) before powering off...\n",
-                 pModule->minAwakeTimeSeconds);
+        U_TEST_PRINT_LINE("waiting %d second(s) before powering off...",
+                          pModule->minAwakeTimeSeconds);
         uPortTaskBlock(pModule->minAwakeTimeSeconds * 1000);
 #  if U_CFG_APP_PIN_CELL_VINT < 0
         timeMs = uPortGetTickTimeMs();
 #  endif
-        uPortLog("U_CELL_PWR_TEST: hard powering off...\n");
+        U_TEST_PRINT_LINE("hard powering off...");
         uCellPwrOffHard(cellHandle, trulyHardPowerOff, NULL);
-        uPortLog("U_CELL_PWR_TEST: hard power off completed.\n");
+        U_TEST_PRINT_LINE("hard power off completed.");
 #  if U_CFG_APP_PIN_CELL_VINT < 0
         timeMs = uPortGetTickTimeMs() - timeMs;
         if (!trulyHardPowerOff && (timeMs < pModule->powerDownWaitSeconds * 1000)) {
             timeMs = (pModule->powerDownWaitSeconds * 1000) - timeMs;
-            uPortLog("U_CELL_PWR_TEST: waiting another %d second(s) to be"
-                     " sure of a clean power off as there's no VInt pin to"
-                     " tell us...\n", (int32_t) ((timeMs / 1000) + 1));
+            U_TEST_PRINT_LINE("waiting another %d second(s) to be sure of"
+                              " a clean power off as there's no VInt pin to"
+                              " tell us...", (int32_t) ((timeMs / 1000) + 1));
             uPortTaskBlock(timeMs);
         }
 #  endif
     }
 
-    uPortLog("U_CELL_PWR_TEST: testing power-on and alive calls after hard power off.\n");
+    U_TEST_PRINT_LINE("testing power-on and alive calls after hard power off.");
     U_PORT_TEST_ASSERT(!uCellPwrIsAlive(cellHandle));
 #  if U_CFG_APP_PIN_CELL_ENABLE_POWER >= 0
     U_PORT_TEST_ASSERT(!uCellPwrIsPowered(cellHandle));
 #  endif
 
-    uPortLog("U_CELL_PWR_TEST: removing cellular instance...\n");
+    U_TEST_PRINT_LINE("removing cellular instance...");
     uCellRemove(cellHandle);
 }
 
@@ -493,8 +501,9 @@ static int32_t connectToEchoServer(uDeviceHandle_t cellHandle, uSockAddress_t *p
         // Add the port number we will use
         pEchoServerAddress->port = U_SOCK_TEST_ECHO_TCP_SERVER_PORT;
 
-        uPortLog("U_CELL_PWR_TEST: connecting to %s:%d...\n",
-                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME, pEchoServerAddress->port);
+        U_TEST_PRINT_LINE("connecting to %s:%d...",
+                          U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                          pEchoServerAddress->port);
 
         // Create a TCP socket
         sockHandle = uCellSockCreate(cellHandle, U_SOCK_TYPE_STREAM, U_SOCK_PROTOCOL_TCP);
@@ -503,7 +512,7 @@ static int32_t connectToEchoServer(uDeviceHandle_t cellHandle, uSockAddress_t *p
             uCellSockConnect(cellHandle, sockHandle, pEchoServerAddress);
         }
 
-        uPortLog("U_CELL_PWR_TEST: socket connected is %d.\n", sockHandle);
+        U_TEST_PRINT_LINE("socket connected is %d.", sockHandle);
     }
 
     return sockHandle;
@@ -517,8 +526,8 @@ static int32_t echoData(uDeviceHandle_t cellHandle, int32_t sockHandle)
     size_t count;
     char buffer[U_CELL_PWR_TEST_ECHO_STRING_LENGTH_BYTES];
 
-    uPortLog("U_CELL_PWR_TEST: sending \"%s\" (%d byte(s)) on socket %d...\n",
-             U_CELL_PWR_TEST_ECHO_STRING, sizeof(buffer), sockHandle);
+    U_TEST_PRINT_LINE("sending \"%s\" (%d byte(s)) on socket %d...",
+                      U_CELL_PWR_TEST_ECHO_STRING, sizeof(buffer), sockHandle);
 
     y = 0;
     count = 0;
@@ -534,11 +543,11 @@ static int32_t echoData(uDeviceHandle_t cellHandle, int32_t sockHandle)
         count++;
     }
     if (y == sizeof(buffer)) {
-        uPortLog("U_CELL_PWR_TEST: %d byte(s) sent.\n", y);
+        U_TEST_PRINT_LINE("%d byte(s) sent.", y);
     }
 
     // Get the data back again
-    uPortLog("U_CELL_PWR_TEST: receiving echoed data back...\n");
+    U_TEST_PRINT_LINE("receiving echoed data back...");
     y = 0;
     count = 0;
     memset(buffer, 0, sizeof(buffer));
@@ -552,7 +561,7 @@ static int32_t echoData(uDeviceHandle_t cellHandle, int32_t sockHandle)
         }
         count++;
     }
-    uPortLog("U_CELL_PWR_TEST: %d byte(s) received back.\n", y);
+    U_TEST_PRINT_LINE("%d byte(s) received back.", y);
 
     // Compare the data
     return memcmp(buffer, U_CELL_PWR_TEST_ECHO_STRING, sizeof(buffer));
@@ -613,9 +622,9 @@ static bool setEdrx(uDeviceHandle_t cellHandle, int32_t *pSockHandle,
     memset(&gEDrxParameters, 0, sizeof(gEDrxParameters));
     gCallbackErrorCode = 0;
 
-    uPortLog("U_CELL_PWR_TEST: **REQUESTING** E-DRX %s, %d second(s), paging window"
-             " %d second(s).\n", onNotOff ? "on" : "off",
-             eDrxSeconds, pagingWindowSeconds);
+    U_TEST_PRINT_LINE("**REQUESTING** E-DRX %s, %d second(s), paging window"
+                      " %d second(s).", onNotOff ? "on" : "off",
+                      eDrxSeconds, pagingWindowSeconds);
     U_PORT_TEST_ASSERT(uCellPwrSetRequestedEDrx(cellHandle, rat,
                                                 onNotOff,
                                                 eDrxSeconds,
@@ -638,7 +647,7 @@ static bool setEdrx(uDeviceHandle_t cellHandle, int32_t *pSockHandle,
 
     // Wait for the callback to be called if we have an expected value to check
     if (eDrxSecondsExpected >= 0) {
-        uPortLog("U_CELL_PWR_TEST: waiting for the URC...\n");
+        U_TEST_PRINT_LINE("waiting for the URC...");
         for (size_t x = 0; (x < 60) && (gEDrxParameters.rat != rat) &&
              (gEDrxParameters.onNotOff != onNotOff) &&
              (gEDrxParameters.eDrxSecondsRequested != eDrxSecondsExpected) &&
@@ -656,9 +665,9 @@ static bool setEdrx(uDeviceHandle_t cellHandle, int32_t *pSockHandle,
                                                     &onNotOff,
                                                     &eDrxSeconds,
                                                     &pagingWindowSeconds) == 0);
-        uPortLog("U_CELL_PWR_TEST: E-DRX set to %s, %d second(s), paging window"
-                 " %d second(s).\n", onNotOff ? "on" : "off", eDrxSeconds,
-                 pagingWindowSeconds);
+        U_TEST_PRINT_LINE("E-DRX set to %s, %d second(s), paging window"
+                          " %d second(s).", onNotOff ? "on" : "off", eDrxSeconds,
+                          pagingWindowSeconds);
         U_PORT_TEST_ASSERT(onNotOff == onNotOffExpected);
         U_PORT_TEST_ASSERT(eDrxSeconds == eDrxSecondsExpected);
         // Not all modules support setting or getting paging window so
@@ -724,8 +733,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
-    uPortLog("U_CELL_PWR_TEST: adding an AT client on UART %d...\n",
-             U_CFG_APP_CELL_UART);
+    U_TEST_PRINT_LINE("adding an AT client on UART %d...",
+                      U_CFG_APP_CELL_UART);
     gHandles.atClientHandle = uAtClientAdd(gHandles.uartHandle,
                                            U_AT_CLIENT_STREAM_TYPE_UART,
                                            NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
@@ -752,11 +761,10 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwr")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -786,7 +794,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
     // that is ephemeral so that we know whether a reboot has
     // occurred.  Anyway, this will be tested in those tests that
     // change bandmask and RAT.
-    uPortLog("U_CELL_PWR_TEST: rebooting cellular...\n");
+    U_TEST_PRINT_LINE("rebooting cellular...");
     U_PORT_TEST_ASSERT(uCellPwrReboot(gHandles.cellHandle, NULL) == 0);
 
     U_PORT_TEST_ASSERT(uCellPwrIsAlive(gHandles.cellHandle));
@@ -797,11 +805,10 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReboot")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -826,7 +833,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
     U_PORT_TEST_ASSERT(uCellTestPrivatePreamble(U_CFG_TEST_CELL_MODULE_TYPE,
                                                 &gHandles, true) == 0);
 
-    uPortLog("U_CELL_PWR_TEST: resetting cellular...\n");
+    U_TEST_PRINT_LINE("resetting cellular...");
     x = uCellPwrResetHard(gHandles.cellHandle, U_CFG_APP_PIN_CELL_RESET);
 # if U_CFG_APP_PIN_CELL_RESET >= 0
     U_PORT_TEST_ASSERT(x == 0);
@@ -842,11 +849,10 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrReset")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -897,11 +903,10 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingUart")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -977,7 +982,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         // sleep for SARA-R422 is temporarily disabled
         U_CELL_PRIVATE_HAS(pModule,
                            U_CELL_PRIVATE_FEATURE_3GPP_POWER_SAVING)) {
-        uPortLog("U_CELL_PWR_TEST: testing 3GPP power saving...\n");
+        U_TEST_PRINT_LINE("testing 3GPP power saving...");
 
         // LWM2M activity can get in the way of 3GPP power saving and
         // some module types don't store the disabledness of the LWM2M
@@ -1059,9 +1064,10 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         U_PORT_TEST_ASSERT(uCellPwrGetRequested3gppPowerSaving(cellHandle, &onNotOff,
                                                                &activeTimeSeconds,
                                                                &periodicWakeupSeconds) == 0);
-        uPortLog("U_CELL_PWR_TEST: active time set to %d second(s),"
-                 " perodic wake-up %d second(s) (power saving %s).\n",
-                 activeTimeSeconds, periodicWakeupSeconds, onNotOff ? "on" : "off");
+        U_TEST_PRINT_LINE("active time set to %d second(s), perodic wake-up"
+                          " %d second(s) (power saving %s).",
+                          activeTimeSeconds, periodicWakeupSeconds,
+                          onNotOff ? "on" : "off");
         U_PORT_TEST_ASSERT(!onNotOff);
         U_PORT_TEST_ASSERT(activeTimeSeconds == U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS);
         U_PORT_TEST_ASSERT(periodicWakeupSeconds == U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS);
@@ -1073,7 +1079,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                                                               (void *) &wakeCallbackParam) == 0);
 
         // Now actually enable 3GPP power saving
-        uPortLog("U_CELL_PWR_TEST: **REQUESTING** 3GPP power saving on...\n");
+        U_TEST_PRINT_LINE("**REQUESTING** 3GPP power saving on...");
         U_PORT_TEST_ASSERT(uCellPwrSetRequested3gppPowerSaving(cellHandle, rat,
                                                                true,
                                                                U_CELL_PWR_TEST_ACTIVE_TIME_SECONDS,
@@ -1093,8 +1099,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         U_PORT_TEST_ASSERT(periodicWakeupSeconds == U_CELL_PWR_TEST_PERIODIC_WAKEUP_SECONDS);
 
         // Wait for us to return to idle
-        uPortLog("U_CELL_PWR_TEST: waiting up to %d seconds(s) for return"
-                 " to idle...\n", U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS);
+        U_TEST_PRINT_LINE("waiting up to %d seconds(s) for return to idle...",
+                          U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS);
         if (connectionCallbackParameter >= 0) {
             for (x = 0; (connectionCallbackParameter > 0) &&
                  (x < U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS); x++) {
@@ -1107,7 +1113,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
 
         // Get the assigned 3GPP power saving parameters; the new settings may
         // take a while to be propagated to the network so try this a few times
-        uPortLog("U_CELL_PWR_TEST: waiting for the network to agree...\n");
+        U_TEST_PRINT_LINE("waiting for the network to agree...");
         onNotOff = false;
         activeTimeSeconds = 0;
         periodicWakeupSeconds = 0;
@@ -1125,9 +1131,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
 
         // Wait for the active time to expire, with some margin,
         // and check that the module is asleep
-        uPortLog("U_CELL_PWR_TEST: waiting up to %d second(s) for sleep...\n",
-                 activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
-                 U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS);
+        U_TEST_PRINT_LINE("waiting up to %d second(s) for sleep...",
+                          activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                          U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS);
         if (uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0) {
             // A sleep activity indication is supported so we can wait for that
             for (x = 0; !sleepActive && (x < activeTimeSeconds +
@@ -1137,7 +1143,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                 uPortTaskBlock(1000);
             }
             U_PORT_TEST_ASSERT(sleepActive);
-            uPortLog("U_CELL_PWR_TEST: module has fallen asleep.\n");
+            U_TEST_PRINT_LINE("module has fallen asleep.");
         } else {
             // No indication is available, just have to block
             uPortTaskBlock((activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
@@ -1146,10 +1152,10 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
 
         // Perform an operation that sends an AT command to the module:
         // this should work
-        uPortLog("U_CELL_PWR_TEST: requesting the IMEI when the module is asleep...\n");
+        U_TEST_PRINT_LINE("requesting the IMEI when the module is asleep...");
         U_PORT_TEST_ASSERT(uCellInfoGetImei(cellHandle, buffer) == 0);
-        uPortLog("U_CELL_PWR_TEST: wake-up callback has been called %d time(s).\n",
-                 wakeCallbackParam);
+        U_TEST_PRINT_LINE("wake-up callback has been called %d time(s).",
+                          wakeCallbackParam);
         // Wait a moment for the wake-up callback to propagate
         uPortTaskBlock(1000);
         U_PORT_TEST_ASSERT(wakeCallbackParam == 1);
@@ -1168,9 +1174,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         }
 
         // Wait for the module to go to sleep again
-        uPortLog("U_CELL_PWR_TEST: waiting up to %d second(s) for sleep again...\n",
-                 activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
-                 U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS);
+        U_TEST_PRINT_LINE("waiting up to %d second(s) for sleep again...",
+                          activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                          U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS);
         if (uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0) {
             for (x = 0; !sleepActive && (x < activeTimeSeconds +
                                          U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
@@ -1179,7 +1185,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                 uPortTaskBlock(1000);
             }
             U_PORT_TEST_ASSERT(sleepActive);
-            uPortLog("U_CELL_PWR_TEST: module has fallen asleep again.\n");
+            U_TEST_PRINT_LINE("module has fallen asleep again.");
         } else {
             // No indication is available, just have to block
             uPortTaskBlock((activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
@@ -1188,10 +1194,10 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
 
         // Wake the module up using the pwr API call this time; the
         // wake-up callback should have been called
-        uPortLog("U_CELL_PWR_TEST: waking the module by calling the pwr API directly...\n");
+        U_TEST_PRINT_LINE("waking the module by calling the pwr API directly...");
         U_PORT_TEST_ASSERT(uCellPwrWakeUpFromDeepSleep(cellHandle, NULL) == 0);
-        uPortLog("U_CELL_PWR_TEST: wake-up callback has been called %d time(s).\n",
-                 wakeCallbackParam);
+        U_TEST_PRINT_LINE("wake-up callback has been called %d time(s).",
+                          wakeCallbackParam);
         // Wait a moment for the wake-up callback to propagate
         uPortTaskBlock(1000);
         U_PORT_TEST_ASSERT(wakeCallbackParam == 2);
@@ -1210,9 +1216,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         }
 
         // Wait for the module to fall sleep again
-        uPortLog("U_CELL_PWR_TEST: waiting up to %d second(s) for sleep...\n",
-                 activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
-                 U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS);
+        U_TEST_PRINT_LINE("waiting up to %d second(s) for sleep...",
+                          activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
+                          U_CELL_PWR_TEST_3GPP_POWER_SAVING_MARGIN_SECONDS);
 
         if (uCellPwrGetDeepSleepActive(cellHandle, &sleepActive) == 0) {
             for (x = 0; !sleepActive && (x < activeTimeSeconds +
@@ -1222,7 +1228,7 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                 uPortTaskBlock(1000);
             }
             U_PORT_TEST_ASSERT(sleepActive);
-            uPortLog("U_CELL_PWR_TEST: module has successfully gone to sleepy-byes.\n");
+            U_TEST_PRINT_LINE("module has successfully gone to sleepy-byes.");
         } else {
             // No indication is available, just have to block
             uPortTaskBlock((activeTimeSeconds + U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS +
@@ -1239,8 +1245,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
                                                   U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
                                                   &echoServerAddress.ipAddress) == 0);
 
-        uPortLog("U_CELL_PWR_TEST: wake-up callback has been called %d time(s).\n",
-                 wakeCallbackParam);
+        U_TEST_PRINT_LINE("wake-up callback has been called %d time(s).",
+                          wakeCallbackParam);
         // It is possible for uCellSockGetHostByName() to take longer than the active time
         // and hence the wake-up callback may actually be called four times
         U_PORT_TEST_ASSERT((wakeCallbackParam == 3) || (wakeCallbackParam == 4));
@@ -1253,11 +1259,11 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
         U_PORT_TEST_ASSERT(connectNetwork(cellHandle) == 0);
 
-        uPortLog("U_CELL_PWR_TEST: 3GPP power saving callback has power saving %s,"
-                 " active time %d second(s), periodic wake-up %d second(s).",
-                 g3gppPowerSavingCallbackParameter.onNotOff ? "on" : "off",
-                 g3gppPowerSavingCallbackParameter.activeTimeSeconds,
-                 g3gppPowerSavingCallbackParameter.periodicWakeupSeconds);
+        U_TEST_PRINT_LINE("3GPP power saving callback has power saving %s,"
+                          " active time %d second(s), periodic wake-up %d second(s).",
+                          g3gppPowerSavingCallbackParameter.onNotOff ? "on" : "off",
+                          g3gppPowerSavingCallbackParameter.activeTimeSeconds,
+                          g3gppPowerSavingCallbackParameter.periodicWakeupSeconds);
         U_PORT_TEST_ASSERT(g3gppPowerSavingCallbackParameter.onNotOff == onNotOff);
         U_PORT_TEST_ASSERT(g3gppPowerSavingCallbackParameter.activeTimeSeconds == activeTimeSeconds);
         // Some modules don't include the periodic wake-up in their CEREG so need to allow
@@ -1284,8 +1290,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
         }
 
     } else {
-        uPortLog("U_CELL_PWR_TEST: not on an EUTRAN RAT, or 3GPP power saving not"
-                 " supported, 3GPP power saving cannot be tested.\n");
+        U_TEST_PRINT_LINE("not on an EUTRAN RAT, or 3GPP power saving not"
+                          " supported, 3GPP power saving cannot be tested.");
     }
 
     uCellNetSetBaseStationConnectionStatusCallback(cellHandle, NULL, NULL);
@@ -1296,10 +1302,10 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSaving3gpp")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to the C library during this"
-             " test and we have leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library during this"
+                      " test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1402,8 +1408,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
         if (x == (int32_t) U_CELL_ERROR_CONNECTED) {
             // Setting E-DRX while connected is not supported, disconnect
             // from the network
-            uPortLog("U_CELL_PWR_TEST: setting E-DRX while connected to the"
-                     " network is not supported by this module.\n");
+            U_TEST_PRINT_LINE("setting E-DRX while connected to the"
+                              " network is not supported by this module.");
             U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
             if (connectionCallbackParameter >= 0) {
                 uCellNetSetBaseStationConnectionStatusCallback(cellHandle, NULL, NULL);
@@ -1428,8 +1434,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
             U_PORT_TEST_ASSERT(echoData(cellHandle, gSockHandle) == 0);
         }
 
-        uPortLog("U_CELL_PWR_TEST: waiting for idle...\n",
-                 U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS);
+        U_TEST_PRINT_LINE("waiting for idle...",
+                          U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS);
         // Wait us to return to idle
         if (connectionCallbackParameter >= 0) {
             for (x = 0; (connectionCallbackParameter > 0) &&
@@ -1440,9 +1446,9 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
             // No callback, just have to wait
             uPortTaskBlock(U_CELL_PWR_TEST_RRC_DISCONNECT_SECONDS * 1000);
         }
-        uPortLog("U_CELL_PWR_TEST: waiting up to %d second(s) so that we likely"
-                 " enter E-DRX...\n", pagingWindowSeconds +
-                 U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS);
+        U_TEST_PRINT_LINE("waiting up to %d second(s) so that we likely"
+                          " enter E-DRX...", pagingWindowSeconds +
+                          U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS);
         uPortTaskBlock((pagingWindowSeconds + U_CELL_PWR_TEST_EDRX_MARGIN_SECONDS) * 1000);
 
         // Send something again to prove that we can still connect
@@ -1493,8 +1499,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
             U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
         }
     } else {
-        uPortLog("U_CELL_PWR_TEST: looks like E-DRX is not supported"
-                 " (uCellPwrGetRequestedEDrx() returned %d).\n", x);
+        U_TEST_PRINT_LINE("looks like E-DRX is not supported"
+                          " (uCellPwrGetRequestedEDrx() returned %d).", x);
         U_PORT_TEST_ASSERT(x == U_ERROR_COMMON_NOT_SUPPORTED);
     }
 
@@ -1506,11 +1512,10 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrSavingEDrx")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_PWR_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1546,8 +1551,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_PWR_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -1555,8 +1560,8 @@ U_PORT_TEST_FUNCTION("[cellPwr]", "cellPwrCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_CELL_PWR_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d bytes"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

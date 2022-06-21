@@ -68,6 +68,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_GNSS_UTIL_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #ifndef U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES
 /** The maximum size of a version string.
  */
@@ -123,8 +131,8 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
         // Can't do this when the NMEA stream is active, just too messy
         if (transportTypes[w] != U_GNSS_TRANSPORT_NMEA_UART) {
             // Do the standard preamble
-            uPortLog("U_GNSS_UTIL_TEST: testing on transport %s...\n",
-                     pGnssTestPrivateTransportTypeName(transportTypes[w]));
+            U_TEST_PRINT_LINE("testing on transport %s...",
+                              pGnssTestPrivateTransportTypeName(transportTypes[w]));
             U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
                                                         transportTypes[w], &gHandles, true,
                                                         U_CFG_APP_CELL_PIN_GNSS_POWER,
@@ -140,7 +148,7 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             U_PORT_TEST_ASSERT(pBuffer2 != NULL);
 
             // Ask for the firmware version string in the normal way
-            uPortLog("U_GNSS_UTIL_TEST: getting the version string the normal way...\n");
+            U_TEST_PRINT_LINE("getting the version string the normal way...");
             y = uGnssInfoGetFirmwareVersionStr(gnssHandle, pBuffer1,
                                                U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
             U_PORT_TEST_ASSERT(y > 0);
@@ -150,12 +158,12 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             memset(pBuffer2, 0x66, U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
             x = uUbxProtocolEncode(0x0a, 0x04, NULL, 0, command);
             U_PORT_TEST_ASSERT(x == sizeof(command));
-            uPortLog("U_GNSS_UTIL_TEST: getting the version string using transparent API...\n");
+            U_TEST_PRINT_LINE("getting the version string using transparent API...");
             x = uGnssUtilUbxTransparentSendReceive(gnssHandle,
                                                    command, sizeof(command),
                                                    pBuffer2,
                                                    U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES);
-            uPortLog("U_GNSS_UTIL_TEST: %d byte(s) returned.\n", x);
+            U_TEST_PRINT_LINE("%d byte(s) returned.", x);
             U_PORT_TEST_ASSERT(x == y + U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES);
             for (z = x + 1; x < U_GNSS_UTIL_TEST_VERSION_SIZE_MAX_BYTES; x++) {
                 U_PORT_TEST_ASSERT(*(pBuffer2 + z) == 0x66);
@@ -169,12 +177,12 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
 
             // The string returned contains multiple lines separated by more than one
             // null terminator; try to print it nicely here.
-            uPortLog("U_GNSS_UTIL_TEST: GNSS chip version string is:\n");
+            U_TEST_PRINT_LINE("GNSS chip version string is:");
             pTmp = pBuffer2 + 6;  // Skip 0xb5 0x62, message class/ID and length bytes
             while (pTmp < pBuffer2 + y) {
                 z = strlen(pTmp);
                 if (z > 0) {
-                    uPortLog("U_GNSS_UTIL_TEST: \"%s\".\n", pTmp);
+                    U_TEST_PRINT_LINE("\"%s\".", pTmp);
                     pTmp += z;
                 } else {
                     pTmp++;
@@ -188,12 +196,11 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
             // Repeat but throw the body away this time
             x = uUbxProtocolEncode(0x0a, 0x04, NULL, 0, command);
             U_PORT_TEST_ASSERT(x == sizeof(command));
-            uPortLog("U_GNSS_UTIL_TEST: get version string and throw it away with"
-                     " the transparent API...\n");
+            U_TEST_PRINT_LINE("get version string and throw it away with the transparent API...");
             x = uGnssUtilUbxTransparentSendReceive(gnssHandle,
                                                    command, sizeof(command),
                                                    NULL, 0);
-            uPortLog("U_GNSS_UTIL_TEST: %d byte(s) returned.\n", x);
+            U_TEST_PRINT_LINE("%d byte(s) returned.", x);
             U_PORT_TEST_ASSERT(x == 0);
 
             // Free memory
@@ -208,7 +215,7 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilTransparent")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_GNSS_UTIL_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -226,8 +233,8 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_GNSS_UTIL_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -235,8 +242,8 @@ U_PORT_TEST_FUNCTION("[gnssUtil]", "gnssUtilCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_GNSS_UTIL_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

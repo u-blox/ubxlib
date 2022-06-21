@@ -62,6 +62,40 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The base string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX_BASE "U_SECURITY_CREDENTIAL_TEST"
+
+/** The string to put at the start of all prints from this test
+ * that do not require any iterations on the end.
+ */
+#define U_TEST_PREFIX U_TEST_PREFIX_BASE ": "
+
+/** Print a whole line, with terminator, prefixed for this test
+ * file, no iteration(s) version.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
+/** The string to put at the start of all prints from this test
+ * where an interation is required on the end.
+ */
+#define U_TEST_PREFIX_X U_TEST_PREFIX_BASE "_%d: "
+
+/** Print a whole line, with terminator and an iteration on the end,
+ * prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE_X(format, ...) uPortLog(U_TEST_PREFIX_X format "\n", ##__VA_ARGS__)
+
+/** The string to put at the start of all prints from this test
+ * where two interations are required on the end.
+ */
+#define U_TEST_PREFIX_X_Y U_TEST_PREFIX_BASE "_%d_%d: "
+
+/** Print a whole line, with terminator and iterations on the end,
+ * prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE_X_Y(format, ...) uPortLog(U_TEST_PREFIX_X_Y format "\n", ##__VA_ARGS__)
+
 /** Some cellular modules don't support use of a password when
  * storing a security key.
  */
@@ -105,20 +139,19 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
     U_PORT_TEST_ASSERT(uDeviceInit() == 0);
 
-    uPortLog("U_SECURITY_CREDENTIAL_TEST: checking which storage"
-             " formats are supported.\n");
+    U_TEST_PRINT_LINE("checking which storage formats are supported.");
 
     // Get a list of things that support credential storage
     pList = pUNetworkTestListAlloc(uNetworkTestHasCredentialStorage);
     if (pList == NULL) {
-        uPortLog("U_SECURITY_CREDENTIAL_TEST: *** WARNING *** nothing to do.\n");
+        U_TEST_PRINT_LINE("*** WARNING *** nothing to do.");
     }
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
@@ -128,8 +161,8 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
         devHandle = *pTmp->pDevHandle;
         for (size_t y = 0; y < gUSecurityCredentialTestFormatSize; y++) {
             // Store the security credential
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: storing credential %s...\n",
-                     gUSecurityCredentialTestFormat[y].pDescription);
+            U_TEST_PRINT_LINE("storing credential %s...",
+                              gUSecurityCredentialTestFormat[y].pDescription);
             if (uSecurityCredentialStore(devHandle,
                                          gUSecurityCredentialTestFormat[y].type,
                                          "ubxlib_test",
@@ -137,16 +170,16 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
                                          gUSecurityCredentialTestFormat[y].size,
                                          gUSecurityCredentialTestFormat[y].pPassword,
                                          NULL) == 0) {
-                uPortLog("U_SECURITY_CREDENTIAL_TEST: %s format is supported.\n",
-                         gUSecurityCredentialTestFormat[y].pDescription);
+                U_TEST_PRINT_LINE("%s format is supported.",
+                                  gUSecurityCredentialTestFormat[y].pDescription);
                 // Delete the credential
-                uPortLog("U_SECURITY_CREDENTIAL_TEST: deleting credential...\n");
+                U_TEST_PRINT_LINE("deleting credential...");
                 uSecurityCredentialRemove(devHandle,
                                           gUSecurityCredentialTestFormat[y].type,
                                           "ubxlib_test");
             } else {
-                uPortLog("U_SECURITY_CREDENTIAL_TEST: %s format is NOT supported.\n",
-                         gUSecurityCredentialTestFormat[y].pDescription);
+                U_TEST_PRINT_LINE("%s format is NOT supported.",
+                                  gUSecurityCredentialTestFormat[y].pDescription);
             }
 
             // Give the module a rest in case we've upset it
@@ -157,8 +190,8 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialFormats")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -198,14 +231,14 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     // Get a list of things that support credential storage
     pList = pUNetworkTestListAlloc(uNetworkTestHasCredentialStorage);
     if (pList == NULL) {
-        uPortLog("U_SECURITY_CREDENTIAL_TEST: *** WARNING *** nothing to do.\n");
+        U_TEST_PRINT_LINE("*** WARNING *** nothing to do.");
     }
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
@@ -217,35 +250,29 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext, x++) {
         devHandle = *pTmp->pDevHandle;
 
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: testing %s.\n", x,
-                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_TEST_PRINT_LINE_X("testing %s.", x, gpUNetworkTestTypeName[pTmp->networkType]);
 
         // List the credentials at start of day
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials...\n", x);
+        U_TEST_PRINT_LINE_X(": listing credentials...", x);
         z = 0;
         otherCredentialCount = 0;
         for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
              y >= 0;
              y = uSecurityCredentialListNext(devHandle, &credential)) {
             z++;
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: credential name \"%s\".\n", x, z,
-                     credential.name);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: type %d.\n", x, z,
-                     credential.type);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: subject \"%s\".\n", x, z,
-                     credential.subject);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: expiration %d UTC.\n", x, z,
-                     credential.expirationUtc);
+            U_TEST_PRINT_LINE_X_Y("credential name \"%s\".", x, z, credential.name);
+            U_TEST_PRINT_LINE_X_Y("type %d.", x, z, credential.type);
+            U_TEST_PRINT_LINE_X_Y("subject \"%s\".", x, z, credential.subject);
+            U_TEST_PRINT_LINE_X_Y("expiration %d UTC.", x, z, credential.expirationUtc);
             if ((strcmp(credential.name, "ubxlib_test_cert") != 0) &&
                 (strcmp(credential.name, "ubxlib_test_key") != 0)) {
                 otherCredentialCount++;
             }
         }
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: %d original credential(s) listed.\n",
-                 x, otherCredentialCount);
+        U_TEST_PRINT_LINE_X("%d original credential(s) listed.", x, otherCredentialCount);
 
         // Store the test certificate
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: storing certificate...\n", x);
+        U_TEST_PRINT_LINE_X("storing certificate...", x);
         U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                     U_SECURITY_CREDENTIAL_CLIENT_X509,
                                                     "ubxlib_test_cert",
@@ -254,19 +281,19 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
                                                     NULL, hash) == 0);
 
         // Read MD5 hash and compare with expected
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: reading MD5 hash of certificate...\n", x);
+        U_TEST_PRINT_LINE_X("reading MD5 hash of certificate...", x);
         U_PORT_TEST_ASSERT(uSecurityCredentialGetHash(devHandle,
                                                       U_SECURITY_CREDENTIAL_CLIENT_X509,
                                                       "ubxlib_test_cert",
                                                       buffer) == 0);
         // Compare
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: checking MD5 hash of certificate...\n", x);
+        U_TEST_PRINT_LINE_X("checking MD5 hash of certificate...", x);
         for (size_t y = 0; y < sizeof(buffer); y++) {
             U_PORT_TEST_ASSERT((uint8_t) buffer[y] == hash[y]);
         }
 
         // Check that the certificate is listed
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials...\n", x, z);
+        U_TEST_PRINT_LINE_X("listing credentials...", x);
         z = 0;
         for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
              y >= 0;
@@ -276,14 +303,10 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
                 // left in the system from a previous test
                 z++;
             }
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: credential name \"%s\".\n", x, z,
-                     credential.name);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: type %d.\n", x, z,
-                     credential.type);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: subject \"%s\".\n", x, z,
-                     credential.subject);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: expiration %d UTC.\n", x, z,
-                     credential.expirationUtc);
+            U_TEST_PRINT_LINE_X_Y("credential name \"%s\".", x, z, credential.name);
+            U_TEST_PRINT_LINE_X_Y("type %d.", x, z, credential.type);
+            U_TEST_PRINT_LINE_X_Y("subject \"%s\".", x, z, credential.subject);
+            U_TEST_PRINT_LINE_X_Y("expiration %d UTC.", x, z, credential.expirationUtc);
             if (strcmp(credential.name, "ubxlib_test_cert") == 0) {
                 U_PORT_TEST_ASSERT(credential.type == U_SECURITY_CREDENTIAL_CLIENT_X509);
                 // Used to check the subject here but V5 uConnectExpress doesn't
@@ -297,14 +320,14 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             }
         }
         U_PORT_TEST_ASSERT(z == otherCredentialCount + 1);
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: %d credential(s) listed.\n", x, z);
+        U_TEST_PRINT_LINE_X("%d credential(s) listed.", x, z);
 
         if (pTmp->networkType == U_NETWORK_TYPE_CELL) {
 #ifdef U_CFG_TEST_CELL_MODULE_TYPE
             //lint -e506 -e774 Suppress const value Boolean and always true
             if (U_SECURITY_CREDENTIAL_TEST_CELL_PASSWORD_SUPPORTED) {
                 // Store the security key
-                uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: storing private key...\n", x);
+                U_TEST_PRINT_LINE_X("storing private key...", x);
                 U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                             U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                             "ubxlib_test_key",
@@ -315,7 +338,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             } else {
                 // Have to store the unprotected security key,
                 // so that SARA-U201 can cope
-                uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: storing unprotected private key...\n", x);
+                U_TEST_PRINT_LINE_X("storing unprotected private key...", x);
                 U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                             U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                             "ubxlib_test_key",
@@ -326,7 +349,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
 #endif
         } else {
             // Store the security key
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: storing private key...\n", x);
+            U_TEST_PRINT_LINE_X("storing private key...", x);
             U_PORT_TEST_ASSERT(uSecurityCredentialStore(devHandle,
                                                         U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                         "ubxlib_test_key",
@@ -337,20 +360,16 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
         }
 
         // Check that both credentials are listed
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials...\n", x);
+        U_TEST_PRINT_LINE_X("listing credentials...", x);
         z = 0;
         for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
              y >= 0;
              y = uSecurityCredentialListNext(devHandle, &credential)) {
             z++;
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: credential name \"%s\".\n", x, z,
-                     credential.name);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: type %d.\n", x, z,
-                     credential.type);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: subject \"%s\".\n", x, z,
-                     credential.subject);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: expiration %d UTC.\n", x, z,
-                     credential.expirationUtc);
+            U_TEST_PRINT_LINE_X_Y("credential name \"%s\".", x, z, credential.name);
+            U_TEST_PRINT_LINE_X_Y("type %d.", x, z, credential.type);
+            U_TEST_PRINT_LINE_X_Y("subject \"%s\".", x, z, credential.subject);
+            U_TEST_PRINT_LINE_X_Y("expiration %d UTC.", x, z, credential.expirationUtc);
             if (strcmp(credential.name, "ubxlib_test_cert") == 0) {
                 U_PORT_TEST_ASSERT(credential.type == U_SECURITY_CREDENTIAL_CLIENT_X509);
                 if (credential.expirationUtc != 0) {
@@ -363,37 +382,35 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             }
         }
         U_PORT_TEST_ASSERT(z == otherCredentialCount + 2);
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: %d credential(s) listed.\n", x, z);
+        U_TEST_PRINT_LINE_X("%d credential(s) listed.", x, z);
 
         // Read MD5 hash and compare with expected
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: reading MD5 hash of key...\n", x);
+        U_TEST_PRINT_LINE_X("reading MD5 hash of key...", x);
         U_PORT_TEST_ASSERT(uSecurityCredentialGetHash(devHandle,
                                                       U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                       "ubxlib_test_key",
                                                       buffer) == 0);
         // Compare
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: checking MD5 hash of key...\n", x);
+        U_TEST_PRINT_LINE_X("checking MD5 hash of key...", x);
         for (size_t y = 0; y < sizeof(buffer); y++) {
             U_PORT_TEST_ASSERT((uint8_t) buffer[y] == hash[y]);
         }
 
         // Delete the certificate
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: deleting certificate...\n", x);
+        U_TEST_PRINT_LINE_X("deleting certificate...", x);
         U_PORT_TEST_ASSERT(uSecurityCredentialRemove(devHandle,
                                                      U_SECURITY_CREDENTIAL_CLIENT_X509,
                                                      "ubxlib_test_cert") == 0);
 
         // Check that it is no longer listed
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials...\n", x);
+        U_TEST_PRINT_LINE_X("listing credentials...", x);
         z = 0;
         for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
              y >= 0;
              y = uSecurityCredentialListNext(devHandle, &credential)) {
             z++;
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: credential name \"%s\".\n", x, z,
-                     credential.name);
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d_%d: type %d.\n", x, z,
-                     credential.type);
+            U_TEST_PRINT_LINE_X_Y("credential name \"%s\".", x, z, credential.name);
+            U_TEST_PRINT_LINE_X_Y("type %d.", x, z, credential.type);
             U_PORT_TEST_ASSERT(strcmp(credential.name, "ubxlib_test_cert") != 0);
             if (strcmp(credential.name, "ubxlib_test_key") == 0) {
                 U_PORT_TEST_ASSERT(credential.type == U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE);
@@ -402,39 +419,38 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
             }
         }
         U_PORT_TEST_ASSERT(z == otherCredentialCount + 1);
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: %d credential(s) listed.\n", x, z);
+        U_TEST_PRINT_LINE_X("%d credential(s) listed.", x, z);
 
         // Delete the security key with a bad name
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: deleting private key with bad name...\n", x);
+        U_TEST_PRINT_LINE_X("deleting private key with bad name...", x);
         U_PORT_TEST_ASSERT(uSecurityCredentialRemove(devHandle,
                                                      U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                      "xubxlib_test_key") < 0);
         // Delete the security key properly
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: deleting private key...\n", x);
+        U_TEST_PRINT_LINE_X("deleting private key...", x);
         U_PORT_TEST_ASSERT(uSecurityCredentialRemove(devHandle,
                                                      U_SECURITY_CREDENTIAL_CLIENT_KEY_PRIVATE,
                                                      "ubxlib_test_key") == 0);
 
         // Check that none of ours are listed
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: listing credentials (should be"
-                 " none of ours)...\n", x);
+        U_TEST_PRINT_LINE_X("listing credentials (should be none of ours)...", x);
         z = 0;
         for (int32_t y = uSecurityCredentialListFirst(devHandle, &credential);
              y >= 0;
              y = uSecurityCredentialListNext(devHandle, &credential)) {
             z++;
-            uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: name \"%s\".\n", x, credential.name);
+            U_TEST_PRINT_LINE_X("name \"%s\".", x, credential.name);
             U_PORT_TEST_ASSERT(strcmp(credential.name, "ubxlib_test_key") != 0);
         }
         U_PORT_TEST_ASSERT(z == otherCredentialCount);
-        uPortLog("U_SECURITY_CREDENTIAL_TEST_%d: %d credential(s) listed.\n", x, z);
+        U_TEST_PRINT_LINE_X("%d credential(s) listed.", x, z);
     }
 
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -451,8 +467,7 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialTest")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_SECURITY_CREDENTIAL_TEST: during this test we have"
-             " leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("during this test we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -478,8 +493,8 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialCleanUp")
 
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_SECURITY_CREDENTIAL_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", y);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", y);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -487,8 +502,8 @@ U_PORT_TEST_FUNCTION("[securityCredential]", "securityCredentialCleanUp")
 
     y = uPortGetHeapMinFree();
     if (y >= 0) {
-        uPortLog("U_SECURITY_CREDENTIAL_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", y);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", y);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

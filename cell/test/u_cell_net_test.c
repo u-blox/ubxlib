@@ -71,6 +71,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_NET_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -365,7 +373,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     // Check that we can connect again with the same APN,
     // should return pretty much immediately
     gStopTimeMs = uPortGetTickTimeMs() + 5000;
-    uPortLog("U_CELL_NET_TEST: connecting again with same APN...\n");
+    U_TEST_PRINT_LINE("connecting again with same APN...");
     x = uCellNetConnect(cellHandle, NULL,
 #ifdef U_CELL_TEST_CFG_APN
                         U_PORT_STRINGIFY_QUOTED(U_CELL_TEST_CFG_APN),
@@ -394,7 +402,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
     if (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_U201) {
         // Don't try using an invalid APN with SARA-U201 as it
         // upsets it too much
-        uPortLog("U_CELL_NET_TEST: connecting with different (invalid) APN...\n");
+        U_TEST_PRINT_LINE("connecting with different (invalid) APN...");
         gStopTimeMs = uPortGetTickTimeMs() + 10000;
         x = uCellNetConnect(cellHandle, NULL, "flibble",
 #ifdef U_CELL_TEST_CFG_USERNAME
@@ -438,7 +446,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetConnectDisconnectPlus")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_NET_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -482,7 +490,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     // can be scanning already, internally, and won't respond to a
     // user request, so give it several goes
     for (size_t x = 5; (x > 0) && (y <= 0); x--) {
-        uPortLog("U_CELL_NET_TEST: scanning for networks...\n");
+        U_TEST_PRINT_LINE("scanning for networks...");
         gStopTimeMs = uPortGetTickTimeMs() +
                       (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
         memset(buffer, 0, sizeof(buffer));
@@ -498,20 +506,20 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
             U_PORT_TEST_ASSERT((rat > U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED) &&
                                (rat < U_CELL_NET_RAT_MAX_NUM));
             y++;
-            uPortLog("U_CELL_NET_TEST: found \"%s\", MCC/MNC %s (%s).\n", buffer, mccMnc,
-                     pUCellTestPrivateRatStr(rat));
+            U_TEST_PRINT_LINE("found \"%s\", MCC/MNC %s (%s).", buffer, mccMnc,
+                              pUCellTestPrivateRatStr(rat));
             memset(buffer, 0, sizeof(buffer));
             memset(mccMnc, 0, sizeof(mccMnc));
             rat = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
         }
         if (y == 0) {
             // Give us something to search for in the log
-            uPortLog("U_CELL_NET_TEST: *** WARNING *** RETRY SCAN.\n");
+            U_TEST_PRINT_LINE("*** WARNING *** RETRY SCAN.");
             uPortTaskBlock(5000);
         }
     }
 
-    uPortLog("U_CELL_NET_TEST: %d network(s) found in total.\n", y);
+    U_TEST_PRINT_LINE("%d network(s) found in total.", y);
     // Must be at least one, can't guarantee more than that
     U_PORT_TEST_ASSERT(y > 0);
 
@@ -520,7 +528,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL, keepGoingCallback) < 0);
 
     // Now register with a sensible timeout
-    uPortLog("U_CELL_NET_TEST: registering...\n");
+    U_TEST_PRINT_LINE("registering...");
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
     U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL, keepGoingCallback) == 0);
@@ -542,12 +550,12 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     snprintf(mccMnc, sizeof(mccMnc), "%03d%02d", (uint8_t) mcc, (uint8_t) mnc);
 
     // Register again: should come back with no error pretty much straight away
-    uPortLog("U_CELL_NET_TEST: registering while already registered...\n");
+    U_TEST_PRINT_LINE("registering while already registered...");
     gStopTimeMs = uPortGetTickTimeMs() + 10000;
     U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL, keepGoingCallback) == 0);
 
     // Now activate a PDP context
-    uPortLog("U_CELL_NET_TEST: activating context...\n");
+    U_TEST_PRINT_LINE("activating context...");
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONTEXT_ACTIVATION_TIMEOUT_SECONDS * 1000);
     y = uCellNetActivate(cellHandle,
@@ -577,7 +585,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
 
     // Deactivate the context
     rat = uCellNetGetActiveRat(cellHandle);
-    uPortLog("U_CELL_NET_TEST: deactivating context...\n");
+    U_TEST_PRINT_LINE("deactivating context...");
     U_PORT_TEST_ASSERT(uCellNetDeactivate(cellHandle, NULL) == 0);
     if (U_CELL_PRIVATE_RAT_IS_EUTRAN(rat) ||
         U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType)) {
@@ -592,7 +600,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     }
 
     // Check that we can activate the PDP context again
-    uPortLog("U_CELL_NET_TEST: activating context...\n");
+    U_TEST_PRINT_LINE("activating context...");
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONTEXT_ACTIVATION_TIMEOUT_SECONDS * 1000);
     y = uCellNetActivate(cellHandle,
@@ -622,7 +630,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
 
     // Check that we can activate the PDP context again with
     // the same APN
-    uPortLog("U_CELL_NET_TEST: activating context again with same APN...\n");
+    U_TEST_PRINT_LINE("activating context again with same APN...");
     gStopTimeMs = uPortGetTickTimeMs() + 10000;
     y = uCellNetActivate(cellHandle,
 #ifdef U_CELL_TEST_CFG_APN
@@ -652,7 +660,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     if (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_U201) {
         // Try to activate a PDP context with a different, invalid, APN
         // Don't do this for SARA-U201 as it upsets it rather a lot
-        uPortLog("U_CELL_NET_TEST: activating context with different (invalid) APN...\n");
+        U_TEST_PRINT_LINE("activating context with different (invalid) APN...");
         rat = uCellNetGetActiveRat(cellHandle);
         gStopTimeMs = uPortGetTickTimeMs() +
                       (U_CELL_TEST_CFG_CONTEXT_ACTIVATION_TIMEOUT_SECONDS * 1000);
@@ -674,15 +682,14 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     }
 
     // Disconnect
-    uPortLog("U_CELL_NET_TEST: disconnecting...\n");
+    U_TEST_PRINT_LINE("disconnecting...");
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
 
     // Connect to the network using manual selection
     // Have seen this fail on rare occasions, give it two goes
     y = -1;
     for (size_t x = 2; (x > 0) && (y < 0); x--) {
-        uPortLog("U_CELL_NET_TEST: connecting manually to network"
-                 " %s...\n", mccMnc);
+        U_TEST_PRINT_LINE("connecting manually to network %s...", mccMnc);
         gStopTimeMs = uPortGetTickTimeMs() +
                       (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
         y = uCellNetConnect(cellHandle, mccMnc,
@@ -704,7 +711,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
                             keepGoingCallback);
         if (y < 0) {
             // Give us something to search for in the log
-            uPortLog("U_CELL_NET_TEST: *** WARNING *** RETRY MANUAL.\n");
+            U_TEST_PRINT_LINE("*** WARNING *** RETRY MANUAL.");
         }
     }
     U_PORT_TEST_ASSERT(y == 0);
@@ -735,7 +742,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     U_PORT_TEST_ASSERT(uCellNetGetIpAddressStr(cellHandle, buffer) < 0);
 
     // Now register with manual network selection
-    uPortLog("U_CELL_NET_TEST: registering manually on network %s...\n", mccMnc);
+    U_TEST_PRINT_LINE("registering manually on network %s...", mccMnc);
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
     U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, mccMnc,
@@ -780,7 +787,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
     U_PORT_TEST_ASSERT(strlen(buffer) == y);
 
     // Disconnect
-    uPortLog("U_CELL_NET_TEST: disconnecting...\n");
+    U_TEST_PRINT_LINE("disconnecting...");
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
 
     // Do the standard postamble, leaving the module on for the next
@@ -789,7 +796,7 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetScanRegActDeact")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_NET_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -807,8 +814,8 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_NET_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -816,8 +823,8 @@ U_PORT_TEST_FUNCTION("[cellNet]", "cellNetCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_CELL_NET_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

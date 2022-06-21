@@ -68,6 +68,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_INFO_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #ifndef U_CELL_INFO_TEST_MIN_UTC_TIME
 /** A minimum value for UTC time to test against (21 July 2021 13:40:36).
  */
@@ -137,7 +145,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    uPortLog("U_CELL_INFO_TEST: getting and checking IMEI...\n");
+    U_TEST_PRINT_LINE("getting and checking IMEI...");
     memset(buffer, 0, sizeof(buffer));
     U_PORT_TEST_ASSERT(uCellInfoGetImei(cellHandle, buffer) >= 0);
     for (size_t x = 0; x < sizeof(buffer); x++) {
@@ -147,7 +155,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
             U_PORT_TEST_ASSERT(buffer[x] == 0);
         }
     }
-    uPortLog("U_CELL_INFO_TEST: getting and checking manufacturer string...\n");
+    U_TEST_PRINT_LINE("getting and checking manufacturer string...");
     // First use an unrealistically short buffer and check
     // that there is no overrun
     memset(buffer, 0, sizeof(buffer));
@@ -161,7 +169,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
     bytesRead = uCellInfoGetManufacturerStr(cellHandle, buffer, sizeof(buffer));
     U_PORT_TEST_ASSERT((bytesRead > 0) && (bytesRead < sizeof(buffer) - 1) &&
                        (bytesRead == strlen(buffer)));
-    uPortLog("U_CELL_INFO_TEST: getting and checking model string...\n");
+    U_TEST_PRINT_LINE("getting and checking model string...");
     // First use an unrealistically short buffer and check
     // that there is no overrun
     memset(buffer, 0, sizeof(buffer));
@@ -175,7 +183,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
     bytesRead = uCellInfoGetModelStr(cellHandle, buffer, sizeof(buffer));
     U_PORT_TEST_ASSERT((bytesRead > 0) && (bytesRead < sizeof(buffer) - 1) &&
                        (bytesRead == strlen(buffer)));
-    uPortLog("U_CELL_INFO_TEST: getting and checking firmware version string...\n");
+    U_TEST_PRINT_LINE("getting and checking firmware version string...");
     // First use an unrealistically short buffer and check
     // that there is no overrun
     memset(buffer, 0, sizeof(buffer));
@@ -190,7 +198,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
     U_PORT_TEST_ASSERT((bytesRead > 0) && (bytesRead < sizeof(buffer) - 1) &&
                        (bytesRead == strlen(buffer)));
 
-    uPortLog("U_CELL_INFO_TEST: getting and checking IMSI...\n");
+    U_TEST_PRINT_LINE("getting and checking IMSI...");
     memset(buffer, 0, sizeof(buffer));
     U_PORT_TEST_ASSERT(uCellInfoGetImsi(cellHandle, buffer) >= 0);
     for (size_t x = 0; x < sizeof(buffer); x++) {
@@ -200,7 +208,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
             U_PORT_TEST_ASSERT(buffer[x] == 0);
         }
     }
-    uPortLog("U_CELL_INFO_TEST: getting and checking ICCID...\n");
+    U_TEST_PRINT_LINE("getting and checking ICCID...");
     // First use an unrealistically short buffer and check
     // that there is no overrun
     memset(buffer, 0, sizeof(buffer));
@@ -215,7 +223,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
                                             sizeof(buffer)) >= 0);
     U_PORT_TEST_ASSERT(strlen(buffer) <= U_CELL_INFO_ICCID_BUFFER_SIZE);
 
-    uPortLog("U_CELL_INFO_TEST: checking flow control lines...\n");
+    U_TEST_PRINT_LINE("checking flow control lines...");
     isEnabled = uCellInfoIsRtsFlowControlEnabled(cellHandle);
 #if U_CFG_APP_PIN_CELL_RTS_GET >= 0
     U_PORT_TEST_ASSERT(isEnabled);
@@ -235,7 +243,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoImeiEtc")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -262,8 +270,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    uPortLog("U_CELL_INFO_TEST: checking values before a refresh (should"
-             " return errors)...\n");
+    U_TEST_PRINT_LINE("checking values before a refresh (should return errors)...");
     U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) == 0);
     U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
     U_PORT_TEST_ASSERT(uCellInfoGetRsrqDb(cellHandle) == 0x7FFFFFFF);
@@ -271,8 +278,8 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
     U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
 
-    uPortLog("U_CELL_INFO_TEST: checking values after a refresh but before"
-             " network registration (should return errors)...\n");
+    U_TEST_PRINT_LINE("checking values after a refresh but before"
+                      " network registration (should return errors)...");
     U_PORT_TEST_ASSERT(uCellInfoRefreshRadioParameters(cellHandle) != 0);
     U_PORT_TEST_ASSERT(uCellInfoGetRssiDbm(cellHandle) == 0);
     U_PORT_TEST_ASSERT(uCellInfoGetRsrpDbm(cellHandle) == 0);
@@ -281,7 +288,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
     U_PORT_TEST_ASSERT(uCellInfoGetCellId(cellHandle) == -1);
     U_PORT_TEST_ASSERT(uCellInfoGetEarfcn(cellHandle) == -1);
 
-    uPortLog("U_CELL_INFO_TEST: checking values after registration...\n");
+    U_TEST_PRINT_LINE("checking values after registration...");
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
     U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL, keepGoingCallback) == 0);
@@ -314,7 +321,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
         // Only get this if we have RSRP as well
         x = uCellInfoGetSnrDb(cellHandle, &snrDb);
         if (x == 0) {
-            uPortLog("U_CELL_INFO_TEST: SNR is %d dB.\n", snrDb);
+            U_TEST_PRINT_LINE("SNR is %d dB.", snrDb);
         }
         U_PORT_TEST_ASSERT((x == 0) || (x == U_CELL_ERROR_VALUE_OUT_OF_RANGE));
     }
@@ -328,7 +335,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoRadioParameters")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_INFO_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heap < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -354,19 +361,19 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoTime")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    uPortLog("U_CELL_INFO_TEST: registering to check the time...\n");
+    U_TEST_PRINT_LINE("registering to check the time...");
     gStopTimeMs = uPortGetTickTimeMs() +
                   (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
     U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL, keepGoingCallback) == 0);
 
-    uPortLog("U_CELL_INFO_TEST: fetching the time...\n");
+    U_TEST_PRINT_LINE("fetching the time...");
     x = uCellInfoGetTimeUtc(cellHandle);
-    uPortLog("U_CELL_INFO_TEST: UTC time is %d.\n", (int32_t) x);
+    U_TEST_PRINT_LINE("UTC time is %d.", (int32_t) x);
     U_PORT_TEST_ASSERT(x > U_CELL_INFO_TEST_MIN_UTC_TIME);
 
-    uPortLog("U_CELL_INFO_TEST: fetching the time string...\n");
+    U_TEST_PRINT_LINE("fetching the time string...");
     U_PORT_TEST_ASSERT(uCellInfoGetTimeUtcStr(cellHandle, buffer, sizeof(buffer)) >= 0);
-    uPortLog("U_CELL_INFO_TEST: UTC time: %s.\n", buffer);
+    U_TEST_PRINT_LINE("UTC time: %s.", buffer);
 
     // Disconnect
     U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
@@ -377,7 +384,7 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoTime")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_INFO_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heap < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -395,8 +402,8 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_INFO_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -404,8 +411,8 @@ U_PORT_TEST_FUNCTION("[cellInfo]", "cellInfoCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_CELL_INFO_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("U_CELL_INFO_TEST: heap had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

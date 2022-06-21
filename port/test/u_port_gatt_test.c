@@ -61,6 +61,15 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_PORT_GATT_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #define NBR_OF_CONNECTION_RETRIES 3
 #define CONNECTION_SETUP_TIMEOUT 6000
 #define WAIT_FOR_CALLBACK_TIMEOUT 1000
@@ -517,10 +526,10 @@ static void gapConnStatusCallback(int32_t connHandle,
     conn->connHandle = connHandle;
     conn->status = status;
     conn->pCallbackParam = pCallbackParam;
-    uPortLog("U_PORT_TEST: BT connect status(connHandle=%d, status=%d, pCallbackParam=%d)\n",
-             connHandle, status, pCallbackParam);
+    U_TEST_PRINT_LINE("BT connect status(connHandle=%d, status=%d, pCallbackParam=%d)",
+                      connHandle, status, pCallbackParam);
     if (!enqueueEvt(&evt)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue GATT conn status evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue GATT conn status evt.");
     }
 }
 
@@ -532,8 +541,8 @@ static uPortGattIter_t gattServiceDiscoveryCallback(int32_t connHandle,
 {
     gattEvt_t evt = { .id = GATT_EVT_SERVICE };
     serviceEvt_t *svc = &evt.svc;
-    uPortLog("U_PORT_TEST: callback(connHandle=%d, attrHandle=%d, endHandle=%d, ", connHandle,
-             attrHandle, endHandle);
+    uPortLog(U_TEST_PREFIX "callback(connHandle=%d, attrHandle=%d, endHandle=%d, ",
+             connHandle, attrHandle, endHandle);
     if (pUuid != NULL) {
         copyUuid(pUuid, (uPortGattUuid_t *)&svc->uuid);
         printUuid(pUuid);
@@ -541,14 +550,14 @@ static uPortGattIter_t gattServiceDiscoveryCallback(int32_t connHandle,
         memset(&svc->uuid, 0, sizeof(uPortGattUuid128_t));
         uPortLog("UUID: NULL");
     }
-    uPortLog(")\n");
+    uPortLog(").\n");
 
     svc->connHandle = connHandle;
     svc->attrHandle = attrHandle;
     svc->endHandle = endHandle;
 
     if (!enqueueEvt(&evt)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue GATT service evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue GATT service evt.");
         return U_PORT_GATT_ITER_STOP;
     }
 
@@ -565,7 +574,8 @@ static uPortGattIter_t gattCharDiscoveryCallback(int32_t connHandle,
     gattEvt_t evt = { .id = GATT_EVT_CHARACTERISTIC };
     characteristicEvt_t *ch = &evt.ch;
 
-    uPortLog("U_PORT_TEST: callback(connHandle=%d, attrHandle=%d, valueHandle=%d, properties=0x%02x,\n                      ",
+    uPortLog(U_TEST_PREFIX
+             "callback(connHandle=%d, attrHandle=%d, valueHandle=%d, properties=0x%02x,\n                      ",
              connHandle, attrHandle, valHandle, properties);
 
     if (pUuid != NULL) {
@@ -575,14 +585,14 @@ static uPortGattIter_t gattCharDiscoveryCallback(int32_t connHandle,
         memset(&ch->uuid, 0, sizeof(uPortGattUuid128_t));
         uPortLog("UUID: NULL");
     }
-    uPortLog(")\n");
+    uPortLog(").\n");
     ch->connHandle = connHandle;
     ch->attrHandle = attrHandle;
     ch->valHandle = valHandle;
     ch->properties = properties;
 
     if (!enqueueEvt(&evt)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue GATT characteristic evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue GATT characteristic evt.");
         return U_PORT_GATT_ITER_STOP;
     }
 
@@ -597,7 +607,7 @@ static uPortGattIter_t gattDescriptorDiscoveryCallback(int32_t connHandle,
     gattEvt_t evt = { .id = GATT_EVT_DESCRIPTOR };
     descriptorEvt_t *desc = &evt.desc;
 
-    uPortLog("U_PORT_TEST: callback(connHandle=%d, attrHandle=%d, ", connHandle, attrHandle);
+    uPortLog(U_TEST_PREFIX "callback(connHandle=%d, attrHandle=%d, ", connHandle, attrHandle);
     if (pUuid != NULL) {
         copyUuid(pUuid, (uPortGattUuid_t *)&desc->uuid);
         printUuid(pUuid);
@@ -605,12 +615,12 @@ static uPortGattIter_t gattDescriptorDiscoveryCallback(int32_t connHandle,
         memset(&desc->uuid, 0, sizeof(uPortGattUuid128_t));
         uPortLog("UUID: NULL");
     }
-    uPortLog(")\n");
+    uPortLog(").\n");
     desc->connHandle = connHandle;
     desc->attrHandle = attrHandle;
 
     if (!enqueueEvt(&evt)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue GATT descriptor evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue GATT descriptor evt.");
         return U_PORT_GATT_ITER_STOP;
     }
 
@@ -629,16 +639,16 @@ static uPortGattIter_t gattNotifyFunc(int32_t connHandle,
     notify->length = length;
     notify->pParams = pParams;
     if (pData) {
-        uPortLog("U_PORT_TEST: Notified with %d bytes of data\n", length);
+        U_TEST_PRINT_LINE("notified with %d bytes of data.", length);
         if (length <= sizeof(notify->data)) {
             memcpy(notify->data, (const uint8_t *)pData, sizeof(notify->data));
         }
     } else {
-        uPortLog("U_PORT_TEST: Notification removed\n");
+        U_TEST_PRINT_LINE("notification removed.");
     }
 
     if (!enqueueEvt(&evt)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue GATT notify evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue GATT notify evt.");
         return U_PORT_GATT_ITER_STOP;
     }
 
@@ -653,7 +663,7 @@ static void gattCccWriteResp(int32_t connHandle, uint8_t err)
 
     writeCcc->connHandle = connHandle;
     writeCcc->err = err;
-    uPortLog("U_PORT_TEST: Characteristics Client Configuration write ");
+    uPortLog(U_TEST_PREFIX "Characteristics Client Configuration write ");
     if (err == 0) {
         uPortLog("successful!\n");
     } else {
@@ -661,7 +671,7 @@ static void gattCccWriteResp(int32_t connHandle, uint8_t err)
     }
 
     if (!enqueueEvt(&evt)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue GATT write CCC evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue GATT write CCC evt.");
     }
 }
 
@@ -687,9 +697,9 @@ static bool enqueueSpsWrite(gattEvtId_t id, int32_t gapConnHandle, const void *b
 static int32_t remoteWritesFifoChar(int32_t gapConnHandle, const void *buf, uint16_t len,
                                     uint16_t offset, uint8_t flags)
 {
-    uPortLog("U_PORT_TEST: remote writes to FIFO characteristics\n");
+    U_TEST_PRINT_LINE("remote writes to FIFO characteristics.");
     if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_FIFO_CHAR, gapConnHandle, buf, len, offset, flags)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue SPS write FIFO char evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue SPS write FIFO char evt.");
     }
     return len;
 }
@@ -697,9 +707,9 @@ static int32_t remoteWritesFifoChar(int32_t gapConnHandle, const void *buf, uint
 static int32_t remoteWritesFifoCcc(int32_t gapConnHandle, const void *buf, uint16_t len,
                                    uint16_t offset, uint8_t flags)
 {
-    uPortLog("U_PORT_TEST: remote writes to FIFO CCC\n");
+    U_TEST_PRINT_LINE("remote writes to FIFO CCC.");
     if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_FIFO_CCC, gapConnHandle, buf, len, offset, flags)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue SPS write FIFO CCC evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue SPS write FIFO CCC evt.");
     }
     return len;
 }
@@ -707,9 +717,9 @@ static int32_t remoteWritesFifoCcc(int32_t gapConnHandle, const void *buf, uint1
 static int32_t remoteWritesCreditChar(int32_t gapConnHandle, const void *buf, uint16_t len,
                                       uint16_t offset, uint8_t flags)
 {
-    uPortLog("U_PORT_TEST: remote writes to credit characteristics\n");
+    U_TEST_PRINT_LINE("remote writes to credit characteristics.");
     if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_CREDIT_CHAR, gapConnHandle, buf, len, offset, flags)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue SPS write credit char evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue SPS write credit char evt.");
     }
     return len;
 }
@@ -717,9 +727,9 @@ static int32_t remoteWritesCreditChar(int32_t gapConnHandle, const void *buf, ui
 static int32_t remoteWritesCreditCcc(int32_t gapConnHandle, const void *buf, uint16_t len,
                                      uint16_t offset, uint8_t flags)
 {
-    uPortLog("U_PORT_TEST: remote writes to credit CCC\n");
+    U_TEST_PRINT_LINE("remote writes to credit CCC.");
     if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_CREDIT_CCC, gapConnHandle, buf, len, offset, flags)) {
-        uPortLog("U_PORT_TEST: ERROR: failed to queue SPS write credit CCC evt\n");
+        U_TEST_PRINT_LINE("ERROR: failed to queue SPS write credit CCC evt.");
     }
     return len;
 }
@@ -743,10 +753,10 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattInitTests")
 
     errorCode = addrStringToArray(gRemoteSpsPeripheralStr, gRemoteSpsPeripheral,
                                   &gRemoteSpsPeripheralType);
-    uPortLog("U_PORT_TEST: Using %s as remote peripheral\n", gRemoteSpsPeripheralStr);
+    U_TEST_PRINT_LINE("using %s as remote peripheral.", gRemoteSpsPeripheralStr);
     U_PORT_TEST_ASSERT_EQUAL(errorCode, 0);
     errorCode = addrStringToArray(gRemoteSpsCentralStr, gRemoteSpsCentral, &gRemoteSpsCentralType);
-    uPortLog("U_PORT_TEST: Using %s as remote central\n", gRemoteSpsCentralStr);
+    U_TEST_PRINT_LINE("using %s as remote central.", gRemoteSpsCentralStr);
     U_PORT_TEST_ASSERT_EQUAL(errorCode, 0);
 }
 
@@ -776,7 +786,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
 
     createEvtQueue();
 
-    uPortLog("U_PORT_TEST: GATT init\n");
+    U_TEST_PRINT_LINE("GATT init.");
     U_PORT_TEST_ASSERT_EQUAL(uPortGattInit(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattAdd(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattUp(true), 0);
@@ -789,7 +799,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
 
     uPortGattSetGapConnStatusCallback(gapConnStatusCallback, gGattCallbackParamIn);
 
-    uPortLog("U_PORT_TEST: uPortGattConnectGap to unavailable device\n");
+    U_TEST_PRINT_LINE("uPortGattConnectGap() to unavailable device.");
     int32_t connHandle = uPortGattConnectGap(gInvalidAddress, gRemoteSpsPeripheralType, NULL);
     U_PORT_TEST_ASSERT(connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE);
     U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, CONNECTION_SETUP_TIMEOUT));
@@ -809,7 +819,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
         gapParams.connLatency = 0;
         gapParams.linkLossTimeout = 3000;
 
-        uPortLog("U_PORT_TEST: uPortGattConnectGap to device with conn params\n");
+        U_TEST_PRINT_LINE("uPortGattConnectGap() to device with conn params.");
         connHandle = uPortGattConnectGap(gRemoteSpsPeripheral, gRemoteSpsPeripheralType, &gapParams);
         U_PORT_TEST_ASSERT(connHandle != U_PORT_GATT_GAP_INVALID_CONNHANDLE);
 
@@ -823,21 +833,21 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
         }
         U_PORT_TEST_ASSERT_EQUAL(evt.conn.connHandle, connHandle);
 
-        uPortLog("U_PORT_TEST: uPortGattGetRemoteAddress - NULL addr\n");
+        U_TEST_PRINT_LINE("uPortGattGetRemoteAddress() - NULL address.");
         uint8_t addr[6];
         uPortBtLeAddressType_t addrType;
         errorCode = uPortGattGetRemoteAddress(connHandle, NULL, &addrType);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_UNKNOWN);
 
-        uPortLog("U_PORT_TEST: uPortGattGetRemoteAddress - NULL addr type\n");
+        U_TEST_PRINT_LINE("uPortGattGetRemoteAddress() - NULL address type.");
         errorCode = uPortGattGetRemoteAddress(connHandle, addr, NULL);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_UNKNOWN);
 
-        uPortLog("U_PORT_TEST: uPortGattGetRemoteAddress - invalid conn handle\n");
+        U_TEST_PRINT_LINE("uPortGattGetRemoteAddress() - invalid conn handle.");
         errorCode = uPortGattGetRemoteAddress(U_PORT_GATT_GAP_INVALID_CONNHANDLE, addr, &addrType);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_UNKNOWN);
 
-        uPortLog("U_PORT_TEST: uPortGattGetRemoteAddress\n");
+        U_TEST_PRINT_LINE("uPortGattGetRemoteAddress()");
         errorCode = uPortGattGetRemoteAddress(connHandle, addr, &addrType);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, 0);
         U_PORT_TEST_ASSERT(memcmp(addr, gRemoteSpsPeripheral, 6) == 0);
@@ -849,7 +859,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
         U_PORT_TEST_ASSERT_EQUAL(gGattCallbackParamIn, evt.conn.pCallbackParam);
         U_PORT_TEST_ASSERT_EQUAL(evt.conn.status, U_PORT_GATT_GAP_DISCONNECTED);
 
-        uPortLog("U_PORT_TEST: uPortGattDisconnectGap when not connected\n");
+        U_TEST_PRINT_LINE("uPortGattDisconnectGap() when not connected.");
         U_PORT_TEST_ASSERT_EQUAL(uPortGattDisconnectGap(connHandle), (int32_t)U_ERROR_COMMON_UNKNOWN);
         uPortGattDown();
 
@@ -861,11 +871,10 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattMisc")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -888,7 +897,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
     // Test cases
     createEvtQueue();
 
-    uPortLog("U_PORT_TEST: GATT primary service search\n");
+    U_TEST_PRINT_LINE("GATT primary service search.");
     U_PORT_TEST_ASSERT_EQUAL(uPortGattInit(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattAdd(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattUp(false), 0);
@@ -911,16 +920,16 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
         }
         U_PORT_TEST_ASSERT_EQUAL(evt.conn.connHandle, connHandle);
 
-        uPortLog("U_PORT_TEST: uPortGattStartPrimaryServiceDiscovery - invalid conn handle\n");
+        U_TEST_PRINT_LINE("uPortGattStartPrimaryServiceDiscovery() - invalid conn handle.");
         errorCode = uPortGattStartPrimaryServiceDiscovery(-1, NULL,
                                                           gattServiceDiscoveryCallback);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: uPortGattStartPrimaryServiceDiscovery - callback is NULL\n");
+        U_TEST_PRINT_LINE("uPortGattStartPrimaryServiceDiscovery() - callback is NULL.");
         errorCode = uPortGattStartPrimaryServiceDiscovery(connHandle, NULL, NULL);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: uPortGattStartPrimaryServiceDiscovery - get all services\n");
+        U_TEST_PRINT_LINE("uPortGattStartPrimaryServiceDiscovery() - get all services.");
         gGattIterReturnValue = U_PORT_GATT_ITER_CONTINUE;
         errorCode = uPortGattStartPrimaryServiceDiscovery(connHandle, NULL,
                                                           gattServiceDiscoveryCallback);
@@ -950,19 +959,19 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
             if (uPortGattDisconnectGap(connHandle) == (int32_t)U_ERROR_COMMON_SUCCESS) {
                 if (waitForEvt(GATT_EVT_CONN_STATUS, &evt, WAIT_FOR_CALLBACK_TIMEOUT)) {
                     if (evt.conn.status == U_PORT_GATT_GAP_DISCONNECTED) {
-                        uPortLog("U_PORT_TEST: Disconnected GAP for retry\n");
+                        U_TEST_PRINT_LINE("disconnected GAP for retry.");
                     }
                 }
             }
             if (i == (NBR_OF_CONNECTION_RETRIES - 1)) {
-                uPortLog("U_PORT_TEST: Muliple retries uPortGattStartPrimaryServiceDiscovery - get all services failed\n");
+                U_TEST_PRINT_LINE("muliple retries uPortGattStartPrimaryServiceDiscovery() - get all services failed.");
             } else {
-                uPortLog("U_PORT_TEST: Retry uPortGattStartPrimaryServiceDiscovery - get all services\n");
+                U_TEST_PRINT_LINE("retry uPortGattStartPrimaryServiceDiscovery() - get all services.");
             }
             continue;
         }
 
-        uPortLog("U_PORT_TEST: uPortGattStartPrimaryServiceDiscovery - get all services, no continue\n");
+        U_TEST_PRINT_LINE("uPortGattStartPrimaryServiceDiscovery() - get all services, no continue.");
         gGattIterReturnValue = U_PORT_GATT_ITER_STOP;
         errorCode = uPortGattStartPrimaryServiceDiscovery(connHandle, NULL,
                                                           gattServiceDiscoveryCallback);
@@ -976,7 +985,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
         // Timeout here, we should not get any more callbacks
         U_PORT_TEST_ASSERT(!waitForEvt(GATT_EVT_SERVICE, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
 
-        uPortLog("U_PORT_TEST: uPortGattStartPrimaryServiceDiscovery - get specific service\n");
+        U_TEST_PRINT_LINE("uPortGattStartPrimaryServiceDiscovery() - get specific service.");
         errorCode =
             uPortGattStartPrimaryServiceDiscovery(connHandle,
                                                   &gNinaW15SpsService.uuid.uuid,
@@ -1004,11 +1013,10 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattPrimDisc")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library during this"
+                      " test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1032,7 +1040,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCharDisc")
     // Test cases
     createEvtQueue();
 
-    uPortLog("U_PORT_TEST: GATT characteristic discovery\n");
+    U_TEST_PRINT_LINE("GATT characteristic discovery.");
     U_PORT_TEST_ASSERT_EQUAL(uPortGattInit(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattAdd(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattUp(false), 0);
@@ -1055,15 +1063,15 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCharDisc")
         }
         U_PORT_TEST_ASSERT_EQUAL(evt.conn.connHandle, connHandle);
 
-        uPortLog("U_PORT_TEST: uPortGattStartCharacteristicDiscovery - invalid conn handle\n");
+        U_TEST_PRINT_LINE("uPortGattStartCharacteristicDiscovery() - invalid conn handle.");
         errorCode = uPortGattStartCharacteristicDiscovery(-1, NULL, 0, gattCharDiscoveryCallback);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: uPortGattStartCharacteristicDiscovery - callback is NULL\n");
+        U_TEST_PRINT_LINE("uPortGattStartCharacteristicDiscovery() - callback is NULL.");
         errorCode = uPortGattStartCharacteristicDiscovery(connHandle, NULL, 0, NULL);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: uPortGattStartCharacteristicDiscovery - get all characteristics of SPS service\n");
+        U_TEST_PRINT_LINE("uPortGattStartCharacteristicDiscovery() - get all characteristics of SPS service.");
         gGattIterReturnValue = U_PORT_GATT_ITER_CONTINUE;
         errorCode = uPortGattStartCharacteristicDiscovery(connHandle, NULL,
                                                           gNinaW15SpsService.attrHandle,
@@ -1095,7 +1103,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCharDisc")
         U_PORT_TEST_ASSERT_EQUAL(ch->valHandle, 0);
         U_PORT_TEST_ASSERT_EQUAL(ch->properties, 0);
 
-        uPortLog("U_PORT_TEST: uPortGattStartCharacteristicDiscovery - get all characteristics, no continue\n");
+        U_TEST_PRINT_LINE("uPortGattStartCharacteristicDiscovery() - get all characteristics, no continue.");
         gGattIterReturnValue = U_PORT_GATT_ITER_STOP;
         errorCode = uPortGattStartCharacteristicDiscovery(connHandle, NULL,
                                                           gNinaW15SpsService.attrHandle,
@@ -1115,7 +1123,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCharDisc")
         U_PORT_TEST_ASSERT(!waitForEvt(GATT_EVT_CHARACTERISTIC, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         gGattIterReturnValue = U_PORT_GATT_ITER_CONTINUE;
 
-        uPortLog("U_PORT_TEST: uPortGattStartCharacteristicDiscovery - get specific char by UUID, appearance char\n");
+        U_TEST_PRINT_LINE("uPortGattStartCharacteristicDiscovery() - get specific char by UUID, appearance char.");
         errorCode = uPortGattStartCharacteristicDiscovery(connHandle,
                                                           (uPortGattUuid_t *)&gAppearanceCharUuid, 1,
                                                           gattCharDiscoveryCallback);
@@ -1155,11 +1163,10 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCharDisc")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library during"
+                      " this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1183,7 +1190,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattDescDisc")
     // Test cases
     createEvtQueue();
 
-    uPortLog("U_PORT_TEST: GATT descriptors discovery\n");
+    U_TEST_PRINT_LINE("GATT descriptors discovery.");
     U_PORT_TEST_ASSERT_EQUAL(uPortGattInit(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattAdd(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattUp(false), 0);
@@ -1206,23 +1213,23 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattDescDisc")
         }
         U_PORT_TEST_ASSERT_EQUAL(evt.conn.connHandle, connHandle);
 
-        uPortLog("U_PORT_TEST: uPortGattStartDescriptorDiscovery - invalid conn handle\n");
+        U_TEST_PRINT_LINE("uPortGattStartDescriptorDiscovery() - invalid conn handle.");
         errorCode = uPortGattStartDescriptorDiscovery(-1, U_PORT_GATT_CHRC_DESC_CLIENT_CHAR_CONF, 0,
                                                       gattDescriptorDiscoveryCallback);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: uPortGattStartDescriptorDiscovery - callback is NULL\n");
+        U_TEST_PRINT_LINE("uPortGattStartDescriptorDiscovery() - callback is NULL.");
         errorCode = uPortGattStartDescriptorDiscovery(connHandle, U_PORT_GATT_CHRC_DESC_CLIENT_CHAR_CONF, 0,
                                                       NULL);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: uPortGattStartDescriptorDiscovery - get all CCC descriptors of SPS service characteristics\n");
+        U_TEST_PRINT_LINE("uPortGattStartDescriptorDiscovery() - get all CCC descriptors of SPS service characteristics.");
         gGattIterReturnValue = U_PORT_GATT_ITER_CONTINUE;
         errorCode = uPortGattStartDescriptorDiscovery(connHandle, U_PORT_GATT_CHRC_DESC_CLIENT_CHAR_CONF,
                                                       gNinaW15SpsService.attrHandle + 1, // SPS FIFO char value
                                                       gattDescriptorDiscoveryCallback);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
-        uPortLog("U_PORT_TEST: uPortGattStartDescriptorDiscovery errorCode %d\n", errorCode);
+        U_TEST_PRINT_LINE("uPortGattStartDescriptorDiscovery() errorCode %d.", errorCode);
 
         descriptorEvt_t *desc = &evt.desc;
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_DESCRIPTOR, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
@@ -1242,7 +1249,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattDescDisc")
         U_PORT_TEST_ASSERT_EQUAL(desc->connHandle, connHandle);
         U_PORT_TEST_ASSERT_EQUAL(desc->attrHandle, 0);
 
-        uPortLog("U_PORT_TEST: uPortGattStartDescriptorDiscovery - get all CCC descriptors of SPS FIFO char, no continue\n");
+        U_TEST_PRINT_LINE("uPortGattStartDescriptorDiscovery() - get all CCC descriptors of SPS FIFO char, no continue.");
         gGattIterReturnValue = U_PORT_GATT_ITER_STOP;
         errorCode = uPortGattStartDescriptorDiscovery(connHandle, U_PORT_GATT_CHRC_DESC_CLIENT_CHAR_CONF,
                                                       gNinaW15SpsService.attrHandle + 1,
@@ -1275,11 +1282,10 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattDescDisc")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library during"
+                      " this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1303,7 +1309,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
     // Test cases
     createEvtQueue();
 
-    uPortLog("U_PORT_TEST: GATT notification subscription and attribute write\n");
+    U_TEST_PRINT_LINE("GATT notification subscription and attribute write.");
     U_PORT_TEST_ASSERT_EQUAL(uPortGattInit(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattAdd(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattUp(false), 0);
@@ -1336,31 +1342,31 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
         subParams.valueHandle = gNinaW15SpsService.attrHandle + 2, // SPS FIFO
         subParams.cccHandle = gNinaW15SpsService.attrHandle + 3,
 
-        uPortLog("U_PORT_TEST: uPortGattSubscribe - invalid conn handle\n");
+        U_TEST_PRINT_LINE("uPortGattSubscribe() - invalid conn handle.");
         errorCode = uPortGattSubscribe(-1, &subParams);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: uPortGattSubscribe - pParams is NULL\n");
+        U_TEST_PRINT_LINE("uPortGattSubscribe() - pParams is NULL.");
         errorCode = uPortGattSubscribe(connHandle, NULL);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
         gGattIterReturnValue = U_PORT_GATT_ITER_CONTINUE;
-        uPortLog("U_PORT_TEST: uPortGattSubscribe - SPS FIFO\n");
+        U_TEST_PRINT_LINE("uPortGattSubscribe() - SPS FIFO.");
         errorCode = uPortGattSubscribe(connHandle, &subParams);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_WRITE_CCC, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(evt.writeCcc.err, 0);
 
-        uPortLog("U_PORT_TEST: uPortGattWriteAttribute - invalid connection handle\n");
+        U_TEST_PRINT_LINE("uPortGattWriteAttribute() - invalid connection handle.");
         errorCode = uPortGattWriteAttribute(-1, gNinaW15SpsService.attrHandle + 2,
                                             "abcd", 4);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: uPortGattWriteAttribute - invalid attribute handle\n");
+        U_TEST_PRINT_LINE("uPortGattWriteAttribute() - invalid attribute handle.");
         errorCode = uPortGattWriteAttribute(connHandle, 0, "abcd", 4);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: uPortGattWriteAttribute - NULL data\n");
+        U_TEST_PRINT_LINE("uPortGattWriteAttribute() - NULL data.");
         errorCode = uPortGattWriteAttribute(connHandle,
                                             gNinaW15SpsService.attrHandle + 2,
                                             NULL, 4);
@@ -1369,13 +1375,13 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
         // Since we have subscribed to the FIFO characteristics, but not the Credit characteristics
         // the remote server will echo data without any given credits. So writing to the FIFO
         // should produce a notification to us when the data is echoed.
-        uPortLog("U_PORT_TEST: uPortGattWriteAttribute - write attribute on GATT server\n");
+        U_TEST_PRINT_LINE("uPortGattWriteAttribute() - write attribute on GATT server.");
         errorCode = uPortGattWriteAttribute(connHandle,
                                             gNinaW15SpsService.attrHandle + 2,
                                             "abcd", 4);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
 
-        uPortLog("U_PORT_TEST: get notified from GATT server\n");
+        U_TEST_PRINT_LINE("get notified from GATT server.");
         notifyEvt_t *notify = &evt.notify;
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_NOTIFY, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(notify->length, 4);
@@ -1383,19 +1389,19 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
         U_PORT_TEST_ASSERT_EQUAL(notify->pParams, &subParams);
 
         gGattIterReturnValue = U_PORT_GATT_ITER_STOP; // Stop subscription on next notification
-        uPortLog("U_PORT_TEST: write attribute on GATT server again\n");
+        U_TEST_PRINT_LINE("write attribute on GATT server again.");
         errorCode = uPortGattWriteAttribute(connHandle,
                                             gNinaW15SpsService.attrHandle + 2,
                                             "efgh", 4);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
 
-        uPortLog("U_PORT_TEST: get notified from GATT server and stop subscription\n");
+        U_TEST_PRINT_LINE("get notified from GATT server and stop subscription.");
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_NOTIFY, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(notify->length, 4);
         U_PORT_TEST_ASSERT(memcmp(notify->data, "efgh", 4) == 0);
         U_PORT_TEST_ASSERT_EQUAL(notify->pParams, &subParams);
 
-        uPortLog("U_PORT_TEST: write attribute on GATT server yet one more time\n");
+        U_TEST_PRINT_LINE("write attribute on GATT server yet one more time.");
         errorCode = uPortGattWriteAttribute(connHandle,
                                             gNinaW15SpsService.attrHandle + 2,
                                             "ijkl", 4);
@@ -1409,7 +1415,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
             U_PORT_TEST_ASSERT_EQUAL(notify->length, 0);
         }
 
-        uPortLog("U_PORT_TEST: write attribute on GATT server one last time\n");
+        U_TEST_PRINT_LINE("write attribute on GATT server one last time.");
         errorCode = uPortGattWriteAttribute(connHandle,
                                             gNinaW15SpsService.attrHandle + 2,
                                             "mnop", 4);
@@ -1417,7 +1423,7 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
         // There should be no more notifications
         U_PORT_TEST_ASSERT(!waitForEvt(GATT_EVT_NOTIFY, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
 
-        uPortLog("U_PORT_TEST: disconnect\n");
+        U_TEST_PRINT_LINE("disconnect.");
         U_PORT_TEST_ASSERT_EQUAL(uPortGattDisconnectGap(connHandle), 0);
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         // Verify values
@@ -1435,11 +1441,10 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattSubscribeAttrWrite")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library during"
+                      " this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1463,13 +1468,13 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattServerConf")
     // Test cases
     createEvtQueue();
 
-    uPortLog("U_PORT_TEST: GATT server registration and functionality\n");
+    U_TEST_PRINT_LINE("GATT server registration and functionality.");
     U_PORT_TEST_ASSERT_EQUAL(uPortGattInit(), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattAdd(), 0);
-    uPortLog("U_PORT_TEST: uPortGattAddPrimaryService - NULL service\n");
+    U_TEST_PRINT_LINE("uPortGattAddPrimaryService() - NULL service.");
     errorCode = uPortGattAddPrimaryService(NULL);
     U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
-    uPortLog("U_PORT_TEST: uPortGattAddPrimaryService\n");
+    U_TEST_PRINT_LINE("uPortGattAddPrimaryService()");
     U_PORT_TEST_ASSERT_EQUAL(uPortGattAddPrimaryService(&gTestSpsService), 0);
     U_PORT_TEST_ASSERT_EQUAL(uPortGattUp(true), 0);
     uPortGattSetGapConnStatusCallback(gapConnStatusCallback, gGattCallbackParamIn);
@@ -1492,37 +1497,37 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattServerConf")
 
         spsWriteEvt_t *spsWrite = &evt.spsWrite;
         uint16_t cccValue = 0;
-        uPortLog("U_PORT_TEST: wait for Credit CCC write\n");
+        U_TEST_PRINT_LINE("wait for Credit CCC write.");
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_SPS_WRITE_CREDIT_CCC, &evt, CONNECTION_SETUP_TIMEOUT));
         U_PORT_TEST_ASSERT(parseSpsCccWriteData(spsWrite, &cccValue));
         U_PORT_TEST_ASSERT_EQUAL(cccValue, 1);
 
-        uPortLog("U_PORT_TEST: wait for FIFO CCC write\n");
+        U_TEST_PRINT_LINE("wait for FIFO CCC write.");
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_SPS_WRITE_FIFO_CCC, &evt, CONNECTION_SETUP_TIMEOUT));
         U_PORT_TEST_ASSERT(parseSpsCccWriteData(spsWrite, &cccValue));
         U_PORT_TEST_ASSERT_EQUAL(cccValue, 1);
 
-        uPortLog("U_PORT_TEST: wait for Credit write\n");
+        U_TEST_PRINT_LINE("wait for Credit write.");
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_SPS_WRITE_CREDIT_CHAR, &evt, CONNECTION_SETUP_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(spsWrite->offset, 0);
         U_PORT_TEST_ASSERT_EQUAL(spsWrite->length, 1);
         U_PORT_TEST_ASSERT(spsWrite->data[0] > 1);
 
         uint8_t credits = 10;
-        uPortLog("U_PORT_TEST: uPortGattNotify - invalid connection handle\n");
+        U_TEST_PRINT_LINE("uPortGattNotify() - invalid connection handle.");
         errorCode = uPortGattNotify(-1, &gSpsCreditsChar, &credits, 1);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
-        uPortLog("U_PORT_TEST: uPortGattNotify - NULL characteristics\n");
+        U_TEST_PRINT_LINE("uPortGattNotify() - NULL characteristics.");
         errorCode = uPortGattNotify(connHandle, NULL, &credits, 1);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
-        uPortLog("U_PORT_TEST: uPortGattNotify - NULL data\n");
+        U_TEST_PRINT_LINE("uPortGattNotify() - NULL data.");
         errorCode = uPortGattNotify(connHandle, &gSpsCreditsChar, NULL, 1);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
-        uPortLog("U_PORT_TEST: uPortGattNotify - data length = 0\n");
+        U_TEST_PRINT_LINE("uPortGattNotify() - data length = 0.");
         errorCode = uPortGattNotify(connHandle, &gSpsCreditsChar, &credits, 0);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-        uPortLog("U_PORT_TEST: notify credits to remote client\n");
+        U_TEST_PRINT_LINE("notify credits to remote client.");
         errorCode = uPortGattNotify(connHandle, &gSpsCreditsChar, &credits, 1);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
         // We have no way of verifying directly that the credits reached the remote side
@@ -1534,15 +1539,15 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattServerConf")
         uPortTaskBlock(200);
 
         notifyEvt_t *notify = &evt.notify;
-        uPortLog("U_PORT_TEST: notify data to remote client\n");
+        U_TEST_PRINT_LINE("notify data to remote client.");
         errorCode = uPortGattNotify(connHandle, &gSpsFifoChar, "abcd", 4);
         U_PORT_TEST_ASSERT_EQUAL(errorCode, (int32_t)U_ERROR_COMMON_SUCCESS);
-        uPortLog("U_PORT_TEST: wait for data to echo back\n");
+        U_TEST_PRINT_LINE("wait for data to echo back.");
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_SPS_WRITE_FIFO_CHAR, &evt, CONNECTION_SETUP_TIMEOUT));
         U_PORT_TEST_ASSERT_EQUAL(notify->length, sizeof(notify->data));
         U_PORT_TEST_ASSERT(memcmp(notify->data, "abcd", sizeof(notify->data)) == 0);
 
-        uPortLog("U_PORT_TEST: disconnect\n");
+        U_TEST_PRINT_LINE("disconnect.");
         U_PORT_TEST_ASSERT_EQUAL(uPortGattDisconnectGap(connHandle), 0);
         U_PORT_TEST_ASSERT(waitForEvt(GATT_EVT_CONN_STATUS, &evt, WAIT_FOR_CALLBACK_TIMEOUT));
         // Verify values
@@ -1559,11 +1564,10 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattServerConf")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library during"
+                      " this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1580,8 +1584,8 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_PORT_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s) free"
+                          "at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -1589,8 +1593,8 @@ U_PORT_TEST_FUNCTION("[portGatt]", "portGattCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_PORT_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free at"
+                          " the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

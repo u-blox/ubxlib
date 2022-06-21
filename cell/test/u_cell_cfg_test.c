@@ -69,6 +69,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_CFG_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #ifndef U_CELL_CFG_TEST_GREETING_STR
 /** The greeting message to use during testing.
  */
@@ -121,27 +129,26 @@ static void testBandMask(uDeviceHandle_t cellHandle,
     uint64_t bandMask1;
     uint64_t bandMask2;
 
-    uPortLog("U_CELL_CFG_TEST: getting band masks for %s...\n",
-             pRatString);
+    U_TEST_PRINT_LINE("getting band masks for %s...", pRatString);
     errorCode = uCellCfgGetBandMask(cellHandle, rat,
                                     &originalBandMask1, &originalBandMask2);
     if (supportedRatsBitmap & (1UL << (int32_t) rat)) {
         U_PORT_TEST_ASSERT(errorCode == 0);
-        uPortLog("U_CELL_CFG_TEST: band mask for %s is 0x%08x%08x %08x%08x...\n",
-                 pRatString,
-                 (uint32_t) (originalBandMask2 >> 32), (uint32_t) originalBandMask2,
-                 (uint32_t) (originalBandMask1 >> 32), (uint32_t) originalBandMask1);
+        U_TEST_PRINT_LINE("band mask for %s is 0x%08x%08x %08x%08x...",
+                          pRatString,
+                          (uint32_t) (originalBandMask2 >> 32), (uint32_t) originalBandMask2,
+                          (uint32_t) (originalBandMask1 >> 32), (uint32_t) originalBandMask1);
     } else {
         U_PORT_TEST_ASSERT(errorCode != 0);
     }
 
     // Take the existing values and mask off every other bit
-    uPortLog("U_CELL_CFG_TEST: setting band mask for %s to"
-             " 0x%08x%08x %08x%08x...\n", pRatString,
-             (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK2 >> 32),
-             (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK2),
-             (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK1 >> 32),
-             (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK1));
+    U_TEST_PRINT_LINE("setting band mask for %s to"
+                      " 0x%08x%08x %08x%08x...", pRatString,
+                      (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK2 >> 32),
+                      (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK2),
+                      (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK1 >> 32),
+                      (uint32_t) (U_CELL_TEST_CFG_ALT_BANDMASK1));
 
     U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
 
@@ -154,17 +161,17 @@ static void testBandMask(uDeviceHandle_t cellHandle,
         // Re-boot for the change to take effect
         U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
-        uPortLog("U_CELL_CFG_TEST: reading new band mask for %s...\n",
-                 pRatString);
+        U_TEST_PRINT_LINE("reading new band mask for %s...",
+                          pRatString);
         U_PORT_TEST_ASSERT(uCellCfgGetBandMask(cellHandle, rat,
                                                &bandMask1, &bandMask2) == 0);
-        uPortLog("U_CELL_CFG_TEST: new %s band mask is 0x%08x%08x %08x%08x...\n",
-                 pRatString, (uint32_t) (bandMask2 >> 32), (uint32_t) bandMask2,
-                 (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
+        U_TEST_PRINT_LINE("new %s band mask is 0x%08x%08x %08x%08x...",
+                          pRatString, (uint32_t) (bandMask2 >> 32), (uint32_t) bandMask2,
+                          (uint32_t) (bandMask1 >> 32), (uint32_t) bandMask1);
         U_PORT_TEST_ASSERT(bandMask1 == U_CELL_TEST_CFG_ALT_BANDMASK1);
         U_PORT_TEST_ASSERT(bandMask2 == U_CELL_TEST_CFG_ALT_BANDMASK2);
 
-        uPortLog("U_CELL_CFG_TEST: putting original band masks back...\n");
+        U_TEST_PRINT_LINE("putting original band masks back...");
         U_PORT_TEST_ASSERT(uCellCfgSetBandMask(cellHandle, rat,
                                                originalBandMask1,
                                                originalBandMask2) == 0);
@@ -226,7 +233,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgBandMask")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -271,7 +278,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
         }
     }
 
-    uPortLog("U_CELL_CFG_TEST: %d RAT(s) supported by this module: ", numSupportedRats);
+    uPortLog(U_TEST_PREFIX "%d RAT(s) supported by this module: ", numSupportedRats);
     for (size_t x = 0; x < numSupportedRats; x++) {
         if (x < numSupportedRats - 1) {
             uPortLog("%d, ", supportedRats[x]);
@@ -282,7 +289,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
 
     // Set each one of them
     for (size_t x = 0; x < numSupportedRats; x++) {
-        uPortLog("U_CELL_CFG_TEST: setting sole RAT to %d...\n", supportedRats[x]);
+        U_TEST_PRINT_LINE("setting sole RAT to %d...", supportedRats[x]);
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
         U_PORT_TEST_ASSERT(uCellCfgSetRat(cellHandle, supportedRats[x]) == 0);
         U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
@@ -291,10 +298,10 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
 
         for (size_t rank = 0; rank < pModule->maxNumSimultaneousRats; rank++) {
             if (rank == 0) {
-                uPortLog("U_CELL_CFG_TEST: checking that the RAT at rank 0 is %d...\n", supportedRats[x]);
+                U_TEST_PRINT_LINE("checking that the RAT at rank 0 is %d...", supportedRats[x]);
                 U_PORT_TEST_ASSERT(uCellCfgGetRat(cellHandle, rank) == supportedRats[x]);
             } else {
-                uPortLog("U_CELL_CFG_TEST: checking that there is no RAT at rank %d...\n", rank);
+                U_TEST_PRINT_LINE("checking that there is no RAT at rank %d...", rank);
                 U_PORT_TEST_ASSERT(uCellCfgGetRat(cellHandle, rank) == U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED);
             }
         }
@@ -306,7 +313,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetRat")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -367,7 +374,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
         }
     }
 
-    uPortLog("U_CELL_CFG_TEST: %d RAT(s) supported by this module: ", numSupportedRats);
+    uPortLog(U_TEST_PREFIX "%d RAT(s) supported by this module: ", numSupportedRats);
     for (size_t x = 0; x < numSupportedRats; x++) {
         if (x < numSupportedRats - 1) {
             uPortLog("%d, ", supportedRats[x]);
@@ -381,19 +388,18 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
          (rank <= pModule->maxNumSimultaneousRats); rank++) {
         rat = uCellCfgGetRat(cellHandle, rank);
         if (rank == 0) {
-            uPortLog("U_CELL_CFG_TEST: RAT at rank %d is expected to be %d and "
-                     "is %d.\n", rank,
-                     uCellTestPrivateInitRatGet(pModule->supportedRatsBitmap), rat);
+            U_TEST_PRINT_LINE("RAT at rank %d is expected to be %d and "
+                              "is %d.", rank,
+                              uCellTestPrivateInitRatGet(pModule->supportedRatsBitmap), rat);
             U_PORT_TEST_ASSERT(rat == uCellTestPrivateInitRatGet(pModule->supportedRatsBitmap));
         } else {
             if (rank < pModule->maxNumSimultaneousRats) {
-                uPortLog("U_CELL_CFG_TEST: RAT at rank %d is expected to be %d"
-                         " and is %d.\n",
-                         rank, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, rat);
+                U_TEST_PRINT_LINE("RAT at rank %d is expected to be %d and is %d.",
+                                  rank, U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED, rat);
                 U_PORT_TEST_ASSERT(rat == U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED);
             } else {
-                uPortLog("U_CELL_CFG_TEST: asking for the RAT at rank %d is "
-                         "expected to fail and is %d.\n", rank, rat);
+                U_TEST_PRINT_LINE("asking for the RAT at rank %d is "
+                                  "expected to fail and is %d.", rank, rat);
                 U_PORT_TEST_ASSERT(rat < 0);
             }
         }
@@ -401,25 +407,25 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
 
     // Now set up the maximum number of supported RATs
     // deliberately checking out of range values
-    uPortLog("U_CELL_CFG_TEST: now set a RAT at all %d possible ranks.\n",
-             pModule->maxNumSimultaneousRats);
+    U_TEST_PRINT_LINE("now set a RAT at all %d possible ranks.",
+                      pModule->maxNumSimultaneousRats);
     for (rank = 0; rank <= pModule->maxNumSimultaneousRats; rank++) {
         if (rank < pModule->maxNumSimultaneousRats) {
-            uPortLog("U_CELL_CFG_TEST: setting RAT at rank %d to %d.\n",
-                     rank, supportedRats[rank]);
+            U_TEST_PRINT_LINE("setting RAT at rank %d to %d.",
+                              rank, supportedRats[rank]);
             U_PORT_TEST_ASSERT(uCellCfgSetRatRank(cellHandle,
                                                   supportedRats[rank],
                                                   rank) == 0);
         } else {
-            uPortLog("U_CELL_CFG_TEST: try to set RAT at rank %d to %d, "
-                     "should fail.\n", rank, supportedRats[0]);
+            U_TEST_PRINT_LINE("try to set RAT at rank %d to %d, "
+                              "should fail.", rank, supportedRats[0]);
             U_PORT_TEST_ASSERT(uCellCfgSetRatRank(cellHandle,
                                                   supportedRats[0],
                                                   rank) < 0);
         }
     }
 
-    uPortLog("U_CELL_CFG_TEST: expected RAT list is now:\n");
+    U_TEST_PRINT_LINE("expected RAT list is now:");
     for (rank = 0; rank < pModule->maxNumSimultaneousRats; rank++) {
         uPortLog("  rank %d: %d.\n", rank, supportedRats[rank]);
     }
@@ -431,18 +437,18 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
     for (rank = 0; rank <= pModule->maxNumSimultaneousRats; rank++) {
         y = uCellCfgGetRatRank(cellHandle, supportedRats[rank]);
         if (rank < pModule->maxNumSimultaneousRats) {
-            uPortLog("U_CELL_CFG_TEST: rank of RAT %d is expected to be "
-                     "%d and is %d.\n", supportedRats[rank], rank, y);
+            U_TEST_PRINT_LINE("rank of RAT %d is expected to be "
+                              "%d and is %d.", supportedRats[rank], rank, y);
             U_PORT_TEST_ASSERT(y == (int32_t) rank);
             setRats[rank] = supportedRats[rank];
         } else {
-            uPortLog("U_CELL_CFG_TEST: asking for the RAT at rank %d is "
-                     "expected to fail and is %d.\n", rank, y);
+            U_TEST_PRINT_LINE("asking for the RAT at rank %d is "
+                              "expected to fail and is %d.", rank, y);
             U_PORT_TEST_ASSERT(y < 0);
         }
     }
 
-    uPortLog("U_CELL_CFG_TEST: RAT list read back was:\n");
+    U_TEST_PRINT_LINE("RAT list read back was:");
     for (rank = 0; rank < pModule->maxNumSimultaneousRats; rank++) {
         uPortLog("  rank %d: %d.\n", rank, supportedRats[rank]);
     }
@@ -452,7 +458,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
     // enough times given the number of possible simultaneous RATs
     if (pModule->maxNumSimultaneousRats > 1) {
         repeats = 1UL << pModule->maxNumSimultaneousRats;
-        uPortLog("U_CELL_CFG_TEST: randomly removing RATs at ranks.\n");
+        U_TEST_PRINT_LINE("randomly removing RATs at ranks.");
         y = 0;
         while (y < repeats) {
             // Find a rat to change that leaves us with a non-zero number of RATs
@@ -479,7 +485,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
             setRats[rank] = rat;
 
             y++;
-            uPortLog("U_CELL_CFG_TEST: changing RAT at rank %d to %d.\n", rank, setRats[rank]);
+            U_TEST_PRINT_LINE("changing RAT at rank %d to %d.", rank, setRats[rank]);
             // Do the setting
             U_PORT_TEST_ASSERT(uCellCfgSetRatRank(cellHandle, setRats[rank], rank) == 0);
             U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
@@ -504,12 +510,12 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
             for (; count < pModule->maxNumSimultaneousRats; count++) {
                 setRats[count] = U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED;
             }
-            uPortLog("U_CELL_CFG_TEST: new expected RAT list is:\n");
+            U_TEST_PRINT_LINE("new expected RAT list is:");
             for (size_t x = 0; x < pModule->maxNumSimultaneousRats; x++) {
                 uPortLog("  rank %d: %d.\n", x, setRats[x]);
             }
             // Check that the RATs are as expected
-            uPortLog("U_CELL_CFG_TEST: checking that the module agrees...\n");
+            U_TEST_PRINT_LINE("checking that the module agrees...");
             for (size_t x = 0; x < pModule->maxNumSimultaneousRats; x++) {
                 rat = uCellCfgGetRat(cellHandle, x);
                 uPortLog("  RAT at rank %d is expected to be %d and is %d.\n",
@@ -548,7 +554,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgSetGetRatRank")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -581,9 +587,9 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
     //lint -esym(613, pModule) Suppress possible use of NULL pointer
     // for pModule from now on
 
-    uPortLog("U_CELL_CFG_TEST: getting MNO profile...\n");
+    U_TEST_PRINT_LINE("getting MNO profile...");
     readMnoProfile = uCellCfgGetMnoProfile(cellHandle);
-    uPortLog("U_CELL_CFG_TEST: MNO profile was %d.\n", readMnoProfile);
+    U_TEST_PRINT_LINE("MNO profile was %d.", readMnoProfile);
 
     if (U_CELL_PRIVATE_HAS(pModule,
                            U_CELL_PRIVATE_FEATURE_MNO_PROFILE)) {
@@ -609,8 +615,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
 
     if (U_CELL_PRIVATE_HAS(pModule,
                            U_CELL_PRIVATE_FEATURE_MNO_PROFILE)) {
-        uPortLog("U_CELL_CFG_TEST: trying to set MNO profile while"
-                 " connected...\n");
+        U_TEST_PRINT_LINE("trying to set MNO profile while  connected...");
         gStopTimeMs = uPortGetTickTimeMs() +
                       (U_CELL_TEST_CFG_CONNECT_TIMEOUT_SECONDS * 1000);
         U_PORT_TEST_ASSERT(uCellNetRegister(cellHandle, NULL,
@@ -620,8 +625,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
                                                  mnoProfile) < 0);
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
 
-        uPortLog("U_CELL_CFG_TEST: disconnecting to really set"
-                 " MNO profile...\n");
+        U_TEST_PRINT_LINE("disconnecting to really set MNO profile...");
         U_PORT_TEST_ASSERT(uCellNetDisconnect(cellHandle, NULL) == 0);
         U_PORT_TEST_ASSERT(!uCellNetIsRegistered(cellHandle));
         U_PORT_TEST_ASSERT(uCellCfgSetMnoProfile(cellHandle,
@@ -630,8 +634,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
         U_PORT_TEST_ASSERT(uCellPwrReboot(cellHandle, NULL) == 0);
         U_PORT_TEST_ASSERT(!uCellPwrRebootIsRequired(cellHandle));
         readMnoProfile = uCellCfgGetMnoProfile(cellHandle);
-        uPortLog("U_CELL_CFG_TEST: MNO profile is now %d.\n",
-                 readMnoProfile);
+        U_TEST_PRINT_LINE("MNO profile is now %d.", readMnoProfile);
         U_PORT_TEST_ASSERT(readMnoProfile == mnoProfile);
     } else {
         U_PORT_TEST_ASSERT(uCellCfgSetMnoProfile(cellHandle,
@@ -644,7 +647,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGetSetMnoProfile")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -672,23 +675,23 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgUdconf")
     cellHandle = gHandles.cellHandle;
 
     // All modules support AT+UDCONF=1 so we can test that safely
-    uPortLog("U_CELL_CFG_TEST: getting UDCONF=1...\n");
+    U_TEST_PRINT_LINE("getting UDCONF=1...");
     udconfOriginal = uCellCfgGetUdconf(cellHandle, 1, -1);
-    uPortLog("U_CELL_CFG_TEST: UDCONF=1 is %d.\n", udconfOriginal);
+    U_TEST_PRINT_LINE("UDCONF=1 is %d.", udconfOriginal);
     U_PORT_TEST_ASSERT((udconfOriginal == 0) || (udconfOriginal == 1));
 
     if (udconfOriginal == 0) {
         setUdconf = 1;
     }
 
-    uPortLog("U_CELL_CFG_TEST: setting UDCONF=1,%d...\n", setUdconf);
+    U_TEST_PRINT_LINE("setting UDCONF=1,%d...", setUdconf);
     U_PORT_TEST_ASSERT(uCellCfgSetUdconf(cellHandle, 1, setUdconf, -1) == 0);
     x = uCellCfgGetUdconf(cellHandle, 1, -1);
-    uPortLog("U_CELL_CFG_TEST: UDCONF=1 is now %d.\n", x);
+    U_TEST_PRINT_LINE("UDCONF=1 is now %d.", x);
     U_PORT_TEST_ASSERT(x == setUdconf);
     U_PORT_TEST_ASSERT(uCellPwrRebootIsRequired(cellHandle));
 
-    uPortLog("U_CELL_CFG_TEST: putting UDCONF=1 back to what it was...\n");
+    U_TEST_PRINT_LINE("putting UDCONF=1 back to what it was...");
     U_PORT_TEST_ASSERT(uCellCfgSetUdconf(cellHandle, 1, udconfOriginal, -1) == 0);
 
     // Do the standard postamble, leaving the module on for the next
@@ -697,7 +700,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgUdconf")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -739,7 +742,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgAutoBaud")
     //lint -esym(613, pModule) Suppress possible use of NULL pointer
     // for pModule from now on
 
-    uPortLog("U_CELL_CFG_TEST: setting auto-bauding on...\n");
+    U_TEST_PRINT_LINE("setting auto-bauding on...");
     x = uCellCfgSetAutoBaudOn(cellHandle);
     if (U_CELL_PRIVATE_HAS(pModule,
                            U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)) {
@@ -750,16 +753,16 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgAutoBaud")
         U_PORT_TEST_ASSERT(!uCellCfgAutoBaudIsOn(cellHandle));
     }
 
-    uPortLog("U_CELL_CFG_TEST: setting auto-bauding off...\n");
+    U_TEST_PRINT_LINE("setting auto-bauding off...");
     U_PORT_TEST_ASSERT(uCellCfgSetAutoBaudOff(cellHandle) == 0);
     U_PORT_TEST_ASSERT(!uCellCfgAutoBaudIsOn(cellHandle));
     if (U_CELL_PRIVATE_HAS(pModule,
                            U_CELL_PRIVATE_FEATURE_AUTO_BAUDING)) {
-        uPortLog("U_CELL_CFG_TEST: IMPORTANT the baud rate of the cellular"
-                 " module is now fixed at %d, if you want the module"
-                 " to auto-baud your application must connect to the"
-                 " module at %d and then call uCellCfgSetAutoBaudOff().\n",
-                 U_CELL_UART_BAUD_RATE, U_CELL_UART_BAUD_RATE);
+        U_TEST_PRINT_LINE("IMPORTANT the baud rate of the cellular"
+                          " module is now fixed at %d, if you want the module"
+                          " to auto-baud your application must connect to the"
+                          " module at %d and then call uCellCfgSetAutoBaudOff().",
+                          U_CELL_UART_BAUD_RATE, U_CELL_UART_BAUD_RATE);
     }
 
     // Do the standard postamble, leaving the module on for the next
@@ -768,7 +771,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgAutoBaud")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -796,21 +799,20 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
                                                 &gHandles, true) == 0);
     cellHandle = gHandles.cellHandle;
 
-    uPortLog("U_CELL_CFG_TEST: getting greeting...\n");
+    U_TEST_PRINT_LINE("getting greeting...");
     x = uCellCfgGetGreeting(cellHandle, bufferOriginal, sizeof(bufferOriginal));
-    uPortLog("U_CELL_CFG_TEST: greeting is \"%s\".\n", bufferOriginal);
+    U_TEST_PRINT_LINE("greeting is \"%s\".", bufferOriginal);
 
-    uPortLog("U_CELL_CFG_TEST: setting greeting to \"%s\"...\n",
-             U_CELL_CFG_TEST_GREETING_STR);
+    U_TEST_PRINT_LINE("setting greeting to \"%s\"...", U_CELL_CFG_TEST_GREETING_STR);
     U_PORT_TEST_ASSERT(uCellCfgSetGreeting(cellHandle,
                                            U_CELL_CFG_TEST_GREETING_STR) == 0);
 
     y = uCellCfgGetGreeting(cellHandle, buffer, sizeof(buffer));
-    uPortLog("U_CELL_CFG_TEST: greeting is now \"%s\".\n", buffer);
+    U_TEST_PRINT_LINE("greeting is now \"%s\".", buffer);
     U_PORT_TEST_ASSERT(strcmp(buffer, U_CELL_CFG_TEST_GREETING_STR) == 0);
     U_PORT_TEST_ASSERT(y == strlen(buffer));
 
-    uPortLog("U_CELL_CFG_TEST: putting greeting back to what it was...\n");
+    U_TEST_PRINT_LINE("putting greeting back to what it was...");
     if (x > 0) {
         U_PORT_TEST_ASSERT(uCellCfgSetGreeting(cellHandle, bufferOriginal) == 0);
     } else {
@@ -823,7 +825,7 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgGreeting")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_CFG_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -841,8 +843,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_CFG_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -850,8 +852,8 @@ U_PORT_TEST_FUNCTION("[cellCfg]", "cellCfgCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_CELL_CFG_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

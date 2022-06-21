@@ -55,6 +55,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_LOCATION_TEST_SHARED: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -241,15 +249,15 @@ void uLocationTestPrintLocation(const uLocation_t *pLocation)
 
     prefix[0] = latLongToBits(pLocation->latitudeX1e7, &(whole[0]), &(fraction[0]));
     prefix[1] = latLongToBits(pLocation->longitudeX1e7, &(whole[1]), &(fraction[1]));
-    uPortLog("U_LOCATION_TEST_SHARED: location %c%d.%07d/%c%d.%07d (radius %d metre(s)),"
-             " %d metre(s) high, moving at %d metre(s)/second, %d satellite(s) visible,"
-             " UTC time %d.\n", prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
-             pLocation->radiusMillimetres / 1000, pLocation->altitudeMillimetres / 1000,
-             pLocation->speedMillimetresPerSecond / 1000, pLocation->svs,
-             (int32_t) pLocation->timeUtc);
-    uPortLog("U_LOCATION_TEST_SHARED: paste this into a browser"
-             " https://maps.google.com/?q=%c%d.%07d,%c%d.%07d\n",
-             prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
+    U_TEST_PRINT_LINE("location %c%d.%07d/%c%d.%07d (radius %d metre(s)),"
+                      " %d metre(s) high, moving at %d metre(s)/second, %d satellite(s) visible,"
+                      " UTC time %d.", prefix[0], whole[0], fraction[0], prefix[1],
+                      whole[1], fraction[1],
+                      pLocation->radiusMillimetres / 1000, pLocation->altitudeMillimetres / 1000,
+                      pLocation->speedMillimetresPerSecond / 1000, pLocation->svs,
+                      (int32_t) pLocation->timeUtc);
+    U_TEST_PRINT_LINE("paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d",
+                      prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
 #else
     (void) pLocation;
 #endif
@@ -314,11 +322,9 @@ void *pULocationTestMqttLogin(uDeviceHandle_t devHandle,
         connection.pClientIdStr = pClientIdStr;
         connection.inactivityTimeoutSeconds = U_LOCATION_TEST_MQTT_INACTIVITY_TIMEOUT_SECONDS;
 
-        uPortLog("U_LOCATION_TEST_SHARED: connecting to MQTT broker \"%s\"...\n",
-                 pBrokerNameStr);
+        U_TEST_PRINT_LINE("connecting to MQTT broker \"%s\"...", pBrokerNameStr);
         if (uMqttClientConnect(pContext, &connection) < 0) {
-            uPortLog("U_LOCATION_TEST_SHARED: failed to connect to \"%s\".\n",
-                     pBrokerNameStr);
+            U_TEST_PRINT_LINE("failed to connect to \"%s\".", pBrokerNameStr);
             uMqttClientClose(pContext);
             pContext = NULL;
         }
@@ -333,7 +339,7 @@ void uLocationTestMqttLogout(void *pContext)
     if (pContext != NULL) {
         uMqttClientDisconnect((uMqttClientContext_t *) pContext);
         uMqttClientClose((uMqttClientContext_t *) pContext);
-        uPortLog("U_LOCATION_TEST_SHARED: disconnected from MQTT broker.\n");
+        U_TEST_PRINT_LINE("disconnected from MQTT broker.");
     }
 }
 

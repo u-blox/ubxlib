@@ -69,9 +69,13 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-//lint -esym(767, LOG_TAG) Suppress LOG_TAG defined differently in another module
-//lint -esym(750, LOG_TAG) Suppress LOG_TAG not referenced
-#define LOG_TAG "U_SHORT_RANGE_TEST: "
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_WIFI_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
 /* ----------------------------------------------------------------
  * TYPES
@@ -121,10 +125,8 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
     (void)connId;
     if (status == U_WIFI_CON_STATUS_CONNECTED) {
 #if !U_CFG_OS_CLIB_LEAKS
-        uPortLog(LOG_TAG "Connected Wifi connId: %d, bssid: %s, channel: %d\n",
-                 connId,
-                 pBssid,
-                 channel);
+        U_TEST_PRINT_LINE("connected Wifi connId: %d, bssid: %s, channel: %d.",
+                          connId, pBssid, channel);
 #endif
         gWifiConnected = 1;
     } else {
@@ -138,10 +140,9 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
             // For all other values use "Unknown"
             disconnectReason = 0;
         }
-        uPortLog(LOG_TAG "Wifi connection lost connId: %d, reason: %d (%s)\n",
-                 connId,
-                 disconnectReason,
-                 strDisconnectReason[disconnectReason]);
+        U_TEST_PRINT_LINE("wifi connection lost connId: %d, reason: %d (%s).",
+                          connId, disconnectReason,
+                          strDisconnectReason[disconnectReason]);
 #endif
         gWifiConnected = 0;
         gWifiDisconnected = 1;
@@ -161,9 +162,9 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     (void)statusMask;
     (void)pCallbackParameter;
 #if !U_CFG_OS_CLIB_LEAKS
-    uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+    U_TEST_PRINT_LINE("network status IPv4 %s, IPv6 %s.",
+                      ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+                      ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
 #endif
 
     gWifiStatusMask = statusMask;
@@ -205,10 +206,10 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
             while (!connectError && (!gWifiConnected || (gWifiStatusMask != gWifiStatusMaskAllUp))) {
                 if (waitCtr >= 15) {
                     if (!gWifiConnected) {
-                        uPortLog(LOG_TAG "Unable to connect to WifiNetwork\n");
+                        U_TEST_PRINT_LINE("unable to connect to WiFi network.");
                         connectError = U_WIFI_TEST_ERROR_CONNECTED;
                     } else {
-                        uPortLog(LOG_TAG "Unable to retrieve IP address\n");
+                        U_TEST_PRINT_LINE("unable to retrieve IP address.");
                         connectError = U_WIFI_TEST_ERROR_IPRECV;
                     }
                     break;
@@ -230,9 +231,9 @@ static uWifiTestError_t runWifiTest(const char *pSsid, const char *pPassPhrase)
                 if (waitCtr >= 5) {
                     disconnectError = U_WIFI_TEST_ERROR_DISCONNECT;
                     if (!gWifiDisconnected) {
-                        uPortLog(LOG_TAG "Unable to diconnect from WifiNetwork");
+                        U_TEST_PRINT_LINE("unable to diconnect from wifi network.");
                     } else {
-                        uPortLog(LOG_TAG "Network status is still up");
+                        U_TEST_PRINT_LINE("network status is still up.");
                     }
                     break;
                 }
@@ -273,16 +274,16 @@ static void uWifiScanResultCallback(uDeviceHandle_t devHandle, uWifiScanResult_t
 static bool validateScanResult(uWifiScanResult_t *pResult)
 {
     if ((pResult->channel <= 0) || (pResult->channel > 185)) {
-        uPortLog(LOG_TAG "Invalid WiFi channel: %d\n", pResult->channel);
+        U_TEST_PRINT_LINE("invalid WiFi channel: %d.", pResult->channel);
         return false;
     }
     if (pResult->rssi > 0) {
-        uPortLog(LOG_TAG "Invalid RSSI value: %d\n", pResult->rssi);
+        U_TEST_PRINT_LINE("invalid RSSI value: %d.", pResult->rssi);
         return false;
     }
     if ((pResult->opMode != U_WIFI_OP_MODE_INFRASTRUCTURE) &&
         (pResult->opMode != U_WIFI_OP_MODE_ADHOC)) {
-        uPortLog(LOG_TAG "Invalid opMode value: %d\n", pResult->rssi);
+        U_TEST_PRINT_LINE("invalid opMode value: %d.", pResult->rssi);
         return false;
     }
 
@@ -335,27 +336,27 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
     U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
     U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 
-    uPortLog("U_WIFI: calling uShortRangeOpenUart with same arg twice,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("calling uShortRangeOpenUart with same arg twice,"
+                      " should fail...");
     uDeviceHandle_t dummyHandle;
     U_PORT_TEST_ASSERT(uShortRangeOpenUart((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                            &uart, true, &dummyHandle) < 0);
 
     uWifiTestPrivatePostamble(&gHandles);
 
-    uPortLog("U_WIFI: calling uShortRangeOpenUart with NULL uart arg,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("calling uShortRangeOpenUart with NULL uart arg,"
+                      " should fail...");
     U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                 NULL,
                                                 &gHandles) < 0);
-    uPortLog("U_WIFI: calling uShortRangeOpenUart with wrong module type,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("calling uShortRangeOpenUart with wrong module type,"
+                      " should fail...");
     U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
                                                 &uart,
                                                 &gHandles) < 0);
     uart.uartPort = -1;
-    uPortLog("U_WIFI: calling uShortRangeOpenUart with invalid uart arg,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("calling uShortRangeOpenUart with invalid uart arg,"
+                      " should fail...");
     U_PORT_TEST_ASSERT(uWifiTestPrivatePreamble((uWifiModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                 &uart,
                                                 &gHandles) < 0);
@@ -368,7 +369,7 @@ U_PORT_TEST_FUNCTION("[wifi]", "wifiOpenUart")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_WIFI_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);

@@ -62,6 +62,40 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The base string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX_BASE "U_AT_CLIENT_TEST"
+
+/** The string to put at the start of all prints from this test
+ * where no iteration or post-fixing string is required.
+ */
+#define U_TEST_PREFIX U_TEST_PREFIX_BASE ": "
+
+/** Print a whole line, with terminator, prefixed for this test file,
+ * where no iteration or string is required.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
+/** The string to put at the start of all prints from this test
+ * where an iteration is required.
+ */
+#define U_TEST_PREFIX_X U_TEST_PREFIX_BASE "_%d: "
+
+/** Print a whole line, with iteration and terminator, prefixed for
+ * this test file.
+ */
+#define U_TEST_PRINT_LINE_X(format, ...) uPortLog(U_TEST_PREFIX_X format "\n", ##__VA_ARGS__)
+
+/** The string to put at the start of all prints from this test
+ * where a post-fixing string is required.
+ */
+#define U_TEST_PREFIX_STR U_TEST_PREFIX_BASE "%s: "
+
+/** Print a whole line, with post-fixing string and terminator,
+ * prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE_STR(format, ...) uPortLog(U_TEST_PREFIX_STR format "\n", ##__VA_ARGS__)
+
 /** The CME/CMS ERROR number to use during testing.
  */
 #define U_AT_CLIENT_TEST_CMX_ERROR_NUMBER 65535
@@ -163,8 +197,8 @@ static void consecutiveTimeoutCallback(uAtClientHandle_t atHandle,
     int32_t heapUsed = uPortGetHeapFree();
 #endif
 
-    uPortLog("U_AT_CLIENT_TEST: AT consecutive timeout callback"
-             " called with %d.\n", *pCount);
+    U_TEST_PRINT_LINE("AT consecutive timeout callback called with %d.",
+                      *pCount);
 
 #if U_CFG_OS_CLIB_LEAKS
     // Take account of any heap lost through the printf()
@@ -181,17 +215,16 @@ static void checkStackExtents(uAtClientHandle_t atHandle)
 
     stackMinFreeBytes = uAtClientUrcHandlerStackMinFree(atHandle);
     if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_AT_CLIENT_TEST: URC task had min %d byte(s)"
-                 " stack free out of %d.\n", stackMinFreeBytes,
-                 U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES);
+        U_TEST_PRINT_LINE("URC task had min %d byte(s) stack free out of %d.",
+                          stackMinFreeBytes, U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES);
         U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
     }
 
     stackMinFreeBytes = uAtClientCallbackStackMinFree();
     if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_AT_CLIENT_TEST: AT callback task had min %d byte(s)"
-                 " stack free out of %d.\n", stackMinFreeBytes,
-                 U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES);
+        U_TEST_PRINT_LINE("AT callback task had min %d byte(s) stack free"
+                          " out of %d.", stackMinFreeBytes,
+                          U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES);
         U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
     }
 }
@@ -211,11 +244,11 @@ static void twoUartsPreamble()
                                  U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(gUartAHandle >= 0);
 
-    uPortLog("U_AT_CLIENT_TEST: AT client will be on UART %d,"
-             " TXD pin %d (0x%02x) and RXD pin %d (0x%02x).\n",
-             U_CFG_TEST_UART_A, U_CFG_TEST_PIN_UART_A_TXD,
-             U_CFG_TEST_PIN_UART_A_TXD, U_CFG_TEST_PIN_UART_A_RXD,
-             U_CFG_TEST_PIN_UART_A_RXD);
+    U_TEST_PRINT_LINE("AT client will be on UART %d, TXD pin %d (0x%02x)"
+                      " and RXD pin %d (0x%02x).",
+                      U_CFG_TEST_UART_A, U_CFG_TEST_PIN_UART_A_TXD,
+                      U_CFG_TEST_PIN_UART_A_TXD, U_CFG_TEST_PIN_UART_A_RXD,
+                      U_CFG_TEST_PIN_UART_A_RXD);
 
     gUartBHandle = uPortUartOpen(U_CFG_TEST_UART_B,
                                  U_CFG_TEST_BAUD_RATE,
@@ -227,13 +260,13 @@ static void twoUartsPreamble()
                                  U_CFG_TEST_PIN_UART_B_RTS);
     U_PORT_TEST_ASSERT(gUartBHandle >= 0);
 
-    uPortLog("U_AT_CLIENT_TEST: AT server will be on UART %d,"
-             " TXD pin %d (0x%02x) and RXD pin %d (0x%02x).\n",
-             U_CFG_TEST_UART_B, U_CFG_TEST_PIN_UART_B_TXD,
-             U_CFG_TEST_PIN_UART_B_TXD, U_CFG_TEST_PIN_UART_B_RXD,
-             U_CFG_TEST_PIN_UART_B_RXD);
+    U_TEST_PRINT_LINE("AT server will be on UART %d, TXD pin %d (0x%02x)"
+                      " and RXD pin %d (0x%02x).",
+                      U_CFG_TEST_UART_B, U_CFG_TEST_PIN_UART_B_TXD,
+                      U_CFG_TEST_PIN_UART_B_TXD, U_CFG_TEST_PIN_UART_B_RXD,
+                      U_CFG_TEST_PIN_UART_B_RXD);
 
-    uPortLog("U_AT_CLIENT_TEST: make sure these pins are cross-connected.\n");
+    U_TEST_PRINT_LINE("make sure these pins are cross-connected.");
 }
 
 // Check that an AT timeout is obeyed.
@@ -266,14 +299,13 @@ static bool atTimeoutIsObeyed(uAtClientHandle_t atClientHandle,
         duration = (int32_t) (uPortGetTickTimeMs() - startTime);
         if ((duration < timeoutMs) ||
             (duration > timeoutMs + U_AT_CLIENT_TEST_AT_TIMEOUT_TOLERANCE_MS)) {
-            uPortLog("U_AT_CLIENT_TEST: AT timeout was not obeyed"
-                     " (%d ms as opposed to %d ms).\n",
-                     (int) duration, timeoutMs);
+            U_TEST_PRINT_LINE("AT timeout was not obeyed (%d ms as opposed"
+                              " to %d ms).", (int) duration, timeoutMs);
         } else {
             success = true;
         }
     } else {
-        uPortLog("U_AT_CLIENT_TEST: expected AT timeout error did not occur.\n");
+        U_TEST_PRINT_LINE("expected AT timeout error did not occur.");
     }
 
     return success;
@@ -512,7 +544,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
             heapUsed = uPortGetHeapFree();
 #endif
 
-            uPortLog("U_AT_SERVER_TEST_%d: received command: \"",
+            uPortLog(U_TEST_PREFIX_X "received command: \"",
                      pCheckCommandResponse->index + 1);
             uAtClientTestPrint(gAtServerBuffer, receiveLength);
             uPortLog("\".\n");
@@ -548,7 +580,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                             pReceive += length;
                             receiveLength -= length;
                         } else {
-                            uPortLog("U_AT_SERVER_TEST_%d: expected delimiter (\"%s\")"
+                            uPortLog(U_TEST_PREFIX_X "expected delimiter (\"%s\")"
                                      " but received \"",
                                      pCheckCommandResponse->index + 1, pBytes);
                             uAtClientTestPrint(pReceive, length);
@@ -564,7 +596,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                             pReceive += length;
                             receiveLength -= length;
                         } else {
-                            uPortLog("U_AT_SERVER_TEST_%d: expected parameter \"",
+                            uPortLog(U_TEST_PREFIX_X "expected parameter \"",
                                      pCheckCommandResponse->index + 1);
                             uAtClientTestPrint(pBytes, length);
                             uPortLog("\" but received \"");
@@ -587,7 +619,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                             lastError = 6;
                         }
                     } else {
-                        uPortLog("U_AT_SERVER_TEST_%d: expected terminator (\"",
+                        uPortLog(U_TEST_PREFIX_X "expected terminator (\"",
                                  pCheckCommandResponse->index + 1);
                         uAtClientTestPrint(pBytes, length);
                         uPortLog("\") but received \"");
@@ -597,8 +629,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                     }
                 }
             } else {
-                uPortLog("U_AT_SERVER_TEST_%d: expected \"%s\""
-                         " but received \"",
+                uPortLog(U_TEST_PREFIX_X "expected \"%s\" but received \"",
                          pCheckCommandResponse->index + 1, pBytes);
                 uAtClientTestPrint(pReceive, length);
                 uPortLog("\".\n");
@@ -609,8 +640,8 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
             if (lastError == 0) {
                 pCheckCommandResponse->commandPassIndex++;
             } else {
-                uPortLog("U_AT_SERVER_TEST_%d: error %d.\n",
-                         pCheckCommandResponse->index + 1, lastError);
+                U_TEST_PRINT_LINE_X("error %d.", pCheckCommandResponse->index + 1,
+                                    lastError);
             }
 
             if (pCheckCommandResponse->pTestSet[pCheckCommandResponse->index].response.type !=
@@ -651,7 +682,7 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                                                     U_AT_CLIENT_TEST_CMX_ERROR_NUMBER);
 
                 // Print what we're gonna send and let it be printed
-                uPortLog("U_AT_SERVER_TEST_%d: sending response: \"",
+                uPortLog(U_TEST_PREFIX_X "sending response: \"",
                          pCheckCommandResponse->index + 1);
                 uAtClientTestPrint(pBuffer, length);
                 uPortLog("\"...\n");
@@ -677,8 +708,8 @@ static void atServerCallback(int32_t uartHandle, uint32_t eventBitmask,
                 // Free the buffer again
                 free(pBuffer);
             } else {
-                uPortLog("U_AT_SERVER_TEST_%d: no response will be sent.\n",
-                         pCheckCommandResponse->index + 1);
+                U_TEST_PRINT_LINE_X("no response will be sent.",
+                                    pCheckCommandResponse->index + 1);
             }
         }
     }
@@ -884,27 +915,25 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
         switch (pParameter->type) {
             case U_AT_CLIENT_TEST_PARAMETER_INT32:
                 int32 = uAtClientReadInt(atClientHandle);
-                uPortLog("U_AT_CLIENT_TEST%s: read int32_t"
-                         " parameter %d (expected %d).\n",
-                         pPostfix, int32, pParameter->parameter.int32);
+                U_TEST_PRINT_LINE("read int32_t parameter %d (expected %d).",
+                                  pPostfix, int32, pParameter->parameter.int32);
                 if (int32 != pParameter->parameter.int32) {
                     lastError = 1;
                 }
                 break;
             case U_AT_CLIENT_TEST_PARAMETER_UINT64:
                 if (uAtClientReadUint64(atClientHandle, &uint64) == 0) {
-                    uPortLog("U_AT_CLIENT_TEST%s: read uint64_t"
-                             " parameter %u (expected %u, noting that"
-                             " this may not print properly where 64-bit"
-                             " printf() is not supported).\n",
-                             pPostfix, (uint32_t) uint64,
-                             (uint32_t) pParameter->parameter.uint64);
+                    U_TEST_PRINT_LINE("read uint64_t parameter %u (expected"
+                                      " %u, noting that this may not print"
+                                      " properly where 64-bit printf() is"
+                                      " not supported).", pPostfix,
+                                      (uint32_t) uint64,
+                                      (uint32_t) pParameter->parameter.uint64);
                     if (uint64 != pParameter->parameter.uint64) {
                         lastError = 2;
                     }
                 } else {
-                    uPortLog("U_AT_CLIENT_TEST%s: error reading uint64_t.\n",
-                             pPostfix);
+                    U_TEST_PRINT_LINE("error reading uint64_t.", pPostfix);
                     lastError = 3;
                 }
                 break;
@@ -922,7 +951,7 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
                 }
                 y = uAtClientReadString(atClientHandle, pBuffer, z, ignoreStopTag);
                 if (y >= 0) {
-                    uPortLog("U_AT_CLIENT_TEST%s: read %d character(s)"
+                    uPortLog(U_TEST_PREFIX_STR "read %d character(s)"
                              " of string parameter \"", pPostfix, y);
                     uAtClientTestPrint(pBuffer, y);
                     uPortLog("\" (expected %d character(s) \"",
@@ -934,13 +963,12 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
                     if (y == strlen(pParameter->parameter.pString)) {
                         // Check explicitly for a terminator
                         if (*(pBuffer + y) != 0) {
-                            uPortLog("U_AT_CLIENT_TEST%s: string terminator missing.\n",
-                                     pPostfix);
+                            U_TEST_PRINT_LINE_STR("string terminator missing.",
+                                                  pPostfix);
                             lastError = 4;
                         } else {
                             if (memcmp(pBuffer, pParameter->parameter.pString, y) != 0) {
-                                uPortLog("U_AT_CLIENT_TEST%s: compare failed.\n",
-                                         pPostfix);
+                                U_TEST_PRINT_LINE_STR("compare failed.", pPostfix);
                                 lastError = 5;
                             }
                         }
@@ -948,8 +976,7 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
                         lastError = 6;
                     }
                 } else {
-                    uPortLog("U_AT_CLIENT_TEST%s: error reading string.\n",
-                             pPostfix);
+                    U_TEST_PRINT_LINE_STR("error reading string.", pPostfix);
                     lastError = 7;
                 }
                 break;
@@ -968,22 +995,19 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
                 }
                 y = uAtClientReadBytes(atClientHandle, pBuffer, z, standalone);
                 if (y >= 0) {
-                    uPortLog("U_AT_CLIENT_TEST%s: read %d byte(s)"
-                             " (expected %d byte(s)).\n", pPostfix, y,
-                             pParameter->length);
+                    U_TEST_PRINT_LINE_STR("read %d byte(s) (expected %d byte(s)).",
+                                          pPostfix, y, pParameter->length);
                     if (y != pParameter->length) {
-                        uPortLog("U_AT_CLIENT_TEST%s: lengths differ.\n", pPostfix);
+                        U_TEST_PRINT_LINE_STR("lengths differ.", pPostfix);
                         lastError = 8;
                     } else {
                         if (memcmp(pBuffer, pParameter->parameter.pBytes, y) != 0) {
-                            uPortLog("U_AT_CLIENT_TEST%s: compare failed.\n",
-                                     pPostfix);
+                            U_TEST_PRINT_LINE_STR("compare failed.", pPostfix);
                             lastError = 9;
                         }
                     }
                 } else {
-                    uPortLog("U_AT_CLIENT_TEST%s: error reading byte(s).",
-                             pPostfix);
+                    U_TEST_PRINT_LINE_STR("error reading byte(s).", pPostfix);
                     lastError = 10;
                 }
                 break;
@@ -991,8 +1015,8 @@ int32_t uAtClientTestCheckParam(uAtClientHandle_t atClientHandle,
             case U_AT_CLIENT_TEST_PARAMETER_COMMAND_QUOTED_STRING:
             case U_AT_CLIENT_TEST_PARAMETER_COMMAND_BYTES_STANDALONE:
             default:
-                uPortLog("U_AT_CLIENT_TEST%s: unhandled check parameter"
-                         " type (%d).\n", pPostfix, pParameter->type);
+                U_TEST_PRINT_LINE_STR("unhandled check parameter type (%d).",
+                                      pPostfix, pParameter->type);
                 lastError = -1;
                 break;
         }
@@ -1054,76 +1078,70 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
 
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
-    uPortLog("U_AT_CLIENT_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_A);
+    U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
                                   NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
     thingIsOn = uAtClientDebugGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: debug is %s.\n",
-             thingIsOn ? "on" : "off");
+    U_TEST_PRINT_LINE("debug is %s.", thingIsOn ? "on" : "off");
     U_PORT_TEST_ASSERT(!thingIsOn);
 
     thingIsOn = !thingIsOn;
     uAtClientDebugSet(atClientHandle, thingIsOn);
     thingIsOn = uAtClientDebugGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: debug is now %s.\n",
-             thingIsOn ? "on" : "off");
+    U_TEST_PRINT_LINE("debug is now %s.", thingIsOn ? "on" : "off");
     U_PORT_TEST_ASSERT(thingIsOn);
 
     thingIsOn = uAtClientPrintAtGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: print AT is %s.\n",
-             thingIsOn ? "on" : "off");
+    U_TEST_PRINT_LINE("print AT is %s.", thingIsOn ? "on" : "off");
     U_PORT_TEST_ASSERT(!thingIsOn);
 
     thingIsOn = !thingIsOn;
     uAtClientPrintAtSet(atClientHandle, thingIsOn);
     thingIsOn = uAtClientPrintAtGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: print AT is now %s.\n",
-             thingIsOn ? "on" : "off");
+    U_TEST_PRINT_LINE("print AT is now %s.", thingIsOn ? "on" : "off");
     U_PORT_TEST_ASSERT(thingIsOn);
 
     x = uAtClientTimeoutGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: timeout is %d ms.\n", x);
+    U_TEST_PRINT_LINE("timeout is %d ms.", x);
     U_PORT_TEST_ASSERT(x == U_AT_CLIENT_DEFAULT_TIMEOUT_MS);
 
     x++;
     uAtClientTimeoutSet(atClientHandle, x);
     x = uAtClientTimeoutGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: timeout is now %d ms.\n", x);
+    U_TEST_PRINT_LINE("timeout is now %d ms.", x);
     U_PORT_TEST_ASSERT(x == U_AT_CLIENT_DEFAULT_TIMEOUT_MS + 1);
 
     c = uAtClientDelimiterGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: delimiter is '%c'.\n", c);
+    U_TEST_PRINT_LINE("delimiter is '%c'.", c);
     U_PORT_TEST_ASSERT(c == U_AT_CLIENT_DEFAULT_DELIMITER);
 
     c = 'a';
     uAtClientDelimiterSet(atClientHandle, c);
     c = uAtClientDelimiterGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: delimiter is now '%c'.\n", c);
+    U_TEST_PRINT_LINE("delimiter is now '%c'.", c);
     U_PORT_TEST_ASSERT(c == 'a');
 
     x = uAtClientDelayGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: delay is %d ms.\n", x);
+    U_TEST_PRINT_LINE("delay is %d ms.", x);
     U_PORT_TEST_ASSERT(x == U_AT_CLIENT_DEFAULT_DELAY_MS);
 
     x++;
     uAtClientDelaySet(atClientHandle, x);
     x = uAtClientDelayGet(atClientHandle);
-    uPortLog("U_AT_CLIENT_TEST: delay is now %d ms.\n", x);
+    U_TEST_PRINT_LINE("delay is now %d ms.", x);
     U_PORT_TEST_ASSERT(x == U_AT_CLIENT_DEFAULT_DELAY_MS + 1);
 
     // Can't do much with this other than set it
-    uPortLog("U_AT_CLIENT_TEST: setting consecutive AT"
-             " timeout callback...\n");
+    U_TEST_PRINT_LINE("setting consecutive AT timeout callback...");
     uAtClientTimeoutCallbackSet(atClientHandle,
                                 consecutiveTimeoutCallback);
 
     // Check the stack extents for the URC and callbacks tasks
     checkStackExtents(atClientHandle);
 
-    uPortLog("U_AT_CLIENT_TEST: removing AT client...\n");
+    U_TEST_PRINT_LINE("removing AT client...");
     uAtClientRemove(atClientHandle);
     uAtClientDeinit();
 
@@ -1133,11 +1151,10 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientConfiguration")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_AT_CLIENT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      "during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1202,13 +1219,12 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
 
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
-    uPortLog("U_AT_CLIENT_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_A);
+    U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
                                   NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
-    uPortLog("U_AT_CLIENT_TEST: setting consecutive AT timeout callback...\n");
+    U_TEST_PRINT_LINE("setting consecutive AT timeout callback...");
     gConsecutiveTimeout = 0;
     uAtClientTimeoutCallbackSet(atClientHandle,
                                 consecutiveTimeoutCallback);
@@ -1217,8 +1233,7 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     uAtClientStreamInterceptTx(atClientHandle, pInterceptTx, (void *) &t);
     uAtClientStreamInterceptRx(atClientHandle, pInterceptRx, (void *) &r);
 
-    uPortLog("U_AT_CLIENT_TEST: %d command(s)/response(s) to execute.\n",
-             gAtClientTestSetSize1);
+    U_TEST_PRINT_LINE("%d command(s)/response(s) to execute.", gAtClientTestSetSize1);
     pCommandResponse = gAtClientTestSet1;
     for (x = 0; (x < gAtClientTestSetSize1) && (lastError == 0); x++) {
         // If a URC is specified, install a handler for it if it is
@@ -1240,8 +1255,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
         }
         if (lastError == 0) {
             snprintf(buffer, sizeof(buffer), "_%d", x + 1);
-            uPortLog("U_AT_CLIENT_TEST_%d: sending command: \"%s\"...\n",
-                     x + 1, pCommandResponse->command.pString);
+            U_TEST_PRINT_LINE_X("sending command: \"%s\"...\n", x + 1,
+                                pCommandResponse->command.pString);
             uAtClientLock(atClientHandle);
             uAtClientCommandStart(atClientHandle,
                                   pCommandResponse->command.pString);
@@ -1252,18 +1267,17 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
                 standalone = false;
                 switch (pParameter->type) {
                     case U_AT_CLIENT_TEST_PARAMETER_INT32:
-                        uPortLog("U_AT_CLIENT_TEST_%d: writing int32_t"
-                                 " parameter %d...\n", x + 1,
-                                 pParameter->parameter.int32);
+                        U_TEST_PRINT_LINE_X("writing int32_t parameter %d...\n",
+                                            x + 1, pParameter->parameter.int32);
                         uAtClientWriteInt(atClientHandle,
                                           pParameter->parameter.int32);
                         break;
                     case U_AT_CLIENT_TEST_PARAMETER_UINT64:
-                        uPortLog("U_AT_CLIENT_TEST_%d: writing uint64_t"
-                                 " parameter %u, noting that this may not"
-                                 " print properly where 64-bit printf()"
-                                 " is not supported...\n", x + 1,
-                                 (uint32_t) (pParameter->parameter.uint64));
+                        U_TEST_PRINT_LINE_X("writing uint64_t parameter %u,"
+                                            " noting that this may not print"
+                                            " properly where 64-bit printf()"
+                                            " is not supported...", x + 1,
+                                            (uint32_t) (pParameter->parameter.uint64));
                         uAtClientWriteUint64(atClientHandle,
                                              pParameter->parameter.uint64);
                         break;
@@ -1272,9 +1286,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
                     // Deliberate fall-through
                     //lint -fallthrough
                     case U_AT_CLIENT_TEST_PARAMETER_STRING:
-                        uPortLog("U_AT_CLIENT_TEST_%d: writing string"
-                                 " parameter \"%s\"...\n", x + 1,
-                                 pParameter->parameter.pString);
+                        U_TEST_PRINT_LINE_X("writing string parameter \"%s\"...\n",
+                                            x + 1, pParameter->parameter.pString);
                         uAtClientWriteString(atClientHandle,
                                              pParameter->parameter.pString,
                                              isQuoted);
@@ -1284,8 +1297,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
                     // Deliberate fall-through
                     //lint -fallthrough
                     case U_AT_CLIENT_TEST_PARAMETER_BYTES:
-                        uPortLog("U_AT_CLIENT_TEST_%d: writing %d binary"
-                                 " byte(s)...\n", x + 1, pParameter->length);
+                        U_TEST_PRINT_LINE_X("writing %d binary byte(s)...\n",
+                                            x + 1, pParameter->length);
                         uAtClientWriteBytes(atClientHandle,
                                             pParameter->parameter.pBytes,
                                             pParameter->length,
@@ -1310,8 +1323,10 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
                 for (size_t l = 0; l < pCommandResponse->response.numLines; l++) {
                     pLine = &(pCommandResponse->response.lines[l]);
                     uAtClientResponseStart(atClientHandle, pLine->pPrefix);
-                    uPortLog("U_AT_CLIENT_TEST_%d: waiting for line %d (with %d parameters, timeout %d)...\n",
-                             x + 1, l + 1, pLine->numParameters, uAtClientTimeoutGet(atClientHandle));
+                    U_TEST_PRINT_LINE_X("waiting for line %d (with %d parameters,"
+                                        " timeout %d)...", x + 1, l + 1,
+                                        pLine->numParameters,
+                                        uAtClientTimeoutGet(atClientHandle));
                     for (size_t p = 0; p < pLine->numParameters; p++) {
                         lastError = uAtClientTestCheckParam(atClientHandle,
                                                             &(pLine->parameters[p]),
@@ -1337,120 +1352,113 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
             switch (pCommandResponse->response.type) {
                 case U_AT_CLIENT_TEST_RESPONSE_OK:
                     if (y == 0) {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command completed"
-                                 " successfully.\n", x + 1);
+                        U_TEST_PRINT_LINE_X("command completed successfully.", x + 1);
                     } else {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command failed,"
-                                 " return value (%d).\n", x + 1, y);
+                        U_TEST_PRINT_LINE_X("command failed, return value (%d).",
+                                            x + 1, y);
                         lastError = 11;
                     }
                     break;
                 case U_AT_CLIENT_TEST_RESPONSE_NONE:
                     if (y < 0) {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned error"
-                                 " (%d) as expected.\n", x + 1, y);
+                        U_TEST_PRINT_LINE_X("command returned error (%d) as expected.",
+                                            x + 1, y);
                     } else {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned"
-                                 " success (%d) when it should have timed out.\n",
-                                 x + 1, y);
+                        U_TEST_PRINT_LINE_X("command returned success (%d) when it"
+                                            " should have timed out.", x + 1, y);
                         lastError = 12;
                     }
                     break;
                 case U_AT_CLIENT_TEST_RESPONSE_ERROR:
                     if (y < 0) {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned"
-                                 " error (%d) as expected.\n", x + 1, y);
+                        U_TEST_PRINT_LINE_X("command returned error (%d) as expected.",
+                                            x + 1, y);
                         uAtClientDeviceErrorGet(atClientHandle, &deviceError);
                         if (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR) {
-                            uPortLog("U_AT_CLIENT_TEST_%d: but device"
-                                     " error type was %d not %d (ERROR) as expected.\n",
-                                     x + 1, deviceError.type,
-                                     U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR);
+                            U_TEST_PRINT_LINE_X("but device error type was %d not %d"
+                                                " (ERROR) as expected.", x + 1,
+                                                deviceError.type,
+                                                U_AT_CLIENT_DEVICE_ERROR_TYPE_ERROR);
                             lastError = 13;
                         }
                     } else {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned"
-                                 " success (%d) when it should have returned ERROR.\n",
-                                 x + 1);
+                        U_TEST_PRINT_LINE_X("command returned success (%d) when it"
+                                            " should have returned ERROR.", x + 1);
                         lastError = 14;
                     }
                     break;
                 case U_AT_CLIENT_TEST_RESPONSE_CME_ERROR:
                     if (y < 0) {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned"
-                                 " error (%d) as expected.\n", x + 1, y);
+                        U_TEST_PRINT_LINE_X("command returned error (%d) as expected.",
+                                            x + 1, y);
                         uAtClientDeviceErrorGet(atClientHandle, &deviceError);
                         if (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_CME) {
                             if (deviceError.code != U_AT_CLIENT_TEST_CMX_ERROR_NUMBER) {
-                                uPortLog("U_AT_CLIENT_TEST_%d: but CME ERROR number"
-                                         " was %d not %d as expected.\n",
-                                         x + 1, deviceError.code,
-                                         U_AT_CLIENT_TEST_CMX_ERROR_NUMBER);
+                                U_TEST_PRINT_LINE_X("but CME ERROR number was %d not %d"
+                                                    " as expected.", x + 1, deviceError.code,
+                                                    U_AT_CLIENT_TEST_CMX_ERROR_NUMBER);
                                 lastError = 15;
                             }
                         } else {
-                            uPortLog("U_AT_CLIENT_TEST_%d: but device error"
-                                     " type was %d not %d (CME ERROR) as expected.\n",
-                                     x + 1, deviceError.type,
-                                     U_AT_CLIENT_DEVICE_ERROR_TYPE_CME);
+                            U_TEST_PRINT_LINE_X("but device error type was %d not %d"
+                                                " (CME ERROR) as expected.", x + 1,
+                                                deviceError.type,
+                                                U_AT_CLIENT_DEVICE_ERROR_TYPE_CME);
                             lastError = 16;
                         }
                     } else {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned"
-                                 " success (%d) when it should have returned CME ERROR.\n",
-                                 x + 1);
+                        U_TEST_PRINT_LINE_X("command returned success (%d) when it"
+                                            " should have returned CME ERROR.", x + 1);
                         lastError = 17;
                     }
                     break;
                 case U_AT_CLIENT_TEST_RESPONSE_CMS_ERROR:
                     if (y < 0) {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned"
-                                 " error (%d) as expected.\n", x + 1, y);
+                        U_TEST_PRINT_LINE_X("command returned error (%d) as expected.",
+                                            x + 1, y);
                         uAtClientDeviceErrorGet(atClientHandle, &deviceError);
                         if (deviceError.type == U_AT_CLIENT_DEVICE_ERROR_TYPE_CMS) {
                             if (deviceError.code != U_AT_CLIENT_TEST_CMX_ERROR_NUMBER) {
-                                uPortLog("U_AT_CLIENT_TEST_%d: but CMS ERROR number"
-                                         " was %d not %d as expected.\n",
-                                         x + 1, deviceError.code,
-                                         U_AT_CLIENT_TEST_CMX_ERROR_NUMBER);
+                                U_TEST_PRINT_LINE_X("but CMS ERROR number was %d not %d"
+                                                    " as expected.", x + 1,
+                                                    deviceError.code,
+                                                    U_AT_CLIENT_TEST_CMX_ERROR_NUMBER);
                                 lastError = 18;
                             }
                         } else {
-                            uPortLog("U_AT_CLIENT_TEST_%d: but device error"
-                                     " type was %d not %d (CMS ERROR) as expected.\n",
-                                     x + 1, deviceError.type,
-                                     U_AT_CLIENT_DEVICE_ERROR_TYPE_CMS);
+                            U_TEST_PRINT_LINE_X("but device error type was %d not %d "
+                                                " (CMS ERROR) as expected.", x + 1,
+                                                deviceError.type,
+                                                U_AT_CLIENT_DEVICE_ERROR_TYPE_CMS);
                             lastError = 19;
                         }
                     } else {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned"
-                                 " success (%d) when it should have returned CMS ERROR.\n",
-                                 x + 1);
+                        U_TEST_PRINT_LINE_X("command returned success (%d) when it"
+                                            " should have returned CMS ERROR.", x + 1);
                         lastError = 20;
                     }
                     break;
                 case U_AT_CLIENT_TEST_RESPONSE_ABORTED:
                     if (y < 0) {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned"
-                                 " error (%d) as expected.\n", x + 1, y);
+                        U_TEST_PRINT_LINE_X("command returned error (%d) as expected.",
+                                            x + 1, y);
                         uAtClientDeviceErrorGet(atClientHandle, &deviceError);
                         if (deviceError.type != U_AT_CLIENT_DEVICE_ERROR_TYPE_ABORTED) {
-                            uPortLog("U_AT_CLIENT_TEST_%d: but device"
-                                     " error type was %d not %d (ABORTED) as expected.\n",
-                                     x + 1, deviceError.type,
-                                     U_AT_CLIENT_DEVICE_ERROR_TYPE_ABORTED);
+                            U_TEST_PRINT_LINE_X("but device error type was %d not %d"
+                                                " (ABORTED) as expected.", x + 1,
+                                                deviceError.type,
+                                                U_AT_CLIENT_DEVICE_ERROR_TYPE_ABORTED);
                             lastError = 13;
                         }
                     } else {
-                        uPortLog("U_AT_CLIENT_TEST_%d: command returned"
-                                 " success (%d) when it should have returned ABORTED.\n",
-                                 x + 1);
+                        U_TEST_PRINT_LINE_X("command returned success (%d) when it should"
+                                            " have returned ABORTED.", x + 1);
                         lastError = 14;
                     }
                     break;
                 default:
-                    uPortLog("U_AT_CLIENT_TEST_%d: unknown response"
-                             " type (%d).\n", x + 1, pCommandResponse->response.type);
+                    U_TEST_PRINT_LINE_X("unknown response type (%d).", x + 1,
+                                        pCommandResponse->response.type);
                     lastError = -1;
                     break;
             }
@@ -1472,37 +1480,34 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
         checkCommandResponse.index++;
     }
 
-    uPortLog("U_AT_CLIENT_TEST: at end of test %d out of %d,"
-             " %d command(s) passed, %d response(s) passed"
-             " and, of %d URCs (%d expected), %d passed.\n",
-             x, gAtClientTestSetSize1,
-             checkCommandResponse.commandPassIndex,
-             checkCommandResponse.responsePassIndex,
-             checkUrc.count, U_AT_CLIENT_TEST_NUM_URCS_SET_1,
-             checkUrc.passIndex);
+    U_TEST_PRINT_LINE("at end of test %d out of %d, %d command(s)"
+                      " passed, %d response(s) passed and, of %d"
+                      " URCs (%d expected), %d passed.", x,
+                      gAtClientTestSetSize1,
+                      checkCommandResponse.commandPassIndex,
+                      checkCommandResponse.responsePassIndex,
+                      checkUrc.count, U_AT_CLIENT_TEST_NUM_URCS_SET_1,
+                      checkUrc.passIndex);
     if (checkCommandResponse.commandLastError != 0) {
-        uPortLog("U_AT_CLIENT_TEST: command error was %d"
-                 " (check the test code to find out what"
-                 " this means).\n",
-                 checkCommandResponse.commandLastError);
+        U_TEST_PRINT_LINE("command error was %d (check the test"
+                          " code to find out what this means).",
+                          checkCommandResponse.commandLastError);
     }
     if (checkCommandResponse.responseLastError != 0) {
-        uPortLog("U_AT_CLIENT_TEST: response error was %d"
-                 " (check the test code to find out what"
-                 " this means).\n",
-                 checkCommandResponse.responseLastError);
+        U_TEST_PRINT_LINE("response error was %d (check the test"
+                          " code to find out what this means).",
+                          checkCommandResponse.responseLastError);
     }
     if (checkUrc.lastError != 0) {
-        uPortLog("U_AT_CLIENT_TEST: URC error was %d"
-                 " (check the test code to find out what"
-                 " this means).\n",
-                 checkUrc.lastError);
+        U_TEST_PRINT_LINE("URC error was %d (check the test code"
+                          " to find out what this means).",
+                          checkUrc.lastError);
     }
 
     // Check the stack extents for the URC and callbacks tasks
     checkStackExtents(atClientHandle);
 
-    uPortLog("U_AT_CLIENT_TEST: removing AT client...\n");
+    U_TEST_PRINT_LINE("removing AT client...");
     uAtClientRemove(atClientHandle);
     uAtClientDeinit();
 
@@ -1530,11 +1535,10 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet1")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_AT_CLIENT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1587,20 +1591,19 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
 
     U_PORT_TEST_ASSERT(uAtClientInit() == 0);
 
-    uPortLog("U_AT_CLIENT_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_A);
+    U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_TEST_UART_A);
     atClientHandle = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
                                   NULL, U_AT_CLIENT_TEST_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandle != NULL);
 
-    uPortLog("U_AT_CLIENT_TEST: setting consecutive AT timeout callback...\n");
+    U_TEST_PRINT_LINE("setting consecutive AT timeout callback...");
     gConsecutiveTimeout = 0;
     uAtClientTimeoutCallbackSet(atClientHandle,
                                 consecutiveTimeoutCallback);
 
     // First, set an AT timeout and check that it is obeyed
     uAtClientTimeoutSet(atClientHandle, U_AT_CLIENT_TEST_AT_TIMEOUT_MS);
-    uPortLog("U_AT_CLIENT_TEST: setting and checking AT timeout..\n");
+    U_TEST_PRINT_LINE("setting and checking AT timeout...");
     if (atTimeoutIsObeyed(atClientHandle, U_AT_CLIENT_TEST_AT_TIMEOUT_MS)) {
         // Send out a boring thing that will be echoed
         // back to us, just to be sure everything is working
@@ -1611,8 +1614,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
         uAtClientResponseStop(atClientHandle);
         lastError = uAtClientUnlock(atClientHandle);
         if (lastError != 0) {
-            uPortLog("U_AT_CLIENT_TEST: can't even get \"OK\""
-                     "back! (error %d).\n", lastError);
+            U_TEST_PRINT_LINE("can't even get \"OK\" back! (error %d).",
+                              lastError);
         }
 
         // Now go through the list of response strings
@@ -1638,15 +1641,15 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
                 // Since the echoable string may contain NULLs (e.g. for a
                 // "bytes" parameter) we put a NULL string in uAtClientCommandStart()
                 // and then send the whole echoable string directly to the UART
-                uPortLog("U_AT_CLIENT_TEST_%d: sending out string to be echoed: \"",
+                uPortLog(U_TEST_PREFIX_X "sending out string to be echoed: \"",
                          x + 1);
                 uAtClientTestPrint(pEcho->pBytes, pEcho->length);
                 uPortLog("\"...\n");
                 if (pUrcPrefix != NULL) {
-                    uPortLog("U_AT_CLIENT_TEST_%d: ...the URC \"%s\" with %d"
-                             " parameter(s) will be interleaved multiple times"
-                             " though.\n", x + 1, pUrcPrefix,
-                             checkUrc.pUrc->numParameters);
+                    U_TEST_PRINT_LINE_X("...the URC \"%s\" with %d parameter(s)"
+                                        " will be interleaved multiple times"
+                                        " though.", x + 1, pUrcPrefix,
+                                        checkUrc.pUrc->numParameters);
                 }
                 uAtClientCommandStart(atClientHandle, NULL);
                 uPortUartWrite(gUartAHandle, pEcho->pBytes, pEcho->length);
@@ -1657,9 +1660,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
                 // Unlock the AT stream
                 y = uAtClientUnlock(atClientHandle);
                 if (y != pEcho->unlockErrorCode) {
-                    uPortLog("U_AT_CLIENT_TEST_%d: unlock returned %d"
-                             " when %d was expected.\n", x + 1, y,
-                             pEcho->unlockErrorCode);
+                    U_TEST_PRINT_LINE_X("unlock returned %d when %d was expected.",
+                                        x + 1, y, pEcho->unlockErrorCode);
                     lastError = -2;
                 }
                 // Give any URCs on the end of the response time to arrive
@@ -1678,22 +1680,23 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
         // This should not have modified the AT timeout
         // outside the locks.  Check here that the timeout
         // we set above is still obeyed.
-        uPortLog("U_AT_CLIENT_TEST: checking AT timeout again..\n");
+        U_TEST_PRINT_LINE("checking AT timeout again..");
         if (!atTimeoutIsObeyed(atClientHandle,
                                U_AT_CLIENT_TEST_AT_TIMEOUT_MS)) {
             lastError = -2;
         }
     }
 
-    uPortLog("U_AT_CLIENT_TEST: %d out of %d, tests passed and,"
-             " of %d URCs (%d expected) %d arrived correctly.\n",
-             x, gAtClientTestSetSize2, checkUrc.count,
-             U_AT_CLIENT_TEST_NUM_URCS_SET_2, checkUrc.passIndex);
+    U_TEST_PRINT_LINE("%d out of %d, tests passed and, of %d URCs"
+                      " (%d expected) %d arrived correctly.", x,
+                      gAtClientTestSetSize2, checkUrc.count,
+                      U_AT_CLIENT_TEST_NUM_URCS_SET_2,
+                      checkUrc.passIndex);
 
     // Check the stack extents for the URC and callbacks tasks
     checkStackExtents(atClientHandle);
 
-    uPortLog("U_AT_CLIENT_TEST: removing AT client...\n");
+    U_TEST_PRINT_LINE("removing AT client...");
     uAtClientRemove(atClientHandle);
     uAtClientDeinit();
 
@@ -1712,11 +1715,10 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCommandSet2")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_AT_CLIENT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1744,8 +1746,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_AT_CLIENT_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -1753,8 +1755,8 @@ U_PORT_TEST_FUNCTION("[atClient]", "atClientCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_AT_CLIENT_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

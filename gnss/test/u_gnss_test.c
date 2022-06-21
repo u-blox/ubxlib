@@ -57,6 +57,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_GNSS_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -134,7 +142,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
 
     U_PORT_TEST_ASSERT(uGnssInit() == 0);
 
-    uPortLog("U_GNSS_TEST: adding a GNSS instance on UART %d...\n", U_CFG_TEST_UART_A);
+    U_TEST_PRINT_LINE("adding a GNSS instance on UART %d...", U_CFG_TEST_UART_A);
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                          U_GNSS_TRANSPORT_UBX_UART,
                          transportHandleA,
@@ -155,8 +163,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
         U_PORT_TEST_ASSERT(uGnssGetUbxMessagePrint(gnssHandleA));
     }
 
-    uPortLog("U_GNSS_TEST: adding another instance on the same UART,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("adding another instance on the same UART, should fail...");
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                                 U_GNSS_TRANSPORT_UBX_UART,
                                 transportHandleA,
@@ -175,7 +182,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
     U_PORT_TEST_ASSERT(gUartBHandle >= 0);
     transportHandleB.uart = gUartBHandle;
 
-    uPortLog("U_GNSS_TEST: adding a GNSS instance on UART %d...\n", U_CFG_TEST_UART_B);
+    U_TEST_PRINT_LINE("adding a GNSS instance on UART %d...", U_CFG_TEST_UART_B);
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                          U_GNSS_TRANSPORT_UBX_UART,
                          transportHandleB,
@@ -194,8 +201,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
         U_PORT_TEST_ASSERT(!uGnssGetUbxMessagePrint(gnssHandleB));
     }
 
-    uPortLog("U_GNSS_TEST: adding another instance on the same UART,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("adding another instance on the same UART, should fail...");
     U_PORT_TEST_ASSERT(uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                                 U_GNSS_TRANSPORT_UBX_UART,
                                 transportHandleB, -1, false,
@@ -204,10 +210,10 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
     // Don't remove this one, let uGnssDeinit() do it
 # endif
 
-    uPortLog("U_GNSS_TEST: removing first GNSS instance...\n");
+    U_TEST_PRINT_LINE("removing first GNSS instance...");
     uGnssRemove(gnssHandleA);
 
-    uPortLog("U_GNSS_TEST: adding it again...\n");
+    U_TEST_PRINT_LINE("adding it again...");
     // Use NMEA this time for the sake of variety
     errorCode = uGnssAdd(U_GNSS_MODULE_TYPE_M8,
                          U_GNSS_TRANSPORT_NMEA_UART,
@@ -222,10 +228,10 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
     U_PORT_TEST_ASSERT(transportType == U_GNSS_TRANSPORT_NMEA_UART);
     U_PORT_TEST_ASSERT(transportHandle.uart == transportHandleA.uart);
 
-    uPortLog("U_GNSS_TEST: deinitialising GNSS API...\n");
+    U_TEST_PRINT_LINE("deinitialising GNSS API...");
     uGnssDeinit();
 
-    uPortLog("U_GNSS_TEST: removing UART...\n");
+    U_TEST_PRINT_LINE("removing UART...");
     uPortUartClose(gUartAHandle);
     gUartAHandle = -1;
 
@@ -243,7 +249,7 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssAddUart")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_GNSS_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -271,8 +277,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_GNSS_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -280,8 +286,8 @@ U_PORT_TEST_FUNCTION("[gnss]", "gnssCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_GNSS_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

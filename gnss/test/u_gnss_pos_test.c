@@ -69,6 +69,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_GNSS_POS_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -267,8 +275,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
-        uPortLog("U_GNSS_POS_TEST: testing position establishment on transport %s...\n",
-                 pGnssTestPrivateTransportTypeName(transportTypes[x]));
+        U_TEST_PRINT_LINE("testing position establishment on transport %s...",
+                          pGnssTestPrivateTransportTypeName(transportTypes[x]));
         // Do the standard preamble
         U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
                                                     transportTypes[x], &gHandles, true,
@@ -282,7 +290,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
         // Make sure we have a 3D fix to get altitude as well
         U_PORT_TEST_ASSERT(uGnssCfgSetFixMode(gnssHandle, U_GNSS_FIX_MODE_3D) == 0);
 
-        uPortLog("U_GNSS_POS_TEST: using synchronous API.\n");
+        U_TEST_PRINT_LINE("using synchronous API.");
 
         startTime = uPortGetTickTimeMs();
         gStopTimeMs = startTime + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
@@ -296,17 +304,17 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
 
         U_PORT_TEST_ASSERT(y == 0);
 
-        uPortLog("U_GNSS_POS_TEST: position establishment took %d second(s).\n",
-                 (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+        U_TEST_PRINT_LINE("position establishment took %d second(s).",
+                          (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
         prefix[0] = latLongToBits(latitudeX1e7, &(whole[0]), &(fraction[0]));
         prefix[1] = latLongToBits(longitudeX1e7, &(whole[1]), &(fraction[1]));
-        uPortLog("U_GNSS_POS_TEST: location %c%d.%07d/%c%d.%07d (radius %d metre(s)), %d metre(s) high,"
-                 " moving at %d metre(s)/second, %d satellite(s) visible, time %d.\n",
-                 prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
-                 radiusMillimetres / 1000, altitudeMillimetres / 1000,
-                 speedMillimetresPerSecond / 1000, svs, (int32_t) timeUtc);
-        uPortLog("U_GNSS_POS_TEST: paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d\n",
-                 prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
+        U_TEST_PRINT_LINE("location %c%d.%07d/%c%d.%07d (radius %d metre(s)), %d metre(s) high,"
+                          " moving at %d metre(s)/second, %d satellite(s) visible, time %d.",
+                          prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
+                          radiusMillimetres / 1000, altitudeMillimetres / 1000,
+                          speedMillimetresPerSecond / 1000, svs, (int32_t) timeUtc);
+        U_TEST_PRINT_LINE("paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d",
+                          prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
 
         U_PORT_TEST_ASSERT(latitudeX1e7 > INT_MIN);
         U_PORT_TEST_ASSERT(longitudeX1e7 > INT_MIN);
@@ -323,7 +331,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
         uGnssSetUbxMessagePrint(gnssHandle, false);
 #endif
 
-        uPortLog("U_GNSS_POS_TEST: switching GNSS off then starting and stopping the asynchronous API.\n");
+        U_TEST_PRINT_LINE("switching GNSS off then starting and stopping the asynchronous API.");
         U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle) == 0);
         gErrorCode = 0;
         U_PORT_TEST_ASSERT(uGnssPosGetStart(gnssHandle, posCallback) == 0);
@@ -331,14 +339,14 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
         U_PORT_TEST_ASSERT(gErrorCode < 0);
         U_PORT_TEST_ASSERT(gTimeUtc < 0);
 
-        uPortLog("U_GNSS_POS_TEST: switching GNSS on and using the asynchronous API properly.\n");
+        U_TEST_PRINT_LINE("switching GNSS on and using the asynchronous API properly.");
         U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle) == 0);
         gErrorCode = 0xFFFFFFFF;
         gStopTimeMs = startTime + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
         startTime = uPortGetTickTimeMs();
         U_PORT_TEST_ASSERT(uGnssPosGetStart(gnssHandle, posCallback) == 0);
-        uPortLog("U_GNSS_POS_TEST: waiting up to %d second(s) for results from asynchonous API...\n",
-                 U_GNSS_POS_TEST_TIMEOUT_SECONDS);
+        U_TEST_PRINT_LINE("waiting up to %d second(s) for results from asynchonous API...",
+                          U_GNSS_POS_TEST_TIMEOUT_SECONDS);
         while ((gErrorCode == 0xFFFFFFFF) && (uPortGetTickTimeMs() < gStopTimeMs)) {
             uPortTaskBlock(1000);
         }
@@ -348,8 +356,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
 
         U_PORT_TEST_ASSERT(gGnssHandle == gnssHandle);
         U_PORT_TEST_ASSERT(gErrorCode == 0);
-        uPortLog("U_GNSS_POS_TEST: position establishment took %d second(s).\n",
-                 (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+        U_TEST_PRINT_LINE("position establishment took %d second(s).",
+                          (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
         U_PORT_TEST_ASSERT(gLatitudeX1e7 > INT_MIN);
         U_PORT_TEST_ASSERT(gLongitudeX1e7 > INT_MIN);
         // Don't test altitude as we may only have a 2D fix
@@ -360,13 +368,13 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
 
         prefix[0] = latLongToBits(gLatitudeX1e7, &(whole[0]), &(fraction[0]));
         prefix[1] = latLongToBits(gLongitudeX1e7, &(whole[1]), &(fraction[1]));
-        uPortLog("U_GNSS_POS_TEST: location %c%d.%07d/%c%d.%07d (radius %d metre(s)), %d metre(s) high,"
-                 " moving at %d metre(s)/second, %d satellite(s) visible, time %d.\n",
-                 prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
-                 gRadiusMillimetres / 1000, gAltitudeMillimetres / 1000,
-                 gSpeedMillimetresPerSecond / 1000, gSvs, (int32_t) gTimeUtc);
-        uPortLog("U_GNSS_POS_TEST: paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d\n",
-                 prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
+        U_TEST_PRINT_LINE("location %c%d.%07d/%c%d.%07d (radius %d metre(s)), %d metre(s) high,"
+                          " moving at %d metre(s)/second, %d satellite(s) visible, time %d.",
+                          prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
+                          gRadiusMillimetres / 1000, gAltitudeMillimetres / 1000,
+                          gSpeedMillimetresPerSecond / 1000, gSvs, (int32_t) gTimeUtc);
+        U_TEST_PRINT_LINE("paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d",
+                          prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
 
         // Do the standard postamble, leaving the module on for the next
         // test to speed things up
@@ -375,7 +383,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosPos")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_GNSS_POS_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -409,8 +417,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
-        uPortLog("U_GNSS_POS_TEST: testing RRLP retrieval on transport %s...\n",
-                 pGnssTestPrivateTransportTypeName(transportTypes[x]));
+        U_TEST_PRINT_LINE("testing RRLP retrieval on transport %s...",
+                          pGnssTestPrivateTransportTypeName(transportTypes[x]));
         // Do the standard preamble
         U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
                                                     transportTypes[x], &gHandles, true,
@@ -421,26 +429,26 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
         // So that we can see what we're doing
         uGnssSetUbxMessagePrint(gnssHandle, true);
 
-        uPortLog("U_GNSS_POS_TEST: asking for RRLP information with no thresholds...\n");
+        U_TEST_PRINT_LINE("asking for RRLP information with no thresholds...");
         y = uGnssPosGetRrlp(gnssHandle, pBuffer, U_GNSS_POS_RRLP_SIZE_BYTES,
                             -1, -1, -1, -1, NULL);
-        uPortLog("U_GNSS_POS_TEST: %d byte(s) of RRLP information was returned.\n", y);
+        U_TEST_PRINT_LINE("%d byte(s) of RRLP information was returned.", y);
         // Must contain at least 6 bytes for the header
         U_PORT_TEST_ASSERT(y >= 6);
         U_PORT_TEST_ASSERT(y <= U_GNSS_POS_RRLP_SIZE_BYTES);
 
         startTime = uPortGetTickTimeMs();
         gStopTimeMs = startTime + U_GNSS_POS_TEST_TIMEOUT_SECONDS * 1000;
-        uPortLog("U_GNSS_POS_TEST: asking for RRLP information with thresholds...\n");
+        U_TEST_PRINT_LINE("asking for RRLP information with thresholds...");
         y = uGnssPosGetRrlp(gnssHandle, pBuffer, U_GNSS_POS_RRLP_SIZE_BYTES,
                             U_GNSS_POS_TEST_RRLP_SVS_THRESHOLD,
                             U_GNSS_POS_TEST_RRLP_CNO_THRESHOLD,
                             U_GNSS_POS_TEST_RRLP_MULTIPATH_INDEX_LIMIT,
                             U_GNSS_POS_TEST_RRLP_PSEUDORANGE_RMS_ERROR_INDEX_LIMIT,
                             keepGoingCallback);
-        uPortLog("U_GNSS_POS_TEST: RRLP took %d second(s) to arrive.\n",
-                 (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
-        uPortLog("U_GNSS_POS_TEST: %d byte(s) of RRLP information was returned.\n", y);
+        U_TEST_PRINT_LINE("RRLP took %d second(s) to arrive.",
+                          (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+        U_TEST_PRINT_LINE("%d byte(s) of RRLP information was returned.", y);
         // Must contain at least 6 bytes for the header
         U_PORT_TEST_ASSERT(y >= 6);
         U_PORT_TEST_ASSERT(y <= U_GNSS_POS_RRLP_SIZE_BYTES);
@@ -455,7 +463,7 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosRrlp")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_GNSS_POS_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -473,8 +481,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_GNSS_POS_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -482,8 +490,8 @@ U_PORT_TEST_FUNCTION("[gnssPos]", "gnssPosCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_GNSS_POS_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free at"
+                          " the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

@@ -82,6 +82,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_NETWORK_TEST_SHARED: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -449,7 +457,7 @@ void uNetworkTestCleanUp(void)
     uNetworkTestNetwork_t *pNetwork;
     uNetworkType_t networkType;
 
-    uPortLog("U_NETWORK_TEST_SHARED: running cleanup...\n");
+    U_TEST_PRINT_LINE("running cleanup...");
     for (size_t x = 0; x < sizeof(gUNetworkTest) / sizeof(gUNetworkTest[0]); x++, pDevice++) {
         if (pDevice->devHandle != NULL) {
             // Bring down the networks; it is always safe to do this,
@@ -462,10 +470,10 @@ void uNetworkTestCleanUp(void)
                 if ((networkType != U_NETWORK_TYPE_NONE) &&
                     (uNetworkInterfaceDown(pDevice->devHandle, networkType) != 0)) {
                     closeDevice = false;
-                    uPortLog("U_NETWORK_TEST_SHARED: *** WARNING *** can't bring down %s network"
-                             " on %s device.\n",
-                             gpUNetworkTestTypeName[pNetwork->type],
-                             gpUNetworkTestDeviceTypeName[pDevice->pCfg->deviceType]);
+                    U_TEST_PRINT_LINE("*** WARNING *** can't bring down %s network"
+                                      " on %s device.",
+                                      gpUNetworkTestTypeName[pNetwork->type],
+                                      gpUNetworkTestDeviceTypeName[pDevice->pCfg->deviceType]);
                 }
             }
             // Close the device, without powering it off
@@ -473,16 +481,16 @@ void uNetworkTestCleanUp(void)
                 if (uDeviceClose(pDevice->devHandle, false) == 0) {
                     pDevice->devHandle = NULL;
                 } else {
-                    uPortLog("U_NETWORK_TEST_SHARED: *** WARNING *** unable to close %s device.\n",
-                             gpUNetworkTestDeviceTypeName[pDevice->pCfg->deviceType]);
+                    U_TEST_PRINT_LINE("*** WARNING *** unable to close %s device.",
+                                      gpUNetworkTestDeviceTypeName[pDevice->pCfg->deviceType]);
                 }
             } else {
-                uPortLog("U_NETWORK_TEST_SHARED: not closing %s device.\n",
-                         gpUNetworkTestDeviceTypeName[pDevice->pCfg->deviceType]);
+                U_TEST_PRINT_LINE("not closing %s device.",
+                                  gpUNetworkTestDeviceTypeName[pDevice->pCfg->deviceType]);
             }
         }
     }
-    uPortLog("U_NETWORK_TEST_SHARED: cleanup complete.\n");
+    U_TEST_PRINT_LINE("cleanup complete.");
 }
 
 // Return true if the configuration supports sockets.

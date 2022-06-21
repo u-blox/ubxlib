@@ -66,12 +66,17 @@
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_WIFI_MQTT_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #define MQTT_PUBLISH_TOTAL_MSG_COUNT 4
 #define MQTT_RETRY_COUNT 60
-
-//lint -esym(767, LOG_TAG) Suppress LOG_TAG defined differently in another module
-//lint -esym(750, LOG_TAG) Suppress LOG_TAG not referenced
-#define LOG_TAG "U_WIFI_MQTT_TEST: "
 
 #ifndef U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES
 /** Maximum topic length for reading.
@@ -84,6 +89,7 @@
  */
 # define U_MQTT_CLIENT_TEST_READ_MESSAGE_MAX_LENGTH_BYTES 1024
 #endif
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -186,10 +192,8 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
     (void)disconnectReason;
     (void)pCallbackParameter;
     if (status == U_WIFI_CON_STATUS_CONNECTED) {
-        uPortLog(LOG_TAG "Connected Wifi connId: %d, bssid: %s, channel: %d\n",
-                 connId,
-                 pBssid,
-                 channel);
+        U_TEST_PRINT_LINE("connected Wifi connId: %d, bssid: %s, channel: %d.",
+                          connId, pBssid, channel);
         gWifiConnected = 1;
     } else {
 #ifdef U_CFG_ENABLE_LOGGING
@@ -203,10 +207,9 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
             //lint -esym(438, disconnectReason)
             disconnectReason = 0;
         }
-        uPortLog(LOG_TAG "Wifi connection lost connId: %d, reason: %d (%s)\n",
-                 connId,
-                 disconnectReason,
-                 strDisconnectReason[disconnectReason]);
+        U_TEST_PRINT_LINE("wifi connection lost connId: %d, reason: %d (%s).",
+                          connId, disconnectReason,
+                          strDisconnectReason[disconnectReason]);
 #endif
         gWifiConnected = 0;
     }
@@ -220,9 +223,9 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     (void)interfaceType;
     (void)statusMask;
     (void)pCallbackParameter;
-    uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+    U_TEST_PRINT_LINE("network status IPv4 %s, IPv6 %s.",
+                      ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+                      ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
 
     gWifiStatusMask = statusMask;
 }
@@ -231,7 +234,7 @@ static void mqttSubscribeCb(int32_t unreadMsgCount, void *cbParam)
 {
     (void)cbParam;
     //lint -e(715) suppress symbol not referenced
-    uPortLog(LOG_TAG "MQTT unread msg count = %d\n", unreadMsgCount);
+    U_TEST_PRINT_LINE("MQTT unread msg count = %d.", unreadMsgCount);
 }
 
 static void mqttDisconnectCb(int32_t status, void *cbParam)
@@ -387,7 +390,8 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
                                &msgBufSz,
                                &qos);
 
-        uPortLog(LOG_TAG "For topic %s msgBuf content %s msg size %d\n", pTopicIn, pMessageIn, msgBufSz);
+        U_TEST_PRINT_LINE("for topic %s msgBuf content %s msg size %d.",
+                          pTopicIn, pMessageIn, msgBufSz);
     }
     U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesReceived(mqttClientCtx) ==
                        MQTT_PUBLISH_TOTAL_MSG_COUNT);
@@ -551,7 +555,8 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
                                &msgBufSz,
                                &qos);
 
-        uPortLog(LOG_TAG "For topic %s msgBuf content %s msg size %d\n", pTopicIn, pMessageIn, msgBufSz);
+        U_TEST_PRINT_LINE("for topic %s msgBuf content %s msg size %d.",
+                          pTopicIn, pMessageIn, msgBufSz);
     }
     U_PORT_TEST_ASSERT(uMqttClientGetTotalMessagesReceived(mqttClientCtx) ==
                        (MQTT_PUBLISH_TOTAL_MSG_COUNT << 1));
@@ -621,10 +626,10 @@ static uWifiTestError_t startWifi(void)
     while (!testError && (!gWifiConnected || (gWifiStatusMask != gWifiStatusMaskAllUp))) {
         if (waitCtr >= 15) {
             if (!gWifiConnected) {
-                uPortLog(LOG_TAG "Unable to connect to WifiNetwork\n");
+                U_TEST_PRINT_LINE("unable to connect to WiFi network.");
                 testError = U_WIFI_TEST_ERROR_CONNECTED;
             } else {
-                uPortLog(LOG_TAG "Unable to retrieve IP address\n");
+                U_TEST_PRINT_LINE("unable to retrieve IP address.");
                 testError = U_WIFI_TEST_ERROR_IPRECV;
             }
             break;
@@ -633,7 +638,7 @@ static uWifiTestError_t startWifi(void)
         uPortTaskBlock(1000);
         waitCtr++;
     }
-    uPortLog(LOG_TAG "wifi handle = %d\n", gHandles.devHandle);
+    U_TEST_PRINT_LINE("wifi handle = %d.", gHandles.devHandle);
 
     return testError;
 }

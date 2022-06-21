@@ -70,6 +70,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_LOC_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #ifndef U_CELL_LOC_TEST_TIMEOUT_SECONDS
 /** The position establishment timeout to use during testing, in
  * seconds.
@@ -260,41 +268,41 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
 
     // Check desired accuracy
     y = uCellLocGetDesiredAccuracy(cellHandle);
-    uPortLog("U_CELL_LOC_TEST: desired accuracy is %d millimetres.\n", y);
+    U_TEST_PRINT_LINE("desired accuracy is %d millimetres.", y);
     U_PORT_TEST_ASSERT(y > 0);
     z = y - 1;
     uCellLocSetDesiredAccuracy(cellHandle, z);
     z = uCellLocGetDesiredAccuracy(cellHandle);
-    uPortLog("U_CELL_LOC_TEST: desired accuracy is now %d millimetres.\n", z);
+    U_TEST_PRINT_LINE("desired accuracy is now %d millimetres.", z);
     U_PORT_TEST_ASSERT(z == y - 1);
     // Put it back as it was
     uCellLocSetDesiredAccuracy(cellHandle, y);
-    uPortLog("U_CELL_LOC_TEST: desired accuracy returned to.\n", y);
+    U_TEST_PRINT_LINE("desired accuracy returned to.", y);
 
     // Check desired fix timeout
     y = uCellLocGetDesiredFixTimeout(cellHandle);
-    uPortLog("U_CELL_LOC_TEST: desired fix timeout is %d second(s).\n", y);
+    U_TEST_PRINT_LINE("desired fix timeout is %d second(s).", y);
     U_PORT_TEST_ASSERT(y > 0);
     z = y - 1;
     uCellLocSetDesiredFixTimeout(cellHandle, z);
     z = uCellLocGetDesiredFixTimeout(cellHandle);
-    uPortLog("U_CELL_LOC_TEST: desired fix timeout is now %d second(s).\n", z);
+    U_TEST_PRINT_LINE("desired fix timeout is now %d second(s).", z);
     U_PORT_TEST_ASSERT(z == y - 1);
     // Put it back as it was
     uCellLocSetDesiredFixTimeout(cellHandle, y);
-    uPortLog("U_CELL_LOC_TEST: desired fix timeout returned to.\n", y);
+    U_TEST_PRINT_LINE("desired fix timeout returned to.", y);
 
     // Check whether GNSS is used or not
     y = (int32_t) uCellLocGetGnssEnable(cellHandle);
-    uPortLog("U_CELL_LOC_TEST: GNSS is %s.\n", y ? "enabled" : "disabled");
+    U_TEST_PRINT_LINE("GNSS is %s.", y ? "enabled" : "disabled");
     z = ! (bool) y;
     uCellLocSetGnssEnable(cellHandle, (bool) z);
     z = (int32_t) uCellLocGetGnssEnable(cellHandle);
-    uPortLog("U_CELL_LOC_TEST: GNSS is now %s.\n", z ? "enabled" : "disabled");
+    U_TEST_PRINT_LINE("GNSS is now %s.", z ? "enabled" : "disabled");
     U_PORT_TEST_ASSERT((bool) z == ! (bool) y);
     // Put it back as it was
     uCellLocSetGnssEnable(cellHandle, (bool) y);
-    uPortLog("U_CELL_LOC_TEST: GNSS returned to %s.\n", y ? "enabled" : "disabled");
+    U_TEST_PRINT_LINE("GNSS returned to %s.", y ? "enabled" : "disabled");
 
 #if (U_CFG_APP_CELL_PIN_GNSS_POWER >= 0)
     if (!uCellLocGnssInsideCell(cellHandle)) {
@@ -311,7 +319,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
 #endif
 
 #if (U_CFG_APP_CELL_PIN_GNSS_POWER >= 0) || (U_CFG_APP_CELL_PIN_GNSS_DATA_READY >= 0)
-    uPortLog("U_CELL_LOC_TEST: checking if GNSS is present...\n");
+    U_TEST_PRINT_LINE("checking if GNSS is present...");
     U_PORT_TEST_ASSERT(uCellLocIsGnssPresent(cellHandle));
 #endif
 
@@ -337,7 +345,7 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCfg")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_LOC_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -427,45 +435,45 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
     U_PORT_TEST_ASSERT(x == 0);
 
     // Get position, blocking version
-    uPortLog("U_CELL_LOC_TEST: location establishment, blocking version.\n");
+    U_TEST_PRINT_LINE("location establishment, blocking version.");
     startTime = uPortGetTickTimeMs();
     gStopTimeMs = startTime + U_CELL_LOC_TEST_TIMEOUT_SECONDS * 1000;
     x = uCellLocGet(cellHandle, &latitudeX1e7, &longitudeX1e7,
                     &altitudeMillimetres, &radiusMillimetres,
                     &speedMillimetresPerSecond, &svs,
                     &timeUtc, keepGoingCallback);
-    uPortLog("U_CELL_LOC_TEST: result was %d.\n", x);
+    U_TEST_PRINT_LINE("result was %d.", x);
     // If we are running on a cellular test network we won't get position but
     // we should always get time
     if (x == 0) {
-    uPortLog("U_CELL_LOC_TEST: location establishment took %d second(s).\n",
-             (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+    U_TEST_PRINT_LINE("location establishment took %d second(s).",
+                      (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
         if ((radiusMillimetres > 0) &&
             (radiusMillimetres <= U_CELL_LOC_TEST_MAX_RADIUS_MILLIMETRES)) {
             prefix[0] = latLongToBits(latitudeX1e7, &(whole[0]), &(fraction[0]));
             prefix[1] = latLongToBits(longitudeX1e7, &(whole[1]), &(fraction[1]));
-            uPortLog("U_CELL_LOC_TEST: location %c%d.%07d/%c%d.%07d, %d metre(s) high",
+            uPortLog(U_TEST_PREFIX "location %c%d.%07d/%c%d.%07d, %d metre(s) high",
                      prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
                      altitudeMillimetres / 1000);
             uPortLog(", radius %d metre(s)", radiusMillimetres / 1000);
             uPortLog(", speed %d metres/second, svs %d", speedMillimetresPerSecond / 1000, svs);
             uPortLog(", time %d.\n", (int32_t) timeUtc);
-            uPortLog("U_CELL_LOC_TEST: paste this into a browser"
-                     " https://maps.google.com/?q=%c%d.%07d/%c%d.%07d\n",
-                     prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
+            U_TEST_PRINT_LINE("paste this into a browser"
+                              " https://maps.google.com/?q=%c%d.%07d/%c%d.%07d",
+                              prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
 
             U_PORT_TEST_ASSERT(latitudeX1e7 > INT_MIN);
             U_PORT_TEST_ASSERT(longitudeX1e7 > INT_MIN);
             U_PORT_TEST_ASSERT(altitudeMillimetres > INT_MIN);
         } else {
-            uPortLog("U_CELL_LOC_TEST: only able to get time (%d).\n", (int32_t) timeUtc);
+            U_TEST_PRINT_LINE("only able to get time (%d).", (int32_t) timeUtc);
         }
     }
     U_PORT_TEST_ASSERT(x == 0);
     U_PORT_TEST_ASSERT(timeUtc > U_CELL_LOC_TEST_MIN_UTC_TIME);
 
     // Get position, non-blocking version
-    uPortLog("U_CELL_LOC_TEST: location establishment, non-blocking version.\n");
+    U_TEST_PRINT_LINE("location establishment, non-blocking version.");
     // Try this a few times as the Cell Locate AT command can sometimes
     // (e.g. on SARA-R412M-02B) return "generic error" if asked to establish
     // location again quickly after returning an answer
@@ -474,8 +482,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
         gStopTimeMs = startTime + U_CELL_LOC_TEST_TIMEOUT_SECONDS * 1000;
         startTime = uPortGetTickTimeMs();
         U_PORT_TEST_ASSERT(uCellLocGetStart(cellHandle, posCallback) == 0);
-        uPortLog("U_CELL_LOC_TEST: waiting up to %d second(s) for results from asynchonous API...\n",
-                 U_CELL_LOC_TEST_TIMEOUT_SECONDS);
+        U_TEST_PRINT_LINE("waiting up to %d second(s) for results from asynchonous API...",
+                          U_CELL_LOC_TEST_TIMEOUT_SECONDS);
         badStatusCount = 0;
         while ((gErrorCode == 0xFFFFFFFF) && (uPortGetTickTimeMs() < gStopTimeMs) &&
                (badStatusCount < U_CELL_LOC_TEST_BAD_STATUS_LIMIT)) {
@@ -496,16 +504,16 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
         // If we are running on a cellular test network we won't get position but
         // we should always get time
         if (gErrorCode == 0) {
-            uPortLog("U_CELL_LOC_TEST: location establishment took %d second(s).\n",
-                     (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+            U_TEST_PRINT_LINE("location establishment took %d second(s).",
+                              (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
             U_PORT_TEST_ASSERT(gCellHandle == cellHandle);
             if ((radiusMillimetres > 0) &&
                 (radiusMillimetres <= U_CELL_LOC_TEST_MAX_RADIUS_MILLIMETRES)) {
                 x = uCellLocGetStatus(cellHandle);
                 U_PORT_TEST_ASSERT((x >= U_LOCATION_STATUS_UNKNOWN) &&
                                    (x < U_LOCATION_STATUS_MAX_NUM));
-                uPortLog("U_CELL_LOC_TEST: location establishment took %d second(s).\n",
-                         (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                U_TEST_PRINT_LINE("location establishment took %d second(s).",
+                                  (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
                 U_PORT_TEST_ASSERT(gLatitudeX1e7 > INT_MIN);
                 U_PORT_TEST_ASSERT(gLongitudeX1e7 > INT_MIN);
                 U_PORT_TEST_ASSERT(gAltitudeMillimetres > INT_MIN);
@@ -515,21 +523,22 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
 
                 prefix[0] = latLongToBits(gLatitudeX1e7, &(whole[0]), &(fraction[0]));
                 prefix[1] = latLongToBits(gLongitudeX1e7, &(whole[1]), &(fraction[1]));
-                uPortLog("U_CELL_LOC_TEST: location %c%d.%07d/%c%d.%07d, %d metre(s) high",
+                uPortLog(U_TEST_PREFIX "location %c%d.%07d/%c%d.%07d, %d metre(s) high",
                          prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1],
                          gAltitudeMillimetres / 1000);
                 uPortLog(", radius %d metre(s)", gRadiusMillimetres / 1000);
                 uPortLog(", speed %d metres/second, svs %d", gSpeedMillimetresPerSecond / 1000, gSvs);
                 uPortLog(", time %d.\n", (int32_t) gTimeUtc);
-                uPortLog("U_CELL_LOC_TEST: paste this into a browser https://maps.google.com/?q=%c%d.%07d,%c%d.%07d\n",
-                         prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
+                U_TEST_PRINT_LINE("paste this into a browser"
+                                  " https://maps.google.com/?q=%c%d.%07d,%c%d.%07d",
+                                  prefix[0], whole[0], fraction[0], prefix[1], whole[1], fraction[1]);
             } else {
-                uPortLog("U_CELL_LOC_TEST: only able to get time (%d).\n", (int32_t) gTimeUtc);
+                U_TEST_PRINT_LINE("only able to get time (%d).", (int32_t) gTimeUtc);
             }
         }
         if ((gErrorCode != 0) && (y >= 1)) {
             uCellLocGetStop(cellHandle);
-            uPortLog("U_CELL_LOC_TEST: failed to get an answer, will retry in 30 seconds...\n");
+            U_TEST_PRINT_LINE("failed to get an answer, will retry in 30 seconds...");
             uPortTaskBlock(30000);
         }
     }
@@ -548,14 +557,14 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocLoc")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_LOC_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
 #else
-    uPortLog("U_CELL_LOC_TEST: *** WARNING *** U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN"
-             " is not defined, unable to run the Cell Locate"
-             " location establishment test.\n");
+    U_TEST_PRINT_LINE("*** WARNING *** U_CFG_APP_CELL_LOC_AUTHENTICATION_TOKEN"
+                      " is not defined, unable to run the Cell Locate"
+                      " location establishment test.");
 #endif
 }
 
@@ -571,8 +580,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_LOC_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -580,8 +589,8 @@ U_PORT_TEST_FUNCTION("[cellLoc]", "cellLocCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_CELL_LOC_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

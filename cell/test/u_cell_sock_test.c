@@ -73,6 +73,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_SOCK_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -333,24 +341,22 @@ static void checkOptionGet(uDeviceHandle_t cellHandle, int32_t sockHandle,
     pValueAgain = malloc(valueLength);
     U_PORT_TEST_ASSERT(pValueAgain != NULL);
 
-    uPortLog("U_CELL_SOCK_TEST: testing uCellSockOptionGet()"
-             " with level %d, option 0x%04x (%d):\n", level,
-             option, option);
+    U_TEST_PRINT_LINE("testing uCellSockOptionGet() with level %d,"
+                      " option 0x%04x (%d):", level, option, option);
     memset(pValue, 0xFF, valueLength);
     errorCode = uCellSockOptionGet(cellHandle, sockHandle,
                                    level, option, NULL,
                                    pLength);
-    uPortLog("U_CELL_SOCK_TEST: ...with NULL value pointer,"
-             " error code %d, length %d.\n", errorCode, *pLength);
+    U_TEST_PRINT_LINE("...with NULL value pointer, error code %d,"
+                      " length %d.", errorCode, *pLength);
     U_PORT_TEST_ASSERT(errorCode >= 0);
     U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
     U_PORT_TEST_ASSERT(*pLength == valueLength);
     errorCode = uCellSockOptionGet(cellHandle, sockHandle,
                                    level, option,
                                    (void *) pValue, pLength);
-    uPortLog("U_CELL_SOCK_TEST: ...with non-NULL value"
-             " pointer, error code %d, length %d.\n",
-             errorCode, *pLength);
+    U_TEST_PRINT_LINE("...with non-NULL value pointer, error code %d,"
+                      " length %d.", errorCode, *pLength);
     U_PORT_TEST_ASSERT(errorCode >= 0);
     U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
     U_PORT_TEST_ASSERT(*pLength == valueLength);
@@ -360,8 +366,8 @@ static void checkOptionGet(uDeviceHandle_t cellHandle, int32_t sockHandle,
                                    level, option,
                                    (void *) pValueAgain,
                                    pLength);
-    uPortLog("U_CELL_SOCK_TEST: with excess length, error"
-             " code %d, length %d.\n", errorCode, *pLength);
+    U_TEST_PRINT_LINE("with excess length, error code %d, length %d.",
+                      errorCode, *pLength);
     U_PORT_TEST_ASSERT(errorCode >= 0);
     U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
     U_PORT_TEST_ASSERT(pComparer(pValue, pValueAgain));
@@ -387,14 +393,12 @@ static void checkOptionSet(uDeviceHandle_t cellHandle, int32_t sockHandle,
     pValueRead = (char *) malloc(valueLength);
     U_PORT_TEST_ASSERT(pValueRead != NULL);
 
-    uPortLog("U_CELL_SOCK_TEST: testing uCellSockOptionSet()"
-             " with level %d, option 0x%04x (%d):\n", level,
-             option, option);
+    U_TEST_PRINT_LINE("testing uCellSockOptionSet() with level %d,"
+                      " option 0x%04x (%d):", level, option, option);
     errorCode = uCellSockOptionSet(cellHandle, sockHandle,
                                    level, option, pValue,
                                    valueLength);
-    uPortLog("U_CELL_SOCK_TEST: ...returned error code %d.\n",
-             errorCode);
+    U_TEST_PRINT_LINE("...returned error code %d.", errorCode);
     U_PORT_TEST_ASSERT(errorCode >= 0);
     U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
 
@@ -403,16 +407,15 @@ static void checkOptionSet(uDeviceHandle_t cellHandle, int32_t sockHandle,
         errorCode = uCellSockOptionGet(cellHandle, sockHandle,
                                        level, option,
                                        pValueRead, pLength);
-        uPortLog("U_CELL_SOCK_TEST: ...reading it back returned"
-                 " error code %d, length %d.\n", errorCode,
-                 *pLength);
+        U_TEST_PRINT_LINE("...reading it back returned error code %d,"
+                          " length %d.", errorCode, *pLength);
         U_PORT_TEST_ASSERT(errorCode >= 0);
         U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, sockHandle) >= 0);
         U_PORT_TEST_ASSERT(*pLength == valueLength);
         if (pComparer(pValue, pValueRead)) {
-            uPortLog("U_CELL_SOCK_TEST: ...and the same value.\n");
+            U_TEST_PRINT_LINE("...and the same value.");
         } else {
-            uPortLog("U_CELL_SOCK_TEST: ...but a different value.\n");
+            U_TEST_PRINT_LINE("...but a different value.");
             U_PORT_TEST_ASSERT(false);
         }
     }
@@ -664,10 +667,10 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
         // Send and wait for the UDP echo data, trying a few
         // times to reduce the chance of internet loss getting
         // in the way
-        uPortLog("U_CELL_SOCK_TEST: sending %d byte(s) to %s:%d...\n",
-                 sizeof(gAllChars),
-                 U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                 U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
+        U_TEST_PRINT_LINE("sending %d byte(s) to %s:%d...",
+                          sizeof(gAllChars),
+                          U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                          U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
         y = 0;
         memset(pBuffer, 0, U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
         for (size_t x = 0; (x < U_SOCK_TEST_UDP_RETRIES) &&
@@ -693,24 +696,22 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
                     }
                 }
                 if (y != sizeof(gAllChars)) {
-                    uPortLog("U_CELL_SOCK_TEST: failed to receive UDP echo"
-                             " on try %d.\n", x + 1);
+                    U_TEST_PRINT_LINE("failed to receive UDP echo on try %d.", x + 1);
                 }
             } else {
-                uPortLog("U_CELL_SOCK_TEST: failed to send UDP data on"
-                         " try %d.\n", x + 1);
+                U_TEST_PRINT_LINE("failed to send UDP data on try %d.", x + 1);
                 U_PORT_TEST_ASSERT(uCellSockGetLastError(cellHandle, gSockHandleUdp) > 0);
             }
         }
-        uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over UDP.\n", y);
+        U_TEST_PRINT_LINE("%d byte(s) echoed over UDP.", y);
         U_PORT_TEST_ASSERT(y == sizeof(gAllChars));
         if (!gDataCallbackCalledUdp) {
-            uPortLog("U_CELL_SOCK_TEST: *** WARNING *** the data callback"
-                     " was not called during the test.  This can happen"
-                     " legimitately if all the reads from the module"
-                     " happened to coincide with data receptions and so"
-                     " the URC was not involved.  However if it happens"
-                     " too often something may be wrong.\n");
+            U_TEST_PRINT_LINE("*** WARNING *** the data callback was not"
+                              " called during the test.  This can happen"
+                              " legimitately if all the reads from the module"
+                              " happened to coincide with data receptions and so"
+                              " the URC was not involved.  However if it happens"
+                              " too often something may be wrong.");
         }
         U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
         U_PORT_TEST_ASSERT(memcmp(pBuffer, gAllChars, sizeof(gAllChars)) == 0);
@@ -734,10 +735,10 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
             U_PORT_TEST_ASSERT(uCellSockHexModeIsOn(cellHandle));
         }
         // Send the TCP echo data in random sized chunks
-        uPortLog("U_CELL_SOCK_TEST: sending %d byte(s) to %s:%d in"
-                 " random sized chunks...\n", sizeof(gAllChars),
-                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                 U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+        U_TEST_PRINT_LINE("sending %d byte(s) to %s:%d in random sized"
+                          " chunks...", sizeof(gAllChars),
+                          U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                          U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
         y = 0;
         count = 0;
         while ((y < sizeof(gAllChars)) && (count < 100)) {
@@ -757,8 +758,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
                 uPortTaskBlock(500);
             }
         }
-        uPortLog("U_CELL_SOCK_TEST: %d byte(s) sent in %d chunks.\n",
-                 y, count);
+        U_TEST_PRINT_LINE("%d byte(s) sent in %d chunks.", y, count);
 
         // Wait a little while to get a data callback
         // triggered by a URC
@@ -767,8 +767,8 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
         }
 
         // Get the data back again
-        uPortLog("U_CELL_SOCK_TEST: receiving TCP echo data back"
-                 " in random sized chunks...\n");
+        U_TEST_PRINT_LINE("receiving TCP echo data back in random"
+                          " sized chunks...");
         y = 0;
         count = 0;
         memset(pBuffer, 0, U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES);
@@ -789,15 +789,15 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
                 uPortTaskBlock(500);
             }
         }
-        uPortLog("U_CELL_SOCK_TEST: %d byte(s) echoed over TCP, received"
-                 " in %d receive call(s).\n", y, count);
+        U_TEST_PRINT_LINE("%d byte(s) echoed over TCP, received in %d"
+                          " receive call(s).", y, count);
         if (!gDataCallbackCalledTcp) {
-            uPortLog("U_CELL_SOCK_TEST: *** WARNING *** the data callback"
-                     " was not called during the test.  This can happen"
-                     " legimitately if all the reads from the module"
-                     " happened to coincide with data receptions and so"
-                     " the URC was not involved.  However if it happens"
-                     " too often something may be wrong.\n");
+            U_TEST_PRINT_LINE("*** WARNING *** the data callback was not"
+                              " called during the test.  This can happen"
+                              " legimitately if all the reads from the module"
+                              " happened to coincide with data receptions and so"
+                              " the URC was not involved.  However if it happens"
+                              " too often something may be wrong.");
         }
         U_PORT_TEST_ASSERT(gCallbackErrorNum == 0);
         // Compare the data
@@ -825,7 +825,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     U_PORT_TEST_ASSERT(uCellSockGetBytesReceived(cellHandle, gSockHandleTcp) > 0);
 
     // Close TCP socket with asynchronous callback
-    uPortLog("U_CELL_SOCK_TEST: closing sockets...\n");
+    U_TEST_PRINT_LINE("closing sockets...");
     U_PORT_TEST_ASSERT(uCellSockClose(cellHandle, gSockHandleTcp,
                                       asyncClosedCallback) == 0);
     U_PORT_TEST_ASSERT(!gClosedCallbackCalledUdp);
@@ -835,9 +835,8 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     // Allow a task switch to let the close callback be called
     uPortTaskBlock(U_CFG_OS_YIELD_MS);
     U_PORT_TEST_ASSERT(gClosedCallbackCalledUdp);
-    uPortLog("U_CELL_SOCK_TEST: waiting up to %d second(s) for TCP"
-             " socket to close...\n",
-             U_SOCK_TEST_TCP_CLOSE_SECONDS);
+    U_TEST_PRINT_LINE("waiting up to %d second(s) for TCP socket to close...",
+                      U_SOCK_TEST_TCP_CLOSE_SECONDS);
     for (size_t x = 0; (x < U_SOCK_TEST_TCP_CLOSE_SECONDS) &&
          !gClosedCallbackCalledTcp; x++) {
         uPortTaskBlock(1000);
@@ -851,14 +850,14 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
     // Get the new value of the data counters, if supported
     y = uCellNetGetDataCounterTx(cellHandle);
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
-        uPortLog("U_CELL_SOCK_TEST: %d byte(s) sent.\n", y);
+        U_TEST_PRINT_LINE("%d byte(s) sent.", y);
         U_PORT_TEST_ASSERT(y > 0);
     } else {
         U_PORT_TEST_ASSERT(y < 0);
     }
     y = uCellNetGetDataCounterRx(cellHandle);
     if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_DATA_COUNTERS)) {
-        uPortLog("U_CELL_SOCK_TEST: %d byte(s) received.\n", y);
+        U_TEST_PRINT_LINE("%d byte(s) received.", y);
         U_PORT_TEST_ASSERT(y > 0);
     } else {
         U_PORT_TEST_ASSERT(y < 0);
@@ -902,7 +901,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_SOCK_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -1025,7 +1024,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
 
     // Close TCP socket, immediately since it was never
     // connected
-    uPortLog("U_CELL_SOCK_TEST: closing sockets...\n");
+    U_TEST_PRINT_LINE("closing sockets...");
     U_PORT_TEST_ASSERT(!gClosedCallbackCalledTcp);
     U_PORT_TEST_ASSERT(uCellSockClose(cellHandle,
                                       gSockHandleTcp,
@@ -1046,7 +1045,7 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_SOCK_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -1065,8 +1064,8 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_SOCK_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -1074,8 +1073,8 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_CELL_SOCK_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

@@ -56,6 +56,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_TEST_PREAMBLE: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -78,7 +86,7 @@ int32_t uCellTestPreamble(uCellModuleType_t moduleType)
     int32_t errorCode = (int32_t) U_ERROR_COMMON_NOT_INITIALISED;
     uCellTestPrivate_t handles;
 
-    uPortLog("U_CELL_TEST_PREAMBLE: start.\n");
+    U_TEST_PRINT_LINE("start.");
 
     // Do the standard preamble
     uCellTestPrivatePreamble(moduleType,
@@ -87,7 +95,7 @@ int32_t uCellTestPreamble(uCellModuleType_t moduleType)
     // Do the standard postamble and switch the module off
     uCellTestPrivatePostamble(&handles, true);
 
-    uPortLog("U_CELL_TEST_PREAMBLE: complete.\n");
+    U_TEST_PRINT_LINE("complete.");
 
     return errorCode;
 }

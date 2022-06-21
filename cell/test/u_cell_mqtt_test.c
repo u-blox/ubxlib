@@ -69,6 +69,26 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The base string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX_BASE "U_CELL_MQTT"
+
+/** The string to put at the start of all MQTT prints from this test.
+ */
+#define U_TEST_PREFIX U_TEST_PREFIX_BASE "_TEST: "
+
+/** Print a whole line, with terminator, prefixed for an MQTT test.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
+/** The string to put at the start of all MQTT-SN prints from this test.
+ */
+#define TEST_PREFIX_SN U_TEST_PREFIX_BASE "SN_TEST: "
+
+/** Print a whole line, with terminator, prefixed for an MQTT test.
+ */
+#define TEST_PRINT_LINE_SN(format, ...) uPortLog(TEST_PREFIX_SN format "\n", ##__VA_ARGS__)
+
 #ifndef U_CELL_MQTT_TEST_MQTT_SERVER_IP_ADDRESS
 /** Server to use for MQTT testing.
  */
@@ -254,16 +274,16 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         // callback is done at the MQTT client layer above
 
         // Get the client ID
-        uPortLog("U_CELL_MQTT_TEST: testing getting client ID...\n");
+        U_TEST_PRINT_LINE("testing getting client ID...");
         memset(buffer1, 0, sizeof(buffer1));
         x = uCellMqttGetClientId(cellHandle, buffer1, sizeof(buffer1));
         U_PORT_TEST_ASSERT(x > 0);
-        uPortLog("U_CELL_MQTT_TEST: client ID is \"%.*s\"...\n", x, buffer1);
+        U_TEST_PRINT_LINE("client ID is \"%.*s\"...", x, buffer1);
         U_PORT_TEST_ASSERT(x == strlen(buffer1));
 
         // Set/get the local port number
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SET_LOCAL_PORT)) {
-            uPortLog("U_CELL_MQTT_TEST: testing getting/setting local port...\n");
+            U_TEST_PRINT_LINE("testing getting/setting local port...");
             x = uCellMqttGetLocalPort(cellHandle);
             U_PORT_TEST_ASSERT(x >= 0);
             U_PORT_TEST_ASSERT(x != 666);
@@ -273,20 +293,20 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         }
 
         // Set/get retention
-        uPortLog("U_CELL_MQTT_TEST: testing getting/setting retention...\n");
+        U_TEST_PRINT_LINE("testing getting/setting retention...");
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)) {
             for (z = 0; z < 2; z++) {
                 if (uCellMqttIsRetained(cellHandle)) {
-                    uPortLog("U_CELL_MQTT_TEST: retention is on, switching it off...\n");
+                    U_TEST_PRINT_LINE("retention is on, switching it off...");
                     U_PORT_TEST_ASSERT(uCellMqttSetRetainOff(cellHandle) == 0);
                     x = uCellMqttIsRetained(cellHandle);
-                    uPortLog("U_CELL_MQTT_TEST: retention is now %s.\n", x ? "on" : "off");
+                    U_TEST_PRINT_LINE("retention is now %s.", x ? "on" : "off");
                     U_PORT_TEST_ASSERT(!x);
                 } else {
-                    uPortLog("U_CELL_MQTT_TEST: retention is off, switching it on...\n");
+                    U_TEST_PRINT_LINE("retention is off, switching it on...");
                     U_PORT_TEST_ASSERT(uCellMqttSetRetainOn(cellHandle) == 0);
                     x = uCellMqttIsRetained(cellHandle);
-                    uPortLog("U_CELL_MQTT_TEST: retention is now %s.\n", x ? "on" : "off");
+                    U_TEST_PRINT_LINE("retention is now %s.", x ? "on" : "off");
                     U_PORT_TEST_ASSERT(x);
                 }
             }
@@ -295,7 +315,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         }
 
         // Set/get security
-        uPortLog("U_CELL_MQTT_TEST: testing getting/setting security...\n");
+        U_TEST_PRINT_LINE("testing getting/setting security...");
         if (uCellMqttIsSecured(cellHandle, NULL)) {
             if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pModule->moduleType) ||
                 (pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R422)) {
@@ -314,13 +334,13 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SECURITY) &&
                 (pModule->moduleType != U_CELL_MODULE_TYPE_SARA_R412M_02B)) {
                 x = 0;
-                uPortLog("U_CELL_MQTT_TEST: security is off, switching it on"
-                         " with profile %d...\n", x);
+                U_TEST_PRINT_LINE("U_CELL_MQTT_TEST: security is off, switching it on"
+                                  " with profile %d...", x);
                 U_PORT_TEST_ASSERT(uCellMqttSetSecurityOn(cellHandle, x) == 0);
                 x = -1;
                 y = uCellMqttIsSecured(cellHandle, &x);
-                uPortLog("U_CELL_MQTT_TEST: security is now %s, profile is"
-                         " %d.\n", y ? "on" : "off", x);
+                U_TEST_PRINT_LINE("security is now %s, profile is %d.",
+                                  y ? "on" : "off", x);
                 U_PORT_TEST_ASSERT(y);
                 U_PORT_TEST_ASSERT(x == 0);
             }
@@ -331,13 +351,13 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
             // Switch security off again before we continue
             U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
             y = uCellMqttIsSecured(cellHandle, &x);
-            uPortLog("U_CELL_MQTT_TEST: security is now %s.\n", y ? "on" : "off");
+            U_TEST_PRINT_LINE("security is now %s.", y ? "on" : "off");
             U_PORT_TEST_ASSERT(!y);
         }
 
         // Set/get a "will" message
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_WILL)) {
-            uPortLog("U_CELL_MQTT_TEST: testing getting/setting \"will\"...\n");
+            U_TEST_PRINT_LINE("testing getting/setting \"will\"...");
             // Malloc memory to put the will message in
             pBuffer = (char *) malloc(sizeof(gAllChars) + 1);
             U_PORT_TEST_ASSERT(pBuffer != NULL);
@@ -363,24 +383,24 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
 
         // Test that we can get and set the inactivity timeout
         z = 60;
-        uPortLog("U_CELL_MQTT_TEST: testing getting/setting inactivity timeout"
-                 " of %d second(s)...\n", z);
+        U_TEST_PRINT_LINE("testing getting/setting inactivity timeout"
+                          " of %d second(s)...", z);
         U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) >= 0);
         U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, z) == 0);
         U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == z);
 
         // Put it back to zero for the first connection to the broker
-        uPortLog("U_CELL_MQTT_TEST: testing setting inactivity timeout to 0.\n");
+        U_TEST_PRINT_LINE("testing setting inactivity timeout to 0.");
         U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, 0) == 0);
         U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == 0);
 
         // Need to connect before keep-alive can be set
-        uPortLog("U_CELL_MQTT_TEST: connecting to broker \"%s\"...\n", pServerAddress);
+        U_TEST_PRINT_LINE("connecting to broker \"%s\"...", pServerAddress);
         U_PORT_TEST_ASSERT(uCellMqttConnect(cellHandle) == 0);
 
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)) {
             // Try to set keep-alive on
-            uPortLog("U_CELL_MQTT_TEST: trying to set keep-alive on (should fail)...\n");
+            U_TEST_PRINT_LINE("trying to set keep-alive on (should fail)...");
             U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
             // Should not be possible when the inactivity timeout is zero
             U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) < 0);
@@ -393,34 +413,34 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
 
                 // Disconnect from the broker again to test with a non-zero
                 // inactivity timeout set
-                uPortLog("U_CELL_MQTT_TEST: disconnecting from broker to test with"
-                         " an inactivity timeout...\n");
+                U_TEST_PRINT_LINE("disconnecting from broker to test with"
+                                  " an inactivity timeout...");
                 U_PORT_TEST_ASSERT(uCellMqttDisconnect(cellHandle) == 0);
 
                 // Set an inactivity timeout of 60 seconds
                 z = 60;
-                uPortLog("U_CELL_MQTT_TEST: setting inactivity timeout of %d second(s)...\n", z);
+                U_TEST_PRINT_LINE("setting inactivity timeout of %d second(s)...", z);
                 U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, z) == 0);
                 U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == z);
 
                 // Connect to the broker again
-                uPortLog("U_CELL_MQTT_TEST: connecting to broker \"%s\" again...\n",
-                         pServerAddress);
+                U_TEST_PRINT_LINE("connecting to broker \"%s\" again...",
+                                  pServerAddress);
                 U_PORT_TEST_ASSERT(uCellMqttConnect(cellHandle) == 0);
 
-                uPortLog("U_CELL_MQTT_TEST: setting keep-alive on...\n");
+                U_TEST_PRINT_LINE("setting keep-alive on...");
                 U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
                 U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) == 0);
                 U_PORT_TEST_ASSERT(uCellMqttIsKeptAlive(cellHandle));
             }
         } else {
-            uPortLog("U_CELL_MQTT_TEST: keep-alive is not supported.\n");
+            U_TEST_PRINT_LINE("keep-alive is not supported.");
             U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) < 0);
             U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
         }
 
         // Disconnect
-        uPortLog("U_CELL_MQTT_TEST: disconnecting from broker...\n");
+        U_TEST_PRINT_LINE("disconnecting from broker...");
         U_PORT_TEST_ASSERT(uCellMqttDisconnect(cellHandle) == 0);
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
 
@@ -447,7 +467,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
         // Finally Deinitialise MQTT
         uCellMqttDeinit(cellHandle);
     } else {
-        uPortLog("U_CELL_MQTT_TEST: MQTT not supported, skipping...\n");
+        U_TEST_PRINT_LINE("MQTT not supported, skipping...");
     }
 
     // Do the standard postamble, leaving the module on for the next
@@ -456,7 +476,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqtt")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_MQTT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -532,28 +552,28 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
         // callback is done at the MQTT client layer above
 
         // Get the client ID
-        uPortLog("U_CELL_MQTTSN_TEST: testing getting client ID...\n");
+        TEST_PRINT_LINE_SN("testing getting client ID...");
         memset(buffer1, 0, sizeof(buffer1));
         x = uCellMqttGetClientId(cellHandle, buffer1, sizeof(buffer1));
         U_PORT_TEST_ASSERT(x > 0);
-        uPortLog("U_CELL_MQTTSN_TEST: client ID is \"%.*s\"...\n", x, buffer1);
+        TEST_PRINT_LINE_SN("client ID is \"%.*s\"...", x, buffer1);
         U_PORT_TEST_ASSERT(x == strlen(buffer1));
 
         // Set/get retention
-        uPortLog("U_CELL_MQTTSN_TEST: testing getting/setting retention...\n");
+        TEST_PRINT_LINE_SN("testing getting/setting retention...");
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_SESSION_RETAIN)) {
             for (z = 0; z < 2; z++) {
                 if (uCellMqttIsRetained(cellHandle)) {
-                    uPortLog("U_CELL_MQTTSN_TEST: retention is on, switching it off...\n");
+                    TEST_PRINT_LINE_SN("retention is on, switching it off...");
                     U_PORT_TEST_ASSERT(uCellMqttSetRetainOff(cellHandle) == 0);
                     x = uCellMqttIsRetained(cellHandle);
-                    uPortLog("U_CELL_MQTTSN_TEST: retention is now %s.\n", x ? "on" : "off");
+                    TEST_PRINT_LINE_SN("retention is now %s.", x ? "on" : "off");
                     U_PORT_TEST_ASSERT(!x);
                 } else {
-                    uPortLog("U_CELL_MQTTSN_TEST: retention is off, switching it on...\n");
+                    TEST_PRINT_LINE_SN("retention is off, switching it on...");
                     U_PORT_TEST_ASSERT(uCellMqttSetRetainOn(cellHandle) == 0);
                     x = uCellMqttIsRetained(cellHandle);
-                    uPortLog("U_CELL_MQTTSN_TEST: retention is now %s.\n", x ? "on" : "off");
+                    TEST_PRINT_LINE_SN("retention is now %s.", x ? "on" : "off");
                     U_PORT_TEST_ASSERT(x);
                 }
             }
@@ -562,7 +582,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
         }
 
         // Set/get security
-        uPortLog("U_CELL_MQTTSN_TEST: testing getting/setting security...\n");
+        TEST_PRINT_LINE_SN("testing getting/setting security...");
         if (uCellMqttIsSecured(cellHandle, NULL)) {
             U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
             x = -1;
@@ -570,13 +590,13 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
             U_PORT_TEST_ASSERT(x == -1);
         } else {
             x = 0;
-            uPortLog("U_CELL_MQTTSN_TEST: security is off, switching it on"
-                     " with profile %d...\n", x);
+            TEST_PRINT_LINE_SN("security is off, switching it on"
+                               " with profile %d...", x);
             U_PORT_TEST_ASSERT(uCellMqttSetSecurityOn(cellHandle, x) == 0);
             x = -1;
             y = uCellMqttIsSecured(cellHandle, &x);
-            uPortLog("U_CELL_MQTTSN_TEST: security is now %s, profile is"
-                     " %d.\n", y ? "on" : "off", x);
+            TEST_PRINT_LINE_SN("security is now %s, profile is"
+                               " %d.", y ? "on" : "off", x);
             U_PORT_TEST_ASSERT(y);
             U_PORT_TEST_ASSERT(x == 0);
         }
@@ -584,12 +604,12 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
         // Switch security off again before we continue
         U_PORT_TEST_ASSERT(uCellMqttSetSecurityOff(cellHandle) == 0);
         y = uCellMqttIsSecured(cellHandle, &x);
-        uPortLog("U_CELL_MQTTSN_TEST: security is now %s.\n", y ? "on" : "off");
+        TEST_PRINT_LINE_SN("security is now %s.", y ? "on" : "off");
         U_PORT_TEST_ASSERT(!y);
 
         // Set/get a "will" message
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_WILL)) {
-            uPortLog("U_CELL_MQTTSN_TEST: testing getting/setting \"will\"...\n");
+            TEST_PRINT_LINE_SN("testing getting/setting \"will\"...");
             // Malloc memory to put the will message in
             // Note that for MQTT-SN the "will" message has to be a null-terminated
             // string, hence we don't try to include the null on the end of
@@ -617,25 +637,25 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
 
         // Test that we can get and set the inactivity timeout
         z = 60;
-        uPortLog("U_CELL_MQTTSN_TEST: testing getting/setting inactivity timeout"
-                 " of %d second(s)...\n", z);
+        TEST_PRINT_LINE_SN("testing getting/setting inactivity timeout"
+                           " of %d second(s)...", z);
         U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) >= 0);
         U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, z) == 0);
         U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == z);
 
         // Put it back to zero for the first connection to the broker
-        uPortLog("U_CELL_MQTTSN_TEST: testing setting inactivity timeout to 0.\n");
+        TEST_PRINT_LINE_SN("testing setting inactivity timeout to 0.");
         U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, 0) == 0);
         U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == 0);
 
         // Need to connect before keep-alive can be set and the "will" stuff
         // can be updated
-        uPortLog("U_CELL_MQTTSN_TEST: connecting to MQTT-SN broker \"%s\"...\n", pServerAddress);
+        TEST_PRINT_LINE_SN("connecting to MQTT-SN broker \"%s\"...", pServerAddress);
         U_PORT_TEST_ASSERT(uCellMqttConnect(cellHandle) == 0);
 
         if (U_CELL_PRIVATE_HAS(pModule, U_CELL_PRIVATE_FEATURE_MQTT_KEEP_ALIVE)) {
             // Try to set keep-alive on
-            uPortLog("U_CELL_MQTTSN_TEST: trying to set keep-alive on (should fail)...\n");
+            TEST_PRINT_LINE_SN("trying to set keep-alive on (should fail)...");
             U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
             // Should not be possible when the inactivity timeout is zero
             U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) < 0);
@@ -647,33 +667,33 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
 
             // Disconnect from the broker again to test with a non-zero
             // inactivity timeout set
-            uPortLog("U_CELL_MQTTSN_TEST: disconnecting from mQTT-SN broker to test with"
-                     " an inactivity timeout...\n");
+            TEST_PRINT_LINE_SN("disconnecting from mQTT-SN broker to test with"
+                               " an inactivity timeout...");
             U_PORT_TEST_ASSERT(uCellMqttDisconnect(cellHandle) == 0);
 
             // Set an inactivity timeout of 60 seconds
             z = 60;
-            uPortLog("U_CELL_MQTTSN_TEST: setting inactivity timeout of %d second(s)...\n", z);
+            TEST_PRINT_LINE_SN("setting inactivity timeout of %d second(s)...", z);
             U_PORT_TEST_ASSERT(uCellMqttSetInactivityTimeout(cellHandle, z) == 0);
             U_PORT_TEST_ASSERT(uCellMqttGetInactivityTimeout(cellHandle) == z);
 
             // Connect to the broker again
-            uPortLog("U_CELL_MQTTSN_TEST: connecting to broker \"%s\" again...\n",
-                     pServerAddress);
+            TEST_PRINT_LINE_SN("connecting to broker \"%s\" again...",
+                               pServerAddress);
             U_PORT_TEST_ASSERT(uCellMqttConnect(cellHandle) == 0);
 
-            uPortLog("U_CELL_MQTTSN_TEST: setting keep-alive on...\n");
+            TEST_PRINT_LINE_SN("setting keep-alive on...");
             U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
             U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) == 0);
             U_PORT_TEST_ASSERT(uCellMqttIsKeptAlive(cellHandle));
         } else {
-            uPortLog("U_CELL_MQTTSN_TEST: keep-alive is not supported.\n");
+            TEST_PRINT_LINE_SN("keep-alive is not supported.");
             U_PORT_TEST_ASSERT(uCellMqttSetKeepAliveOn(cellHandle) < 0);
             U_PORT_TEST_ASSERT(!uCellMqttIsKeptAlive(cellHandle));
         }
 
         // Disconnect
-        uPortLog("U_CELL_MQTTSN_TEST: disconnecting from MQTT-SN broker...\n");
+        TEST_PRINT_LINE_SN("disconnecting from MQTT-SN broker...");
         U_PORT_TEST_ASSERT(uCellMqttDisconnect(cellHandle) == 0);
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
 
@@ -682,7 +702,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
         // Finally Deinitialise MQTT
         uCellMqttDeinit(cellHandle);
     } else {
-        uPortLog("U_CELL_MQTTSN_TEST: MQTT-SN not supported, skipping...\n");
+        TEST_PRINT_LINE_SN("MQTT-SN not supported, skipping...");
     }
 
     // Do the standard postamble, leaving the module on for the next
@@ -691,7 +711,7 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttSn")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_MQTTSN_TEST: we have leaked %d byte(s).\n", heapUsed);
+    TEST_PRINT_LINE_SN("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -712,8 +732,8 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_MQTT_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -721,8 +741,8 @@ U_PORT_TEST_FUNCTION("[cellMqtt]", "cellMqttCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_CELL_MQTT_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free at"
+                          " the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

@@ -60,6 +60,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_TEST_PRIVATE: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -195,12 +203,11 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
     pParameters->atClientHandle = NULL;
     pParameters->cellHandle = NULL;
 
-    uPortLog("U_CELL_TEST_PRIVATE: test preamble start.\n");
+    U_TEST_PRINT_LINE("test preamble start.");
 
     // Initialise the porting layer
     if (uPortInit() == 0) {
-        uPortLog("U_CELL_TEST_PRIVATE: opening UART %d...\n",
-                 U_CFG_APP_CELL_UART);
+        U_TEST_PRINT_LINE("opening UART %d...", U_CFG_APP_CELL_UART);
         // Open a UART with the standard parameters
         pParameters->uartHandle = uPortUartOpen(U_CFG_APP_CELL_UART,
                                                 U_CELL_UART_BAUD_RATE, NULL,
@@ -213,8 +220,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
 
     if (pParameters->uartHandle >= 0) {
         if (uAtClientInit() == 0) {
-            uPortLog("U_CELL_TEST_PRIVATE: adding an AT client on UART %d...\n",
-                     U_CFG_APP_CELL_UART);
+            U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_APP_CELL_UART);
             pParameters->atClientHandle = uAtClientAdd(pParameters->uartHandle,
                                                        U_AT_CLIENT_STREAM_TYPE_UART,
                                                        NULL,
@@ -227,8 +233,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
         uAtClientPrintAtSet(pParameters->atClientHandle, true);
         uAtClientDebugSet(pParameters->atClientHandle, true);
         if (uCellInit() == 0) {
-            uPortLog("U_CELL_TEST_PRIVATE: adding a cellular instance on"
-                     " the AT client...\n");
+            U_TEST_PRINT_LINE("adding a cellular instance on the AT client...");
             errorCode = uCellAdd(moduleType,
                                  pParameters->atClientHandle,
                                  U_CFG_APP_PIN_CELL_ENABLE_POWER,
@@ -246,7 +251,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
             if (errorCode == 0) {
 #endif
                 // Power up
-                uPortLog("U_CELL_TEST_PRIVATE: powering on...\n");
+                U_TEST_PRINT_LINE("powering on...");
                 errorCode = uCellPwrOn(cellHandle, U_CELL_TEST_CFG_SIM_PIN, NULL);
                 if (errorCode == 0) {
                     // Note: if this is a SARA-R422 module, which supports only
@@ -408,7 +413,7 @@ int32_t uCellTestPrivatePreamble(uCellModuleType_t moduleType,
                     }
 
                     if (errorCode == 0) {
-                        uPortLog("U_CELL_TEST_PRIVATE: test preamble end.\n");
+                        U_TEST_PRINT_LINE("test preamble end.");
                     }
                 }
 #if defined(U_CFG_APP_PIN_CELL_DTR) && (U_CFG_APP_PIN_CELL_DTR >= 0)
@@ -432,11 +437,11 @@ void uCellTestPrivatePostamble(uCellTestPrivate_t *pParameters,
     }
 #endif
 
-    uPortLog("U_CELL_TEST_PRIVATE: deinitialising cellular API...\n");
+    U_TEST_PRINT_LINE("deinitialising cellular API...");
     // Let uCellDeinit() remove the cell handle
     uCellDeinit();
 
-    uPortLog("U_CELL_TEST_PRIVATE: removing AT client...\n");
+    U_TEST_PRINT_LINE("removing AT client...");
     uAtClientRemove(pParameters->atClientHandle);
     uAtClientDeinit();
 

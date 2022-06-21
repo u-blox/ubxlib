@@ -65,6 +65,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_GNSS_INFO_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #ifndef U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES
 /** The maximum size of a version string we test.
  */
@@ -126,8 +134,8 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
     for (size_t w = 0; w < iterations; w++) {
         // Do the standard preamble
-        uPortLog("U_GNSS_INFO_TEST: testing on transport %s...\n",
-                 pGnssTestPrivateTransportTypeName(transportTypes[w]));
+        U_TEST_PRINT_LINE("testing on transport %s...",
+                          pGnssTestPrivateTransportTypeName(transportTypes[w]));
         U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
                                                     transportTypes[w], &gHandles, true,
                                                     U_CFG_APP_CELL_PIN_GNSS_POWER,
@@ -163,12 +171,12 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
         }
         // The string returned contains multiple lines separated by more than one
         // null terminator; try to print it nicely here.
-        uPortLog("U_GNSS_INFO_TEST: GNSS chip version string is:\n");
+        U_TEST_PRINT_LINE("GNSS chip version string is:");
         pTmp = pBuffer;
         while (pTmp < pBuffer + y) {
             z = strlen(pTmp);
             if (z > 0) {
-                uPortLog("U_GNSS_INFO_TEST: \"%s\".\n", pTmp);
+                U_TEST_PRINT_LINE("\"%s\".", pTmp);
                 pTmp += z;
             } else {
                 pTmp++;
@@ -193,7 +201,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
         y = uGnssInfoGetIdStr(gnssHandle, pBuffer, U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
         U_PORT_TEST_ASSERT(y > 0);
         U_PORT_TEST_ASSERT(y < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
-        uPortLog("U_GNSS_INFO_TEST: GNSS chip ID string is 0x");
+        uPortLog(U_TEST_PREFIX "GNSS chip ID string is 0x");
         for (size_t x = 0; x < (size_t) y; x++) {
             uPortLog("%02x", *(pBuffer + x));
         }
@@ -212,7 +220,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_GNSS_INFO_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -239,8 +247,8 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
     for (size_t w = 0; w < iterations; w++) {
         // Do the standard preamble
-        uPortLog("U_GNSS_INFO_TEST: testing on transport %s...\n",
-                 pGnssTestPrivateTransportTypeName(transportTypes[w]));
+        U_TEST_PRINT_LINE("testing on transport %s...",
+                          pGnssTestPrivateTransportTypeName(transportTypes[w]));
         U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
                                                     transportTypes[w], &gHandles, true,
                                                     U_CFG_APP_CELL_PIN_GNSS_POWER,
@@ -252,22 +260,21 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
 
         // Ask for time, allowing a few tries in case the GNSS receiver
         // has not yet found time
-        uPortLog("U_GNSS_INFO_TEST: waiting up to %d second(s) to establish UTC time...\n",
-                 U_GNSS_TIME_TEST_TIMEOUT_SECONDS);
+        U_TEST_PRINT_LINE("waiting up to %d second(s) to establish UTC time...",
+                          U_GNSS_TIME_TEST_TIMEOUT_SECONDS);
         startTimeMs = uPortGetTickTimeMs();
         while ((y < 0) &&
                (uPortGetTickTimeMs() < startTimeMs + (U_GNSS_TIME_TEST_TIMEOUT_SECONDS * 1000))) {
             y = uGnssInfoGetTimeUtc(gnssHandle);
         }
         if (y > 0) {
-            uPortLog("U_GNSS_INFO_TEST: UTC time according to GNSS is %d"
-                     " (took %d second(s) to establish).\n", (int32_t) y,
-                     (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
+            U_TEST_PRINT_LINE("UTC time according to GNSS is %d (took %d second(s)"
+                              " to establish).", (int32_t) y,
+                              (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000);
         } else {
-            uPortLog("U_GNSS_INFO_TEST: could not get UTC time from GNSS"
-                     " after %d second(s) (%d).\n",
-                     (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000,
-                     (int32_t) y);
+            U_TEST_PRINT_LINE("could not get UTC time from GNSS after %d second(s) (%d).",
+                              (int32_t) (uPortGetTickTimeMs() - startTimeMs) / 1000,
+                              (int32_t) y);
         }
         U_PORT_TEST_ASSERT(y > U_GNSS_TEST_MIN_UTC_TIME);
 
@@ -278,7 +285,7 @@ U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_GNSS_INFO_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);

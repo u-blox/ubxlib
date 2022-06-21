@@ -70,6 +70,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_BLE_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -136,26 +144,26 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenUart")
     U_PORT_TEST_ASSERT(gHandles.atClientHandle == atClient);
     U_PORT_TEST_ASSERT(uShortRangeAttention(gHandles.devHandle) == 0);
 
-    uPortLog("U_BLE: calling uShortRangeOpenUart with same arg twice,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("calling uShortRangeOpenUart with same arg twice,"
+                      " should fail...");
     U_PORT_TEST_ASSERT(uShortRangeOpenUart((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                            &uart, true, &devHandle) < 0);
 
     uBleTestPrivatePostamble(&gHandles);
 
-    uPortLog("U_BLE: calling uShortRangeOpenUart with NULL uart arg,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("calling uShortRangeOpenUart with NULL uart arg,"
+                      " should fail...");
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                NULL,
                                                &gHandles) < 0);
-    uPortLog("U_BLE: calling uShortRangeOpenUart with wrong module type,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("calling uShortRangeOpenUart with wrong module type,"
+                      " should fail...");
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_SHORT_RANGE_MODULE_TYPE_INTERNAL,
                                                &uart,
                                                &gHandles) < 0);
     uart.uartPort = -1;
-    uPortLog("U_BLE: calling uShortRangeOpenUart with invalid uart arg,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("calling uShortRangeOpenUart with invalid uart arg,"
+                      " should fail...");
     U_PORT_TEST_ASSERT(uBleTestPrivatePreamble((uBleModuleType_t) U_CFG_TEST_SHORT_RANGE_MODULE_TYPE,
                                                &uart,
                                                &gHandles) < 0);
@@ -168,7 +176,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenUart")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_BLE_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -198,7 +206,7 @@ U_PORT_TEST_FUNCTION("[ble]", "bleOpenCpuInit")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_BLE_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);

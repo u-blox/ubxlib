@@ -67,6 +67,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_GNSS_PWR_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -106,25 +114,25 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
     iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
     for (size_t x = 0; x < iterations; x++) {
         // Do the standard preamble
-        uPortLog("U_GNSS_PWR_TEST: testing on transport %s...\n",
-                 pGnssTestPrivateTransportTypeName(transportTypes[x]));
+        U_TEST_PRINT_LINE("testing on transport %s...",
+                          pGnssTestPrivateTransportTypeName(transportTypes[x]));
         U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
                                                     transportTypes[x], &gHandles, false,
                                                     U_CFG_APP_CELL_PIN_GNSS_POWER,
                                                     U_CFG_APP_CELL_PIN_GNSS_DATA_READY) == 0);
         gnssHandle = gHandles.gnssHandle;
 
-        uPortLog("U_GNSS_PWR_TEST: powering on GNSS...\n");
+        U_TEST_PRINT_LINE("powering on GNSS...");
         U_PORT_TEST_ASSERT(uGnssPwrOn(gnssHandle) == 0);
 
-        uPortLog("U_GNSS_PWR_TEST: checking that GNSS is alive...\n");
+        U_TEST_PRINT_LINE("checking that GNSS is alive...");
         U_PORT_TEST_ASSERT(uGnssPwrIsAlive(gnssHandle));
 
-        uPortLog("U_GNSS_PWR_TEST: powering off GNSS...\n");
+        U_TEST_PRINT_LINE("powering off GNSS...");
         U_PORT_TEST_ASSERT(uGnssPwrOff(gnssHandle) == 0);
 
 #if U_CFG_APP_PIN_GNSS_ENABLE_POWER >= 0
-        uPortLog("U_GNSS_PWR_TEST: checking that GNSS is no longer alive...\n");
+        U_TEST_PRINT_LINE("checking that GNSS is no longer alive...");
         U_PORT_TEST_ASSERT(!uGnssPwrIsAlive(gnssHandle));
 #endif
 
@@ -134,7 +142,7 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrBasic")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_GNSS_PWR_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -152,8 +160,8 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_GNSS_PWR_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -161,8 +169,8 @@ U_PORT_TEST_FUNCTION("[gnssPwr]", "gnssPwrCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_GNSS_PWR_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

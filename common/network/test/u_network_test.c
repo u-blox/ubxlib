@@ -85,6 +85,30 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The base string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX_BASE "U_NETWORK_TEST"
+
+/** The string to put at the start of all prints from this test
+ * that do not require an iteration on the end.
+ */
+#define U_TEST_PREFIX U_TEST_PREFIX_BASE ": "
+
+/** Print a whole line, with terminator, prefixed for this test
+ * file, no iteration version.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
+/** The string to put at the start of all prints from this test
+ * where an interation is required on the end.
+ */
+#define U_TEST_PREFIX_X U_TEST_PREFIX_BASE "_%d: "
+
+/** Print a whole line, with terminator and iteration on the end,
+ * prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE_X(format, ...) uPortLog(U_TEST_PREFIX_X format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -229,7 +253,7 @@ static void sendBleSps(uDeviceHandle_t devHandle)
 {
     uint32_t tries = 0;
     int32_t testDataOffset = 0;
-    uPortLog("U_NETWORK_TEST: Sending data on channel %d...\n", gChannel);
+    U_TEST_PRINT_LINE("sending data on channel %d...", gChannel);
     while ((tries++ < 15) && (gBytesSent < gTotalBytes)) {
         // -1 to omit gTestData string terminator
         int32_t bytesSentNow =
@@ -242,15 +266,15 @@ static void sendBleSps(uDeviceHandle_t devHandle)
                 testDataOffset -= sizeof gTestData - 1;
             }
         } else {
-            uPortLog("U_NETWORK_TEST: Error sending Data!!\n");
+            U_TEST_PRINT_LINE("error sending data!!!");
         }
-        uPortLog("U_NETWORK_TEST: %d byte(s) sent.\n", gBytesSent);
+        U_TEST_PRINT_LINE("%d byte(s) sent.", gBytesSent);
 
         // Make room for context switch letting receive event process
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
     }
     if (gBytesSent < gTotalBytes) {
-        uPortLog("U_NETWORK_TEST: %d byte(s) were not sent.\n", gTotalBytes - gBytesSent);
+        U_TEST_PRINT_LINE("%d byte(s) were not sent.", gTotalBytes - gBytesSent);
     }
 }
 
@@ -289,12 +313,12 @@ static void bleSpsCallback(int32_t channel, void *pParameters)
                 gBytesReceived++;
             }
 
-            uPortLog("U_NETWORK_TEST: received %d bytes (total %d with %d errors).\n",
-                     length, gBytesReceived, gErrors);
+            U_TEST_PRINT_LINE("received %d bytes (total %d with %d errors).",
+                              length, gBytesReceived, gErrors);
             if (errorStartByte >= 0) {
-                uPortLog("U_NETWORK_TEST: expected:\n");
+                U_TEST_PRINT_LINE("expected:");
                 wrapPrint(gTestData, sizeof(gTestData) - 1, previousBytesReceived, errorStartByte + 1);
-                uPortLog("U_NETWORK_TEST: got:\n");
+                U_TEST_PRINT_LINE("got:");
                 wrapPrint(buffer, sizeof(buffer), 0, errorStartByte + 1);
             }
         }
@@ -328,13 +352,13 @@ static void connectionCallback(int32_t connHandle, char *address, int32_t status
     if (status == (int32_t) U_BLE_SPS_CONNECTED) {
         gConnHandle = connHandle;
         gChannel = channel;
-        uPortLog("U_NETWORK_TEST: connected %s handle %d (channel %d).\n", address, connHandle, channel);
+        U_TEST_PRINT_LINE("connected %s handle %d (channel %d).", address, connHandle, channel);
     } else if (status == (int32_t) U_BLE_SPS_DISCONNECTED) {
         gConnHandle = -1;
         if (connHandle != U_BLE_SPS_INVALID_HANDLE) {
-            uPortLog("U_NETWORK_TEST: disconnected connection handle %d.\n", connHandle);
+            U_TEST_PRINT_LINE("disconnected connection handle %d.", connHandle);
         } else {
-            uPortLog("U_NETWORK_TEST: connection attempt failed\n");
+            U_TEST_PRINT_LINE("connection attempt failed.");
         }
     }
     if (gBleConnectionSem) {
@@ -376,8 +400,8 @@ static void networkStatusCallback(uDeviceHandle_t devHandle,
 
 #if !U_CFG_OS_CLIB_LEAKS
     // Only print stuff if the C library isn't going to leak
-    uPortLog("U_NETWORK_TEST: network status callback called for %s.\n",
-             gpUNetworkTestTypeName[netType]);
+    U_TEST_PRINT_LINE("network status callback called for %s.",
+                      gpUNetworkTestTypeName[netType]);
 #endif
 
     gNetworkStatusCallbackParameters[netType].devHandle = devHandle;
@@ -416,8 +440,8 @@ static int32_t openSocketAndUseIt(uDeviceHandle_t devHandle,
     uSockAddress_t address;
     char buffer[32];
 
-    uPortLog("U_NETWORK_TEST: looking up echo server \"%s\"...\n",
-             U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
+    U_TEST_PRINT_LINE("looking up echo server \"%s\"...",
+                      U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME);
     // Look up the address of the server we use for UDP echo
     // The first call to a sockets API needs to
     // initialise the underlying sockets layer; take
@@ -440,11 +464,11 @@ static int32_t openSocketAndUseIt(uDeviceHandle_t devHandle,
             // Send and wait for the UDP echo data, trying a few
             // times to reduce the chance of internet loss getting
             // in the way
-            uPortLog("U_NETWORK_TEST: sending %d byte(s) to %s:%d over"
-                     " %s...\n", sizeof(gTestString) - 1,
-                     U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                     U_SOCK_TEST_ECHO_UDP_SERVER_PORT,
-                     gpUNetworkTestTypeName[netType]);
+            U_TEST_PRINT_LINE("sending %d byte(s) to %s:%d over"
+                              " %s...", sizeof(gTestString) - 1,
+                              U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                              U_SOCK_TEST_ECHO_UDP_SERVER_PORT,
+                              gpUNetworkTestTypeName[netType]);
             errorCodeOrSize = 0;
             memset(buffer, 0, sizeof(buffer));
             for (size_t x = 0; (x < 3) &&
@@ -456,18 +480,15 @@ static int32_t openSocketAndUseIt(uDeviceHandle_t devHandle,
                     errorCodeOrSize = uSockReceiveFrom(descriptor, NULL,
                                                        buffer, sizeof(buffer));
                     if (errorCodeOrSize != sizeof(gTestString) - 1) {
-                        uPortLog("U_NETWORK_TEST: failed to receive UDP echo"
-                                 " on try %d.\n", x + 1);
+                        U_TEST_PRINT_LINE("failed to receive UDP echo on try %d.", x + 1);
                         uPortTaskBlock(1000);
                     }
                 } else {
-                    uPortLog("U_NETWORK_TEST: failed to send UDP data on"
-                             " try %d.\n", x + 1);
+                    U_TEST_PRINT_LINE("failed to send UDP data on try %d.", x + 1);
                 }
             }
-            uPortLog("U_NETWORK_TEST: %d byte(s) echoed over UDP on %s.\n",
-                     errorCodeOrSize,
-                     gpUNetworkTestTypeName[netType]);
+            U_TEST_PRINT_LINE("%d byte(s) echoed over UDP on %s.", errorCodeOrSize,
+                              gpUNetworkTestTypeName[netType]);
             if ((errorCodeOrSize == sizeof(gTestString) - 1) &&
                 (strncmp(buffer, gTestString, sizeof(buffer)) == 0)) {
                 errorCodeOrSize = (int32_t) U_ERROR_COMMON_SUCCESS;
@@ -518,9 +539,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_NETWORK_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
@@ -538,8 +559,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
             devHandle = *pTmp->pDevHandle;
 
-            uPortLog("U_NETWORK_TEST: bringing up %s...\n",
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("bringing up %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
                                                    pTmp->networkType,
                                                    pTmp->pNetworkCfg) == 0);
@@ -549,8 +570,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
         }
 
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
-            uPortLog("U_NETWORK_TEST: taking down %s...\n",
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("taking down %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
                                                      pTmp->networkType) == 0);
         }
@@ -559,8 +580,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_NETWORK_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -577,12 +598,11 @@ U_PORT_TEST_FUNCTION("[network]", "networkSock")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test, %d byte(s) were"
-             " lost to sockets initialisation and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost, heapSockInitLoss,
-             heapUsed - (gSystemHeapLost + heapSockInitLoss ));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test, %d byte(s) were lost to"
+                      " sockets initialisation and we have leaked"
+                      " %d byte(s).", gSystemHeapLost, heapSockInitLoss,
+                      heapUsed - (gSystemHeapLost + heapSockInitLoss ));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -622,14 +642,14 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
     // Get a list of things that support BLE
     pList = pUNetworkTestListAlloc(uNetworkTestIsBle);
     if (pList == NULL) {
-        uPortLog("U_NETWORK_TEST: *** WARNING *** nothing to do.\n");
+        U_TEST_PRINT_LINE("*** WARNING *** nothing to do.");
     }
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_NETWORK_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
@@ -641,8 +661,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
             devHandle = *pTmp->pDevHandle;
 
-            uPortLog("U_NETWORK_TEST: bringing up %s...\n",
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("bringing up %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
                                                    pTmp->networkType,
                                                    pTmp->pNetworkCfg) == 0);
@@ -679,7 +699,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                     // Use first testrun(up/down) to test default connection parameters
                     // and the second for using non-default.
                     if (a == 0) {
-                        uPortLog("U_NETWORK_TEST: Connecting SPS: %s\n", gRemoteSpsAddress);
+                        U_TEST_PRINT_LINE("connecting SPS: %s.", gRemoteSpsAddress);
                         result = uBleSpsConnectSps(devHandle,
                                                    gRemoteSpsAddress,
                                                    NULL);
@@ -692,7 +712,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                         connParams.connIntervalMax = 34;
                         connParams.connLatency = 0;
                         connParams.linkLossTimeout = 2000;
-                        uPortLog("U_NETWORK_TEST: Connecting SPS with conn params: %s\n", gRemoteSpsAddress);
+                        U_TEST_PRINT_LINE("connecting SPS with conn params: %s.", gRemoteSpsAddress);
                         result = uBleSpsConnectSps(devHandle,
                                                    gRemoteSpsAddress, &connParams);
                     }
@@ -710,7 +730,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
                 }
 
                 if (gConnHandle == -1) {
-                    uPortLog("U_NETWORK_TEST: All SPS connection attempts failed!\n");
+                    U_TEST_PRINT_LINE("all SPS connection attempts failed!");
                     U_PORT_TEST_ASSERT(false);
                 }
                 if (i == 0) {
@@ -749,8 +769,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
 
         // Remove the BLE network
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
-            uPortLog("U_NETWORK_TEST: taking down %s...\n",
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("taking down %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
                                                      pTmp->networkType) == 0);
         }
@@ -758,8 +778,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
 
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_NETWORK_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -776,12 +796,11 @@ U_PORT_TEST_FUNCTION("[network]", "networkBle")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test, %d byte(s) were"
-             " lost to sockets initialisation and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost, heapSockInitLoss,
-             heapUsed - (gSystemHeapLost + heapSockInitLoss ));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test, %d byte(s) were lost to"
+                      " sockets initialisation and we have leaked %d"
+                      " byte(s).", gSystemHeapLost, heapSockInitLoss,
+                      heapUsed - (gSystemHeapLost + heapSockInitLoss ));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -824,9 +843,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_NETWORK_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
@@ -838,8 +857,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
             devHandle = *pTmp->pDevHandle;
 
-            uPortLog("U_NETWORK_TEST: bringing up %s...\n",
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("bringing up %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
                                                    pTmp->networkType,
                                                    pTmp->pNetworkCfg) == 0);
@@ -850,16 +869,16 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
                 startTime = uPortGetTickTimeMs();
                 gStopTimeMs = startTime + U_LOCATION_TEST_CFG_TIMEOUT_SECONDS * 1000;
                 uLocationTestResetLocation(&location);
-                uPortLog("U_NETWORK_TEST: getting location using %s.\n",
-                         gpULocationTestTypeStr[pLocationCfg->locationType]);
+                U_TEST_PRINT_LINE("getting location using %s.",
+                                  gpULocationTestTypeStr[pLocationCfg->locationType]);
                 gDevHandle = devHandle;
                 y = uLocationGet(devHandle, pLocationCfg->locationType,
                                  pLocationCfg->pLocationAssist,
                                  pLocationCfg->pAuthenticationTokenStr,
                                  &location, keepGoingCallback);
                 if (y == 0) {
-                    uPortLog("U_NETWORK_TEST: location establishment took %d second(s).\n",
-                             (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
+                    U_TEST_PRINT_LINE("location establishment took %d second(s).",
+                                      (int32_t) (uPortGetTickTimeMs() - startTime) / 1000);
                 }
                 // If we are running on a local cellular network we won't get position but
                 // we should always get time
@@ -876,21 +895,20 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
                         U_PORT_TEST_ASSERT(location.svs > 0);
                     }
                 } else {
-                    uPortLog("U_NETWORK_TEST: only able to get time (%d).\n",
-                             (int32_t) location.timeUtc);
+                    U_TEST_PRINT_LINE("only able to get time (%d).", (int32_t) location.timeUtc);
                 }
                 U_PORT_TEST_ASSERT(location.timeUtc > U_LOCATION_TEST_MIN_UTC_TIME);
             } else {
-                uPortLog("U_NETWORK_TEST: not testing %s for location as we have"
-                         " no location configuration information for it.\n",
-                         gpUNetworkTestTypeName[pTmp->networkType]);
+                U_TEST_PRINT_LINE("not testing %s for location as we have"
+                                  " no location configuration information for it.",
+                                  gpUNetworkTestTypeName[pTmp->networkType]);
             }
         }
 
         // Remove each network type
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
-            uPortLog("U_NETWORK_TEST: taking down %s...\n",
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("taking down %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
                                                      pTmp->networkType) == 0);
         }
@@ -898,8 +916,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
 
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_NETWORK_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -916,10 +934,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkLoc")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost, heapUsed - gSystemHeapLost);
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost, heapUsed - gSystemHeapLost);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -955,9 +972,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_NETWORK_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
@@ -968,14 +985,14 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
             devHandle = *pTmp->pDevHandle;
 
-            uPortLog("U_NETWORK_TEST: bringing up %s...\n",
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("bringing up %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
                                                    pTmp->networkType,
                                                    pTmp->pNetworkCfg) == 0);
 
-            uPortLog("U_NETWORK_TEST: taking down %s...\n",
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("taking down %s...",
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceDown(devHandle,
                                                      pTmp->networkType) == 0);
         }
@@ -983,8 +1000,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
 
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_NETWORK_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -1001,10 +1018,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkShortRange")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost, heapUsed - gSystemHeapLost);
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost, heapUsed - gSystemHeapLost);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1059,9 +1075,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_NETWORK_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
         if (pTmp->networkType == U_NETWORK_TYPE_WIFI) {
@@ -1089,21 +1105,21 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
     // Do this twice, 'cos.
     for (size_t a = 0; a < 2; a++) {
         // Bring up each network type
-        uPortLog("U_NETWORK_TEST_%d:\n", a);
-        uPortLog("U_NETWORK_TEST_%d: ########## SECONDS AWAY... ROUND %d ##########\n", a, a + 1);
-        uPortLog("U_NETWORK_TEST_%d:\n", a);
+        uPortLog(U_TEST_PREFIX_X "\n", a);
+        U_TEST_PRINT_LINE_X("########## SECONDS AWAY... ROUND %d ##########", a, a + 1);
+        uPortLog(U_TEST_PREFIX_X "\n", a);
         // Fill gNetworkStatusCallbackParameters with rubbish
         memset(gNetworkStatusCallbackParameters, 0xFF, sizeof(gNetworkStatusCallbackParameters));
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
             devHandle = *pTmp->pDevHandle;
 
-            uPortLog("U_NETWORK_TEST_%d: bringing up %s...\n", a,
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE_X("bringing up %s...", a,
+                                gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceUp(devHandle,
                                                    pTmp->networkType,
                                                    pTmp->pNetworkCfg) == 0);
-            uPortLog("U_NETWORK_TEST_%d: adding network status callback for %s...\n", a,
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE_X("adding network status callback for %s...", a,
+                                gpUNetworkTestTypeName[pTmp->networkType]);
             // networkStatusCallback is given the address of
             // gNetworkStatusCallbackParameters as a parameter so that
             // it can fill it in with the stuff it receives.
@@ -1114,7 +1130,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
             switch (pTmp->networkType) {
                 case U_NETWORK_TYPE_BLE:
                     // For BLE, make a connection with our test peer
-                    uPortLog("U_NETWORK_TEST_%d: connecting SPS: %s\n", a, gRemoteSpsAddress);
+                    U_TEST_PRINT_LINE_X("connecting SPS: %s.", a, gRemoteSpsAddress);
                     gConnHandle = -1;
                     for (size_t tries = 0; (tries < 3) && (gConnHandle < 0); tries++) {
                         if (uBleSpsConnectSps(devHandle, gRemoteSpsAddress, NULL) == 0) {
@@ -1152,7 +1168,7 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
         uPortLog("AUTOMATION_SET_SWITCH CELL 0\n");
 # endif
 
-        uPortLog("U_NETWORK_TEST_%d: waiting for all network types to drop...\n", a);
+        U_TEST_PRINT_LINE_X("waiting for all network types to drop...", a);
         // Note: BLE/Wi-Fi will drop within a few seconds but cellular is much
         // more difficult to shake since it works down to near -140dBm these days;
         // a screened box with high quality RF cables is barely enough
@@ -1160,9 +1176,9 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
 
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
             pCallbackParameters = &(gNetworkStatusCallbackParameters[pTmp->networkType]);
-            uPortLog("U_NETWORK_TEST_%d: checking that the callback has been"
-                     " called for the \"network down\" case for network type %s...\n",
-                     a, gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE_X("checking that the callback has been called for"
+                                " the \"network down\" case for network type %s...",
+                                a, gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(pCallbackParameters->devHandle == *pTmp->pDevHandle);
             U_PORT_TEST_ASSERT(!pCallbackParameters->isUp);
             switch (pTmp->networkType) {
@@ -1197,17 +1213,17 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
                     case U_NETWORK_TYPE_BLE:
                         // For BLE, the network will stay dropped so
                         // we need to re-establish it and reconnect
-                        uPortLog("U_NETWORK_TEST_%d: re-bringing up %s...\n", a,
-                                 gpUNetworkTestTypeName[pTmp->networkType]);
+                        U_TEST_PRINT_LINE_X("re-bringing up %s...", a,
+                                            gpUNetworkTestTypeName[pTmp->networkType]);
                         y = uNetworkInterfaceUp(devHandle, pTmp->networkType,
                                                 pTmp->pNetworkCfg);
-                        uPortLog("U_NETWORK_TEST_%d: uNetworkInterfaceUp() returned %d.\n", a, y);
+                        U_TEST_PRINT_LINE_X("uNetworkInterfaceUp() returned %d.", a, y);
                         U_PORT_TEST_ASSERT(y == 0);
-                        uPortLog("U_NETWORK_TEST_%d: re-connecting SPS: %s\n", a, gRemoteSpsAddress);
+                        U_TEST_PRINT_LINE_X("re-connecting SPS: %s.", a, gRemoteSpsAddress);
                         gConnHandle = -1;
                         for (size_t tries = 0; (tries < 3) && (gConnHandle < 0); tries++) {
                             y = uBleSpsConnectSps(devHandle, gRemoteSpsAddress, NULL);
-                            uPortLog("U_NETWORK_TEST_%d: uBleSpsConnectSps() returned %d.\n", a, y);
+                            U_TEST_PRINT_LINE_X("uBleSpsConnectSps() returned %d.", a, y);
                             if (y == 0) {
                                 // Wait for connection
                                 uPortSemaphoreTryTake(gBleConnectionSem, 10000);
@@ -1216,8 +1232,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
                                 uPortTaskBlock(5000);
                             }
                         }
-                        uPortLog("U_NETWORK_TEST_%d: at the end of that gConnHandle was %d.\n", a,
-                                 gConnHandle);
+                        U_TEST_PRINT_LINE_X("at the end of that gConnHandle was %d.", a,
+                                            gConnHandle);
                         if (x == 0) {
                             U_PORT_TEST_ASSERT(gConnHandle < 0);
                         } else {
@@ -1239,11 +1255,11 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
                     case U_NETWORK_TYPE_WIFI:
                         // For Wi-Fi, the network will stay dropped;
                         // we need to re-establish it
-                        uPortLog("U_NETWORK_TEST_%d: re-bringing up %s...\n", a,
-                                 gpUNetworkTestTypeName[pTmp->networkType]);
+                        U_TEST_PRINT_LINE_X("re-bringing up %s...", a,
+                                            gpUNetworkTestTypeName[pTmp->networkType]);
                         y = uNetworkInterfaceUp(devHandle, pTmp->networkType,
                                                 pTmp->pNetworkCfg);
-                        uPortLog("U_NETWORK_TEST_%d: uNetworkInterfaceUp() returned %d.\n", a, y);
+                        U_TEST_PRINT_LINE_X("uNetworkInterfaceUp() returned %d.", a, y);
                         if (x == 0) {
                             U_PORT_TEST_ASSERT(y < 0);
                         } else {
@@ -1264,15 +1280,14 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
 # ifdef U_CFG_TEST_NET_STATUS_CELL
                 uPortLog("AUTOMATION_SET_SWITCH CELL 1\n");
 # endif
-                uPortLog("U_NETWORK_TEST_%d: waiting for all network types to"
-                         " come back up...\n", a);
+                U_TEST_PRINT_LINE_X("waiting for all network types to come back up...", a);
                 uPortTaskBlock(15000);
             } else {
                 for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
                     pCallbackParameters = &(gNetworkStatusCallbackParameters[pTmp->networkType]);
-                    uPortLog("U_NETWORK_TEST_%d: checking that the callback has been"
-                             " called for the \"network up\" case for network type %s...\n",
-                             a, gpUNetworkTestTypeName[pTmp->networkType]);
+                    U_TEST_PRINT_LINE_X("checking that the callback has been called for the"
+                                        " \"network up\" case for network type %s...", a,
+                                        gpUNetworkTestTypeName[pTmp->networkType]);
                     U_PORT_TEST_ASSERT(pCallbackParameters->devHandle == *pTmp->pDevHandle);
                     U_PORT_TEST_ASSERT(pCallbackParameters->isUp);
                     switch (pTmp->networkType) {
@@ -1304,8 +1319,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
 
         // Remove each network type
         for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
-            uPortLog("U_NETWORK_TEST_%d: taking down %s...\n", a,
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE_X("taking down %s...", a,
+                                gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uNetworkInterfaceDown(*pTmp->pDevHandle,
                                                      pTmp->networkType) == 0);
         }
@@ -1313,8 +1328,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
 
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_NETWORK_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -1336,12 +1351,11 @@ U_PORT_TEST_FUNCTION("[network]", "networkOutage")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_NETWORK_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test, %d byte(s) were"
-             " lost to sockets initialisation and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost, heapSockInitLoss,
-             heapUsed - (gSystemHeapLost + heapSockInitLoss ));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test, %d byte(s) were lost to"
+                      " sockets initialisation and we have leaked %d"
+                      " byte(s).", gSystemHeapLost, heapSockInitLoss,
+                      heapUsed - (gSystemHeapLost + heapSockInitLoss ));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1383,8 +1397,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
 
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_NETWORK_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", y);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", y);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -1392,8 +1406,8 @@ U_PORT_TEST_FUNCTION("[network]", "networkCleanUp")
 
     y = uPortGetHeapMinFree();
     if (y >= 0) {
-        uPortLog("U_NETWORK_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", y);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", y);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

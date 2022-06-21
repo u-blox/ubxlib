@@ -75,6 +75,14 @@ extern void uAtClientDetailedDebugPrint();
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_SECURITY_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #ifdef U_CFG_SECURITY_DEVICE_PROFILE_UID
 /** Timeout for the security sealing operation.
  */
@@ -229,22 +237,21 @@ static uNetworkTestList_t *pStdPreamble()
     // if not already added
     pList = pUNetworkTestListAlloc(uNetworkTestHasSecurity);
     if (pList == NULL) {
-        uPortLog("U_SECURITY_TEST: *** WARNING *** nothing to do.\n");
+        U_TEST_PRINT_LINE("*** WARNING *** nothing to do.");
     }
     // Open the devices that are not already open
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle == NULL) {
-            uPortLog("U_SECURITY_TEST: adding device %s for network %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
-                     gpUNetworkTestTypeName[pTmp->networkType]);
+            U_TEST_PRINT_LINE("adding device %s for network %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType],
+                              gpUNetworkTestTypeName[pTmp->networkType]);
             U_PORT_TEST_ASSERT(uDeviceOpen(pTmp->pDeviceCfg, pTmp->pDevHandle) == 0);
         }
     }
 
     // Bring up each network type
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
-        uPortLog("U_SECURITY_TEST: bringing up %s...\n",
-                 gpUNetworkTestTypeName[pTmp->networkType]);
+        U_TEST_PRINT_LINE("bringing up %s...", gpUNetworkTestTypeName[pTmp->networkType]);
         U_PORT_TEST_ASSERT(uNetworkInterfaceUp(*pTmp->pDevHandle,
                                                pTmp->networkType,
                                                pTmp->pNetworkCfg) == 0);
@@ -262,8 +269,7 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
     size_t sentSizeBytes = 0;
     int64_t startTimeMs;
 
-    uPortLog("U_SECURITY_TEST: sending %d byte(s) of TCP data...\n",
-             sizeBytes);
+    U_TEST_PRINT_LINE("sending %d byte(s) of TCP data...", sizeBytes);
     startTimeMs = uPortGetTickTimeMs();
     while ((sentSizeBytes < sizeBytes) &&
            ((uPortGetTickTimeMs() - startTimeMs) < 10000)) {
@@ -271,10 +277,10 @@ static size_t sendTcp(uSockDescriptor_t descriptor,
                        sizeBytes - sentSizeBytes);
         if (x > 0) {
             sentSizeBytes += x;
-            uPortLog("U_SECURITY_TEST: sent %d byte(s) of TCP data @%d ms.\n",
-                     sentSizeBytes, (int32_t) uPortGetTickTimeMs());
+            U_TEST_PRINT_LINE("sent %d byte(s) of TCP data @%d ms.",
+                              sentSizeBytes, (int32_t) uPortGetTickTimeMs());
         } else {
-            uPortLog("U_SECURITY_TEST: send returned %d.\n", x);
+            U_TEST_PRINT_LINE("send returned %d.", x);
         }
     }
 
@@ -378,10 +384,10 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
         // Get the initial-ish heap
         heapUsed = uPortGetHeapFree();
 
-        uPortLog("U_SECURITY_TEST: checking if u-blox security"
-                 " is supported by handle 0x%08x...\n", devHandle);
+        U_TEST_PRINT_LINE("checking if u-blox security is supported by handle"
+                          " 0x%08x...", devHandle);
         if (uSecurityIsSupported(devHandle)) {
-            uPortLog("U_SECURITY_TEST: security is supported.\n");
+            U_TEST_PRINT_LINE("security is supported.");
             // Note: don't check sealed status here, C2C key pairing
             // is intended to be performed by a customer only BEFORE
             // bootstrapping or sealing is completed, in a sanitized
@@ -394,7 +400,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
 
             // Test that closing a session that is not open is fine
             U_PORT_TEST_ASSERT(uSecurityC2cClose(devHandle) == 0);
-            uPortLog("U_SECURITY_TEST: pairing...\n");
+            U_TEST_PRINT_LINE("pairing...");
             LOG_ON;
             z = -1;
             // Try this a few times as sometimes  +CME ERROR: SEC busy
@@ -410,11 +416,11 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
             U_PORT_TEST_ASSERT(z == 0);
             // Make sure it's still fine
             U_PORT_TEST_ASSERT(uSecurityC2cClose(devHandle) == 0);
-            uPortLog("U_SECURITY_TEST: opening a secure session...\n");
+            U_TEST_PRINT_LINE("opening a secure session...");
             U_PORT_TEST_ASSERT(uSecurityC2cOpen(devHandle,
                                                 U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                 key, hmac) == 0);
-            uPortLog("U_SECURITY_TEST: closing the session again...\n");
+            U_TEST_PRINT_LINE("closing the session again...");
             U_PORT_TEST_ASSERT(uSecurityC2cClose(devHandle) == 0);
             LOG_OFF;
             LOG_PRINT;
@@ -422,8 +428,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
 
         // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
-        uPortLog("U_SECURITY_TEST: we have leaked %d byte(s).\n",
-                 heapUsed);
+        U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
         // heapUsed < 0 for the Zephyr case where the heap can look
         // like it increases (negative leak)
         U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -432,8 +437,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cBasic")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -470,10 +475,10 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
         // Get the initial-ish heap
         heapUsed = uPortGetHeapFree();
 
-        uPortLog("U_SECURITY_TEST: checking if u-blox security"
-                 " is supported by handle 0x%08x...\n", devHandle);
+        U_TEST_PRINT_LINE("checking if u-blox security is supported by"
+                          " handle 0x%08x...", devHandle);
         if (uSecurityIsSupported(devHandle)) {
-            uPortLog("U_SECURITY_TEST: security is supported.\n");
+            U_TEST_PRINT_LINE("security is supported.");
             // Note: don't check sealed status here, C2C key pairing
             // is intended to be performed by a customer only BEFORE
             // bootstrapping or sealing is completed, in a sanitized
@@ -484,20 +489,20 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
             // API for all our modules so that we can complete the
             // pairing process even after sealing.
 
-            uPortLog("U_SECURITY_TEST: pairing...\n");
+            U_TEST_PRINT_LINE("pairing...");
             U_PORT_TEST_ASSERT(uSecurityC2cPair(devHandle,
                                                 U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                 key, hmac) == 0);
 
             // Open a new secure session and perform a sockets operation
-            uPortLog("U_SECURITY_TEST: opening a secure session...\n");
+            U_TEST_PRINT_LINE("opening a secure session...");
             LOG_ON;
             U_PORT_TEST_ASSERT(uSecurityC2cOpen(devHandle,
                                                 U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                 key, hmac) == 0);
 
-            uPortLog("U_SECURITY_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
+            U_TEST_PRINT_LINE("looking up echo server \"%s\"...",
+                              U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
 
             // Look up the address of the server we use for TCP echo
             // The first call to a sockets API needs to
@@ -525,9 +530,9 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
             U_PORT_TEST_ASSERT(descriptor >= 0);
 
             // Connect the socket
-            uPortLog("U_SECURITY_TEST: connect socket to \"%s:%d\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                     U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+            U_TEST_PRINT_LINE("connect socket to \"%s:%d\"...",
+                              U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                              U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
             // Connections can fail so allow this a few goes
             errorCode = -1;
             for (y = 2; (y > 0) && (errorCode < 0); y--) {
@@ -535,10 +540,9 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
             }
             U_PORT_TEST_ASSERT(errorCode == 0);
 
-            uPortLog("U_SECURITY_TEST: sending/receiving %d bytes"
-                     " of data over a  TCP socket with data reception"
-                     " into the same task...\n",
-                     sizeof(gSendData) - 1);
+            U_TEST_PRINT_LINE("sending/receiving %d bytes of data over a"
+                              " TCP socket with data reception into the"
+                              " same task...", sizeof(gSendData) - 1);
 
             // Throw random sized TCP segments up...
             offset = 0;
@@ -559,9 +563,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
                 y++;
             }
             sizeBytes = offset;
-            uPortLog("U_SECURITY_TEST: %d byte(s) sent via TCP @%d ms,"
-                     " now receiving...\n", sizeBytes,
-                     (int32_t) uPortGetTickTimeMs());
+            U_TEST_PRINT_LINE("%d byte(s) sent via TCP @%d ms, now receiving...",
+                              sizeBytes, (int32_t) uPortGetTickTimeMs());
             U_PORT_TEST_ASSERT(sizeBytes >= sizeof(gSendData) - 1);
 
             // ...and capture them all again afterwards
@@ -580,23 +583,20 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
                                       (sizeof(gSendData) - 1) - offset);
                 if (sizeBytes > 0) {
                     offset += sizeBytes;
-                    uPortLog("U_SECURITY_TEST: received %d byte(s) out of"
-                             " %d on TCP socket.\n",
-                             offset, sizeof(gSendData) - 1);
+                    U_TEST_PRINT_LINE("received %d byte(s) out of %d on TCP socket.",
+                                      offset, sizeof(gSendData) - 1);
                 }
             }
             sizeBytes = offset;
             if (sizeBytes < sizeof(gSendData) - 1) {
-                uPortLog("U_SECURITY_TEST: only %d byte(s) received after %d ms.\n",
-                         sizeBytes,
-                         (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                U_TEST_PRINT_LINE("only %d byte(s) received after %d ms.", sizeBytes,
+                                  (int32_t) (uPortGetTickTimeMs() - startTimeMs));
                 //lint -e(506, 774) Suppress constant Boolean always evaluates to false
                 U_PORT_TEST_ASSERT(false);
             } else {
-                uPortLog("U_SECURITY_TEST: all %d byte(s) received back after"
-                         " %d ms, checking if they were as expected...\n",
-                         sizeBytes,
-                         (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                U_TEST_PRINT_LINE("all %d byte(s) received back after %d ms,"
+                                  " checking if they were as expected...", sizeBytes,
+                                  (int32_t) (uPortGetTickTimeMs() - startTimeMs));
                 // Check the characters are the same
                 //lint -e(668) Suppress possible use of NULL pointer
                 // for pDataReceived
@@ -609,7 +609,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
 
             free(pDataReceived);
 
-            uPortLog("U_SECURITY_TEST: closing the session again...\n");
+            U_TEST_PRINT_LINE("closing the session again...");
             U_PORT_TEST_ASSERT(uSecurityC2cClose(devHandle) == 0);
             LOG_OFF;
             LOG_PRINT;
@@ -627,11 +627,11 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
         // variant due to block length tracking in their
         // implementation).
         heapUsed -= uPortGetHeapFree();
-        uPortLog("U_SECURITY_TEST: during this part of the test %d"
-                 " byte(s) were lost to sockets initialisation;"
-                 " we have leaked %d byte(s).\n",
-                 heapSockInitLoss + heapXxxSockInitLoss,
-                 heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+        U_TEST_PRINT_LINE("during this part of the test %d byte(s) were"
+                          " lost to sockets initialisation; we have"
+                          " leaked %d byte(s).",
+                          heapSockInitLoss + heapXxxSockInitLoss,
+                          heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
         // heapUsed < 0 for the Zephyr case where the heap can look
         // like it increases (negative leak)
         U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
@@ -645,8 +645,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSock")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -683,10 +683,10 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
         // Get the initial-ish heap
         heapUsed = uPortGetHeapFree();
 
-        uPortLog("U_SECURITY_TEST: checking if u-blox security"
-                 " is supported by handle 0x%08x...\n", devHandle);
+        U_TEST_PRINT_LINE("checking if u-blox security is supported by handle 0x%08x...",
+                          devHandle);
         if (uSecurityIsSupported(devHandle)) {
-            uPortLog("U_SECURITY_TEST: security is supported.\n");
+            U_TEST_PRINT_LINE("security is supported.");
             // Note: don't check sealed status here, C2C key pairing
             // is intended to be performed by a customer only BEFORE
             // bootstrapping or sealing is completed, in a sanitized
@@ -697,20 +697,20 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
             // API for all our modules so that we can complete the
             // pairing process even after sealing.
 
-            uPortLog("U_SECURITY_TEST: pairing...\n");
+            U_TEST_PRINT_LINE("pairing...");
             U_PORT_TEST_ASSERT(uSecurityC2cPair(devHandle,
                                                 U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                 key, hmac) == 0);
 
             // Open a new secure session and perform a sockets operation
-            uPortLog("U_SECURITY_TEST: opening a secure session...\n");
+            U_TEST_PRINT_LINE("opening a secure session...");
             LOG_ON;
             U_PORT_TEST_ASSERT(uSecurityC2cOpen(devHandle,
                                                 U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                 key, hmac) == 0);
 
-            uPortLog("U_SECURITY_TEST: looking up echo server \"%s\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
+            U_TEST_PRINT_LINE("looking up echo server \"%s\"...",
+                              U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME);
 
             // Look up the address of the server we use for TCP echo
             // The first call to a sockets API needs to
@@ -738,9 +738,9 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
             U_PORT_TEST_ASSERT(gDescriptor >= 0);
 
             // Connect the socket
-            uPortLog("U_SECURITY_TEST: connect socket to \"%s:%d\"...\n",
-                     U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                     U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+            U_TEST_PRINT_LINE("connect socket to \"%s:%d\"...",
+                              U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                              U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
             // Connections can fail so allow this a few goes
             errorCode = -1;
             for (y = 2; (y > 0) && (errorCode < 0); y--) {
@@ -780,9 +780,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
             // event handler quickly.
             uSockBlockingSet(gDescriptor, false);
 
-            uPortLog("U_SECURITY_TEST: sending/receiving data over a"
-                     " TCP socket with data reception into another"
-                     " task...\n");
+            U_TEST_PRINT_LINE("sending/receiving data over a TCP socket"
+                              " with data reception into another task...");
 
             // Throw small TCP segments up and wait
             // for them to come back...
@@ -800,18 +799,16 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
                 sizeBytesReceive = 0;
                 if (sendTcp(gDescriptor, gSendData + offset,
                             sizeBytesSend) == sizeBytesSend) {
-                    uPortLog("U_SECURITY_TEST: %d byte(s) sent via TCP @%d ms,"
-                             " now receiving...\n", sizeBytesSend,
-                             (int32_t) uPortGetTickTimeMs());
+                    U_TEST_PRINT_LINE("%d byte(s) sent via TCP @%d ms, now receiving...",
+                                      sizeBytesSend, (int32_t) uPortGetTickTimeMs());
                     // Give the data time to come back
                     for (size_t z = 20; (z > 0) &&
                          (sizeBytesReceive < sizeBytesSend); z--) {
                         uPortTaskBlock(1000);
                     }
                     if (sizeBytesReceive < sizeBytesSend) {
-                        uPortLog("U_SECURITY_TEST: after sending a total"
-                                 " of %d byte(s), receiving failed.\n",
-                                 sizeBytesSend + offset);
+                        U_TEST_PRINT_LINE("after sending a total of %d byte(s),"
+                                          " receiving failed.", sizeBytesSend + offset);
                         //lint -e(506, 774) Suppress constant Boolean always
                         // evaluates to false
                         U_PORT_TEST_ASSERT(false);
@@ -820,12 +817,11 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
                     //lint -e(668) Suppress possible use of NULL pointer
                     // for gpBuffer
                     if (memcmp(gpBuffer, gSendData + offset, sizeBytesReceive) != 0) {
-                        uPortLog("U_SECURITY_TEST: expected received data contents"
-                                 " not what was expected.\n");
-                        uPortLog("U_SECURITY_TEST: expected \"%*s\", received"
-                                 " \"%*s\".\n",
-                                 sizeBytesSend, gSendData + offset,
-                                 sizeBytesReceive, gpBuffer);
+                        U_TEST_PRINT_LINE("expected received data contents not what"
+                                          " was expected.");
+                        U_TEST_PRINT_LINE("expected \"%*s\", received \"%*s\".",
+                                          sizeBytesSend, gSendData + offset,
+                                          sizeBytesReceive, gpBuffer);
                         //lint -e(506, 774) Suppress constant Boolean always
                         // evaluates to false
                         U_PORT_TEST_ASSERT(false);
@@ -837,9 +833,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
 
             sizeBytesSend = offset;
             if (sizeBytesSend < U_SECURITY_TEST_C2C_SMALL_CHUNK_TOTAL_SIZE) {
-                uPortLog("U_SECURITY_TEST: only %d byte(s) sent after %d ms.\n",
-                         sizeBytesSend,
-                         (int32_t) (uPortGetTickTimeMs() - startTimeMs));
+                U_TEST_PRINT_LINE("only %d byte(s) sent after %d ms.", sizeBytesSend,
+                                  (int32_t) (uPortGetTickTimeMs() - startTimeMs));
                 //lint -e(506, 774) Suppress constant Boolean always evaluates to false
                 U_PORT_TEST_ASSERT(false);
             }
@@ -848,8 +843,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
             // U_SECURITY_TEST_TASK_STACK_SIZE_BYTES
             // was big enough
             y = uPortEventQueueStackMinFree(gEventQueueHandle);
-            uPortLog("U_SOCK_TEST: event queue task had %d byte(s)"
-                     " free at a minimum.\n", y);
+            U_TEST_PRINT_LINE("event queue task had %d byte(s) free at a minimum.", y);
             U_PORT_TEST_ASSERT((y > 0) ||
                                (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
 
@@ -863,7 +857,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
 
             free(gpBuffer);
 
-            uPortLog("U_SECURITY_TEST: closing the session again...\n");
+            U_TEST_PRINT_LINE("closing the session again...");
             U_PORT_TEST_ASSERT(uSecurityC2cClose(devHandle) == 0);
             LOG_OFF;
             LOG_PRINT;
@@ -881,11 +875,10 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
         // variant due to block length tracking in their
         // implementation).
         heapUsed -= uPortGetHeapFree();
-        uPortLog("U_SECURITY_TEST: during this part of the test %d"
-                 " byte(s) were lost to sockets initialisation;"
-                 " we have leaked %d byte(s).\n",
-                 heapSockInitLoss + heapXxxSockInitLoss,
-                 heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
+        U_TEST_PRINT_LINE("during this part of the test %d byte(s) were lost"
+                          " to sockets initialisation; we have leaked %d byte(s).",
+                          heapSockInitLoss + heapXxxSockInitLoss,
+                          heapUsed - (heapSockInitLoss + heapXxxSockInitLoss));
         // heapUsed < 0 for the Zephyr case where the heap can look
         // like it increases (negative leak)
         U_PORT_TEST_ASSERT(heapUsed <= heapSockInitLoss + heapXxxSockInitLoss);
@@ -899,8 +892,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityC2cSockAsync")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -933,29 +926,28 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
         // Get the initial-ish heap
         heapUsed = uPortGetHeapFree();
 
-        uPortLog("U_SECURITY_TEST: checking if u-blox security"
-                 " is supported by handle 0x%08x...\n", devHandle);
+        U_TEST_PRINT_LINE("checking if u-blox security is supported by handle"
+                          " 0x%08x...", devHandle);
         if (uSecurityIsSupported(devHandle)) {
-            uPortLog("U_SECURITY_TEST: security is supported.\n");
+            U_TEST_PRINT_LINE("security is supported.");
 
             // Get the serial number
             z = uSecurityGetSerialNumber(devHandle, serialNumber);
             U_PORT_TEST_ASSERT((z > 0) && (z < (int32_t) sizeof(serialNumber)));
-            uPortLog("U_SECURITY_TEST: module serial number is \"%s\".\n",
-                     serialNumber);
+            U_TEST_PRINT_LINE("module serial number is \"%s\".", serialNumber);
 
             // Get the root of trust UID with NULL rotUid
             U_PORT_TEST_ASSERT(uSecurityGetRootOfTrustUid(devHandle, NULL) >= 0);
             // Get the root of trust UID properly
             U_PORT_TEST_ASSERT(uSecurityGetRootOfTrustUid(devHandle,
                                                           rotUid) == sizeof(rotUid));
-            uPortLog("U_SECURITY_TEST: root of trust UID is 0x");
+            uPortLog( U_TEST_PREFIX "root of trust UID is 0x");
             for (size_t y = 0; y < sizeof(rotUid); y++) {
                 uPortLog("%02x", rotUid[y]);
             }
             uPortLog(".\n");
 
-            uPortLog("U_SECURITY_TEST: waiting for bootstrap status...\n");
+            U_TEST_PRINT_LINE("waiting for bootstrap status...");
             // Try 10 times with a wait in-between to get bootstrapped
             // status
             for (size_t y = 10; (y > 0) &&
@@ -963,45 +955,42 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
                 uPortTaskBlock(5000);
             }
             if (uSecurityIsBootstrapped(devHandle)) {
-                uPortLog("U_SECURITY_TEST: device is bootstrapped.\n");
+                U_TEST_PRINT_LINE("device is bootstrapped.");
                 if (!uSecurityIsSealed(devHandle)) {
 #ifdef U_CFG_SECURITY_DEVICE_PROFILE_UID
-                    uPortLog("U_SECURITY_TEST: device is bootstrapped, performing"
-                             " security seal with device profile UID string \"%s\""
-                             " and serial number \"%s\"...\n",
-                             U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
-                             serialNumber);
+                    U_TEST_PRINT_LINE("device is bootstrapped, performing security seal"
+                                      " with device profile UID string \"%s\" and serial"
+                                      " number \"%s\"...",
+                                      U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
+                                      serialNumber);
                     gStopTimeMs = uPortGetTickTimeMs() +
                                   (U_SECURITY_TEST_SEAL_TIMEOUT_SECONDS * 1000);
                     if (uSecuritySealSet(devHandle,
                                          U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
                                          serialNumber, keepGoingCallback) == 0) {
-                        uPortLog("U_SECURITY_TEST: device is security sealed"
-                                 " with device profile UID string \"%s\""
-                                 " and serial number \"%s\".\n",
-                                 U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
-                                 serialNumber);
+                        U_TEST_PRINT_LINE("device is security sealed with device profile"
+                                          " UID string \"%s\" and serial number \"%s\".",
+                                          U_PORT_STRINGIFY_QUOTED(U_CFG_SECURITY_DEVICE_PROFILE_UID),
+                                          serialNumber);
                         U_PORT_TEST_ASSERT(uSecurityIsSealed(devHandle));
                     } else {
-                        uPortLog("U_SECURITY_TEST: unable to security seal device.\n");
+                        U_TEST_PRINT_LINE("unable to security seal device.");
                         U_PORT_TEST_ASSERT(!uSecurityIsSealed(devHandle));
                         //lint -e(774) Suppress always evaluates to false
                         U_PORT_TEST_ASSERT(false);
                     }
 #else
-                    uPortLog("U_SECURITY_TEST: device is bootstrapped but"
-                             " U_CFG_SECURITY_DEVICE_PROFILE_UID is not"
-                             " defined so no test of security sealing"
-                             " will be performed.\n");
+                    U_TEST_PRINT_LINE("device is bootstrapped but U_CFG_SECURITY_DEVICE_PROFILE_UID"
+                                      " is not defined so no test of security sealing"
+                                      " will be performed.");
 #endif
                 } else {
-                    uPortLog("U_SECURITY_TEST: this device supports u-blox"
-                             " security and is already security sealed, no"
-                             " test of security sealing will be carried out.\n");
+                    U_TEST_PRINT_LINE("this device supports u-blox security and is already"
+                                      " security sealed, no test of security sealing will"
+                                      " be carried out.");
                 }
             } else {
-                uPortLog("U_SECURITY_TEST: this device supports u-blox"
-                         " security but will not bootstrap.\n");
+                U_TEST_PRINT_LINE("this device supports u-blox security but will not bootstrap.");
                 U_PORT_TEST_ASSERT(!uSecurityIsSealed(devHandle));
                 //lint -e(506, 774) Suppress constant Boolean always evaluates to false
                 U_PORT_TEST_ASSERT(false);
@@ -1010,8 +999,7 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
 
         // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
-        uPortLog("U_SECURITY_TEST: we have leaked %d byte(s).\n",
-                 heapUsed);
+        U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
         // heapUsed < 0 for the Zephyr case where the heap can look
         // like it increases (negative leak)
         U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -1020,8 +1008,8 @@ U_PORT_TEST_FUNCTION("[security]", "securitySeal")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -1052,13 +1040,13 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
         // Get the initial-ish heap
         heapUsed = uPortGetHeapFree();
 
-        uPortLog("U_SECURITY_TEST: checking if u-blox security"
-                 " is supported by handle 0x%08x...\n", devHandle);
+        U_TEST_PRINT_LINE("checking if u-blox security is supported by handle"
+                          " 0x%08x...", devHandle);
         if (uSecurityIsSupported(devHandle)) {
-            uPortLog("U_SECURITY_TEST: security is supported.\n");
-            uPortLog("U_SECURITY_TEST: waiting for seal status...\n");
+            U_TEST_PRINT_LINE("security is supported.");
+            U_TEST_PRINT_LINE("waiting for seal status...");
             if (uSecurityIsSealed(devHandle)) {
-                uPortLog("U_SECURITY_TEST: device is sealed.\n");
+                U_TEST_PRINT_LINE("device is sealed.");
 
                 // Ask for a security heartbeat to be triggered:
                 // this very likely won't be permitted since
@@ -1070,34 +1058,33 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
                 // in this function (taking too long to return), will
                 // disable while the problem is investigated.
                 //y = uSecurityHeartbeatTrigger(devHandle);
-                //uPortLog("U_SECURITY_TEST: uSecurityHeartbeatTrigger()"
-                //         " returned %d.\n", y);
-                uPortLog("U_SECURITY_TEST: testing end to end encryption...\n");
+                //U_TEST_PRINT_LINE("uSecurityHeartbeatTrigger() returned %d.", y);
+                U_TEST_PRINT_LINE("testing end to end encryption...");
 
                 // First get the current E2E encryption version
                 version = uSecurityE2eGetVersion(devHandle);
                 if (version > 0) {
                     U_PORT_TEST_ASSERT((version == 1) || (version == 2));
-                    uPortLog("U_SECURITY_TEST: end to end encryption is v%d\n", version);
+                    U_TEST_PRINT_LINE("end to end encryption is v%d.", version);
                     if (version == 2) {
                         // On all current modules where V2 is supported and
                         // selected V1 is also supported; this may change
                         // in future of course
                         version = 1;
-                        uPortLog("U_SECURITY_TEST: setting end to end encryption v%d.\n", version);
+                        U_TEST_PRINT_LINE("setting end to end encryption v%d.", version);
                         U_PORT_TEST_ASSERT(uSecurityE2eSetVersion(devHandle, version) == 0);
                         U_PORT_TEST_ASSERT(uSecurityE2eGetVersion(devHandle) == version);
                         version = 2;
-                        uPortLog("U_SECURITY_TEST: setting end to end encryption v%d again.\n", version);
+                        U_TEST_PRINT_LINE("setting end to end encryption v%d again.", version);
                         U_PORT_TEST_ASSERT(uSecurityE2eSetVersion(devHandle, version) == 0);
                         U_PORT_TEST_ASSERT(uSecurityE2eGetVersion(devHandle) == version);
                         headerLengthBytes = U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES;
                     }
-                    uPortLog("U_SECURITY_TEST: end to end encryption is v%d\n", version);
+                    U_TEST_PRINT_LINE("end to end encryption is v%d.", version);
 
                 } else {
-                    uPortLog("U_SECURITY_TEST: end to end encryption version"
-                             " check not supported, assuming v1.\n");
+                    U_TEST_PRINT_LINE("end to end encryption version check not supported,"
+                                      " assuming v1.");
                     version = 1;
                     (void)version; // Not used at the moment
                 }
@@ -1109,27 +1096,25 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
                 // something in there we can compare against
                 //lint -e(668) Suppress possible NULL pointer, it is checked above
                 memcpy(pData, gAllChars, sizeof(gAllChars));
-                uPortLog("U_SECURITY_TEST: requesting end to end encryption of %d"
-                         " byte(s) of data...\n", sizeof(gAllChars));
+                U_TEST_PRINT_LINE("requesting end to end encryption of %d byte(s) of data...",
+                                  sizeof(gAllChars));
                 y = uSecurityE2eEncrypt(devHandle, gAllChars,
                                         pData, sizeof(gAllChars));
                 U_PORT_TEST_ASSERT(y == sizeof(gAllChars) + headerLengthBytes);
-                uPortLog("U_SECURITY_TEST: %d byte(s) of data returned.\n", y);
+                U_TEST_PRINT_LINE("%d byte(s) of data returned.", y);
                 //lint -e(668) Suppress possible NULL pointer, it is checked above
                 U_PORT_TEST_ASSERT(memcmp(pData, gAllChars, sizeof(gAllChars)) != 0);
                 free(pData);
             } else {
-                uPortLog("U_SECURITY_TEST: this device supports u-blox"
-                         " security but has not been security sealed,"
-                         " no testing of end to end encryption will be"
-                         " carried out.\n");
+                U_TEST_PRINT_LINE("this device supports u-blox security but has not"
+                                  " been security sealed, no testing of end to end"
+                                  " encryption will be carried out.");
             }
         }
 
         // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
-        uPortLog("U_SECURITY_TEST: we have leaked %d byte(s).\n",
-                 heapUsed);
+        U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
         // heapUsed < 0 for the Zephyr case where the heap can look
         // like it increases (negative leak)
         U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -1138,8 +1123,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityE2eEncryption")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -1170,13 +1155,13 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
         // Get the initial-ish heap
         heapUsed = uPortGetHeapFree();
 
-        uPortLog("U_SECURITY_TEST: checking if u-blox security"
-                 " is supported by handle 0x%08x...\n", devHandle);
+        U_TEST_PRINT_LINE("checking if u-blox security is supported by handle"
+                          " 0x%08x...", devHandle);
         if (uSecurityIsSupported(devHandle)) {
-            uPortLog("U_SECURITY_TEST: security is supported.\n");
-            uPortLog("U_SECURITY_TEST: waiting for seal status...\n");
+            U_TEST_PRINT_LINE("security is supported.");
+            U_TEST_PRINT_LINE("waiting for seal status...");
             if (uSecurityIsSealed(devHandle)) {
-                uPortLog("U_SECURITY_TEST: device is sealed.\n");
+                U_TEST_PRINT_LINE("device is sealed.");
 
                 // Ask for a security heartbeat to be triggered:
                 // this very likely won't be permitted since
@@ -1188,9 +1173,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
                 // in this function (taking too long to return), will
                 // disable while the problem is investiated.
                 //z = uSecurityHeartbeatTrigger(devHandle);
-                //uPortLog("U_SECURITY_TEST: uSecurityHeartbeatTrigger()"
-                //         " returned %d.\n", z);
-                uPortLog("U_SECURITY_TEST: testing PSK generation...\n");
+                //U_TEST_PRINT_LINE("uSecurityHeartbeatTrigger() returned %d.", z);
+                U_TEST_PRINT_LINE("testing PSK generation...");
                 memset(psk, 0, sizeof(psk));
                 memset(pskId, 0, sizeof(pskId));
                 pskIdSize = uSecurityPskGenerate(devHandle, 16,
@@ -1251,17 +1235,15 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
                 }
                 U_PORT_TEST_ASSERT(z < (int32_t) sizeof(psk));
             } else {
-                uPortLog("U_SECURITY_TEST: this device supports u-blox"
-                         " security but has not been security sealed,"
-                         " no testing of PSK generation will be carried"
-                         " out.\n");
+                U_TEST_PRINT_LINE("this device supports u-blox security but"
+                                  " has not been security sealed, no testing"
+                                  " of PSK generation will be carried out.");
             }
         }
 
         // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
-        uPortLog("U_SECURITY_TEST: we have leaked %d byte(s).\n",
-                 heapUsed);
+        U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
         // heapUsed < 0 for the Zephyr case where the heap can look
         // like it increases (negative leak)
         U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -1270,8 +1252,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityPskGeneration")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -1303,24 +1285,24 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
         // Get the initial-ish heap
         heapUsed = uPortGetHeapFree();
 
-        uPortLog("U_SECURITY_TEST: checking if u-blox security"
-                 " is supported by handle 0x%08x...\n", devHandle);
+        U_TEST_PRINT_LINE("checking if u-blox security is supported by handle"
+                          " 0x%08x...", devHandle);
         if (uSecurityIsSupported(devHandle)) {
-            uPortLog("U_SECURITY_TEST: security is supported.\n");
-            uPortLog("U_SECURITY_TEST: waiting for seal status...\n");
+            U_TEST_PRINT_LINE("security is supported.");
+            U_TEST_PRINT_LINE("waiting for seal status...");
             if (uSecurityIsSealed(devHandle)) {
-                uPortLog("U_SECURITY_TEST: device is sealed.\n");
+                U_TEST_PRINT_LINE("device is sealed.");
 
 #ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
                 // If C2C security is in place for a module then the
                 // certificates can only be read if a C2C session is
                 // open
-                uPortLog("U_SECURITY_TEST: pairing for C2C...\n");
+                U_TEST_PRINT_LINE("pairing for C2C...");
                 LOG_ON;
                 U_PORT_TEST_ASSERT(uSecurityC2cPair(devHandle,
                                                     U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                     key, hmac) == 0);
-                uPortLog("U_SECURITY_TEST: opening a C2C session...\n");
+                U_TEST_PRINT_LINE("opening a C2C session...");
                 U_PORT_TEST_ASSERT(uSecurityC2cOpen(devHandle,
                                                     U_PORT_STRINGIFY_QUOTED(U_CFG_TEST_SECURITY_C2C_TE_SECRET),
                                                     key, hmac) == 0);
@@ -1329,7 +1311,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
 #endif
                 // First get the size of the device public certificate
                 y = uSecurityZtpGetDeviceCertificate(devHandle, NULL, 0);
-                uPortLog("U_SECURITY_TEST: device public X.509 certificate is %d bytes.\n", y);
+                U_TEST_PRINT_LINE("device public X.509 certificate is %d bytes.", y);
                 U_PORT_TEST_ASSERT((y > 0) || (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
                 if (y > 0) {
                     // Allocate memory to receive into and zero it for good measure
@@ -1337,7 +1319,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     U_PORT_TEST_ASSERT(pData != NULL);
                     //lint -e(668) Suppress possible use of NULL pointer for pData
                     memset(pData, 0, y);
-                    uPortLog("U_SECURITY_TEST: getting device public X.509 certificate...\n", y);
+                    U_TEST_PRINT_LINE("getting device public X.509 certificate...", y);
                     z = uSecurityZtpGetDeviceCertificate(devHandle, pData, y);
                     U_PORT_TEST_ASSERT(z == y);
                     // Can't really check the data but can check that it is
@@ -1345,13 +1327,12 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
                     free(pData);
                 } else {
-                    uPortLog("U_SECURITY_TEST: module does not support reading device"
-                             " public certificate.\n");
+                    U_TEST_PRINT_LINE("module does not support reading device public certificate.");
                 }
 
                 // Get the size of the device private certificate
                 y = uSecurityZtpGetPrivateKey(devHandle, NULL, 0);
-                uPortLog("U_SECURITY_TEST: private key is %d bytes.\n", y);
+                U_TEST_PRINT_LINE("private key is %d bytes.", y);
                 U_PORT_TEST_ASSERT((y > 0) || (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
                 if (y > 0) {
                     // Allocate memory to receive into and zero it for good measure
@@ -1359,7 +1340,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     U_PORT_TEST_ASSERT(pData != NULL);
                     //lint -e(668) Suppress possible use of NULL pointer for pData
                     memset(pData, 0, y);
-                    uPortLog("U_SECURITY_TEST: getting private key...\n", y);
+                    U_TEST_PRINT_LINE("getting private key...", y);
                     z = uSecurityZtpGetPrivateKey(devHandle, pData, y);
                     U_PORT_TEST_ASSERT(z == y);
                     // Can't really check the data but can check that it is
@@ -1367,13 +1348,12 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
                     free(pData);
                 } else {
-                    uPortLog("U_SECURITY_TEST: module does not support reading device"
-                             " private key.\n");
+                    U_TEST_PRINT_LINE("module does not support reading device private key.");
                 }
 
                 // Get the size of the certificate authorities
                 y = uSecurityZtpGetCertificateAuthorities(devHandle, NULL, 0);
-                uPortLog("U_SECURITY_TEST: X.509 certificate authorities are %d bytes.\n", y);
+                U_TEST_PRINT_LINE("X.509 certificate authorities are %d bytes.", y);
                 U_PORT_TEST_ASSERT((y > 0) || (y == (int32_t) U_ERROR_COMMON_NOT_SUPPORTED));
                 if (y > 0) {
                     // Allocate memory to receive into and zero it for good measure
@@ -1381,7 +1361,7 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     U_PORT_TEST_ASSERT(pData != NULL);
                     //lint -e(668) Suppress possible use of NULL pointer for pData
                     memset(pData, 0, y);
-                    uPortLog("U_SECURITY_TEST: getting X.509 certificate authorities...\n", y);
+                    U_TEST_PRINT_LINE("getting X.509 certificate authorities...", y);
                     z = uSecurityZtpGetCertificateAuthorities(devHandle, pData, y);
                     U_PORT_TEST_ASSERT(z == y);
                     // Can't really check the data but can check that it is
@@ -1389,27 +1369,24 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
                     U_PORT_TEST_ASSERT(strlen(pData) == z - 1);
                     free(pData);
                 } else {
-                    uPortLog("U_SECURITY_TEST: module does not support reading "
-                             " certificate authorities.\n");
+                    U_TEST_PRINT_LINE("module does not support reading certificate authorities.");
                 }
 
 #ifdef U_CFG_TEST_SECURITY_C2C_TE_SECRET
-                uPortLog("U_SECURITY_TEST: closing C2C session again...\n");
+                U_TEST_PRINT_LINE("closing C2C session again...");
                 U_PORT_TEST_ASSERT(uSecurityC2cClose(devHandle) == 0);
 #endif
 
             } else {
-                uPortLog("U_SECURITY_TEST: this device supports u-blox"
-                         " security but has not been security sealed,"
-                         " no testing of reading ZTP items can be"
-                         " carried out.\n");
+                U_TEST_PRINT_LINE("this device supports u-blox security but has"
+                                  " not been security sealed, no testing of reading"
+                                  " ZTP items can be carried out.");
             }
         }
 
         // Check for memory leaks
         heapUsed -= uPortGetHeapFree();
-        uPortLog("U_SECURITY_TEST: we have leaked %d byte(s).\n",
-                 heapUsed);
+        U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
         // heapUsed < 0 for the Zephyr case where the heap can look
         // like it increases (negative leak)
         U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -1418,8 +1395,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityZtp")
     // Close the devices once more and free the list
     for (uNetworkTestList_t *pTmp = pList; pTmp != NULL; pTmp = pTmp->pNext) {
         if (*pTmp->pDevHandle != NULL) {
-            uPortLog("U_SECURITY_CREDENTIAL_TEST: closing device %s...\n",
-                     gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
+            U_TEST_PRINT_LINE("closing device %s...",
+                              gpUNetworkTestDeviceTypeName[pTmp->pDeviceCfg->deviceType]);
             U_PORT_TEST_ASSERT(uDeviceClose(*pTmp->pDevHandle, false) == 0);
             *pTmp->pDevHandle = NULL;
         }
@@ -1451,8 +1428,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityCleanUp")
 
     y = uPortTaskStackMinFree(NULL);
     if (y != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_SECURITY_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", y);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", y);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -1460,8 +1437,8 @@ U_PORT_TEST_FUNCTION("[security]", "securityCleanUp")
 
     y = uPortGetHeapMinFree();
     if (y >= 0) {
-        uPortLog("U_SECURITY_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", y);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", y);
         U_PORT_TEST_ASSERT(y >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

@@ -68,6 +68,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_PORT_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #ifndef _WIN32
 /** Check time delays on all platforms except _WIN32: on _WIN32
  * the tests are run on the same machine as all of the compilation
@@ -627,7 +635,7 @@ static void osTestTask(void *pParameters)
     U_PORT_TEST_ASSERT(uPortTaskIsThis(gTaskHandle));
     U_PORT_TEST_ASSERT(uPortTaskGetHandle(NULL) < 0);
     U_PORT_TEST_ASSERT(uPortTaskGetHandle(&taskHandle) == 0);
-    uPortLog("U_PORT_TEST: uPortTaskGetHandle() returned 0x%08x\n", taskHandle);
+    uPortLog("U_PORT_TEST_OS_TASK: uPortTaskGetHandle() returned 0x%08x\n", taskHandle);
     U_PORT_TEST_ASSERT(gTaskHandle == taskHandle);
 
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
@@ -926,7 +934,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
     // the user needs to know.  On a platform which can set
     // the pins at run-time the values will be the same
     // as the pinCts and pinRts values.
-    uPortLog("U_PORT_TEST: UART CTS is on pin %d and RTS on"
+    uPortLog(U_TEST_PREFIX "UART CTS is on pin %d and RTS on"
              " pin %d", U_CFG_TEST_PIN_UART_A_CTS_GET,
              U_CFG_TEST_PIN_UART_A_RTS_GET);
     if (!flowControlOn) {
@@ -972,11 +980,11 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
         uPortLog(".\n");
     }
 
-    uPortLog("U_PORT_TEST: testing UART loop-back, %d byte(s) at %d"
-             " bits/s with flow control %s.\n", size, speed,
-             flowControlOn ? "on" : "off");
+    U_TEST_PRINT_LINE("testing UART loop-back, %d byte(s) at %d"
+                      " bits/s with flow control %s.", size, speed,
+                      flowControlOn ? "on" : "off");
 
-    uPortLog("U_PORT_TEST: add a UART instance...\n");
+    U_TEST_PRINT_LINE("add a UART instance...");
     uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                speed, NULL,
                                U_CFG_TEST_UART_BUFFER_LENGTH_BYTES,
@@ -985,8 +993,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
                                pinCts, pinRts);
     U_PORT_TEST_ASSERT(uartHandle >= 0);
 
-    uPortLog("U_PORT_TEST: add a UART event callback which"
-             " will receive the data...\n");
+    U_TEST_PRINT_LINE("add a UART event callback which will receive the data...");
     U_PORT_TEST_ASSERT(uPortUartEventCallbackSet(uartHandle,
                                                  (uint32_t) U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED,
                                                  uartReceivedDataCallback,
@@ -1055,7 +1062,7 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
                                           gUartTestData,
                                           bytesToSend) == bytesToSend);
         bytesSent += bytesToSend;
-        uPortLog("U_PORT_TEST: %d byte(s) sent.\n", bytesSent);
+        U_TEST_PRINT_LINE("%d byte(s) sent.", bytesSent);
         // Yield so that the receive task has chance to do
         // its stuff.  This shouldn't really be necessary
         // but without it ESP32 seems to occasionally (1 in 20
@@ -1071,35 +1078,34 @@ static void runUartTest(int32_t size, int32_t speed, bool flowControlOn)
 
     // Print out some useful stuff
     if (eventCallbackData.errorCode == -5) {
-        uPortLog("U_PORT_TEST: error after %d character(s),"
-                 " %d block(s).\n", eventCallbackData.bytesReceived,
-                 eventCallbackData.blockNumber);
-        uPortLog("U_PORT_TEST: expected %c (0x%02x), received"
-                 " %c (0x%02x).\n",
-                 gUartTestData[eventCallbackData.indexInBlock],
-                 gUartTestData[eventCallbackData.indexInBlock],
-                 eventCallbackData.pReceive, eventCallbackData.pReceive);
+        U_TEST_PRINT_LINE("error after %d character(s), %d block(s).",
+                          eventCallbackData.bytesReceived,
+                          eventCallbackData.blockNumber);
+        U_TEST_PRINT_LINE("expected %c (0x%02x), received %c (0x%02x).",
+                          gUartTestData[eventCallbackData.indexInBlock],
+                          gUartTestData[eventCallbackData.indexInBlock],
+                          eventCallbackData.pReceive, eventCallbackData.pReceive);
     } else if (eventCallbackData.errorCode < 0) {
-        uPortLog("U_PORT_TEST: finished with error code %d"
-                 " after correctly receiving %d byte(s).\n",
-                 eventCallbackData.errorCode,
-                 eventCallbackData.bytesReceived);
+        U_TEST_PRINT_LINE("finished with error code %d after"
+                          " correctly receiving %d byte(s).",
+                          eventCallbackData.errorCode,
+                          eventCallbackData.bytesReceived);
     }
 
-    uPortLog("U_PORT_TEST: at end of test %d byte(s) sent, %d byte(s)"
-             " received.\n", bytesSent, eventCallbackData.bytesReceived);
+    U_TEST_PRINT_LINE("at end of test %d byte(s) sent, %d byte(s) received.",
+                      bytesSent, eventCallbackData.bytesReceived);
     U_PORT_TEST_ASSERT(eventCallbackData.bytesReceived == bytesSent);
 
     // Check the stack extent for the task on the end of the
     // event queue
     stackMinFreeBytes = uPortUartEventStackMinFree(uartHandle);
     if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_PORT_TEST: UART event queue task had %d byte(s) free out of %d.\n",
-                 stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
+        U_TEST_PRINT_LINE("UART event queue task had %d byte(s) free out of %d.",
+                          stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
         U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
     }
 
-    uPortLog("U_PORT_TEST: tidying up after UART test...\n");
+    U_TEST_PRINT_LINE("tidying up after UART test...");
     uPortUartClose(uartHandle);
 }
 
@@ -1264,8 +1270,8 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
                         sizeof(taskHandle[0])); x++) {
         stackMinFreeBytes = uPortTaskStackMinFree(taskHandle[x]);
         if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-            uPortLog("U_PORT_TEST: test task %d had %d byte(s) free out of %d.\n",
-                     x + 1, stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
+            U_TEST_PRINT_LINE("test task %d had %d byte(s) free out of %d.",
+                              x + 1, stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
             U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
         }
     }
@@ -1292,18 +1298,17 @@ U_PORT_TEST_FUNCTION("[port]", "portRentrancy")
     // If the returnCode is 0 then that
     // is success.  If it is negative
     // that it indicates an error.
-    uPortLog("U_PORT_TEST: reentrancy task(s) returned %d.\n", returnCode);
+    U_TEST_PRINT_LINE("reentrancy task(s) returned %d.", returnCode);
     U_PORT_TEST_ASSERT(returnCode == 0);
 
     uPortDeinit();
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1335,17 +1340,16 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     startTimeMs = uPortGetTickTimeMs();
-    uPortLog("U_PORT_TEST: tick time now is %d.\n",
-             (int32_t) startTimeMs);
+    U_TEST_PRINT_LINE("tick time now is %d.", (int32_t) startTimeMs);
 
-    uPortLog("U_PORT_TEST: creating a mutex...\n");
+    U_TEST_PRINT_LINE("creating a mutex...");
     errorCode = uPortMutexCreate(&gMutexHandle);
     uPortLog("             returned error code %d, handle"
              " 0x%08x.\n", errorCode, gMutexHandle);
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gMutexHandle != NULL);
 
-    uPortLog("U_PORT_TEST: creating a data queue...\n");
+    U_TEST_PRINT_LINE("creating a data queue...");
     errorCode = uPortQueueCreate(U_PORT_TEST_QUEUE_LENGTH,
                                  U_PORT_TEST_QUEUE_ITEM_SIZE,
                                  &gQueueHandleData);
@@ -1354,11 +1358,11 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gQueueHandleData != NULL);
     errorCode = uPortQueueGetFree(gQueueHandleData);
-    uPortLog("U_PORT_TEST: %d entries free on data queue.\n", errorCode);
+    U_TEST_PRINT_LINE("%d entries free on data queue.", errorCode);
     U_PORT_TEST_ASSERT((errorCode == U_PORT_TEST_QUEUE_LENGTH) ||
                        (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
 
-    uPortLog("U_PORT_TEST: creating a control queue...\n");
+    U_TEST_PRINT_LINE("creating a control queue...");
     errorCode = uPortQueueCreate(U_PORT_TEST_QUEUE_LENGTH,
                                  U_PORT_TEST_QUEUE_ITEM_SIZE,
                                  &gQueueHandleControl);
@@ -1367,19 +1371,19 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gQueueHandleControl != NULL);
     errorCode = uPortQueueGetFree(gQueueHandleControl);
-    uPortLog("U_PORT_TEST: %d entries free on control queue.\n", errorCode);
+    U_TEST_PRINT_LINE("%d entries free on control queue.", errorCode);
     U_PORT_TEST_ASSERT((errorCode == U_PORT_TEST_QUEUE_LENGTH) ||
                        (errorCode == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
-    uPortLog("U_PORT_TEST: locking mutex, preventing task from executing\n");
+    U_TEST_PRINT_LINE("locking mutex, preventing task from executing.");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) == 0);
 
     gOsTestTaskHasLockedMutex = false;
-    uPortLog("U_PORT_TEST: creating a test task with stack %d"
-             " byte(s) and priority %d, passing it the pointer"
-             " 0x%08x containing the string \"%s\"...\n",
-             U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES,
-             U_CFG_TEST_OS_TASK_PRIORITY,
-             gTaskParameter, gTaskParameter);
+    U_TEST_PRINT_LINE("creating a test task with stack %d byte(s)"
+                      " and priority %d, passing it the pointer"
+                      " 0x%08x containing the string \"%s\"...",
+                      U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES,
+                      U_CFG_TEST_OS_TASK_PRIORITY,
+                      gTaskParameter, gTaskParameter);
     errorCode = uPortTaskCreate(osTestTask, "osTestTask",
                                 U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES,
                                 (void *) gTaskParameter,
@@ -1390,9 +1394,9 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT(errorCode == 0);
     U_PORT_TEST_ASSERT(gTaskHandle != NULL);
 
-    uPortLog("U_PORT_TEST: time now %d ms.\n", (int32_t) uPortGetTickTimeMs());
+    U_TEST_PRINT_LINE("time now %d ms.", (int32_t) uPortGetTickTimeMs());
     uPortTaskBlock(200);
-    uPortLog("U_PORT_TEST: unlocking mutex, allowing task to execute\n");
+    U_TEST_PRINT_LINE("unlocking mutex, allowing task to execute.");
     U_PORT_TEST_ASSERT(uPortMutexUnlock(gMutexHandle) == 0);;
 
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
@@ -1409,10 +1413,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT(gOsTestTaskHasLockedMutex);
 #endif
 
-    uPortLog("U_PORT_TEST: trying to lock the mutex, should fail...\n");
+    U_TEST_PRINT_LINE("trying to lock the mutex, should fail...");
     U_PORT_TEST_ASSERT(uPortMutexTryLock(gMutexHandle, 10) != 0);
 
-    uPortLog("U_PORT_TEST: sending stuff to task...\n");
+    U_TEST_PRINT_LINE("sending stuff to task...");
     for (size_t x = 0; x < sizeof(gStuffToSend) / sizeof(gStuffToSend[0]); x++) {
         // If this is the last thing then queue up a -1 on the control
         // queue so that the test task exits after receiving the
@@ -1421,13 +1425,13 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
             uPortTaskBlock(1000);
             stackMinFreeBytes = uPortTaskStackMinFree(gTaskHandle);
             if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-                uPortLog("U_PORT_TEST: test task had %d byte(s) free out of %d.\n",
-                         stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
+                U_TEST_PRINT_LINE("test task had %d byte(s) free out of %d.",
+                                  stackMinFreeBytes, U_CFG_TEST_OS_TASK_STACK_SIZE_BYTES);
                 U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
             }
 
-            uPortLog("U_PORT_TEST: sending -1 to terminate test task"
-                     " control queue and waiting for it to stop...\n");
+            U_TEST_PRINT_LINE("sending -1 to terminate test task"
+                              " control queue and waiting for it to stop...");
             sendToQueue(gQueueHandleControl, -1);
         }
         // Actually send the stuff by passing it to a function
@@ -1448,15 +1452,15 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     // Yield to let it get the message
     uPortTaskBlock(U_CFG_OS_YIELD_MS);
     U_PORT_MUTEX_UNLOCK(gMutexHandle);
-    uPortLog("U_PORT_TEST: task stopped.\n");
+    U_TEST_PRINT_LINE("task stopped.");
 
     // Pause to let the task print its final messages
     uPortTaskBlock(1000);
 
-    uPortLog("U_PORT_TEST: deleting mutex...\n");
+    U_TEST_PRINT_LINE("deleting mutex...");
     uPortMutexDelete(gMutexHandle);
 
-    uPortLog("U_PORT_TEST: deleting queues...\n");
+    U_TEST_PRINT_LINE("deleting queues...");
     U_PORT_TEST_ASSERT(uPortQueueDelete(gQueueHandleControl) == 0);
     U_PORT_TEST_ASSERT(uPortQueueDelete(gQueueHandleData) == 0);
 
@@ -1466,13 +1470,13 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
                                         &queueHandle) == 0);
     sendToQueue(queueHandle, 0xFF);
     z = uPortQueuePeek(queueHandle, &y);
-    uPortLog("U_PORT_TEST: peeking queue returned %d.\n", z);
+    U_TEST_PRINT_LINE("peeking queue returned %d.", z);
     if (z == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED) {
         U_PORT_TEST_ASSERT(y == -1);
-        uPortLog("U_PORT_TEST: peek is not supported on this platform.\n");
+        U_TEST_PRINT_LINE("peek is not supported on this platform.");
     } else {
         U_PORT_TEST_ASSERT(z == 0);
-        uPortLog("U_PORT_TEST: found %d on queue.\n", y);
+        U_TEST_PRINT_LINE("found %d on queue.", y);
         U_PORT_TEST_ASSERT(uPortQueueReceive(queueHandle, &z) == 0);
         U_PORT_TEST_ASSERT(z == 0xFF);
         U_PORT_TEST_ASSERT(y == z);
@@ -1480,8 +1484,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
     U_PORT_TEST_ASSERT(uPortQueueDelete(queueHandle) == 0);
 
     timeNowMs = uPortGetTickTimeMs() - startTimeMs;
-    uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"
-             " the test took %d ms.\n", (int32_t) timeNowMs);
+    U_TEST_PRINT_LINE("according to uPortGetTickTimeMs()"
+                      " the test took %d ms.", (int32_t) timeNowMs);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     U_PORT_TEST_ASSERT((timeNowMs > 0) &&
                        (timeNowMs < U_PORT_TEST_OS_GUARD_DURATION_MS));
@@ -1491,11 +1495,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOs")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1537,17 +1540,17 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
     startTimeTestMs = uPortGetTickTimeMs();
-    uPortLog("U_PORT_TEST: tick time now is %d.\n", (int32_t) startTimeTestMs);
+    U_TEST_PRINT_LINE("tick time now is %d.", (int32_t) startTimeTestMs);
 
-    uPortLog("U_PORT_TEST: Initialize a semaphore with invalid max limit\n");
+    U_TEST_PRINT_LINE("initialize a semaphore with invalid max limit.");
     U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0,
                                             0) == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-    uPortLog("U_PORT_TEST: Initialize a semaphore with invalid count\n");
+    U_TEST_PRINT_LINE("initialize a semaphore with invalid count.");
     U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 2,
                                             1) == (int32_t)U_ERROR_COMMON_INVALID_PARAMETER);
 
-    uPortLog("U_PORT_TEST: Verify that the semaphore waits and timeouts with TryTake\n");
+    U_TEST_PRINT_LINE("verify that the semaphore waits and timeouts with TryTake.");
     U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 1) == 0);
     U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
     startTimeMs = uPortGetTickTimeMs();
@@ -1555,12 +1558,12 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
                                              500) == (int32_t)U_ERROR_COMMON_TIMEOUT);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     int64_t diffMs = uPortGetTickTimeMs() - startTimeMs;
-    uPortLog("U_PORT_TEST: diffMs %d \n", (int32_t)diffMs);
+    U_TEST_PRINT_LINE("diffMs %d.", (int32_t)diffMs);
     U_PORT_TEST_ASSERT(diffMs > 250 && diffMs < 750);
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
-    uPortLog("U_PORT_TEST: Verify that the semaphore waits with Take and is taken\n");
+    U_TEST_PRINT_LINE("verify that the semaphore waits with Take and is taken.");
     uPortLog("             by this thread after given by second thread.\n");
     U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 1) == 0);
     U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
@@ -1580,7 +1583,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
-    uPortLog("U_PORT_TEST: Verify that the semaphore waits with TryTake and is taken\n");
+    U_TEST_PRINT_LINE("verify that the semaphore waits with TryTake and is taken.");
     uPortLog("             by this thread after given by second thread.\n");
     U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 1) == 0);
     U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
@@ -1600,7 +1603,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
-    uPortLog("U_PORT_TEST: Verify that +2 as initialCount works for TryTake\n");
+    U_TEST_PRINT_LINE("verify that +2 as initialCount works for TryTake.");
     U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 2, 3) == 0);
     U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
     startTimeMs = uPortGetTickTimeMs();
@@ -1622,7 +1625,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
-    uPortLog("U_PORT_TEST: Verify that +2 as limit works for TryTake\n");
+    U_TEST_PRINT_LINE("verify that +2 as limit works for TryTake.");
     U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 2) == 0);
     U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
     U_PORT_TEST_ASSERT(uPortSemaphoreGive(gSemaphoreHandle) == 0); // Internal count is 1
@@ -1651,7 +1654,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 #endif
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
-    uPortLog("U_PORT_TEST: Verify that the semaphore waits with Take and is taken\n");
+    U_TEST_PRINT_LINE("verify that the semaphore waits with Take and is taken.");
     uPortLog("             by this thread after given from ISR.\n");
     U_PORT_TEST_ASSERT(uPortSemaphoreCreate(&gSemaphoreHandle, 0, 1) == 0);
     U_PORT_TEST_ASSERT(gSemaphoreHandle != NULL);
@@ -1676,8 +1679,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
     U_PORT_TEST_ASSERT(uPortSemaphoreDelete(gSemaphoreHandle) == 0);
 
     timeNowMs = uPortGetTickTimeMs() - startTimeTestMs;
-    uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"
-             " the test took %d ms.\n", (int32_t) timeNowMs);
+    U_TEST_PRINT_LINE("according to uPortGetTickTimeMs() the test took %d ms.",
+                      (int32_t) timeNowMs);
 #ifdef U_PORT_TEST_CHECK_TIME_TAKEN
     U_PORT_TEST_ASSERT((timeNowMs > 0) &&
                        (timeNowMs < U_PORT_TEST_OS_GUARD_DURATION_MS));
@@ -1687,11 +1690,10 @@ U_PORT_TEST_FUNCTION("[port]", "portOsSemaphore")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -1722,22 +1724,19 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: running this test will take around"
-             " %d second(s).\n",
-             (U_PORT_TEST_OS_BLOCK_TIME_MS * 3) / 1000);
+    U_TEST_PRINT_LINE("running this test will take around %d second(s).",
+                      (U_PORT_TEST_OS_BLOCK_TIME_MS * 3) / 1000);
 
     startTimeMs = uPortGetTickTimeMs();
-    uPortLog("U_PORT_TEST: tick time now is %d.\n",
-             (int32_t) startTimeMs);
+    U_TEST_PRINT_LINE("tick time now is %d.", (int32_t) startTimeMs);
 
-    uPortLog("U_PORT_TEST: waiting %d ms...\n",
-             U_PORT_TEST_OS_BLOCK_TIME_MS);
+    U_TEST_PRINT_LINE("waiting %d ms...", U_PORT_TEST_OS_BLOCK_TIME_MS);
     timeNowMs = uPortGetTickTimeMs();
     uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
     timeDelta = uPortGetTickTimeMs() - timeNowMs;
-    uPortLog("U_PORT_TEST: uPortTaskBlock(%d) blocked for"
-             " %d ms.\n", U_PORT_TEST_OS_BLOCK_TIME_MS,
-             (int32_t) (timeDelta));
+    U_TEST_PRINT_LINE("uPortTaskBlock(%d) blocked for %d ms.",
+                      U_PORT_TEST_OS_BLOCK_TIME_MS,
+                      (int32_t) (timeDelta));
     U_PORT_TEST_ASSERT((timeDelta >= U_PORT_TEST_OS_BLOCK_TIME_MS -
                         U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS) &&
                        (timeDelta <= U_PORT_TEST_OS_BLOCK_TIME_MS +
@@ -1745,9 +1744,8 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
 
     // Initialise the UART and re-measure time
     timeNowMs = uPortGetTickTimeMs();
-    uPortLog("U_PORT_TEST: tick time now is %d.\n",
-             (int32_t) timeNowMs);
-    uPortLog("U_PORT_TEST: add a UART instance...\n");
+    U_TEST_PRINT_LINE("tick time now is %d.", (int32_t) timeNowMs);
+    U_TEST_PRINT_LINE("add a UART instance...");
     uartHandle = uPortUartOpen(U_CFG_TEST_UART_A,
                                U_CFG_TEST_BAUD_RATE,
                                NULL,
@@ -1757,32 +1755,30 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
                                U_CFG_TEST_PIN_UART_A_CTS,
                                U_CFG_TEST_PIN_UART_A_RTS);
     U_PORT_TEST_ASSERT(uartHandle >= 0);
-    uPortLog("U_PORT_TEST: waiting %d ms...\n",
-             U_PORT_TEST_OS_BLOCK_TIME_MS);
+    U_TEST_PRINT_LINE("waiting %d ms...", U_PORT_TEST_OS_BLOCK_TIME_MS);
     //lint -e(838) Suppress previous value not used which
     // will occur if uPortLog() is compiled out
     timeNowMs = uPortGetTickTimeMs();
     uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
     timeDelta = uPortGetTickTimeMs() - timeNowMs;
-    uPortLog("U_PORT_TEST: uPortTaskBlock(%d) blocked for"
-             " %d ms.\n", U_PORT_TEST_OS_BLOCK_TIME_MS,
-             (int32_t) (timeDelta));
+    U_TEST_PRINT_LINE("uPortTaskBlock(%d) blocked for %d ms.",
+                      U_PORT_TEST_OS_BLOCK_TIME_MS,
+                      (int32_t) (timeDelta));
     U_PORT_TEST_ASSERT((timeDelta >= U_PORT_TEST_OS_BLOCK_TIME_MS -
                         U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS) &&
                        (timeDelta <= U_PORT_TEST_OS_BLOCK_TIME_MS +
                         U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS));
 
-    uPortLog("U_PORT_TEST: deinitialising UART...\n");
+    U_TEST_PRINT_LINE("deinitialising UART...");
     timeNowMs = uPortGetTickTimeMs();
     uPortUartClose(uartHandle);
 
-    uPortLog("U_PORT_TEST: waiting %d ms...\n",
-             U_PORT_TEST_OS_BLOCK_TIME_MS);
+    U_TEST_PRINT_LINE("waiting %d ms...", U_PORT_TEST_OS_BLOCK_TIME_MS);
     uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
     timeDelta = uPortGetTickTimeMs() - timeNowMs;
-    uPortLog("U_PORT_TEST: uPortTaskBlock(%d) blocked for"
-             " %d ms.\n", U_PORT_TEST_OS_BLOCK_TIME_MS,
-             (int32_t) (timeDelta));
+    U_TEST_PRINT_LINE("uPortTaskBlock(%d) blocked for %d ms.",
+                      U_PORT_TEST_OS_BLOCK_TIME_MS,
+                      (int32_t) (timeDelta));
     U_PORT_TEST_ASSERT((timeDelta >= U_PORT_TEST_OS_BLOCK_TIME_MS -
                         U_PORT_TEST_OS_BLOCK_TIME_TOLERANCE_MS) &&
                        (timeDelta <= U_PORT_TEST_OS_BLOCK_TIME_MS +
@@ -1791,12 +1787,12 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     //lint -esym(438, timeDelta) Suppress value not used, which
     // will occur if uPortLog() is compiled out
     timeDelta = uPortGetTickTimeMs() - startTimeMs;
-    uPortLog("U_PORT_TEST: according to uPortGetTickTimeMs()"
-             " the test took %d second(s).\n", (int32_t) (timeDelta / 1000));
-    uPortLog("U_PORT_TEST: ***IMPORTANT*** please visually check"
-             " that the duration of this test as seen by the PC-side"
-             " of the test system is also %d second(s).\n",
-             (int32_t) (timeDelta / 1000));
+    U_TEST_PRINT_LINE("according to uPortGetTickTimeMs() the test took"
+                      " %d second(s).", (int32_t) (timeDelta / 1000));
+    U_TEST_PRINT_LINE("***IMPORTANT*** please visually check that the"
+                      " duration of this test as seen by the PC-side"
+                      " of the test system is also %d second(s).",
+                      (int32_t) (timeDelta / 1000));
 
     uPortDeinit();
 
@@ -1809,7 +1805,7 @@ U_PORT_TEST_FUNCTION("[port]", "portOsExtended")
     // of ESP-IDF used under Arduino, or maybe how it is compiled
     // into the ESP-IDF library that Arduino uses.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -1829,15 +1825,15 @@ U_PORT_TEST_FUNCTION("[port]", "portOsBlock")
 {
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: waiting %d ms...\n",
-             U_PORT_TEST_OS_BLOCK_TIME_MS);
+    U_TEST_PRINT_LINE("U_PORT_TEST: waiting %d ms...",
+                      U_PORT_TEST_OS_BLOCK_TIME_MS);
 
     uPortTaskBlock(U_PORT_TEST_OS_BLOCK_TIME_MS);
 
-    uPortLog("U_PORT_TEST: ***IMPORTANT*** please visually check"
-             " that the duration of this test as seen by the"
-             " PC-side of the test is not less than %d second(s).\n",
-             U_PORT_TEST_OS_BLOCK_TIME_MS / 1000);
+    U_TEST_PRINT_LINE("***IMPORTANT*** please visually check that the"
+                      " duration of this test as seen by the PC-side"
+                      " of the test is not less than %d second(s).",
+                      U_PORT_TEST_OS_BLOCK_TIME_MS / 1000);
 
     uPortDeinit();
 }
@@ -1869,7 +1865,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
 
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: opening two event queues...\n");
+    U_TEST_PRINT_LINE("opening two event queues...");
     // Open two event queues, one with the
     // maximum parameter length and one with just
     // a single byte, one with a name and one without
@@ -1880,7 +1876,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                                U_PORT_TEST_QUEUE_LENGTH);
     U_PORT_TEST_ASSERT(gEventQueueMaxHandle >= 0);
     y = uPortEventQueueGetFree(gEventQueueMaxHandle);
-    uPortLog("U_PORT_TEST: %d entries free on \"event queue max\".\n", y);
+    U_TEST_PRINT_LINE("%d entries free on \"event queue max\".", y);
     U_PORT_TEST_ASSERT((y == U_PORT_TEST_QUEUE_LENGTH) ||
                        (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
     gEventQueueMinHandle = uPortEventQueueOpen(eventQueueMinFunction, "blah",
@@ -1890,7 +1886,7 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
                                                U_PORT_TEST_QUEUE_LENGTH);
     U_PORT_TEST_ASSERT(gEventQueueMinHandle >= 0);
     y = uPortEventQueueGetFree(gEventQueueMinHandle);
-    uPortLog("U_PORT_TEST: %d entries free on \"event queue min\".\n", y);
+    U_TEST_PRINT_LINE("%d entries free on \"event queue min\".", y);
     U_PORT_TEST_ASSERT((y == U_PORT_TEST_QUEUE_LENGTH) ||
                        (y == (int32_t) U_ERROR_COMMON_NOT_IMPLEMENTED));
 
@@ -1904,8 +1900,8 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
         fill--;
     }
 
-    uPortLog("U_PORT_TEST: sending to the two event queues %d"
-             " time(s)...\n", U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS + 1);
+    U_TEST_PRINT_LINE("sending to the two event queues %d time(s)...",
+                      U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS + 1);
 
     // Try to send too much to each queue, should fail
     U_PORT_TEST_ASSERT(uPortEventQueueSend(gEventQueueMaxHandle,
@@ -1963,20 +1959,20 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
 #endif
 
     if (gEventQueueMaxErrorFlag != 0) {
-        uPortLog("U_PORT_TEST: event queue max length"
-                 " failed on iteration %d with error %d.\n",
-                 x, gEventQueueMaxErrorFlag);
+        U_TEST_PRINT_LINE("event queue max length failed on iteration"
+                          " %d with error %d.", x,
+                          gEventQueueMaxErrorFlag);
     }
     if (gEventQueueMinErrorFlag != 0) {
-        uPortLog("U_PORT_TEST: event queue min length"
-                 " failed on iteration %d with error %d.\n",
-                 x, gEventQueueMinErrorFlag);
+        U_TEST_PRINT_LINE("event queue min length failed on iteration"
+                          " %d with error %d.", x,
+                          gEventQueueMinErrorFlag);
     }
 
-    uPortLog("U_PORT_TEST: event queue min received %d message(s).\n",
-             gEventQueueMinCounter);
-    uPortLog("U_PORT_TEST: event queue max received %d message(s).\n",
-             gEventQueueMaxCounter);
+    U_TEST_PRINT_LINE("event queue min received %d message(s).",
+                      gEventQueueMinCounter);
+    U_TEST_PRINT_LINE("event queue max received %d message(s).",
+                      gEventQueueMaxCounter);
     U_PORT_TEST_ASSERT(gEventQueueMaxErrorFlag == 0);
     U_PORT_TEST_ASSERT(gEventQueueMaxCounter == U_PORT_TEST_OS_EVENT_QUEUE_ITERATIONS + 1);
     U_PORT_TEST_ASSERT(gEventQueueMinErrorFlag == 0);
@@ -1990,18 +1986,18 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
     // Check stack usage of the tasks at the end of the event queues
     stackMinFreeBytes = uPortEventQueueStackMinFree(gEventQueueMinHandle);
     if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_PORT_TEST: event queue min task had %d byte(s) free out of %d.\n",
-                 stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
+        U_TEST_PRINT_LINE("event queue min task had %d byte(s) free out of %d.",
+                          stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
         U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
     }
     stackMinFreeBytes = uPortEventQueueStackMinFree(gEventQueueMaxHandle);
     if (stackMinFreeBytes != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_PORT_TEST: event queue max task had %d byte(s) free out of %d.\n",
-                 stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
+        U_TEST_PRINT_LINE("event queue max task had %d byte(s) free out of %d.",
+                          stackMinFreeBytes, U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES);
         U_PORT_TEST_ASSERT(stackMinFreeBytes > 0);
     }
 
-    uPortLog("U_PORT_TEST: closing the event queues...\n");
+    U_TEST_PRINT_LINE("closing the event queues...");
     U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueMaxHandle) == 0);
     U_PORT_TEST_ASSERT(uPortEventQueueClose(gEventQueueMinHandle) == 0);
 
@@ -2023,11 +2019,10 @@ U_PORT_TEST_FUNCTION("[port]", "portEventQueue")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -2050,7 +2045,7 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: testing strtok_r...\n");
+    U_TEST_PRINT_LINE("testing strtok_r()...");
 
     buffer[sizeof(buffer) - 1] = 'x';
 
@@ -2092,7 +2087,7 @@ U_PORT_TEST_FUNCTION("[port]", "portStrtok_r")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -2111,7 +2106,7 @@ U_PORT_TEST_FUNCTION("[port]", "portMktime64")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: testing mktime64()...\n");
+    U_TEST_PRINT_LINE("testing mktime64()...");
 
     for (size_t x = 0; x < sizeof(gMktime64TestData) /
          sizeof(gMktime64TestData[0]); x++) {
@@ -2123,7 +2118,7 @@ U_PORT_TEST_FUNCTION("[port]", "portMktime64")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -2145,20 +2140,19 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: testing GPIOs.\n");
-    uPortLog("U_PORT_TEST: pin A (%d, 0x%02x) will be used as an"
-             " output and must be connected to pin B (%d, 0x%02x)"
-             " via a 1k resistor.\n",
-             U_CFG_TEST_PIN_A, U_CFG_TEST_PIN_A,
-             U_CFG_TEST_PIN_B, U_CFG_TEST_PIN_B);
-    uPortLog("U_PORT_TEST: pin B (%d, 0x%02x) will be used as an"
-             " input and an open drain output.\n",
-             U_CFG_TEST_PIN_B, U_CFG_TEST_PIN_B);
-    uPortLog("U_PORT_TEST: pin C (%d, 0x%02x) will be used as"
-             " an input and must be connected to pin B (%d,"
-             " 0x%02x).\n",
-             U_CFG_TEST_PIN_C, U_CFG_TEST_PIN_C,
-             U_CFG_TEST_PIN_B, U_CFG_TEST_PIN_B);
+    U_TEST_PRINT_LINE("testing GPIOs.");
+    U_TEST_PRINT_LINE("pin A (%d, 0x%02x) will be used as an output"
+                      " and must be connected to pin B (%d, 0x%02x)"
+                      " via a 1k resistor.",
+                      U_CFG_TEST_PIN_A, U_CFG_TEST_PIN_A,
+                      U_CFG_TEST_PIN_B, U_CFG_TEST_PIN_B);
+    U_TEST_PRINT_LINE("pin B (%d, 0x%02x) will be used as an input"
+                      " and an open drain output.",
+                      U_CFG_TEST_PIN_B, U_CFG_TEST_PIN_B);
+    U_TEST_PRINT_LINE("pin C (%d, 0x%02x) will be used as an input"
+                      " and must be connected to pin B (%d, 0x%02x).",
+                      U_CFG_TEST_PIN_C, U_CFG_TEST_PIN_C,
+                      U_CFG_TEST_PIN_B, U_CFG_TEST_PIN_B);
 
     // Make pins B and C inputs, no pull
     gpioConfig.pin = U_CFG_TEST_PIN_B;
@@ -2258,7 +2252,7 @@ U_PORT_TEST_FUNCTION("[port]", "portGpioRequiresSpecificWiring")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -2306,11 +2300,10 @@ U_PORT_TEST_FUNCTION("[port]", "portUartRequiresSpecificWiring")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: %d byte(s) of heap were lost to"
-             " the C library during this test and we have"
-             " leaked %d byte(s).\n",
-             gSystemHeapLost - heapClibLossOffset,
-             heapUsed - (gSystemHeapLost - heapClibLossOffset));
+    U_TEST_PRINT_LINE("%d byte(s) of heap were lost to the C library"
+                      " during this test and we have leaked %d byte(s).",
+                      gSystemHeapLost - heapClibLossOffset,
+                      heapUsed - (gSystemHeapLost - heapClibLossOffset));
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT((heapUsed < 0) ||
@@ -2337,7 +2330,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: testing SHA256...\n");
+    U_TEST_PRINT_LINE("testing SHA256...");
     x = uPortCryptoSha256(gSha256Input,
                           sizeof(gSha256Input) - 1,
                           buffer);
@@ -2346,10 +2339,10 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
         U_PORT_TEST_ASSERT(memcmp(buffer, gSha256Output,
                                   U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES) == 0);
     } else {
-        uPortLog("U_PORT_TEST: SHA256 not supported.\n");
+        U_TEST_PRINT_LINE("SHA256 not supported.");
     }
 
-    uPortLog("U_PORT_TEST: testing HMAC SHA256...\n");
+    U_TEST_PRINT_LINE("testing HMAC SHA256...");
     x = uPortCryptoHmacSha256(gHmacSha256Key,
                               sizeof(gHmacSha256Key) - 1,
                               gHmacSha256Input,
@@ -2360,10 +2353,10 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
         U_PORT_TEST_ASSERT(memcmp(buffer, gHmacSha256Output,
                                   U_PORT_CRYPTO_SHA256_OUTPUT_LENGTH_BYTES) == 0);
     } else {
-        uPortLog("U_PORT_TEST: HMAC SHA256 not supported.\n");
+        U_TEST_PRINT_LINE("HMAC SHA256 not supported.");
     }
 
-    uPortLog("U_PORT_TEST: testing AES CBC 128...\n");
+    U_TEST_PRINT_LINE("testing AES CBC 128...");
     memcpy(iv, gAes128CbcIV, sizeof(iv));
     x = uPortCryptoAes128CbcEncrypt(gAes128CbcKey,
                                     sizeof(gAes128CbcKey) - 1,
@@ -2375,7 +2368,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
         U_PORT_TEST_ASSERT(memcmp(buffer, gAes128CbcEncrypted,
                                   sizeof(gAes128CbcEncrypted) - 1) == 0);
     } else {
-        uPortLog("U_PORT_TEST: AES CBC 128 encryption not supported.\n");
+        U_TEST_PRINT_LINE("AES CBC 128 encryption not supported.");
     }
 
     memcpy(iv, gAes128CbcIV, sizeof(iv));
@@ -2389,14 +2382,14 @@ U_PORT_TEST_FUNCTION("[port]", "portCrypto")
         U_PORT_TEST_ASSERT(memcmp(buffer, gAes128CbcClear,
                                   sizeof(gAes128CbcClear) - 1) == 0);
     } else {
-        uPortLog("U_PORT_TEST: AES CBC 128 decryption not supported.\n");
+        U_TEST_PRINT_LINE("AES CBC 128 decryption not supported.");
     }
 
     uPortDeinit();
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -2418,7 +2411,7 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: testing timers...\n");
+    U_TEST_PRINT_LINE("testing timers...");
 
     // Create the first timer,
     y = uPortTimerCreate(&gTimerHandle[gTimerParameterIndex],
@@ -2507,10 +2500,10 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
         uPortTaskBlock(1000);
 
         // Do a final check of all of the gTimerParameterValues:
-        uPortLog("U_PORT_TEST: at the end of the timer test:\n");
+        U_TEST_PRINT_LINE("at the end of the timer test:");
         for (size_t x = 0; x < sizeof(gTimerParameterValue) / sizeof(gTimerParameterValue[0]); x++) {
-            uPortLog("U_PORT_TEST: timer %d expired %d time(s).\n", x + 1,
-                     gTimerParameterValue[x]);
+            U_TEST_PRINT_LINE("timer %d expired %d time(s).", x + 1,
+                              gTimerParameterValue[x]);
         }
         // The first two never expired, the one-shot timer should
         // have expired twice and the periodic timer four times
@@ -2519,14 +2512,14 @@ U_PORT_TEST_FUNCTION("[port]", "portTimers")
         U_PORT_TEST_ASSERT(gTimerParameterValue[2] == 2);
         U_PORT_TEST_ASSERT(gTimerParameterValue[3] == 4);
     } else {
-        uPortLog("U_PORT_TEST: timers are not supported.\n");
+        U_TEST_PRINT_LINE("timers are not supported.");
     }
 
     uPortDeinit();
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -2549,9 +2542,9 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
     heapUsed = uPortGetHeapFree();
     U_PORT_TEST_ASSERT(uPortInit() == 0);
 
-    uPortLog("U_PORT_TEST: testing critical sections, may take up to %d second(s)...\n",
-             ((U_PORT_TEST_CRITICAL_SECTION_TEST_TASK_START_TIME_SECONDS * 1000) +
-              (U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS * 2)) / 1000);
+    U_TEST_PRINT_LINE("testing critical sections, may take up to %d second(s)...",
+                      ((U_PORT_TEST_CRITICAL_SECTION_TEST_TASK_START_TIME_SECONDS * 1000) +
+                       (U_PORT_TEST_CRITICAL_SECTION_TEST_WAIT_TIME_MS * 2)) / 1000);
 
     // Create the mutex that allows us to synchronise with the critical
     // section test task
@@ -2609,7 +2602,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
         uPortExitCritical();
 
         // Now check the error flag
-        uPortLog("U_PORT_TEST: error flag is 0x%08x.\n", errorFlag);
+        U_TEST_PRINT_LINE("error flag is 0x%08x.", errorFlag);
         U_PORT_TEST_ASSERT(errorFlag == 0);
 
         // gVariable should start changing again
@@ -2622,8 +2615,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
         }
         U_PORT_TEST_ASSERT(gVariable != y);
     } else {
-        uPortLog("U_PORT_TEST: critical sections not implemented on this platform,"
-                 " so not testing them.\n");
+        U_TEST_PRINT_LINE("critical sections not implemented on this platform,"
+                          " so not testing them.");
     }
 
     // Lock the mutex, which should cause the critical section test task to exit
@@ -2638,7 +2631,7 @@ U_PORT_TEST_FUNCTION("[port]", "portCriticalSection")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_PORT_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -2654,8 +2647,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_PORT_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -2663,8 +2656,8 @@ U_PORT_TEST_FUNCTION("[port]", "portCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_PORT_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

@@ -57,6 +57,16 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test, with
+ * an iteration on the end.
+ */
+#define U_TEST_PREFIX_X "U_AT_CLIENT_TEST_%d: "
+
+/** Print a whole line, with iteration and terminator, prefixed for
+ * this test file.
+ */
+#define U_TEST_PRINT_LINE_X(format, ...) uPortLog(U_TEST_PREFIX_X format "\n", ##__VA_ARGS__)
+
 /** A standard AT response prefix to use in testing.
  */
 #define U_AT_CLIENT_TEST_PREFIX "+PREFIX:"
@@ -584,18 +594,18 @@ static int32_t handleSkipParams(uAtClientHandle_t atClientHandle,
     snprintf(buffer, sizeof(buffer), "_%d", index + 1);
     pSkipParams = (const uAtClientTestEchoSkipParams_t *) pParameter;
 
-    uPortLog("U_AT_CLIENT_TEST_%d: checking that uAtClientSkipParameters()"
-             " works on parameter %d of %d parameter(s).\n",
-             index + 1, pSkipParams->paramNotSkipIndex + 1,
-             pSkipParams->numParameters);
+    U_TEST_PRINT_LINE_X("checking that uAtClientSkipParameters()"
+                        " works on parameter %d of %d parameter(s).",
+                        index + 1, pSkipParams->paramNotSkipIndex + 1,
+                        pSkipParams->numParameters);
 
     // Begin processing the response
     uAtClientResponseStart(atClientHandle, pSkipParams->pPrefix);
 
     // Skip any initial parameters
     if (pSkipParams->paramNotSkipIndex > 0) {
-        uPortLog("U_AT_CLIENT_TEST_%d: skipping %d parameter(s)...\n",
-                 index + 1, pSkipParams->paramNotSkipIndex);
+        U_TEST_PRINT_LINE_X("skipping %d parameter(s)...", index + 1,
+                            pSkipParams->paramNotSkipIndex);
         uAtClientSkipParameters(atClientHandle,
                                 pSkipParams->paramNotSkipIndex);
     }
@@ -605,8 +615,8 @@ static int32_t handleSkipParams(uAtClientHandle_t atClientHandle,
 
     // Skip any remaining parameters
     if (pSkipParams->paramNotSkipIndex + 1 < pSkipParams->numParameters) {
-        uPortLog("U_AT_CLIENT_TEST_%d: skipping %d parameter(s)...\n",
-                 index + 1, pSkipParams->numParameters - (pSkipParams->paramNotSkipIndex + 1));
+        U_TEST_PRINT_LINE_X("skipping %d parameter(s)...\n", index + 1,
+                            pSkipParams->numParameters - (pSkipParams->paramNotSkipIndex + 1));
         uAtClientSkipParameters(atClientHandle,
                                 pSkipParams->numParameters - (pSkipParams->paramNotSkipIndex + 1));
     }
@@ -631,22 +641,24 @@ static int32_t handleSkipBytes(uAtClientHandle_t atClientHandle,
     snprintf(buffer, sizeof(buffer), "_%d", index + 1);
     pSkipBytes = (const uAtClientTestEchoSkipBytes_t *) pParameter;
 
-    uPortLog("U_AT_CLIENT_TEST_%d: checking that uAtClientSkipBytes()"
-             " works on parameter %d of %d parameter(s).\n",
-             index + 1, pSkipBytes->paramIndex + 1, pSkipBytes->numParameters);
+    U_TEST_PRINT_LINE_X("checking that uAtClientSkipBytes() works on"
+                        " parameter %d of %d parameter(s).",
+                        index + 1, pSkipBytes->paramIndex + 1,
+                        pSkipBytes->numParameters);
 
     // Begin processing the response
     uAtClientResponseStart(atClientHandle, pSkipBytes->pPrefix);
 
     // Read any initial parameters
     for (size_t x = 0; (x < pSkipBytes->paramIndex) && (lastError == 0); x++) {
-        uPortLog("U_AT_CLIENT_TEST_%d: reading parameter %d...\n", index + 1, x + 1);
-        lastError = uAtClientTestCheckParam(atClientHandle, &(pSkipBytes->parameters[x]), buffer);
+        U_TEST_PRINT_LINE_X("reading parameter %d...", index + 1, x + 1);
+        lastError = uAtClientTestCheckParam(atClientHandle,
+                                            &(pSkipBytes->parameters[x]), buffer);
     }
 
     if (lastError == 0) {
-        uPortLog("U_AT_CLIENT_TEST_%d: skipping %d byte(s) in parameter %d...\n",
-                 index + 1, pSkipBytes->skipLength, pSkipBytes->paramIndex + 1);
+        U_TEST_PRINT_LINE_X("skipping %d byte(s) in parameter %d...", index + 1,
+                            pSkipBytes->skipLength, pSkipBytes->paramIndex + 1);
         uAtClientSkipBytes(atClientHandle, pSkipBytes->skipLength);
     }
 
@@ -654,8 +666,9 @@ static int32_t handleSkipBytes(uAtClientHandle_t atClientHandle,
         // Read the rest of the parameters
         for (size_t x = pSkipBytes->paramIndex;
              (x < pSkipBytes->numParameters) && (lastError == 0); x++) {
-            uPortLog("U_AT_CLIENT_TEST_%d: reading parameter %d...\n", index + 1, x + 1);
-            lastError = uAtClientTestCheckParam(atClientHandle, &(pSkipBytes->parameters[x]),
+            U_TEST_PRINT_LINE_X("reading parameter %d...", index + 1, x + 1);
+            lastError = uAtClientTestCheckParam(atClientHandle,
+                                                &(pSkipBytes->parameters[x]),
                                                 buffer);
         }
     }
@@ -680,21 +693,21 @@ static int32_t handleEarlyStop(uAtClientHandle_t atClientHandle,
     snprintf(buffer, sizeof(buffer), "_%d", index + 1);
     pEarlyStop = (const uAtClientTestEchoEarlyStop_t *) pParameter;
 
-    uPortLog("U_AT_CLIENT_TEST_%d: checking that uAtClientResponseStop()"
-             " can be called after reading %d parameter(s).\n",
-             index + 1, pEarlyStop->numParameters);
+    U_TEST_PRINT_LINE_X("checking that uAtClientResponseStop() can be called"
+                        " after reading %d parameter(s).", index + 1,
+                        pEarlyStop->numParameters);
 
     // Begin processing the response
     uAtClientResponseStart(atClientHandle, pEarlyStop->pPrefix);
 
     // Read the given number of parameters
     for (size_t x = 0; (x < pEarlyStop->numParameters) && (lastError == 0); x++) {
-        uPortLog("U_AT_CLIENT_TEST_%d: reading parameter %d...\n", index + 1, x + 1);
+        U_TEST_PRINT_LINE_X("reading parameter %d...", index + 1, x + 1);
         lastError = uAtClientTestCheckParam(atClientHandle, &(pEarlyStop->parameters[x]), buffer);
     }
 
     // Finish off
-    uPortLog("U_AT_CLIENT_TEST_%d: calling uAtClientResponseStop()...\n", index + 1);
+    U_TEST_PRINT_LINE_X("calling uAtClientResponseStop()...", index + 1);
     uAtClientResponseStop(atClientHandle);
 
     return lastError;
@@ -714,7 +727,7 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
     snprintf(buffer, sizeof(buffer), "_%d", index + 1);
     pWaitForChar = (const uAtClientTestEchoWaitForChar_t *) pParameter;
 
-    uPortLog("U_AT_CLIENT_TEST_%d: checking that we can wait for character"
+    uPortLog(U_TEST_PREFIX_X "checking that we can wait for character"
              " 0x%02x ", index + 1, pWaitForChar->character);
     if (isprint((int32_t) pWaitForChar->character)) {
         uPortLog("('%c') ", pWaitForChar->character);
@@ -723,8 +736,8 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
              " and the remaining %d parameter(s).\n", pWaitForChar->numParameters);
 
     // Wait for the character
-    uPortLog("U_AT_CLIENT_TEST_%d: waiting for character 0x%02x",
-             index + 1, pWaitForChar->character);
+    uPortLog(U_TEST_PREFIX_X "waiting for character 0x%02x", index + 1,
+             pWaitForChar->character);
     if (isprint((int32_t) pWaitForChar->character)) {
         uPortLog(" ('%c')", pWaitForChar->character);
     }
@@ -732,10 +745,10 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
 
     lastError = uAtClientWaitCharacter(atClientHandle, pWaitForChar->character);
     if (lastError == 0) {
-        uPortLog("U_AT_CLIENT_TEST_%d: received character 0x%02x.\n", index + 1,
-                 pWaitForChar->character);
+        U_TEST_PRINT_LINE_X("received character 0x%02x.", index + 1,
+                            pWaitForChar->character);
     } else {
-        uPortLog("U_AT_CLIENT_TEST_%d: character didn't turn up.\n", index + 1);
+        U_TEST_PRINT_LINE_X("character didn't turn up.", index + 1);
     }
 
     // Begin processing the response
@@ -743,8 +756,9 @@ static int32_t handleWaitForChar(uAtClientHandle_t atClientHandle,
 
     // Read the given number of parameters
     for (size_t x = 0; (x < pWaitForChar->numParameters) && (lastError == 0); x++) {
-        uPortLog("U_AT_CLIENT_TEST_%d: reading parameter %d...\n", index + 1, x + 1);
-        lastError = uAtClientTestCheckParam(atClientHandle, &(pWaitForChar->parameters[x]),
+        U_TEST_PRINT_LINE_X("reading parameter %d...", index + 1, x + 1);
+        lastError = uAtClientTestCheckParam(atClientHandle,
+                                            &(pWaitForChar->parameters[x]),
                                             buffer);
     }
 
@@ -773,8 +787,8 @@ static int32_t handleNullBuffer(uAtClientHandle_t atClientHandle,
     (void) index;
 #endif
 
-    uPortLog("U_AT_CLIENT_TEST_%d: checking that string/byte reads"
-             " into a NULL buffer work.\n", index + 1);
+    U_TEST_PRINT_LINE_X("checking that string/byte reads into a NULL buffer work.",
+                        index + 1);
 
     // Begin processing the response
     uAtClientResponseStart(atClientHandle, U_AT_CLIENT_TEST_PREFIX);
@@ -783,8 +797,8 @@ static int32_t handleNullBuffer(uAtClientHandle_t atClientHandle,
     readLength = 64;
     y = uAtClientReadString(atClientHandle, NULL, readLength, false);
     if (y != 7 /* The length of "string1" */) {
-        uPortLog("U_AT_CLIENT_TEST_%s: read of \" string1\" returned"
-                 " %d when 7 was expected.\n", index + 1, y);
+        U_TEST_PRINT_LINE_X("read of \" string1\" returned %d when 7 was"
+                            " expected.", index + 1, y);
         lastError = 1;
     }
 
@@ -792,8 +806,8 @@ static int32_t handleNullBuffer(uAtClientHandle_t atClientHandle,
     readLength = 3;
     y = uAtClientReadString(atClientHandle, NULL, readLength, false);
     if (y != readLength - 1 /* -1 for terminator */) {
-        uPortLog("U_AT_CLIENT_TEST_%d: string-read returned %d when"
-                 " %d was expected.\n", index + 1, y, readLength - 1);
+        U_TEST_PRINT_LINE_X("string-read returned %d when %d was expected.",
+                            index + 1, y, readLength - 1);
         lastError = 2;
     }
 
@@ -801,7 +815,7 @@ static int32_t handleNullBuffer(uAtClientHandle_t atClientHandle,
     y = uAtClientReadString(atClientHandle, buffer, sizeof(buffer), false);
     if ((y != U_AT_CLIENT_TEST_STRING_THREE_LENGTH) ||
         (strcmp(buffer, U_AT_CLIENT_TEST_STRING_THREE) != 0)) {
-        uPortLog("U_AT_CLIENT_TEST_%d: string read returned \"", index + 1);
+        uPortLog(U_TEST_PREFIX_X "string read returned \"", index + 1);
         uAtClientTestPrint(buffer, y);
         uPortLog("\" (%d characters) when \"%s\" (%d character(s))"
                  " was expected.\n", y, U_AT_CLIENT_TEST_STRING_THREE,
@@ -813,8 +827,8 @@ static int32_t handleNullBuffer(uAtClientHandle_t atClientHandle,
     readLength = 3;
     y = uAtClientReadBytes(atClientHandle, NULL, readLength, false);
     if (y != readLength) {
-        uPortLog("U_AT_CLIENT_TEST_%d: byte-read returned %d when"
-                 " %d was expected.\n", index + 1, y, readLength);
+        U_TEST_PRINT_LINE_X("byte-read returned %d when %d was expected.",
+                            index + 1, y, readLength);
         lastError = 4;
     }
 
@@ -822,7 +836,7 @@ static int32_t handleNullBuffer(uAtClientHandle_t atClientHandle,
     y = uAtClientReadBytes(atClientHandle, buffer, sizeof(buffer), false);
     if ((y != U_AT_CLIENT_TEST_BYTES_TWO_LENGTH) ||
         (memcmp(buffer, U_AT_CLIENT_TEST_BYTES_TWO, y) != 0)) {
-        uPortLog("U_AT_CLIENT_TEST_%d: byte read returned \"", index + 1);
+        uPortLog(U_TEST_PREFIX_X "byte read returned \"", index + 1);
         uAtClientTestPrint(buffer, y);
         uPortLog("\" (%d byte(s)) when \"", y);
         uAtClientTestPrint(U_AT_CLIENT_TEST_BYTES_TWO,
@@ -858,8 +872,8 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
     startTime = uPortGetTickTimeMs();
     pError = (const uAtClientTestEchoError_t *) pParameter;
 
-    uPortLog("U_AT_CLIENT_TEST_%d: checking that parameter reads return"
-             " error when they should.\n", index + 1);
+    U_TEST_PRINT_LINE_X("checking that parameter reads return error when"
+                        " they should.", index + 1);
 
     // Set the AT timeout
     uAtClientTimeoutSet(atClientHandle, pError->atTimeoutMs);
@@ -869,9 +883,8 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
 
     lastError = uAtClientReadInt(atClientHandle);
     if (lastError >= 0) {
-        uPortLog("U_AT_CLIENT_TEST_%d: integer read returned value"
-                 " %d when it should return error.\n", index + 1,
-                 lastError);
+        U_TEST_PRINT_LINE_X("integer read returned value %d when it should"
+                            " return error.", index + 1, lastError);
         lastError = 1;
     } else {
         lastError = 0;
@@ -879,9 +892,8 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
     if (lastError == 0) {
         lastError = uAtClientReadUint64(atClientHandle, &uint64);
         if (lastError >= 0) {
-            uPortLog("U_AT_CLIENT_TEST_%d: uint64_t read returned"
-                     " %d when it should return error.\n", index + 1,
-                     lastError);
+            U_TEST_PRINT_LINE_X("uint64_t read returned %d when it should"
+                                " return error.", index + 1, lastError);
             lastError = 2;
         } else {
             lastError = 0;
@@ -890,9 +902,8 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
     if (lastError == 0) {
         lastError = uAtClientReadString(atClientHandle, NULL, 5, false);
         if (lastError >= 0) {
-            uPortLog("U_AT_CLIENT_TEST_%d: string read returned value"
-                     " %d when it should return error.\n", index + 1,
-                     lastError);
+            U_TEST_PRINT_LINE_X("string read returned value %d when it"
+                                " should return error.", index + 1, lastError);
             lastError = 3;
         } else {
             lastError = 0;
@@ -901,9 +912,8 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
     if (lastError == 0) {
         lastError = uAtClientReadBytes(atClientHandle, NULL, 5, false);
         if (lastError >= 0) {
-            uPortLog("U_AT_CLIENT_TEST_%d: string read returned value"
-                     " %d when it should return error.\n", index + 1,
-                     lastError);
+            U_TEST_PRINT_LINE_X("string read returned value %d when it should"
+                                " return error.", index + 1, lastError);
             lastError = 4;
         } else {
             lastError = 0;
@@ -913,8 +923,8 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
         uAtClientResponseStop(atClientHandle);
         lastError = uAtClientUnlock(atClientHandle);
         if (lastError == 0) {
-            uPortLog("U_AT_CLIENT_TEST_%d: uAtClientUnlock() returned"
-                     "success when it should return error.\n", index + 1);
+            U_TEST_PRINT_LINE_X("uAtClientUnlock() returned success when it!"
+                                " should return error.", index + 1);
             lastError = 5;
         } else {
             lastError = 0;
@@ -925,18 +935,18 @@ static int32_t handleReadOnError(uAtClientHandle_t atClientHandle,
     duration = (int32_t) (uPortGetTickTimeMs() - startTime);
     if (lastError == 0) {
         if (duration < pError->timeMinMs) {
-            uPortLog("U_AT_CLIENT_TEST_%d: reads took %d ms when"
-                     " a minimum of %d ms was expected.\n", index + 1,
-                     duration, pError->timeMinMs);
+            U_TEST_PRINT_LINE_X("reads took %d ms when a minimum of %d ms was"
+                                " expected.", index + 1, duration,
+                                pError->timeMinMs);
             lastError = 6;
         }
     }
 
     if (lastError == 0) {
         if (duration > pError->timeMaxMs) {
-            uPortLog("U_AT_CLIENT_TEST_%d: reads took %d ms when"
-                     " a maximum of %d ms was expected.\n", index + 1,
-                     duration, pError->timeMaxMs);
+            U_TEST_PRINT_LINE_X("reads took %d ms when a maximum of %d ms"
+                                " was expected.", index + 1, duration,
+                                pError->timeMaxMs);
             lastError = 7;
         }
     }
@@ -1006,7 +1016,7 @@ static int32_t handleMiscUseLast(uAtClientHandle_t atClientHandle,
     memset(&checkUrc, 0, sizeof(checkUrc));
     checkUrc.pUrc = pEcho->pUrc;
 
-    uPortLog("U_AT_CLIENT_TEST_%d: installing dumb URC handler...\n", index + 1);
+    U_TEST_PRINT_LINE_X("installing dumb URC handler...", index + 1);
     // Swap out the URC handler for our own dumb URC
     // handler so that we can cause deliberate read failures
     uAtClientRemoveUrcHandler(atClientHandle, pEcho->pUrc->pPrefix);
@@ -1021,8 +1031,7 @@ static int32_t handleMiscUseLast(uAtClientHandle_t atClientHandle,
         // Read all of the parameters, should succeed
         // despite the dumb URC handler
         for (size_t x = 0; (x < pEcho->numParameters) && (lastError == 0); x++) {
-            uPortLog("U_AT_CLIENT_TEST_%d: reading parameter %d...\n",
-                     index + 1, x + 1);
+            U_TEST_PRINT_LINE_X("reading parameter %d...", index + 1, x + 1);
             // At some point during the parameter reads the
             // URC handler should have been called and caused
             // an error (which should not affect the parameter
@@ -1036,20 +1045,20 @@ static int32_t handleMiscUseLast(uAtClientHandle_t atClientHandle,
         }
 
         if (!urcHasCausedError) {
-            uPortLog("U_AT_CLIENT_TEST_%d: failed to cause deliberate errors"
-                     " in URC handler.\n", index + 1);
+            U_TEST_PRINT_LINE_X("failed to cause deliberate errors in URC handler.",
+                                index + 1);
             lastError = 1;
         }
 
         if (lastError == 0) {
-            uPortLog("U_AT_CLIENT_TEST_%d: flushing the input...\n", index + 1);
+            U_TEST_PRINT_LINE_X("flushing the input...", index + 1);
             // Flush the input and be sure that we have no errors
             uAtClientFlush(atClientHandle);
             lastError = uAtClientErrorGet(atClientHandle);
             if (lastError != 0) {
-                uPortLog("U_AT_CLIENT_TEST_%d: AT client reported"
-                         " error (%d) when there should have been"
-                         " none.\n", index + 1, lastError);
+                U_TEST_PRINT_LINE_X("AT client reported error (%d) when there"
+                                    " should have been none.", index + 1,
+                                    lastError);
             }
         }
 
@@ -1061,17 +1070,15 @@ static int32_t handleMiscUseLast(uAtClientHandle_t atClientHandle,
                 // Finally, clear the error
                 uAtClientClearError(atClientHandle);
             } else {
-                uPortLog("U_AT_CLIENT_TEST_%d: uAtClientResponseStop()"
-                         " didn't set error when it should have.\n",
-                         index + 1);
+                U_TEST_PRINT_LINE_X("uAtClientResponseStop() didn't set error"
+                                    " when it should have.", index + 1);
                 lastError = 2;
             }
         }
     }
 
     if (lastError == 0) {
-        uPortLog("U_AT_CLIENT_TEST_%d: checking that"
-                 " uAtClientCallback() works.\n", index + 1);
+        U_TEST_PRINT_LINE_X("checking that uAtClientCallback() works.", index + 1);
 
         // Make an AT callback
         lastError = uAtClientCallback(atClientHandle, atCallback,
@@ -1079,8 +1086,7 @@ static int32_t handleMiscUseLast(uAtClientHandle_t atClientHandle,
         // Yield so that it can run, then check that it has run
         uPortTaskBlock(U_CFG_OS_YIELD_MS);
         if (!callbackCalled) {
-            uPortLog("U_AT_CLIENT_TEST_%d: callback didn't"
-                     " execute.\n", index + 1);
+            U_TEST_PRINT_LINE_X("callback didn't execute.", index + 1);
             lastError = 3;
         }
     }

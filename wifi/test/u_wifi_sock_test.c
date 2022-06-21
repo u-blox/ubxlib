@@ -73,9 +73,13 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-//lint -esym(767, LOG_TAG) Suppress LOG_TAG defined differently in another module
-//lint -esym(750, LOG_TAG) Suppress LOG_TAG not referenced
-#define LOG_TAG "U_WIFI_SOCK_TEST: "
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_WIFI_SOCK_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
 
 //lint --emacro((774), TEST_CHECK_TRUE) suppress "Boolean within 'if' always evaluates to True"
 #define TEST_CHECK_TRUE(x) \
@@ -213,8 +217,8 @@ static void closedCallbackUdp(uDeviceHandle_t devHandle, int32_t sockHandle)
 static void closedCallbackTcp(uDeviceHandle_t devHandle, int32_t sockHandle)
 {
 #if !U_CFG_OS_CLIB_LEAKS
-    uPortLog(LOG_TAG "Wifi socket closed devHandle: %d, sockHandle: %d\n", devHandle,
-             sockHandle);
+    U_TEST_PRINT_LINE("wifi socket closed devHandle: %d, sockHandle: %d.",
+                      devHandle, sockHandle);
 #endif
     if (devHandle != gHandles.devHandle) {
         gCallbackErrorNum = 7;
@@ -265,10 +269,8 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
     (void)pCallbackParameter;
     if (status == U_WIFI_CON_STATUS_CONNECTED) {
 #if !U_CFG_OS_CLIB_LEAKS
-        uPortLog(LOG_TAG "Connected Wifi connId: %d, bssid: %s, channel: %d\n",
-                 connId,
-                 pBssid,
-                 channel);
+        U_TEST_PRINT_LINE("connected Wifi connId: %d, bssid: %s, channel: %d.",
+                          connId, pBssid, channel);
 #endif
         gWifiConnected = 1;
     } else {
@@ -283,10 +285,9 @@ static void wifiConnectionCallback(uDeviceHandle_t devHandle,
             //lint -esym(438, disconnectReason)
             disconnectReason = 0;
         }
-        uPortLog(LOG_TAG "Wifi connection lost connId: %d, reason: %d (%s)\n",
-                 connId,
-                 disconnectReason,
-                 strDisconnectReason[disconnectReason]);
+        U_TEST_PRINT_LINE("wifi connection lost connId: %d, reason: %d (%s).",
+                          connId, disconnectReason,
+                          strDisconnectReason[disconnectReason]);
 #endif
         gWifiConnected = 0;
     }
@@ -302,9 +303,9 @@ static void wifiNetworkStatusCallback(uDeviceHandle_t devHandle,
     (void)statusMask;
     (void)pCallbackParameter;
 #if !U_CFG_OS_CLIB_LEAKS
-    uPortLog(LOG_TAG "Network status IPv4 %s, IPv6 %s\n",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
-             ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
+    U_TEST_PRINT_LINE("network status IPv4 %s, IPv6 %s.",
+                      ((statusMask & U_WIFI_STATUS_MASK_IPV4_UP) > 0) ? "up" : "down",
+                      ((statusMask & U_WIFI_STATUS_MASK_IPV6_UP) > 0) ? "up" : "down");
 #endif
 
     gWifiStatusMask = statusMask;
@@ -340,10 +341,10 @@ static void connectWifi()
     while (!TEST_HAS_ERROR() && (!gWifiConnected || (gWifiStatusMask != gWifiStatusMaskAllUp))) {
         if (waitCtr++ >= 15) {
             if (!gWifiConnected) {
-                uPortLog(LOG_TAG "Unable to connect to WifiNetwork\n");
+                U_TEST_PRINT_LINE("unable to connect to WiFi network.");
                 TEST_CHECK_TRUE(false);
             } else {
-                uPortLog(LOG_TAG "Unable to retrieve IP address\n");
+                U_TEST_PRINT_LINE("unable to retrieve IP address.");
                 TEST_CHECK_TRUE(false);
             }
             break;
@@ -363,7 +364,7 @@ static void disconnectWifi()
 
     while (!TEST_HAS_ERROR() && gWifiConnected) {
         if (waitCtr >= 5) {
-            uPortLog(LOG_TAG "Unable to disconnect from WifiNetwork\n");
+            U_TEST_PRINT_LINE("unable to disconnect from WiFi network.");
             TEST_CHECK_TRUE(false);
             break;
         }
@@ -421,12 +422,12 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
 
     // Init wifi sockets
     if (!TEST_HAS_ERROR() && (0 != uWifiSockInit())) {
-        uPortLog(LOG_TAG "Unable to init socket\n");
+        U_TEST_PRINT_LINE("unable to init socket.");
         TEST_CHECK_TRUE(false);
     }
 
     if (!TEST_HAS_ERROR() && (0 != uWifiSockInitInstance(gHandles.devHandle))) {
-        uPortLog(LOG_TAG "Unable to init socket instance\n");
+        U_TEST_PRINT_LINE("unable to init socket instance.");
         TEST_CHECK_TRUE(false);
     }
 
@@ -435,7 +436,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
         gSockHandleTcp = uWifiSockCreate(gHandles.devHandle, U_SOCK_TYPE_STREAM,
                                          U_SOCK_PROTOCOL_TCP);
         if (gSockHandleTcp < 0) {
-            uPortLog(LOG_TAG "Unable to create socket, return code: %d\n", gSockHandleTcp);
+            U_TEST_PRINT_LINE("unable to create socket, return code: %d.", gSockHandleTcp);
             TEST_CHECK_TRUE(false);
         }
     }
@@ -470,16 +471,15 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     if (!TEST_HAS_ERROR()) {
         returnCode = uWifiSockConnect(gHandles.devHandle, gSockHandleTcp, &remoteAddress);
         if (returnCode != 0) {
-            uPortLog(LOG_TAG "Unable to connect socket, return code: %d\n", returnCode);
+            U_TEST_PRINT_LINE("unable to connect socket, return code: %d.", returnCode);
             TEST_CHECK_TRUE(false);
         }
     }
 
     if (!TEST_HAS_ERROR()) {
-        uPortLog(LOG_TAG "sending %d byte(s) to %s:%d in"
-                 " random sized chunks...\n", sizeof(gAllChars),
-                 U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
-                 U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
+        U_TEST_PRINT_LINE("sending %d byte(s) to %s:%d in random sized chunks...",
+                          sizeof(gAllChars), U_SOCK_TEST_ECHO_TCP_SERVER_DOMAIN_NAME,
+                          U_SOCK_TEST_ECHO_TCP_SERVER_PORT);
         size_t bytesWritten = 0;
         size_t chunkCounter = 0;
         while ((bytesWritten < sizeof(gAllChars)) && (chunkCounter < 100) && !TEST_HAS_ERROR()) {
@@ -496,12 +496,11 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
             } else if (returnCode == 0) {
                 uPortTaskBlock(500);
             } else {
-                uPortLog(LOG_TAG "uWifiSockWrite returned: %d\n", returnCode);
+                U_TEST_PRINT_LINE("uWifiSockWrite() returned: %d.", returnCode);
                 TEST_CHECK_TRUE(false);
             }
         }
-        uPortLog(LOG_TAG "%d byte(s) sent in %d chunks.\n",
-                 bytesWritten, chunkCounter);
+        U_TEST_PRINT_LINE("%d byte(s) sent in %d chunks.", bytesWritten, chunkCounter);
     }
 
     if (!TEST_HAS_ERROR()) {
@@ -512,8 +511,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
         }
 
         // Get the data back again
-        uPortLog(LOG_TAG "receiving TCP echo data back"
-                 " in random sized chunks...\n");
+        U_TEST_PRINT_LINE("receiving TCP echo data back in random sized chunks...");
         size_t bytesRead = 0;
         size_t chunkCounter = 0;
         //lint -e{668} suppress Possibly passing a. null pointer to function memset - we are not!
@@ -533,19 +531,18 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
             } else if (returnCode == 0) {
                 uPortTaskBlock(500);
             } else {
-                uPortLog(LOG_TAG "uWifiSockRead returned: %d\n", returnCode);
+                U_TEST_PRINT_LINE("uWifiSockRead() returned: %d.", returnCode);
                 TEST_CHECK_TRUE(false);
             }
         }
-        uPortLog(LOG_TAG "%d byte(s) echoed over TCP, received"
-                 " in %d receive call(s).\n", bytesRead, chunkCounter);
+        U_TEST_PRINT_LINE("%d byte(s) echoed over TCP, received in %d receive call(s).",
+                          bytesRead, chunkCounter);
         if (!gDataCallbackCalledTcp) {
-            uPortLog(LOG_TAG "*** WARNING *** the data callback"
-                     " was not called during the test.  This can happen"
-                     " legimitately if all the reads from the module"
-                     " happened to coincide with data receptions and so"
-                     " the URC was not involved.  However if it happens"
-                     " too often something may be wrong.\n");
+            U_TEST_PRINT_LINE("*** WARNING *** the data callback was not called during"
+                              " the test.  This can happen legimitately if all the reads"
+                              " from the module happened to coincide with data receptions"
+                              " and so the URC was not involved.  However if it happens"
+                              " too often something may be wrong.");
         }
 
         // Compare data
@@ -560,14 +557,14 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     }
 
     // Close TCP socket with asynchronous callback
-    uPortLog(LOG_TAG "closing sockets...\n");
+    U_TEST_PRINT_LINE("closing sockets...");
     returnCode = uWifiSockClose(gHandles.devHandle, gSockHandleTcp,
                                 &asyncClosedCallbackTcp);
     if (!TEST_HAS_ERROR()) {
         // Try to close the socket regardless if there are any previous errors.
         // But if is the first error we need to log it.
         if (returnCode != 0) {
-            uPortLog(LOG_TAG "Unable to close socket, return code: %d\n", returnCode);
+            U_TEST_PRINT_LINE("unable to close socket, return code: %d.", returnCode);
             TEST_CHECK_TRUE(false);
         }
     }
@@ -579,7 +576,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
                                     NULL);
 
     if (uWifiSockDeinitInstance(gHandles.devHandle) != 0) {
-        uPortLog(LOG_TAG "Unable to deinit socket instance\n");
+        U_TEST_PRINT_LINE("unable to deinit socket instance.");
         TEST_CHECK_TRUE(false);
     }
     // Deinit wifi sockets
@@ -595,7 +592,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     // Now do all assert checking after cleanup
 
     if (TEST_HAS_ERROR()) {
-        uPortLog(__FILE__ ":%d:FAIL\n", TEST_GET_ERROR_LINE());
+        U_TEST_PRINT_LINE(__FILE__ ":%d:FAIL", TEST_GET_ERROR_LINE());
         U_PORT_TEST_ASSERT(false);
     }
 
@@ -609,7 +606,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockTCPTest")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog(LOG_TAG "we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -655,12 +652,12 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
 
     // Init wifi sockets
     if (!TEST_HAS_ERROR() && (0 != uWifiSockInit())) {
-        uPortLog(LOG_TAG "Unable to init socket\n");
+        U_TEST_PRINT_LINE("unable to init socket.");
         TEST_CHECK_TRUE(false);
     }
 
     if (!TEST_HAS_ERROR() && (0 != uWifiSockInitInstance(gHandles.devHandle))) {
-        uPortLog(LOG_TAG "Unable to init socket instance\n");
+        U_TEST_PRINT_LINE("unable to init socket instance.");
         TEST_CHECK_TRUE(false);
     }
 
@@ -669,7 +666,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
         gSockHandleUdp = uWifiSockCreate(gHandles.devHandle, U_SOCK_TYPE_DGRAM,
                                          U_SOCK_PROTOCOL_UDP);
         if (gSockHandleUdp < 0) {
-            uPortLog(LOG_TAG "Unable to create socket, return code: %d\n", gSockHandleUdp);
+            U_TEST_PRINT_LINE("unable to create socket, return code: %d.", gSockHandleUdp);
             TEST_CHECK_TRUE(false);
         }
     }
@@ -697,10 +694,10 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
         // Send and wait for the UDP echo data, trying a few
         // times to reduce the chance of internet loss getting
         // in the way
-        uPortLog(LOG_TAG "sending %d byte(s) to %s:%d...\n",
-                 sizeof(gAllChars),
-                 U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
-                 U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
+        U_TEST_PRINT_LINE("sending %d byte(s) to %s:%d...",
+                          sizeof(gAllChars),
+                          U_SOCK_TEST_ECHO_UDP_SERVER_DOMAIN_NAME,
+                          U_SOCK_TEST_ECHO_UDP_SERVER_PORT);
         returnCode = 0;
         //lint -e{668} suppress Possibly passing a. null pointer to function memset - we are not!
         memset(pBuffer, 0, U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES);
@@ -709,8 +706,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
                                          &remoteAddress,
                                          gAllChars, sizeof(gAllChars));
             if (returnCode != sizeof(gAllChars)) {
-                uPortLog(LOG_TAG "failed to send UDP data on try %d.\n",
-                         x + 1);
+                U_TEST_PRINT_LINE("failed to send UDP data on try %d.", x + 1);
                 continue;
             }
 
@@ -725,15 +721,14 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
                                               pBuffer,
                                               U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES);
             if (returnCode != sizeof(gAllChars)) {
-                uPortLog(LOG_TAG "failed to receive UDP echo"
-                         " on try %d.\n", x + 1);
+                U_TEST_PRINT_LINE("failed to receive UDP echo on try %d.", x + 1);
                 continue;
             }
 
             // We are done
             break;
         }
-        uPortLog(LOG_TAG "%d byte(s) echoed over UDP.\n", returnCode);
+        U_TEST_PRINT_LINE("%d byte(s) echoed over UDP.", returnCode);
         TEST_CHECK_TRUE(returnCode == sizeof(gAllChars));
 
         // Compare data
@@ -748,14 +743,14 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     }
 
     // Close UDP socket with asynchronous callback
-    uPortLog(LOG_TAG "closing sockets...\n");
+    U_TEST_PRINT_LINE("closing sockets...");
     returnCode = uWifiSockClose(gHandles.devHandle, gSockHandleUdp,
                                 &asyncClosedCallbackUdp);
     if (!TEST_HAS_ERROR()) {
         // Try to close the socket regardless if there are any previous errors.
         // But if is the first error we need to log it.
         if (returnCode != 0) {
-            uPortLog(LOG_TAG "Unable to close socket, return code: %d\n", returnCode);
+            U_TEST_PRINT_LINE("unable to close socket, return code: %d.", returnCode);
             TEST_CHECK_TRUE(false);
         }
     }
@@ -767,7 +762,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
                                     NULL);
 
     if (uWifiSockDeinitInstance(gHandles.devHandle) != 0) {
-        uPortLog(LOG_TAG "Unable to deinit socket instance\n");
+        U_TEST_PRINT_LINE("unable to deinit socket instance.");
         TEST_CHECK_TRUE(false);
     }
     // Deinit wifi sockets
@@ -783,7 +778,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     // Now do all assert checking after cleanup
 
     if (TEST_HAS_ERROR()) {
-        uPortLog(__FILE__ ":%d:FAIL\n", TEST_GET_ERROR_LINE());
+        U_TEST_PRINT_LINE(__FILE__ ":%d:FAIL", TEST_GET_ERROR_LINE());
         U_PORT_TEST_ASSERT(false);
     }
 
@@ -798,7 +793,7 @@ U_PORT_TEST_FUNCTION("[wifiSock]", "wifiSockUDPTest")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog(LOG_TAG "we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);

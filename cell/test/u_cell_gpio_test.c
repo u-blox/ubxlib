@@ -67,6 +67,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_GPIO_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 #ifndef U_CFG_TEST_GPIO_NAME
 /** The GPIO ID to use when testing.
  */
@@ -124,18 +132,17 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
     //lint -esym(613, pInstance) Suppress possible use of NULL pointer
     // for pInstance from now on
 
-    uPortLog("U_CELL_GPIO_TEST: setting GPIO ID %d to an output and 1.\n",
-             U_CFG_TEST_GPIO_NAME);
+    U_TEST_PRINT_LINE("U_CELL_GPIO_TEST: setting GPIO ID %d to an output and 1.",
+                      U_CFG_TEST_GPIO_NAME);
     U_PORT_TEST_ASSERT(uCellGpioConfig(cellHandle, U_CFG_TEST_GPIO_NAME,
                                        true, 1) == 0);
     x = uCellGpioGet(cellHandle, U_CFG_TEST_GPIO_NAME);
-    uPortLog("U_CELL_GPIO_TEST: GPIO ID %d is %d.\n", U_CFG_TEST_GPIO_NAME, x);
+    U_TEST_PRINT_LINE("GPIO ID %d is %d.", U_CFG_TEST_GPIO_NAME, x);
     U_PORT_TEST_ASSERT(x == 1);
-    uPortLog("U_CELL_GPIO_TEST: setting GPIO ID %d to 0.\n",
-             U_CFG_TEST_GPIO_NAME);
+    U_TEST_PRINT_LINE("setting GPIO ID %d to 0.", U_CFG_TEST_GPIO_NAME);
     U_PORT_TEST_ASSERT(uCellGpioSet(cellHandle, U_CFG_TEST_GPIO_NAME, 0) == 0);
     x = uCellGpioGet(cellHandle, U_CFG_TEST_GPIO_NAME);
-    uPortLog("U_CELL_GPIO_TEST: GPIO ID %d is %d.\n", U_CFG_TEST_GPIO_NAME, x);
+    U_TEST_PRINT_LINE("GPIO ID %d is %d.", U_CFG_TEST_GPIO_NAME, x);
     U_PORT_TEST_ASSERT(x == 0);
 
     // For toggling the CTS pin we need to know that it is not
@@ -143,19 +150,19 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
     // supported on SARA-R4
     if (!U_CELL_PRIVATE_MODULE_IS_SARA_R4(pInstance->pModule->moduleType) &&
         !uCellInfoIsCtsFlowControlEnabled(cellHandle)) {
-        uPortLog("U_CELL_GPIO_TEST: getting CTS...\n");
+        U_TEST_PRINT_LINE("getting CTS...");
         x = uCellGpioGetCts(cellHandle);
-        uPortLog("U_CELL_GPIO_TEST: CTS is %d.\n", x);
+        U_TEST_PRINT_LINE("CTS is %d.", x);
         U_PORT_TEST_ASSERT((x == 0) || (x == 1));
-        uPortLog("U_CELL_GPIO_TEST: setting CTS to %d.\n", !((bool) x));
+        U_TEST_PRINT_LINE("setting CTS to %d.", !((bool) x));
         U_PORT_TEST_ASSERT(uCellGpioSetCts(cellHandle, !x) == 0);
         y = uCellGpioGetCts(cellHandle);
-        uPortLog("U_CELL_GPIO_TEST: CTS is now %d.\n", y);
+        U_TEST_PRINT_LINE("CTS is now %d.", y);
         U_PORT_TEST_ASSERT(y == !((bool) x));
-        uPortLog("U_CELL_GPIO_TEST: putting CTS back again...\n");
+        U_TEST_PRINT_LINE("putting CTS back again...");
         U_PORT_TEST_ASSERT(uCellGpioSetCts(cellHandle, x) == 0);
     } else {
-        uPortLog("U_CELL_GPIO_TEST: not testing setting of the CTS pin.\n");
+        U_TEST_PRINT_LINE("not testing setting of the CTS pin.");
     }
 
     // Do the standard postamble, leaving the module on for the next
@@ -164,7 +171,7 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioBasic")
 
     // Check for memory leaks
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_GPIO_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -182,8 +189,8 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_GPIO_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -191,8 +198,8 @@ U_PORT_TEST_FUNCTION("[cellGpio]", "cellGpioCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_CELL_GPIO_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("U_CELL_GPIO_TEST: heap had a minimum of %d"
+                          " byte(s) free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }

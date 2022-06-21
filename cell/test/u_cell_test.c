@@ -57,6 +57,14 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
+/** The string to put at the start of all prints from this test.
+ */
+#define U_TEST_PREFIX "U_CELL_TEST: "
+
+/** Print a whole line, with terminator, prefixed for this test file.
+ */
+#define U_TEST_PRINT_LINE(format, ...) uPortLog(U_TEST_PREFIX format "\n", ##__VA_ARGS__)
+
 /* ----------------------------------------------------------------
  * TYPES
  * -------------------------------------------------------------- */
@@ -135,13 +143,12 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
 
     U_PORT_TEST_ASSERT(uCellInit() == 0);
 
-    uPortLog("U_CELL_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_A);
+    U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_TEST_UART_A);
     atClientHandleA = uAtClientAdd(gUartAHandle, U_AT_CLIENT_STREAM_TYPE_UART,
                                    NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandleA != NULL);
 
-    uPortLog("U_CELL_TEST: adding a cellular instance on that AT client...\n");
+    U_TEST_PRINT_LINE("adding a cellular instance on that AT client...");
     errorCode = uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
                          -1, -1, -1, false, &devHandleA);
     U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_SUCCESS);
@@ -149,8 +156,7 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
                                               &atClientHandle) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleA);
 
-    uPortLog("U_CELL_TEST: adding another instance on the same AT client,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("adding another instance on the same AT client, should fail...");
     U_PORT_TEST_ASSERT(uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
                                 -1, -1, -1, false, &dummyHandle) < 0);
 
@@ -166,13 +172,12 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
                                  U_CFG_TEST_PIN_UART_B_RTS);
     U_PORT_TEST_ASSERT(gUartBHandle >= 0);
 
-    uPortLog("U_CELL_TEST: adding an AT client on UART %d...\n",
-             U_CFG_TEST_UART_B);
+    U_TEST_PRINT_LINE("adding an AT client on UART %d...", U_CFG_TEST_UART_B);
     atClientHandleB = uAtClientAdd(gUartBHandle, U_AT_CLIENT_STREAM_TYPE_UART,
                                    NULL, U_CELL_AT_BUFFER_LENGTH_BYTES);
     U_PORT_TEST_ASSERT(atClientHandleB != NULL);
 
-    uPortLog("U_CELL_TEST: adding a cellular instance on that AT client...\n");
+    U_TEST_PRINT_LINE("adding a cellular instance on that AT client...");
     errorCode = uCellAdd(U_CELL_MODULE_TYPE_SARA_R5, atClientHandleB,
                          -1, -1, -1, false, &devHandleB);
     U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_SUCCESS);
@@ -181,18 +186,18 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
                                               &atClientHandle) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleB);
 
-    uPortLog("U_CELL_TEST: adding another instance on the same AT client,"
-             " should fail...\n");
+    U_TEST_PRINT_LINE("adding another instance on the same AT client,"
+                      " should fail...");
     U_PORT_TEST_ASSERT(uCellAdd(U_CELL_MODULE_TYPE_SARA_R5, atClientHandleB,
                                 -1, -1, -1, false, &dummyHandle) < 0);
 
     // Don't remove this one, let uCellDeinit() do it
 # endif
 
-    uPortLog("U_CELL_TEST: removing first cellular instance...\n");
+    U_TEST_PRINT_LINE("removing first cellular instance...");
     uCellRemove(devHandleA);
 
-    uPortLog("U_CELL_TEST: adding it again...\n");
+    U_TEST_PRINT_LINE("adding it again...");
     errorCode = uCellAdd(U_CELL_MODULE_TYPE_SARA_U201, atClientHandleA,
                          -1, -1, -1, false, &devHandleA);
     U_PORT_TEST_ASSERT(errorCode == (int32_t) U_ERROR_COMMON_SUCCESS);
@@ -202,10 +207,10 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
                                               &atClientHandle) == 0);
     U_PORT_TEST_ASSERT(atClientHandle == atClientHandleA);
 
-    uPortLog("U_CELL_TEST: deinitialising cellular API...\n");
+    U_TEST_PRINT_LINE("deinitialising cellular API...");
     uCellDeinit();
 
-    uPortLog("U_CELL_TEST: removing AT client...\n");
+    U_TEST_PRINT_LINE("removing AT client...");
     uAtClientRemove(atClientHandleA);
 
     uAtClientDeinit();
@@ -227,7 +232,7 @@ U_PORT_TEST_FUNCTION("[cell]", "cellAdd")
     // on to memory in the UART drivers that can't easily be
     // accounted for.
     heapUsed -= uPortGetHeapFree();
-    uPortLog("U_CELL_TEST: we have leaked %d byte(s).\n", heapUsed);
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
     // heapUsed < 0 for the Zephyr case where the heap can look
     // like it increases (negative leak)
     U_PORT_TEST_ASSERT(heapUsed <= 0);
@@ -256,8 +261,8 @@ U_PORT_TEST_FUNCTION("[cell]", "cellCleanUp")
 
     x = uPortTaskStackMinFree(NULL);
     if (x != (int32_t) U_ERROR_COMMON_NOT_SUPPORTED) {
-        uPortLog("U_CELL_TEST: main task stack had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("main task stack had a minimum of %d byte(s)"
+                          " free at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_OS_MAIN_TASK_MIN_FREE_STACK_BYTES);
     }
 
@@ -265,8 +270,8 @@ U_PORT_TEST_FUNCTION("[cell]", "cellCleanUp")
 
     x = uPortGetHeapMinFree();
     if (x >= 0) {
-        uPortLog("U_CELL_TEST: heap had a minimum of %d"
-                 " byte(s) free at the end of these tests.\n", x);
+        U_TEST_PRINT_LINE("heap had a minimum of %d byte(s) free"
+                          " at the end of these tests.", x);
         U_PORT_TEST_ASSERT(x >= U_CFG_TEST_HEAP_MIN_FREE_BYTES);
     }
 }
