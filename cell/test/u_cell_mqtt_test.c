@@ -85,7 +85,7 @@
  */
 #define TEST_PREFIX_SN U_TEST_PREFIX_BASE "SN_TEST: "
 
-/** Print a whole line, with terminator, prefixed for an MQTT test.
+/** Print a whole line, with terminator, prefixed for an MQTT-SN test.
  */
 #define TEST_PRINT_LINE_SN(format, ...) uPortLog(TEST_PREFIX_SN format "\n", ##__VA_ARGS__)
 
