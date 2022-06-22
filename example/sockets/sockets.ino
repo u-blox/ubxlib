@@ -162,7 +162,7 @@ void setup() {
     uDeviceInit();
 
     // Open the device.  Once this function has returned a
-    // non-negative value then the transport is powered-up,
+    // non-NULL value then the transport is powered-up,
     // can be configured etc. but is not yet connected.
     returnCode = uDeviceOpen(&gDeviceCfg, &devHandle);
     if (returnCode >= 0) {
