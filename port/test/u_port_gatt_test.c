@@ -189,13 +189,13 @@ static uPortGattIter_t gattNotifyFunc(int32_t connHandle,
                                       struct uPortGattSubscribeParams_s *pParams,
                                       const void *pData, uint16_t length);
 static void gattCccWriteResp(int32_t connHandle, uint8_t err);
-static int32_t remoteWritesFifoChar(int32_t gapConnHandle, const void *buf, uint16_t len,
+static int32_t remoteWritesFifoChar(int32_t gapConnHandle, const void *pBuf, uint16_t len,
                                     uint16_t offset, uint8_t flags);
-static int32_t remoteWritesFifoCcc(int32_t gapConnHandle, const void *buf, uint16_t len,
+static int32_t remoteWritesFifoCcc(int32_t gapConnHandle, const void *pBuf, uint16_t len,
                                    uint16_t offset, uint8_t flags);
-static int32_t remoteWritesCreditChar(int32_t gapConnHandle, const void *buf, uint16_t len,
+static int32_t remoteWritesCreditChar(int32_t gapConnHandle, const void *pBuf, uint16_t len,
                                       uint16_t offset, uint8_t flags);
-static int32_t remoteWritesCreditCcc(int32_t gapConnHandle, const void *buf, uint16_t len,
+static int32_t remoteWritesCreditCcc(int32_t gapConnHandle, const void *pBuf, uint16_t len,
                                      uint16_t offset, uint8_t flags);
 
 /* ----------------------------------------------------------------
@@ -676,7 +676,7 @@ static void gattCccWriteResp(int32_t connHandle, uint8_t err)
 }
 
 //lint -efunc(785, enqueueSpsWrite) "Too few initializers for aggregate 'evt' of type 'gattEvt_t'"
-static bool enqueueSpsWrite(gattEvtId_t id, int32_t gapConnHandle, const void *buf,
+static bool enqueueSpsWrite(gattEvtId_t id, int32_t gapConnHandle, const void *pBuf,
                             uint16_t len, uint16_t offset, uint8_t flags)
 {
     gattEvt_t evt = { .id = id };
@@ -688,47 +688,47 @@ static bool enqueueSpsWrite(gattEvtId_t id, int32_t gapConnHandle, const void *b
     spsWrite->offset = offset;
 
     if (len <= sizeof(spsWrite->data)) {
-        memcpy(spsWrite->data, buf, len);
+        memcpy(spsWrite->data, pBuf, len);
     }
 
     return enqueueEvt(&evt);
 }
 
-static int32_t remoteWritesFifoChar(int32_t gapConnHandle, const void *buf, uint16_t len,
+static int32_t remoteWritesFifoChar(int32_t gapConnHandle, const void *pBuf, uint16_t len,
                                     uint16_t offset, uint8_t flags)
 {
     U_TEST_PRINT_LINE("remote writes to FIFO characteristics.");
-    if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_FIFO_CHAR, gapConnHandle, buf, len, offset, flags)) {
+    if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_FIFO_CHAR, gapConnHandle, pBuf, len, offset, flags)) {
         U_TEST_PRINT_LINE("ERROR: failed to queue SPS write FIFO char evt.");
     }
     return len;
 }
 
-static int32_t remoteWritesFifoCcc(int32_t gapConnHandle, const void *buf, uint16_t len,
+static int32_t remoteWritesFifoCcc(int32_t gapConnHandle, const void *pBuf, uint16_t len,
                                    uint16_t offset, uint8_t flags)
 {
     U_TEST_PRINT_LINE("remote writes to FIFO CCC.");
-    if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_FIFO_CCC, gapConnHandle, buf, len, offset, flags)) {
+    if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_FIFO_CCC, gapConnHandle, pBuf, len, offset, flags)) {
         U_TEST_PRINT_LINE("ERROR: failed to queue SPS write FIFO CCC evt.");
     }
     return len;
 }
 
-static int32_t remoteWritesCreditChar(int32_t gapConnHandle, const void *buf, uint16_t len,
+static int32_t remoteWritesCreditChar(int32_t gapConnHandle, const void *pBuf, uint16_t len,
                                       uint16_t offset, uint8_t flags)
 {
     U_TEST_PRINT_LINE("remote writes to credit characteristics.");
-    if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_CREDIT_CHAR, gapConnHandle, buf, len, offset, flags)) {
+    if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_CREDIT_CHAR, gapConnHandle, pBuf, len, offset, flags)) {
         U_TEST_PRINT_LINE("ERROR: failed to queue SPS write credit char evt.");
     }
     return len;
 }
 
-static int32_t remoteWritesCreditCcc(int32_t gapConnHandle, const void *buf, uint16_t len,
+static int32_t remoteWritesCreditCcc(int32_t gapConnHandle, const void *pBuf, uint16_t len,
                                      uint16_t offset, uint8_t flags)
 {
     U_TEST_PRINT_LINE("remote writes to credit CCC.");
-    if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_CREDIT_CCC, gapConnHandle, buf, len, offset, flags)) {
+    if (!enqueueSpsWrite(GATT_EVT_SPS_WRITE_CREDIT_CCC, gapConnHandle, pBuf, len, offset, flags)) {
         U_TEST_PRINT_LINE("ERROR: failed to queue SPS write credit CCC evt.");
     }
     return len;
