@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup security
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the u-blox API for X.509 certificate
@@ -163,7 +168,7 @@ typedef struct {
  * @param pName                the null-terminated name for the
  *                             X.509 certificate or security key, of
  *                             maximum length
- *                             U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES.
+ *                             #U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES.
  *                             IMPORTANT: if the name already exists
  *                             then the existing X.509 certificate or
  *                             security key will be overwritten with
@@ -172,14 +177,14 @@ typedef struct {
  *                             security key to be stored.
  * @param size                 the number of bytes at pContents,
  *                             maximum value
- *                             U_SECURITY_CREDENTIAL_MAX_LENGTH_BYTES.
+ *                             #U_SECURITY_CREDENTIAL_MAX_LENGTH_BYTES.
  * @param pPassword            if required, the null-terminated password
  *                             for a PKCS8 encrypted private key, of
  *                             maximum length
- *                             U_SECURITY_CREDENTIAL_PASSWORD_MAX_LENGTH_BYTES;
+ *                             #U_SECURITY_CREDENTIAL_PASSWORD_MAX_LENGTH_BYTES;
  *                             SARA-U201 and SARA-R4xx modules do not support
  *                             use of a password.
- * @param pMd5                 pointer to U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES
+ * @param pMd5                 pointer to #U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES
  *                             of storage where the MD5 hash of the DER-format
  *                             credential as stored in the module can be
  *                             placed: this can be stored by the caller and
@@ -207,8 +212,8 @@ int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
  *                             X.509 certificate or security key, as was
  *                             passed to uSecurityCredentialStore()
  *                             when storing it, maximum length
- *                             U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES.
- * @param pMd5                 pointer to U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES
+ *                             #U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES.
+ * @param pMd5                 pointer to #U_SECURITY_CREDENTIAL_MD5_LENGTH_BYTES
  *                             of storage for the result.
  * @return                     zero on success else negative error code.
  */
@@ -297,7 +302,7 @@ void uSecurityCredentialListLast(uDeviceHandle_t devHandle);
  *                       certificate or security key to remove, as
  *                       was passed to uSecurityCredentialStore()
  *                       when storing it, maximum length
- *                       U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES.
+ *                       #U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES.
  * @return               zero on success else negative error code.
  */
 int32_t uSecurityCredentialRemove(uDeviceHandle_t devHandle,
@@ -307,6 +312,8 @@ int32_t uSecurityCredentialRemove(uDeviceHandle_t devHandle,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_SECURITY_CREDENTIAL_H_
 

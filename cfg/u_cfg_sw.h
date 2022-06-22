@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup cfg
+ *  @{
+ */
+
 /** @file
  * @brief This header file contains software configuration information
  * for ubxlib.
@@ -36,6 +40,8 @@
  */
 # define U_CFG_ENABLE_LOGGING                 1
 #endif
+
+/** @}*/
 
 #endif // _U_CFG_SW_H_
 

@@ -21,9 +21,14 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
-#include "u_device.h" // uDeviceHandle_t
+
+#include "u_device.h"
 #include "u_at_client.h"
 #include "u_short_range_module_type.h"
+
+/** \addtogroup _short-range __Short Range
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the ShortRange APIs. These APIs are not
@@ -87,16 +92,16 @@ extern "C" {
 typedef enum {
     U_SHORT_RANGE_ERROR_FORCE_32_BIT = 0x7FFFFFFF,  /**< Force this enum to be 32 bit as it can be
                                                   used as a size also. */
-    U_SHORT_RANGE_ERROR_AT = U_ERROR_SHORT_RANGE_MAX,      /**< -4096 if U_ERROR_BASE is 0. */
-    U_SHORT_RANGE_ERROR_NOT_CONFIGURED = U_ERROR_SHORT_RANGE_MAX - 1, /**< -4097 if U_ERROR_BASE is 0. */
-    U_SHORT_RANGE_ERROR_VALUE_OUT_OF_RANGE = U_ERROR_SHORT_RANGE_MAX - 2, /**< -4098 if U_ERROR_BASE is 0. */
-    U_SHORT_RANGE_ERROR_INVALID_MODE = U_ERROR_SHORT_RANGE_MAX - 3, /**< -4099 if U_ERROR_BASE is 0. */
-    U_SHORT_RANGE_ERROR_NOT_DETECTED = U_ERROR_SHORT_RANGE_MAX - 4, /**< -4100 if U_ERROR_BASE is 0. */
-    U_SHORT_RANGE_ERROR_WRONG_TYPE = U_ERROR_SHORT_RANGE_MAX - 5, /**< -4101 if U_ERROR_BASE is 0. */
-    U_SHORT_RANGE_ERROR_INIT_UART = U_ERROR_SHORT_RANGE_MAX - 6, /**< -4102 if U_ERROR_BASE is 0. */
-    U_SHORT_RANGE_ERROR_INIT_EDM = U_ERROR_SHORT_RANGE_MAX - 7, /**< -4103 if U_ERROR_BASE is 0. */
-    U_SHORT_RANGE_ERROR_INIT_ATCLIENT = U_ERROR_SHORT_RANGE_MAX - 8, /**< -4104 if U_ERROR_BASE is 0. */
-    U_SHORT_RANGE_ERROR_INIT_INTERNAL = U_ERROR_SHORT_RANGE_MAX - 9, /**< -4105 if U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_AT = U_ERROR_SHORT_RANGE_MAX,      /**< -4096 if #U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_NOT_CONFIGURED = U_ERROR_SHORT_RANGE_MAX - 1, /**< -4097 if #U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_VALUE_OUT_OF_RANGE = U_ERROR_SHORT_RANGE_MAX - 2, /**< -4098 if #U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INVALID_MODE = U_ERROR_SHORT_RANGE_MAX - 3, /**< -4099 if# U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_NOT_DETECTED = U_ERROR_SHORT_RANGE_MAX - 4, /**< -4100 if #U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_WRONG_TYPE = U_ERROR_SHORT_RANGE_MAX - 5, /**< -4101 if #U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_UART = U_ERROR_SHORT_RANGE_MAX - 6, /**< -4102 if #U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_EDM = U_ERROR_SHORT_RANGE_MAX - 7, /**< -4103 if #U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_ATCLIENT = U_ERROR_SHORT_RANGE_MAX - 8, /**< -4104 if #U_ERROR_BASE is 0. */
+    U_SHORT_RANGE_ERROR_INIT_INTERNAL = U_ERROR_SHORT_RANGE_MAX - 9, /**< -4105 if #U_ERROR_BASE is 0. */
 } uShortRangeErrorCode_t;
 
 typedef enum {
@@ -259,7 +264,7 @@ void uShortRangeClose(uDeviceHandle_t devHandle);
  * rate than the default one has been used.
  *
  * @param devHandle          the short range device handle.
- * @return                   Module on success, U_SHORT_RANGE_MODULE_TYPE_INVALID
+ * @return                   Module on success, #U_SHORT_RANGE_MODULE_TYPE_INVALID
  *                           on failure.
  */
 uShortRangeModuleType_t uShortRangeDetectModule(uDeviceHandle_t devHandle);
@@ -340,7 +345,7 @@ bool uShortRangeSupportsWifi(uShortRangeModuleType_t moduleType);
  *
  * @param devHandle          the short range device handle.
  * @param[out] pSerialNumber a pointer to storage of atleast
- *                           U_SHORT_RANGE_SERIAL_NUMBER_LENGTH bytes
+ *                           #U_SHORT_RANGE_SERIAL_NUMBER_LENGTH bytes
  *                           in which the product serial number will be stored;
  *                           cannot be NULL.
  * @return                   the length of the string copied into
@@ -421,6 +426,8 @@ int32_t uShortRangeResetToDefaultSettings(int32_t pinResetToDefaults);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_SHORT_RANGE_H_
 

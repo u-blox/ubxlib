@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup error Error Codes
+ *  @{
+ */
+
 /** @file
  *@brief This header file defines the error codes for ubxlib.
  */
@@ -75,6 +79,8 @@ typedef enum {
     U_ERROR_SHORT_RANGE_MAX = U_ERROR_BASE - 4096,
     U_ERROR_SHORT_RANGE_MIN = U_ERROR_BASE - 8191,
 } uErrorCode_t;
+
+/** @}*/
 
 #endif // _ERROR_COMMON_H_
 

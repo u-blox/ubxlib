@@ -22,7 +22,12 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
-/* This header file defines the configuration structure for the
+/** \addtogroup network
+ *  @{
+ */
+
+/** @file
+ * @brief This header file defines the configuration structure for the
  * network API for BLE.
  */
 
@@ -66,5 +71,7 @@ typedef struct {
 } uNetworkCfgBle_t;
 
 #endif // _U_NETWORK_CONFIG_BLE_H_
+
+/** @}*/
 
 // End of file

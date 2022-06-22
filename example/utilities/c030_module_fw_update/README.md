@@ -4,7 +4,7 @@ This is not so much an example as a program that is required if you wish to upda
 # Build
 You don't need to build this example, a pre-built binary is included, however if you wish to do so:
 
-Use the [port/platform/stm32cube/mcu/stm32f4/runner](/port/platform/stm32cube/mcu/stm32f4/runner) build; the instructions there will tell you how to set/override #defines.  The following #defines are relevant (noting that NO quotation marks should be included when setting a #define to a string):
+Use the [port/platform/stm32cube/mcu/stm32f4/runner](/port/platform/stm32cube/mcu/stm32f4/runner) build; the instructions there will tell you how to set/override \#defines.  The following \#defines are relevant (noting that NO quotation marks should be included when setting a \#define to a string):
 
 `U_CFG_APP_FILTER`: set this to `exampleC030ModuleFwUpdate` so that *just* this example will be run.
 

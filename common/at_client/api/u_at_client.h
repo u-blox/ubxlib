@@ -23,6 +23,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _AT-client __AT Client
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the AT client API, designed to
  * send structured AT commands to an AT server and parse structured
@@ -240,7 +244,7 @@ extern "C" {
  */
 #define U_AT_CLIENT_MARKER           "DEADBEEF"
 
-/** Size of U_AT_CLIENT_MARKER: do NOT use sizeof(U_AT_CLIENT_MARKER),
+/** Size of #U_AT_CLIENT_MARKER: do NOT use sizeof(#U_AT_CLIENT_MARKER),
  * since we don't want the easy-peasy terminator in the marker string,
  * we only want interesting stuff.
  */
@@ -264,7 +268,7 @@ extern "C" {
  *
  * A real example of this is the response to AT+CIMI, which is a
  * string of 15 IMEI digits with no prefix.  Note that
- * U_AT_CLIENT_BUFFER_OVERHEAD_BYTES of the buffer memory are
+ * #U_AT_CLIENT_BUFFER_OVERHEAD_BYTES of the buffer memory are
  * used for management which must be taken into account.
  *
  * Also note that different underlying network layers might
@@ -277,7 +281,7 @@ extern "C" {
  */
 #define U_AT_CLIENT_COMMAND_DELIMITER       "\r"
 
-/** The length of U_AT_CLIENT_COMMAND_DELIMITER in bytes.
+/** The length of #U_AT_CLIENT_COMMAND_DELIMITER in bytes.
  */
 #define U_AT_CLIENT_COMMAND_DELIMITER_LENGTH_BYTES  1
 
@@ -452,8 +456,8 @@ void uAtClientDeinit();
  *                          is NULL then this is the size of buffer
  *                          that the AT client will allocate.  What
  *                          size to chose?  See the definition
- *                          of U_AT_CLIENT_BUFFER_LENGTH_BYTES, noting
- *                          that U_AT_CLIENT_BUFFER_OVERHEAD_BYTES of
+ *                          of #U_AT_CLIENT_BUFFER_LENGTH_BYTES, noting
+ *                          that #U_AT_CLIENT_BUFFER_OVERHEAD_BYTES of
  *                          the buffer memory will be used for management
  *                          overhead.
  * @return                  on success the handle of the AT client, else
@@ -536,7 +540,7 @@ int32_t uAtClientTimeoutGet(const uAtClientHandle_t atHandle);
 /** Set the timeout for completion of an AT command,
  * i.e. from uAtClientLock() to uAtClientUnlock().
  * If this is not called the timeout will be
- * U_AT_CLIENT_DEFAULT_TIMEOUT_MS.
+ * #U_AT_CLIENT_DEFAULT_TIMEOUT_MS.
  *
  * If this is called between uAtClientLock() and
  * uAtClientUnlock() the given timeout will apply only
@@ -585,7 +589,7 @@ char uAtClientDelimiterGet(const uAtClientHandle_t atHandle);
 /** Set the delimiter that is used between parameters in
  * an outgoing AT command or is expected between parameters
  * in a response from the AT server.  If this function is not
- * called the delimiter will be U_AT_CLIENT_DEFAULT_DELIMITER.
+ * called the delimiter will be #U_AT_CLIENT_DEFAULT_DELIMITER.
  *
  * @param atHandle  the handle of the AT client.
  * @param delimiter the delimiter character, usually ','.
@@ -603,7 +607,7 @@ int32_t uAtClientDelayGet(const uAtClientHandle_t atHandle);
 
 /** Set the delay between ending one AT command and
  * starting the next.  If this is not called the delay
- * will be U_AT_CLIENT_DEFAULT_DELAY_MS.
+ * will be #U_AT_CLIENT_DEFAULT_DELAY_MS.
  *
  * @param atHandle  the handle of the AT client.
  * @param delayMs   the delay in milliseconds.
@@ -741,10 +745,12 @@ size_t uAtClientWriteBytes(uAtClientHandle_t atHandle,
  *
  * String argument to write: "tcp://www.google.com:80"
  * Can be written like this:
+ * ```
  * uAtClientWritePartialString(atHandle, true, "tcp://");
  * uAtClientWritePartialString(atHandle, false, "www.google.com");
  * uAtClientWritePartialString(atHandle, false, ":");
  * uAtClientWritePartialString(atHandle, false, "80");
+ * ```
  *
  * @param atHandle  the handle of the AT client.
  * @param isFirst   set to true when starting a new string argument
@@ -1065,14 +1071,14 @@ int32_t uAtClientUrcHandlerStackMinFree(uAtClientHandle_t atHandle);
 
 /** Make an asynchronous callback that is run in its own task
  * context with a stack size of
- * U_AT_CLIENT_TASK_CALLBACK_STACK_SIZE_BYTES running at
- * priority U_AT_CLIENT_TASK_CALLBACK_PRIORITY.  Use this
+ * #U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES running at
+ * priority #U_AT_CLIENT_CALLBACK_TASK_PRIORITY.  Use this
  * function if you need to do any heavy work from a URC
  * handler to avoid blocking the stream interface.  Callbacks
  * are queued and so are guaranteed to be run in the order
  * they are called.  A single callback queue is shared between
  * all AT client instances; you can determine which instance
- * has made the call by checking uAtClientHandle_t, the first
+ * has made the call by checking #uAtClientHandle_t, the first
  * parameter passed to the callback.
  *
  * @param atHandle        the handle of the AT client.
@@ -1089,7 +1095,7 @@ int32_t uAtClientCallback(uAtClientHandle_t atHandle,
  * AT callback event queue, i.e. the minimum amount of free stack
  * space.  If this gets close to zero you either need to do less
  * in your callbacks or you need to increase
- * U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES.
+ * #U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES.
  *
  * @return  the minimum amount of free stack during the lifetime
  *          of the task that is at the end of the AT callback
@@ -1113,6 +1119,7 @@ int32_t uAtClientCallbackStackMinFree();
  * away (as it will not be recognised as a URC by it).
  * In other words, an exchange might look something like this:
  *
+ * ```
  * Lock the AT client:
  * uAtClientLock(client);
  * ...do normal stuff:
@@ -1127,6 +1134,7 @@ int32_t uAtClientCallbackStackMinFree();
  *                    (void *) pMyUrcFunctionParameter);
  * ...only now unlock the AT client:
  * uAtClientUnlock(client);
+ * ```
  *
  * @param atHandle        the handle of the AT client.
  * @param pPrefix         the prefix for the URC; cannot by NULL.
@@ -1427,6 +1435,8 @@ int32_t uAtClientGetActivityPin(const uAtClientHandle_t atHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_AT_CLIENT_H_
 

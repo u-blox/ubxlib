@@ -54,18 +54,18 @@ Under each example folder you will find an `xxx_main.c` file and one or more Pyt
 Note that some of these examples assume that the module in use has already been security sealed, a once-only process of claiming ownership which you would normally carry out as part of your production process: where this is the case the comments in `xxx_main.c` describe how to do it.
 
 ## Building
-To build and run these examples on a supported platform you need to travel down into the [port/platform](/port/platform)`/<platform>/<chipset>/<sdk>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override #defines.  The following #defines are relevant:
+To build and run these examples on a supported platform you need to travel down into the [port/platform](/port/platform)`/<platform>/<chipset>/<sdk>` directory of your choice and find the `runner` build.  The instructions there will tell you how to set/override \#defines.  The following \#defines are relevant:
 
 `U_CFG_APP_FILTER`: set this to the name of the example you want to run (noting that NO quotation marks should be included) to run *just* that example (as opposed to all the examples and unit tests): use `exampleSecE2e` for the end to end data protection example.
 
-For the remainder of the #defines you may either override their values in the same way or, if you are only running this example, you may edit the values directly in `xxx_main.c` before compiling.
+For the remainder of the \#defines you may either override their values in the same way or, if you are only running this example, you may edit the values directly in `xxx_main.c` before compiling.
 
 ## Using A Cellular Module
 u-blox security is currently only supported on cellular, on the SARA-R5 cellular module.
 
 `U_CFG_TEST_CELL_MODULE_TYPE`: consult the [u_cell_module_type.h](/cell/api/u_cell_module_type.h) file to determine the type name for the cellular module you intend to use.  Since only SARA-R5 is supported you must set `U_CFG_TEST_CELL_MODULE_TYPE` to `U_CELL_MODULE_TYPE_SARA_R5`.
 
-`U_CFG_APP_PIN_CELL_xxx`: the default values for the MCU pins connecting your cellular module to your MCU are #defined in the file [port/platform](/port/platform)`/<platform>/<chipset>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the #defines (where -1 means "not connected").
+`U_CFG_APP_PIN_CELL_xxx`: the default values for the MCU pins connecting your cellular module to your MCU are \#defined in the file [port/platform](/port/platform)`/<platform>/<chipset>/cfg/cfg_app_platform_specific.h`.  You should check if these are correct for your board and, if not, override the values of the \#defines (where -1 means "not connected").
 
 `U_CFG_APP_CELL_UART`: this sets the internal HW UART block that your chosen MCU will use to talk to the cellular module.  The default is usually acceptable but if you wish to change it then consult the file [port/platform](/port/platform)`/<platform>/<chipset>/cfg/cfg_hw_platform_specific.h` for other options.
 

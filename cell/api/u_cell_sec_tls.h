@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _cell
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the TLS security APIs for a u-blox
  * cellular module.  Note that these functions are not intended to be
@@ -75,7 +79,7 @@ typedef enum {
 typedef struct {
     char *pString; /**< the cipher list string as returned by
                         AT+USECPRF, i.e. "C034;009e;CCAD...",
-                        max length U_CELL_SEC_CIPHERS_BUFFER_LENGTH_BYTES. */
+                        max length #U_CELL_SEC_CIPHERS_BUFFER_LENGTH_BYTES. */
     size_t index;  /**< which character we are at in the string. */
 } uCellSecTlsCipherList_t;
 
@@ -150,7 +154,7 @@ int32_t uCellSecTlsRootCaCertificateNameSet(const uCellSecTlsContext_t *pContext
  *                        will be a null-terminated string.
  * @param size            the number of bytes of storage at
  *                        pName; to ensure sufficient space at least
- *                        U_SECURITY_TLS_CREDENTIAL_NAME_MAX_LENGTH_BYTES + 1
+ *                        #U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES + 1
  *                        bytes should be provided.
  * @return                on success the length of the string
  *                        stored at pName (i.e. what strlen() would
@@ -184,7 +188,7 @@ int32_t uCellSecTlsClientCertificateNameSet(const uCellSecTlsContext_t *pContext
  *                        will be a null-terminated string.
  * @param size            the number of bytes of storage at
  *                        pName; to ensure sufficient space at least
- *                        U_SECURITY_TLS_CREDENTIAL_NAME_MAX_LENGTH_BYTES + 1
+ *                        #U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES + 1
  *                        bytes should be provided.
  * @return                on success the length of the string
  *                        stored at pName (i.e. what strlen() would
@@ -219,7 +223,7 @@ int32_t uCellSecTlsClientPrivateKeyNameSet(const uCellSecTlsContext_t *pContext,
  *                        will be a null-terminated string.
  * @param size            the number of bytes of storage at
  *                        pName; to ensure sufficient space at least
- *                        U_SECURITY_TLS_CREDENTIAL_NAME_MAX_LENGTH_BYTES + 1
+ *                        #U_SECURITY_CREDENTIAL_NAME_MAX_LENGTH_BYTES + 1
  *                        bytes should be provided.
  * @return                on success the length of the string
  *                        stored at pName (i.e. what strlen() would
@@ -238,12 +242,12 @@ int32_t uCellSecTlsClientPrivateKeyNameGet(const uCellSecTlsContext_t *pContext,
  *                         e.g. [0x0a, 0x04, 0xf0, 0x08... etc],
  *                         *not* hex encoded in ASCII; cannot be NULL.
  * @param pskLengthBytes   the amount of data at pPsk, must be no
- *                         more than U_SECURITY_TLS_PSK_MAX_LENGTH_BYTES.
+ *                         more than #U_SECURITY_TLS_PSK_MAX_LENGTH_BYTES.
  * @param pPskId           the pre-shared key ID to use, encoded as binary,
  *                         e.g. [0x0a, 0x04, 0xf0, 0x08... etc],
  *                         *not* hex encoded in ASCII; cannot be NULL.
  * @param pskIdLengthBytes the amount of data at pPskId, must be no
- *                         more than U_SECURITY_TLS_PSK_ID_MAX_LENGTH_BYTES.
+ *                         more than #U_SECURITY_TLS_PSK_ID_MAX_LENGTH_BYTES.
  * @param generate         if this is set to true then, where supported,
  *                         the root of trust inside the cellular module
  *                         will generate the pre-shared key and
@@ -405,7 +409,7 @@ int32_t uCellSecTlsVersionGet(const uCellSecTlsContext_t *pContext);
  *                    be the null-terminated server URL
  *                    to check against, else it must be NULL;
  *                    should be no longer than
- *                    U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES
+ *                    #U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES
  *                    bytes long, excluding the terminator.
  * @return            zero on success else negative error
  *                    code.
@@ -424,7 +428,7 @@ int32_t uCellSecTlsCertificateCheckSet(const uCellSecTlsContext_t *pContext,
  *                   is included, may be NULL.
  * @param size       the amount of storage at pUrl. To ensure
  *                   no loss
- *                   U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES + 1
+ *                   #U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES + 1
  *                   bytes should be allowed.
  * @return           the certificate check being performed
  *                   or negative error code.
@@ -441,7 +445,7 @@ int32_t uCellSecTlsCertificateCheckGet(const uCellSecTlsContext_t *pContext,
  * @param pSni        the null-terminated server name
  *                    indication string to check against,
  *                    should be no longer than
- *                    U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES
+ *                    #U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES
  *                    bytes long, excluding the terminator;
  *                    use NULL to cancel any existing Server
  *                    Name Indication checking.
@@ -461,7 +465,7 @@ int32_t uCellSecTlsSniSet(const uCellSecTlsContext_t *pContext,
  *                   string.
  * @param size       the amount of storage at pSni; to ensure
  *                   no loss
- *                   U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES + 1
+ *                   #U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES + 1
  *                   bytes should be allowed.
  * @return           on success the length of the string
  *                   stored at pSni (i.e. what strlen() would
@@ -473,6 +477,8 @@ int32_t uCellSecTlsSniGet(const uCellSecTlsContext_t *pContext,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_SEC_TLS_H_
 

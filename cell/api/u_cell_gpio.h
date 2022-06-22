@@ -17,7 +17,16 @@
 #ifndef U_CELL_GPIO_H_
 #define U_CELL_GPIO_H_
 
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _cell
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the u-blox API for controlling
@@ -76,7 +85,7 @@ typedef enum {
  *  - pin name: for instance "GPIO1" or "SDIO_CMD" etc.
  * This API uses GPIO ID: do not confuse this with the number on
  * the end of the pin name, i.e. "GPIO1" is NOT GPIO ID 1, it is GPIO
- * ID 16!  Hence the uCellGpioName_t enum is used to allow you to
+ * ID 16!  Hence the #uCellGpioName_t enum is used to allow you to
  * pass in U_CELL_GPIO_1, the value for which is 16. If you prefer
  * to use plain integers in your code you can just pass in the GPIO IDs
  * (i.e. 16 etc., the ones which usually map to the physical pin
@@ -102,7 +111,7 @@ int32_t uCellGpioConfig(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
  *  - pin name: for instance "GPIO1" or "SDIO_CMD" etc.
  * This API uses GPIO ID: do not confuse this with the number on
  * the end of the pin name, i.e. "GPIO1" is NOT GPIO ID 1, it is GPIO
- * ID 16!  Hence the uCellGpioName_t enum is used to allow you to
+ * ID 16!  Hence the #uCellGpioName_t enum is used to allow you to
  * pass in U_CELL_GPIO_1, the value for which is 16. If you prefer
  * to use plain integers in your code you can just pass in the GPIO IDs
  * (i.e. 16 etc., the ones which usually map to the physical pin
@@ -125,7 +134,7 @@ int32_t uCellGpioSet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
  *  - pin name: for instance "GPIO1" or "SDIO_CMD" etc.
  * This API uses GPIO ID: do not confuse this with the number on
  * the end of the pin name, i.e. "GPIO1" is NOT GPIO ID 1, it is GPIO
- * ID 16!  Hence the uCellGpioName_t enum is used to allow you to
+ * ID 16!  Hence the #uCellGpioName_t enum is used to allow you to
  * pass in U_CELL_GPIO_1, the value for which is 16. If you prefer
  * to use plain integers in your code you can just pass in the GPIO IDs
  * (i.e. 16 etc., the ones which usually map to the physical pin
@@ -140,7 +149,7 @@ int32_t uCellGpioGet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId);
 
 /** Set the state of the CTS line: this may be used if the
  * serial handshaking lines are NOT being used (i.e. they are both
- * -1 in the uNetworkConfigurationCell_t structure or the
+ * -1 in the #uNetworkCfgCell_t structure or the
  * call to uPortUartOpen(), or you may call
  * uCellInfoIsCtsFlowControlEnabled() to determine the truth).
  * Note that NOT all modules support this feature (e.g. SARA-R4
@@ -154,7 +163,7 @@ int32_t uCellGpioSetCts(uDeviceHandle_t cellHandle, int32_t level);
 
 /** Get the state of the CTS line: this may be used if the
  * serial handshaking lines are NOT being used (i.e. they are both
- * -1 in the uNetworkConfigurationCell_t structure or the
+ * -1 in the #uNetworkCfgCell_t structure or the
  * call to uPortUartOpen(), or you may call
  * uCellInfoIsCtsFlowControlEnabled() to determine the truth).
  * Note that NOT all modules support this feature (e.g. SARA-R4
@@ -169,5 +178,7 @@ int32_t uCellGpioGetCts(uDeviceHandle_t cellHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // U_CELL_GPIO_H_

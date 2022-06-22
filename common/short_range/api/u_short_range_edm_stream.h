@@ -22,8 +22,16 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _short-range
+ *  @{
+ */
+
 /** @file
  * @brief EDM (extended data mode) stream API for short range modules.
+ * These APIs are not intended to be called directly, they are called only
+ * via the ble/wifi APIs. The ShortRange APIs are NOT generally thread-safe:
+ * the ble/wifi APIs add thread safety by calling
+ * uShortRangeLock()/uShortRangeUnlock() where appropriate.
  */
 
 #ifdef __cplusplus
@@ -81,7 +89,6 @@ void uShortRangeEdmStreamDeinit();
  * by any other module.
  *
  * @param uartHandle       the UART HW block to use.
- *
  * @return                 a stream handle else negative
  *                         error code.
  */
@@ -280,12 +287,12 @@ void uShortRangeEdmStreamDataEventCallbackRemove(int32_t handle,
 /** Send an event to the callback.  This allows the user to
  * re-trigger events: for instance, if a data event has only
  * been partially handled it can be re-triggered by calling
- * this function with U_SHORT_RANGE_EDM_STREAM_EVENT_BITMASK_DATA_RECEIVED
+ * this function with #U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED
  * set.
  *
  * @param handle      the handle of the stream instance.
  * @param eventBitMap the events bit-map with at least one of
- *                    U_SHORT_RANGE_EDM_STREAM_EVENT_BITMASK_xxx set.
+ *                    U_PORT_UART_EVENT_BITMASK_xxx set.
  * @return            zero on success else negative error code.
  */
 int32_t uShortRangeEdmStreamAtEventSend(int32_t handle, uint32_t eventBitMap);
@@ -316,6 +323,8 @@ bool uShortRangeEdmStreamAtEventIsCallback(int32_t handle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_SHORT_RANGE_EDM_STREAM_H_
 

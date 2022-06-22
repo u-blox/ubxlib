@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _GNSS
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the GNSS APIs to configure a GNSS chip.
  */
@@ -82,6 +86,8 @@ int32_t uGnssCfgSetFixMode(uDeviceHandle_t gnssHandle, uGnssFixMode_t fixMode);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_GNSS_CFG_H_
 

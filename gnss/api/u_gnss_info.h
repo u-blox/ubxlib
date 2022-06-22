@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _GNSS
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines functions that read general
@@ -99,6 +104,8 @@ int64_t uGnssInfoGetTimeUtc(uDeviceHandle_t gnssHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_GNSS_INFO_H_
 

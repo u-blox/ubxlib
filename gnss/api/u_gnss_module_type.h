@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _GNSS
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the module types for the
  * GNSS API.
@@ -47,6 +51,8 @@ typedef enum {
     U_GNSS_MODULE_TYPE_M8 = 0,
     U_GNSS_MODULE_TYPE_MAX_NUM
 } uGnssModuleType_t;
+
+/** @}*/
 
 #endif // _U_GNSS_MODULE_TYPES_H_
 

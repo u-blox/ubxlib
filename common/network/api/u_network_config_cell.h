@@ -22,7 +22,12 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
-/* This header file defines the configuration structure for the
+/** \addtogroup network
+ *  @{
+ */
+
+/** @file
+ * @brief This header file defines the configuration structure for the
  * network API for cellular.
  */
 
@@ -65,6 +70,8 @@ typedef struct {
        field is populated then the version field of
        this structure must be set to 1 or higher". */
 } uNetworkCfgCell_t;
+
+/** @}*/
 
 #endif // _U_NETWORK_CONFIG_CELL_H_
 

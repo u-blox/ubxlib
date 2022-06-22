@@ -64,45 +64,6 @@ Git clone https://github.com/ThrowTheSwitch/Unity into it; you should now have `
 
 Open a command window, with Administrator privileges, `CD` to `C:\agent\ubxlib\port\platform\common\automation` and run `python u_settings.py`.  This will spew out a load of warnings about things not existing and will create two settings files, `settings_v2.json` and `settings_v2_agent_specific.json`, in the directory`C:\Users\<your_username>\.ubx_automation`.  Open `settings_v2_agent_specific.json` in a text editor; if you installed any of the applications above (ignoring ones that are "anywhere on the path") into a directory other than the default, find the original entry in the file and edit it to match the location you used.  Then remove all of the `_FIX_ME` post-fixes in the file using search and replace and save the file.
 
-# Run The Agent
-
-To take the easy route:
-
-- on Windows create the directory you wish to run in, conventionally `C:\agent`, copy the batch file `agent_start.bat` into that directory, open a command prompt in that directory and run `agent_start /?` for further instructions.  You can then use the Windows Task Scheduler to have this batch file run at boot; if you want to avoid the irritating `Terminate batch job (Y/N)?` prompt when CTRL-C is pressed then append `< nul` to the end of the command-line, e.g. `agent_start.bat < nul`.  note that, when run by the Windows Task Scheduler, no debug output is visible locally on the agent and hence you may wish to just run `agent_start.bat < nul` at a command prompt (with Administrator privileges) while performing initial testing.
-
-- on Linux TODO.
-
-If you'd rather do things manually:
-
-Decide where you would like the agent's work to be carried out.  It is important to keep this path short and so it is best to use a `subst`ed drive.  For instance, you might create a directory `C:\agent\work` and then `subst z: C:\agent\work`. If you do not want to use `subst` for some reason then chose a very short directory name off the root, e.g. `C:\w`.
-
-You must also have decided the listening port number that this and other agents in this group of agents will make themselves available to the contoller on (see [MKII.md](MKII.md) for architectural details).  If it is not the default listening port, 17003, then you should add `-p x`, where `x` is the listening port number, to the command-line below.
-
-And finally you need to give the agent a logical name; it is a good idea to use the machine name for this, e.g. `gb-cmb-dt-051`.
-
-You are now ready to run the agent.  In a command window, with Administrator privileges, `CD` to `C:\agent\ubxlib\port\platform\common\automation`.  Command-line help can be obtained with `python u_agent_service.py -h` but an example command-line might be something like:
-
-`python u_agent_service.py -n gb-cmb-dt-051 -u C:\agent\Unity z: 0.0 0.1 0.2 2 3 4 13.0.0 17`
-
-...where the numbers at the end are the space-separated list of instances that the agent supports.  When prompted, let it through the Windows firewall.
-
-Run this as a test and you should see something like:
-
-```
-gb-cmb-dt-051: listening on port 17003, working directory "z:", instance(s) supported: 0.0 0.1 0.2 2 3 4 13.0.0 17.
-2021-05-04_09:20:06 gb-cmb-dt-051: started, CTRL-C to exit.
-```
-
-If you then see:
-
-```
-no registry acknowledged
-```
-
-...this means that the agent has been unable to locate `rpyc_registry.py`, which should be listening on port 18811 of a machine on the same network.  This is a requirement for [RPyC](https://rpyc.readthedocs.io/) to work (i.e. a single machine somewhere on the same network as the controller and this agent must be running something like `python "C:\Program Files\Python39\Scripts\rpyc_registry.py"`).  This problem should be resolved before you continue.
-
-It is a good idea to do a test run of the controller using this new agent: the controller should find it and be able to execute tests on it.
-
 # Attach Boards
 
 If you have chosen instances for which hardware is required you should now attach each piece of hardware to the agent, one by one, setting up the appropriate values for COM port and (where relevant) debugger in `settings_v2_agent_specific.json`, adding each instance to the list of instances supported by the agent and checking that each instance is working as expected.

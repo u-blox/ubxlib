@@ -22,11 +22,15 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+#include "u_device.h"
+
+/** \addtogroup network Network
+ *  @{
+ */
+
 /** @brief Functions for bringing up and down a network interface
  * on a device.  These functions are thread-safe.
  */
-
-#include "u_device.h"
 
 /** @file
  * @brief This header file defines the network API. These functions are
@@ -35,6 +39,7 @@
  * The functions here should be used in conjunction with those in the
  * uDevice API in the following sequence.
  *
+ * ```
  * uDeviceInit():           call this at start of day in order to make
  *                          the device API available.
  * uDeviceOpen():           call this with a pointer to a const structure
@@ -59,6 +64,7 @@
  *                          must be called re-instantiate the device.
  * uDeviceDeinit():         call this at end of day in order to clear up any
  *                          resources owned by the device API.
+ * ```
  */
 
 #ifdef __cplusplus
@@ -106,7 +112,7 @@ typedef int32_t uNetworkCfgVersion_t;
 typedef struct {
     int32_t connHandle;  /**< connection handle (use to send disconnect). */
     char *pAddress; /**< BLE address. */
-    int32_t status; /**< new status of connection; see uBleConnectionStatus_t
+    int32_t status; /**< new status of connection; see #uBleConnectionStatus_t
                          in u_ble_sps.h. */
     int32_t channel; /**< channel nbr, use to send data. */
     int32_t mtu; /**< max size of each packet. */
@@ -115,8 +121,8 @@ typedef struct {
 /** Network status information for cellular.
  */
 typedef struct {
-    int32_t domain; /**< the cellular domain; see uCellNetRegDomain_t in u_cell_net.h. */
-    int32_t status; /**< the status on that domain; see uCellNetStatus_t in u_cell_net.h. */
+    int32_t domain; /**< the cellular domain; see #uCellNetRegDomain_t in u_cell_net.h. */
+    int32_t status; /**< the status on that domain; see #uCellNetStatus_t in u_cell_net.h. */
 } uNetworkStatusCell_t;
 
 /** Network status information for Wi-Fi.
@@ -124,7 +130,7 @@ typedef struct {
 typedef struct {
     int32_t connId;  /**< connection ID. */
     int32_t status; /**< new status of connection; see U_WIFI_CON_STATUS_xx in u_wifi.h. */
-    int32_t channel; /**< Wi-Fi channel; only valid for status U_WIFI_CON_STATUS_CONNECTED. */
+    int32_t channel; /**< Wi-Fi channel; only valid for status #U_WIFI_CON_STATUS_CONNECTED. */
     char *pBssid; /**< remote AP BSSID as a null terminated string. */
     int32_t disconnectReason; /**< disconnect reason; see U_WIFI_CON_STATUS_xx in u_wifi.h. */
 } uNetworkStatusWifi_t;
@@ -148,9 +154,9 @@ typedef union {
  *                     any network type; please pick the
  *                     correct union member for the value
  *                     of networkType, i.e. the ble member
- *                     for U_NETWORK_TYPE_BLE, the cell member
- *                     for U_NETWORK_TYPE_CELL and the wifi
- *                     member for U_NETWORK_TYPE_WIFI
+ *                     for #U_NETWORK_TYPE_BLE, the cell member
+ *                     for #U_NETWORK_TYPE_CELL and the wifi
+ *                     member for #U_NETWORK_TYPE_WIFI
  *                     (recalling that reporting of network
  *                     status is not relevant to GNSS).
  *                     IMPORTANT: the status information
@@ -159,7 +165,7 @@ typedef union {
  *                     is taken.  For instance, to record
  *                     the address of a BLE peer for later
  *                     use, one would do this:
- *
+ * ```
  *                     char peerAddress[32];
  *                     void myNetworkStatusCallback(uDeviceHandle_t devHandle,
  *                                                  uNetworkType_t netType,
@@ -173,7 +179,7 @@ typedef union {
  *                                    pStatus->ble.pAddress);
  *                        }
  *                    ...
- *
+ * ```
  * @param[out] pParameter the value of pCallbackParameter as passed
  *                        to uNetworkSetStatusCallback().
  */
@@ -215,14 +221,14 @@ typedef struct {
  *                         structures are defined by this
  *                         API in the u_network_xxx.h header
  *                         files and have the name
- *                         uNetworkConfigurationXxx_t, where
- *                         Xxx is replaced by one of Cell,
- *                         Ble or Wifi.  The configuration
- *                         is passed transparently through to
- *                         the given API, hence the use of
- *                         void * here. The second entry in
- *                         all of these structures is of type
- *                         uNetworkType_t to indicate the
+ *                         uNetworkCfgXxx_t, where Xxx is
+ *                         replaced by one of Cell, BLE or
+ *                         Wifi.  The configuration is passed
+ *                         transparently through to the given
+ *                         API, hence the use of void *
+ *                         here. The second entry in all of
+ *                         these structures is of type
+ *                         #uNetworkType_t to indicate the
  *                         type and allow cross-checking.
  *                         Can be set to NULL on subsequent calls
  *                         if the configuration is unchanged.
@@ -292,7 +298,7 @@ int32_t uNetworkInterfaceDown(uDeviceHandle_t devHandle, uNetworkType_t netType)
  * your callback task you are quite likely to get stuck.
  *
  * The callback will be called in a task with a stack of size
- * U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES (see u_at_client.h).
+ * #U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES (see u_at_client.h).
  * Calling uNetworkInterfaceDown() will cancel the callback.
  *
  * @param devHandle               the handle of the device carrying
@@ -318,6 +324,8 @@ int32_t uNetworkSetStatusCallback(uDeviceHandle_t devHandle,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_NETWORK_H_
 

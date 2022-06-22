@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __utils
+ *  @{
+ */
+
 /** @file
  * @brief Ring buffer wrapper API for linear buffer.
  * All functions except uRingBufferCreate() and uRingBufferDelete()
@@ -75,7 +79,6 @@ void uRingBufferDelete(uRingBuffer_t *pRingBuffer);
  * @param pRingBuffer   handle to ringbuffer.
  * @param pData         pointer to data.
  * @param length        length of data.
- *
  * @return              true if data was added
  *                      false if data was not added, which will be
  *                      the case if there is not room enough.
@@ -87,7 +90,6 @@ bool uRingBufferAdd(uRingBuffer_t *pRingBuffer, const char *pData, size_t length
  * @param pRingBuffer   handle to ringbuffer.
  * @param pData         pointer where to put data.
  * @param length        maximum length of data.
- *
  * @return              number of bytes read.
  */
 size_t uRingBufferRead(uRingBuffer_t *pRingBuffer, char *pData, size_t length);
@@ -95,7 +97,6 @@ size_t uRingBufferRead(uRingBuffer_t *pRingBuffer, char *pData, size_t length);
 /** Amount of data available.
  *
  * @param pRingBuffer   handle to ringbuffer.
- *
  * @return              number of bytes available for reading.
  */
 size_t uRingBufferDataSize(const uRingBuffer_t *pRingBuffer);
@@ -103,7 +104,6 @@ size_t uRingBufferDataSize(const uRingBuffer_t *pRingBuffer);
 /** Free space available.
  *
  * @param pRingBuffer   handle to ringbuffer.
- *
  * @return              number of bytes available for storing.
  */
 size_t uRingBufferAvailableSize(const uRingBuffer_t *pRingBuffer);
@@ -118,6 +118,8 @@ void uRingBufferReset(uRingBuffer_t *pRingBuffer);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_RINGBUFFER_H_
 

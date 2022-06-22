@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup MQTT-Client
+ *  @{
+ */
 
 /** @file
  * @brief This header file contains definitions common across
@@ -67,27 +72,27 @@ typedef enum {
 
 /** This type holds the two sorts of MQTT-SN topic name; a uint16_t
  * ID (i.e. 0 to 65535) or a two-character name (e.g. "ab"). The
- * structure here MUST match uCellMqttSnTopicName_t.
+ * structure here MUST match #uCellMqttSnTopicName_t.
  */
 typedef struct {
 // *INDENT-OFF* (otherwise AStyle makes a mess of this)
     union {
-        uint16_t id; /**< Populate this for the types U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL
-                          or U_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED. */
+        uint16_t id; /**< Populate this for the types #U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL
+                          or #U_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED. */
         // nameShort MUST be of length 2, as defined by the MQTT-SN specifications; the
         // code is written such that no terminating 0 is required in the storage here.
-        char nameShort[2]; /**< Populate this for U_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT;
+        char nameShort[2]; /**< Populate this for #U_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT;
                                 nameShort must contain two ASCII characters, no
                                 terminator is required. */
     } name;
     uMqttSnTopicNameType_t type; /**< If the id field is populated and was obtained
                                       through uMqttClientSnRegisterNormalTopic()
                                       or uMqttClientSnSubscribeNormalTopic() then set this to
-                                      U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL.  If the id field
+                                      #U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL.  If the id field
                                       is populated and is a predefined topic ID then set
-                                      this to U_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED.  If the
+                                      this to #U_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED.  If the
                                       nameShort field is populated, set this to
-                                      U_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT. */
+                                      #U_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT. */
 // *INDENT-ON*
 } uMqttSnTopicName_t;
 
@@ -119,6 +124,8 @@ typedef struct {
                                     MQTT disconnects/connects, else
                                     it will be cleared. */
 } uMqttWill_t;
+
+/** @}*/
 
 #endif // _U_MQTT_COMMON_H_
 

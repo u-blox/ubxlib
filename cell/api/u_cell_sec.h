@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _cell
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the APIs for u-blox security on a
@@ -82,7 +87,7 @@ bool uCellSecIsBootstrapped(uDeviceHandle_t cellHandle);
  *
  * @param cellHandle      the handle of the cellular instance.
  * @param pSerialNumber   pointer to storage of length at least
- *                        U_CELL_INFO_IMEI_SIZE bytes plus an
+ *                        #U_CELL_INFO_IMEI_SIZE bytes plus an
  *                        additional byte for the terminator,
  *                        where the IMEI string will be
  *                        placed; cannot be NULL.
@@ -100,7 +105,7 @@ int32_t uCellSecGetSerialNumber(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle      the handle of the cellular instance.
  * @param pRootOfTrustUid pointer to storage of at least
- *                        U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES
+ *                        #U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES
  *                        where the root of trust UID will be placed
  *                        encoded as binary, e.g.
  *                        [0x0a, 0x04, 0xf0, 0x08, 0x00, 0x3c, 0x96, 0x23],
@@ -426,11 +431,11 @@ int32_t uCellSecE2eGetVersion(uDeviceHandle_t cellHandle);
  * @param pDataOut       a pointer to a location to store the
  *                       encrypted data that MUST BE at least of
  *                       size dataSizeBytes +
- *                       U_SECURITY_E2E_V1_HEADER_LENGTH_BYTES for
+ *                       #U_SECURITY_E2E_V1_HEADER_LENGTH_BYTES for
  *                       E2E encryption version 1 or dataSizeBytes +
- *                       U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES for
+ *                       #U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES for
  *                       E2E encryption version 2 (or you can
- *                       just use U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES
+ *                       just use #U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES
  *                       for both cases); can only be NULL if pDataIn
  *                       is NULL.
  * @param dataSizeBytes  the number of bytes of data to encrypt;
@@ -490,6 +495,8 @@ int32_t uCellSecHeartbeatTrigger(uDeviceHandle_t cellHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_SEC_H_
 

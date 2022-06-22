@@ -21,10 +21,15 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
 
+/** \addtogroup _BLE
+ *  @{
+ */
+
 /** @file
- * @brief This header file defines the APIs that configure ble.
+ * @brief This header file defines the APIs that configure BLE.
  */
 
 #ifdef __cplusplus
@@ -68,6 +73,8 @@ int32_t uBleCfgConfigure(uDeviceHandle_t devHandle,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_BLE_CFG_H_
 

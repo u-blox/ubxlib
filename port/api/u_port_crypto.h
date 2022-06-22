@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __port
+ *  @{
+ */
+
 /** @file
  * @brief Porting layer for cryptographic functions, mapped to
  * mbedTLS on most platforms.  These functions are thread-safe.
@@ -149,6 +153,8 @@ int32_t uPortCryptoAes128CbcDecrypt(const char *pKey,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_PORT_CRYPTO_H_
 

@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _GNSS
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the types for GNSS that are used
  * in the API.
@@ -45,7 +49,7 @@
 
 #ifndef U_GNSS_DEFAULT_TIMEOUT_MS
 /** The default time-out to use on the GNSS interface in
- * milliseconds; note that the separate U_GNSS_POS_TIMEOUT_SECONDS
+ * milliseconds; note that the separate #U_GNSS_POS_TIMEOUT_SECONDS
  * is used for the GNSS position establishment calls.
  */
 # define U_GNSS_DEFAULT_TIMEOUT_MS 10000
@@ -60,10 +64,10 @@
 #define U_GNSS_PIN_INVERTED 0x80
 
 #ifndef U_GNSS_PIN_ENABLE_POWER_ON_STATE
-/** Which way up the GNSS_ENABLE_POWER pin ON state is.
+/** Which way up the U_CFG_APP_PIN_GNSS_ENABLE_POWER pin ON state is.
  * If you wish to indicate that 0 is the "on" state then you
  * should do that by ORing the value of pinGnssEnablePower with
- * U_GNSS_PIN_INVERTED in the call to uGnssAdd() rather
+ * #U_GNSS_PIN_INVERTED in the call to uGnssAdd() rather
  * than changing this value.  And certainly don't do both or the
  * sense of the pin will be inverted twice.
  */
@@ -124,6 +128,8 @@ typedef enum {
     U_GNSS_FIX_MODE_3D = 2,
     U_GNSS_FIX_MODE_AUTO = 3
 } uGnssFixMode_t;
+
+/** @}*/
 
 #endif // _U_GNSS_TYPE_H_
 

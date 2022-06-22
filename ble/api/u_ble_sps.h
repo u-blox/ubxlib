@@ -20,10 +20,14 @@
 /* Only header files representing a direct and unavoidable
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
- * please keep #includes to your .c files. except this one to
- * pick up the definition of U_DEPRECATED. */
+ * please keep #includes to your .c files. */
+
 #include "u_compiler.h"
 #include "u_device.h"
+
+/** \addtogroup _BLE
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the APIs that obtain data transfer
@@ -57,7 +61,7 @@ extern "C" {
 #endif
 
 /** Default timeout for data sending. Can be modified per
- *  connection with uBleSpsSetSendTimeout.
+ *  connection with uBleSpsSetSendTimeout().
  */
 #ifndef U_BLE_SPS_DEFAULT_SEND_TIMEOUT_MS
 #define U_BLE_SPS_DEFAULT_SEND_TIMEOUT_MS 100
@@ -126,16 +130,16 @@ typedef struct {
     uint16_t     creditsCcc;
 } uBleSpsHandles_t;
 
-/** Connection parameters
+/** Connection parameters.
  *
- *  @param scanInterval Scan interval (N*0.625 ms)
- *  @param scanWindow   Scan window (N*0.625 ms)
- *  @param createConnectionTmo Timeout before giving up if
- *                             remote device is not found in ms
- *  @param connIntervalMin Connection interval (N*1.25 ms)
- *  @param connIntervalMax Connection interval (N*1.25 ms)
- *  @param connLatency Connection lantency, nbr of connection intervals
- *  @param linkLossTimeout Link loss timeout in ms
+ *  @param scanInterval        scan interval (N*0.625 ms).
+ *  @param scanWindow          scan window (N*0.625 ms).
+ *  @param createConnectionTmo timeout before giving up if
+ *                             remote device is not found in ms.
+ *  @param connIntervalMin     connection interval (N*1.25 ms).
+ *  @param connIntervalMax     connection interval (N*1.25 ms).
+ *  @param connLatency         connection lantency, nbr of connection intervals.
+ *  @param linkLossTimeout     link loss timeout in ms.
  */
 typedef struct {
     // For central
@@ -148,24 +152,22 @@ typedef struct {
     uint32_t linkLossTimeout;
 } uBleSpsConnParams_t;
 
-/** Connection status callback type
+/** Connection status callback type.
  *
  * @param connHandle         connection handle (use to send disconnect).
- * @param address            BLE address.
- * @param status             new status of connection, of uBleConnectionStatus_t type.
+ * @param pAddress           BLE address.
+ * @param status             new status of connection, of #uBleConnectionStatus_t type.
  * @param channel            channel nbr, use to send data.
  * @param mtu                max size of each packet.
  * @param pCallbackParameter parameter pointer set when registering callback.
  */
-typedef void (*uBleSpsConnectionStatusCallback_t)(int32_t connHandle, char *address,
+typedef void (*uBleSpsConnectionStatusCallback_t)(int32_t connHandle, char *pAddress,
                                                   int32_t status, int32_t channel, int32_t mtu,
                                                   void *pCallbackParameter);
 
-/** Data callback type
+/** Data callback type. Called to indicate that data is available for reading.
  *
- *  Called to indicate that data is available for reading
- *
- * @param connHandle         channel number.
+ * @param channel            channel number.
  * @param pCallbackParameter parameter pointer set when registering callback.
  */
 typedef void (*uBleSpsAvailableCallback_t)(int32_t channel, void *pCallbackParameter);
@@ -174,7 +176,7 @@ typedef void (*uBleSpsAvailableCallback_t)(int32_t channel, void *pCallbackParam
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Sets the callback for connection events
+/** Sets the callback for connection events.
  * When a connected callback arrives, it is advisable to have a 50 ms delay
  * before data is sent on the connect.
  *
@@ -187,7 +189,7 @@ int32_t uBleSpsSetCallbackConnectionStatus(uDeviceHandle_t devHandle,
                                            uBleSpsConnectionStatusCallback_t pCallback,
                                            void *pCallbackParameter);
 
-/** Sets the callback for data available
+/** Sets the callback for data available.
  *
  * @param devHandle          the handle of the u-blox device.
  * @param pCallback          callback function. Use NULL to deregister the callback.
@@ -201,9 +203,9 @@ int32_t uBleSpsSetDataAvailableCallback(uDeviceHandle_t devHandle,
 /** Create a SPS connection over BLE, this is the u-blox proprietary protocol for
  *  streaming data over ble. Flow control is used.
  *
- * @note If the initiating side is peripheral it must also run a
- *       SPS server which the central device then will connect to when
- *       this function is called.
+ * @note if the initiating side is peripheral it must also run an
+ * SPS server which the central device then will connect to when this
+ * function is called.
  *
  * @param devHandle    the handle of the u-blox device.
  * @param pAddress     pointer to the address in 0012F398DD12p format,
@@ -254,8 +256,8 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
  * and return. No error code will be given since uBleSpsSend returns the number of bytes
  * actually written.
  *
- * @note This setting is per channel and thus has to be set after connecting.
- *        U_BLE_SPS_DEFAULT_SEND_TIMEOUT_MS will be used if timeout is not set
+ * @note this setting is per channel and thus has to be set after connecting.
+ * #U_BLE_SPS_DEFAULT_SEND_TIMEOUT_MS will be used if timeout is not set
  *
  * @param devHandle   the handle of the u-blox device.
  * @param channel     the channel to use this timeout on.
@@ -292,11 +294,11 @@ int32_t uBleSpsGetSpsServerHandles(uDeviceHandle_t devHandle, int32_t channel,
  * and preseting them before connecting to the same server next time,
  * the connection setup speed will improve significantly.
  * Preset cached server handles for a bonded device using this function
- * The preset values will be used on the next call to uBleSpsConnectSps
+ * The preset values will be used on the next call to uBleSpsConnectSps().
  *
  * @note This only works when the connecting side is central.
- *       If connecting side is peripheral it is up to the central
- *       device to cache server handles.
+ * If connecting side is peripheral it is up to the central device
+ * to cache server handles.
  *
  * @param devHandle   the handle of the u-blox device.
  * @param pHandles    pointer to struct with handles.
@@ -311,13 +313,13 @@ int32_t uBleSpsPresetSpsServerHandles(uDeviceHandle_t devHandle, const uBleSpsHa
  * Flow control can't be altered for an ongoing connection
  * Disabling flow control decrease connection setup time and data overhead
  * with the risk of loosing data. If the received amount of data during a
- * connection is smaller than U_BLE_SPS_BUFFER_SIZE there is no risk of
+ * connection is smaller than #U_BLE_SPS_BUFFER_SIZE there is no risk of
  * loosing received data. The risk of loosing sent data depends on remote
  * side buffers.
  *
- * Notice: If you use uBleSpsGetSpsServerHandles to read server handles you have
- *         to connect with flow control enabled since some of the server handles
- *         are related to flow control.
+ * Notice: If you use uBleSpsGetSpsServerHandles() to read server handles
+ * you have to connect with flow control enabled since some of the server
+ * handles are related to flow control.
  *
  * @param devHandle   the handle of the u-blox device.
  *
@@ -328,6 +330,8 @@ int32_t uBleSpsDisableFlowCtrlOnNext(uDeviceHandle_t devHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_BLE_SPS_H_
 

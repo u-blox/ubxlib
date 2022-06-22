@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _cell
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the sockets APIs for cellular.
  * These functions are NOT thread-safe and are NOT intended to be
@@ -32,7 +36,7 @@
  * the common/sock API provides blocking behaviour.
  * The functions in here are different to those in the rest of
  * the cellular API in that they return a negated value from the
- * errno values in u_sock_errno.h (e.g. -U_SOCK_ENOMEM) instead
+ * errno values in u_sock_errno.h (e.g. -#U_SOCK_ENOMEM) instead
  * of a value from u_error_common.h.
  */
 
@@ -54,7 +58,7 @@ extern "C" {
 #ifndef U_CELL_SOCK_TCP_RETRY_LIMIT
 /** The number of times to retry sending TCP data:
  * if the module is accepting less than
- * U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES each time,
+ * #U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES each time,
  * helps to prevent lock-ups.
  */
 # define U_CELL_SOCK_TCP_RETRY_LIMIT 3
@@ -319,7 +323,7 @@ bool uCellSockHexModeIsOn(uDeviceHandle_t cellHandle);
  * -------------------------------------------------------------- */
 
 /** Send a datagram.  The maximum length of datagram
- * that can be transmitted is U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES
+ * that can be transmitted is #U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES
  * (or half this if hex mode is on): if dataSizeBytes is longer than
  * this nothing will be transmitted and an error will be returned.
  * Note that not all modules support use of uCellSockSendTo() on a
@@ -357,12 +361,12 @@ int32_t uCellSockSendTo(uDeviceHandle_t cellHandle,
  * @param dataSizeBytes  the number of bytes of storage available
  *                       at pData.  Each call receives a single
  *                       datagram of up to
- *                       U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES (or
+ *                       #U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES (or
  *                       half that if in hex mode); if dataSizeBytes
  *                       is less than this the remainder will be
  *                       thrown away.  To ensure no loss always
  *                       allocate a buffer of at least
- *                       U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES  (or
+ *                       #U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES  (or
  *                       half that if in hex mode).
  * @return               the number of bytes received else negated
  *                       value of U_SOCK_Exxx from u_sock_errno.h.
@@ -563,6 +567,8 @@ int32_t uCellSockGetBytesReceived(uDeviceHandle_t cellHandle,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_SOCK_H_
 

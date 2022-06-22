@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup security Security
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the u-blox security API; these
@@ -51,7 +56,7 @@ extern "C" {
  * included for backwards-compatibility: please instead
  * use the V1 or V2 values depending on what the function
  * uSecurityE2eGetVersion() returns, or use
- * U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES.
+ * #U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES.
  */
 #define U_SECURITY_E2E_HEADER_LENGTH_BYTES 32
 
@@ -151,7 +156,7 @@ bool uSecurityIsBootstrapped(uDeviceHandle_t devHandle);
  * @param devHandle       the handle of the instance to
  *                        be used, e.g. obtained using uDeviceOpen().
  * @param pSerialNumber   pointer to storage of at least
- *                        U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES
+ *                        #U_SECURITY_SERIAL_NUMBER_MAX_LENGTH_BYTES
  *                        where the serial number string will be
  *                        placed; cannot be NULL.
  * @return                the length of the string copied into
@@ -170,7 +175,7 @@ int32_t uSecurityGetSerialNumber(uDeviceHandle_t devHandle,
  * @param devHandle       the handle of the instance to
  *                        be used, e.g. obtained using uDeviceOpen().
  * @param pRootOfTrustUid pointer to storage of at least
- *                        U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES
+ *                        #U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES
  *                        where the root of trust UID will be placed,
  *                        encoded as binary, e.g.
  *                        [0x0a, 0x04, 0xf0, 0x08, 0x00, 0x3c, 0x96, 0x23],
@@ -523,11 +528,11 @@ int32_t uSecurityE2eGetVersion(uDeviceHandle_t devHandle);
  * @param pDataOut       a pointer to a location to store the
  *                       encrypted data that MUST BE at least of
  *                       size dataSizeBytes +
- *                       U_SECURITY_E2E_V1_HEADER_LENGTH_BYTES for
+ *                       #U_SECURITY_E2E_V1_HEADER_LENGTH_BYTES for
  *                       E2E encryption version 1 or dataSizeBytes +
- *                       U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES for
+ *                       #U_SECURITY_E2E_V2_HEADER_LENGTH_BYTES for
  *                       E2E encryption version 2 (or you can
- *                       just use U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES
+ *                       just use #U_SECURITY_E2E_HEADER_LENGTH_MAX_BYTES
  *                       for both cases); can only be NULL if pDataIn
  *                       is NULL.
  * @param dataSizeBytes  the number of bytes of data to encrypt;
@@ -594,6 +599,8 @@ int32_t uSecurityHeartbeatTrigger(uDeviceHandle_t devHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_SECURITY_H_
 

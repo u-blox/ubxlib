@@ -22,7 +22,11 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
-/** @file
+/** \addtogroup _BLE _Bluetooth Low Energy
+ *  @{
+ */
+
+ /** @file
  * @brief This header file defines the general ble APIs,
  * basically initialise and deinitialise.
  */
@@ -65,11 +69,11 @@ extern "C" {
 typedef enum {
     U_BLE_ERROR_FORCE_32_BIT = 0x7FFFFFFF,  /**< Force this enum to be 32 bit as it can be
                                                   used as a size also. */
-    U_BLE_ERROR_AT = U_ERROR_BLE_MAX,      /**< -512 if U_ERROR_BASE is 0. */
-    U_BLE_ERROR_NOT_CONFIGURED = U_ERROR_BLE_MAX - 1, /**< -511 if U_ERROR_BASE is 0. */
-    U_BLE_ERROR_NOT_FOUND = U_ERROR_BLE_MAX - 2,  /**< -510 if U_ERROR_BASE is 0. */
-    U_BLE_ERROR_INVALID_MODE = U_ERROR_BLE_MAX - 3,  /**< -509 if U_ERROR_BASE is 0. */
-    U_BLE_ERROR_TEMPORARY_FAILURE = U_ERROR_BLE_MAX - 4  /**< -508 if U_ERROR_BASE is 0. */
+    U_BLE_ERROR_AT = U_ERROR_BLE_MAX,      /**< -512 if #U_ERROR_BASE is 0. */
+    U_BLE_ERROR_NOT_CONFIGURED = U_ERROR_BLE_MAX - 1, /**< -511 if #U_ERROR_BASE is 0. */
+    U_BLE_ERROR_NOT_FOUND = U_ERROR_BLE_MAX - 2,  /**< -510 if #U_ERROR_BASE is 0. */
+    U_BLE_ERROR_INVALID_MODE = U_ERROR_BLE_MAX - 3,  /**< -509 if #U_ERROR_BASE is 0. */
+    U_BLE_ERROR_TEMPORARY_FAILURE = U_ERROR_BLE_MAX - 4  /**< -508 if #U_ERROR_BASE is 0. */
 } uBleErrorCode_t;
 
 /* ----------------------------------------------------------------
@@ -91,6 +95,8 @@ void uBleDeinit(void);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_BLE_H_
 

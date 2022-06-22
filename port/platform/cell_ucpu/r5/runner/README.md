@@ -50,8 +50,8 @@ ninja
 A .bin file will be generated after the above command, which you can flash on to SARAR5UCPU platform.
 Please note that if you want to run tests or examples you have to provide the name of test group or example using `U_CFG_TEST_FILTER`, if you want to run a specific test, provide it's name using `U_CFG_APP_FILTER` along with the `U_CFG_TEST_FILTER`. If you wish to write your own application you can simply edit the `u_main.c` file placed at `cell_ucpu\r5\app`. Currently supported tests and examples are mentioned in the table below.
 
-| Tests\Examples  | U_CFG_TEST_FILTER |
-| -------------   | ------------- 	 |
+| Tests/Examples  | U_CFG_TEST_FILTER |
+| -------------   | ------------- |
 | port tests  | port  |
 | cellular tests  | cell  |
 | network tests | network|

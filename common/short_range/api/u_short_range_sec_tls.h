@@ -22,14 +22,18 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _short-range
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the TLS security APIs for a u-blox
  * Wifi/BLE module.  Note that these functions are not intended to be
  * called directly, they are called internally within ubxlib by the
  * common TLS security API (common/security/api/u_security_tls.h)
  * when a secure connection is requested by one of the common
- * protocol APIs (e.g. common/sock).
- * These functions are not thread-safe.
+ * protocol APIs (e.g. common/sock). These functions are not
+ * thread-safe.
  */
 
 #ifdef __cplusplus
@@ -109,6 +113,8 @@ int32_t uShortRangeSecTlsResetLastError();
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif //_U_SHORT_RANGE_SEC_TLS_H_
 

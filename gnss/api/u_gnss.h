@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _GNSS _GNSS
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the general GNSS APIs.
@@ -44,8 +49,8 @@ extern "C" {
 typedef enum {
     U_GNSS_ERROR_FORCE_32_BIT = 0x7FFFFFFF,    /**< Force this enum to be 32 bit as it can be
                                                     used as a size also. */
-    U_GNSS_ERROR_TRANSPORT = U_ERROR_GNSS_MAX, /**< -1024 if U_ERROR_BASE is 0. */
-    U_GNSS_ERROR_NACK = U_ERROR_GNSS_MAX - 1,  /**< -1025 if U_ERROR_BASE is 0. */
+    U_GNSS_ERROR_TRANSPORT = U_ERROR_GNSS_MAX, /**< -1024 if #U_ERROR_BASE is 0. */
+    U_GNSS_ERROR_NACK = U_ERROR_GNSS_MAX - 1,  /**< -1025 if #U_ERROR_BASE is 0. */
 } uGnssErrorCode_t;
 
 /* ----------------------------------------------------------------
@@ -78,7 +83,7 @@ void uGnssDeinit();
  *                           the pin of this MCU and whatever is switching
  *                           the power, so that 0 indicates "on" rather
  *                           than 1, then the value of pinGnssEnablePower
- *                           should be ORed with U_GNSS_PIN_INVERTED (defined
+ *                           should be ORed with #U_GNSS_PIN_INVERTED (defined
  *                           in u_gnss_type.h).
  * @param leavePowerAlone    set this to true if initialisation should
  *                           not modify the state of pinGnssEnablePower, else
@@ -152,7 +157,7 @@ void uGnssSetAtPinDataReady(uDeviceHandle_t gnssHandle, int32_t pin);
 
 /** Get the maximum time to wait for a response from the
  * GNSS chip for general API calls; does not apply to the
- * positioning calls, where U_GNSS_POS_TIMEOUT_SECONDS and
+ * positioning calls, where #U_GNSS_POS_TIMEOUT_SECONDS and
  * the pKeepGoingCallback are used.
  *
  * @param gnssHandle  the handle of the GNSS instance.
@@ -162,8 +167,8 @@ int32_t uGnssGetTimeout(uDeviceHandle_t gnssHandle);
 
 /** Set the timeout for getting a response from the GNSS chip.
  * If this is not called the timeout will be
- * U_GNSS_DEFAULT_TIMEOUT_MS. Does not apply to the positioning
- * calls, where U_GNSS_POS_TIMEOUT_SECONDS and the
+ * #U_GNSS_DEFAULT_TIMEOUT_MS. Does not apply to the positioning
+ * calls, where #U_GNSS_POS_TIMEOUT_SECONDS and the
  * pKeepGoingCallback are used.
  *
  * @param gnssHandle  the handle of the GNSS instance.
@@ -192,6 +197,8 @@ void uGnssSetUbxMessagePrint(uDeviceHandle_t gnssHandle, bool onNotOff);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_GNSS_H_
 

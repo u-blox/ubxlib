@@ -42,14 +42,10 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** Initialise the os private stuff.
- *
- * @return void
  */
 void uPortOsPrivateInit();
 
 /** Deinitialise the os private stuff.
- *
- * @return void
  */
 void uPortOsPrivateDeinit();
 

@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _wifi
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the MQTT APIs for WiFi.
@@ -56,7 +61,7 @@ typedef enum {
  * -------------------------------------------------------------- */
 
 /** Initialise the WiFi MQTT client. If the client is already
- *  initialised then this function returns U_ERROR_COMMON_SUCCESS
+ *  initialised then this function returns #U_ERROR_COMMON_SUCCESS
  *
  *  @param devHandle     the handle of the wifi instance to be used.
  *  @param ppMqttSession pointer to MQTT session will be allocated and returned.
@@ -120,9 +125,9 @@ int32_t uWifiMqttSetMessageCallback(const uMqttClientContext_t *pContext,
 
 /** Set a callback to be called if the MQTT client disconnects
  * from the boker. WiFi MQTT client triggers disconnect callback
- * Error code will be set to U_ERROR_COMMON_TIMEOUT,
+ * Error code will be set to #U_ERROR_COMMON_TIMEOUT,
  * when the connection to broker fails during connection initiation.
- * Error code will be set to U_ERROR_COMMON_SUCCESS,
+ * Error code will be set to #U_ERROR_COMMON_SUCCESS,
  * when the disconnection initiated by the user using
  * uWifiMqttClose() or uWifiMqttDisconnect()
  *
@@ -160,15 +165,14 @@ int32_t uWifiMqttUnsubscribe(const uMqttClientContext_t *pContext,
 /** Close connected MQTT session. This API will disconnect from the broker if connected
  * followed by releasing all the resources associated to that particular session
  *
- * @param pContext           client context returned by pUMqttClientOpen().
- * @return                   zero on success or negative error code.
+ * @param pContext client context returned by pUMqttClientOpen().
  */
 void uWifiMqttClose(uMqttClientContext_t *pContext);
 
 /** Get total number of unread messages in a given MQTT session.
  *
- * @param pContext           client context returned by pUMqttClientOpen().
- * @return                   zero on success or negative error code.
+ * @param pContext client context returned by pUMqttClientOpen().
+ * @return         zero on success or negative error code.
  */
 int32_t uWifiMqttGetUnread(const uMqttClientContext_t *pContext);
 
@@ -201,6 +205,8 @@ bool uWifiMqttIsConnected(const uMqttClientContext_t *pContext);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_WIFI_MQTT_H_
 

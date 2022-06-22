@@ -19,6 +19,10 @@
 
 #include "u_short_range_module_type.h"
 
+/** \addtogroup _BLE
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the module types for ble.
  */
@@ -41,9 +45,9 @@
 /** The possible types of BLE module.
  */
 typedef enum {
-// X macro is used to generate this enum from U_SHORT_RANGE_MODULE_LIST
+// X macro is used to generate this enum from #U_SHORT_RANGE_MODULE_LIST
 // for all entries with field "BLE" set to U_YES.
-// It will prefix the "Module" field from U_SHORT_RANGE_MODULE_LIST with
+// It will prefix the "Module" field from #U_SHORT_RANGE_MODULE_LIST with
 // U_BLE_MODULE_TYPE_, thus creating the enum values below:
 //    U_BLE_MODULE_TYPE_NINA_B1  < Modules NINA-B1. BLE only
 //    U_BLE_MODULE_TYPE_ANNA_B1  < Modules ANNA-B1. BLE only
@@ -61,6 +65,8 @@ typedef enum {
 #undef U_NO
 #undef U_YES
 #undef U_SHORT_RANGE_MODULE
+
+/** @}*/
 
 #endif // _U_BLE_MODULE_TYPE_H_
 

@@ -21,9 +21,14 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_security_tls.h"
 #include "u_device.h"
 #include "u_mqtt_common.h"
+
+/** \addtogroup MQTT-Client MQTT Client
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the u-blox MQTT and MQTT-SN client
@@ -69,7 +74,7 @@ extern "C" {
  * are supported by all modules and the maximum length of the
  * various string fields may differ between modules.
  * NOTE: if this structure is modified be sure to modify
- * U_MQTT_CLIENT_CONNECTION_DEFAULT to match.
+ * #U_MQTT_CLIENT_CONNECTION_DEFAULT to match.
  */
 typedef struct {
     const char *pBrokerNameStr;        /**< the null-terminated name
@@ -146,7 +151,7 @@ typedef struct {
                                             MQTT sessions is ended.  While the
                                             callback function returns true the
                                             API will continue to wait until success
-                                            or U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS
+                                            or #U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS
                                             is reached.  If the callback function
                                             returns false then the API will
                                             return. Note that the thing the API
@@ -159,7 +164,7 @@ typedef struct {
                                             May be NULL (the default), in which
                                             case the APIs will continue to wait
                                             until success or
-                                            U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS
+                                            #U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS
                                             have elapsed. */
     bool mqttSn;                       /**< set to true to use MQTT-SN, else the
                                             connection will be MQTT (the default). */
@@ -312,7 +317,6 @@ int32_t uMqttClientGetLastErrorCode(const uMqttClientContext_t *pContext);
 /** Get the total number of message sent by the MQTT client.
  *
  * @param[in] pContext  a pointer to the internal MQTT context.
- *
  * @return              total number of messages published,
  *                      or negative error code.
  */
@@ -321,7 +325,6 @@ int32_t uMqttClientGetTotalMessagesSent(const uMqttClientContext_t *pContext);
 /** Get the total number of messages received and read by the MQTT client.
  *
  * @param[in] pContext  a pointer to the internal MQTT context.
- *
  * @return              total number of messages received and read,
  *                      or negative error code.
  */
@@ -464,7 +467,7 @@ bool uMqttClientSnIsSupported(const uMqttClientContext_t *pContext);
 /** Convenience function to populate an MQTT-SN topic name with
  * a predefined MQTT-SN topic ID.
  *
- * @param      topicId    the predefined MQTT-SN topic ID.
+ * @param topicId         the predefined MQTT-SN topic ID.
  * @param[out] pTopicName a pointer to the MQTT-SN topic name to populate;
  *                        cannot be NULL.
  * @return                zero on success, else negative error code.
@@ -509,7 +512,7 @@ int32_t uMqttClientSnGetTopicId(const uMqttSnTopicName_t *pTopicName);
  * @param[in]  pTopicName         the MQTT-SN topic name; cannot be NULL.
  * @param[out] pTopicNameShortStr a place to put the short name string; must
  *                                be a buffer of length at least
- *                                U_MQTT_CLIENT_SN_TOPIC_NAME_SHORT_LENGTH_BYTES.
+ *                                #U_MQTT_CLIENT_SN_TOPIC_NAME_SHORT_LENGTH_BYTES.
  *                                A null-terminator will be added. Cannot be NULL.
  * @return                        if pTopicName contained a short name,
  *                                the number of bytes copied to
@@ -739,6 +742,8 @@ int32_t uMqttClientSnWillParametersUpdate(const uMqttClientContext_t *pContext);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_MQTT_CLIENT_H_
 

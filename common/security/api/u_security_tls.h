@@ -17,7 +17,6 @@
 #ifndef _U_SECURITY_TLS_H_
 #define _U_SECURITY_TLS_H_
 
-#include "u_device.h" // uDeviceHandle_t
 /* No other #includes allowed here.  Also, note that this header file
  * is allowed to be include inside other API header files which
  * hide it (e.g. u_sock_security.h) and hence it is important
@@ -25,10 +24,16 @@
  * types aside from the primitive ones except uDeviceHandle_t.
  */
 
+#include "u_device.h"
+
+/** \addtogroup security
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the types for configuring
  * an SSL/[D]TLS session for use e.g. on a socket or an MQTT
- * connection etc. TL;DR: look at uSecurityTlsSettings_t.
+ * connection etc. TL;DR: look at #uSecurityTlsSettings_t.
  */
 
 #ifdef __cplusplus
@@ -293,9 +298,9 @@ typedef struct {
  * Fields marked as supported only on cellular modules will be ignored
  * by BLE/Wifi modules.
  * IMPORTANT: whenever this structure is instantiated it should be assigned
- * to U_SECURITY_TLS_SETTINGS_DEFAULT to ensure that the correct default
+ * to #U_SECURITY_TLS_SETTINGS_DEFAULT to ensure that the correct default
  * settings are applied.
- * If this structure is updated U_SECURITY_TLS_SETTINGS_DEFAULT must be
+ * If this structure is updated #U_SECURITY_TLS_SETTINGS_DEFAULT must be
  * updated as well.
  */
 typedef struct {
@@ -327,14 +332,14 @@ typedef struct {
     uSecurityTlsBinary_t psk; /**< the pre-shared key as a binary sequence or
                                    an ASCII string (i.e. not hex encoded),
                                    maximum length
-                                   U_SECURITY_TLS_PSK_MAX_LENGTH_BYTES;
+                                   #U_SECURITY_TLS_PSK_MAX_LENGTH_BYTES;
                                    supported on cellular modules only and, on
                                    all currently supported modules, no ASCII
                                    control characters may be included. */
     uSecurityTlsBinary_t pskId; /**< the pre-shared key ID as a binary sequence or
                                      an ASCII string (i.e. not hex-encoded),
                                      maximum length
-                                     U_SECURITY_TLS_PSK_ID_MAX_LENGTH_BYTES;
+                                     #U_SECURITY_TLS_PSK_ID_MAX_LENGTH_BYTES;
                                      supported on cellular modules only and, on
                                      all currently supported modules, no ASCII
                                      control characters may be included. */
@@ -347,11 +352,11 @@ typedef struct {
     const char *pExpectedServerUrl; /**< the expected URL of the server, must be non-NULL
                                          if the value of certificateCheck includes a URL
                                          check, max length
-                                         U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES,
+                                         #U_SECURITY_TLS_EXPECTED_SERVER_URL_MAX_LENGTH_BYTES,
                                          otherwise must be NULL; supported on cellular
                                          modules only. */
     const char *pSni; /**< the Server Name Indication string used during TLS
-                           negotiation, maximum length U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES;
+                           negotiation, maximum length #U_SECURITY_TLS_SNI_MAX_LENGTH_BYTES;
                            this is optional on cellular modules while for Wifi modules it
                            is set automatically if the connect string is a URL. */
     bool enableSessionResumption; /**< set to true to enable session resumption; currently
@@ -459,6 +464,8 @@ void uSecurityTlsCleanUp();
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_SECURITY_TLS_H_
 

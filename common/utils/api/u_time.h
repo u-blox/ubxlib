@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __utils
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines functions to help with time
  * manipulation.
@@ -71,6 +75,8 @@ int64_t uTimeMonthsToSecondsUtc(int32_t monthsUtc);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_TIME_H_
 

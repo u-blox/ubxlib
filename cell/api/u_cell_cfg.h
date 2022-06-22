@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _cell
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the APIs that configure a cellular
@@ -71,8 +76,8 @@ extern "C" {
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param rat         the RAT to set the band mask for;
- *                    only U_CELL_NET_RAT_CATM1 and
- *                    U_CELL_NET_RAT_NB1 are permitted.
+ *                    only #U_CELL_NET_RAT_CATM1 and
+ *                    #U_CELL_NET_RAT_NB1 are permitted.
  * @param bandMask1   the first band mask where bit 0 is band 1
  *                    and bit 63 is band 64.
  * @param bandMask2   the second band mask where bit 0 is band 65
@@ -90,8 +95,8 @@ int32_t uCellCfgSetBandMask(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param rat         the radio access technology to obtain the
- *                    band mask for; only U_CELL_NET_RAT_CATM1 and
- *                    U_CELL_NET_RAT_NB1 are permitted.
+ *                    band mask for; only #U_CELL_NET_RAT_CATM1 and
+ *                    #U_CELL_NET_RAT_NB1 are permitted.
  * @param pBandMask1  pointer to a place to store band mask 1,
  *                    where bit 0 is band 1 and bit 63 is band 64,
  *                    cannot be NULL.
@@ -138,13 +143,13 @@ int32_t uCellCfgSetRat(uDeviceHandle_t cellHandle,
  * are module dependent.  Setting the same RAT at two
  * different ranks will result in that RAT only being set
  * in the higher (i.e. lower-numbered) of the two ranks.
- * A rank may be set to U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
+ * A rank may be set to #U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED
  * in order to eliminate the RAT at that rank but note that
  * having no RATs will generate an error and that the RATs
  * of lower rank will be shuffled-up so that there are no
  * gaps.  In other words, with RATs at ranks 0 = a and
  * 1 = b setting the RAT at rank 0 to
- * U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED will result in 0 = b.
+ * #U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED will result in 0 = b.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param rat         the radio access technology to use.
@@ -162,10 +167,10 @@ int32_t uCellCfgSetRatRank(uDeviceHandle_t cellHandle,
  * the cellular module at the given rank.  Rank 0 will always
  * return a known radio access technology at all times while
  * higher-numbered (i.e. lower priority) ranks may return
- * U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED.  As soon as
- * U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED is returned at a given
+ * #U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED.  As soon as
+ * #U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED is returned at a given
  * rank all greater ranks can be assumed to be
- * U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED.
+ * #U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param rank        the rank to check, where 0 is the highest
@@ -380,6 +385,8 @@ bool uCellCfgAutoBaudIsOn(uDeviceHandle_t cellHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_CFG_H_
 

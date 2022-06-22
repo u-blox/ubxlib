@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __port
+ *  @{
+ */
+
 /** @file
  * @brief An event queue.  Simply put, allows the user to run a
  * function in its own task context, driven asynchronously, with
@@ -137,11 +141,11 @@ extern "C" {
  * @param paramMaxLengthBytes  the maximum length of the parameters
  *                             structure to pass to the function,
  *                             cannot be larger than
- *                             U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES.
+ *                             #U_PORT_EVENT_QUEUE_MAX_PARAM_LENGTH_BYTES.
  * @param stackSizeBytes       the stack size of the task that the
  *                             function will be run in, must be
  *                             at least
- *                             U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES.
+ *                             #U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES.
  * @param priority             the priority of the task that the
  *                             function will be run in; see
  *                             u_cfg_os_platform_specific.h for
@@ -202,7 +206,7 @@ int32_t uPortEventQueueSend(int32_t handle, const void *pParam,
  * the event will not be sent and an error will be returned.
  * Note: you must ensure that your interrupt stack is large
  * enough to hold an array of size paramLengthBytes +
- * U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES. An event
+ * #U_PORT_EVENT_QUEUE_CONTROL_OR_SIZE_LENGTH_BYTES. An event
  * queue should not be closed while this function is in
  * progress.
  *
@@ -236,7 +240,7 @@ bool uPortEventQueueIsTask(int32_t handle);
  * queue in bytes.
  *
  * @param handle   the handle of the queue to check.
- * @return         the minimum stack fee for the lifetime
+ * @return         the minimum stack free for the lifetime
  *                 of the event task in bytes, else
  *                 negative error code.
  */
@@ -283,7 +287,7 @@ int32_t uPortEventQueueClose(int32_t handle);
 
 /** Get the number of entries free on the given event queue.
  * It is NOT a requirement that this API is implemented:
- * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED
  * should be returned.
  *
  * @param handle  the handle of the event queue.
@@ -295,6 +299,8 @@ int32_t uPortEventQueueGetFree(int32_t handle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_PORT_EVENT_QUEUE_H_
 

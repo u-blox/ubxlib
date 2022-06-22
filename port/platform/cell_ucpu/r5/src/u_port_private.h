@@ -32,34 +32,35 @@ extern "C" {
 /* ----------------------------------------------------------------
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
+
 /** Max length for the timer name supported.
  */
 #ifndef U_PORT_PRIVATE_TIMER_NAME_MAX_LEN_BYTES
-#define U_PORT_PRIVATE_TIMER_NAME_MAX_LEN_BYTES 8
+# define U_PORT_PRIVATE_TIMER_NAME_MAX_LEN_BYTES 8
 #endif
 
 /** Maximum number of timers supported.
  */
 #ifndef U_PORT_PRIVATE_MAXIMUM_NO_OF_TIMERS
-#define U_PORT_PRIVATE_MAXIMUM_NO_OF_TIMERS 8
+# define U_PORT_PRIVATE_MAXIMUM_NO_OF_TIMERS 8
 #endif
 
 /** Maximum number of counting semaphores supported.
  */
 #ifndef U_PORT_PRIVATE_MAXIMUM_NO_OF_SEMAPHORES
-#define U_PORT_PRIVATE_MAXIMUM_NO_OF_SEMAPHORES 8
+# define U_PORT_PRIVATE_MAXIMUM_NO_OF_SEMAPHORES 8
 #endif
 
 /** Maximum number of threads supported.
  */
 #ifndef U_PORT_PRIVATE_MAXIMUM_NO_OF_THREADS
-#define U_PORT_PRIVATE_MAXIMUM_NO_OF_THREADS 16
+# define U_PORT_PRIVATE_MAXIMUM_NO_OF_THREADS 16
 #endif
 
 /** Maximum number of queues supported.
  */
 #ifndef U_PORT_PRIVATE_MAXIMUM_NO_OF_QUEUES
-#define U_PORT_PRIVATE_MAXIMUM_NO_OF_QUEUES 32
+# define U_PORT_PRIVATE_MAXIMUM_NO_OF_QUEUES 32
 #endif
 
 /* ----------------------------------------------------------------
@@ -143,9 +144,7 @@ int32_t uPortPrivateQueueDelete(const uPortQueueHandle_t queueHandle);
 
 /** Peek the given queue; the data is copied out of the queue but
  * is NOT removed from the queue. If the queue is empty
- * U_ERROR_COMMON_TIMEOUT is returned.  It is NOT a requirement
- * that this API is implemented: where it is not implemented
- * U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
+ * U_ERROR_COMMON_TIMEOUT is returned.
  *
  * @param queueHandle the handle of the queue.
  * @param pEventData  pointer to a place to put incoming data.
@@ -186,9 +185,9 @@ int32_t uPortPrivateTimerDelete(const uPortTimerHandle_t handle);
 
 /** Change the timer interval.
  *
- * @param handle  the handle of the timer to be changed.
+ * @param handle      the handle of the timer to be changed.
  * @param intervalMs  the new time interval in milliseconds.
- * @return        zero on success else negative error code.
+ * @return            zero on success else negative error code.
  */
 int32_t uPortPrivateTimerChangeInterval(const uPortTimerHandle_t handle,
                                         uint32_t intervalMs);

@@ -22,9 +22,12 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __port __Port
+ *  @{
+ */
+
 /** @file
- * @brief
- * Common stuff for porting layer.  These functions are thread-safe.
+ * @brief Common stuff for porting layer.  These functions are thread-safe.
  */
 
 #ifdef __cplusplus
@@ -128,7 +131,7 @@ int32_t uPortGetHeapFree();
 
 /** Enter a critical section: no interrupts should go off, no
  * tasks will be rescheduled, until uPortExitCritical() is
- * called. Note that OS-related port APIs (i.e. no uPortTask*,
+ * called. Note that OS-related port APIs (i.e. uPortTask*,
  * uPortMutex*, uPortSemaphore*, uPortQueue*, uPortEventQueue*
  * or uPortTimer* functions) should NOT be called within the
  * critical section; depending on the platform that may cause
@@ -138,7 +141,7 @@ int32_t uPortGetHeapFree();
  * section.
  *
  * It is NOT a requirement that this API is implemented:
- * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED
  * should be returned.
  *
  * @return zero on success else negative error code.
@@ -149,7 +152,7 @@ int32_t uPortEnterCritical();
  * after uPortEnterCritical().
  *
  * It is NOT a requirement that this API is implemented:
- * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED
  * should be returned by uPortEnterCritical().
  */
 void uPortExitCritical();
@@ -157,6 +160,8 @@ void uPortExitCritical();
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_PORT_H_
 

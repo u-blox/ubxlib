@@ -23,6 +23,16 @@
 
 #include "u_compiler.h"
 
+/** \addtogroup _short-range
+ *  @{
+ */
+
+/** @file
+ * @brief This header file defines buffer management mechanism used
+ * by the Wifi/BLE modules.  These functions are not intended to be
+ * called directly, they are called internally within ubxlib.
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -104,7 +114,7 @@ void uShortRangeMemPoolDeInit(void);
 int32_t uShortRangePbufAlloc(uShortRangePbuf_t **ppBuf);
 
 /** Allocate memory for pbuf list from the pbuf list
- * memory pool. Refer to pBufListPool in u_short_range_pbuf.c
+ * memory pool. Refer to gPBufListPool in u_short_range_pbuf.c
  * Memory pool should have been initialized before using this
  * API. Refer to uShortRangeMemPoolInit()
  *
@@ -166,7 +176,7 @@ int32_t uShortRangePktListAppend(uShortRangePktList_t *pPktList,
  *                    on return this will be updated to copied length.
  * @param pEdmChannel on return EDM channel corresponding to the read packet will be updated.
  * @return            zero on success or negative error code.
- *                    U_ERROR_COMMON_TEMPORARY_FAILURE, if given buffer cannot accommodate
+ *                    #U_ERROR_COMMON_TEMPORARY_FAILURE, if given buffer cannot accommodate
  *                    the entire message - in this case the packet will be flushed.
  */
 int32_t uShortRangePktListConsumePacket(uShortRangePktList_t *pPktList, char *pData, size_t *pLen,
@@ -174,6 +184,8 @@ int32_t uShortRangePktListConsumePacket(uShortRangePktList_t *pPktList, char *pD
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif //_U_SHORT_RANGE_PBUF_H_
 

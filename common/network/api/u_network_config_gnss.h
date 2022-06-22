@@ -22,7 +22,12 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
-/* This header file defines the configuration structure for the
+/** \addtogroup network
+ *  @{
+ */
+
+/** @file
+ * @brief This header file defines the configuration structure for the
  * network API for GNSS.
  */
 
@@ -44,19 +49,19 @@
 /** The network configuration for GNSS.
  */
 typedef struct {
-    uNetworkCfgVersion_t version; /**< Version of this network
+    uNetworkCfgVersion_t version; /**< version of this network
                                        configuration; allow your
                                        compiler to initialise this
                                        to zero unless otherwise
                                        specified below. */
-    uNetworkType_t type;          /**< For error checking purposes. */
-    int32_t moduleType;           /**< The module type that is connected,
-                                       see uGnssModuleType_t in
+    uNetworkType_t type;          /**< for error checking purposes. */
+    int32_t moduleType;           /**< the module type that is connected,
+                                       see #uGnssModuleType_t in
                                        u_gnss_module_type.h.  Only required
                                        if the GNSS network is being added
                                        via a non-GNSS (e.g. cellular) device,
                                        ignored otherwise. */
-    int32_t devicePinPwr;         /**< Only relevant if the GNSS network
+    int32_t devicePinPwr;         /**< only relevant if the GNSS network
                                        is on a non-GNSS device, e.g. it
                                        is connected via or inside
                                        (e.g. SARA-R510M8S) a cellular
@@ -69,7 +74,7 @@ typedef struct {
                                        GPIO2 is cellular module pin 23 and
                                        hence 23 would be used here. If there
                                        is no such functionality then use -1. */
-    int32_t devicePinDataReady;   /**< Only relevant if the GNSS network
+    int32_t devicePinDataReady;   /**< only relevant if the GNSS network
                                        is on a non-GNSS device, e.g. it
                                        is connected via or inside
                                        (e.g. SARA-R510M8S) a cellular
@@ -95,6 +100,8 @@ typedef struct {
        field is populated then the version field of
        this structure must be set to 1 or higher". */
 } uNetworkCfgGnss_t;
+
+/** @}*/
 
 #endif // _U_NETWORK_CONFIG_GNSS_H_
 

@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _cell
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the APIs that initialse and
  * control power to a cellular module and enable it to save power
@@ -111,7 +115,7 @@ extern "C" {
  * that is connected to the cellular module's RESET_N pin;
  * this allows the sense to be switched at compile time.
  * However, the method of ORing the pin with
- * U_CELL_PIN_INVERTED (see u_cell.h) is preferred; this
+ * #U_CELL_PIN_INVERTED (see u_cell.h) is preferred; this
  * compile-time mechanism is retained for backwards-compatibility.
  * DON'T USE BOTH MECHANISMS or the sense of the pin will
  * be inverted twice.
@@ -144,7 +148,7 @@ extern "C" {
  * that is connected to the cellular module's DTR pin and the
  * module's DTR pin itself; this allows the sense to be switched
  * at compile time. However, the method of ORing the pin
- * with U_CELL_PIN_INVERTED (see u_cell.h) is preferred; this
+ * with #U_CELL_PIN_INVERTED (see u_cell.h) is preferred; this
  * compile-time mechanism is retained for backwards-compatibility.
  * DON'T USE BOTH MECHANISMS or the sense of the pin will
  * be inverted twice.
@@ -393,7 +397,7 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
  *                   reset pin of the cellular module; if there
  *                   is an inverter between the pin of this MCU
  *                   and the pin of the module then the value
- *                   of pin should be ORed with U_CELL_PIN_INVERTED
+ *                   of pin should be ORed with #U_CELL_PIN_INVERTED
  *                   (defined in u_cell.h).
  * @return           zero on success or negative error
  *                   code on failure.
@@ -413,10 +417,9 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
  * these cases, and only for SARA-R5 modules, the DTR pin can
  * be used to control UART power saving inatead by calling this function.
  * This must be called BEFORE the module is first powered-on, e.g.
- * just after uCellAdd(); for the common network API this is done
- * by defining the pin of this MCU that is connected to the DTR pin
- * as the value of the conditional compilation flag U_CFG_APP_PIN_CELL_DTR
- * and passing this conditional compilation flag into the build.
+ * just after uCellAdd() or, in the common network API, by defining
+ * the structure member pinDtrPowerSaving to be the MCU pin that is
+ * connected to the DTR pin of the cellular module.
  * Note: the same problem exists for SARA-U201 modules and, in theory,
  * the same solution applies.  However, since we are not able to
  * regression test that configuration it is not currently marked as
@@ -491,8 +494,8 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
  *                              instance.
  * @param rat                   the radio access technology
  *                              the setting will be applied to
- *                              e.g. U_CELL_NET_RAT_CATM1 or
- *                              U_CELL_NET_RAT_NB1 or the
+ *                              e.g. #U_CELL_NET_RAT_CATM1 or
+ *                              #U_CELL_NET_RAT_NB1 or the
  *                              return value of
  *                              uCellNetGetActiveRat() if
  *                              registered with the network.
@@ -506,7 +509,7 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
  *                              3GPP power saving mode. The
  *                              activity time cannot be set
  *                              to less than
- *                              U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS
+ *                              #U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS
  *                              in order for the wake-up code
  *                              to work.
  * @param periodicWakeupSeconds the period at which the module
@@ -668,8 +671,8 @@ int32_t uCellPwrSet3gppPowerSavingCallback(uDeviceHandle_t cellHandle,
  *                              instance.
  * @param rat                   the radio access technology
  *                              the setting will be applied to
- *                              e.g. U_CELL_NET_RAT_CATM1 or
- *                              U_CELL_NET_RAT_NB1 or the
+ *                              e.g. #U_CELL_NET_RAT_CATM1 or
+ *                              #U_CELL_NET_RAT_NB1 or the
  *                              return value of
  *                              uCellNetGetActiveRat() if
  *                              registered with the network.
@@ -699,8 +702,8 @@ int32_t uCellPwrSetRequestedEDrx(uDeviceHandle_t cellHandle,
  * @param cellHandle             the handle of the cellular
  *                               instance.
  * @param rat                    the radio access technology
- *                               e.g. U_CELL_NET_RAT_CATM1 or
- *                               U_CELL_NET_RAT_NB1 or the
+ *                               e.g. #U_CELL_NET_RAT_CATM1 or
+ *                               #U_CELL_NET_RAT_NB1 or the
  *                               return value of
  *                               uCellNetGetActiveRat() if
  *                               registered with the network.
@@ -733,8 +736,8 @@ int32_t uCellPwrGetRequestedEDrx(uDeviceHandle_t cellHandle,
  * @param cellHandle             the handle of the cellular
  *                               instance.
  * @param rat                    the radio access technology
- *                               e.g. U_CELL_NET_RAT_CATM1 or
- *                               U_CELL_NET_RAT_NB1 or the
+ *                               e.g. #U_CELL_NET_RAT_CATM1 or
+ *                               #U_CELL_NET_RAT_NB1 or the
  *                               return value of
  *                               uCellNetGetActiveRat() if
  *                               registered with the network.
@@ -909,6 +912,8 @@ bool uCellPwrUartSleepIsEnabled(uDeviceHandle_t cellHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_PWR_H_
 

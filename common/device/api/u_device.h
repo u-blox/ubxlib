@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup device Device
+ *  @{
+ */
+
 /** @file
  * @brief This is a high-level API for initializing a u-blox device
  * (chip or module). These functions are generally used in conjunction
@@ -152,13 +156,13 @@ typedef struct {
                                     compiler to initialise this to zero
                                     unless otherwise specified below. */
     int32_t moduleType;        /**< The module type that is connected,
-                                    see uCellModuleType_t in u_cell_module_type.h. */
+                                    see #uCellModuleType_t in u_cell_module_type.h. */
     const char *pSimPinCode;   /**< The PIN of the SIM. */
     int32_t pinEnablePower;    /**< The output pin that enables power
                                     to the cellular module; use -1 if
                                     there is no such connection. */
     int32_t pinPwrOn;          /**< The output pin that is connected to the
-                                   PWR_ON pin of the cellular module; use -1
+                                    PWR_ON pin of the cellular module; use -1
                                     if there is no such connection. */
     int32_t pinVInt;           /**< The input pin that is connected to the
                                     VINT pin of the cellular module; use -1
@@ -188,7 +192,7 @@ typedef struct {
                                       compiler to initialise this to zero
                                       unless otherwise specified below. */
     int32_t moduleType;          /**< The module type that is connected,
-                                      see uGnssModuleType_t in
+                                      see #uGnssModuleType_t in
                                       u_gnss_module_type.h. */
     int32_t pinEnablePower;      /**< The output pin that is used to control
                                       power to the GNSS module; use -1 if
@@ -198,7 +202,7 @@ typedef struct {
                                       controlling (in which case the
                                       gnssAtPinPwr field of the network
                                       configuration structure for GNSS,
-                                      uNetworkCfgGnss_t, should be
+                                      #uNetworkCfgGnss_t, should be
                                       populated instead). */
     int32_t pinDataReady;        /**< The input pin that is used to receive
                                       the Data Ready state of the GNSS module;
@@ -231,7 +235,7 @@ typedef struct {
                                    compiler to initialise this to zero
                                    unless otherwise specified below. */
     int32_t moduleType;       /**< The module type that is connected,
-                                   see uShortRangeModuleType_t in
+                                   see #uShortRangeModuleType_t in
                                    u_short_range_module_type.h. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
@@ -322,6 +326,8 @@ int32_t uDeviceClose(uDeviceHandle_t devHandle, bool powerOff);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_DEVICE_H_
 

@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _wifi
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the sockets APIs for wifi.
  * These functions are NOT thread-safe and are NOT intended to be
@@ -32,7 +36,7 @@
  * the common/sock API provides blocking behaviour.
  * The functions in here are different to those in the rest of
  * the wifi API in that they return a negated value from the
- * errno values in u_sock_errno.h (e.g. -U_SOCK_ENOMEM) instead
+ * errno values in u_sock_errno.h (e.g. -#U_SOCK_ENOMEM) instead
  * of a value from u_error_common.h.
  */
 
@@ -52,7 +56,7 @@ extern "C" {
 #ifndef U_WIFI_SOCK_TCP_RETRY_LIMIT
 /** The number of times to retry sending TCP data:
  * if the module is accepting less than
- * U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES each time,
+ * #U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES each time,
  * helps to prevent lock-ups.
  */
 # define U_WIFI_SOCK_TCP_RETRY_LIMIT 3
@@ -225,8 +229,8 @@ bool uWifiSockBlockingGet(uDeviceHandle_t devHandle,
 /** Set socket option.  This function obeys
  * the BSD socket conventions and hence, for instance, to set
  * the socket receive timeout one would pass in a level
- * of U_SOCK_OPT_LEVEL_SOCK, and option value of
- * U_SOCK_OPT_RCVTIMEO and then the option value would be
+ * of #U_SOCK_OPT_LEVEL_SOCK, and option value of
+ * #U_SOCK_OPT_RCVTIMEO and then the option value would be
  * a pointer to a structure of type timeval.
  *
  * @param devHandle         the handle of the wifi instance.
@@ -281,7 +285,7 @@ int32_t uWifiSockOptionGet(uDeviceHandle_t devHandle,
 /** Send a datagram to IP address.
  *
  * The maximum length of datagram that can be transmitted is
- * U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES; if dataSizeBytes is
+ * #U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES; if dataSizeBytes is
  * longer than this nothing will be transmitted and an error
  * will be returned.
  *
@@ -324,11 +328,11 @@ int32_t uWifiSockSendTo(uDeviceHandle_t devHandle,
  * @param dataSizeBytes       the number of bytes of storage available
  *                            at pData.  Each call receives a single
  *                            datagram of up to
- *                            U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES; if
+ *                            #U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES; if
  *                            dataSizeBytes is less than this the
  *                            remainder will be thrown away.  To ensure
  *                            no loss always allocate a buffer of
- *                            at least U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES.
+ *                            at least #U_WIFI_SOCK_MAX_SEGMENT_SIZE_BYTES.
  * @return                    the number of bytes received else negated
  *                            value of U_SOCK_Exxx from u_sock_errno.h.
  */
@@ -500,6 +504,8 @@ int32_t uWifiSockGetLocalAddress(uDeviceHandle_t devHandle,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_WIFI_SOCK_H_
 

@@ -22,8 +22,12 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. _except_, under special circumstances,
  * if we want to sneak mutex debug in under-cover, see the section
- * under U_CFG_MUTEX_DEBUG that is snuck in at the very end of this
+ * under #U_CFG_MUTEX_DEBUG that is snuck in at the very end of this
  * file.
+ */
+
+/** \addtogroup __port
+ *  @{
  */
 
 /** @file
@@ -178,7 +182,7 @@ int32_t uPortTaskStackMinFree(const uPortTaskHandle_t taskHandle);
 
 /** Get the current task handle.
  * It is NOT a requirement that this API is implemented:
- * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED
  * should be returned.
  *
  * @param pTaskHandle    a place to put the task handle; cannot
@@ -272,9 +276,9 @@ int32_t uPortQueueTryReceive(const uPortQueueHandle_t queueHandle,
 
 /** Peek the given queue; the data is copied out of the queue but
  * is NOT removed from the queue. If the queue is empty
- * U_ERROR_COMMON_TIMEOUT is returned.  It is NOT a requirement
+ * #U_ERROR_COMMON_TIMEOUT is returned.  It is NOT a requirement
  * that this API is implemented: where it is not implemented
- * U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
+ * #U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
  *
  * @param queueHandle the handle of the queue.
  * @param pEventData  pointer to a place to put incoming data.
@@ -285,7 +289,7 @@ int32_t uPortQueuePeek(const uPortQueueHandle_t queueHandle,
 
 /** Get the number of free spaces in the given queue.
  * It is NOT a requirement that this API is implemented:
- * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED
  * should be returned.
  *
  * @param queueHandle the handle of the queue.
@@ -419,7 +423,7 @@ int32_t uPortSemaphoreGiveIrq(const uPortSemaphoreHandle_t semaphoreHandle);
  * should respect each others' need for accurate timer callback execution
  * by keeping their callbacks short in duration and certainly never blocking.
  * It is NOT currently a requirement that this API is implemented: where
- * it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
+ * it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
  *
  * @param pTimerHandle              a place to put the timer handle.
  * @param pName                     a name for the timer, used for debug
@@ -447,7 +451,7 @@ int32_t uPortTimerCreate(uPortTimerHandle_t *pTimerHandle,
 
 /** Destroy a timer.  If the timer is already running it will be stopped
  * and then destroyed.  It is NOT currently a requirement that this API is
- * implemented: where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * implemented: where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED
  * should be returned.
  *
  * @param timerHandle       the handle of the timer.
@@ -457,7 +461,7 @@ int32_t uPortTimerDelete(const uPortTimerHandle_t timerHandle);
 
 /** Start a timer.  If the timer is already running it is restarted.
  * It is NOT currently a requirement that this API is implemented: where it
- * is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
+ * is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED should be returned.
  *
  * @param timerHandle       the handle of the timer.
  * @return                  zero on success else negative error code.
@@ -466,7 +470,7 @@ int32_t uPortTimerStart(const uPortTimerHandle_t timerHandle);
 
 /** Stop a timer.  If the timer is not running this function returns
  * success.  It is NOT currently a requirement that this API is
- * implemented: where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED
+ * implemented: where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED
  * should be returned.
  *
  * @param timerHandle       the handle of the timer.
@@ -478,7 +482,7 @@ int32_t uPortTimerStop(const uPortTimerHandle_t timerHandle);
  * interval of a timer that is currently running is changed by this
  * or not; it is wise to stop the timer first if you care about
  * that.  It is NOT currently a requirement that this API is implemented:
- * where it is not implemented U_ERROR_COMMON_NOT_IMPLEMENTED should be
+ * where it is not implemented #U_ERROR_COMMON_NOT_IMPLEMENTED should be
  * returned.  If the other timer API functions are supported then this
  * one must also be supported.
  *
@@ -505,13 +509,13 @@ int32_t uPortTimerChange(const uPortTimerHandle_t timerHandle,
  *                               chunk.
  * @param flags                  for implementations where a chunk's
  *                               MPU flags can be set at runtime.
- *                               Set to U_PORT_EXECUTABLE_CHUNK_NO_FLAGS
+ *                               Set to #U_PORT_EXECUTABLE_CHUNK_NO_FLAGS
  *                               if not used.
  * @param index                  for implementations where a chunk
  *                               can only be specified at compile time.
  *                               Index allows the user to specify several
  *                               chunks at compile time.
- *                               Set to U_PORT_NO_EXECUTABLE_CHUNK if not used.
+ *                               Set to #U_PORT_NO_EXECUTABLE_CHUNK if not used.
  * @return                       pointer to memory area or NULL if failed
  */
 void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
@@ -535,6 +539,8 @@ void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
 #ifdef U_CFG_MUTEX_DEBUG
 # include "u_mutex_debug.h"
 #endif
+
+/** @}*/
 
 #endif // _U_PORT_OS_H_
 

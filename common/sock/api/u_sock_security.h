@@ -21,9 +21,15 @@
  * is an internal API that this API hides, hence it is allowed to
  * be included here.
  */
+
 #include "u_security_tls.h"
 
-/* This header file defines the security portion of the sockets API.
+/** \addtogroup sock
+ *  @{
+ */
+
+/** @file
+ * @brief This header file defines the security portion of the sockets API.
  * This is placed in a separate header to "u_sock.h" for
  * backwards-compatibility reasons; non-secure applications
  * which include "u_sock.h" would otherwise have to include
@@ -61,6 +67,8 @@ int32_t uSockSecurity(uSockDescriptor_t descriptor,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_SOCK_SECURITY_H_
 

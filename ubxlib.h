@@ -20,6 +20,10 @@
  * file which is not in an api directory in order to compile the
  * ubxlib code then likely something is wrong, please check! */
 
+/** \addtogroup ubxlib Headers
+ *  @{
+ */
+
 /** @file
  * @brief This header file includes all of the public ubxlib headers.
  * It is intended for use in customer code to bring in all of the
@@ -118,6 +122,8 @@
 #include <u_wifi_cfg.h>
 #include <u_wifi_mqtt.h>
 #include <u_wifi_sock.h>
+
+/** @}*/
 
 #endif // _U_UBXLIB_H_
 

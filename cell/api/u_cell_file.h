@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _cell
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the u-blox API for file system.
@@ -218,7 +223,6 @@ int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
  * (can be freed with a call to uCellFileListLast()). This function
  * is not thread-safe in that there is a single list for all threads.
  *
- *
  * If a tag has been set using uCellFileSetTag() then only
  * files from the tagged area of the file system will be listed.
  *
@@ -244,6 +248,8 @@ void uCellFileListLast(uDeviceHandle_t cellHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_FILE_H_
 

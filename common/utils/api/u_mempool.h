@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __utils
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines a memory pool API, used internally by the short range
  * API for efficient EDM transport.  The API functions are thread-safe except for the
@@ -41,12 +45,12 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 typedef struct {
-    uint32_t blockSize; /**< The size of each block */
-    int32_t usedBlockCount; /**< The number of currently used blocks */
-    int32_t totalBlockCount; /**< The total number of blocks */
-    struct uMemPoolFree *pFreeList; /**< Linked list of free blocks */
-    uint8_t *pBuffer; /**< Data buffer (sub-divided into blocks) */
-    uPortMutexHandle_t mutex; /**< Mutex for thread protection */
+    uint32_t blockSize; /**< the size of each block. */
+    int32_t usedBlockCount; /**< the number of currently used blocks. */
+    int32_t totalBlockCount; /**< the total number of blocks. */
+    struct uMemPoolFree *pFreeList; /**< linked list of free blocks. */
+    uint8_t *pBuffer; /**< data buffer (sub-divided into blocks). */
+    uPortMutexHandle_t mutex; /**< mutex for thread protection. */
 } uMemPoolDesc_t;
 
 /* ----------------------------------------------------------------
@@ -97,6 +101,8 @@ void uMemPoolFreeAllMem(uMemPoolDesc_t *pMemPool);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_MEMPOOL_H_
 

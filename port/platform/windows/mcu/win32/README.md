@@ -29,7 +29,7 @@ Before you can compile code under MSVC you need to invoke a specific command env
 
 `"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat"`
 
-...modifying the drive\year to match your particular installation of MSVC.
+...modifying the drive/year to match your particular installation of MSVC.
 
 You may override or provide conditional compilation flags without modifying the build file.  Do this by adding a `U_FLAGS` environment variable, e.g.:
 

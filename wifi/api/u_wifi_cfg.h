@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _wifi
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the APIs that configure Wifi.
  */
@@ -60,6 +64,8 @@ int32_t uWifiCfgConfigure(uDeviceHandle_t devHandle,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_WIFI_CFG_H_
 

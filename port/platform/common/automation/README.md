@@ -162,7 +162,7 @@ If you want to completely turn off a specific checker you can do this by adding 
 This can only be done by the normal compiler ways. Please see Clang Static Analyzer [FAQ](https://clang-analyzer.llvm.org/faq.html).
 
 # Running Tests Locally
-As described in the previous section Jenkins uses the `automation.<command>` PyInvoke tasks. These tasks can be run locally and this is described in [`automation` Tasks](#automation-tasks) section.
+As described in the previous section Jenkins uses the `automation.<command>` PyInvoke tasks. These tasks can be run locally and this is described in the [`automation` Tasks](#automation-tasks) section.
 
 **NOTE:** If you want to use hardware dependent task such as `automation.flash` you will likely need to adjust the files in `$HOME/.ubx_automation`.
 In this directory you will find `settings_v2_agent_specific.json` which among other things contains a list of COM-ports and debugger serial to use for each instance.
@@ -232,7 +232,7 @@ astyle --options=astyle.cfg --suffix=none --verbose --errors-to-stdout --recursi
 
 [scripts/u_run_windows.py](./scripts/u_run_windows.py): build and run on Windows; called by `automation.test` PyInvoke task.
 
-[scripts/u_run_linux.py](./scripts/u_run_linux.py): build and run on Linux; called by `automation.test` PyInvoke task.  In particular, if you install the Linux `socat` utility this script will automatically handle mapping of the `/dev/pts/x` UARTs of the `ubxlib` Linux application to real Linux devices.  For instance, to make `UART_0` the `U_CFG_TEST_UART_A` loop-back UART, used by the porting tests, then simply pass the #define `U_CFG_TEST_UART_A=0` into the build. Similarly, to make `UART_1` the `U_CFG_TEST_UART_B` loop-back UART (used for the scenario in the AT command and chip-to-chip security tests where `U_CFG_TEST_UART_A` is looped back to `U_CFG_TEST_UART_B`) then you would also pass #define `U_CFG_TEST_UART_B=1` into the build.  And finally, if you have a real module connected to a real device on Linux, let's say a cellular module on `/dev/tty/5`, and you want to connect it to `ubxlib` as `UART_1`, then as well as passing the #define `U_CFG_APP_CELL_UART=1` into the build you would also pass `U_CFG_APP_CELL_UART_DEV=/dev/tty/5`.  The #defines `U_CFG_APP_GNSS_UART` and `U_CFG_APP_SHORT_RANGE_UART` can be used similarly.
+[scripts/u_run_linux.py](./scripts/u_run_linux.py): build and run on Linux; called by `automation.test` PyInvoke task.  In particular, if you install the Linux `socat` utility this script will automatically handle mapping of the `/dev/pts/x` UARTs of the `ubxlib` Linux application to real Linux devices.  For instance, to make `UART_0` the `U_CFG_TEST_UART_A` loop-back UART, used by the porting tests, then simply pass the \#define `U_CFG_TEST_UART_A=0` into the build. Similarly, to make `UART_1` the `U_CFG_TEST_UART_B` loop-back UART (used for the scenario in the AT command and chip-to-chip security tests where `U_CFG_TEST_UART_A` is looped back to `U_CFG_TEST_UART_B`) then you would also pass \#define `U_CFG_TEST_UART_B=1` into the build.  And finally, if you have a real module connected to a real device on Linux, let's say a cellular module on `/dev/tty/5`, and you want to connect it to `ubxlib` as `UART_1`, then as well as passing the \#define `U_CFG_APP_CELL_UART=1` into the build you would also pass `U_CFG_APP_CELL_UART_DEV=/dev/tty/5`.  The \#defines `U_CFG_APP_GNSS_UART` and `U_CFG_APP_SHORT_RANGE_UART` can be used similarly.
 
 [scripts/u_select.py](./scripts/u_select.py): see above.
 

@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __utils
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines functions that convert a buffer
  * that is ASCII hex encoded into a buffer of binary and vice-versa.
@@ -72,6 +76,8 @@ size_t uHexToBin(const char *pHex, size_t hexLength, char *pBin);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_HEX_BIN_CONVERT_H_
 

@@ -113,7 +113,6 @@ int32_t uDebugUtilsInitInactivityDetector(volatile int32_t *pActivityCounter);
  */
 void uDebugUtilsDumpThreads(void);
 
-
 #endif
 
 #ifdef __cplusplus

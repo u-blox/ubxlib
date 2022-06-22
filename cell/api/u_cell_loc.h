@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _cell
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the API into the Cell Locate
@@ -85,7 +90,7 @@ extern "C" {
 #ifndef U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS
 /** How long to wait for the response to AT+UGPS=1.  If you
  * change this and you also use the GNSS API then you might
- * want to change the value of U_GNSS_AT_POWER_UP_TIME_SECONDS
+ * want to change the value of #U_GNSS_AT_POWER_UP_TIME_SECONDS
  * also.
  */
 # define U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS 30
@@ -94,7 +99,7 @@ extern "C" {
 #ifndef U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS
 /** How long to wait for the response to AT+UGPS=0.  If you
  * change this and you also use the GNSS API then you might
- * want to change the value of U_GNSS_AT_POWER_DOWN_TIME_SECONDS
+ * want to change the value of #U_GNSS_AT_POWER_DOWN_TIME_SECONDS
  * also.
  */
 # define U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS 30
@@ -106,7 +111,7 @@ extern "C" {
  * on the heels of a previous GNSS-related command  If you
  * change this and you also use the cell locate API then you
  * might want to change the value of
- * U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS also.
+ * #U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS also.
  */
 # define U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS 500
 #endif
@@ -118,7 +123,7 @@ extern "C" {
  * type 2) on the AT+ULOC AT command, they only respond to AT+ULOC
  * if a GNSS chip is attached to the cellular module.  Should
  * you wish to use the Cell Locate API with this module type then
- * you should define U_CELL_LOC_MODULE_HAS_CELL_LOCATE to be 0
+ * you should define #U_CELL_LOC_MODULE_HAS_CELL_LOCATE to be 0
  * (and of course make sure you have a GNSS chip attached to the
  * cellular module and don't disable GNSS in this API).
  */
@@ -147,7 +152,7 @@ void uCellLocCleanUp(uDeviceHandle_t cellHandle);
  * -------------------------------------------------------------- */
 
 /** Set the desired location accuracy.  If this is not called
- * then the default U_CELL_LOC_DESIRED_ACCURACY_DEFAULT_MILLIMETRES
+ * then the default #U_CELL_LOC_DESIRED_ACCURACY_DEFAULT_MILLIMETRES
  * is used.
  *
  * @param cellHandle          the handle of the cellular instance.
@@ -164,7 +169,7 @@ void uCellLocSetDesiredAccuracy(uDeviceHandle_t cellHandle,
 int32_t uCellLocGetDesiredAccuracy(uDeviceHandle_t cellHandle);
 
 /** Set the desired location fix time-out.  If this is not called
- * then the default U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS
+ * then the default #U_CELL_LOC_DESIRED_FIX_TIMEOUT_DEFAULT_SECONDS
  * is used.
  *
  * @param cellHandle        the handle of the cellular instance.
@@ -182,7 +187,7 @@ int32_t uCellLocGetDesiredFixTimeout(uDeviceHandle_t cellHandle);
 
 /** Set whether a GNSS chip attached to the cellular module
  * should be used in the location fix or not.  If this is not
- * called then the default U_CELL_LOC_GNSS_ENABLE_DEFAULT
+ * called then the default #U_CELL_LOC_GNSS_ENABLE_DEFAULT
  * is used.  Call this with false if you have a GNSS chip
  * attached via the cellular module but you intend to use
  * the GNSS API to manage it directly rather than letting
@@ -340,7 +345,7 @@ bool uCellLocGnssInsideCell(uDeviceHandle_t cellHandle);
  *                                    parameter is the cell handle. May be NULL,
  *                                    in which case the location establishment
  *                                    attempt will time-out after
- *                                    U_CELL_LOC_TIMEOUT_SECONDS seconds.
+ *                                    #U_CELL_LOC_TIMEOUT_SECONDS seconds.
  * @return                            zero on success or negative error code on
  *                                    failure.
  */
@@ -355,7 +360,7 @@ int32_t uCellLocGet(uDeviceHandle_t cellHandle,
  * work if the cellular module is currently registered on a network
  * (e.g. as a result of uCellNetConnect() or uCellNetRegister() being
  * called). The location establishment attempt will time-out after
- * U_CELL_LOC_TIMEOUT_SECONDS.
+ * #U_CELL_LOC_TIMEOUT_SECONDS.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pCallback   a callback that will be called when a fix has been
@@ -404,6 +409,8 @@ void uCellLocGetStop(uDeviceHandle_t cellHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_LOC_H_
 

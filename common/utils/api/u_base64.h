@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __utils __Utilities
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines base64 encode and decode functions.
  */
@@ -86,6 +90,8 @@ int32_t uBase64Decode(const char *pBase64, size_t base64LengthBytes,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_BASE64_H_
 

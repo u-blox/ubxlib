@@ -22,7 +22,12 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
-/* This header file defines the configuration structure for the
+/** \addtogroup network
+ *  @{
+ */
+
+/** @file
+ * @brief This header file defines the configuration structure for the
  * network API for Wifi.
  */
 
@@ -44,14 +49,14 @@
 /** The network configuration for Wifi.
  */
 typedef struct {
-    uNetworkCfgVersion_t version; /**< Version of this network
+    uNetworkCfgVersion_t version; /**< version of this network
                                        configuration; allow your
                                        compiler to initialise this
                                        to zero unless otherwise
                                        specified below. */
-    uNetworkType_t type;     /**< For error checking purposes. */
-    const char *pSsid;       /**< The access point SSID to connect */
-    int32_t authentication;  /**< The access point authentication mode. Values are:
+    uNetworkType_t type;     /**< for error checking purposes. */
+    const char *pSsid;       /**< the access point SSID to connect */
+    int32_t authentication;  /**< the access point authentication mode. Values are:
                                   1: Open (No authentication)
                                   2: WPA/WPA2/WPA3-PSK */
     const char *pPassPhrase; /**< WPA/WPA2/WPA3 passphrase - should be NULL for open */
@@ -67,6 +72,8 @@ typedef struct {
        field is populated then the version field
        of this structure must be set to 1 or higher". */
 } uNetworkCfgWifi_t;
+
+/** @}*/
 
 #endif // _U_NETWORK_CONFIG_WIFI_H_
 

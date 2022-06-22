@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __port
+ *  @{
+ */
+
 /** @file
  * @brief Porting layer for UART access functions.  These functions
  * are thread-safe.
@@ -212,7 +216,7 @@ int32_t uPortUartWrite(int32_t handle, const void *pBuffer,
  * @param stackSizeBytes   the number of bytes of stack for
  *                         the task in which pFunction is
  *                         called, must be at least
- *                         U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES.
+ *                         #U_PORT_EVENT_QUEUE_MIN_TASK_STACK_SIZE_BYTES.
  * @param priority         the priority of the task in which
  *                         pFunction is called; see
  *                         u_cfg_os_platform_specific.h for
@@ -274,7 +278,7 @@ int32_t uPortUartEventCallbackFilterSet(int32_t handle,
 /** Send an event to the callback.  This allows the user to
  * re-trigger events: for instance, if a data event has only
  * been partially handled it can be re-triggered by calling
- * this function with U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED
+ * this function with #U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED
  * set.  This call will block until there is room in the queue
  * to send the event; if you want the function to return
  * if there is no room in the queue to send the event then use
@@ -292,9 +296,9 @@ int32_t uPortUartEventSend(int32_t handle, uint32_t eventBitMap);
  * This allows the user to re-trigger events: for instance,
  * if a data event has only been partially handled it can be
  * re-triggered by calling this function with
- * U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED set.  Note that NOT
+ * #U_PORT_UART_EVENT_BITMASK_DATA_RECEIVED set.  Note that NOT
  * ALL PLATFORMS support this API: where it is not implemented
- * U_ERROR_COMMON_NOT_IMPLEMENTED or U_ERROR_COMMON_NOT_SUPPORTED
+ * #U_ERROR_COMMON_NOT_IMPLEMENTED or #U_ERROR_COMMON_NOT_SUPPORTED
  * should be returned.
  *
  * @param handle      the handle of the UART instance.
@@ -330,7 +334,7 @@ bool uPortUartEventIsCallback(int32_t handle);
  */
 int32_t uPortUartEventStackMinFree(int32_t handle);
 
-/** Determine if RTS flow control, i.e. a signal from
+/** Determine if RTS flow control, that is a signal from
  * the module to this software that the module is ready to
  * receive data, is enabled.
  *
@@ -340,7 +344,7 @@ int32_t uPortUartEventStackMinFree(int32_t handle);
  */
 bool uPortUartIsRtsFlowControlEnabled(int32_t handle);
 
-/** Determine if CTS flow control, i.e. a signal from
+/** Determine if CTS flow control, that is a signal from
  * this software to the module that this sofware is ready
  * to accept data, is enabled.  Note that this returns
  * true even if CTS flow control is currently suspended
@@ -361,7 +365,7 @@ bool uPortUartIsCtsFlowControlEnabled(int32_t handle);
  * CTS flow control should be resumed afterwards with a call to
  * uPortUartCtsResume().  This function may NOT be supported on all
  * platforms; where it is not supported the function will return
- * U_ERROR_COMMON_NOT_SUPPORTED.
+ * #U_ERROR_COMMON_NOT_SUPPORTED.
  * If suspension of CTS is supported but CTS flow control is
  * not being used this function will return successfully.
  *
@@ -383,6 +387,8 @@ void uPortUartCtsResume(int32_t handle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_PORT_UART_H_
 

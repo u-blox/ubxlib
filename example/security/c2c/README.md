@@ -14,7 +14,7 @@ Note: in order to test this example code, we have enabled a special permission o
 # Usage
 Follow the instructions in the directory above this to build and download the target code.  Before commencing your build:
 
-- set the #define `U_CFG_APP_FILTER` to `exampleSecC2c` (noting that NO quotation marks should be included) if you wish to run *just* this example, as opposed to all the examples and unit tests,
+- set the \#define `U_CFG_APP_FILTER` to `exampleSecC2c` (noting that NO quotation marks should be included) if you wish to run *just* this example, as opposed to all the examples and unit tests,
 - as stated above, since the process of C2C pairing a module with an MCU is normally an irreversible one (except by arrangement with u-blox) this example will do nothing unless you define a value for `U_CFG_TEST_SECURITY_C2C_TE_SECRET`, again with no quotation marks around the value; for instance, we use `U_CFG_TEST_SECURITY_C2C_TE_SECRET=\x00\x01\x02\x03\x04\x05\x06\x07\xff\xfe\xfd\xfc\xfb\xfa\xf9\xf8` for our internal testing.
 
 You will, of course, notice no difference in operation to that with C2C security disabled, since the scrambled AT comms are encrypted/decypted and integrity checked by this code: to see the effect of C2C protection you should monitor the serial lines between the MCU and the module with something like a Salaea logic probe to see that the AT communications are, in fact, scrambled when a C2C session is open.

@@ -22,7 +22,12 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
-/* This header file defines the ERRNO values used by the sockets API.
+/** \addtogroup sock
+ *  @{
+ */
+
+/** @file
+ * @brief This header file defines the ERRNO values used by the sockets API.
  * The values match those of LWIP.
  */
 
@@ -158,6 +163,8 @@
 
 #define  U_SOCK_ENOMEDIUM      123      //<! No medium found.
 #define  U_SOCK_EMEDIUMTYPE    124      //<! Wrong medium type.
+
+/** @}*/
 
 #endif // _U_SOCK_ERRNO_H_
 

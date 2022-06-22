@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup cfg Compile-time configuration
+ *  @{
+ */
+
 /** @file
  * @brief Macros to help with compiler compatibilty.
  */
@@ -93,5 +97,7 @@
 #else
 # define U_CLANG_ANALYZER_NORETURN
 #endif
+
+/** @}*/
 
 // End of file

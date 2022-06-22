@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _cell
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the APIs that obtain general
@@ -165,7 +170,7 @@ int32_t uCellInfoGetEarfcn(uDeviceHandle_t cellHandle);
 /** Get the IMEI of the cellular module.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pImei       a pointer to U_CELL_INFO_IMEI_SIZE bytes
+ * @param pImei       a pointer to #U_CELL_INFO_IMEI_SIZE bytes
  *                    of storage into which the IMEI will be
  *                    copied; no terminator is added as the
  *                    IMEI is of fixed length. This pointer
@@ -179,7 +184,7 @@ int32_t uCellInfoGetImei(uDeviceHandle_t cellHandle,
 /** Get the IMSI of the SIM in the cellular module.
  *
  * @param cellHandle  the handle of the cellular instance.
- * @param pImsi       a pointer to U_CELL_INFO_IMSI_SIZE bytes
+ * @param pImsi       a pointer to #U_CELL_INFO_IMSI_SIZE bytes
  *                    of storage into which the IMSI will be
  *                    copied; no terminator is added as the IMSI
  *                    is of fixed length. This pointer cannot be
@@ -204,7 +209,7 @@ int32_t uCellInfoGetImsi(uDeviceHandle_t cellHandle,
  *                    pointer cannot be NULL.
  * @param size        the number of bytes available at pStr,
  *                    including room for a terminator.  Allocating
- *                    U_CELL_INFO_ICCID_BUFFER_SIZE bytes of
+ *                    #U_CELL_INFO_ICCID_BUFFER_SIZE bytes of
  *                    storage is safe.
  * @return            zero on success, negative error code on failure.
  */
@@ -323,6 +328,8 @@ bool uCellInfoIsCtsFlowControlEnabled(uDeviceHandle_t cellHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_INFO_H_
 

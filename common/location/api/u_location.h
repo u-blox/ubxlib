@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup location Location
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the location API, which is designed
@@ -219,11 +224,11 @@ typedef enum {
     U_LOCATION_STATUS_REQUESTING_DATA_FROM_SERVER = 3,
     U_LOCATION_STATUS_RECEIVING_DATA_FROM_SERVER = 4,
     U_LOCATION_STATUS_SENDING_FEEDBACK_TO_SERVER = 5,
-    U_LOCATION_STATUS_FATAL_ERROR_HERE_AND_BEYOND = 6, /**<! values from here on are
-                                                             usually indications of
-                                                             failure but note that
-                                                             a valid time might still
-                                                             be returned. */
+    U_LOCATION_STATUS_FATAL_ERROR_HERE_AND_BEYOND = 6, /**< values from here on are
+                                                            usually indications of
+                                                            failure but note that
+                                                            a valid time might still
+                                                            be returned. */
     U_LOCATION_STATUS_WRONG_URL = 6,
     U_LOCATION_STATUS_HTTP_ERROR = 7,
     U_LOCATION_STATUS_CREATE_SOCKET_ERROR = 8,
@@ -265,12 +270,12 @@ typedef enum {
  * @param type                    the type of location fix to perform;
  *                                how this can be used depends upon the
  *                                type of networkHandle:
- *                                - GNSS:     ignored, U_LOCATION_TYPE_GNSS
+ *                                - GNSS:     ignored, #U_LOCATION_TYPE_GNSS
  *                                            will always be used, but
- *                                            please set U_LOCATION_TYPE_GNSS
+ *                                            please set #U_LOCATION_TYPE_GNSS
  *                                            to ensure forwards-compatibility.
- *                                - cellular: U_LOCATION_TYPE_CLOUD_CELL_LOCATE
- *                                            or U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE
+ *                                - cellular: #U_LOCATION_TYPE_CLOUD_CELL_LOCATE
+ *                                            or #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE
  *                                            are supported; both use u-blox
  *                                            services, the former to obtain
  *                                            position even when GNSS is absent,
@@ -287,7 +292,7 @@ typedef enum {
  *                                            should be populated if you want the
  *                                            location to be returned by this function
  *                                            (as well as being available in the cloud).
- *                                - Wi-Fi:    only U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is
+ *                                - Wi-Fi:    only #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE is
  *                                            currently supported, for which the
  *                                            pLocationAssist field pMqttClientContext
  *                                            MUST be populated, and the MQTT login to
@@ -303,7 +308,7 @@ typedef enum {
  *                                different location establishment strategies
  *                                are possible; currently only used with Cell
  *                                Locate and Cloud Locate.  If this is NULL,
- *                                the values of U_LOCATION_ASSIST_DEFAULTS will
+ *                                the values of #U_LOCATION_ASSIST_DEFAULTS will
  *                                be assumed (and Cloud Locate will not work).
  * @param pAuthenticationTokenStr the null-terminated authentication token,
  *                                required by some cloud services (e.g.
@@ -324,7 +329,7 @@ typedef enum {
  *                                also be used to feed any watchdog
  *                                timer that might be running.  May be NULL,
  *                                in which case location establishment will
- *                                stop when U_LOCATION_TIMEOUT_SECONDS have
+ *                                stop when #U_LOCATION_TIMEOUT_SECONDS have
  *                                elapsed.  The single int32_t parameter is
  *                                the network handle, but note that if
  *                                pLocationAssist->networkHandleAssist is
@@ -365,7 +370,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  *                                different location establishment strategies
  *                                are possible; currently only used with Cell
  *                                Locate and Cloud Locate.  If this is NULL,
- *                                the values of U_LOCATION_ASSIST_DEFAULTS will
+ *                                the values of #U_LOCATION_ASSIST_DEFAULTS will
  *                                be assumed (and Cloud Locate will not work).
  * @param pAuthenticationTokenStr the null-terminated authentication token,
  *                                required by some cloud services (e.g.
@@ -408,6 +413,8 @@ void uLocationGetStop(uDeviceHandle_t devHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_LOCATION_H_
 

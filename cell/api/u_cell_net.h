@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _cell
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the APIs that control the network
@@ -205,8 +210,8 @@ typedef enum {
     U_CELL_NET_RAT_LTE = 8, /**< This RAT is not supported
                                  by any of the supported
                                  u-blox modules (though
-                                 U_CELL_NET_RAT_CATM1 and
-                                 U_CELL_NET_RAT_NB1 are). */
+                                 #U_CELL_NET_RAT_CATM1 and
+                                 #U_CELL_NET_RAT_NB1 are). */
     U_CELL_NET_RAT_EC_GSM = 9, /**< This RAT is not supported
                                     by any of the supported
                                     u-blox modules. */
@@ -433,10 +438,10 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
  *                           network found; may be NULL.
  * @param nameSize           the amount of storage at pName, must
  *                           be non-zero if pName is non-NULL.
- *                           No more than U_CELL_NET_MAX_NAME_LENGTH_BYTES
+ *                           No more than #U_CELL_NET_MAX_NAME_LENGTH_BYTES
  *                           (which includes room for a terminator)
  *                           are required.
- * @param pMccMnc            a pointer to U_CELL_NET_MCC_MNC_LENGTH_BYTES
+ * @param pMccMnc            a pointer to #U_CELL_NET_MCC_MNC_LENGTH_BYTES
  *                           of storage in which the MCC/MNC
  *                           string representing the first network
  *                           will be stored; may be NULL.
@@ -453,7 +458,7 @@ int32_t uCellNetDisconnect(uDeviceHandle_t cellHandle,
  *                           int32_t parameter is the cell handle.
  * @return                   the number of networks found or negative
  *                           error code.  If
- *                           U_CELL_ERROR_TEMPORARY_FAILURE is returned
+ *                           #U_CELL_ERROR_TEMPORARY_FAILURE is returned
  *                           then the module is currently in a state
  *                           where it is unable to perform a network
  *                           search (e.g. if it is already doing one
@@ -483,10 +488,10 @@ int32_t uCellNetScanGetFirst(uDeviceHandle_t cellHandle,
  *                    network found; may be NULL.
  * @param nameSize    the amount of storage at pName, must
  *                    be non-zero if pName is non-NULL.
- *                    No more than U_CELL_NET_MAX_NAME_LENGTH_BYTES
+ *                    No more than #U_CELL_NET_MAX_NAME_LENGTH_BYTES
  *                    (which includes room for a terminator)
  *                    are required.
- * @param pMccMnc     a pointer to U_CELL_NET_MCC_MNC_LENGTH_BYTES
+ * @param pMccMnc     a pointer to #U_CELL_NET_MCC_MNC_LENGTH_BYTES
  *                    of storage in which the MCC/MNC
  *                    string representing the next network
  *                    will be stored; may be NULL.
@@ -513,7 +518,7 @@ void uCellNetScanGetLast(uDeviceHandle_t cellHandle);
  * call-back allows the application to know the various
  * states of the network scanning, registration and rejections
  * from the networks.
- * You may use the U_CELL_NET_STATUS_MEANS_REGISTERED macro
+ * You may use the #U_CELL_NET_STATUS_MEANS_REGISTERED macro
  * with the second parameter passed to the callback to
  * determine if the status value means that the module is
  * currently registered with the network or not.
@@ -588,8 +593,8 @@ int32_t uCellNetSetBaseStationConnectionStatusCallback(uDeviceHandle_t cellHandl
  *                    possibly the roaming agreement your
  *                    home operator has with a visited
  *                    network.  99% of the time you will
- *                    only care about U_CELL_NET_REG_DOMAIN_PS.
- *                    but you may set U_CELL_NET_REG_DOMAIN_CS
+ *                    only care about #U_CELL_NET_REG_DOMAIN_PS.
+ *                    but you may set #U_CELL_NET_REG_DOMAIN_CS
  *                    to specifically check the status for
  *                    circuit switched service only.
  * @return            the current status.
@@ -640,7 +645,7 @@ int32_t uCellNetGetOperatorStr(uDeviceHandle_t cellHandle,
  * registered on the network at the time this is called.
  * To get the returned values into the same form as the
  * pMccMnc strings used elsewhere in this API, snprintf() them
- * into a buffer of length U_CELL_NET_MCC_MNC_LENGTH_BYTES with
+ * into a buffer of length #U_CELL_NET_MCC_MNC_LENGTH_BYTES with
  * the formatter "%03d%02d".
  *
  * @param cellHandle  the handle of the cellular instance.
@@ -657,7 +662,7 @@ int32_t uCellNetGetMccMnc(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle  the handle of the cellular instance.
  * @param pStr        should point to storage of length at least
- *                    U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
+ *                    #U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
  *                    On return the IP address will be written to
  *                    pStr as a string and a null terminator will
  *                    be added.
@@ -685,7 +690,7 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle, char *pStr);
  *                    have been requested: the user should
  *                    expect either.
  * @param pStrDns1    a pointer to storage of length at least
- *                    U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
+ *                    #U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
  *                    On return the primary DNS address will be
  *                    written to pStr as a string and a null
  *                    terminator will be added.
@@ -693,7 +698,7 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle, char *pStr);
  *                    whether a DNS address has been allocated or
  *                    not.
  * @param pStrDns2    a pointer to storage of length at least
- *                    U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
+ *                    #U_CELL_NET_IP_ADDRESS_SIZE bytes in size.
  *                    On return the secondary DNS address will be
  *                    written to pStr as a string and a null
  *                    terminator will be added.  May be set to NULL.
@@ -714,7 +719,7 @@ int32_t uCellNetGetDnsStr(uDeviceHandle_t cellHandle, bool v6,
  *                    added to terminate the string; to ensure
  *                    the maximum number of characters for an APN
  *                    can be stored, allocate
- *                    U_CELL_NET_MAX_APN_LENGTH_BYTES.  This pointer
+ *                    #U_CELL_NET_MAX_APN_LENGTH_BYTES.  This pointer
  *                    cannot be NULL.
  * @param size        the number of bytes available at pStr, including
  *                    room for a null terminator.  Must be greater
@@ -763,6 +768,8 @@ int32_t uCellNetResetDataCounters(uDeviceHandle_t cellHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_NET_H_
 

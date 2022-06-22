@@ -17,6 +17,10 @@
 #ifndef _U_PORT_PRIVATE_H_
 #define _U_PORT_PRIVATE_H_
 
+/** \defgroup NRF5-Private nRF5 Private
+ *  @{
+ */
+
 /** @file
  * @brief Stuff private to the NRF52 porting layer.
  */
@@ -182,6 +186,8 @@ int32_t uPortPrivateTimerDelete(const uPortTimerHandle_t handle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_PORT_PRIVATE_H_
 

@@ -22,8 +22,14 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _short-range
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the module types for ShortRange.
+ * These types are not intended to be used directly, they are used only
+ * via the ble/wifi APIs.
  */
 
 /* ----------------------------------------------------------------
@@ -34,7 +40,7 @@
  *  Note: If you add a new module type here you must also:
  *  1. Add an entry to gUShortRangePrivateModuleList in
  *     u_short_range_private.c.
- *  2. Add an entry to U_SHORT_RANGE_MODULE_LIST() in this file.
+ *  2. Add an entry to #U_SHORT_RANGE_MODULE_LIST() in this file.
  */
 #define U_SHORT_RANGE_MODULE_TYPE_INTERNAL 0
 #define U_SHORT_RANGE_MODULE_TYPE_ANNA_B1  1
@@ -72,6 +78,8 @@
  * -------------------------------------------------------------- */
 
 typedef int32_t uShortRangeModuleType_t;
+
+/** @}*/
 
 #endif // _U_SHORT_RANGE_MODULE_TYPE_H_
 

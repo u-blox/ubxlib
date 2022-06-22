@@ -17,7 +17,16 @@
 #ifndef _U_WIFI_MODULE_TYPE_H_
 #define _U_WIFI_MODULE_TYPE_H_
 
+/* Only header files representing a direct and unavoidable
+ * dependency between the API of this module and the API
+ * of another module should be included here; otherwise
+ * please keep #includes to your .c files. */
+
 #include "u_short_range_module_type.h"
+
+/** \addtogroup _wifi
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the module types for WiFi.
@@ -44,9 +53,9 @@ extern "C" {
     _WIFI(_TYPE_NAME)
 
 typedef enum {
-// X macro is used to generate this enum from U_SHORT_RANGE_MODULE_LIST
+// X macro is used to generate this enum from #U_SHORT_RANGE_MODULE_LIST
 // for all entries with field "WiFi" set to U_YES.
-// It will prefix the "Module" field from U_SHORT_RANGE_MODULE_LIST with
+// It will prefix the "Module" field from #U_SHORT_RANGE_MODULE_LIST with
 // U_WIFI_MODULE_TYPE_, thus creating the enum values below:
 //    U_WIFI_MODULE_TYPE_NINA_W13 < Modules NINA-W13. Wifi only
 //    U_WIFI_MODULE_TYPE_NINA_W15 < Modules NINA-W15. Wifi, BLE and Classic
@@ -70,6 +79,8 @@ typedef enum {
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_WIFI_MODULE_TYPE_H_
 

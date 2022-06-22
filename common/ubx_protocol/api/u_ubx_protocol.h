@@ -22,9 +22,13 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __ubx-protocol __UBX Protocol
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the ubx protocol API, intended to
- * encode/decode ubx format message when communicating with a u-blox
+ * encode/decode ubx format messages when communicating with a u-blox
  * GNSS module.
  */
 
@@ -133,7 +137,7 @@ uint64_t uUbxProtocolUint64Encode(uint64_t uint64);
  * @param pBuffer                 a buffer in which the encoded
  *                                message is to be stored; at least
  *                                messageLengthBytes +
- *                                U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES
+ *                                #U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES
  *                                must be allowed.
  * @return                        on success the number of bytes written
  *                                to pBuffer, else negative error code.
@@ -149,6 +153,7 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
  * beyond the end of the buffer if no message or a partial message
  * is found.  Hence a good pattern for use of this function could be:
  *
+ * ```
  * const char *pBufferStart = &(dataIn[0]);
  * size_t bufferLength = sizeof(dataIn);
  * const char *pBufferEnd = pBufferStart;
@@ -179,6 +184,7 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
  *    bufferLength -= pBufferEnd - pBufferStart;
  *    pBufferStart = pBufferEnd;
  * }
+ * ```
  *
  * @param pBufferIn                  a pointer to the message buffer to
  *                                   decode.
@@ -208,7 +214,7 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
  *                                   a maximum of maxMessageBodyLengthBytes
  *                                   will be written to pMessageBody.  If
  *                                   pBufferIn contains a partial message
- *                                   U_ERROR_COMMON_TIMEOUT will be returned.
+ *                                   #U_ERROR_COMMON_TIMEOUT will be returned.
  */
 int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
                            int32_t *pMessageClass, int32_t *pMessageId,
@@ -218,6 +224,8 @@ int32_t uUbxProtocolDecode(const char *pBufferIn, size_t bufferLengthBytes,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_UBX_PROTOCOL_H_
 

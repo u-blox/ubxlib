@@ -46,7 +46,7 @@
 /** Define a timer, intended to be used as part of a linked-list.
  */
 typedef struct uPortPrivateTimer_t {
-    struct k_timer *pKTimer; /**<! This is used as the handle. */
+    struct k_timer *pKTimer; /**< this is used as the handle. */
     uint32_t intervalMs;
     bool periodic;
     pTimerCallback_t *pCallback;

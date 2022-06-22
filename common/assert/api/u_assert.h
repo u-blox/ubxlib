@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_compiler.h"
+
+/** \addtogroup assert Assert hook
+ *  @{
+ */
 
 /** @file
  * @brief Assert macro, function and hook.
@@ -64,7 +69,7 @@ typedef void (upAssertFailed_t) (const char *pFileStr, int32_t line);
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Register an assertFailed() callback.  When U_ASSERT is called
+/** Register an assertFailed() callback.  When #U_ASSERT is called
  * with a false assert condition then pAssertFailed will be called
  * with the file string and line number of the assert; no other
  * action will be taken, it is entirely up to the pAssertFailed function
@@ -95,6 +100,8 @@ void uAssertFailed(const char *pFileStr, int32_t line) U_CLANG_ANALYZER_NORETURN
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_ASSERT_H_
 

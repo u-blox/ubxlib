@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup __port
+ *  @{
+ */
+
 /** @file
  * @brief Porting layer for GPIO access functions.  These functions
  * are thread-safe.
@@ -79,8 +83,8 @@ typedef enum {
 
 /** GPIO configuration structure.
  * If you update this, don't forget to update
- * U_PORT_GPIO_CONFIG_DEFAULT and
- * U_PORT_GPIO_SET_DEFAULT also.
+ * #U_PORT_GPIO_CONFIG_DEFAULT and
+ * #U_PORT_GPIO_SET_DEFAULT also.
  */
 typedef struct {
     int32_t pin;  /**< a positive integer; note that the pin number is
@@ -103,7 +107,7 @@ typedef struct {
                                    U_PORT_GPIO_DRIVE_MODE_NORMAL,       \
                                    U_PORT_GPIO_DRIVE_CAPABILITY_STRONG}
 
-/** Compilers won't generally allow myConfig = U_PORT_GPIO_CONFIG_DEFAULT;
+/** Compilers won't generally allow myConfig = #U_PORT_GPIO_CONFIG_DEFAULT;
  * to be done anywhere other than where myConfig is declared.  This macro
  * provides a method to do that.
  */
@@ -152,6 +156,8 @@ int32_t uPortGpioGet(int32_t pin);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_PORT_GPIO_H_
 

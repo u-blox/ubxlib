@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _GNSS
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the utility functions of the GNSS API.
  */
@@ -45,14 +49,14 @@ extern "C" {
 /** Send a ubx command of your choosing to the GNSS chip and,
  * optionally, wait for the response.  You must encode the
  * message correctly (e.g. using the encode/decode functions
- * of the ubx API).  If you are expecting a response then it
- * is up to you to parse that response; in particular, if you
+ * of the ubx protocol API).  If you are expecting a response then
+ * it is up to you to parse that response; in particular, if you
  * are sending a ubx format message and the transport type is
- * U_GNSS_TRANSPORT_NMEA_UART then you will need to pick the
+ * #U_GNSS_TRANSPORT_NMEA_UART then you will need to pick the
  * ubx message out from any NMEA data that happens to be
  * emitted by the GNSS chip at around the same time.  Given
  * the asynchronous nature of NMEA transmission you may
- * prefer to set the transport type to U_GNSS_TRANSPORT_UBX_UART.
+ * prefer to set the transport type to #U_GNSS_TRANSPORT_UBX_UART.
  *
  * Note: the message contents are not touched by this code and
  * hence could be anything at all *except* that in the case of
@@ -84,6 +88,8 @@ int32_t uGnssUtilUbxTransparentSendReceive(uDeviceHandle_t gnssHandle,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_GNSS_UTIL_H_
 

@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _GNSS
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the GNSS APIs to read position.
@@ -124,7 +129,7 @@ extern "C" {
  *                                    timer that might be running. May
  *                                    be NULL, in which case position
  *                                    establishment will stop when
- *                                    U_GNSS_POS_TIMEOUT_SECONDS have
+ *                                    #U_GNSS_POS_TIMEOUT_SECONDS have
  *                                    elapsed.  The single int32_t
  *                                    parameter is the GNSS handle.
  * @return                            zero on success or negative error
@@ -142,7 +147,7 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
  * one-shot operation but the answer arrives via a callback.  Should
  * you wish to cancel a request, or start a new request without waiting
  * for the answer to the previous request, then you must call
- * uGnssPosGetStop() first (otherwise U_ERROR_COMMON_NO_MEMORY will
+ * uGnssPosGetStop() first (otherwise #U_ERROR_COMMON_NO_MEMORY will
  * be returned).  uGnssPosGetStart() creates a mutex for thread-safety
  * which remains in memory until the GNSS API is deinitialised; should
  * you wish to free the memory occupied by the mutex then calling
@@ -237,7 +242,7 @@ void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
  *                                      also be used to feed any watchdog timer that
  *                                      might be running. May be NULL, in which case
  *                                      this function will stop when
- *                                      U_GNSS_POS_TIMEOUT_SECONDS have elapsed.  The
+ *                                      #U_GNSS_POS_TIMEOUT_SECONDS have elapsed.  The
  *                                      single int32_t parameter is the GNSS handle.
  * @return                              on success the number of bytes returned, else
  *                                      negative error code.
@@ -251,6 +256,8 @@ int32_t uGnssPosGetRrlp(uDeviceHandle_t gnssHandle, char *pBuffer, size_t sizeBy
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_GNSS_POS_H_
 

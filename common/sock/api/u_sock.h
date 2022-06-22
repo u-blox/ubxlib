@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h" // uDeviceHandle_t
+
+/** \addtogroup sock Sockets
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the sockets API. These functions are
@@ -39,7 +44,7 @@ extern "C" {
 #ifndef U_SOCK_MAX_NUM_SOCKETS
 /** A value for the maximum number of sockets that can be open
  * simultaneously is required by this API in order that if can
- * define U_SOCK_DESCRIPTOR_SET_SIZE.  A limitation may also be
+ * define #U_SOCK_DESCRIPTOR_SET_SIZE.  A limitation may also be
  * applied by the underlying implementation.
  */
 # define U_SOCK_MAX_NUM_SOCKETS 7
@@ -449,8 +454,8 @@ bool uSockBlockingGet(uSockDescriptor_t descriptor);
 /** Set the options for the given socket.  This function obeys
  * the BSD socket conventions and hence, for instance, to set
  * the socket receive timeout one would pass in a level
- * of U_SOCK_OPT_LEVEL_SOCK, and option value of
- * U_SOCK_OPT_RCVTIMEO and then the option value would be
+ * of #U_SOCK_OPT_LEVEL_SOCK, and option value of
+ * #U_SOCK_OPT_RCVTIMEO and then the option value would be
  * a pointer to a structure of type timeval.
  *
  * @param descriptor        the descriptor of the socket.
@@ -529,12 +534,12 @@ int32_t uSockSendTo(uSockDescriptor_t descriptor,
  * @param dataSizeBytes  the number of bytes of storage available
  *                       at pData.  Each call receives a single
  *                       datagram of a maximum length that can
- *                       be retrieved using the U_SOCK_OPT_RCVBUF
+ *                       be retrieved using the #U_SOCK_OPT_RCVBUF
  *                       socket option; if dataSizeBytes is less
  *                       than this size the remainder will be thrown
  *                       away so, to ensure no loss, always
  *                       allocate a buffer of at least the value
- *                       returned by U_SOCK_OPT_RCVBUF.
+ *                       returned by #U_SOCK_OPT_RCVBUF.
  * @return               on success the number of bytes received
  *                       else negative error code (and errno will
  *                       also be set to a value from u_sock_errno.h).
@@ -690,7 +695,7 @@ int32_t uSockAccept(uSockDescriptor_t descriptor,
  * @return                      a positive value if an unblock
  *                              occurred, zero on timeout, negative
  *                              on any other error.  Use
- *                              U_SOCK_FD_ISSET() to determine
+ *                              #U_SOCK_FD_ISSET() to determine
  *                              which descriptor(s) were unblocked.
  */
 int32_t uSockSelect(int32_t maxDescriptor,
@@ -782,8 +787,8 @@ int32_t uSockStringToAddress(const char *pAddressString,
  *
  * @param pIpAddress a pointer to the IP address to convert.
  * @param pBuffer    a buffer in which to place the string.
- *                   Allow U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES
- &                   for a full IPV6 address and terminator.
+ *                   Allow #U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES
+ *                   for a full IPV6 address and terminator.
  * @param sizeBytes  the amount of memory pointed to by
  *                   pBuffer.
  * @return           on success the length of the string, not
@@ -799,7 +804,7 @@ int32_t uSockIpAddressToString(const uSockIpAddress_t *pIpAddress,
  *
  * @param pAddress   a pointer to the address to convert.
  * @param pBuffer    a buffer in which to place the string.
- *                   Allow U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES
+ *                   Allow #U_SOCK_ADDRESS_STRING_MAX_LENGTH_BYTES
  *                   for a full IPV6 address with port number
  *                   and terminator.
  * @param sizeBytes  the amount of memory pointed to by pBuffer.
@@ -839,6 +844,8 @@ char *pUSockDomainRemovePort(char *pDomainString);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_SOCK_H_
 

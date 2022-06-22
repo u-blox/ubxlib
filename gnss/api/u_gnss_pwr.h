@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _GNSS
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the GNSS APIs to control the power
  * state of a GNSS chip.
@@ -39,7 +43,7 @@ extern "C" {
 /** How long to wait for a GNSS chip to be available after it is
  * powered up.  If you change this and you also use the cell locate
  * API then you might want to change the value of
- * U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS also.
+ * #U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS also.
  */
 # define U_GNSS_POWER_UP_TIME_SECONDS 2
 #endif
@@ -48,7 +52,7 @@ extern "C" {
 /** How long to wait for the response to AT+UGPS=1.  If you
  * change this and you also use the cell locate API then you
  * might want to change the value of
- * U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS also.
+ * #U_CELL_LOC_GNSS_POWER_UP_TIME_SECONDS also.
  */
 # define U_GNSS_AT_POWER_UP_TIME_SECONDS 30
 #endif
@@ -57,7 +61,7 @@ extern "C" {
 /** How long to wait for the response to AT+UGPS=0.  If you
  * change this and you also use the cell locate API then you
  * might want to change the value of
- * U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS also.
+ * #U_CELL_LOC_GNSS_POWER_DOWN_TIME_SECONDS also.
  */
 # define U_GNSS_AT_POWER_DOWN_TIME_SECONDS 30
 #endif
@@ -68,7 +72,7 @@ extern "C" {
  * on the heels of a previous GNSS-related command  If you
  * change this and you also use the cell locate API then you
  * might want to change the value of
- * U_CELL_LOC_GNSS_POWER_CHANGE_MILLISECONDS also.
+ * #U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS also.
  */
 # define U_GNSS_AT_POWER_CHANGE_WAIT_MILLISECONDS 500
 #endif
@@ -86,7 +90,7 @@ extern "C" {
 
 #ifndef U_GNSS_AT_POWER_ON_RETRY_INTERVAL_SECONDS
 /** How long to wait between power-on retries; only
- * relevant if U_GNSS_AT_POWER_ON_RETRIES is greater than
+ * relevant if #U_GNSS_AT_POWER_ON_RETRIES is greater than
  * zero.
  */
 # define U_GNSS_AT_POWER_ON_RETRY_INTERVAL_SECONDS 10
@@ -101,7 +105,7 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 /** Power a GNSS chip on.  If the transport type for the given GNSS
- * instance is U_GNSS_TRANSPORT_UBX_AT then you must have powered
+ * instance is #U_GNSS_TRANSPORT_UBX_AT then you must have powered
  * the associated cellular module up (e.g. with a call to uDeviceOpen()
  * or uCellPwrOn()) before calling this function.  Also powering up
  * a GNSS module which is attached via a cellular module will "claim"
@@ -131,6 +135,8 @@ int32_t uGnssPwrOff(uDeviceHandle_t gnssHandle);
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_GNSS_PWR_H_
 

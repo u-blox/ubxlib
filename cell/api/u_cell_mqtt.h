@@ -22,6 +22,10 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
+/** \addtogroup _cell
+ *  @{
+ */
+
 /** @file
  * @brief This header file defines the MQTT/MQTT-SN client API for cellular
  * modules.  These functions are NOT thread-safe and are NOT intended to be
@@ -114,7 +118,7 @@ typedef enum {
 } uCellMqttQos_t;
 
 /** The type of MQTT-SN topic name.  The values here
- * should match those in uMqttSnTopicNameType_t.
+ * should match those in #uMqttSnTopicNameType_t.
  */
 typedef enum {
     U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL = 0, /**< a two-byte ID, e.g. 0x0001, referring to a normal MQTT topic, e.g. "thing/this". */
@@ -130,22 +134,22 @@ typedef enum {
 typedef struct {
 // *INDENT-OFF* (otherwise AStyle makes a mess of this)
     union {
-        uint16_t id; /**< Populate this for the types U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL
-                          or U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED. */
+        uint16_t id; /**< Populate this for the types #U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL
+                          or #U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED. */
         // nameShort MUST be of length 2, as defined by the MQTT-SN specifications; the
         // code is written such that no terminating 0 is required in the storage here.
-        char nameShort[2]; /**< Populate this for U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT;
+        char nameShort[2]; /**< Populate this for #U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT;
                                 nameShort must contain two ASCII characters, no terminator
                                 is required. */
     } name;
     uCellMqttSnTopicNameType_t type; /**< If the id field is populated and was obtained
                                           through uCellMqttSnRegisterNormalTopic()
                                           or uCellMqttSnSubscribeNormalTopic() then set this to
-                                          U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL.  If the id field
+                                          #U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL.  If the id field
                                           is populated and is a predefined topic ID then set
-                                          this to U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED.  If the
+                                          this to #U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED.  If the
                                           nameShort field is populated, set this to
-                                          U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT. */
+                                          #U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT. */
 // *INDENT-ON*
 } uCellMqttSnTopicName_t;
 
@@ -190,7 +194,7 @@ typedef struct {
  *                               called while the API is waiting.  While
  *                               the callback function returns true the
  *                               API will continue to wait until success
- *                               or U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS
+ *                               or #U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS
  *                               is reached.  If the callback function
  *                               returns false then the API will return.
  *                               Note that the thing the API was waiting for
@@ -201,7 +205,7 @@ typedef struct {
  *                               watchdog timer that may be running.
  *                               May be NULL, in which case the
  *                               APIs will continue to wait until success
- *                               or U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS.
+ *                               or #U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS.
  * @param mqttSn                 set to true if the connection is an MQTT-SN
  *                               connection to an MQTT-SN broker.
  * @return                       zero on success or negative error code on
@@ -289,7 +293,7 @@ int32_t uCellMqttGetInactivityTimeout(uDeviceHandle_t cellHandle);
  * to that connection, i.e. "keep alive" always begins off
  * for a connection and you must switch it on.  If the inactivity
  * timeout is zero then this function will return
- * U_CELL_ERROR_NOT_ALLOWED.
+ * #U_CELL_ERROR_NOT_ALLOWED.
  * IMPORTANT: a re-boot of the module will lose your setting.
  *
  * @param cellHandle the handle of the cellular instance to be used.
@@ -409,8 +413,8 @@ bool uCellMqttIsSecured(uDeviceHandle_t cellHandle,
  *                           MQTT-SN it must be a null-terminated
  *                           ASCII string containing only printable
  *                           characters (i.e. isprint() returns true)
- *                           and no double quotation marks ("). May
- *                           be NULL, in which case the message will
+ *                           and no double quotation marks. May be
+ *                           NULL, in which case the message will
  *                           not be modified.
  * @param messageSizeBytes   since pMessage may include binary
  *                           content, including NULLs, this
@@ -550,7 +554,7 @@ int32_t uCellMqttSetDisconnectCallback(uDeviceHandle_t cellHandle,
 
 /** Set the number of retries that the MQTT client will make for any
  * operation that fails due to the radio interface.  If this function
- * is not called U_CELL_MQTT_RETRIES_DEFAULT will apply.
+ * is not called #U_CELL_MQTT_RETRIES_DEFAULT will apply.
  *
  * @param cellHandle  the handle of the cellular instance to be used.
  * @param numRetries  the number of retries.
@@ -601,7 +605,7 @@ bool uCellMqttIsSupported(uDeviceHandle_t cellHandle);
  *                          returns true) then it is usually 1024
  *                          characters, else it will likely be
  *                          512 characters to allow for hex coding;
- *                          however on some modules (e.g. SARA_R410M_03B)
+ *                          however on some modules (e.g. SARA-R410M-03B)
  *                          it can be as low as 256 characters.
  * @param qos               the MQTT QoS to use for this message.
  * @param retain            if true the message will be retained
@@ -862,7 +866,7 @@ int32_t uCellMqttSnMessageRead(uDeviceHandle_t cellHandle,
  * size for forward compatibility, the underlying AT interface for
  * this command ONLY works if pMessage is a null-terminated string
  * containing only printable characters (i.e. isprint() returns true)
- * and no double quotation marks (").
+ * and no double quotation marks.
  * IMPORTANT: a re-boot of the module will lose your setting.
  *
  * @param cellHandle       the handle of the cellular instance to
@@ -871,7 +875,7 @@ int32_t uCellMqttSnMessageRead(uDeviceHandle_t cellHandle,
  *                         must be a null terminated string, cannot
  *                         be NULL must contain only printable
  *                         characters (i.e. isprint() returns true)
- *                         and no double quotation marks (").
+ *                         and no double quotation marks.
  * @param messageSizeBytes provided for future compatiblity only,
  *                         please use strlen(pMessage).
  * @return                 zero on success else negative error
@@ -904,6 +908,8 @@ int32_t uCellMqttSnSetWillParameters(uDeviceHandle_t cellHandle,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_MQTT_H_
 

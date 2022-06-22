@@ -21,7 +21,12 @@
  * dependency between the API of this module and the API
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
+
 #include "u_device.h"
+
+/** \addtogroup _cell _Cellular
+ *  @{
+ */
 
 /** @file
  * @brief This header file defines the general cellular-wide APIs,
@@ -40,7 +45,7 @@ extern "C" {
 /** The recommended UART buffer length for the cellular driver,
  * large enough to run AT sockets using the IP stack on the
  * cellular module (where the maximum packet length is 1024 bytes)
- * without flow control.  See U_CELL_AT_BUFFER_LENGTH_BYTES for
+ * without flow control.  See #U_CELL_AT_BUFFER_LENGTH_BYTES for
  * where the overhead numbers come from (for the C2C case).
  */
 # define U_CELL_UART_BUFFER_LENGTH_BYTES (1024 + 16 + 16 + 16 + 16 + 16 + 6)
@@ -86,7 +91,7 @@ extern "C" {
  * that is connected to the cellular module's PWR_ON pin;
  * this allows the sense to be switched at compile time.
  * However, the method of ORing the pin with
- * U_CELL_PIN_INVERTED is preferred; this compile-time
+ * #U_CELL_PIN_INVERTED is preferred; this compile-time
  * mechanism is retained for backwards-compatibility.
  * DON'T USE BOTH MECHANISMS or the sense of the pin will
  * be inverted twice.
@@ -101,7 +106,7 @@ extern "C" {
  * and the thing (e.g. a transistor) that is enabling power to
  * the cellular module; this macro allows the sense of the power
  * on pin to be switched at compile time.  However, the
- * method of ORing the pin with U_CELL_PIN_INVERTED is
+ * method of ORing the pin with #U_CELL_PIN_INVERTED is
  * preferred; this compile-time mechanism is retained for
  * backwards-compatibility.
  * DON'T USE BOTH MECHANISMS or the sense of the pin will
@@ -116,7 +121,7 @@ extern "C" {
 /** There can be an inverter in-line between the VINT pin
  * on the cellular module and the MCU pin; this allows the sense
  * to be switched at compile time.  However, the
- * method of ORing the pin with U_CELL_PIN_INVERTED is
+ * method of ORing the pin with #U_CELL_PIN_INVERTED is
  * preferred; this compile-time mechanism is retained for
  * backwards-compatibility.
  * DON'T USE BOTH MECHANISMS or the sense of the pin will
@@ -141,7 +146,7 @@ extern "C" {
 
 
 #ifndef U_CELL_POWER_SAVING_UART_WAKEUP_MARGIN_MILLISECONDS
-/** The time within U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS
+/** The time within #U_CELL_POWER_SAVING_UART_INACTIVITY_TIMEOUT_SECONDS
  * at which this code should comme commence the "please be awake"
  * procedure, rather than just expecting the AT interface to
  * be responsive.
@@ -158,21 +163,21 @@ extern "C" {
 typedef enum {
     U_CELL_ERROR_FORCE_32_BIT = 0x7FFFFFFF,  /**< Force this enum to be 32 bit as it can be
                                                   used as a size also. */
-    U_CELL_ERROR_AT = U_ERROR_CELL_MAX,      /**< -256 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_NOT_CONFIGURED = U_ERROR_CELL_MAX - 1, /**< -257 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_PIN_ENTRY_NOT_SUPPORTED = U_ERROR_CELL_MAX - 2, /**< -258 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_NOT_REGISTERED = U_ERROR_CELL_MAX - 3, /**< -259 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_ATTACH_FAILURE = U_ERROR_CELL_MAX - 4, /**< -260 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE = U_ERROR_CELL_MAX - 5, /**< -261 if U_ERROR_BASE is 0. */
+    U_CELL_ERROR_AT = U_ERROR_CELL_MAX,      /**< -256 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_NOT_CONFIGURED = U_ERROR_CELL_MAX - 1, /**< -257 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_PIN_ENTRY_NOT_SUPPORTED = U_ERROR_CELL_MAX - 2, /**< -258 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_NOT_REGISTERED = U_ERROR_CELL_MAX - 3, /**< -259 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_ATTACH_FAILURE = U_ERROR_CELL_MAX - 4, /**< -260 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_CONTEXT_ACTIVATION_FAILURE = U_ERROR_CELL_MAX - 5, /**< -261 if #U_ERROR_BASE is 0. */
     U_CELL_ERROR_CONNECTED = U_ERROR_CELL_MAX - 6,  /**< This is an ERROR code used, for instance, to
                                                          indicate that a disconnect attempt has failed.
-                                                         -262 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_NOT_CONNECTED = U_ERROR_CELL_MAX - 7, /**< -263 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_NOT_FOUND = U_ERROR_CELL_MAX - 8,  /**< -264 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_VALUE_OUT_OF_RANGE = U_ERROR_CELL_MAX - 9,  /**< -265 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_TEMPORARY_FAILURE = U_ERROR_CELL_MAX - 10,  /**< -266 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_CELL_LOCATE = U_ERROR_CELL_MAX - 11,  /**< -267 if U_ERROR_BASE is 0. */
-    U_CELL_ERROR_NOT_ALLOWED = U_ERROR_CELL_MAX - 12  /**< -268 if U_ERROR_BASE is 0. */
+                                                         -262 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_NOT_CONNECTED = U_ERROR_CELL_MAX - 7, /**< -263 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_NOT_FOUND = U_ERROR_CELL_MAX - 8,  /**< -264 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_VALUE_OUT_OF_RANGE = U_ERROR_CELL_MAX - 9,  /**< -265 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_TEMPORARY_FAILURE = U_ERROR_CELL_MAX - 10,  /**< -266 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_CELL_LOCATE = U_ERROR_CELL_MAX - 11,  /**< -267 if #U_ERROR_BASE is 0. */
+    U_CELL_ERROR_NOT_ALLOWED = U_ERROR_CELL_MAX - 12  /**< -268 if #U_ERROR_BASE is 0. */
 } uCellErrorCode_t;
 
 /* ----------------------------------------------------------------
@@ -200,7 +205,7 @@ void uCellDeinit();
  * @param moduleType       the cellular module type.
  * @param atHandle         the handle of the AT client to use.  This must
  *                         already have been created by the caller with
- *                         a buffer of size U_CELL_AT_BUFFER_LENGTH_BYTES.
+ *                         a buffer of size #U_CELL_AT_BUFFER_LENGTH_BYTES.
  *                         If a cellular instance has already been added
  *                         for this atHandle an error will be returned.
  * @param pinEnablePower   the pin that switches on the power
@@ -212,14 +217,14 @@ void uCellDeinit();
  *                         and whatever is switching the power, so that
  *                         0 indicates "on" rather than 1, then the value
  *                         of pinEnablePower should be ORed with
- *                         U_CELL_PIN_INVERTED.
+ *                         #U_CELL_PIN_INVERTED.
  * @param pinPwrOn         the pin that signals power-on to the
  *                         cellular module, i.e. the pin
  *                         that is connected to the module's PWR_ON pin.
  *                         Set to -1 if there is no such pin.  If there
  *                         is an inverter between the pin of this MCU
  *                         and the PWR_ON pin of the module then the value
- *                         of pinPwrOn should be ORed with U_CELL_PIN_INVERTED.
+ *                         of pinPwrOn should be ORed with #U_CELL_PIN_INVERTED.
  * @param pinVInt          the pin that can be monitored to detect
  *                         that the cellular module is powered up.
  *                         This pin should be connected to the
@@ -229,14 +234,14 @@ void uCellDeinit();
  *                         there is no such pin.  If there is an
  *                         inverter between the VInt pin of the module
  *                         and this pin of the MCU then the value
- *                         of pinVInt should be ORed with U_CELL_PIN_INVERTED.
+ *                         of pinVInt should be ORed with #U_CELL_PIN_INVERTED.
  * @param leavePowerAlone  set this to true if initialisation should
  *                         not modify the state of pinEnablePower or
  *                         pinPwrOn, else it will ensure that pinEnablePower
  *                         is low to disable power to the module and pinPwrOn
  *                         is high so that it can be pulled low to logically
  *                         power the module on.
- * @param[out] pCellHandle  a pointer to the output handle. Will only be set on success.
+ * @param[out] pCellHandle a pointer to the output handle. Will only be set on success.
  * @return                 zero on success or negative error code on failure.
  */
 int32_t uCellAdd(uCellModuleType_t moduleType,
@@ -267,6 +272,8 @@ int32_t uCellAtClientHandleGet(uDeviceHandle_t cellHandle,
 #ifdef __cplusplus
 }
 #endif
+
+/** @}*/
 
 #endif // _U_CELL_H_
 
