@@ -212,8 +212,8 @@ bool uCellSockBlockingGet(uDeviceHandle_t cellHandle,
 /** Set socket option.  This function obeys
  * the BSD socket conventions and hence, for instance, to set
  * the socket receive timeout one would pass in a level
- * of U_SOCK_OPT_LEVEL_SOCK, and option value of
- * U_SOCK_OPT_RCVTIMEO and then the option value would be
+ * of #U_SOCK_OPT_LEVEL_SOCK, and option value of
+ * #U_SOCK_OPT_RCVTIMEO and then the option value would be
  * a pointer to a structure of type timeval.
  *
  * @param cellHandle        the handle of the cellular instance.

@@ -226,9 +226,11 @@ int32_t uCellCfgGetMnoProfile(uDeviceHandle_t cellHandle);
 /** Configures serial interface. The configuration affects how an available
  * (physical or logical) serial interface is used, e.g the meaning of data
  * flowing over it. Possible usages are:
- *      modem interface (AT command)
- *      Trace interface (diagnostic log)
- *      Raw interface (e.g GPS/GNSS).
+ *
+ *  - modem interface (AT command),
+ *  - trace interface (diagnostic log),
+ *  - raw interface (e.g GPS/GNSS).
+ *
  * The module must be re-booted afterwards (with a call to uCellPwrReboot())
  * for it to take effect.
  * Note: to find the serial interface variants available for your module, see the

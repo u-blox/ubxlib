@@ -22,7 +22,7 @@
  * of another module should be included here; otherwise
  * please keep #includes to your .c files. */
 
-/** \addtogroup error Error Codes
+/** \addtogroup error Error codes
  *  @{
  */
 

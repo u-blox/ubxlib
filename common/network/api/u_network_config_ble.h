@@ -49,15 +49,15 @@
 /** The network configuration for BLE.
  */
 typedef struct {
-    uNetworkCfgVersion_t version; /**< Version of this network
+    uNetworkCfgVersion_t version; /**< version of this network
                                        configuration; allow your
                                        compiler to initialise this
                                        to zero unless otherwise
                                        specified below. */
-    uNetworkType_t type; /**< For error checking purposes. */
-    int32_t role;        /**< Peripheral, central or, peripheral and central,
+    uNetworkType_t type; /**< for error checking purposes. */
+    int32_t role;        /**< peripheral, central or, peripheral and central,
                               see uShortRangeBleRole_t in u_short_range.h. */
-    bool spsServer;      /**< True if sps server is to be enabled. */
+    bool spsServer;      /**< true if sps server is to be enabled. */
     /* This is the end of version 0 of this structure:
        should any fields be added to this structure in
        future they must be added AFTER this point and

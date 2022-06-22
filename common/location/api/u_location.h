@@ -83,7 +83,7 @@ extern "C" {
 #endif
 
 #ifndef U_LOCATION_ASSIST_DEFAULTS
-/** Default values for uLocationAssist_t.
+/** Default values for #uLocationAssist_t.
  */
 # define U_LOCATION_ASSIST_DEFAULTS {-1, -1, false,                                             \
                                      U_LOCATION_CLOUD_LOCATE_SVS_THRESHOLD,                     \

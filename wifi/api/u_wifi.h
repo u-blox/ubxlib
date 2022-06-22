@@ -180,7 +180,7 @@ void uWifiDeinit();
  * @param devHandle        the handle of the wifi instance.
  * @param pSsid            the Service Set Identifier
  * @param authentication   the authentication type
- * @param[in] pPassPhrase  the passphrase (8-63ASCII characters as a string) for WPA/WPA2/WPA3
+ * @param[in] pPassPhrase  the passphrase (8-63 ASCII characters as a string) for WPA/WPA2/WPA3
  * @return                 zero on successful, else negative error code.
  *                         Note: there is no actual connection until the Wifi callback reports
  *                         connected.

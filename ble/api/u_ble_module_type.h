@@ -24,7 +24,7 @@
  */
 
 /** @file
- * @brief This header file defines the module types for ble.
+ * @brief This header file defines the module types for BLE.
  */
 
 /* ----------------------------------------------------------------
@@ -58,9 +58,9 @@ typedef enum {
 //    U_BLE_MODULE_TYPE_ODIN_W2  < Modules NINA-B1. Wifi, BLE and Classic
     U_SHORT_RANGE_MODULE_LIST
 
-    U_BLE_MODULE_TYPE_INVALID = U_SHORT_RANGE_MODULE_TYPE_INVALID,   /**< Invalid */
-    U_BLE_MODULE_TYPE_INTERNAL = U_SHORT_RANGE_MODULE_TYPE_INTERNAL, /**< Internal module */
-    U_BLE_MODULE_TYPE_UNSUPPORTED = U_SHORT_RANGE_MODULE_TYPE_UNSUPPORTED /**< Valid module, but not supporting BLE */
+    U_BLE_MODULE_TYPE_INVALID = U_SHORT_RANGE_MODULE_TYPE_INVALID,   /**< invalid. */
+    U_BLE_MODULE_TYPE_INTERNAL = U_SHORT_RANGE_MODULE_TYPE_INTERNAL, /**< internal module. */
+    U_BLE_MODULE_TYPE_UNSUPPORTED = U_SHORT_RANGE_MODULE_TYPE_UNSUPPORTED /**< valid module, but not supporting BLE. */
 } uBleModuleType_t;
 #undef U_NO
 #undef U_YES

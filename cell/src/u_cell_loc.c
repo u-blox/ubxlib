@@ -133,7 +133,7 @@ typedef struct {
     int64_t timeUtc;
 } uCellLocFixDataStorageBlock_t;
 
-/** Union of the posible fix data storage types.
+/** Union of the possible fix data storage types.
  */
 typedef union {
     volatile uCellLocFixDataStorageBlock_t *pBlock;
@@ -148,7 +148,7 @@ typedef union {
                        int64_t timeUtc);
 } uCellLocFixDataStorageUnion_t;
 
-/** Structure to bring together the uCellLocFixDataStorageUnion_t
+/** Structure to bring together the #uCellLocFixDataStorageUnion_t
  * union the enum indicating what type of storage it is.
  */
 typedef struct {

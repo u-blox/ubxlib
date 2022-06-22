@@ -79,7 +79,7 @@ typedef enum {
  * of this type to zero and ignore it.  It is only set to a value
  * other than zero when variables in a new and extended version of
  * the structure it is a part of are being used, the version number
- * being employec by this code to detect that and, more importantly,
+ * being employed by this code to detect that and, more importantly,
  * to adopt default values for any new elements when the version
  * number is STILL ZERO, maintaining backwards compatibility with
  * existing application code.  The structure this is a part of will

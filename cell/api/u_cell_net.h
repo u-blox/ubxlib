@@ -138,7 +138,7 @@ extern "C" {
 //lint -estring(788, uCellNetStatus_t::U_CELL_NET_STATUS_DUMMY)
 // Suppress not used within defaulted switch
 typedef enum {
-    U_CELL_NET_STATUS_DUMMY = -1, /**< Added to ensure that the
+    U_CELL_NET_STATUS_DUMMY = -1, /**< added to ensure that the
                                        compiler treats values of
                                        this type as signed in case
                                        an error code is to be returned
@@ -175,7 +175,7 @@ typedef enum {
 //lint -estring(788, uCellNetRat_t::U_CELL_NET_RAT_DUMMY)
 // Suppress not used within defaulted switch
 typedef enum {
-    U_CELL_NET_RAT_DUMMY = -1, /**< Added to ensure that the
+    U_CELL_NET_RAT_DUMMY = -1, /**< added to ensure that the
                                     compiler treats values of
                                     this type as signed in case
                                     an error code is to be returned
@@ -187,32 +187,32 @@ typedef enum {
                                     of this. */
     U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED = 0,
     U_CELL_NET_RAT_GSM_GPRS_EGPRS = 1,
-    U_CELL_NET_RAT_GSM_COMPACT = 2, /**< This RAT is not supported
+    U_CELL_NET_RAT_GSM_COMPACT = 2, /**< this RAT is not supported
                                          by any of the supported
                                          u-blox modules. */
     U_CELL_NET_RAT_UTRAN = 3,
-    U_CELL_NET_RAT_EGPRS = 4, /**< This RAT can be detected as active
+    U_CELL_NET_RAT_EGPRS = 4, /**< this RAT can be detected as active
                                    but cannot be individually configured
                                    using uCellCfgSetRat() or
                                    uCellCfgSetRatRank(). */
-    U_CELL_NET_RAT_HSDPA = 5, /**< This RAT can be detected as active
+    U_CELL_NET_RAT_HSDPA = 5, /**< this RAT can be detected as active
                                    but cannot be individually configured
                                    using uCellCfgSetRat() or
                                    uCellCfgSetRatRank(). */
-    U_CELL_NET_RAT_HSUPA = 6, /**< This RAT can be detected as active
+    U_CELL_NET_RAT_HSUPA = 6, /**< this RAT can be detected as active
                                    but cannot be individually configured
                                    using uCellCfgSetRat() or
                                    uCellCfgSetRatRank(). */
-    U_CELL_NET_RAT_HSDPA_HSUPA = 7, /**< This RAT can be detected as active
+    U_CELL_NET_RAT_HSDPA_HSUPA = 7, /**< this RAT can be detected as active
                                          but cannot be individually configured
                                          using uCellCfgSetRat() or
                                          uCellCfgSetRatRank(). */
-    U_CELL_NET_RAT_LTE = 8, /**< This RAT is not supported
+    U_CELL_NET_RAT_LTE = 8, /**< this RAT is not supported
                                  by any of the supported
                                  u-blox modules (though
                                  #U_CELL_NET_RAT_CATM1 and
                                  #U_CELL_NET_RAT_NB1 are). */
-    U_CELL_NET_RAT_EC_GSM = 9, /**< This RAT is not supported
+    U_CELL_NET_RAT_EC_GSM = 9, /**< this RAT is not supported
                                     by any of the supported
                                     u-blox modules. */
     U_CELL_NET_RAT_CATM1 = 10,
@@ -225,8 +225,8 @@ typedef enum {
 //lint -estring(788, uCellNetRegDomain_t::U_CELL_NET_REG_DOMAIN_MAX_NUM)
 // Suppress not used within defaulted switch
 typedef enum {
-    U_CELL_NET_REG_DOMAIN_CS, /**< Circuit switched (AT+CREG). */
-    U_CELL_NET_REG_DOMAIN_PS, /**< Packet switched (AT+CGREG/AT+CEREG). */
+    U_CELL_NET_REG_DOMAIN_CS, /**< circuit switched (AT+CREG). */
+    U_CELL_NET_REG_DOMAIN_PS, /**< packet switched (AT+CGREG/AT+CEREG). */
     U_CELL_NET_REG_DOMAIN_MAX_NUM
 } uCellNetRegDomain_t;
 

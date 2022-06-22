@@ -106,7 +106,7 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-/** MQTT QoS.  The values here should match those in uMqttQos_t.
+/** MQTT QoS.  The values here should match those in #uMqttQos_t.
  */
 typedef enum {
     U_CELL_MQTT_QOS_AT_MOST_ONCE = 0,
@@ -129,7 +129,7 @@ typedef enum {
 
 /** This type holds the two sorts of MQTT-SN topic name; a uint16_t
  * ID (i.e. 0 to 65535) or a two-character name (e.g. "ab"). The
- * structure here MUST match uMqttSnTopicName_t.
+ * structure here MUST match #uMqttSnTopicName_t.
  */
 typedef struct {
 // *INDENT-OFF* (otherwise AStyle makes a mess of this)

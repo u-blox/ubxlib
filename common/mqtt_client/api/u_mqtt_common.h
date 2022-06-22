@@ -49,7 +49,7 @@
  * TYPES
  * -------------------------------------------------------------- */
 
-/** MQTT QoS.  The values here should match those in uCellMqttQos_t.
+/** MQTT QoS.  The values here should match those in #uCellMqttQos_t.
  */
 typedef enum {
     U_MQTT_QOS_AT_MOST_ONCE = 0,
@@ -61,7 +61,7 @@ typedef enum {
 } uMqttQos_t;
 
 /** The type of MQTT-SN topic name.  The values here
- * should match those in uCellMqttSnTopicNameType_t.
+ * should match those in #uCellMqttSnTopicNameType_t.
  */
 typedef enum {
     U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL = 0, /**< a two-byte ID, e.g. 0x0001, referring to a normal MQTT topic, e.g. "thing/this". */
@@ -77,15 +77,15 @@ typedef enum {
 typedef struct {
 // *INDENT-OFF* (otherwise AStyle makes a mess of this)
     union {
-        uint16_t id; /**< Populate this for the types #U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL
+        uint16_t id; /**< populate this for the types #U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL
                           or #U_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED. */
         // nameShort MUST be of length 2, as defined by the MQTT-SN specifications; the
         // code is written such that no terminating 0 is required in the storage here.
-        char nameShort[2]; /**< Populate this for #U_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT;
+        char nameShort[2]; /**< populate this for #U_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT;
                                 nameShort must contain two ASCII characters, no
                                 terminator is required. */
     } name;
-    uMqttSnTopicNameType_t type; /**< If the id field is populated and was obtained
+    uMqttSnTopicNameType_t type; /**< if the id field is populated and was obtained
                                       through uMqttClientSnRegisterNormalTopic()
                                       or uMqttClientSnSubscribeNormalTopic() then set this to
                                       #U_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL.  If the id field

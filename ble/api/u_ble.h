@@ -27,7 +27,7 @@
  */
 
  /** @file
- * @brief This header file defines the general ble APIs,
+ * @brief This header file defines the general BLE APIs,
  * basically initialise and deinitialise.
  */
 
@@ -67,7 +67,7 @@ extern "C" {
 /** Error codes specific to ble.
  */
 typedef enum {
-    U_BLE_ERROR_FORCE_32_BIT = 0x7FFFFFFF,  /**< Force this enum to be 32 bit as it can be
+    U_BLE_ERROR_FORCE_32_BIT = 0x7FFFFFFF,  /**< force this enum to be 32 bit as it can be
                                                   used as a size also. */
     U_BLE_ERROR_AT = U_ERROR_BLE_MAX,      /**< -512 if #U_ERROR_BASE is 0. */
     U_BLE_ERROR_NOT_CONFIGURED = U_ERROR_BLE_MAX - 1, /**< -511 if #U_ERROR_BASE is 0. */
@@ -80,14 +80,14 @@ typedef enum {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Initialise the ble.  If the driver is already
+/** Initialise the BLE.  If the driver is already
  * initialised then this function returns immediately.
  *
  * @return zero on success or negative error code on failure.
  */
 int32_t uBleInit(void);
 
-/** Shut-down ble.  All instances will be removed internally
+/** Shut-down BLE.  All instances will be removed internally
  * with calls to uBleRemove().
  */
 void uBleDeinit(void);

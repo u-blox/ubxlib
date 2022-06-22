@@ -49,15 +49,15 @@
 /** The network configuration for cellular.
  */
 typedef struct {
-    uNetworkCfgVersion_t version; /**< Version of this network
+    uNetworkCfgVersion_t version; /**< version of this network
                                        configuration; allow your
                                        compiler to initialise this
                                        to zero unless otherwise
                                        specified below. */
-    uNetworkType_t type; /**< For error checking purposes. */
-    const char *pApn;    /**< The APN to use; if left as NULL
+    uNetworkType_t type; /**< for error checking purposes. */
+    const char *pApn;    /**< the APN to use; if left as NULL
                               a database look-up will be used. */
-    int32_t timeoutSeconds; /**< Timeout when connecting, in seconds. */
+    int32_t timeoutSeconds; /**< timeout when connecting, in seconds. */
     /* This is the end of version 0 of this
        structure: should any fields be added to
        this structure in future they must be

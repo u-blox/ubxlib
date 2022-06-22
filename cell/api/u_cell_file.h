@@ -207,7 +207,7 @@ int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle the handle of the cellular instance.
  * @param pFileName  pointer to somewhere to store the result;
- *                   at least U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
+ *                   at least #U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
  *                   of storage must be provided.
  * @return           the total number of file names in the list
  *                   or negative error code.
@@ -228,7 +228,7 @@ int32_t uCellFileListFirst(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle the handle of the cellular instance.
  * @param pFileName  pointer to somewhere to store the result;
- *                   at least U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
+ *                   at least #U_CELL_FILE_NAME_MAX_LENGTH + 1 bytes
  *                   of storage must be provided..
  * @return           the number of entries remaining *after*
  *                   this one has been read or negative error

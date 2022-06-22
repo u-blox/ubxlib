@@ -45,7 +45,7 @@ extern "C" {
 /** Macro helper: the APIs here use the GPIO ID, exactly as defined
  * in the u-blox AT command manual, which is NOT the number on the
  * end of the GPIO name, i.e. "GPIO1" is NOT GPIO ID 1, it is
- * GPIO ID 16, and hence the APIs use the uCellGpioName_t enum
+ * GPIO ID 16, and hence the APIs use the #uCellGpioName_t enum
  * below to make this clearer.  However,  if in your code you wish
  * to use the integer x on the end of "GPIOx" as your identifier
  * then you may use the macro below to map your integer to the
@@ -79,14 +79,16 @@ typedef enum {
 /** Configure a GPIO of a cellular module.
  * VERY IMPORTANT: adopting the terminology of the u-blox AT commmand
  * manual, each cellular module pin may be referred to in three ways:
+ *
  *  - pin number: the physical pin of the cellular module,
  *  - GPIO ID: the ID for that pin, which is usually THE SAME AS
  *    THE PIN NUMBER,
  *  - pin name: for instance "GPIO1" or "SDIO_CMD" etc.
+ *
  * This API uses GPIO ID: do not confuse this with the number on
  * the end of the pin name, i.e. "GPIO1" is NOT GPIO ID 1, it is GPIO
  * ID 16!  Hence the #uCellGpioName_t enum is used to allow you to
- * pass in U_CELL_GPIO_1, the value for which is 16. If you prefer
+ * pass in #U_CELL_GPIO_1, the value for which is 16. If you prefer
  * to use plain integers in your code you can just pass in the GPIO IDs
  * (i.e. 16 etc., the ones which usually map to the physical pin
  * number) and that will also work fine.
@@ -112,7 +114,7 @@ int32_t uCellGpioConfig(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
  * This API uses GPIO ID: do not confuse this with the number on
  * the end of the pin name, i.e. "GPIO1" is NOT GPIO ID 1, it is GPIO
  * ID 16!  Hence the #uCellGpioName_t enum is used to allow you to
- * pass in U_CELL_GPIO_1, the value for which is 16. If you prefer
+ * pass in #U_CELL_GPIO_1, the value for which is 16. If you prefer
  * to use plain integers in your code you can just pass in the GPIO IDs
  * (i.e. 16 etc., the ones which usually map to the physical pin
  * number) and that will also work fine.
@@ -135,7 +137,7 @@ int32_t uCellGpioSet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
  * This API uses GPIO ID: do not confuse this with the number on
  * the end of the pin name, i.e. "GPIO1" is NOT GPIO ID 1, it is GPIO
  * ID 16!  Hence the #uCellGpioName_t enum is used to allow you to
- * pass in U_CELL_GPIO_1, the value for which is 16. If you prefer
+ * pass in #U_CELL_GPIO_1, the value for which is 16. If you prefer
  * to use plain integers in your code you can just pass in the GPIO IDs
  * (i.e. 16 etc., the ones which usually map to the physical pin
  * number) and that will also work fine.

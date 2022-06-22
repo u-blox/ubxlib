@@ -46,9 +46,9 @@ extern "C" {
 
 typedef enum {
     U_BLE_CFG_ROLE_DISABLED = 0, /**< BLE disabled. */
-    U_BLE_CFG_ROLE_CENTRAL, /**< Central only mode. */
-    U_BLE_CFG_ROLE_PERIPHERAL, /**< Peripheral only mode. */
-    U_BLE_CFG_ROLE_CENTRAL_AND_PERIPHERAL, /**< Simultaneous central and peripheral mode. */
+    U_BLE_CFG_ROLE_CENTRAL, /**< central only mode. */
+    U_BLE_CFG_ROLE_PERIPHERAL, /**< peripheral only mode. */
+    U_BLE_CFG_ROLE_CENTRAL_AND_PERIPHERAL, /**< simultaneous central and peripheral mode. */
 } uBleCfgRole_t;
 
 typedef struct {
@@ -60,10 +60,10 @@ typedef struct {
  * FUNCTIONS
  * -------------------------------------------------------------- */
 
-/** Configure ble for a short range module, may require module restarts
+/** Configure BLE for a short range module, may require module restarts
  *  so can take up to 500 ms before it returns.
  *
- * @param devHandle   the handle of the ble instance.
+ * @param devHandle   the handle of the BLE instance.
  * @param pCfg        pointer to the configuration data, must not be NULL.
  * @return            zero on success or negative error code
  *                    on failure.

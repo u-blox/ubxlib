@@ -31,7 +31,7 @@
 
 /** @file
  * @brief This header file defines the APIs that obtain data transfer
- * related commands for ble using the sps protocol.
+ * related commands for ble using the SPS protocol.
  */
 
 #ifdef __cplusplus
@@ -113,14 +113,14 @@ extern "C" {
  * TYPES
  * -------------------------------------------------------------- */
 
-/** SPS connection status
+/** SPS connection status.
  */
 typedef enum {
     U_BLE_SPS_CONNECTED = 0,
     U_BLE_SPS_DISCONNECTED = 1,
 } uBleConnectionStatus_t;
 
-/** GATT Service handles for SPS server
+/** GATT service handles for SPS server.
  */
 typedef struct {
     uint16_t     service;
@@ -201,7 +201,7 @@ int32_t uBleSpsSetDataAvailableCallback(uDeviceHandle_t devHandle,
                                         void *pCallbackParameter);
 
 /** Create a SPS connection over BLE, this is the u-blox proprietary protocol for
- *  streaming data over ble. Flow control is used.
+ *  streaming data over BLE. Flow control is used.
  *
  * @note if the initiating side is peripheral it must also run an
  * SPS server which the central device then will connect to when this
@@ -252,8 +252,8 @@ int32_t uBleSpsSend(uDeviceHandle_t devHandle, int32_t channel, const char *pDat
 
 /** Set timeout for data sending
  *
- * If sending of data takes more than this time uBleSpsSend will stop sending data
- * and return. No error code will be given since uBleSpsSend returns the number of bytes
+ * If sending of data takes more than this time uBleSpsSend() will stop sending data
+ * and return. No error code will be given since uBleSpsSend() returns the number of bytes
  * actually written.
  *
  * @note this setting is per channel and thus has to be set after connecting.
@@ -309,13 +309,12 @@ int32_t uBleSpsPresetSpsServerHandles(uDeviceHandle_t devHandle, const uBleSpsHa
 
 /** Disable flow control for next SPS connection
  *
- * Flow control is enabled by default
- * Flow control can't be altered for an ongoing connection
- * Disabling flow control decrease connection setup time and data overhead
- * with the risk of loosing data. If the received amount of data during a
- * connection is smaller than #U_BLE_SPS_BUFFER_SIZE there is no risk of
- * loosing received data. The risk of loosing sent data depends on remote
- * side buffers.
+ * Flow control is enabled by default. Flow control cannot be altered for
+ * an ongoing connection.  Disabling flow control decreases connection setup
+ * time and data overhead with the risk of losing data. If the received
+ * amount of data during a connection is smaller than #U_BLE_SPS_BUFFER_SIZE
+ * there is no risk of losing received data. The risk of losing sent data
+ * depends on remote-side buffer sizes.
  *
  * Notice: If you use uBleSpsGetSpsServerHandles() to read server handles
  * you have to connect with flow control enabled since some of the server

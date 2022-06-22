@@ -52,7 +52,7 @@ extern "C" {
 # define U_MQTT_CLIENT_RESPONSE_WAIT_SECONDS 30
 #endif
 
-/** The defaults for an MQTT connection, see uMqttClientConnection_t.
+/** The defaults for an MQTT connection, see #uMqttClientConnection_t.
  * Whenever an instance of uMqttClientConnection_t is created it
  * should be assigned to this to ensure the correct default
  * settings. */
