@@ -5,7 +5,6 @@ The Wi-Fi APIs are split into the following groups:
 
 - `<no group>`: init/deinit of the Wi-Fi API and adding a Wi-Fi instance.
 - `cfg`: configuration of the Wi-Fi module.
-- `net`: connection to a Wi-Fi network.
 - `sock`: sockets, for exchanging data (but see the [common/sock](/common/sock) component for the best way to do this).
 - `mqtt`: MQTT client over wifi network. Refer to [common/mqtt_client](/common/mqtt_client) component for generic
 mqtt client implementation.
