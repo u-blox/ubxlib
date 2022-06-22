@@ -35,7 +35,7 @@ The key APIs provided by this repo, and their relationships with each other, are
 - The [ubx_protocol](/common/ubx_protocol) API implements the necessary encoding/decoding to talk to u-blox GNSS modules.
 - The [port](/port) API permits all of the above to run on different hosts; this API is not really intended for customer use - you can use it if you wish but it is quite restricted and is intended only to provide what `ubxlib` needs in the form that `ubxlib` needs it.
 
-All APIs are documented with Doxygen compatible comments: simply download the latest [Doxygen](https://doxygen.nl/) and run it from the `ubxlib` directory to obtain the output.
+All APIs are documented with Doxygen compatible comments: simply download the latest [Doxygen](https://doxygen.nl/) and either run it from the `ubxlib` directory at a command prompt or open [Doxyfile](/Doxyfile) in the Doxygen GUI and run it to obtain the output.
 
 # Supported `ubxlib` host platforms and APIs
 
@@ -61,7 +61,7 @@ If your MCU is not on the list:
 |**RTOS/SDK**|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|FreeRTOS|Windows|Zephyr|
 |**APIs provided by host only**|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />| [cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location<sup>**</sup>](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>| N/A | N/A |
 
-<sup>*</sup> for development/test purposes.
+<sup>*</sup> For development/test purposes.
 
 # Supported modules as `ubxlib` peripherals and APIs
 
