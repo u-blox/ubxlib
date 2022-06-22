@@ -52,7 +52,7 @@ If your MCU is on the list but your board is not:
 - Just set the HW pins in the source file of the example to match how your MCU is wired to the u-blox peripheral.
 
 If your MCU is not on the list:
-- To port `ubxlib` to a new host platform follow the [DYI instructions](https://github.com/u-blox/ubxlib_priv/tree/master/port) for the port API.
+- To port `ubxlib` to a new host platform follow the [DIY instructions](https://github.com/u-blox/ubxlib_priv/tree/master/port) for the port API.
 
 |`ubxlib` hosts |NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B1 series|C030 board|PC<sup>*</sup>|PC<sup>*</sup>|
 |-----------|-----------|--------------|-----|-----|------|------|
@@ -61,7 +61,7 @@ If your MCU is not on the list:
 |**RTOS/SDK**|FreeRTOS|FreeRTOS<br />Zephyr|Zephyr|FreeRTOS|Windows|Zephyr|
 |**APIs provided by host only**|[wifi](/wifi)<br />[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")|[ble](/ble "ble API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />| [cell](/cell "cell API")<br />[device](/common/device "device API")<br />[network](/common/network "network API")<br />[sock](/common/sock "sock API")<br />[location<sup>**</sup>](/common/location "location API")<br />[tls&nbsp;security](/common/security "security API")<br>| N/A | N/A |
 
-<sup>*</sup> For development/test purposes.
+<sup>*</sup> For development/test purposes only.
 
 # Supported modules as `ubxlib` peripherals and APIs
 
