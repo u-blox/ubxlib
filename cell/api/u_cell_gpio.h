@@ -107,10 +107,12 @@ int32_t uCellGpioConfig(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
 /** Set the state of a GPIO of a cellular module.
  * VERY IMPORTANT: adopting the terminology of the u-blox AT commmand
  * manual, each cellular module pin may be referred to in three ways:
+ *
  *  - pin number: the physical pin of the cellular module,
  *  - GPIO ID: the ID for that pin, which is usually THE SAME AS
  *    THE PIN NUMBER,
  *  - pin name: for instance "GPIO1" or "SDIO_CMD" etc.
+ *
  * This API uses GPIO ID: do not confuse this with the number on
  * the end of the pin name, i.e. "GPIO1" is NOT GPIO ID 1, it is GPIO
  * ID 16!  Hence the #uCellGpioName_t enum is used to allow you to
@@ -130,10 +132,12 @@ int32_t uCellGpioSet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
 /** Get the state of a GPIO of a cellular module.
  * VERY IMPORTANT: adopting the terminology of the u-blox AT commmand
  * manual, each cellular module pin may be referred to in three ways:
+ *
  *  - pin number: the physical pin of the cellular module,
  *  - GPIO ID: the ID for that pin, which is usually THE SAME AS
  *    THE PIN NUMBER,
  *  - pin name: for instance "GPIO1" or "SDIO_CMD" etc.
+ *
  * This API uses GPIO ID: do not confuse this with the number on
  * the end of the pin name, i.e. "GPIO1" is NOT GPIO ID 1, it is GPIO
  * ID 16!  Hence the #uCellGpioName_t enum is used to allow you to
@@ -150,7 +154,7 @@ int32_t uCellGpioSet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId,
 int32_t uCellGpioGet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId);
 
 /** Set the state of the CTS line: this may be used if the
- * serial handshaking lines are NOT being used (i.e. they are both
+ * serial handshaking lines are NOT being used (they were both
  * -1 in the #uNetworkCfgCell_t structure or the
  * call to uPortUartOpen(), or you may call
  * uCellInfoIsCtsFlowControlEnabled() to determine the truth).

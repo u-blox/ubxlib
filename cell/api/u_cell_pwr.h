@@ -335,7 +335,7 @@ int32_t uCellPwrOffHard(uDeviceHandle_t cellHandle, bool trulyHard,
                         bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 
-/** If a reboot of the cellular instance is required, e.g.
+/** If a reboot of the cellular instance is required, for example
  * due to changes that have been made to the configuration,
  * this will return true. uCellPwrReboot() should be called
  * to effect the reboot.
@@ -383,7 +383,7 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
                        bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
 /** Reset the cellular module using the given MCU pin, which should
- * be connected to the reset pin of the cellular module, e.g.
+ * be connected to the reset pin of the cellular module, for example
  * U_CFG_APP_PIN_CELL_RESET could be used.  Note that NO organised
  * network detach is carried out; this is a hard reset and hence
  * should be used only in emergencies if, for some reason,
@@ -415,7 +415,7 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset);
  * the uPortUartCtsSuspend() API but there are some RTOSs (e.g.
  * Zephyr) that do not support temporary suspension of CTS.  For
  * these cases, and only for SARA-R5 modules, the DTR pin can
- * be used to control UART power saving inatead by calling this function.
+ * be used to control UART power saving instead by calling this function.
  * This must be called BEFORE the module is first powered-on, e.g.
  * just after uCellAdd() or, in the common network API, by defining
  * the structure member pinDtrPowerSaving to be the MCU pin that is
@@ -580,7 +580,7 @@ int32_t uCellPwrGet3gppPowerSaving(uDeviceHandle_t cellHandle,
 
 /** Set a callback which will be called when the assigned 3GPP
  * power saving parameters are changed by the network, either when
- * the are first set up or on a cell/tracking area change.
+ * they are first set up or on a cell/tracking area change.
  * The callback is implemented using the uAtClientCallback() queue,
  * see the AT client API for details. The callback should not block;
  * use the callback to signal something else to do any heavy-lifting
@@ -729,7 +729,7 @@ int32_t uCellPwrGetRequestedEDrx(uDeviceHandle_t cellHandle,
                                  int32_t *pEDrxSeconds,
                                  int32_t *pPagingWindowSeconds);
 
-/** Get the E-DRX parameters as agreed with the cellular network.
+/** Get the E-DRX parameters as agreed with the cellular network
  * for the given RAT.  The module must be connected to the cellular
  * network for this to work.
  *

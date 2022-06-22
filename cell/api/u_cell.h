@@ -103,7 +103,7 @@ extern "C" {
 #endif
 
 /** There can be an inverter in-line between the MCU pin
- * and the thing (e.g. a transistor) that is enabling power to
+ * and the thing (for example a transistor) that is enabling power to
  * the cellular module; this macro allows the sense of the power
  * on pin to be switched at compile time.  However, the
  * method of ORing the pin with #U_CELL_PIN_INVERTED is

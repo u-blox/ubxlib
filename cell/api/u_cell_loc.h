@@ -106,7 +106,7 @@ extern "C" {
 #endif
 
 #ifndef U_CELL_LOC_GNSS_POWER_CHANGE_WAIT_MILLISECONDS
-/** Some intermediate modules (e.g. SARA-R4) can be touchy
+/** Some intermediate modules (for example SARA-R4) can be touchy
  * about a power-up or power-down request occurring close
  * on the heels of a previous GNSS-related command  If you
  * change this and you also use the cell locate API then you

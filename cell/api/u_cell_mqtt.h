@@ -331,8 +331,7 @@ int32_t uCellMqttSetRetainOn(uDeviceHandle_t cellHandle);
 /** Switch MQTT session retention off. See
  * uMqttSetSessionRetainOn() for more details.
  * IMPORTANT: a re-boot of the module will lose your
- * setting.
- * This is the default state.
+ * setting. Off is the default state.
  *
  * @param cellHandle the handle of the cellular instance to be used.
  * @return           zero on success or negative error code.
@@ -697,7 +696,7 @@ bool uCellMqttSnIsSupported(uDeviceHandle_t cellHandle);
 
 /** MQTT-SN only: ask the MQTT-SN broker for an MQTT-SN topic name
  * for the given normal MQTT topic name; if you wish to publish to
- * a normal MQTT topic, e.g. "thing/this", using MQTT-SN, which
+ * a normal MQTT topic, for example "thing/this", using MQTT-SN, which
  * only transports a 16-bit topic ID, then you must register the
  * normal MQTT topic to obtain an MQTT-SN topic name for it.
  * Note: if you intend to subscribe to an MQTT topic as well as

@@ -68,7 +68,7 @@ extern "C" {
 
 /** The number of bytes required to represent an MCC/MNC string
  * with null terminator, enough for the 3-digit MNC case,
- * i.e. "722320".
+ * for example "722320".
  */
 #define U_CELL_NET_MCC_MNC_LENGTH_BYTES 7
 

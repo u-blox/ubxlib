@@ -45,15 +45,13 @@ extern "C" {
  * -------------------------------------------------------------- */
 
 #ifndef U_CELL_SEC_TLS_PSK_MAX_LENGTH_BYTES
-/** The maximum length of a PSK array
- * (i.e. binary, not hex encoded as ASCII).
+/** The maximum length of a PSK array (binary, not hex encoded as ASCII).
  */
 # define U_CELL_SEC_TLS_PSK_MAX_LENGTH_BYTES 64
 #endif
 
 #ifndef U_CELL_SEC_TLS_PSK_ID_MAX_LENGTH_BYTES
-/** The maximum length of a PSK ID array
- * (i.e. binary, not hex encoded as ASCII).
+/** The maximum length of a PSK ID array (binary, not hex encoded as ASCII).
  */
 # define U_CELL_SEC_TLS_PSK_ID_MAX_LENGTH_BYTES 128
 #endif
@@ -78,7 +76,7 @@ typedef enum {
  */
 typedef struct {
     char *pString; /**< the cipher list string as returned by
-                        AT+USECPRF, i.e. "C034;009e;CCAD...",
+                        AT+USECPRF, for example "C034;009e;CCAD...",
                         max length #U_CELL_SEC_CIPHERS_BUFFER_LENGTH_BYTES. */
     size_t index;  /**< which character we are at in the string. */
 } uCellSecTlsCipherList_t;

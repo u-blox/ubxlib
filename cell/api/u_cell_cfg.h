@@ -223,9 +223,9 @@ int32_t uCellCfgSetMnoProfile(uDeviceHandle_t cellHandle,
  */
 int32_t uCellCfgGetMnoProfile(uDeviceHandle_t cellHandle);
 
-/** Configures serial interface. The configuration affects how an available
- * (physical or logical) serial interface is used, e.g the meaning of data
- * flowing over it. Possible usages are:
+/** Configures the cellular module's serial interface. The configuration
+ * affects how an available (physical or logical) serial interface is
+ * used, e.g the meaning of data flowing over it. Possible usages are:
  *
  *  - modem interface (AT command),
  *  - trace interface (diagnostic log),
@@ -242,7 +242,7 @@ int32_t uCellCfgGetMnoProfile(uDeviceHandle_t cellHandle);
  */
 int32_t uCellCfgSetSerialInterface(uDeviceHandle_t cellHandle, int32_t requestedVariant);
 
-/** Get the serial interface active configure.
+/** Get the cellular module's active serial interface configuration.
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            active variant of serial interface or negative code on failure.
@@ -279,12 +279,12 @@ int32_t uCellCfgSetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
 int32_t uCellCfgGetUdconf(uDeviceHandle_t cellHandle, int32_t param1,
                           int32_t param2);
 
-/** Restores factory configurations for FS and/or NVM. The module must be
- * re-booted afterwards (with a call to uCellPwrReboot()) for it to
- * take effect.
+/** Return the cellular module's file system and or non-volatile
+ * storage to factory defaults. The module must be re-booted afterwards
+ * (with a call to uCellPwrReboot()) for it to take effect.
  * Note: not all restore types are supported by all modules, an error
  * will be returned in case of an invalid restore type.  Check the AT
- * commands manual for your module for further information.
+ * command manual for your module for further information.
  *
  *  @param cellHandle    the handle of the cellular instance.
  *  @param fsRestoreType the file system factory restore type. Valid options

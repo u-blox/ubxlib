@@ -98,8 +98,8 @@ int32_t uCellFileSetTag(uDeviceHandle_t cellHandle, const char *pTag);
  */
 const char *pUCellFileGetTag(uDeviceHandle_t cellHandle);
 
-/** Open file in write mode on file system and write stream of bytes
- * in it. If the file already exists, the data will be appended to
+/** Open a file in write mode on the file system and write a stream of
+ * bytes to it. If the file already exists, the data will be appended to
  * the file already stored in the file system. In order to avoid
  * character loss it is recommended that flow control lines are
  * connected on the interface to the module.
@@ -118,7 +118,7 @@ int32_t uCellFileWrite(uDeviceHandle_t cellHandle,
                        const char *pData,
                        size_t dataSize);
 
-/** Read the contents of file from file system. If the file does not exist,
+/** Read the contents of a file from the file system. If the file does not exist,
  * error will be return. In order to avoid character loss it is recommended
  * that flow control lines are connected on the interface to the module.
  *
@@ -136,7 +136,7 @@ int32_t uCellFileRead(uDeviceHandle_t cellHandle,
                       char *pData,
                       size_t dataSize);
 
-/** Read partial contents of file from file system, based on given
+/** Read partial contents of a file from the file system, based on given
  * offset and size.  If the file does not exist, error will be returned.
  * In order to avoid character loss it is recommended that flow control
  * lines are connected on the interface to the module.  Note that this
@@ -160,7 +160,7 @@ int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
                            size_t offset,
                            size_t dataSize);
 
-/** Read size of file on file system. If the file does not exists,
+/** Read size of file on the file system. If the file does not exists,
  * error will be return.
  *
  * @param cellHandle the handle of the cellular instance.
@@ -173,7 +173,7 @@ int32_t uCellFileBlockRead(uDeviceHandle_t cellHandle,
 int32_t uCellFileSize(uDeviceHandle_t cellHandle,
                       const char *pFileName);
 
-/** Delete a file from file system. If the file does not exist,
+/** Delete a file from the file system. If the file does not exist,
  * error will be return.
  *
  * @param cellHandle the handle of the cellular instance.
@@ -185,7 +185,7 @@ int32_t uCellFileSize(uDeviceHandle_t cellHandle,
 int32_t uCellFileDelete(uDeviceHandle_t cellHandle,
                         const char *pFileName);
 
-/** Get the description of file stored on file system; uCellFileListNext()
+/** Get the description of file stored on the file system; uCellFileListNext()
  * should be called repeatedly to iterate through subsequent entries in
  * the list. This function is not thread-safe in that there is a single
  * list of names for any given atHandle.

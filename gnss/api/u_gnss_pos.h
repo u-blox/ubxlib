@@ -143,7 +143,7 @@ int32_t uGnssPosGet(uDeviceHandle_t gnssHandle,
                     int32_t *pSvs, int64_t *pTimeUtc,
                     bool (*pKeepGoingCallback) (uDeviceHandle_t));
 
-/** A non-blocking version of uGnssPosGet(), i.e. this is still a
+/** A non-blocking version of uGnssPosGet(),so this is still a
  * one-shot operation but the answer arrives via a callback.  Should
  * you wish to cancel a request, or start a new request without waiting
  * for the answer to the previous request, then you must call
@@ -188,7 +188,7 @@ int32_t uGnssPosGetStart(uDeviceHandle_t gnssHandle,
  */
 void uGnssPosGetStop(uDeviceHandle_t gnssHandle);
 
-/** Get the binary RRLP information directly from the GNSS chip i.e.
+/** Get the binary RRLP information directly from the GNSS chip,
  * as returned by the UBX-RXM-MEASX command of the UBX protocol.  This
  * is more efficient, both in terms of power and time, than asking
  * for position: the RRLP information may be sent to the u-blox

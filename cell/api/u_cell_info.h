@@ -305,8 +305,8 @@ int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle);
 int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle,
                                char *pStr, size_t size);
 
-/** Determine if RTS flow control, i.e. a signal from
- * the cellular module to this software that the module is
+/** Determine if RTS flow control, the signal from the
+ * cellular module to this software that the module is
  * ready to receive data, is enabled.
  *
  * @param cellHandle the handle of the cellular instance.
@@ -315,8 +315,8 @@ int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle,
  */
 bool uCellInfoIsRtsFlowControlEnabled(uDeviceHandle_t cellHandle);
 
-/** Determine if CTS flow control, i.e. a signal from
- * this software to the cellular module that this sofware is
+/** Determine if CTS flow control, the signal from this
+ * software to the cellular module that this sofware is
  * ready to accept data, is enabled.
  *
  * @param cellHandle the handle of the cellular instance.
