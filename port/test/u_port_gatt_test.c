@@ -72,7 +72,7 @@
 
 #define NBR_OF_CONNECTION_RETRIES 3
 #define CONNECTION_SETUP_TIMEOUT 6000
-#define WAIT_FOR_CALLBACK_TIMEOUT 1000
+#define WAIT_FOR_CALLBACK_TIMEOUT 10000
 #define WAIT_FOR_CALLBACK_FINISH_DELAY 100
 
 #define U_PORT_GATT_TEST_NBR_OF_SERVICES 4
@@ -573,7 +573,7 @@ static uPortGattIter_t gattCharDiscoveryCallback(int32_t connHandle,
     characteristicEvt_t *ch = &evt.ch;
 
     uPortLog(U_TEST_PREFIX
-             "callback(connHandle=%d, attrHandle=%d, valueHandle=%d, properties=0x%02x,\n                      ",
+             "callback(connHandle=%d, attrHandle=%d, valueHandle=%d, properties=0x%02x,\n                  ",
              connHandle, attrHandle, valHandle, properties);
 
     if (pUuid != NULL) {

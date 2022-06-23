@@ -484,7 +484,7 @@ node('TEST-gb-cmb-dt-022')
                 println "Switching on power to EVKs again returned HTTP responses " + power_switch_1_on.openConnection().getResponseCode() + " and " + power_switch_2_on.openConnection().getResponseCode() + "."
                 bat(script: "usbswitchcmd -s -n 1750664 0")
                 bat(script: "usbswitchcmd -s -n 1750665 0")
-                sleep(time: 10, unit: 'SECONDS')
+                sleep(time: 25, unit: 'SECONDS')
             }
 
             stage("Test") {
