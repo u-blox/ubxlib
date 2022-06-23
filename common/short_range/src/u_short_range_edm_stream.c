@@ -61,7 +61,7 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 #define U_SHORT_RANGE_EDM_STREAM_AT_COMMAND_LENGTH  200
-// TODO: is this value correc?
+// TODO: is this value correct?
 #define U_SHORT_RANGE_EDM_STREAM_AT_RESPONSE_LENGTH 500
 #define U_SHORT_RANGE_EDM_STREAM_MAX_CONNECTIONS    9
 

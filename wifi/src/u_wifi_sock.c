@@ -1477,7 +1477,7 @@ int32_t uWifiSockGetLocalAddress(uDeviceHandle_t devHandle,
 
         if (errnoLocal == U_SOCK_ENONE) {
             // TODO: The port number will be set to 0 for now.
-            // We can retreive the local port from pSock, but
+            // We can retrieve the local port from pSock, but
             // this value will not be valid until a connection
             // has been opened.
             tmp = uSockStringToAddress(ipStr, pLocalAddress);

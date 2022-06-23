@@ -591,7 +591,7 @@ static void UUMQTTx_urc(uAtClientHandle_t atHandle,
         case 7: // Will clean value
         case 8: // Will topic value
         case 9: // The will message
-            // TODO
+            // Not supported in the old SARA-R4 syntax
             break;
         case 10: // Inactivity timeout
             pUrcStatus->inactivityTimeoutSeconds = uAtClientReadInt(atHandle);

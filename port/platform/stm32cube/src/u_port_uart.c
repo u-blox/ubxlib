@@ -1039,7 +1039,7 @@ int32_t uPortUartOpen(int32_t uart, int32_t baudRate,
                     if ((pinCts >= 0) && (platformError == SUCCESS)) {
                         uPortPrivateGpioEnableClock(pinCts);
                         gpioInitStruct.Pin = 1U << U_PORT_STM32F4_GPIO_PIN(pinCts);
-                        // TODO: the u-blox C030-R412M board requires a pull-down here
+                        // The u-blox C030-R412M board requires a pull-down here
                         gpioInitStruct.Pull = LL_GPIO_PULL_DOWN;
                         platformError = LL_GPIO_Init(pUPortPrivateGpioGetReg(pinCts),
                                                      &gpioInitStruct);

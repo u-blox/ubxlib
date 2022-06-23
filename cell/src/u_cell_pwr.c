@@ -1908,8 +1908,7 @@ int32_t uCellPwrReboot(uDeviceHandle_t cellHandle,
                      ((pKeepGoingCallback == NULL) || pKeepGoingCallback(cellHandle)); x--) {
                     if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
                         // SARA-R5 chucks out a load of stuff after
-                        // boot at the moment: flush it away
-                        // TODO: do we still need this?
+                        // boot in its development version: flush it away
                         uAtClientFlush(atHandle);
                     }
                     // Wait for the module to return to life and configure it
@@ -2049,8 +2048,7 @@ int32_t uCellPwrResetHard(uDeviceHandle_t cellHandle, int32_t pinReset)
                     uPortTaskBlock(pInstance->pModule->rebootCommandWaitSeconds * 1000);
                     if (pInstance->pModule->moduleType == U_CELL_MODULE_TYPE_SARA_R5) {
                         // SARA-R5 chucks out a load of stuff after
-                        // boot at the moment: flush it away
-                        // TODO: do we still need this?
+                        // boot in its development version: flush it away
                         uAtClientFlush(pInstance->atHandle);
                     }
                     // Wait for the module to return to life and configure it

@@ -151,14 +151,12 @@ int64_t uPortGetTickTimeMs()
 // Get the minimum amount of heap free, ever, in bytes.
 int32_t uPortGetHeapMinFree()
 {
-    // TODO
     return U_ERROR_COMMON_NOT_SUPPORTED;
 }
 
 // Get the current free heap.
 int32_t uPortGetHeapFree()
 {
-    // TODO
     return U_ERROR_COMMON_NOT_SUPPORTED;
 }
 

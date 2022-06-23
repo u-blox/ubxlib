@@ -908,7 +908,6 @@ U_PORT_TEST_FUNCTION("[cellSock]", "cellSockBasic")
 }
 
 /** Test setting/getting socket options.
- * TODO: error cases.
  */
 U_PORT_TEST_FUNCTION("[cellSock]", "cellSockOptionSetGet")
 {

@@ -396,7 +396,6 @@ static bool waitForEvt(gattEvtId_t id, gattEvt_t *evt, int32_t timeoutMs)
     return (evt->id == id);
 }
 
-// TODO This function was copied from u_ble_sps_intmod.c. Make it common?
 static int32_t hexToInt(const char *pIn, uint8_t *pOut)
 {
     uint32_t i;
@@ -426,7 +425,6 @@ static int32_t hexToInt(const char *pIn, uint8_t *pOut)
     return errorCode;
 }
 
-// TODO This function was copied from u_ble_sps_intmod.c. Make it common?
 static int32_t addrStringToArray(const char *pAddrIn, uint8_t *pAddrOut,
                                  uPortBtLeAddressType_t *pType)
 {

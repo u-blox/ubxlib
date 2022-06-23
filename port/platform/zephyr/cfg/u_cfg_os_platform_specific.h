@@ -59,9 +59,7 @@
 #endif
 
 #ifndef U_CFG_OS_YIELD_MS
-/** The amount of time to block for to ensure that a yield
- * occurs. This set to 2 ms for now.
- * //TODO check this!!
+/** The amount of time to block for to ensure that a yield occurs.
  */
 # define U_CFG_OS_YIELD_MS 2
 #endif

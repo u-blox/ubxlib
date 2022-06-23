@@ -1318,9 +1318,8 @@ U_PORT_TEST_FUNCTION("[sock]", "sockBasicTcp")
 }
 
 /** Test maximum number of sockets.
- * TODO: this test assumes that all underlying bearers
- * are able to support U_SOCK_MAX_NUM_SOCKETS
- * simultaneously, TBD if this is the case.
+ * Note: this test assumes that all underlying bearers
+ * are able to support U_SOCK_MAX_NUM_SOCKETS simultaneously.
  */
 U_PORT_TEST_FUNCTION("[sock]", "sockMaxNumSockets")
 {

@@ -300,7 +300,7 @@ int32_t uCellAdd(uCellModuleType_t moduleType,
                             U_PORT_GPIO_SET_DEFAULT(&gpioConfig);
                             gpioConfig.pin = pinPwrOn;
                             if (pinPwrOnPinToggleToState == 0) {
-                                // TODO: the u-blox C030-R412M board requires a pull-up here.
+                                // The u-blox C030-R412M board requires a pull-up here.
                                 gpioConfig.pullMode = U_PORT_GPIO_PULL_MODE_PULL_UP;
                             }
                             gpioConfig.driveMode = pinPwrOnDriveMode;

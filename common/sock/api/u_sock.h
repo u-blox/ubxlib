@@ -597,9 +597,10 @@ int32_t uSockShutdown(uSockDescriptor_t descriptor,
  * -------------------------------------------------------------- */
 
 /** Register a callback which will be called when incoming
- * data has arrived on a socket.  The stack size and priority
- * of the task within which the callback is run is implementation
- * dependent.  TODO: better guidance.
+ * data has arrived on a socket.  The stack size of the task
+ * within which the callback is run is is
+ * #U_EDM_STREAM_TASK_STACK_SIZE_BYTES for Wi-Fi and
+ * #U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES for cellular.
  *
  * IMPORTANT: don't spend long in your callback, i.e. don't call
  * directly back into this API (only do that via another task
@@ -620,8 +621,9 @@ void uSockRegisterCallbackData(uSockDescriptor_t descriptor,
 
 /** Register a callback which will be called when a socket is
  * closed, either locally or by the remote host.  The stack size
- * and priority of the task within which the callback is run
- * is implementation dependent.  TODO: better guidance.
+ * and of the task within which the callback is run
+ * is #U_EDM_STREAM_TASK_STACK_SIZE_BYTES for Wi-Fi and
+ * #U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES for cellular.
  *
  * IMPORTANT: don't spend long in your callback, i.e. don't
  * call directly back into this API, don't call things that will

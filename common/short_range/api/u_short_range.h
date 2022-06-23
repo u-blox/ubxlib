@@ -48,7 +48,6 @@ extern "C" {
 
 #ifndef U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES
 /** The buffer length required in the AT client by the ShortRange driver.
- * TODO: correct size.
  */
 # define U_SHORT_RANGE_AT_BUFFER_LENGTH_BYTES 4000
 #endif

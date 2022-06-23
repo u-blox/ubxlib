@@ -262,9 +262,6 @@ static void disconnectCallback(int32_t errorCode, void *pParam)
  * -------------------------------------------------------------- */
 
 /** Test MQTT connectivity with deliberately minimal option set.
- * TODO: limits checking.
- * TODO: when we have a public u-blox MQTT test server, do some more
- * thrash tests.
  */
 U_PORT_TEST_FUNCTION("[mqttClient]", "mqttClient")
 {

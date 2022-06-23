@@ -1257,7 +1257,6 @@ int32_t uSockConnect(uSockDescriptor_t descriptor,
             pContainer = pContainerFindByDescriptor(descriptor);
             errnoLocal = U_SOCK_EBADF;
             if (pContainer != NULL) {
-                // TODO: is "operation not permitted" the right error?
                 errnoLocal = U_SOCK_EPERM;
                 if (pContainer->socket.state == U_SOCK_STATE_CREATED) {
                     // We have found the container and it is
@@ -1890,8 +1889,6 @@ int32_t uSockSecurity(uSockDescriptor_t descriptor,
                     errnoLocal = -uCellSockSecure(devHandle,
                                                   sockHandle,
                                                   ((uCellSecTlsContext_t *) (pContainer->socket.pSecurityContext->pNetworkSpecific))->profileId);
-                } else if (devType == (int32_t) U_DEVICE_TYPE_SHORT_RANGE) {
-                    // TODO
                 }
             }
         }
