@@ -56,7 +56,7 @@
 #define U_SHORT_RANGE_MODULE_TYPE_UNSUPPORTED -2
 
 /** This is a X macro table of the radio features for all supported
- *  short range modules. This is used for automaticly generating some
+ *  short range modules. This is used for automatically generating some
  *  boilerplate code and for enabling test \c \#ifdef by radio features
  *  (see u_short_range_test_selector.h).
  *  The table is linked to the U_SHORT_RANGE_MODULE_TYPE_xx defines

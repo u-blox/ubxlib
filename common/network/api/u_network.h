@@ -51,13 +51,13 @@
  *                          would like the network to connect; after this
  *                          is called you can send and receive stuff over
  *                          the network.
- * uNetworkInterfaceDown(): disconnect the network; the nework remains
+ * uNetworkInterfaceDown(): disconnect the network; the network remains
  *                          powered-up and may be reconfigured etc.: you
  *                          must call uNetworkInterfaceUp() to talk with
  *                          it again.
  * uDeviceClose():          call this to power the device down and clear
  *                          up any resources belonging to it; uDeviceOpen()
- *                          must be called re-instantiate the device.
+ *                          must be called to re-instantiate the device.
  * uDeviceDeinit():         call this at end of day in order to clear up any
  *                          resources owned by the device API.
  * ```

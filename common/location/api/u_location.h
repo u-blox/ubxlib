@@ -119,7 +119,7 @@ typedef enum {
 /** Definition of additional information where a variety of location
  * establishment mechanisms can be employed.
  * IMPORTANT: this structure is subject to change as new location APIs
- * are added.  We will always update U_LOCATION_ASSIST_DEFAULTS to match,
+ * are added.  We will always update #U_LOCATION_ASSIST_DEFAULTS to match,
  * will only add to the end of the structure and will not remove things
  * from it.
  */
@@ -147,11 +147,11 @@ typedef struct {
 
     int32_t svsThreshold; /**< the number of space vehicles (AKA satellites)
                                that must be visible, only currently used by
-                               U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE; use -1
+                               #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE; use -1
                                for "don't care".  The recommended value is 5. */
     int32_t cNoThreshold; /**< the minimum carrier to noise for a given
                                satellite, only currently used by
-                               U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE, range
+                               #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE, range
                                0 to 63; specify -1 for "don't care".  The
                                ideal value to use is 35 but that requires
                                clear sky and a good antenna, hence the
@@ -160,7 +160,7 @@ typedef struct {
     int32_t multipathIndexLimit; /**< the maximum multipath index that
                                       must be met for a given satellite,
                                       only currently used by
-                                      U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
+                                      #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE,
                                       1 = low, 2 = medium, 3 = high; specify
                                       -1 for "don't care".  The recommended
                                       value is 1. */
@@ -168,7 +168,7 @@ typedef struct {
                                                 error index that must be met
                                                 for a given satellite, only
                                                 currently used by
-                                                U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE;
+                                                #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE;
                                                 specify -1 for "don't care".
                                                 The recommended value is 3. */
     const char *pClientIdStr; /**< the Client ID of your device, obtained from your
@@ -182,7 +182,7 @@ typedef struct {
                                    of the device, the device itself doesn't care,
                                    set this to NULL (which is the default). */
     void *pMqttClientContext; /**< the context of an MQTT client, *required* by
-                                   U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE to communicate
+                                   #U_LOCATION_TYPE_CLOUD_CLOUD_LOCATE to communicate
                                    with the u-blox Cloud Locate service; the
                                    MQTT client MUST have been logged-in to the
                                    Cloud Locate service BEFORE calling this API. */
@@ -381,7 +381,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  *                                network handle, the second parameter is the
  *                                error code from the location establishment
  *                                process and the third parameter is a pointer
- *                                to a uLocation_t structure (which may be NULL
+ *                                to a #uLocation_t structure (which may be NULL
  *                                if the error code is non-zero), the contents
  *                                of which must be COPIED as it will be destroyed
  *                                once the callback returns.

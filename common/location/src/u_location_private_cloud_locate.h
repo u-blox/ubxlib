@@ -118,7 +118,7 @@ extern "C" {
  *                                      timer that might be running.  May
  *                                      be NULL, in which case location
  *                                      establishment will stop when
- *                                      U_LOCATION_TIMEOUT_SECONDS have
+ *                                      #U_LOCATION_TIMEOUT_SECONDS have
  *                                      elapsed.  The single int32_t
  *                                      parameter is the network handle.
  */
