@@ -59,19 +59,19 @@ typedef enum {
 //lint -esym(768, uShortRangePrivateModule_t::responseMaxWaitMs) Suppress
 // may not be referenced as references may be conditionally compiled-out.
 typedef struct {
-    uShortRangeModuleType_t moduleType; /**< The module type. */
-    int32_t bootWaitSeconds; /**< How long to wait before the module is
+    uShortRangeModuleType_t moduleType; /**< the module type. */
+    int32_t bootWaitSeconds; /**< how long to wait before the module is
                                   ready after boot. */
-    int32_t rebootCommandWaitSeconds; /**< How long to wait before the module is
+    int32_t rebootCommandWaitSeconds; /**< how long to wait before the module is
                                            ready after it has been commanded
                                            to reboot. */
-    int32_t atTimeoutSeconds; /**< The time to wait for completion of an
-                                   AT command, i.e. from sending ATblah to
+    int32_t atTimeoutSeconds; /**< the time to wait for completion of an
+                                   AT command, from sending ATblah to
                                    receiving OK or ERROR back. */
-    int32_t commandDelayMs; /**< How long to wait between the end of
+    int32_t commandDelayMs; /**< how long to wait between the end of
                                  one AT command and the start of the
                                  next. */
-    int32_t responseMaxWaitMs; /**< The maximum response time one can
+    int32_t responseMaxWaitMs; /**< the maximum response time one can
                                     expect from the short range module.
                                     This is usually quite large since,
                                     if there is a URC about to come
@@ -96,14 +96,14 @@ typedef struct uShortRangePrivateConnection_t {
 //lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallback) Suppress not reference, it is
 //lint -esym(768, uShortRangePrivateInstance_t::pNetworkStatusCallbackParameter) Suppress not reference, it is
 typedef struct uShortRangePrivateInstance_t {
-    uDeviceHandle_t devHandle; /**< Handle for corresponding device */
+    uDeviceHandle_t devHandle; /**< handle for corresponding device. */
     uShortRangeModes_t mode;
     int32_t uartHandle;
-    const uShortRangePrivateModule_t *pModule; /**< Pointer to the module type. */
-    uAtClientHandle_t atHandle; /**< The AT client handle to use. */
-    int32_t streamHandle; /**< Handle to the underlaying stream. */
-    uAtClientStream_t streamType; /**< Stream type. */
-    int64_t startTimeMs;     /**< Used while restarting. */
+    const uShortRangePrivateModule_t *pModule; /**< pointer to the module type. */
+    uAtClientHandle_t atHandle; /**< the AT client handle to use. */
+    int32_t streamHandle; /**< handle to the underlaying stream. */
+    uAtClientStream_t streamType; /**< stream type. */
+    int64_t startTimeMs;     /**< used while restarting. */
     int64_t ticksLastRestart;
     bool urcConHandlerSet;
     uShortRangePrivateConnection_t connections[U_SHORT_RANGE_MAX_CONNECTIONS];

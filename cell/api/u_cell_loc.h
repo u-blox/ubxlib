@@ -257,12 +257,12 @@ int32_t uCellLocSetPinGnssDataReady(uDeviceHandle_t cellHandle, int32_t pin);
  *                                case pPrimaryServerStr and
  *                                pSecondaryServerStr are ignored.
  * @param pPrimaryServerStr       a pointer to the null-terminated
- *                                primary server string, e.g.
+ *                                primary server string, for example
  *                                "celllive1.services.u-blox.com".
  *                                May be NULL, in which case the default
  *                                is used.
  * @param pSecondaryServerStr     a pointer to the null-terminated
- *                                secondary server string, e.g.
+ *                                secondary server string, for example
  *                                "celllive2.services.u-blox.com".
  *                                May be NULL, in which case the default
  *                                is used.

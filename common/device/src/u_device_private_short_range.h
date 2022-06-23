@@ -29,7 +29,7 @@
  */
 
 /** @file
- * @brief Functions associated with a short-range device, i.e. one
+ * @brief Functions associated with a short-range device, one
  * supporting either BLE or Wifi or both.
  */
 

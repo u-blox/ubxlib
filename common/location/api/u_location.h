@@ -135,8 +135,8 @@ typedef struct {
                                         system as to how urgently location
                                         establishment is required. */
     bool disableGnss;             /**< in some cases a GNSS chip may be available
-                                       via another network (e.g. attached to a
-                                       cellular module) and it will normally be
+                                       via another network (for example attached to
+                                       a cellular module) and it will normally be
                                        used by that network in location establishment,
                                        however that can prevent the GNSS chip
                                        being used directly by this code.  If
@@ -311,12 +311,12 @@ typedef enum {
  *                                the values of #U_LOCATION_ASSIST_DEFAULTS will
  *                                be assumed (and Cloud Locate will not work).
  * @param pAuthenticationTokenStr the null-terminated authentication token,
- *                                required by some cloud services (e.g.
+ *                                required by some cloud services (for example
  *                                Cell Locate).
  * @param pLocation               a place to put the location; may be NULL. In
  *                                particular, when using the Cloud Locate service,
  *                                leave this as NULL if the location is not
- *                                required by this device (i.e. it is sufficient
+ *                                required by this device (if it is sufficient
  *                                for it to be known in the cloud).
  * @param pKeepGoingCallback      a callback function that governs how long
  *                                location establishment is allowed to take.
@@ -373,7 +373,7 @@ int32_t uLocationGet(uDeviceHandle_t devHandle, uLocationType_t type,
  *                                the values of #U_LOCATION_ASSIST_DEFAULTS will
  *                                be assumed (and Cloud Locate will not work).
  * @param pAuthenticationTokenStr the null-terminated authentication token,
- *                                required by some cloud services (e.g.
+ *                                required by some cloud services (for example
  *                                Cell Locate).
  * @param pCallback               a callback that will be called when
  *                                location has been determined.  The

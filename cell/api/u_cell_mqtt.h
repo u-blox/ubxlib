@@ -121,14 +121,14 @@ typedef enum {
  * should match those in #uMqttSnTopicNameType_t.
  */
 typedef enum {
-    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL = 0, /**< a two-byte ID, e.g. 0x0001, referring to a normal MQTT topic, e.g. "thing/this". */
-    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED = 1, /**< a pre-agreed two byte ID, e.g. 0x0100. */
-    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT = 2,  /**< two alpha-numeric characters, e.g. "ab". */
+    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_NORMAL = 0, /**< a two-byte ID, for example 0x0001, referring to a normal MQTT topic, for example "thing/this". */
+    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_ID_PREDEFINED = 1, /**< a pre-agreed two byte ID, for example 0x0100. */
+    U_CELL_MQTT_SN_TOPIC_NAME_TYPE_NAME_SHORT = 2,  /**< two alpha-numeric characters, for example "ab". */
     U_CELL_MQTT_SN_TOPIC_NAME_TYPE_MAX_NUM
 } uCellMqttSnTopicNameType_t;
 
 /** This type holds the two sorts of MQTT-SN topic name; a uint16_t
- * ID (i.e. 0 to 65535) or a two-character name (e.g. "ab"). The
+ * ID ( 0 to 65535) or a two-character name (for example "ab"). The
  * structure here MUST match #uMqttSnTopicName_t.
  */
 typedef struct {
@@ -232,8 +232,8 @@ void uCellMqttDeinit(uDeviceHandle_t cellHandle);
  * @param sizeBytes          size of the storage at pClientIdStr,
  *                           including the terminator.
  * @return                   the number of bytes written to pClientIdStr,
- *                           not including the terminator (i.e. what
- *                           strlen() would return), or negative error code.
+ *                           not including the terminator (what strlen()
+ *                           would return), or negative error code.
  */
 int32_t uCellMqttGetClientId(uDeviceHandle_t cellHandle, char *pClientIdStr,
                              size_t sizeBytes);
@@ -348,7 +348,7 @@ bool uCellMqttIsRetained(uDeviceHandle_t cellHandle);
 /** Switch MQTT [D]TLS security on.  By default MQTT TLS security
  * (DTLS security for MQTT-SN) is off.  If you intend to switch
  * security on don't forget to specify the secure broker port number
- * in the call to uCellMqttInit() e.g. "mybroker.com:8883".
+ * in the call to uCellMqttInit() for example "mybroker.com:8883".
  * IMPORTANT: a re-boot of the module will lose your
  * setting.
  * Note that SARA-R4 modules do not support changing MQTT
@@ -411,7 +411,7 @@ bool uCellMqttIsSecured(uDeviceHandle_t cellHandle,
  *                           restricted to ASCII values while for
  *                           MQTT-SN it must be a null-terminated
  *                           ASCII string containing only printable
- *                           characters (i.e. isprint() returns true)
+ *                           characters (isprint() returns true)
  *                           and no double quotation marks. May be
  *                           NULL, in which case the message will
  *                           not be modified.
@@ -873,7 +873,7 @@ int32_t uCellMqttSnMessageRead(uDeviceHandle_t cellHandle,
  * @param[in] pMessage     a pointer to the "will" message;
  *                         must be a null terminated string, cannot
  *                         be NULL must contain only printable
- *                         characters (i.e. isprint() returns true)
+ *                         characters (isprint() returns true)
  *                         and no double quotation marks.
  * @param messageSizeBytes provided for future compatiblity only,
  *                         please use strlen(pMessage).

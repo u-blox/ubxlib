@@ -92,7 +92,7 @@ bool uCellSecIsBootstrapped(uDeviceHandle_t cellHandle);
  *                        where the IMEI string will be
  *                        placed; cannot be NULL.
  * @return                the length of the string copied into
- *                        pSerialNumber (i.e. as strlen() would
+ *                        pSerialNumber (as strlen() would
  *                        return) or negative error code.
  */
 int32_t uCellSecGetSerialNumber(uDeviceHandle_t cellHandle,
@@ -107,7 +107,7 @@ int32_t uCellSecGetSerialNumber(uDeviceHandle_t cellHandle,
  * @param pRootOfTrustUid pointer to storage of at least
  *                        #U_SECURITY_ROOT_OF_TRUST_UID_LENGTH_BYTES
  *                        where the root of trust UID will be placed
- *                        encoded as binary, e.g.
+ *                        encoded as binary, for example
  *                        [0x0a, 0x04, 0xf0, 0x08, 0x00, 0x3c, 0x96, 0x23],
  *                        *not* ASCII; cannot be NULL.
  * @return                the number of bytes copied into
@@ -303,7 +303,7 @@ bool uCellSecIsSealed(uDeviceHandle_t cellHandle);
  * @return                on success the number of bytes read
  *                        (or, if pData is NULL the number of
  *                        bytes that would be read) INCLUDING
- *                        the null terminator (i.e. strlen() + 1),
+ *                        the null terminator (strlen() + 1),
  *                        else negative error code on failure.
  */
 int32_t uCellSecZtpGetDeviceCertificate(uDeviceHandle_t cellHandle,
@@ -342,7 +342,7 @@ int32_t uCellSecZtpGetDeviceCertificate(uDeviceHandle_t cellHandle,
  * @return                on success the number of bytes read
  *                        (or, if pData is NULL the number of
  *                        bytes that would be read) INCLUDING
- *                        the null terminator (i.e. strlen() + 1),
+ *                        the null terminator (strlen() + 1),
  *                        else negative error code on failure.
  */
 int32_t uCellSecZtpGetPrivateKey(uDeviceHandle_t cellHandle,
@@ -381,7 +381,7 @@ int32_t uCellSecZtpGetPrivateKey(uDeviceHandle_t cellHandle,
  * @return                on success the number of bytes read
  *                        (or, if pData is NULL the number of
  *                        bytes that would be read) INCLUDING
- *                        the null terminator (i.e. strlen() + 1),
+ *                        the null terminator (strlen() + 1),
  *                        else negative error code on failure.
  */
 int32_t uCellSecZtpGetCertificateAuthorities(uDeviceHandle_t cellHandle,
@@ -400,7 +400,7 @@ int32_t uCellSecZtpGetCertificateAuthorities(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle     the handle of the instance to be used.
  * @param version        the version to use; use 1 for version 1,
- *                       etc. (i.e. there is no version 0).
+ *                       etc. (so there is no version 0).
  * @return               zero on success else negative error code.
  */
 int32_t uCellSecE2eSetVersion(uDeviceHandle_t cellHandle, int32_t version);
@@ -458,14 +458,14 @@ int32_t uCellSecE2eEncrypt(uDeviceHandle_t cellHandle,
  * @param pskSizeBytes   the size of PSK to be generated: can be
  *                       16 bytes or 32 bytes.
  * @param pPsk           a pointer to storage for 16 or 32 bytes
- *                       of generated PSK, encoded as binary, e.g.
- *                       [0x0a, 0x04, 0xf0... etc], *not* ASCII;
- *                       cannot be NULL.
+ *                       of generated PSK, encoded as binary, for
+ *                       example [0x0a, 0x04, 0xf0... etc], *not*
+ *                       ASCII; cannot be NULL.
  * @param pPskId         a pointer to storage for the PSK ID to go
  *                       to go with the PSK, again encoded as binary,
  *                       *not* ASCII; cannot be NULL, can be up to
  *                       32 bytes in size.
- * @return               the number of bytes copied into pPskId, i.e.
+ * @return               the number of bytes copied into pPskId, so
  *                       the *PSK ID*, not the PSK (which will always
  *                       be the number of bytes requested), or negative
  *                       error code.
@@ -486,8 +486,8 @@ int32_t uCellSecPskGenerate(uDeviceHandle_t cellHandle,
  * hearbeats and hence if requested too frequently (e.g. more than
  * once every 24 hours) the trigger request may return an error.
  *
- * @param cellHandle the handle of the instance to  be used, e.g.
- *                   obtained through uDeviceOpen().
+ * @param cellHandle the handle of the instance to  be used, for
+ *                   example obtained through uDeviceOpen().
  * @return           zero on success else negative error code.
  */
 int32_t uCellSecHeartbeatTrigger(uDeviceHandle_t cellHandle);

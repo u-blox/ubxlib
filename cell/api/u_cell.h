@@ -80,7 +80,7 @@ extern "C" {
 /** There can be an inverter in-line between an MCU pin
  * and a cellular module pin; OR this value with the value
  * of a pin passed into this API and the sense of that pin
- * will be assumed to be inverted, i.e. "asserted" will be
+ * will be assumed to be inverted, so "asserted" will be
  * 0 and "deasserted" 1.  This method of indicating inversion
  * is preferred to the compile time options given below,
  * which are retained for backwards-compatibility.
@@ -219,8 +219,8 @@ void uCellDeinit();
  *                         of pinEnablePower should be ORed with
  *                         #U_CELL_PIN_INVERTED.
  * @param pinPwrOn         the pin that signals power-on to the
- *                         cellular module, i.e. the pin
- *                         that is connected to the module's PWR_ON pin.
+ *                         cellular module, the pin that is connected
+ *                         to the module's PWR_ON pin.
  *                         Set to -1 if there is no such pin.  If there
  *                         is an inverter between the pin of this MCU
  *                         and the PWR_ON pin of the module then the value

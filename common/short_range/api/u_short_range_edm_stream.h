@@ -297,7 +297,7 @@ void uShortRangeEdmStreamDataEventCallbackRemove(int32_t handle,
  */
 int32_t uShortRangeEdmStreamAtEventSend(int32_t handle, uint32_t eventBitMap);
 
-/** Get the stack high watermark, i.e. the minimum amount of
+/** Get the stack high watermark, the minimum amount of
  * free stack, in bytes, for the task at the end of the event
  * queue.
  *

@@ -30,7 +30,7 @@
 
 /** @file
  * @brief This header file defines the APIs that obtain general
- * information from a cellular module (e.g. IMEI, etc.).
+ * information from a cellular module (IMEI, etc.).
  * These functions are thread-safe with the proviso that a cellular
  * instance should not be accessed before it has been added or after
  * it has been removed.
@@ -229,9 +229,8 @@ int32_t uCellInfoGetIccidStr(uDeviceHandle_t cellHandle,
  *                    room for a null terminator. Must be greater
  *                    than zero.
  * @return            on success, the number of characters copied into
- *                    pStr NOT including the terminator (i.e. as
- *                    strlen() would return), on failure negative
- *                    error code.
+ *                    pStr NOT including the terminator (as strlen()
+ *                    would return), on failure negative error code.
  */
 int32_t uCellInfoGetManufacturerStr(uDeviceHandle_t cellHandle,
                                     char *pStr, size_t size);
@@ -248,9 +247,8 @@ int32_t uCellInfoGetManufacturerStr(uDeviceHandle_t cellHandle,
  *                    room for a null terminator. Must be greater
  *                    than zero.
  * @return            on success, the number of characters copied into
- *                    pStr NOT including the terminator (i.e. as
- *                    strlen() would return), on failure negative
- *                    error code.
+ *                    pStr NOT including the terminator (as strlen()
+ *                    would return), on failure negative error code.
  */
 int32_t uCellInfoGetModelStr(uDeviceHandle_t cellHandle,
                              char *pStr, size_t size);
@@ -267,9 +265,8 @@ int32_t uCellInfoGetModelStr(uDeviceHandle_t cellHandle,
  *                    room for a null terminator. Must be greater
  *                    than zero.
  * @return            on success, the number of characters copied into
- *                    pStr NOT including the terminator (i.e. as
- *                    strlen() would return), on failure negative
- *                    error code.
+ *                    pStr NOT including the terminator (as strlen()
+ *                    would return), on failure negative error code.
  */
 int32_t uCellInfoGetFirmwareVersionStr(uDeviceHandle_t cellHandle,
                                        char *pStr, size_t size);
@@ -298,9 +295,8 @@ int64_t uCellInfoGetTimeUtc(uDeviceHandle_t cellHandle);
  *                    room for a null terminator. Must be greater or equal
  *                    to 32 bytes.
  * @return            on success, the number of characters copied into
- *                    pStr NOT include the terminator (i.e. as
- *                    strlen() would return), on failure negative
- *                    error code.
+ *                    pStr NOT include the terminator (as strlen() would
+ *                    return), on failure negative error code.
  */
 int32_t uCellInfoGetTimeUtcStr(uDeviceHandle_t cellHandle,
                                char *pStr, size_t size);

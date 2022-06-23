@@ -538,7 +538,7 @@ void uAtClientPrintAtSet(uAtClientHandle_t atHandle,
 int32_t uAtClientTimeoutGet(const uAtClientHandle_t atHandle);
 
 /** Set the timeout for completion of an AT command,
- * i.e. from uAtClientLock() to uAtClientUnlock().
+ * from uAtClientLock() to uAtClientUnlock().
  * If this is not called the timeout will be
  * #U_AT_CLIENT_DEFAULT_TIMEOUT_MS.
  *
@@ -620,7 +620,7 @@ void uAtClientDelaySet(uAtClientHandle_t atHandle,
  * -------------------------------------------------------------- */
 
 /** Lock the stream in order that the user can send an AT command,
- * i.e. something that begins `AT` and is terminated by the AT
+ * something that begins `AT` and is terminated by the AT
  * server returning `OK` or `ERROR`.
  * When this function has returned the AT interface is exclusively
  * locked for the caller, any previous AT errors are cleared
@@ -1057,7 +1057,7 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
 void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
                                const char *pPrefix);
 
-/** Get the stack high watermark for the URC task, i.e. the
+/** Get the stack high watermark for the URC task, the
  * minimum amount of free stack space.  If this gets close
  * to zero you need to do less in your URCs or you need to
  * increase U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES.
@@ -1092,7 +1092,7 @@ int32_t uAtClientCallback(uAtClientHandle_t atHandle,
                           void *pCallbackParam);
 
 /** Get the stack high watermark for the task at the end of the
- * AT callback event queue, i.e. the minimum amount of free stack
+ * AT callback event queue, the minimum amount of free stack
  * space.  If this gets close to zero you either need to do less
  * in your callbacks or you need to increase
  * #U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES.
@@ -1178,7 +1178,7 @@ void uAtClientClearError(uAtClientHandle_t atHandle);
 int32_t uAtClientErrorGet(uAtClientHandle_t atHandle);
 
 /** Return the last error code received from the AT server,
- * i.e. an error code from "+CME ERROR" or "+CMS ERROR".
+ * an error code from "+CME ERROR" or "+CMS ERROR".
  *
  * @param atHandle     the handle of the AT client.
  * @param pDeviceError a place to put the device error,

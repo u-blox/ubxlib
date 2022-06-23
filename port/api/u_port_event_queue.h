@@ -235,7 +235,7 @@ int32_t uPortEventQueueSendIrq(int32_t handle, const void *pParam,
  */
 bool uPortEventQueueIsTask(int32_t handle);
 
-/** Get the stack high watermark, i.e. the minimum free
+/** Get the stack high watermark, the minimum free
  * stack, for the task at the end of the given event
  * queue in bytes.
  *

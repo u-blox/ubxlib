@@ -51,9 +51,9 @@ typedef enum {
     U_CELL_MODULE_TYPE_SARA_U201 = 0,
     U_CELL_MODULE_TYPE_SARA_R410M_02B = 1, /**<  the difference between the
                                                  R410M-x2B module flavours
-                                                 (i.e. the "x") is the band
-                                                 support, which is not "known"
-                                                 by this driver, hence specifying
+                                                 (the "x") is the band support,
+                                                 which is not "known" by this
+                                                 driver, hence specifying
                                                  #U_CELL_MODULE_TYPE_SARA_R410M_02B
                                                  should work for all SARA-R410M-x2B
                                                  module varieties.

@@ -42,7 +42,7 @@ extern "C" {
  */
 #define U_PORT_STRINGIFY_LITERAL(x) #x
 
-/** Stringify a macro, i.e. if you have:
+/** Stringify a macro, so if you have:
  *
  * \#define foo bar
  *

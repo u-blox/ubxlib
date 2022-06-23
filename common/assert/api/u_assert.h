@@ -89,9 +89,9 @@ void uAssertHookSet(upAssertFailed_t *pAssertFailed);
  *
  * @param pFileStr   pointer to the name and path of the file where
  *                   the assert failure occurred, as a null-terminated
- *                   string, i.e. from __FILE__.
+ *                   string, from __FILE__.
  * @param line       the line number in pFileStr where the assert
- *                   failure occurred, i.e. from __LINE__.
+ *                   failure occurred, from __LINE__.
  */
 //lint -function(exit, uAssertFailed) tell Lint that this has the same
 // proprties as exit()

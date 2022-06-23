@@ -747,7 +747,7 @@ int32_t uSockGetLocalAddress(uSockDescriptor_t descriptor,
  * @param devHandle      the handle of the underlying network to
  *                       use for host name look-up.
  * @param pHostName      a string representing the host to search
- *                       for, e.g. "google.com" or "192.168.1.0".
+ *                       for, for example "google.com" or "192.168.1.0".
  * @param pHostIpAddress a pointer to a place to put the IP address
  *                       of the host.  Set this to NULL to determine
  *                       if a host is there without bothering to
@@ -784,7 +784,7 @@ int32_t uSockGetHostByName(uDeviceHandle_t devHandle, const char *pHostName,
 int32_t uSockStringToAddress(const char *pAddressString,
                              uSockAddress_t *pAddress);
 
-/** Convert an IP address struct (i.e. without a port number)
+/** Convert an IP address struct (without a port number)
  * into a string.
  *
  * @param pIpAddress a pointer to the IP address to convert.
@@ -794,14 +794,13 @@ int32_t uSockStringToAddress(const char *pAddressString,
  * @param sizeBytes  the amount of memory pointed to by
  *                   pBuffer.
  * @return           on success the length of the string, not
- *                   including the terminator (i.e. what
- *                   strlen() would return) else negative
- *                   error code.
+ *                   including the terminator (what strlen()
+ *                   would return) else negative error code.
  */
 int32_t uSockIpAddressToString(const uSockIpAddress_t *pIpAddress,
                                char *pBuffer, size_t sizeBytes);
 
-/** Convert an address struct (i.e. with a port number) into a
+/** Convert an address struct (with a port number) into a
  * string.
  *
  * @param pAddress   a pointer to the address to convert.
@@ -811,9 +810,8 @@ int32_t uSockIpAddressToString(const uSockIpAddress_t *pIpAddress,
  *                   and terminator.
  * @param sizeBytes  the amount of memory pointed to by pBuffer.
  * @return           on success the length of the string, not
- *                   including the terminator (i.e. what
- *                   strlen() would return) else negative
- *                   error code.
+ *                   including the terminator (what strlen()
+ *                   would return) else negative error code.
  */
 int32_t uSockAddressToString(const uSockAddress_t *pAddress,
                              char *pBuffer, size_t sizeBytes);

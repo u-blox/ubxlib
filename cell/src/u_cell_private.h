@@ -172,7 +172,7 @@ extern "C" {
  */
 #define U_CELL_PRIVATE_DTR_POWER_SAVING_PIN_BIT_ON_STATE 3
 
-/** Macro to get the "on" (i.e. no power saving) state of the
+/** Macro to get the "on" (no power saving) state of the
  * DTR pin when it is used for power-saving.
  */
 #define U_CELL_PRIVATE_DTR_POWER_SAVING_PIN_ON_STATE(pinStates) (int32_t) (((pinStates) >> U_CELL_PRIVATE_DTR_POWER_SAVING_PIN_BIT_ON_STATE) & 1)
@@ -440,7 +440,7 @@ extern uPortMutexHandle_t gUCellPrivateMutex;
  * -------------------------------------------------------------- */
 
 /** Return true if the given buffer contains only numeric
- * characters (i.e. 0 to 9).
+ * characters (0 to 9).
  *
  * @param pBuffer     pointer to the buffer.
  * @param bufferSize  number of characters at pBuffer.

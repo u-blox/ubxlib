@@ -80,7 +80,7 @@ int32_t uCellPwrPrivateOn(uCellPrivateInstance_t *pInstance,
 /** Decode a string representing the binary value of a 3GPP power
  * saving active time (T3324) as a GPRS Timer 2 IE into seconds.
  *
- * @param pStr      the string, e.g. "00011001".
+ * @param pStr      the string, for example "00011001".
  * @param pSeconds  a place to put the value in seconds; may be NULL.
  * @return          zero on success else negative error code.
  */
@@ -91,7 +91,7 @@ int32_t uCellPwrPrivateActiveTimeStrToSeconds(const char *pStr,
  * saving periodic wake-up time (T3412 or T3412 ext) as a GPRS Timer
  * 3 IE into seconds.
  *
- * @param pStr      the string, e.g. "00011001".
+ * @param pStr      the string, for example "00011001".
  * @param t3412Ext  true if the encoding is ext format, else false.
  * @param pSeconds  a place to put the value in seconds; may be NULL.
  * @return          zero on success else negative error code.
@@ -136,8 +136,8 @@ int32_t uCellPwrPrivateGet3gppPowerSaving(uCellPrivateInstance_t *pInstance,
  *                               false to get the parameters that will
  *                               be requested.
  * @param rat                    the radio access technology
- *                               e.g. U_CELL_NET_RAT_CATM1 or
- *                               U_CELL_NET_RAT_NB1 or the
+ *                               for example #U_CELL_NET_RAT_CATM1 or
+ *                               #U_CELL_NET_RAT_NB1 or the
  *                               return value of
  *                               uCellNetGetActiveRat() if
  *                               registered with the network.

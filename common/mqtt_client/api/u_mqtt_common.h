@@ -71,7 +71,7 @@ typedef enum {
 } uMqttSnTopicNameType_t;
 
 /** This type holds the two sorts of MQTT-SN topic name; a uint16_t
- * ID (i.e. 0 to 65535) or a two-character name (e.g. "ab"). The
+ * ID (0 to 65535) or a two-character name (for instance "ab"). The
  * structure here MUST match #uCellMqttSnTopicName_t.
  */
 typedef struct {
@@ -108,7 +108,7 @@ typedef struct {
                                     for MQTT-SN the underlying AT interface
                                     ONLY works if pMessge is a null-terminated
                                     ASCII string containing only printable
-                                    characters (i.e. isprint() returns true)
+                                    characters (isprint() returns true)
                                     and no double quotation marks (").
                                     Cannot be NULL. */
     size_t messageSizeBytes;   /**< since pMessage may include binary

@@ -163,7 +163,7 @@ typedef struct {
  * on the interface to the module.
  *
  * @param devHandle            the handle of the instance to be used,
- *                             e.g. obtained using uDeviceOpen().
+ *                             for example obtained using uDeviceOpen().
  * @param type                 the type of credential to be stored.
  * @param pName                the null-terminated name for the
  *                             X.509 certificate or security key, of
@@ -205,7 +205,7 @@ int32_t uSecurityCredentialStore(uDeviceHandle_t devHandle,
  * The hash is that of the DER-format key as stored in the module.
  *
  * @param devHandle            the handle of the instance to be used,
- *                             e.g. obtained using uDeviceOpen().
+ *                             for example obtained using uDeviceOpen().
  * @param type                 the type of credential, as was passed to
  *                             uSecurityCredentialStore() when storing it.
  * @param pName                the null-terminated name for the
@@ -247,7 +247,7 @@ int32_t uSecurityCredentialGetHash(uDeviceHandle_t devHandle,
  * uSecurityZtp*() APIs in u_security.h.
  *
  * @param devHandle            the handle of the instance to be used,
- *                             e.g. obtained using uDeviceOpen().
+ *                             for example obtained using uDeviceOpen().
  * @param pCredential          pointer to somewhere to store the result.
  * @return                     the number of credentials in the list
  *                             or negative error code.
@@ -273,7 +273,7 @@ int32_t uSecurityCredentialListFirst(uDeviceHandle_t devHandle,
  * uSecurityZtp*() APIs in u_security.h.
  *
  * @param devHandle            the handle of the instance to be used,
- *                             e.g. obtained using uDeviceOpen().
+ *                             for example obtained using uDeviceOpen().
  * @param pCredential          pointer to somewhere to store the result.
  * @return                     the number of entries remaining *after*
  *                             this one has been read or negative error
@@ -287,14 +287,14 @@ int32_t uSecurityCredentialListNext(uDeviceHandle_t devHandle,
  * iterate through the whole list with uSecurityCredentialListNext().
  *
  * @param devHandle     the handle of the instance to be used,
- *                      e.g. obtained using uDeviceOpen().
+ *                      for example obtained using uDeviceOpen().
  */
 void uSecurityCredentialListLast(uDeviceHandle_t devHandle);
 
 /** Remove the given X.509 certificate or security key from storage.
  *
  * @param devHandle      the handle of the instance to be used,
- *                       e.g. obtained using uDeviceOpen().
+ *                       for example obtained using uDeviceOpen().
  * @param type           the type of credential to be removed, as
  *                       was passed to uSecurityCredentialStore()
  *                       when storing it.

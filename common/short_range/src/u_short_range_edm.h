@@ -175,7 +175,7 @@ int32_t uShortRangeEdmData(uint8_t channel, const char *pData, int32_t size, cha
  *
  * @brief Creates an EDM data packet header
  *
- * @details This is a way to avoid a memcpy and can e.g. be useful if the packet is sent
+ * @details This is a way to avoid a memcpy and can, for example be useful if the packet is sent
  *          over a stream based channel the accepts bytes/chunks. The module will assemble
  *          the input and execute when a full EDM packet is received.<br>
  *          Valid EDM packet: head + data + tail.

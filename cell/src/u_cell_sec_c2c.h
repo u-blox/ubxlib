@@ -36,7 +36,7 @@ extern "C" {
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-/** The maximum transmit (i.e. to the module) size for the user
+/** The maximum transmit (to the module) size for the user
  * data in a chip to chip security chunk: this is a hard limit of
  * the C2C protocol. Should be a multiple of 16 bytes for maximal
  * efficiency.  It is worth noting that the amount of user data that
@@ -46,7 +46,7 @@ extern "C" {
  */
 #define U_CELL_SEC_C2C_USER_MAX_TX_LENGTH_BYTES 256
 
-/** The maximum received (i.e. from the module) size for the
+/** The maximum received (from the module) size for the
  * user data in a chip to chip security chunk.  This is dictated by
  * the largest portion of TCP/UDP data we ever ask for from the module
  * when running sockets, i.e. U_CELL_SOCK_MAX_SEGMENT_SIZE_BYTES

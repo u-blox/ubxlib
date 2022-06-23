@@ -25,8 +25,8 @@
 /** @file
  * @brief This header file defines functions that do not form part,
  * of the location API but are shared internally for use with the
- * network API, e.g. so that it can clear-up asynchronous location
- * requests when a network is taken down.
+ * network API, for example so that it can clear-up asynchronous
+ * location requests when a network is taken down.
  */
 
 #ifdef __cplusplus

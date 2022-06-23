@@ -348,7 +348,7 @@ bool uShortRangeSupportsWifi(uShortRangeModuleType_t moduleType);
  *                           in which the product serial number will be stored;
  *                           cannot be NULL.
  * @return                   the length of the string copied into
- *                           pSerialNumber (i.e. as strlen() would
+ *                           pSerialNumber (as strlen() would
  *                           return) or negative error code.
  */
 int32_t uShortRangeGetSerialNumber(uDeviceHandle_t devHandle, char *pSerialNumber);

@@ -446,8 +446,8 @@ int32_t uCellPwrSetDtrPowerSavingPin(uDeviceHandle_t cellHandle, int32_t pin);
  *
  * @param cellHandle  the handle of the cellular instance.
  * @return            the pin of this MCU that is connected to
- *                    the DTR line of the cellular module, i.e.
- *                    as set by uCellPwrSetDtrPowerSavingPin(),
+ *                    the DTR line of the cellular module, as
+ *                    set by uCellPwrSetDtrPowerSavingPin(),
  *                    or negative error code.
  */
 int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
@@ -494,7 +494,7 @@ int32_t uCellPwrGetDtrPowerSavingPin(uDeviceHandle_t cellHandle);
  *                              instance.
  * @param rat                   the radio access technology
  *                              the setting will be applied to
- *                              e.g. #U_CELL_NET_RAT_CATM1 or
+ *                              for example #U_CELL_NET_RAT_CATM1 or
  *                              #U_CELL_NET_RAT_NB1 or the
  *                              return value of
  *                              uCellNetGetActiveRat() if
@@ -671,7 +671,7 @@ int32_t uCellPwrSet3gppPowerSavingCallback(uDeviceHandle_t cellHandle,
  *                              instance.
  * @param rat                   the radio access technology
  *                              the setting will be applied to
- *                              e.g. #U_CELL_NET_RAT_CATM1 or
+ *                              for example #U_CELL_NET_RAT_CATM1 or
  *                              #U_CELL_NET_RAT_NB1 or the
  *                              return value of
  *                              uCellNetGetActiveRat() if
@@ -702,7 +702,7 @@ int32_t uCellPwrSetRequestedEDrx(uDeviceHandle_t cellHandle,
  * @param cellHandle             the handle of the cellular
  *                               instance.
  * @param rat                    the radio access technology
- *                               e.g. #U_CELL_NET_RAT_CATM1 or
+ *                               for example #U_CELL_NET_RAT_CATM1 or
  *                               #U_CELL_NET_RAT_NB1 or the
  *                               return value of
  *                               uCellNetGetActiveRat() if
@@ -736,7 +736,7 @@ int32_t uCellPwrGetRequestedEDrx(uDeviceHandle_t cellHandle,
  * @param cellHandle             the handle of the cellular
  *                               instance.
  * @param rat                    the radio access technology
- *                               e.g. #U_CELL_NET_RAT_CATM1 or
+ *                               for example #U_CELL_NET_RAT_CATM1 or
  *                               #U_CELL_NET_RAT_NB1 or the
  *                               return value of
  *                               uCellNetGetActiveRat() if
@@ -835,9 +835,9 @@ int32_t uCellPwrSetDeepSleepWakeUpCallback(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle   the handle of the cellular instance.
  * @param pSleepActive a place to put whether deep sleep is active
- *                     or not (true IF SLEEP IS ACTIVE, i.e. the
+ *                     or not (true IF SLEEP IS ACTIVE, the
  *                     module is effectively off, else false); may
- *                     be NULL (e.g. if you just want to find out
+ *                     be NULL (for example if you just want to find out
  *                     if the callback is supported).
  * @return             zero on success else negative error code
  *                     if the module does not support indicating

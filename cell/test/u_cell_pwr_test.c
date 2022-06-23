@@ -139,7 +139,7 @@
 
 #ifndef U_CELL_PWR_TEST_ECHO_STRING_LENGTH_BYTES
 /** The length of U_CELL_PWR_TEST_ECHO_STRING, not including
- * terminator, i.e. as strlen() would return.
+ * terminator, as strlen() would return.
  */
 # define U_CELL_PWR_TEST_ECHO_STRING_LENGTH_BYTES 12
 #endif

@@ -309,7 +309,7 @@ static char gBufferB[(U_CELL_SEC_C2C_CHUNK_MAX_LENGTH_BYTES * 5) +
  */
 static int32_t gUartAHandle = -1;
 
-/** Handle for the AT server UART stream (i.e. the reverse direction).
+/** Handle for the AT server UART stream (the reverse direction).
  */
 static int32_t gUartBHandle = -1;
 

@@ -246,9 +246,9 @@ typedef enum {
  *
  * @param cellHandle         the handle of the cellular instance.
  * @param pMccMnc            pointer to a string giving the MCC and
- *                           MNC of the PLMN to use (e.g. "23410")
+ *                           MNC of the PLMN to use (for example "23410")
  *                           for manual connection; set to NULL if
- *                           automatic PLMN selection (i.e. AT+COPS=0)
+ *                           automatic PLMN selection (AT+COPS=0)
  *                           is required.
  * @param pApn               pointer to a string giving the APN to
  *                           use; set to NULL if no APN is specified
@@ -298,9 +298,9 @@ int32_t uCellNetConnect(uDeviceHandle_t cellHandle,
  *
  * @param cellHandle         the handle of the cellular instance.
  * @param pMccMnc            pointer to a string giving the MCC and
- *                           MNC of the PLMN to use (e.g. "23410")
+ *                           MNC of the PLMN to use (for example "23410")
  *                           for manual connection; set to NULL if
- *                           automatic PLMN selection (i.e. AT+COPS=0)
+ *                           automatic PLMN selection (AT+COPS=0)
  *                           is required.
  * @param pKeepGoingCallback a callback function that governs how
  *                           long registration will continue for.
@@ -633,9 +633,8 @@ uCellNetRat_t uCellNetGetActiveRat(uDeviceHandle_t cellHandle);
  *                    room for a null terminator. Must be greater
  *                    than zero.
  * @return            on success, the number of characters copied into
- *                    pStr NOT including the terminator (i.e. as
- *                    strlen() would return), on failure negative
- *                    error code.
+ *                    pStr NOT including the terminator (as strlen()
+ *                    would return), on failure negative error code.
  */
 int32_t uCellNetGetOperatorStr(uDeviceHandle_t cellHandle,
                                char *pStr, size_t size);
@@ -670,7 +669,7 @@ int32_t uCellNetGetMccMnc(uDeviceHandle_t cellHandle,
  *                    whether an IP address has been allocated or not.
  * @return            on success, the number of characters that would
  *                    be copied into into pStr if it is not NULL,
- *                    NOT including the terminator (i.e. as strlen()
+ *                    NOT including the terminator (as strlen()
  *                    would return), on failure negative error code.
  */
 int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle, char *pStr);
@@ -703,7 +702,7 @@ int32_t uCellNetGetIpAddressStr(uDeviceHandle_t cellHandle, char *pStr);
  *                    written to pStr as a string and a null
  *                    terminator will be added.  May be set to NULL.
  * @return            zero if at least one DNS address has been
- *                    assigned (either v4 or v6, i.e. irrespective
+ *                    assigned (either v4 or v6, irrespective
  *                    of the setting of the v6 parameter) else
  *                    negative error code.
  */
@@ -725,9 +724,8 @@ int32_t uCellNetGetDnsStr(uDeviceHandle_t cellHandle, bool v6,
  *                    room for a null terminator.  Must be greater
  *                    than zero.
  * @return            on success, the number of characters copied into
- *                    pStr NOT including the terminator (i.e. as
- *                    strlen() would return), on failure negative
- *                    error code.
+ *                    pStr NOT including the terminator (as strlen()
+ *                    would return), on failure negative error code.
  */
 int32_t uCellNetGetApnStr(uDeviceHandle_t cellHandle, char *pStr, size_t size);
 

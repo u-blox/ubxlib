@@ -48,8 +48,8 @@ extern "C" {
  *
  * @param devHandle                     the handle of the thing
  *                                      providing the MQTT
- *                                      connection (e.g. the cellular
- *                                      or Wi-Fi module).
+ *                                      connection (for example the
+ *                                      cellular or Wi-Fi module).
  * @param gnssDevHandle                 the handle of the device
  *                                      that will provide the RRLP
  *                                      data for Cloud Locate; set
@@ -102,7 +102,7 @@ extern "C" {
  * @param pLocation                     a place to put the location once
  *                                      established, may be NULL if this
  *                                      device does not require the
- *                                      location, i.e. it is sufficient
+ *                                      location, if it is sufficient
  *                                      for it to be known in the cloud.
  * @param pKeepGoingCallback            a callback function that governs
  *                                      how long location establishment

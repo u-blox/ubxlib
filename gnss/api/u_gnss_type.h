@@ -58,7 +58,7 @@
 /** There can be an inverter in-line between an MCU pin
  * and whatever enables power to the GNSS chip; OR this value
  * with the value of the pin passed into uGnssAdd() and the sense of
- * that pin will be assumed to be inverted, i.e. "asserted" will be
+ * that pin will be assumed to be inverted, so "asserted" will be
  * 0 and "deasserted" 1.
  */
 #define U_GNSS_PIN_INVERTED 0x80

@@ -61,8 +61,7 @@ extern "C" {
                                           NULL, NULL, false, 0}
 
 /** The number of bytes required to store a short MQTT-SN topic name,
- * which will be of the form "xy", i.e. two characters, plus a
- * null terminator.
+ * which will be of the form "xy", two characters plus a null terminator.
  */
 #define U_MQTT_CLIENT_SN_TOPIC_NAME_SHORT_LENGTH_BYTES 3
 
@@ -202,7 +201,7 @@ typedef struct {
  * to put them back again.
  *
  * @param devHandle                the device handle to be used,
- *                                 e.g. obtained using uDeviceOpen().
+ *                                 for example obtained using uDeviceOpen().
  * @param[in] pSecurityTlsSettings a pointer to the security settings to
  *                                 be applied, NULL for no security.
  *                                 If this is non-NULL, don't forget to
@@ -481,9 +480,9 @@ int32_t uMqttClientSnSetTopicIdPredefined(uint16_t topicId,
  * @param[in]  pTopicNameShortStr a pointer to the short topic name
  *                                string; cannot be NULL, must be
  *                                a null-terminated string that is
- *                                exactly two characters long, e.g.
- *                                "xy"; single character short names
- *                                are not permitted.
+ *                                exactly two characters long, for
+ *                                example "xy"; single character short
+ *                                names are not permitted.
  * @param[out] pTopicName         a pointer to the MQTT-SN topic name to
  *                                populate; cannot be NULL.
  * @return                        zero on success, else negative error code.
@@ -524,8 +523,8 @@ int32_t uMqttClientSnGetTopicNameShort(const uMqttSnTopicName_t *pTopicName,
 
 /** MQTT-SN only: ask the MQTT-SN broker for an MQTT-SN topic name
  * for the given normal MQTT topic name; if you wish to publish to
- * a normal MQTT topic, e.g. "thing/this", using MQTT-SN, which
- * only has a 16-bit topic field, then you must register the
+ * a normal MQTT topic, for example "thing/this", using MQTT-SN,
+ * which only has a 16-bit topic field, then you must register the
  * normal MQTT topic to obtain an MQTT-SN topic ID for it.
  * Note: if you intend to subscribe to an MQTT topic as well as
  * publish to an MQTT topic you do NOT need to use this function:

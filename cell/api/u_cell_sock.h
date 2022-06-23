@@ -500,7 +500,7 @@ int32_t uCellSockAccept(uDeviceHandle_t cellHandle,
 /** Perform a DNS look-up.
  *
  * @param cellHandle     the handle of the cellular instance.
- * @param pHostName      the host name to look up, e.g.
+ * @param pHostName      the host name to look up, for example
  *                       "google.com".
  * @param pHostIpAddress a place to put the IP address
  *                       of the host.

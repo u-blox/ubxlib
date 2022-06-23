@@ -237,12 +237,12 @@ int32_t uCellSecTlsClientPrivateKeyNameGet(const uCellSecTlsContext_t *pContext,
  *
  * @param pContext         a pointer to the security context.
  * @param pPsk             the pre-shared key to use, encoded as binary,
- *                         e.g. [0x0a, 0x04, 0xf0, 0x08... etc],
+ *                         for example [0x0a, 0x04, 0xf0, 0x08... etc],
  *                         *not* hex encoded in ASCII; cannot be NULL.
  * @param pskLengthBytes   the amount of data at pPsk, must be no
  *                         more than #U_SECURITY_TLS_PSK_MAX_LENGTH_BYTES.
  * @param pPskId           the pre-shared key ID to use, encoded as binary,
- *                         e.g. [0x0a, 0x04, 0xf0, 0x08... etc],
+ *                         for example [0x0a, 0x04, 0xf0, 0x08... etc],
  *                         *not* hex encoded in ASCII; cannot be NULL.
  * @param pskIdLengthBytes the amount of data at pPskId, must be no
  *                         more than #U_SECURITY_TLS_PSK_ID_MAX_LENGTH_BYTES.

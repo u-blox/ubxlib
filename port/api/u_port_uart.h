@@ -323,7 +323,7 @@ int32_t uPortUartEventTrySend(int32_t handle,
  */
 bool uPortUartEventIsCallback(int32_t handle);
 
-/** Get the stack high watermark, i.e. the minimum amount of
+/** Get the stack high watermark, the minimum amount of
  * free stack, in bytes, for the task at the end of the event
  * queue.
  *

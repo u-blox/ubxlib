@@ -207,7 +207,7 @@
 #define MQTT_COMMAND_OPCODE_PING(mqttSn) (mqttSn ? 10 : 8)
 
 /** The amount of storage required for an MQTT-SN 16-bit topic name;
- * as a string, i.e. including a null terminator.
+ * as a string, including a null terminator.
  */
 #define U_CELL_MQTT_SN_TOPIC_NAME_MAX_LENGTH_BYTES 6
 

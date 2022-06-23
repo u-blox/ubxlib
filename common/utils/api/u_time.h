@@ -60,7 +60,7 @@ extern "C" {
 bool uTimeIsLeapYear(int32_t year);
 
 /** Return the number of UTC seconds that have elapsed in
- * the given number of UTC months, i.e. months since the
+ * the given number of UTC months, months since the
  * start of 1970 (counting from zero), taking into account
  * leap years.  Useful when converting a day/month/year count
  * into a UTC time.

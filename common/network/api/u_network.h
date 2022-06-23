@@ -28,13 +28,9 @@
  *  @{
  */
 
-/** @brief Functions for bringing up and down a network interface
- * on a device.  These functions are thread-safe.
- */
-
 /** @file
- * @brief This header file defines the network API. These functions are
- * thread-safe.
+ * @brief Functions for bringing up and down a network interface
+ * on a device. These functions are thread-safe.
  *
  * The functions here should be used in conjunction with those in the
  * uDevice API in the following sequence.
@@ -153,7 +149,7 @@ typedef union {
  *                     the detailed status information for
  *                     any network type; please pick the
  *                     correct union member for the value
- *                     of networkType, i.e. the ble member
+ *                     of networkType, the BLE member
  *                     for #U_NETWORK_TYPE_BLE, the cell member
  *                     for #U_NETWORK_TYPE_CELL and the wifi
  *                     member for #U_NETWORK_TYPE_WIFI
@@ -262,7 +258,7 @@ int32_t uNetworkInterfaceDown(uDeviceHandle_t devHandle, uNetworkType_t netType)
  * underlying network type:
  *
  * BLE and Wi-Fi: if the isUp parameter passed to the callback
- *                is false, i.e. the network has dropped, it
+ *                is false, the network has dropped, it
  *                is up to the application to attempt to
  *                bring the network connection back up by
  *                calling uNetworkInterfaceUp() if it still

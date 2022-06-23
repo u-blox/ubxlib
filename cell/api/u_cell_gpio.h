@@ -44,7 +44,7 @@ extern "C" {
 
 /** Macro helper: the APIs here use the GPIO ID, exactly as defined
  * in the u-blox AT command manual, which is NOT the number on the
- * end of the GPIO name, i.e. "GPIO1" is NOT GPIO ID 1, it is
+ * end of the GPIO name, so "GPIO1" is NOT GPIO ID 1, it is
  * GPIO ID 16, and hence the APIs use the #uCellGpioName_t enum
  * below to make this clearer.  However,  if in your code you wish
  * to use the integer x on the end of "GPIOx" as your identifier
@@ -168,7 +168,7 @@ int32_t uCellGpioGet(uDeviceHandle_t cellHandle, uCellGpioName_t gpioId);
 int32_t uCellGpioSetCts(uDeviceHandle_t cellHandle, int32_t level);
 
 /** Get the state of the CTS line: this may be used if the
- * serial handshaking lines are NOT being used (i.e. they are both
+ * serial handshaking lines are NOT being used (when they are both
  * -1 in the #uNetworkCfgCell_t structure or the
  * call to uPortUartOpen(), or you may call
  * uCellInfoIsCtsFlowControlEnabled() to determine the truth).

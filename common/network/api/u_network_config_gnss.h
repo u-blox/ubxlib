@@ -59,12 +59,12 @@ typedef struct {
                                        see #uGnssModuleType_t in
                                        u_gnss_module_type.h.  Only required
                                        if the GNSS network is being added
-                                       via a non-GNSS (e.g. cellular) device,
-                                       ignored otherwise. */
+                                       via a non-GNSS (for example cellular)
+                                       device, ignored otherwise. */
     int32_t devicePinPwr;         /**< only relevant if the GNSS network
-                                       is on a non-GNSS device, e.g. it
-                                       is connected via or inside
-                                       (e.g. SARA-R510M8S) a cellular
+                                       is on a non-GNSS device, for example
+                                       it is connected via or inside a
+                                       (for example SARA-R510M8S) cellular
                                        module, communicating via AT
                                        commands, and that intermediate module
                                        is controlling power to GNSS.  This
@@ -75,9 +75,9 @@ typedef struct {
                                        hence 23 would be used here. If there
                                        is no such functionality then use -1. */
     int32_t devicePinDataReady;   /**< only relevant if the GNSS network
-                                       is on a non-GNSS device, e.g. it
-                                       is connected via or inside
-                                       (e.g. SARA-R510M8S) a cellular
+                                       is on a non-GNSS device, for example
+                                       it is connected via or inside a
+                                       (for example SARA-R510M8S) cellular
                                        module, communicating via AT
                                        commands, and that intermediate module
                                        is connected to the Data Ready pin of

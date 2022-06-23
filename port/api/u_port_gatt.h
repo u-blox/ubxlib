@@ -169,7 +169,7 @@ typedef void (*mtuXchangeRespCallback_t)(int32_t connHandle, uint8_t err);
  * @param offset     where to start to write.
  * @param flags      indicates if this is a prepare write (bit 0,
  *                   only check authorization, do not write)
- *                   or a CMD, i.e. write without response (bit 1).
+ *                   or a CMD, write without response (bit 1).
  */
 typedef int32_t (*uPortGattAttWriteCallback_t)(int32_t connHandle, const void *pBuf, uint16_t len,
                                                uint16_t offset, uint8_t flags);

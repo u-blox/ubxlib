@@ -130,8 +130,8 @@ void uDeviceDestroyInstance(uDeviceInstance_t *pInstance);
  * thread-safety when a sequence of uDevice API calls are being
  * made.  This call will block until the device becomes available.
  *
- * @return zero on success or negative error code, e.g. if the
- *         device API is not currently initialised.
+ * @return zero on success or negative error code, for example
+ *         if the device API is not currently initialised.
  */
 int32_t uDeviceLock();
 

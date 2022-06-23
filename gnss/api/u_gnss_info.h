@@ -63,7 +63,7 @@ extern "C" {
  *                    greater than zero.
  * @return            on success, the number of characters copied
  *                    into pStr NOT including the null terminator
- *                    (i.e. as strlen() would return), else negative
+ *                    (as strlen() would return), else negative
  *                    error code.  Note that the string itself may
  *                    contain multiple lines separated by [more than
  *                    one] null terminator, depending on what the
@@ -85,7 +85,7 @@ int32_t uGnssInfoGetFirmwareVersionStr(uDeviceHandle_t gnssHandle,
  *                    greater than zero.
  * @return            on success, the number of characters copied
  *                    into pStr NOT including the null terminator
- *                    (i.e. as strlen() would return), else negative
+ *                    (as strlen() would return), else negative
  *                    error code.  Note that the string itself may
  *                    contain nulls, depending on what the GNSS
  *                    device chooses to return

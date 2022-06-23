@@ -169,7 +169,7 @@ bool uPortTaskIsThis(const uPortTaskHandle_t taskHandle);
  */
 void uPortTaskBlock(int32_t delayMs);
 
-/** Get the stack high watermark, i.e. the minimum amount
+/** Get the stack high watermark, the minimum amount
  * of stack free, in bytes, for a given task.
  *
  * @param taskHandle  the task handle to check.  If NULL is given

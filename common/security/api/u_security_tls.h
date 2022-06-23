@@ -46,14 +46,14 @@ extern "C" {
 
 #ifndef U_SECURITY_TLS_PSK_MAX_LENGTH_BYTES
 /** The maximum length of a PSK array
- * (i.e. binary, not hex encoded as ASCII).
+ * (binary, not hex encoded as ASCII).
  */
 # define U_SECURITY_TLS_PSK_MAX_LENGTH_BYTES 64
 #endif
 
 #ifndef U_SECURITY_TLS_PSK_ID_MAX_LENGTH_BYTES
 /** The maximum length of a PSK ID array
- * (i.e. binary, not hex encoded as ASCII).
+ * (binary, not hex encoded as ASCII).
  */
 # define U_SECURITY_TLS_PSK_ID_MAX_LENGTH_BYTES 128
 #endif
@@ -330,15 +330,13 @@ typedef struct {
                                                  on all other modules the choice is
                                                  made automatically by the module. */
     uSecurityTlsBinary_t psk; /**< the pre-shared key as a binary sequence or
-                                   an ASCII string (i.e. not hex encoded),
-                                   maximum length
+                                   an ASCII string (not hex encoded), maximum length
                                    #U_SECURITY_TLS_PSK_MAX_LENGTH_BYTES;
                                    supported on cellular modules only and, on
                                    all currently supported modules, no ASCII
                                    control characters may be included. */
     uSecurityTlsBinary_t pskId; /**< the pre-shared key ID as a binary sequence or
-                                     an ASCII string (i.e. not hex-encoded),
-                                     maximum length
+                                     an ASCII string (not hex-encoded), maximum length
                                      #U_SECURITY_TLS_PSK_ID_MAX_LENGTH_BYTES;
                                      supported on cellular modules only and, on
                                      all currently supported modules, no ASCII
