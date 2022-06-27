@@ -83,6 +83,27 @@ int32_t uGnssCfgGetFixMode(uDeviceHandle_t gnssHandle);
  */
 int32_t uGnssCfgSetFixMode(uDeviceHandle_t gnssHandle, uGnssFixMode_t fixMode);
 
+/** Get the UTC standard from the GNSS chip.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @return            the UTC standard or negative error code.
+ */
+int32_t uGnssCfgGetUtcStandard(uDeviceHandle_t gnssHandle);
+
+/** Set the UTC standard of the GNSS chip.
+ *
+ * @param gnssHandle  the handle of the GNSS instance.
+ * @param utcStandard the UTC standard; the value is deliberately not
+ *                    range-checked to allow future UTC standards to be
+ *                    passed in without the requirement to modify
+ *                    this code.  Use U_GNSS_UTC_STANDARD_AUTOMATIC
+ *                    it you don't really care, you'd just like UTC
+ *                    time please (which is the default).
+ * @return            zero on succes or negative error code.
+ */
+int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
+                               uGnssUtcStandard_t utcStandard);
+
 #ifdef __cplusplus
 }
 #endif

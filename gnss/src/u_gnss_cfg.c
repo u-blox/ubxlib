@@ -182,4 +182,30 @@ int32_t uGnssCfgSetFixMode(uDeviceHandle_t gnssHandle, uGnssFixMode_t fixMode)
                                  1, 3 /* One byte at offset 3 */);
 }
 
+// Get the UTC standard from the GNSS chip.
+int32_t uGnssCfgGetUtcStandard(uDeviceHandle_t gnssHandle)
+{
+    int32_t errorCodeOrUtcStandard;
+    // Enough room for the body of the UBX-CFG-NAV5 message
+    char message[36];
+
+    errorCodeOrUtcStandard = uGnssCfgGetUbxCfgNav5(gnssHandle, message);
+    if (errorCodeOrUtcStandard == 0) {
+        // The UTC standard is at offset 30
+        errorCodeOrUtcStandard = message[30];
+    }
+
+    return errorCodeOrUtcStandard;
+}
+
+// Set the UTC standard of the GNSS chip.
+int32_t uGnssCfgSetUtcStandard(uDeviceHandle_t gnssHandle,
+                               uGnssUtcStandard_t utcStandard)
+{
+    return uGnssCfgSetUbxCfgNav5(gnssHandle,
+                                 0x0400, /* Mask for UTC standard */
+                                 (char *) &utcStandard,
+                                 1, 30 /* One byte at offset 30 */);
+}
+
 // End of file

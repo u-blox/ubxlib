@@ -116,6 +116,14 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
 
             if ((errorCode == 0) &&
                 (pInstance->transportType == U_GNSS_TRANSPORT_UBX_AT)) {
+                atHandle = (uAtClientHandle_t) pInstance->transportHandle.pAt;
+                // Switch on an indication which is useful when debugging
+                // aiding modes
+                uAtClientLock(atHandle);
+                uAtClientCommandStart(atHandle, "AT+UGIND=");
+                uAtClientWriteInt(atHandle, 1);
+                uAtClientCommandStopReadResponse(atHandle);
+                uAtClientUnlock(atHandle);
                 // On some modules, e.g. SARA-R5, an attempt to change
                 // the pin that controls the GNSS chip power will return
                 // an error if the GNSS chip is already powered and also
@@ -123,7 +131,6 @@ int32_t uGnssPwrOn(uDeviceHandle_t gnssHandle)
                 // error if the cellular module is currently talking to the
                 // GNSS chip.  Hence we check if the GNSS chip is already
                 // on here.
-                atHandle = (uAtClientHandle_t) pInstance->transportHandle.pAt;
                 uAtClientLock(atHandle);
                 uAtClientCommandStart(atHandle, "AT+UGPS?");
                 // Response is +UGPS: <mode>[,<aid_mode>[,<GNSS_systems>]]

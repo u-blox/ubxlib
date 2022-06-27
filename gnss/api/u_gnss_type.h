@@ -129,6 +129,17 @@ typedef enum {
     U_GNSS_FIX_MODE_AUTO = 3
 } uGnssFixMode_t;
 
+/** The possible GNSS UTC standards.
+ */
+typedef enum {
+    U_GNSS_UTC_STANDARD_AUTOMATIC = 0,  /**< automatic. */
+    U_GNSS_UTC_STANDARD_USNO = 3,  /**< derived from GPS. */
+    U_GNSS_UTC_STANDARD_GALILEO = 5,
+    U_GNSS_UTC_STANDARD_GLONASS = 6,
+    U_GNSS_UTC_STANDARD_NTSC = 7, /**< National Time Service Center (NTSC), China; derived from BeiDou time. */
+    U_GNSS_UTC_STANDARD_NPLI = 8 /**< National Physics Laboratory India. */
+} uGnssUtcStandard_t;
+
 /** @}*/
 
 #endif // _U_GNSS_TYPE_H_

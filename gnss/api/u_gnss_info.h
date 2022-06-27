@@ -95,6 +95,19 @@ int32_t uGnssInfoGetIdStr(uDeviceHandle_t gnssHandle,
 
 /** Get the UTC time according to GNSS.
  *
+ * Note: in order to obtain UTC time the GNSS chip has to download
+ * the leap seconds information from the satellite, which is only
+ * transmitted relatively infrequently (every 12.5 minutes), so you
+ * must have requested position from GNSS at least once, with the
+ * GNSS receiver left on for sufficiently long to pick up the
+ * leap second information, for this to work.  That or, if you
+ * are connecting via an intermediate [cellular] module, you may
+ * call uCellLocSetServer() to enter your CellLocate token
+ * (obtained from the Location Services section of your Thingstream
+ * portal, https://portal.thingstream.io/app/location-services)
+ * and connect to cellular for the relevant information to be
+ * downloaded from a u-blox server instead.
+ *
  * @param gnssHandle  the handle of the GNSS instance.
  * @return            on success the Unix UTC time, else negative
  *                    error code.

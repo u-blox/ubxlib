@@ -91,6 +91,10 @@ static int32_t gDynamic = -1;
 */
 static int32_t gFixMode = -1;
 
+/** The initial UTC standard.
+*/
+static int32_t gUtcStandard = -1;
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -142,6 +146,12 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
         U_PORT_TEST_ASSERT((gFixMode >= (int32_t) U_GNSS_FIX_MODE_2D) &&
                            (gFixMode <= (int32_t) U_GNSS_FIX_MODE_AUTO));
 
+        // Get the initial UTC standard
+        gUtcStandard = uGnssCfgGetUtcStandard(gnssHandle);
+        U_TEST_PRINT_LINE("initial UTC standard is %d.", gUtcStandard);
+        U_PORT_TEST_ASSERT((gUtcStandard >= (int32_t) U_GNSS_UTC_STANDARD_AUTOMATIC) &&
+                           (gUtcStandard <= (int32_t) U_GNSS_UTC_STANDARD_NPLI));
+
         // Set all the dynamic types except for U_GNSS_DYNAMIC_BIKE
         // since that is only supported on a specific protocol version
         // which might not be on the chip we're using
@@ -171,6 +181,21 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
         // Put the initial fix mode back
         U_PORT_TEST_ASSERT(uGnssCfgSetFixMode(gnssHandle, (uGnssFixMode_t) gFixMode) == 0);
         gFixMode = -1;
+
+        // Set all the UTC standards
+        for (int32_t z = (int32_t) U_GNSS_UTC_STANDARD_AUTOMATIC; z <= (int32_t) U_GNSS_UTC_STANDARD_NPLI;
+             z++) {
+            U_TEST_PRINT_LINE("setting UTC standard %d.", z);
+            U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, (uGnssUtcStandard_t) z) == 0);
+            y = uGnssCfgGetUtcStandard(gnssHandle);
+            U_TEST_PRINT_LINE("UTC standard is now %d.", y);
+            U_PORT_TEST_ASSERT(y == z);
+            // Check that the dynamic setting hasn't been changed
+            U_PORT_TEST_ASSERT(uGnssCfgGetDynamic(gnssHandle) == gDynamic);
+        }
+        // Put the initial UTC standard back
+        U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, (uGnssUtcStandard_t) gUtcStandard) == 0);
+        gUtcStandard = -1;
 
         // Put the initial dynamic setting back, just in cae
         U_PORT_TEST_ASSERT(uGnssCfgSetDynamic(gnssHandle, (uGnssDynamic_t) gDynamic) == 0);
