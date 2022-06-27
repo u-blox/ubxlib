@@ -100,11 +100,13 @@
 
 uMqttClientContext_t *mqttClientCtx;
 
+char uniqueClientId[U_SHORT_RANGE_SERIAL_NUMBER_LENGTH];
+
 const uMqttClientConnection_t mqttUnsecuredConnection = {
     .pBrokerNameStr = "ubxlib.it-sgn.u-blox.com",
     .pUserNameStr = "test_user",
     .pPasswordStr = "test_passwd",
-    .pClientIdStr = "test_client_id",
+    .pClientIdStr = uniqueClientId,
     .localPort = 1883
 };
 
@@ -113,7 +115,7 @@ const uMqttClientConnection_t mqttSecuredConnection = {
     .pBrokerNameStr = "ubxlib.it-sgn.u-blox.com",
     .pUserNameStr = "test_user",
     .pPasswordStr = "test_passwd",
-    .pClientIdStr = "test_client_id",
+    .pClientIdStr = uniqueClientId,
     .localPort = 8883,
     .keepAlive = true
 };
@@ -176,6 +178,22 @@ static uShortRangeUartConfig_t uart = { .uartPort = U_CFG_APP_SHORT_RANGE_UART,
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
+
+static void setUniqueClientId(uDeviceHandle_t devHandle)
+{
+    int32_t len = uShortRangeGetSerialNumber(devHandle, uniqueClientId);
+    if (len > 2) {
+        if (uniqueClientId[0] == '"') {
+            // Remove the quote characters
+            memmove(uniqueClientId, uniqueClientId + 1, len - 1);
+            uniqueClientId[len - 2] = 0;
+        }
+
+    } else {
+        // Failed to get serial number, use a random number
+        snprintf(uniqueClientId, sizeof(uniqueClientId), "%d", rand());
+    }
+}
 
 static void wifiConnectionCallback(uDeviceHandle_t devHandle,
                                    int32_t connId,
@@ -301,6 +319,8 @@ static int32_t wifiMqttUnsubscribeTest(bool isSecuredConnection)
     char *pMessageIn;
     int32_t topicId1;
     int32_t count;
+
+    setUniqueClientId(gHandles.devHandle);
 
     // Malloc space to read messages and topics into
     pTopicOut1 = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
@@ -446,6 +466,8 @@ static int32_t wifiMqttPublishSubscribeTest(bool isSecuredConnection)
     int32_t topicId1;
     int32_t topicId2;
     int32_t count;
+
+    setUniqueClientId(gHandles.devHandle);
 
     // Malloc space to read messages and topics into
     pTopicOut1 = (char *) malloc(U_MQTT_CLIENT_TEST_READ_TOPIC_MAX_LENGTH_BYTES);
