@@ -188,3 +188,7 @@ The software in this repository is Apache 2.0 licensed and copyright u-blox with
 - The FreeRTOS additions [port/platform/common/debug_utils/src/freertos/additions](/port/platform/common/debug_utils/src/freertos/additions) are copied from the Apache licensed [ESP-IDF](https://github.com/espressif/esp-idf).
 
 In all cases copyright, and our thanks, remain with the original authors.
+
+# Disclaimer
+The software in this repository assumes the module is in a state equal to a factory reset.
+If you modify the AT command sequences employed by `ubxlib` please take the time to debug/test those changes as we can't easily support you.
