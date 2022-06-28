@@ -598,7 +598,7 @@ int32_t uSockShutdown(uSockDescriptor_t descriptor,
 
 /** Register a callback which will be called when incoming
  * data has arrived on a socket.  The stack size of the task
- * within which the callback is run is is
+ * within which the callback is run is
  * #U_EDM_STREAM_TASK_STACK_SIZE_BYTES for Wi-Fi and
  * #U_AT_CLIENT_CALLBACK_TASK_STACK_SIZE_BYTES for cellular.
  *
