@@ -500,7 +500,7 @@ int32_t uSockOptionGet(uSockDescriptor_t descriptor,
  * FUNCTIONS: UDP ONLY
  * -------------------------------------------------------------- */
 
-/** Send a datagram to the given host.  Note the some modules,
+/** Send a datagram to the given host.  Note that some modules,
  * e.g. SARA-R422, do not allow datagrams to be sent over a connected
  * socket.
  *
