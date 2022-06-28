@@ -95,6 +95,16 @@ static int32_t gFixMode = -1;
 */
 static int32_t gUtcStandard = -1;
 
+/** Array of UTC standard values to check.
+ */
+static const uGnssUtcStandard_t gUtcStandardValues[] = {U_GNSS_UTC_STANDARD_AUTOMATIC,
+                                                        U_GNSS_UTC_STANDARD_USNO,
+                                                        U_GNSS_UTC_STANDARD_GALILEO,
+                                                        U_GNSS_UTC_STANDARD_GLONASS,
+                                                        U_GNSS_UTC_STANDARD_NTSC,
+                                                        U_GNSS_UTC_STANDARD_NPLI
+                                                       };
+
 /* ----------------------------------------------------------------
  * STATIC FUNCTIONS
  * -------------------------------------------------------------- */
@@ -161,12 +171,12 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
             y = uGnssCfgGetDynamic(gnssHandle);
             U_TEST_PRINT_LINE("dynamic setting is now %d.", y);
             U_PORT_TEST_ASSERT(y == z);
-            // Check that the fix mode hasn't been changed
+            // Check that the fix mode and UTC standard haven't been changed
             U_PORT_TEST_ASSERT(uGnssCfgGetFixMode(gnssHandle) == gFixMode);
+            U_PORT_TEST_ASSERT(uGnssCfgGetUtcStandard(gnssHandle) == gUtcStandard);
         }
-        // Put the initial settings back
+        // Put the initial dynamic setting back
         U_PORT_TEST_ASSERT(uGnssCfgSetDynamic(gnssHandle, (uGnssDynamic_t) gDynamic) == 0);
-        U_PORT_TEST_ASSERT(uGnssCfgSetFixMode(gnssHandle, (uGnssFixMode_t) gFixMode) == 0);
 
         // Set all the fix modes
         for (int32_t z = (int32_t) U_GNSS_FIX_MODE_2D; z <= (int32_t) U_GNSS_FIX_MODE_AUTO; z++) {
@@ -175,31 +185,26 @@ U_PORT_TEST_FUNCTION("[gnssCfg]", "gnssCfgBasic")
             y = uGnssCfgGetFixMode(gnssHandle);
             U_TEST_PRINT_LINE("fix mode is now %d.", y);
             U_PORT_TEST_ASSERT(y == z);
-            // Check that the dynamic setting hasn't been changed
+            // Check that the dynamic setting and UTC standard haven't been changed
             U_PORT_TEST_ASSERT(uGnssCfgGetDynamic(gnssHandle) == gDynamic);
+            U_PORT_TEST_ASSERT(uGnssCfgGetUtcStandard(gnssHandle) == gUtcStandard);
         }
         // Put the initial fix mode back
         U_PORT_TEST_ASSERT(uGnssCfgSetFixMode(gnssHandle, (uGnssFixMode_t) gFixMode) == 0);
-        gFixMode = -1;
 
         // Set all the UTC standards
-        for (int32_t z = (int32_t) U_GNSS_UTC_STANDARD_AUTOMATIC; z <= (int32_t) U_GNSS_UTC_STANDARD_NPLI;
-             z++) {
-            U_TEST_PRINT_LINE("setting UTC standard %d.", z);
-            U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, (uGnssUtcStandard_t) z) == 0);
+        for (size_t z = 0; z < sizeof(gUtcStandardValues) / sizeof(gUtcStandardValues[0]); z++) {
+            U_TEST_PRINT_LINE("setting UTC standard %d.", gUtcStandardValues[z]);
+            U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, gUtcStandardValues[z]) == 0);
             y = uGnssCfgGetUtcStandard(gnssHandle);
             U_TEST_PRINT_LINE("UTC standard is now %d.", y);
-            U_PORT_TEST_ASSERT(y == z);
-            // Check that the dynamic setting hasn't been changed
+            U_PORT_TEST_ASSERT(y == (int32_t) gUtcStandardValues[z]);
+            // Check that the fix mode and dynamic setting haven't been changed
+            U_PORT_TEST_ASSERT(uGnssCfgGetFixMode(gnssHandle) == gFixMode);
             U_PORT_TEST_ASSERT(uGnssCfgGetDynamic(gnssHandle) == gDynamic);
         }
         // Put the initial UTC standard back
         U_PORT_TEST_ASSERT(uGnssCfgSetUtcStandard(gnssHandle, (uGnssUtcStandard_t) gUtcStandard) == 0);
-        gUtcStandard = -1;
-
-        // Put the initial dynamic setting back, just in cae
-        U_PORT_TEST_ASSERT(uGnssCfgSetDynamic(gnssHandle, (uGnssDynamic_t) gDynamic) == 0);
-        gDynamic = -1;
 
         // Do the standard postamble, leaving the module on for the next
         // test to speed things up

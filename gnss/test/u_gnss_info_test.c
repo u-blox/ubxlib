@@ -112,6 +112,121 @@ static uGnssTestPrivate_t gHandles = U_GNSS_TEST_PRIVATE_DEFAULTS;
  * PUBLIC FUNCTIONS
  * -------------------------------------------------------------- */
 
+/** Pull static info from a GNSS chip.
+ */
+U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoStatic")
+{
+    uDeviceHandle_t gnssHandle;
+    int32_t heapUsed;
+    char *pBuffer;
+    int32_t y;
+    size_t z;
+    char *pTmp;
+    size_t iterations;
+    uGnssTransportType_t transportTypes[U_GNSS_TRANSPORT_MAX_NUM];
+
+    // In case a previous test failed
+    uGnssTestPrivateCleanup(&gHandles);
+
+    // Obtain the initial heap size
+    heapUsed = uPortGetHeapFree();
+
+    // Repeat for all transport types
+    iterations = uGnssTestPrivateTransportTypesSet(transportTypes, U_CFG_APP_GNSS_UART);
+    for (size_t w = 0; w < iterations; w++) {
+        // Do the standard preamble
+        U_TEST_PRINT_LINE("testing on transport %s...",
+                          pGnssTestPrivateTransportTypeName(transportTypes[w]));
+        U_PORT_TEST_ASSERT(uGnssTestPrivatePreamble(U_CFG_TEST_GNSS_MODULE_TYPE,
+                                                    transportTypes[w], &gHandles, true,
+                                                    U_CFG_APP_CELL_PIN_GNSS_POWER,
+                                                    U_CFG_APP_CELL_PIN_GNSS_DATA_READY) == 0);
+        gnssHandle = gHandles.gnssHandle;
+
+        // So that we can see what we're doing
+        uGnssSetUbxMessagePrint(gnssHandle, true);
+
+        pBuffer = (char *) malloc(U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
+        U_PORT_TEST_ASSERT(pBuffer != NULL);
+        // Ask for firmware version string with insufficient storage
+        memset(pBuffer, 0x66, U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
+        y = uGnssInfoGetFirmwareVersionStr(gnssHandle, pBuffer, 0);
+        U_PORT_TEST_ASSERT(y == 0);
+        for (size_t x = 0; x < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES; x++) {
+            U_PORT_TEST_ASSERT(*(pBuffer + x) == 0x66);
+        }
+        y = uGnssInfoGetFirmwareVersionStr(gnssHandle, pBuffer, 1);
+        U_PORT_TEST_ASSERT(y == 0);
+        U_PORT_TEST_ASSERT(*pBuffer == 0);
+        for (size_t x = 1; x < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES; x++) {
+            U_PORT_TEST_ASSERT(*(pBuffer + x) == 0x66);
+        }
+
+        // Now with hopefully sufficient storage
+        y = uGnssInfoGetFirmwareVersionStr(gnssHandle, pBuffer,
+                                           U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
+        U_PORT_TEST_ASSERT(y > 0);
+        U_PORT_TEST_ASSERT(y < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
+        for (size_t x = y + 1; x < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES; x++) {
+            U_PORT_TEST_ASSERT(*(pBuffer + x) == 0x66);
+        }
+        // The string returned contains multiple lines separated by more than one
+        // null terminator; try to print it nicely here.
+        U_TEST_PRINT_LINE("GNSS chip version string is:");
+        pTmp = pBuffer;
+        while (pTmp < pBuffer + y) {
+            z = strlen(pTmp);
+            if (z > 0) {
+                U_TEST_PRINT_LINE("\"%s\".", pTmp);
+                pTmp += z;
+            } else {
+                pTmp++;
+            }
+        }
+
+        // Ask for the chip ID string with insufficient storage
+        memset(pBuffer, 0x66, U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
+        y = uGnssInfoGetIdStr(gnssHandle, pBuffer, 0);
+        U_PORT_TEST_ASSERT(y == 0);
+        for (size_t x = 0; x < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES; x++) {
+            U_PORT_TEST_ASSERT(*(pBuffer + x) == 0x66);
+        }
+        y = uGnssInfoGetIdStr(gnssHandle, pBuffer, 1);
+        U_PORT_TEST_ASSERT(y == 0);
+        U_PORT_TEST_ASSERT(*pBuffer == 0);
+        for (size_t x = 1; x < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES; x++) {
+            U_PORT_TEST_ASSERT(*(pBuffer + x) == 0x66);
+        }
+
+        // Now with hopefully sufficient storage
+        y = uGnssInfoGetIdStr(gnssHandle, pBuffer, U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
+        U_PORT_TEST_ASSERT(y > 0);
+        U_PORT_TEST_ASSERT(y < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES);
+        uPortLog(U_TEST_PREFIX "GNSS chip ID string is 0x");
+        for (size_t x = 0; x < (size_t) y; x++) {
+            uPortLog("%02x", *(pBuffer + x));
+        }
+        uPortLog(".\n");
+        for (size_t x = y + 1; x < U_GNSS_INFO_TEST_VERSION_SIZE_MAX_BYTES; x++) {
+            U_PORT_TEST_ASSERT(*(pBuffer + x) == 0x66);
+        }
+
+        // Free memory
+        free(pBuffer);
+
+        // Do the standard postamble, leaving the module on for the next
+        // test to speed things up
+        uGnssTestPrivatePostamble(&gHandles, false);
+    }
+
+    // Check for memory leaks
+    heapUsed -= uPortGetHeapFree();
+    U_TEST_PRINT_LINE("we have leaked %d byte(s).", heapUsed);
+    // heapUsed < 0 for the Zephyr case where the heap can look
+    // like it increases (negative leak)
+    U_PORT_TEST_ASSERT(heapUsed <= 0);
+}
+
 /** Read time from GNSS.
  */
 U_PORT_TEST_FUNCTION("[gnssInfo]", "gnssInfoTime")

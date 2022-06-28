@@ -27,9 +27,9 @@
  */
 
 /** @file
-* @brief This header file defines the general BLE APIs,
-* basically initialise and deinitialise.
-*/
+ * @brief This header file defines the general BLE APIs,
+ * basically initialise and deinitialise.
+ */
 
 #ifdef __cplusplus
 extern "C" {
