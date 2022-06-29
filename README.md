@@ -52,7 +52,7 @@ If your MCU is on the list but your board is not:
 - Just set the HW pins in the source file of the example to match how your MCU is wired to the u-blox peripheral.
 
 If your MCU is not on the list:
-- To port `ubxlib` to a new host platform follow the [DIY instructions](https://github.com/u-blox/ubxlib_priv/tree/master/port) for the port API.
+- To port `ubxlib` to a new host platform follow the [DIY instructions](/port#diy) for the port API.
 
 |`ubxlib` hosts |NINA-W10|NINA-B40 series<br />NINA-B30 series<br />NINA-B1 series<br />ANNA-B1 series<br />|NORA-B1 series|C030 board|PC<sup>*</sup>|PC<sup>*</sup>|
 |-----------|-----------|--------------|-----|-----|------|------|
