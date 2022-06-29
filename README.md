@@ -1,4 +1,4 @@
-![u-blox logo](/readme_images/ublox-logo.png)
+<img src="/readme_images/ubxlib-logo.svg" width="400">
 
 [![important message](/readme_images/important_msg.svg)](/HOW_TO_UPGRADE.md)
 
