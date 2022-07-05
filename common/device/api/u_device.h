@@ -200,7 +200,7 @@ typedef struct {
                                       connection is via an intermediate
                                       (e.g. cellular) module that does the
                                       controlling (in which case the
-                                      gnssAtPinPwr field of the network
+                                      devicePinPwr field of the network
                                       configuration structure for GNSS,
                                       #uNetworkCfgGnss_t, should be
                                       populated instead). */
