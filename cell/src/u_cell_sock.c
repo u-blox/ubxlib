@@ -1706,7 +1706,7 @@ int32_t uCellSockRead(uDeviceHandle_t cellHandle,
                                                                      thisActualReceiveSize * 2 + 1,
                                                                      false);
                                     if (readLength > 0) {
-                                        x = ((int32_t) dataSizeBytes - totalReceivedSize) * 2;
+                                        x = ((int32_t) dataSizeBytes) * 2;
                                         if (readLength > x) {
                                             readLength = x;
                                         }
