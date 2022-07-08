@@ -211,7 +211,9 @@ int32_t uCellInfoGetImsi(uDeviceHandle_t cellHandle,
  *                    including room for a terminator.  Allocating
  *                    #U_CELL_INFO_ICCID_BUFFER_SIZE bytes of
  *                    storage is safe.
- * @return            zero on success, negative error code on failure.
+ * @return            on success, the number of characters copied into
+ *                    pStr NOT including the terminator (as strlen()
+ *                    would return), on failure negative error code.
  */
 int32_t uCellInfoGetIccidStr(uDeviceHandle_t cellHandle,
                              char *pStr, size_t size);
