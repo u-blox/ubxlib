@@ -80,7 +80,7 @@
  * COMPILE-TIME MACROS
  * -------------------------------------------------------------- */
 
-#ifndef CONFIG_ARCH_POSIX
+#if !defined(CONFIG_ARCH_POSIX) && defined(CONFIG_USERSPACE)
 // Not supported on Linux/Posix
 static uint8_t __aligned(U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE)
 exe_chunk_0[U_CFG_OS_EXECUTABLE_CHUNK_INDEX_0_SIZE];
@@ -733,7 +733,7 @@ void *uPortAcquireExecutableChunk(void *pChunkToMakeExecutable,
 {
     uint8_t *pExeChunk = NULL;
 
-#ifndef CONFIG_ARCH_POSIX
+#if !defined(CONFIG_ARCH_POSIX) && defined(CONFIG_USERSPACE)
     static struct k_mem_domain dom0;
     struct k_mem_partition *app_parts[] = { &chunk0_reloc };
     (void)pChunkToMakeExecutable;
