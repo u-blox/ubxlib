@@ -38,6 +38,7 @@
 
 #include "u_error_common.h"
 
+#include "u_port_os.h"
 #include "u_port_debug.h"
 #include "u_port_gpio.h"
 
@@ -94,6 +95,14 @@ int32_t uShortRangeTestPreamble(uShortRangeModuleType_t moduleType)
     uPortGpioSet(U_CFG_APP_PIN_SHORT_RANGE_RESET_TO_DEFAULTS, 0); //assert
 
     U_TEST_PRINT_LINE("complete.");
+#endif
+
+#ifdef U_CFG_TEST_NET_STATUS_SHORT_RANGE
+    // If there is a test script monitoring progress
+    // which operates switches for us, make sure that the
+    // switches are all on.
+    uPortLog("AUTOMATION_SET_SWITCH SHORT_RANGE 1\n");
+    uPortTaskBlock(1000);
 #endif
 
     (void) moduleType;

@@ -40,7 +40,7 @@
 #include "u_error_common.h"
 
 #include "u_port_debug.h"
-#include "u_port_os.h"   // Required by u_cell_private.h
+#include "u_port_os.h"
 
 #include "u_at_client.h"
 
@@ -91,6 +91,14 @@ int32_t uCellTestPreamble(uCellModuleType_t moduleType)
     // Do the standard preamble
     uCellTestPrivatePreamble(moduleType,
                              &handles, true);
+
+#ifdef U_CFG_TEST_NET_STATUS_CELL
+    // If there is a test script monitoring progress
+    // which operates switches for us, make sure that the
+    // switches are all on.
+    uPortLog("AUTOMATION_SET_SWITCH CELL 1\n");
+    uPortTaskBlock(1000);
+#endif
 
     // Do the standard postamble and switch the module off
     uCellTestPrivatePostamble(&handles, true);
