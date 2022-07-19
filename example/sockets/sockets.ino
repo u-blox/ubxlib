@@ -64,10 +64,11 @@ static const uDeviceCfg_t gDeviceCfg = {
     .deviceCfg = {
         .cfgCell = {
             .moduleType = U_CFG_TEST_CELL_MODULE_TYPE,
-            .pPin = NULL, /* SIM pin */
+            .pSimPinCode = NULL, /* SIM pin */
             .pinEnablePower = U_CFG_APP_PIN_CELL_ENABLE_POWER,
             .pinPwrOn = U_CFG_APP_PIN_CELL_PWR_ON,
-            .pinVInt = U_CFG_APP_PIN_CELL_VINT
+            .pinVInt = U_CFG_APP_PIN_CELL_VINT,
+            .pinDtrPowerSaving = U_CFG_APP_PIN_CELL_DTR
         },
     },
     .transportType = U_DEVICE_TRANSPORT_TYPE_UART,
@@ -170,8 +171,8 @@ void setup() {
         // Bring up the network layer, i.e. connect it so that
         // after this point it may be used to transfer data.
         printf("Bringing up the network...\n");
-       errorCode = uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
-                                       &gNetworkCfg);
+        errorCode = uNetworkInterfaceUp(devHandle, U_NETWORK_TYPE_CELL,
+                                        &gNetworkCfg);
     } else {
         printf("Unable to add network, error %d!\n", devHandle);
     }
@@ -269,7 +270,10 @@ void loop() {
     printf("%d Tests %d Failures 0 Ignored\n", tests, failures);
 
     // Close the device
-    uDeviceClose(devHandle);
+    // Note: we don't power the device down here in order
+    // to speed up testing; you may prefer to power it off
+    // by setting the second parameter to true.
+    uDeviceClose(devHandle, false);
 
     // Tidy up
     uDeviceDeinit();

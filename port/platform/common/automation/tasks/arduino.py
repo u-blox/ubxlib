@@ -121,13 +121,16 @@ def build(ctx, sketch_path=DEFAULT_SKETCH_PATH,
             clean(ctx, output_name, build_dir)
         cflags = u_flags["cflags"]
 
+    # Note: we set build partitions to "minimal" for compatibility with the
+    # smaller [2 Mbyte] flash size on NINA-W102
     for sketch in sketch_paths:
         sketch_build_dir = os.path.join(build_dir, os.path.basename(os.path.split(sketch)[0]))
         print(f"Building {sketch} in {sketch_build_dir}...")
         cmd = f"{ctx.arduino_cli} compile --libraries {libraries_dir} --fqbn {board} " \
             f"--build-path {sketch_build_dir} --build-cache-path {sketch_build_dir} " \
             f"--build-property \"compiler.c.extra_flags={cflags}\" " \
-            f"--build-property \"compiler.cpp.extra_flags={cflags}\" "
+            f"--build-property \"compiler.cpp.extra_flags={cflags}\" " \
+            f"--build-property build.partitions=minimal"
         ctx.run(f"{cmd} {sketch}")
 
     # If that was succesful, copy the ".a" files to the correct

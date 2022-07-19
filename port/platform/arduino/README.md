@@ -24,6 +24,18 @@ https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html
 
 This code was tested with `arduino-cli` version 0.20.2.
 
+IMPORTANT: if you are using a NINA-W102 board, the ESP32-provided stuff at the usual link for the "additional Board Manager URLs" as described at the link above is no longer compatible as it defaults to 4 Mbytes flash (for NINA-W106) whereas NINA-W102 only has 2 Mbytes.  To fix this, if you are using `arduino-cli` then add the following build property to the command-line when you build:
+
+`--build-property build.partitions=minimal`
+
+If you are unable to do this you may use instead use the following URL when configuring `arduino-cli`; this is a link to the commit just before the incompatibility was introduced:
+
+https://raw.githubusercontent.com/espressif/arduino-esp32/7517e4b99283abf3048cfea76e4715f3340fa4d6/package_esp32_index.json
+
+...or alternatively, when you call `arduino-cli` to install the ESP32 platform, specify version 2.0.3:
+
+`arduino-cli core install esp32:esp32@2.0.3`
+
 Python 3 is also required.
 
 # Building The `ubxlib` Arduino Library
