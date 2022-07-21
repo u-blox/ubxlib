@@ -382,12 +382,12 @@ int32_t uShortRangeGetUartHandle(uDeviceHandle_t devHandle);
  * the EDM stream, any settings there, including the EDM stream handle,
  * will also be re-created.
  *
- * @param[in,out] pDdevHandle  a pointer to a short range device handle that has been
- *                             opened with uShortRangeOpenUart(). If the reconfiguration
- *                             of the UART settings succeeds a new device handle will
- *                             be allocated and returned via this parameter.
- * @param[in] pUartConfig      the new UART configuration to be used.
- * @return                     0 on success or negative error code on failure.
+ * @param[in,out] pDevHandle  a pointer to a short range device handle that has been
+ *                            opened with uShortRangeOpenUart(). If the reconfiguration
+ *                            of the UART settings succeeds a new device handle will
+ *                            be allocated and returned via this parameter.
+ * @param[in] pUartConfig     the new UART configuration to be used.
+ * @return                    0 on success or negative error code on failure.
  */
 int32_t uShortRangeSetBaudrate(uDeviceHandle_t *pDevHandle,
                                const uShortRangeUartConfig_t *pUartConfig);
