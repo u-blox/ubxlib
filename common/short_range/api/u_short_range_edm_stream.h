@@ -104,7 +104,7 @@ void uShortRangeEdmStreamClose(int32_t handle);
  * at commands.
  *
  * @param handle   the handle of the stream instance.
- * @param atHandle the at handle.
+ * @param[out]     atHandle the at handle.
  */
 void uShortRangeEdmStreamSetAtHandle(int32_t handle, void *atHandle);
 
@@ -112,11 +112,11 @@ void uShortRangeEdmStreamSetAtHandle(int32_t handle, void *atHandle);
  * into EDM packet. Useful if raw at commands needs to be sent in special
  * circumstances.
  *
- * @param handle    the handle of the stream instance.
- * @param pBuffer   a pointer to a buffer of command to send.
- * @param sizeBytes the number of bytes in pBuffer.
- * @return          the number of bytes sent or negative
- *                  error code.
+ * @param handle      the handle of the stream instance.
+ * @param[in] pBuffer a pointer to a buffer of command to send.
+ * @param sizeBytes   the number of bytes in pBuffer.
+ * @return            the number of bytes sent or negative
+ *                    error code.
  */
 int32_t uShortRangeEdmStreamAtWrite(int32_t handle, const void *pBuffer,
                                     size_t sizeBytes);
@@ -134,12 +134,12 @@ int32_t uShortRangeEdmStreamAtGetReceiveSize(int32_t handle);
  * up to sizeBytes of data already in the stream buffer will
  * be returned.
  *
- * @param handle    the handle of the stream instance.
- * @param pBuffer   a pointer to a buffer in which to store
- *                  received bytes.
- * @param sizeBytes the size of buffer pointed to by pBuffer.
- * @return          the number of bytes received else negative
- *                  error code.
+ * @param handle      the handle of the stream instance.
+ * @param[in] pBuffer a pointer to a buffer in which to store
+ *                    received bytes.
+ * @param sizeBytes   the size of buffer pointed to by pBuffer.
+ * @return            the number of bytes received else negative
+ *                    error code.
  */
 int32_t uShortRangeEdmStreamAtRead(int32_t handle, void *pBuffer,
                                    size_t sizeBytes);
@@ -147,16 +147,16 @@ int32_t uShortRangeEdmStreamAtRead(int32_t handle, void *pBuffer,
 /** Write to the given interface on given channel.  Will block until
  * all of the data has been written or an error has occurred.
  *
- * @param handle    the handle of the stream instance.
- * @param channel   the number of for the connection channel given in
- *                  the connected event callback.
- * @param pBuffer   a pointer to a buffer of data to send.
- * @param sizeBytes the number of bytes in pBuffer.
- * @param timeoutMs timeout in ms. If timeout is reached, sending is
- *                  interrupted and the actual number of bytes sent returned.
- *                  Reaching timeout is not considered an error.
- * @return          the number of bytes sent or negative
- *                  error code.
+ * @param handle      the handle of the stream instance.
+ * @param channel     the number of for the connection channel given in
+ *                    the connected event callback.
+ * @param[in] pBuffer a pointer to a buffer of data to send.
+ * @param sizeBytes   the number of bytes in pBuffer.
+ * @param timeoutMs   timeout in ms. If timeout is reached, sending is
+ *                    interrupted and the actual number of bytes sent returned.
+ *                    Reaching timeout is not considered an error.
+ * @return            the number of bytes sent or negative
+ *                    error code.
  */
 int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
                                   const void *pBuffer, size_t sizeBytes,
@@ -166,8 +166,8 @@ int32_t uShortRangeEdmStreamWrite(int32_t handle, int32_t channel,
  * pFunction will be called asynchronously in its own task.
  *
  * @param handle           the handle of the stream instance.
- * @param pFunction        the function to call.
- * @param pParam           a parameter which will be passed
+ * @param[in] pFunction    the function to call.
+ * @param[in] pParam       a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
  *
@@ -189,8 +189,8 @@ void uShortRangeEdmStreamAtCallbackRemove(int32_t handle);
  * pFunction will be called asynchronously in its own task.
  *
  * @param handle           the handle of the stream instance.
- * @param pFunction        the function to call.
- * @param pParam           a parameter which will be passed
+ * @param[in] pFunction    the function to call.
+ * @param[in] pParam       a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
  * @return                 zero on success else negative error
@@ -212,8 +212,8 @@ void uShortRangeEdmStreamIpEventCallbackRemove(int32_t handle);
  * pFunction will be called asynchronously in its own task.
  *
  * @param handle           the handle of the stream instance.
- * @param pFunction        the function to call.
- * @param pParam           a parameter which will be passed
+ * @param[in] pFunction    the function to call.
+ * @param[in] pParam       a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
  *
@@ -235,8 +235,8 @@ void uShortRangeEdmStreamBtEventCallbackRemove(int32_t handle);
  * pFunction will be called asynchronously in its own task.
  *
  * @param handle           the handle of the stream instance.
- * @param pFunction        the function to call.
- * @param pParam           a parameter which will be passed
+ * @param[in] pFunction    the function to call.
+ * @param[in] pParam       a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
  *
@@ -260,8 +260,8 @@ void uShortRangeEdmStreamMqttEventCallbackRemove(int32_t handle);
  *
  * @param handle           the handle of the stream instance.
  * @param type             the type of connection.
- * @param pFunction        the function to call.
- * @param pParam           a parameter which will be passed
+ * @param[in] pFunction    the function to call.
+ * @param[in] pParam       a parameter which will be passed
  *                         to pFunction as its last parameter
  *                         when it is called.
  *

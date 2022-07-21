@@ -78,7 +78,7 @@ typedef void (upAssertFailed_t) (const char *pFileStr, int32_t line);
  * code execution will resume at the line after the assert failure
  * occurred.
  *
- * @param pAssertFailed the assert failure function to register.
+ * @param[in] pAssertFailed the assert failure function to register.
  */
 void uAssertHookSet(upAssertFailed_t *pAssertFailed);
 
@@ -87,11 +87,11 @@ void uAssertHookSet(upAssertFailed_t *pAssertFailed);
  * will print the file and line number of the assert and then enter an
  * infinite loop.
  *
- * @param pFileStr   pointer to the name and path of the file where
- *                   the assert failure occurred, as a null-terminated
- *                   string, from __FILE__.
- * @param line       the line number in pFileStr where the assert
- *                   failure occurred, from __LINE__.
+ * @param[in] pFileStr pointer to the name and path of the file where
+ *                     the assert failure occurred, as a null-terminated
+ *                     string, from __FILE__.
+ * @param line         the line number in pFileStr where the assert
+ *                     failure occurred, from __LINE__.
  */
 //lint -function(exit, uAssertFailed) tell Lint that this has the same
 // proprties as exit()

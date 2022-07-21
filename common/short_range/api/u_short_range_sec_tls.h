@@ -67,25 +67,25 @@ typedef struct {
  * (common/security/api/u_security_tls.h) when a secure connection
  * is requested by one of the common protocol APIs (e.g. common/sock).
  *
- * @param tlsVersionMin           the minimum TLS version to use.
- * @param pRootCaCertificateName  the null-terminated name of the
- *                                root X.509 certificate, which must
- *                                have been stored using
- *                                uSecurityCredentialStore().
- * @param pClientCertificateName  the null-terminated name of the
- *                                client X.509 certificate, which
- *                                must have been stored using
- *                                uSecurityCredentialStore().
- * @param pClientPrivateKeyName   the null-terminated name of the
- *                                client private key, which must have
- *                                been stored using
- *                                uSecurityCredentialStore().
- * @param certificateCheckOn      set to true if certificate checking
- *                                is to be performed.
- * @return                        on success a pointer to the TLS security
- *                                context, else NULL (in which case
- *                                uShortRangeSecTlsResetLastError() should
- *                                be called to find out why).
+ * @param tlsVersionMin               the minimum TLS version to use.
+ * @param[in] pRootCaCertificateName  the null-terminated name of the
+ *                                    root X.509 certificate, which must
+ *                                    have been stored using
+ *                                    uSecurityCredentialStore().
+ * @param[in] pClientCertificateName  the null-terminated name of the
+ *                                    client X.509 certificate, which
+ *                                    must have been stored using
+ *                                    uSecurityCredentialStore().
+ * @param[in] pClientPrivateKeyName   the null-terminated name of the
+ *                                    client private key, which must have
+ *                                    been stored using
+ *                                    uSecurityCredentialStore().
+ * @param certificateCheckOn          set to true if certificate checking
+ *                                    is to be performed.
+ * @return                            on success a pointer to the TLS security
+ *                                    context, else NULL (in which case
+ *                                    uShortRangeSecTlsResetLastError() should
+ *                                    be called to find out why).
  */
 uShortRangeSecTlsContext_t *pUShortRangeSecTlsAdd(uSecurityTlsVersion_t tlsVersionMin,
                                                   const char *pRootCaCertificateName,
@@ -98,7 +98,7 @@ uShortRangeSecTlsContext_t *pUShortRangeSecTlsAdd(uSecurityTlsVersion_t tlsVersi
  * (common/security/api/u_security_tls.h) when a secure connection
  * is closed by one of the common protocol APIs (e.g. common/sock).
  *
- * @param pContext a pointer to the TLS security context.
+ * @param[in,out] pContext a pointer to the TLS security context.
  */
 void uShortRangeSecTlsRemove(uShortRangeSecTlsContext_t *pContext);
 

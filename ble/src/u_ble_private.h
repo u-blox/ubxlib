@@ -54,10 +54,10 @@ void uBleSpsPrivateDeinit(void);
 
 /** Translate MAC address in byte array to string
  *
- * @param pAddrIn  pointer to byte array
- * @param addrType Public, Random or Unknown
- * @param msbLast  Last byte in array should be leftmost byte in string
- * @param pAddrOut Output string
+ * @param[in] pAddrIn   pointer to byte array
+ * @param addrType      Public, Random or Unknown
+ * @param msbLast       Last byte in array should be leftmost byte in string
+ * @param[out] pAddrOut Output string
  */
 void addrArrayToString(const uint8_t *pAddrIn, uPortBtLeAddressType_t addrType, bool msbLast,
                        char *pAddrOut);

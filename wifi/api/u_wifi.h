@@ -117,8 +117,8 @@ typedef struct {
  *
  * This callback will be called once for each entry found.
  *
- * @param devHandle  the handle of the wifi instance.
- * @param pResult    the scan result.
+ * @param devHandle     the handle of the wifi instance.
+ * @param[out] pResult  the scan result.
  */
 typedef void (*uWifiScanResultCallback_t) (uDeviceHandle_t devHandle,
                                            uWifiScanResult_t *pResult);
@@ -126,16 +126,16 @@ typedef void (*uWifiScanResultCallback_t) (uDeviceHandle_t devHandle,
 
 /** Connection status callback type.
  *
- * @param devHandle          the handle of the wifi instance.
- * @param connId             connection ID.
- * @param status             new status of connection. Please see U_WIFI_CON_STATUS_xx.
- * @param channel            wifi channel.
- *                           Note: only valid for #U_WIFI_CON_STATUS_CONNECTED otherwise set to 0.
- * @param pBssid             remote AP BSSID as null terminated string.
- *                           Note: only valid for #U_WIFI_CON_STATUS_CONNECTED otherwise set to NULL.
- * @param disconnectReason   disconnect reason. Please see U_WIFI_REASON_xx.
- *                           Note: only valid for #U_WIFI_CON_STATUS_DISCONNECTED otherwise set to 0.
- * @param pCallbackParameter parameter pointer set when registering callback.
+ * @param devHandle              the handle of the wifi instance.
+ * @param connId                 connection ID.
+ * @param status                 new status of connection. Please see U_WIFI_CON_STATUS_xx.
+ * @param channel                wifi channel.
+ *                               Note: only valid for #U_WIFI_CON_STATUS_CONNECTED otherwise set to 0.
+ * @param[in] pBssid             remote AP BSSID as null terminated string.
+ *                               Note: only valid for #U_WIFI_CON_STATUS_CONNECTED otherwise set to NULL.
+ * @param disconnectReason       disconnect reason. Please see U_WIFI_REASON_xx.
+ *                               Note: only valid for #U_WIFI_CON_STATUS_DISCONNECTED otherwise set to 0.
+ * @param[in] pCallbackParameter parameter pointer set when registering callback.
  */
 typedef void (*uWifiConnectionStatusCallback_t) (uDeviceHandle_t devHandle,
                                                  int32_t connId,
@@ -148,11 +148,11 @@ typedef void (*uWifiConnectionStatusCallback_t) (uDeviceHandle_t devHandle,
 
 /** Network status callback type.
  *
- * @param devHandle          the handle of the wifi instance.
- * @param interfaceType      interface type. Only 1: Wifi Station supported at the moment.
- * @param statusMask         bitmask indicating the new status. Please see defined bits
- *                           U_WIFI_STATUS_MASK_xx.
- * @param pCallbackParameter parameter pointer set when registering callback.
+ * @param devHandle              the handle of the wifi instance.
+ * @param interfaceType          interface type. Only 1: Wifi Station supported at the moment.
+ * @param statusMask             bitmask indicating the new status. Please see defined bits
+ *                               U_WIFI_STATUS_MASK_xx.
+ * @param[in] pCallbackParameter parameter pointer set when registering callback.
  */
 typedef void (*uWifiNetworkStatusCallback_t) (uDeviceHandle_t devHandle,
                                               int32_t interfaceType,
@@ -178,7 +178,7 @@ void uWifiDeinit();
 /** Connect to a Wifi access point
  *
  * @param devHandle        the handle of the wifi instance.
- * @param pSsid            the Service Set Identifier
+ * @param[in] pSsid        the Service Set Identifier
  * @param authentication   the authentication type
  * @param[in] pPassPhrase  the passphrase (8-63 ASCII characters as a string) for WPA/WPA2/WPA3
  * @return                 zero on successful, else negative error code.
@@ -190,10 +190,10 @@ int32_t uWifiStationConnect(uDeviceHandle_t devHandle, const char *pSsid,
 
 /** Disconnect from Wifi access point
  *
- * @param devHandle   the handle of the wifi instance.
- * @return            zero on successful, else negative error code.
- *                    Note: the disconnection is not completed until the Wifi callback
- *                    reports disconnected.
+ * @param devHandle the handle of the wifi instance.
+ * @return          zero on successful, else negative error code.
+ *                  Note: the disconnection is not completed until the Wifi callback
+ *                  reports disconnected.
  */
 int32_t uWifiStationDisconnect(uDeviceHandle_t devHandle);
 
@@ -226,13 +226,13 @@ int32_t uWifiSetNetworkStatusCallback(uDeviceHandle_t devHandle,
  * Please note that this function will block until the scan process is completed.
  * During this time pCallback will be called for each scan result entry found.
  *
- * @param devHandle        the handle of the wifi instance.
- * @param[in] pSsid        optional SSID to search for. Set to NULL to search for any SSID.
- * @param[in] pCallback    callback for handling a scan result entry.
- *                         IMPORTANT: the callback will be called while the AT lock is held
- *                         hence you are not allowed to call other u-blox
- *                         module APIs directly from this callback.
- * @return                 zero on successful, else negative error code.
+ * @param devHandle     the handle of the wifi instance.
+ * @param[in] pSsid     optional SSID to search for. Set to NULL to search for any SSID.
+ * @param[in] pCallback callback for handling a scan result entry.
+ *                      IMPORTANT: the callback will be called while the AT lock is held
+ *                      hence you are not allowed to call other u-blox
+ *                      module APIs directly from this callback.
+ * @return              zero on successful, else negative error code.
  */
 int32_t uWifiStationScan(uDeviceHandle_t devHandle, const char *pSsid,
                          uWifiScanResultCallback_t pCallback);

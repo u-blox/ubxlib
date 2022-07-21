@@ -125,11 +125,11 @@ void uShortRangeEdmResetParser(void);
  *        Check if parser is available with uShortRangeEdmParserAvailable
  *        If a packet is invalid it will be silently dropped.
  *
- * @param  c Input character.
+ * @param c Input character.
  *
- * @param  ppResultEvent Address of pointer to event, NULL if no event was generated
- *         An event is created when the last character in a EDM packet
- *         is parsed and the packet is valid.
+ * @param[out] ppResultEvent Address of pointer to event, NULL if no event was generated
+ *             An event is created when the last character in a EDM packet
+ *             is parsed and the packet is valid.
  *
  * @return True when input character c is consumed else false.
  */

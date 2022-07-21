@@ -436,32 +436,32 @@ void uAtClientDeinit();
  * be called beforehand.  If an AT client has already been added
  * for the stream this function will return an error.
  *
- * @param streamHandle      the stream handle to use; the stream must
- *                          have already been opened by the caller.
- *                          If the stream is a UART the AT client will call
- *                          uPortUartEventCallbackSet() on it and
- *                          hence the caller must not do so (since
- *                          there can only be one).
- * @param streamType        the type of stream that streamHandle
- *                          is for.
- * @param pReceiveBuffer    a buffer to use for received data from
- *                          the AT server.  The buffer must have
- *                          structure alignment; which usually
- *                          means it must be 4-byte aligned.  May
- *                          be NULL in which case a buffer will be
- *                          allocated by the AT client.
- * @param receiveBufferSize if pReceiveBuffer is non-NULL this must
- *                          be set to the amount of memory at
- *                          pReceiveBuffer in bytes.  If pReceiveBuffer
- *                          is NULL then this is the size of buffer
- *                          that the AT client will allocate.  What
- *                          size to chose?  See the definition
- *                          of #U_AT_CLIENT_BUFFER_LENGTH_BYTES, noting
- *                          that #U_AT_CLIENT_BUFFER_OVERHEAD_BYTES of
- *                          the buffer memory will be used for management
- *                          overhead.
- * @return                  on success the handle of the AT client, else
- *                          NULL.
+ * @param streamHandle         the stream handle to use; the stream must
+ *                             have already been opened by the caller.
+ *                             If the stream is a UART the AT client will call
+ *                             uPortUartEventCallbackSet() on it and
+ *                             hence the caller must not do so (since
+ *                             there can only be one).
+ * @param streamType           the type of stream that streamHandle
+ *                             is for.
+ * @param[out] pReceiveBuffer  a buffer to use for received data from
+ *                             the AT server.  The buffer must have
+ *                             structure alignment; which usually
+ *                             means it must be 4-byte aligned.  May
+ *                             be NULL in which case a buffer will be
+ *                             allocated by the AT client.
+ * @param receiveBufferSize    if pReceiveBuffer is non-NULL this must
+ *                             be set to the amount of memory at
+ *                             pReceiveBuffer in bytes.  If pReceiveBuffer
+ *                             is NULL then this is the size of buffer
+ *                             that the AT client will allocate.  What
+ *                             size to chose?  See the definition
+ *                             of #U_AT_CLIENT_BUFFER_LENGTH_BYTES, noting
+ *                             that #U_AT_CLIENT_BUFFER_OVERHEAD_BYTES of
+ *                             the buffer memory will be used for management
+ *                             overhead.
+ * @return                     on success the handle of the AT client, else
+ *                             NULL.
  */
 uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
                                uAtClientStream_t streamType,
@@ -484,22 +484,22 @@ uAtClientHandle_t uAtClientAdd(int32_t streamHandle,
  * asynchronous event have their own mutex protection against such
  * shut-down situations.
  *
- * @param atHandle the handle of the AT client the should ignore
- *                 asynchronous events.
+ * @param atHandle  the handle of the AT client the should ignore
+ *                  asynchronous events.
  */
 void uAtClientIgnoreAsync(uAtClientHandle_t atHandle);
 
 /** Remove the given AT client.  No AT client function must
  * be called on this client once this function is called.
  *
- * @param atHandle the handle of the AT client to remove.
+ * @param atHandle  the handle of the AT client to remove.
  */
 void uAtClientRemove(uAtClientHandle_t atHandle);
 
 /** Get whether general debug prints are on or off.
  *
- * @param atHandle the handle of the AT client.
- * @return         true if debug prints are on, else false.
+ * @param atHandle  the handle of the AT client.
+ * @return          true if debug prints are on, else false.
  */
 bool uAtClientDebugGet(const uAtClientHandle_t atHandle);
 
@@ -514,9 +514,9 @@ void uAtClientDebugSet(uAtClientHandle_t atHandle, bool onNotOff);
 /** Get whether printing of AT commands and responses
  * is on or off.
  *
- * @param atHandle the handle of the AT client.
- * @return         true if printing AT commands and
- *                 responses is on, else false.
+ * @param atHandle  the handle of the AT client.
+ * @return          true if printing AT commands and
+ *                  responses is on, else false.
  */
 bool uAtClientPrintAtGet(const uAtClientHandle_t atHandle);
 
@@ -547,8 +547,8 @@ int32_t uAtClientTimeoutGet(const uAtClientHandle_t atHandle);
  * during the lock; the timeout will be automatically
  * returned to its previous value on uAtClientUnlock().
  *
- * @param atHandle  the handle of the AT client.
- * @param timeoutMs the timeout in milliseconds.
+ * @param atHandle   the handle of the AT client.
+ * @param timeoutMs  the timeout in milliseconds.
  */
 void uAtClientTimeoutSet(uAtClientHandle_t atHandle,
                          int32_t timeoutMs);
@@ -565,13 +565,13 @@ void uAtClientTimeoutSet(uAtClientHandle_t atHandle,
  * of an `OK` to an AT command which takes a long time to
  * return, e.g. AT+COPS=?).
  *
- * @param atHandle   the handle of the AT client.
- * @param pCallback  the callback, which must take as
- *                   a parameter first the AT client handle
- *                   and second a single int32_t * that is
- *                   a pointer to an int32_t giving
- *                   the number of consecutive AT timeouts.
- *                   Use NULL to cancel a previous callback.
+ * @param atHandle       the handle of the AT client.
+ * @param[in] pCallback  the callback, which must take as
+ *                       a parameter first the AT client handle
+ *                       and second a single int32_t * that is
+ *                       a pointer to an int32_t giving
+ *                       the number of consecutive AT timeouts.
+ *                       Use NULL to cancel a previous callback.
  */
 void uAtClientTimeoutCallbackSet(uAtClientHandle_t atHandle,
                                  void (*pCallback) (uAtClientHandle_t,
@@ -651,8 +651,8 @@ int32_t uAtClientUnlock(uAtClientHandle_t atHandle);
  * The stream must be locked with a call to
  * uAtClientLock() before this function is called.
  *
- * @param atHandle  the handle of the AT client.
- * @param pCommand  the null-terminated command string.
+ * @param atHandle      the handle of the AT client.
+ * @param[in] pCommand  the null-terminated command string.
  */
 void uAtClientCommandStart(uAtClientHandle_t atHandle,
                            const char *pCommand);
@@ -694,12 +694,12 @@ void uAtClientWriteUint64(uAtClientHandle_t atHandle,
  * an empty string (i.e. "") and setting useQuotes to
  * false.
  *
- * @param atHandle      the handle of the AT client.
- * @param pParam        the null-terminated string to be
- *                      written as the AT command parameter.
- * @param useQuotes     if true then quotes will be added
- *                      around the string when it is written
- *                      to the stream.
+ * @param atHandle    the handle of the AT client.
+ * @param[in] pParam  the null-terminated string to be
+ *                    written as the AT command parameter.
+ * @param useQuotes   if true then quotes will be added
+ *                    around the string when it is written
+ *                    to the stream.
  */
 void uAtClientWriteString(uAtClientHandle_t atHandle,
                           const char *pParam,
@@ -710,7 +710,7 @@ void uAtClientWriteString(uAtClientHandle_t atHandle,
  * be sent.
  *
  * @param atHandle     the handle of the AT client.
- * @param pData        the bytes to be written as the
+ * @param[in] pData    the bytes to be written as the
  *                     AT command parameter.
  * @param lengthBytes  the number of bytes in pData.
  * @param standalone   set this to true if this is a
@@ -752,11 +752,11 @@ size_t uAtClientWriteBytes(uAtClientHandle_t atHandle,
  * uAtClientWritePartialString(atHandle, false, "80");
  * ```
  *
- * @param atHandle  the handle of the AT client.
- * @param isFirst   set to true when starting a new string argument
- *                  (only when isFirst is set to true a delimiter
- *                   will be added if needed).
- * @param pParam    the partial string to be written.
+ * @param atHandle    the handle of the AT client.
+ * @param isFirst     set to true when starting a new string argument
+ *                    (only when isFirst is set to true a delimiter
+ *                    will be added if needed).
+ * @param[in] pParam  the partial string to be written.
  */
 void uAtClientWritePartialString(uAtClientHandle_t atHandle,
                                  bool isFirst,
@@ -797,14 +797,14 @@ void uAtClientCommandStopReadResponse(uAtClientHandle_t atHandle);
  * Stop tags (e.g. `\r\n` or `OK` or `ERROR`) are obeyed
  * by the AT client as appropriate.
  *
- * @param atHandle the handle of the AT client.
- * @param pPrefix  the string which is expected to begin
- *                 the AT response, e.g. "+CGATT:".  May be
- *                 NULL if there is no prefix, e.g. in the
- *                 case of an AT command such as "AT+CGSN"
- *                 which just returns the IMEI of a cellular
- *                 module, e.g. "357862090123456".
- * @return         0 if pPrefix is matched otherwise negative value.
+ * @param atHandle     the handle of the AT client.
+ * @param[in] pPrefix  the string which is expected to begin
+ *                     the AT response, e.g. "+CGATT:".  May be
+ *                     NULL if there is no prefix, e.g. in the
+ *                     case of an AT command such as "AT+CGSN"
+ *                     which just returns the IMEI of a cellular
+ *                     module, e.g. "357862090123456".
+ * @return             0 if pPrefix is matched otherwise negative value.
  */
 int32_t uAtClientResponseStart(uAtClientHandle_t atHandle,
                                const char *pPrefix);
@@ -816,18 +816,18 @@ int32_t uAtClientResponseStart(uAtClientHandle_t atHandle,
  * should be performed, e.g. by calling uAtClientErrorGet(),
  * before the return value is considered valid.
  *
- * @param atHandle the handle of the AT client.
- * @return         the positive integer or negative error
- *                 code.
+ * @param atHandle  the handle of the AT client.
+ * @return          the positive integer or negative error
+ *                  code.
  */
 int32_t uAtClientReadInt(uAtClientHandle_t atHandle);
 
 /** Read a 64-bit unsigned integer parameter from the
  * received AT response.
  *
- * @param atHandle the handle of the AT client.
- * @param pUint64  a place to put the uint64_t parameter.
- * @return         zero on success or negative error code.
+ * @param atHandle      the handle of the AT client.
+ * @param[out] pUint64  a place to put the uint64_t parameter.
+ * @return              zero on success or negative error code.
  */
 int32_t uAtClientReadUint64(uAtClientHandle_t atHandle,
                             uint64_t *pUint64);
@@ -841,42 +841,42 @@ int32_t uAtClientReadUint64(uAtClientHandle_t atHandle,
  * with uAtClientDelimiterGet(), change it to 0 and then
  * restore it afterwards.
  *
- * @param atHandle        the handle of the AT client.
- * @param pString         a buffer in which to place the
- *                        received string. This may be NULL
- *                        in which case the received
- *                        characters are thrown away.
- * @param lengthBytes     the maximum number of chars to write
- *                        including the null terminator. If
- *                        pString is NULL this should be
- *                        set to the maximum number of bytes
- *                        to be read and thrown away. If
- *                        the string is longer than lengthBytes
- *                        any remaining characters up to the
- *                        next delimiter or stop tag are
- *                        thrown away.
- * @param ignoreStopTag   if true then continue reading even
- *                        if the stop tag is found; set this
- *                        to true to read a multi-line response
- *                        that doesn't fit into the
- *                        uAtClientResponseStart() pattern in
- *                        one go.
- *                        Since the AT client can detect no
- *                        stop tag, use this only if there
- *                        is a delimiter (which will stop the read
- *                        if it is not inside quotes) or if the
- *                        length of the string is known so that
- *                        you can curtail the read by setting an
- *                        appropriate buffer length (which must
- *                        allow room for a null terminator).
- * @return                the length of the string stored in
- *                        pString (as in the value that strlen()
- *                        would return) or negative error code
- *                        if a read timeout occurs before the
- *                        delimiter or the stop tag is found.
- *                        If pString is NULL the value that
- *                        would have been written to pString
- *                        is returned.
+ * @param atHandle       the handle of the AT client.
+ * @param[out] pString   a buffer in which to place the
+ *                       received string. This may be NULL
+ *                       in which case the received
+ *                       characters are thrown away.
+ * @param lengthBytes    the maximum number of chars to write
+ *                       including the null terminator. If
+ *                       pString is NULL this should be
+ *                       set to the maximum number of bytes
+ *                       to be read and thrown away. If
+ *                       the string is longer than lengthBytes
+ *                       any remaining characters up to the
+ *                       next delimiter or stop tag are
+ *                       thrown away.
+ * @param ignoreStopTag  if true then continue reading even
+ *                       if the stop tag is found; set this
+ *                       to true to read a multi-line response
+ *                       that doesn't fit into the
+ *                       uAtClientResponseStart() pattern in
+ *                       one go.
+ *                       Since the AT client can detect no
+ *                       stop tag, use this only if there
+ *                       is a delimiter (which will stop the read
+ *                       if it is not inside quotes) or if the
+ *                       length of the string is known so that
+ *                       you can curtail the read by setting an
+ *                       appropriate buffer length (which must
+ *                       allow room for a null terminator).
+ * @return               the length of the string stored in
+ *                       pString (as in the value that strlen()
+ *                       would return) or negative error code
+ *                       if a read timeout occurs before the
+ *                       delimiter or the stop tag is found.
+ *                       If pString is NULL the value that
+ *                       would have been written to pString
+ *                       is returned.
  */
 int32_t uAtClientReadString(uAtClientHandle_t atHandle,
                             char *pString, size_t lengthBytes,
@@ -890,31 +890,31 @@ int32_t uAtClientReadString(uAtClientHandle_t atHandle,
  * stop tag to be obeyed either, call
  * uAtClientIgnoreStopTag() first.
  *
- * @param atHandle    the handle of the AT client.
- * @param pBuffer     a buffer in which to place the
- *                    bytes read.  May be set to NULL
- *                    in which case the received bytes
- *                    are thrown away.
- * @param lengthBytes the maximum number of bytes to read.
- *                    If pBuffer is NULL this should be
- *                    set to the number of bytes to be
- *                    read and thrown away.
- * @param standalone  set this to true if the bytes form
- *                    a standalone sequence, e.g. when reading
- *                    a specific number of bytes of an IP
- *                    socket AT command.  If this is false
- *                    then a delimiter (or the stop tag
- *                    for a response line) will be expected
- *                    following the sequence of bytes. If
- *                    you have previously set
- *                    uAtClientIgnoreStopTag() then standalone
- *                    should be set to true, otherwise this
- *                    function will search for a non-existent
- *                    stop tag.
- * @return            the number of bytes read or negative
- *                    error code.  If pBuffer is NULL the
- *                    number of bytes that would have been
- *                    written to pBuffer is returned.
+ * @param atHandle      the handle of the AT client.
+ * @param[out] pBuffer  a buffer in which to place the
+ *                      bytes read.  May be set to NULL
+ *                      in which case the received bytes
+ *                      are thrown away.
+ * @param lengthBytes   the maximum number of bytes to read.
+ *                      If pBuffer is NULL this should be
+ *                      set to the number of bytes to be
+ *                      read and thrown away.
+ * @param standalone    set this to true if the bytes form
+ *                      a standalone sequence, e.g. when reading
+ *                      a specific number of bytes of an IP
+ *                      socket AT command.  If this is false
+ *                      then a delimiter (or the stop tag
+ *                      for a response line) will be expected
+ *                      following the sequence of bytes. If
+ *                      you have previously set
+ *                      uAtClientIgnoreStopTag() then standalone
+ *                      should be set to true, otherwise this
+ *                      function will search for a non-existent
+ *                      stop tag.
+ * @return              the number of bytes read or negative
+ *                      error code.  If pBuffer is NULL the
+ *                      number of bytes that would have been
+ *                      written to pBuffer is returned.
  */
 int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
                            char *pBuffer, size_t lengthBytes,
@@ -929,7 +929,7 @@ int32_t uAtClientReadBytes(uAtClientHandle_t atHandle,
  * characters are left in the buffer to confuse a
  * subsequent AT command sequence.
  *
- * @param atHandle the handle of the AT client.
+ * @param atHandle  the handle of the AT client.
  */
 void uAtClientResponseStop(uAtClientHandle_t atHandle);
 
@@ -947,7 +947,7 @@ void uAtClientResponseStop(uAtClientHandle_t atHandle);
  * subsequent AT sequence. Normal stop tag behaviour
  * resumes when the next AT command is sent.
  *
- * @param atHandle the handle of the AT client.
+ * @param atHandle  the handle of the AT client.
  */
 void uAtClientIgnoreStopTag(uAtClientHandle_t atHandle);
 
@@ -957,15 +957,15 @@ void uAtClientIgnoreStopTag(uAtClientHandle_t atHandle);
  * the stop tag (e.g. `OK` or `ERROR`) before the end
  * of your current AT command sequence.
  *
- * @param atHandle the handle of the AT client.
+ * @param atHandle  the handle of the AT client.
  */
 void uAtClientRestoreStopTag(uAtClientHandle_t atHandle);
 
 /** Consume the given number of parameters from the
  * received AT response stream.
  *
- * @param atHandle the handle of the AT client.
- * @param count    the number of parameters to be skipped.
+ * @param atHandle  the handle of the AT client.
+ * @param count     the number of parameters to be skipped.
  */
 void uAtClientSkipParameters(uAtClientHandle_t atHandle,
                              size_t count);
@@ -976,8 +976,8 @@ void uAtClientSkipParameters(uAtClientHandle_t atHandle,
  * structure.  Neither delimiters nor stop tags are
  * obeyed; you need to know how many bytes to skip.
  *
- * @param atHandle    the handle of the AT client.
- * @param lengthBytes the number of bytes to be consumed.
+ * @param atHandle     the handle of the AT client.
+ * @param lengthBytes  the number of bytes to be consumed.
  */
 void uAtClientSkipBytes(uAtClientHandle_t atHandle,
                         size_t lengthBytes);
@@ -989,14 +989,14 @@ void uAtClientSkipBytes(uAtClientHandle_t atHandle,
  * tags are not obeyed but any URC found is acted
  * upon.
  *
- * @param atHandle  the handle of the AT client.
- * @param character the character that is expected;
- *                  should not be 0x0d or 0x0a as these
- *                  characters always precede a URC
- *                  and will be processed as part of URC
- *                  reception.
- * @return          zero if the character arrived,
- *                  else negative error code.
+ * @param atHandle   the handle of the AT client.
+ * @param character  the character that is expected;
+ *                   should not be 0x0d or 0x0a as these
+ *                   characters always precede a URC
+ *                   and will be processed as part of URC
+ *                   reception.
+ * @return           zero if the character arrived,
+ *                   else negative error code.
  */
 int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
                                char character);
@@ -1028,16 +1028,16 @@ int32_t uAtClientWaitCharacter(uAtClientHandle_t atHandle,
  * when you know that atHandle is not going to be pulled out
  * from underneath it.
  *
- * @param atHandle        the handle of the AT client.
- * @param pPrefix         the prefix for the URC. A prefix might
- *                        for example be "+CEREG:".
- * @param pHandler        the function to be called if the prefix
- *                        is found at the start of an AT string
- *                        from the AT server.
- * @param pHandlerParam   void * parameter to be passed to the
- *                        function call as the second parameter,
- *                        may be NULL.
- * @return                zero on success else negative error code.
+ * @param atHandle           the handle of the AT client.
+ * @param[in] pPrefix        the prefix for the URC. A prefix might
+ *                           for example be "+CEREG:".
+ * @param[in] pHandler       the function to be called if the prefix
+ *                           is found at the start of an AT string
+ *                           from the AT server.
+ * @param[in] pHandlerParam  void * parameter to be passed to the
+ *                           function call as the second parameter,
+ *                           may be NULL.
+ * @return                   zero on success else negative error code.
  */
 int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
                                const char *pPrefix,
@@ -1050,9 +1050,9 @@ int32_t uAtClientSetUrcHandler(uAtClientHandle_t atHandle,
  * when you know that atHandle is not going to be pulled out
  * from underneath it.
  *
- * @param atHandle the handle of the AT client.
- * @param pPrefix  the prefix for the URC, which would have been
- *                 set in a call to uAtClientSetUrcHandler().
+ * @param atHandle     the handle of the AT client.
+ * @param[in] pPrefix  the prefix for the URC, which would have been
+ *                     set in a call to uAtClientSetUrcHandler().
  */
 void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
                                const char *pPrefix);
@@ -1062,10 +1062,10 @@ void uAtClientRemoveUrcHandler(uAtClientHandle_t atHandle,
  * to zero you need to do less in your URCs or you need to
  * increase U_AT_CLIENT_URC_TASK_STACK_SIZE_BYTES.
  *
- * @param atHandle the handle of the AT client.
- * @return         the minimum amount of free stack during
- *                 the lifetime of the URC task in bytes,
- *                 else negative error code.
+ * @param atHandle  the handle of the AT client.
+ * @return          the minimum amount of free stack during
+ *                  the lifetime of the URC task in bytes,
+ *                  else negative error code.
  */
 int32_t uAtClientUrcHandlerStackMinFree(uAtClientHandle_t atHandle);
 
@@ -1081,11 +1081,11 @@ int32_t uAtClientUrcHandlerStackMinFree(uAtClientHandle_t atHandle);
  * has made the call by checking #uAtClientHandle_t, the first
  * parameter passed to the callback.
  *
- * @param atHandle        the handle of the AT client.
- * @param pCallback       the callback function.
- * @param pCallbackParam  a parameter to pass to the callback,
- *                        as the second parameter, may be NULL.
- * @return                zero on success else negative error code.
+ * @param atHandle            the handle of the AT client.
+ * @param[in] pCallback       the callback function.
+ * @param[in] pCallbackParam  a parameter to pass to the callback,
+ *                            as the second parameter, may be NULL.
+ * @return                    zero on success else negative error code.
  */
 int32_t uAtClientCallback(uAtClientHandle_t atHandle,
                           void (*pCallback) (uAtClientHandle_t, void *),
@@ -1136,15 +1136,15 @@ int32_t uAtClientCallbackStackMinFree();
  * uAtClientUnlock(client);
  * ```
  *
- * @param atHandle        the handle of the AT client.
- * @param pPrefix         the prefix for the URC; cannot by NULL.
- * @param pHandler        the function to be called if the prefix
- *                        is found; cannot be NULL.
- * @param pHandlerParam   void * parameter to be passed to the
- *                        function call as the second parameter;
- *                        may be NULL.
- * @return                zero if pPrefix is matched otherwise
- *                        negative value..
+ * @param atHandle           the handle of the AT client.
+ * @param[in] pPrefix        the prefix for the URC; cannot by NULL.
+ * @param[in] pHandler       the function to be called if the prefix
+ *                           is found; cannot be NULL.
+ * @param[in] pHandlerParam  void * parameter to be passed to the
+ *                           function call as the second parameter;
+ *                           may be NULL.
+ * @return                   zero if pPrefix is matched otherwise
+ *                           negative value..
  */
 int32_t uAtClientUrcDirect(uAtClientHandle_t atHandle,
                            const char *pPrefix,
@@ -1158,21 +1158,21 @@ int32_t uAtClientUrcDirect(uAtClientHandle_t atHandle,
 
 /** Empty the underlying receive buffer.
  *
- * @param atHandle the handle of the AT client.
+ * @param atHandle  the handle of the AT client.
  */
 void uAtClientFlush(uAtClientHandle_t atHandle);
 
 /** Clear the error status. Note that the error is
  * cleared anyway when uAtClientLock() is called.
  *
- * @param atHandle the handle of the AT client.
+ * @param atHandle  the handle of the AT client.
  */
 void uAtClientClearError(uAtClientHandle_t atHandle);
 
 /** Return the last error that occured in the AT client,
  * e.g. as a result of an AT timeout.
  *
- * @param  atHandle the handle of the AT client.
+ * @param atHandle  the handle of the AT client.
  * @return          the last error.
  */
 int32_t uAtClientErrorGet(uAtClientHandle_t atHandle);
@@ -1180,19 +1180,19 @@ int32_t uAtClientErrorGet(uAtClientHandle_t atHandle);
 /** Return the last error code received from the AT server,
  * an error code from "+CME ERROR" or "+CMS ERROR".
  *
- * @param atHandle     the handle of the AT client.
- * @param pDeviceError a place to put the device error,
- *                     cannot be NULL.
+ * @param atHandle           the handle of the AT client.
+ * @param[out] pDeviceError  a place to put the device error,
+ *                           cannot be NULL.
  */
 void uAtClientDeviceErrorGet(uAtClientHandle_t atHandle,
                              uAtClientDeviceError_t *pDeviceError);
 
 /** Get the handle and type of the underlying stream.
  *
- * @param atHandle     the handle of the AT client.
- * @param pStreamType  a pointer to a place to put the
- *                     stream type; cannot be NULL.
- * @return             the stream handle.
+ * @param atHandle          the handle of the AT client.
+ * @param[out] pStreamType  a pointer to a place to put the
+ *                          stream type; cannot be NULL.
+ * @return                  the stream handle.
  */
 int32_t uAtClientStreamGet(uAtClientHandle_t atHandle,
                            uAtClientStream_t *pStreamType);
@@ -1237,22 +1237,22 @@ int32_t uAtClientStreamGet(uAtClientHandle_t atHandle,
  * This function should only be called when the AT client has
  * been locked (with uAtClientLock()) to ensure thread safety.
  *
- * @param atHandle     the handle of the AT client.
- * @param pCallback    the callback function that forms
- *                     the intercept where the first
- *                     parameter is the AT client handle,
- *                     the second parameter a pointer to
- *                     the pointer to the data to be written
- *                     (may be NULL), the third parameter a
- *                     pointer to the length (will never be
- *                     NULL, will point to zero if the
- *                     pointer to the data pointer is NULL)
- *                     and the fourth parameter the pContext
- *                     pointer that was passed to this function.
- *                     Use NULL to cancel a previous intercept.
- * @param pContext     a context pointer which will be passed
- *                     to pCallback as its fourth parameter.
- *                     May be NULL.
+ * @param atHandle       the handle of the AT client.
+ * @param[in] pCallback  the callback function that forms
+ *                       the intercept where the first
+ *                       parameter is the AT client handle,
+ *                       the second parameter a pointer to
+ *                       the pointer to the data to be written
+ *                       (may be NULL), the third parameter a
+ *                       pointer to the length (will never be
+ *                       NULL, will point to zero if the
+ *                       pointer to the data pointer is NULL)
+ *                       and the fourth parameter the pContext
+ *                       pointer that was passed to this function.
+ *                       Use NULL to cancel a previous intercept.
+ * @param[in] pContext   a context pointer which will be passed
+ *                       to pCallback as its fourth parameter.
+ *                       May be NULL.
  */
 void uAtClientStreamInterceptTx(uAtClientHandle_t atHandle,
                                 const char *(*pCallback) (uAtClientHandle_t,
@@ -1319,23 +1319,23 @@ void uAtClientStreamInterceptTx(uAtClientHandle_t atHandle,
  * This function will delete any data in the receive buffers
  * before hooking-in the intercept function.
  *
- * @param atHandle     the handle of the AT client.
- * @param pCallback    the callback function that forms
- *                     the intercept where the first
- *                     parameter is the AT client handle,
- *                     the second parameter a pointer to
- *                     the pointer to the received data
- *                     (may be NULL), the third parameter
- *                     a pointer to the length (will never
- *                     be NULL, will point to zero if
- *                     the received data pointer is NULL)
- *                     and the fourth parameter the
- *                     pContext pointer that was passed to
- *                     this function.  Use NULL to cancel
- *                     a previous intercept.
- * @param pContext     a context pointer which will be passed
- *                     to pCallback as its fourth parameter.
- *                     May be NULL.
+ * @param atHandle       the handle of the AT client.
+ * @param[in] pCallback  the callback function that forms
+ *                       the intercept where the first
+ *                       parameter is the AT client handle,
+ *                       the second parameter a pointer to
+ *                       the pointer to the received data
+ *                       (may be NULL), the third parameter
+ *                       a pointer to the length (will never
+ *                       be NULL, will point to zero if
+ *                       the received data pointer is NULL)
+ *                       and the fourth parameter the
+ *                       pContext pointer that was passed to
+ *                       this function.  Use NULL to cancel
+ *                       a previous intercept.
+ * @param[in] pContext   a context pointer which will be passed
+ *                       to pCallback as its fourth parameter.
+ *                       May be NULL.
  */
 void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
                                 char *(*pCallback) (uAtClientHandle_t,
@@ -1372,12 +1372,12 @@ void uAtClientStreamInterceptRx(uAtClientHandle_t atHandle,
  * "send" (i.e. from the MCU to the module) AT activity on-going.
  *
  * @param atHandle             the handle of the AT client.
- * @param pHandler             the function to be called if
+ * @param[in] pHandler         the function to be called if
  *                             inactivityTimeoutMs milliseconds
  *                             have passed since the last AT
  *                             communication; use NULL to
  *                             remove a previous wake-up handler.
- * @param pHandlerParam        void * parameter to be passed to
+ * @param[in] pHandlerParam    void * parameter to be passed to
  *                             the function call as the second
  *                             parameter, may be NULL.
  * @param inactivityTimeoutMs  the time since the last AT
@@ -1408,17 +1408,17 @@ bool uAtClientWakeUpHandlerIsSet(const uAtClientHandle_t atHandle);
  * have already been configured as an output and set to the correct
  * initial level by the caller.
  *
- * @param atHandle     the handle of the AT client.
- * @param pin          the pin number of this MCU to use; use -1
- *                     to remove a previously-set activity pin.
- * @param readyMs      how long after the pin is set to wait until
- *                     AT commands can continue; value in milliseconds.
- * @param hysteresisMs the minimum time between the pin being toggled;
- *                     value in milliseconds.
- * @param highIsOn     if true then the pin is set high while an AT
- *                     command is executed, else it is set low
- *                     while an AT command is executed.
- * @return             zero on success else negative error code.
+ * @param atHandle      the handle of the AT client.
+ * @param pin           the pin number of this MCU to use; use -1
+ *                      to remove a previously-set activity pin.
+ * @param readyMs       how long after the pin is set to wait until
+ *                      AT commands can continue; value in milliseconds.
+ * @param hysteresisMs  the minimum time between the pin being toggled;
+ *                      value in milliseconds.
+ * @param highIsOn      if true then the pin is set high while an AT
+ *                      command is executed, else it is set low
+ *                      while an AT command is executed.
+ * @return              zero on success else negative error code.
  */
 int32_t uAtClientSetActivityPin(uAtClientHandle_t atHandle,
                                 int32_t pin, int32_t readyMs,

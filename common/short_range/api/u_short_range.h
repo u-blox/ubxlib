@@ -239,7 +239,7 @@ int32_t uShortRangeUnlock();
 /** Open UART for a short range module, reboots the module and configures it for EDM stream handling.
  *
  * @param moduleType       the short range module type.
- * @param pUartConfig      the UART configuration to be used.
+ * @param[in] pUartConfig  the UART configuration to be used.
  *                         if a short range instance has already been added
  *                         for this pUartConfig an error will be returned.
  * @param restart          if true - module is restarted.
@@ -252,7 +252,7 @@ int32_t uShortRangeOpenUart(uShortRangeModuleType_t moduleType,
 
 /** Closes and disconnects all associated handles, such as UART and EDM, for the short range instance
  *
- * @param devHandle     the short range device handle to close.
+ * @param devHandle         the short range device handle to close.
  */
 void uShortRangeClose(uDeviceHandle_t devHandle);
 
@@ -279,11 +279,11 @@ int32_t uShortRangeAttention(uDeviceHandle_t devHandle);
 
 /** Set a callback for Bluetooth connection status.
 *
- * @param devHandle          the short range device handle.
- * @param pCallback          callback function.
- * @param pCallbackParameter parameter included with the callback.
- * @return                   zero on success or negative error code
- *                           on failure.
+ * @param devHandle              the short range device handle.
+ * @param[in] pCallback          callback function.
+ * @param[in] pCallbackParameter parameter included with the callback.
+ * @return                       zero on success or negative error code
+ *                               on failure.
  */
 int32_t uShortRangeSetBtConnectionStatusCallback(uDeviceHandle_t devHandle,
                                                  uShortRangeBtConnectionStatusCallback_t pCallback,
@@ -291,11 +291,11 @@ int32_t uShortRangeSetBtConnectionStatusCallback(uDeviceHandle_t devHandle,
 
 /** Set a callback for IP connection status.
  *
- * @param devHandle          the short range device handle.
- * @param pCallback          callback function.
- * @param pCallbackParameter parameter included with the callback.
- * @return                   zero on success or negative error code
- *                           on failure.
+ * @param devHandle              the short range device handle.
+ * @param[in] pCallback          callback function.
+ * @param[in] pCallbackParameter parameter included with the callback.
+ * @return                       zero on success or negative error code
+ *                               on failure.
  */
 int32_t uShortRangeSetIpConnectionStatusCallback(uDeviceHandle_t devHandle,
                                                  uShortRangeIpConnectionStatusCallback_t pCallback,
@@ -303,11 +303,11 @@ int32_t uShortRangeSetIpConnectionStatusCallback(uDeviceHandle_t devHandle,
 
 /** Set a callback for MQTT connection status.
  *
- * @param devHandle          the short range device handle.
- * @param pCallback          callback function.
- * @param pCallbackParameter parameter included with the callback.
- * @return                   zero on success or negative error code
- *                           on failure.
+ * @param devHandle              the short range device handle.
+ * @param[in] pCallback          callback function.
+ * @param[in] pCallbackParameter parameter included with the callback.
+ * @return                       zero on success or negative error code
+ *                               on failure.
  */
 int32_t uShortRangeSetMqttConnectionStatusCallback(uDeviceHandle_t devHandle,
                                                    uShortRangeIpConnectionStatusCallback_t pCallback,
@@ -316,9 +316,9 @@ int32_t uShortRangeSetMqttConnectionStatusCallback(uDeviceHandle_t devHandle,
 /** Get the handle of the AT client used by the given
  * short range instance.
  *
- * @param devHandle         the short range device handle.
- * @param pAtHandle         a place to put the AT client handle.
- * @return                  zero on success else negative error code.
+ * @param devHandle              the short range device handle.
+ * @param[out] pAtHandle         a place to put the AT client handle.
+ * @return                       zero on success else negative error code.
  */
 int32_t uShortRangeAtClientHandleGet(uDeviceHandle_t devHandle,
                                      uAtClientHandle_t *pAtHandle);
@@ -382,19 +382,19 @@ int32_t uShortRangeGetUartHandle(uDeviceHandle_t devHandle);
  * the EDM stream, any settings there, including the EDM stream handle,
  * will also be re-created.
  *
- * @param[in,out] pDevHandle  a pointer to a short range device handle that has been
- *                            opened with uShortRangeOpenUart(). If the reconfiguration
- *                            of the UART settings succeeds a new device handle will
- *                            be allocated and returned via this parameter.
- * @param pUartConfig         the new UART configuration to be used.
- * @return                    0 on success or negative error code on failure.
+ * @param[in,out] pDdevHandle  a pointer to a short range device handle that has been
+ *                             opened with uShortRangeOpenUart(). If the reconfiguration
+ *                             of the UART settings succeeds a new device handle will
+ *                             be allocated and returned via this parameter.
+ * @param[in] pUartConfig      the new UART configuration to be used.
+ * @return                     0 on success or negative error code on failure.
  */
 int32_t uShortRangeSetBaudrate(uDeviceHandle_t *pDevHandle,
                                const uShortRangeUartConfig_t *pUartConfig);
 
 /** Configure a GPIO of a shortrange module.
  *
- * @param [in] devHandle    the handle of the shortrange device handle.
+ * @param devHandle         the handle of the shortrange device handle.
  * @param gpioId            the GPIO ID to configure (often the same as pin number).
  * @param isOutput          the direction, set to true for an output, false for
  *                          an input.
@@ -407,7 +407,7 @@ int32_t uShortRangeGpioConfig(uDeviceHandle_t devHandle, int32_t gpioId, bool is
 
 /** Set the state of a GPIO of a shortrange module.
  *
- * @param [in] devHandle    the handle of the shortrange device handle.
+ * @param devHandle         the handle of the shortrange device handle.
  * @param gpioId            the GPIO ID to set (often the same as pin number).
  * @param level             the level to set, 0 for low or non-zero for high.
  * @return                  zero on success else negative error code.

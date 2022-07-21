@@ -77,8 +77,8 @@ bool uUbxProtocolIsLittleEndian();
  * ensuring that the endianness of the decoded value is correct
  * for this processor.
  *
- * @param pByte  a pointer to a uint16_t value to decode; cannot be NULL.
- * @return       the decoded uint16_t value, endianness respected.
+ * @param[in] pByte  a pointer to a uint16_t value to decode; cannot be NULL.
+ * @return           the decoded uint16_t value, endianness respected.
  */
 uint16_t uUbxProtocolUint16Decode(const char *pByte);
 
@@ -86,8 +86,8 @@ uint16_t uUbxProtocolUint16Decode(const char *pByte);
  * ensuring that the endianness of the decoded value is correct
  * for this processor.
  *
- * @param pByte  a pointer to a uint32_t value to decode; cannot be NULL.
- * @return       the decoded uint32_t value, endianness respected.
+ * @param[in] pByte  a pointer to a uint32_t value to decode; cannot be NULL.
+ * @return           the decoded uint32_t value, endianness respected.
  */
 uint32_t uUbxProtocolUint32Decode(const char *pByte);
 
@@ -95,8 +95,8 @@ uint32_t uUbxProtocolUint32Decode(const char *pByte);
  * ensuring that the endianness of the decoded value is correct
  * for this processor.
  *
- * @param pByte  a pointer to a uint64_t value to decode; cannot be NULL.
- * @return       the decoded uint64_t value, endianness respected.
+ * @param[in] pByte  a pointer to a uint64_t value to decode; cannot be NULL.
+ * @return           the decoded uint64_t value, endianness respected.
  */
 uint64_t uUbxProtocolUint64Decode(const char *pByte);
 
@@ -128,13 +128,13 @@ uint64_t uUbxProtocolUint64Encode(uint64_t uint64);
  *
  * @param messageClass            the ubx protocol message class.
  * @param messageId               the ubx protocol message ID.
- * @param pMessageBody            the message body to be encoded,
+ * @param[in] pMessageBody        the message body to be encoded,
  *                                may be NULL if the message has no
  *                                body.
  * @param messageBodyLengthBytes  the length of the message body,
  *                                must non-zero if pMessage is not
  *                                NULL.
- * @param pBuffer                 a buffer in which the encoded
+ * @param[out] pBuffer            a buffer in which the encoded
  *                                message is to be stored; at least
  *                                messageLengthBytes +
  *                                #U_UBX_PROTOCOL_OVERHEAD_LENGTH_BYTES
@@ -186,17 +186,17 @@ int32_t uUbxProtocolEncode(int32_t messageClass, int32_t messageId,
  * }
  * ```
  *
- * @param pBufferIn                  a pointer to the message buffer to
+ * @param[in] pBufferIn              a pointer to the message buffer to
  *                                   decode.
  * @param bufferLengthBytes          the amount of data at pBufferIn.
- * @param pMessageClass              a pointer to somewhere to store the
+ * @param[out] pMessageClass         a pointer to somewhere to store the
  *                                   decoded ubx message class; may be NULL.
- * @param pMessageId                 a pointer to somewher to store the
+ * @param[out] pMessageId            a pointer to somewher to store the
  *                                   decoded ubx message ID; may be NULL.
- * @param pMessageBody               a pointer to somewhere to store
+ * @param[out] pMessageBody          a pointer to somewhere to store
  *                                   the decoded message body; may be NULL.
  * @param maxMessageBodyLengthBytes  the amount of storage at pMessageBody.
- * @param ppBufferOut                a pointer to somewhere to store the
+ * @param[out] ppBufferOut           a pointer to somewhere to store the
  *                                   buffer pointer after message decoding
  *                                   has been completed; may be NULL;
  * @return                           on success the number of message body

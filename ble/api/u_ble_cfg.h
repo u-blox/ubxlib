@@ -63,10 +63,10 @@ typedef struct {
 /** Configure BLE for a short range module, may require module restarts
  *  so can take up to 500 ms before it returns.
  *
- * @param devHandle   the handle of the BLE instance.
- * @param pCfg        pointer to the configuration data, must not be NULL.
- * @return            zero on success or negative error code
- *                    on failure.
+ * @param devHandle     the handle of the BLE instance.
+ * @param[in] pCfg      pointer to the configuration data, must not be NULL.
+ * @return              zero on success or negative error code
+ *                      on failure.
  */
 int32_t uBleCfgConfigure(uDeviceHandle_t devHandle,
                          const uBleCfg_t *pCfg);

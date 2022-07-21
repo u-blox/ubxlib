@@ -59,10 +59,10 @@ typedef struct {
 /** The standard preamble for a short range test.  Creates all the necessary
  * instances
  *
- * @param moduleType  the module type.
- * @param pUartConfig the uart config.
- * @param pParameters the place to put the parameters.
- * @return            zero on success else negative error code.
+ * @param moduleType       the module type.
+ * @param[in] pUartConfig  the uart config.
+ * @param[out] pParameters the place to put the parameters.
+ * @return                 zero on success else negative error code.
  */
 //lint -esym(759, uShortRangeTestPrivatePreamble) Suppress the "can be
 //lint -esym(765, uShortRangeTestPrivatePreamble) made static" etc. which
@@ -75,7 +75,7 @@ int32_t uShortRangeTestPrivatePreamble(uShortRangeModuleType_t moduleType,
 
 /** The standard postamble for a short range test.
  *
- * @param pParameters a pointer to the parameters struct.
+ * @param[in,out] pParameters a pointer to the parameters struct.
  */
 //lint -esym(759, uShortRangeTestPrivatePostamble) Suppress the "can be
 //lint -esym(765, uShortRangeTestPrivatePostamble) made static" etc. which
@@ -86,7 +86,7 @@ void uShortRangeTestPrivatePostamble(uShortRangeTestPrivate_t *pParameters);
 
 /** The standard clean-up for a short range test.
  *
- * @param pParameters a pointer to the parameters struct.
+ * @param[in,out] pParameters a pointer to the parameters struct.
  */
 //lint -esym(759, uShortRangeTestPrivateCleanup) Suppress the "can be
 //lint -esym(765, uShortRangeTestPrivateCleanup) made static" etc. which

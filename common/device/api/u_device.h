@@ -300,7 +300,7 @@ int32_t uDeviceDeinit();
 
 /** Open a device instance.
  *
- * @param pDeviceCfg          device configuration, cannot be NULL.
+ * @param[in] pDeviceCfg      device configuration, cannot be NULL.
  * @param[out] pDeviceHandle  a place to put the device handle;
  *                            cannot be NULL.
  * @return                    zero on success else a negative error code.

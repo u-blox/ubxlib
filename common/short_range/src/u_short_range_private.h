@@ -161,16 +161,16 @@ extern uPortMutexHandle_t gUShortRangePrivateMutex;
  * by this function will become invalid; this function MUST be
  * called again to obtain the new handle.
  *
- * @param devHandle  the short range device handle.
- * @return           a pointer to the instance.
+ * @param   devHandle  the short range device handle.
+ * @return  a pointer to the instance.
  */
 uShortRangePrivateInstance_t *pUShortRangePrivateGetInstance(uDeviceHandle_t devHandle);
 
 /** Get whether the given instance is registered with the network.
  * Note: gUShortRangePrivateMutex should be locked before this is called.
  *
- * @param pInstance  a pointer to the ShortRange instance.
- * @return           true if it is registered, else false.
+ * @param[in] pInstance  a pointer to the ShortRange instance.
+ * @return               true if it is registered, else false.
  */
 //lint -esym(714, uShortRangePrivateIsRegistered) Suppress lack of a reference
 //lint -esym(759, uShortRangePrivateIsRegistered) etc. since use of this function

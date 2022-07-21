@@ -126,25 +126,25 @@ uShortRangePbufList_t *pUShortRangePbufListAlloc(void);
 /** Put the allocated memory for pbufs and packet in to their
  * free list of respective pool.
  *
- * @param pBufList Pointer to the packet.
+ * @param[in] pBufList Pointer to the packet.
  */
 void uShortRangePbufListFree(uShortRangePbufList_t *pBufList);
 
 /** Append a pbuf to a pbuf list.
  *
- * @param pBufList pointer to the destination pbuf list.
- * @param pBuf     the pbuf to be added to the list.
- * @return         zero on success, on failure negative error code.
+ * @param[out] pBufList pointer to the destination pbuf list.
+ * @param[in] pBuf      the pbuf to be added to the list.
+ * @return              zero on success, on failure negative error code.
  */
 int32_t uShortRangePbufListAppend(uShortRangePbufList_t *pBufList, uShortRangePbuf_t *pBuf);
 
 /** Reads and consume data from the pbuf list.
  *  At the end of move operation, next pbuf position to read will be updated in the pbuflist.
  *
- * @param pBufList pointer to the pbuf list.
- * @param pData    pointer to the destination buffer.
- * @param len      length of the destination buffer.
- * @return         copied length.
+ * @param[in] pBufList pointer to the pbuf list.
+ * @param[out] pData   pointer to the destination buffer.
+ * @param len          length of the destination buffer.
+ * @return             copied length.
  */
 size_t uShortRangePbufListConsumeData(uShortRangePbufList_t *pBufList, char *pData, size_t len);
 
@@ -152,16 +152,16 @@ size_t uShortRangePbufListConsumeData(uShortRangePbufList_t *pBufList, char *pDa
  *  The pointer allocated for the new pbuf list from the pbuf list pool
  *  will be added to its free list.
  *
- * @param pOldList pointer to the existing pbuf list.
- * @param pNewList pointer to the new pbuf list.
+ * @param[in] pOldList  pointer to the existing pbuf list.
+ * @param[out] pNewList pointer to the new pbuf list.
  */
 void uShortRangePbufListMerge(uShortRangePbufList_t *pOldList, uShortRangePbufList_t *pNewList);
 
 /** Insert a pbuf list to the packet list.
  *
- * @param pPktList  pointer to the packet list.
- * @param pBufList  pointer to the pbuf list.
- * @return          zero on success or negative error code.
+ * @param[in,out] pPktList pointer to the packet list.
+ * @param[in] pBufList     pointer to the pbuf list.
+ * @return                 zero on success or negative error code.
  */
 int32_t uShortRangePktListAppend(uShortRangePktList_t *pPktList,
                                  uShortRangePbufList_t *pBufList);
@@ -170,14 +170,14 @@ int32_t uShortRangePktListAppend(uShortRangePktList_t *pPktList,
  * If the given buffer size cannot accommodate the size of a complete packet, partial
  * data will be copied.
  *
- * @param pPktList    pointer to the packet list.
- * @param pData       pointer to the destination buffer.
- * @param pLen        on entry this should point to length of destination buffer.
- *                    on return this will be updated to copied length.
- * @param pEdmChannel on return EDM channel corresponding to the read packet will be updated.
- * @return            zero on success or negative error code.
- *                    #U_ERROR_COMMON_TEMPORARY_FAILURE, if given buffer cannot accommodate
- *                    the entire message - in this case the packet will be flushed.
+ * @param[in,out] pPktList pointer to the packet list.
+ * @param[out] pData       pointer to the destination buffer.
+ * @param[in,out] pLen     on entry this should point to length of destination buffer.
+ *                         on return this will be updated to copied length.
+ * @param[out] pEdmChannel on return EDM channel corresponding to the read packet will be updated.
+ * @return                 zero on success or negative error code.
+ *                         #U_ERROR_COMMON_TEMPORARY_FAILURE, if given buffer cannot accommodate
+ *                         the entire message - in this case the packet will be flushed.
  */
 int32_t uShortRangePktListConsumePacket(uShortRangePktList_t *pPktList, char *pData, size_t *pLen,
                                         int32_t *pEdmChannel);
