@@ -121,7 +121,7 @@ int32_t uGnssGetTransportHandle(uDeviceHandle_t gnssHandle,
                                 uGnssTransportHandle_t *pTransportHandle);
 
 /** If the transport type is AT, so the GNSS chip is being
- * accessed through an intermediate (for ezample cellular) module, then
+ * accessed through an intermediate (for example cellular) module, then
  * that module may also be responsible for powering the GNSS
  * chip up and down. If that is the case then this function should
  * be called to set the pin of the module which enables power to
