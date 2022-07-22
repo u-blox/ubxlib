@@ -1507,12 +1507,7 @@ int32_t uCellSockWrite(uDeviceHandle_t cellHandle,
         if (pInstance->socketsHexMode) {
             thisSendSize /= 2;
             negErrnoLocalOrSize = -U_SOCK_ENOMEM;
-            pHexBuffer = (char *) malloc(dataSizeBytes * 2 + 1);  // +1 for terminator
-            if (pHexBuffer != NULL) {
-                // Make the hex-coded null terminated string
-                x = uBinToHex((const char *) pData, dataSizeBytes, pHexBuffer);
-                *(pHexBuffer + x) = 0;
-            }
+            pHexBuffer = (char *)malloc(thisSendSize * 2 + 1); // +1 for terminator
         }
         // Find the entry
         if (sockHandle >= 0) {
@@ -1533,13 +1528,16 @@ int32_t uCellSockWrite(uDeviceHandle_t cellHandle,
                         // Write module socket handle
                         uAtClientWriteInt(atHandle, pSocket->sockHandleModule);
                         // Number of bytes to follow
-                        uAtClientWriteInt(atHandle, (int32_t) dataSizeBytes);
+                        uAtClientWriteInt(atHandle, (int32_t) thisSendSize);
                         written = false;
                         if (pHexBuffer) {
+                            // Make the hex-coded null terminated string
+                            uBinToHex((const char *) pData + dataOffset,
+                                      thisSendSize, pHexBuffer);
+                            pHexBuffer[thisSendSize * 2] = 0;
                             // Send the hex mode data as a string
                             //lint -e(679) Suppress suspicious truncation
-                            uAtClientWriteString(atHandle,
-                                                 pHexBuffer + (dataOffset * 2), true);
+                            uAtClientWriteString(atHandle, pHexBuffer, true);
                             uAtClientCommandStop(atHandle);
                             written = true;
                         } else {
@@ -1551,7 +1549,7 @@ int32_t uCellSockWrite(uDeviceHandle_t cellHandle,
                                 // Go!
                                 uAtClientWriteBytes(atHandle,
                                                     (const char *) pData + dataOffset,
-                                                    dataSizeBytes, true);
+                                                    thisSendSize, true);
                                 written = true;
                             }
                         }
