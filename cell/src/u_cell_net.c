@@ -1234,6 +1234,27 @@ static int32_t disconnectNetwork(uCellPrivateInstance_t *pInstance,
                 }
                 uPortTaskBlock(300);
             }
+            // There is a corner case that has occurred
+            // on SARA-R412M-02B when operating on an NB1 network
+            // (262 01 1nce.net) with a roaming SIM where
+            // the +CEREG URC indicates that we are registered
+            // even though all other indications are that we are
+            // not registered.  Hence we also query the attach status
+            // here and allow that to override all the others.
+            uAtClientLock(atHandle);
+            uAtClientTimeoutSet(atHandle,
+                                pInstance->pModule->responseMaxWaitMs);
+            uAtClientCommandStart(atHandle, "AT+CGATT?");
+            uAtClientCommandStop(atHandle);
+            uAtClientResponseStart(atHandle, "+CGATT:");
+            if (uAtClientReadInt(atHandle) == 0) {
+                setNetworkStatus(pInstance,
+                                 U_CELL_NET_STATUS_NOT_REGISTERED,
+                                 (int32_t) U_CELL_NET_RAT_UNKNOWN_OR_NOT_USED,
+                                 U_CELL_NET_REG_DOMAIN_PS, false);
+            }
+            uAtClientResponseStop(atHandle);
+            uAtClientUnlock(atHandle);
         }
     }
 
