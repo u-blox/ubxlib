@@ -1,12 +1,12 @@
 # Introduction
-This directory contains the build infrastructure for STM32F4 MCU using the STM32Cube FW SDK.  The STM32F4 device configuration matches that of the STM32F437VG device that is mounted on the u-blox C030 board and configures it sufficiently well to run the ubxlib tests and examples: no attempt is made to optimise the MCU RAM/flash etc. sizes, you need to know how to do that yourself.
+This directory contains the build infrastructure for STM32F4 MCU using the STM32Cube FW SDK.  The STM32F4 device configuration matches that of the STM32F437VG device that is mounted on the u-blox C030 board and configures it sufficiently well to run the `ubxlib` tests and examples: no attempt is made to optimise the MCU RAM/flash etc. sizes, you need to know how to do that yourself.
 
 # SDK Installation
 Download a version (this code was tested with version 1.25.0) of the STM32F4 MCU package ZIP file (containing their HAL etc.) from here:
 
 https://www.st.com/en/embedded-software/stm32cubef4.html
 
-You will need to specify the directory where you exctracted this .zip file when you compile the the ubxlib runner (see [runner/README.md](runner/README.md))
+You will need to specify the directory where you extracted this `.zip` file when you compile `ubxlib` [runner](runner).
 
 # Chip Resource Requirements
 The SysTick of the STM32F4 is assumed to provide a 1 ms RTOS tick which is used as a source of time for `uPortGetTickTimeMs()`.  Note that this means that if you want to use FreeRTOS in tickless mode you will need to either find another source of tick for `uPortGetTickTimeMs()` or put in a call that updates `gTickTimerRtosCount` when FreeRTOS resumes after a tickless period.
@@ -15,12 +15,20 @@ The SysTick of the STM32F4 is assumed to provide a 1 ms RTOS tick which is used 
 In order to conserve HW resources the trace output from this platform is sent over SWD using an ITM channel. There are many ways to read out the ITM trace output:
 
 ## STM32Cube IDE
-If you have a STM32Cube IDE project setup you can view the SWO trace output in this way: setup up the debugger as normal by pulling down the arrow beside the little button on the toolbar with the "bug" image on it, selecting "STM-Cortex-M C/C++ Application", create a new configuration and then, on the "Debugger" tab, tick the box that enables SWD, set the core clock to 168 MHz, the SWO Clock to 125 kHz (to match `U_CFG_HW_SWO_CLOCK_HZ` defined in `u_cfg_hw_platform_specific.h`), untick "Wait for sync packet" and click "Apply".
+If you want to use the STM3Cube IDE you can import our [runner](runner) build as a Makefile project and debug it with [OpenOCD](https://github.com/xpack-dev-tools/openocd-xpack), configuring the STM32Cube IDE as below:
 
-You should then be able to download the Debug build from the IDE and the IDE should launch you into the debugger.  To see the SWD trace output, click on "Window" -> "Show View" -> "SWV" -> "SWV ITM Data Console".  The docked window that appears should have a little "spanner" icon on the far right: click on that icon and, on the set of "ITM Stimulus Ports", tick channel 0 and then press "OK".  Beside the "spanner" icon is a small red button: press that to allow trace output to appear; unfortunately it seems that this latter step has to be performed every debug session, ST have chosen not to automate it for some reason.
+![STM32CUBE IDE OpenOCD debug setup](stm32cube_ide_openocd_setup.jpg)
+
+...but first copying [stm32cube_ide_openocd_swo.cfg](stm32cube_ide_openocd_swo.cfg) to your OpenOCD `scripts` directory and running the OpenOCD GDB server (from that directory) in a separate command window with a command-line of the following form:
+
+`..\bin\openocd.exe --file stm32cube_ide_openocd_swo.cfg`
+
+However it doesn't seem possible to get the internal STM32Cube IDE SWV viewer to read the trace output when using OpenOCD.
+
+The simplest fix is to run a telnet application which will ignore nulls (since only one of the 4 bytes sent from the ITM trace for each logged character is populated, ignoring nulls is essential) connected on port 40404 (the port which [stm32cube_ide_openocd_swo.cfg](stm32cube_ide_openocd_swo.cfg) directs SWO output to); [TeraTerm](https://tera-term.en.softonic.com/) will do this for you (set `Terminal` `new-line` `receive` to `AUTO` for correct line-endings).
 
 ## ST-Link utility
-Alternatively, if you just want to run the target without the debugger and simply view the SWO output, the (ST-Link utility)[https://www.st.com/en/development-tools/stsw-link004.html] utility includes a "Printf via SWO Viewer" option under its "ST-LINK" menu.  Set the core clock to 168 MHz, press "Start" and your debug `printf()`s will appear in that window.  HOWEVER, in this tool ST have fixed the expected SWO clock at 2 MHz whereas in normal operation we run it at 125 kHz to improve reliability; to use the ST-Link viewer you must unfortunately set the conditional complation flag `U_CFG_HW_SWO_CLOCK_HZ` to 2000000 before you build the code and then hope that trace output is sufficiently reliable (for adhoc use it is usually fine, it is under constant automated test that the cracks start to appear).
+Alternatively, if you just want to run the target without the debugger and simply view the SWO output, the [ST-Link utility](https://www.st.com/en/development-tools/stsw-link004.html) includes a "Printf via SWO Viewer" option under its "ST-LINK" menu.  Set the core clock to 168 MHz, press "Start" and your debug `printf()`s will appear in that window.  HOWEVER, in this tool ST have fixed the expected SWO clock at 2 MHz whereas in normal operation we run it at 125 kHz to improve reliability; to use the ST-Link viewer you must unfortunately set the conditional complation flag `U_CFG_HW_SWO_CLOCK_HZ` to 2000000 before you build the code and then hope that trace output is sufficiently reliable (for adhoc use it is usually fine, it is under constant automated test that the cracks start to appear).
 
 # stm32f4.mk
 This Makefile can be used to include ubxlib in your STM32F4 application. Before including `stm32f4.mk` you must set `UBXLIB_BASE` variable to the root directory of `ubxlib`.
